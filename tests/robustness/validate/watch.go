@@ -74,12 +74,12 @@ func validateOrdered(t *testing.T, report report.ClientReport) {
 }
 
 func validateUnique(t *testing.T, expectUniqueRevision bool, report report.ClientReport) {
-	uniqueOperations := map[interface{}]struct{}{}
+	uniqueOperations := map[any]struct{}{}
 
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				var key interface{}
+				var key any
 				if expectUniqueRevision {
 					key = event.Revision
 				} else {

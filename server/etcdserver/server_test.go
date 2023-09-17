@@ -83,7 +83,7 @@ func TestDoLocalAction(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Get",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -93,7 +93,7 @@ func TestDoLocalAction(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Get",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -143,7 +143,7 @@ func TestDoBadLocalAction(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Get",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -152,7 +152,7 @@ func TestDoBadLocalAction(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Get",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -261,7 +261,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -272,7 +272,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
+					Params: []any{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
 				},
 			},
 		},
@@ -283,7 +283,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", true, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", true, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -294,7 +294,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", false, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", false, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -305,7 +305,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Set",
-					Params: []interface{}{"", true, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", true, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -316,7 +316,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Update",
-					Params: []interface{}{"", "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -327,7 +327,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -338,7 +338,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -349,7 +349,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Create",
-					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -360,7 +360,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -371,7 +371,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(0), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", "bar", uint64(0), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -382,7 +382,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
+					Params: []any{"", "bar", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
 				},
 			},
 		},
@@ -393,7 +393,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Delete",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -404,7 +404,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "", uint64(1)},
+					Params: []any{"", "", uint64(1)},
 				},
 			},
 		},
@@ -415,7 +415,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "bar", uint64(0)},
+					Params: []any{"", "bar", uint64(0)},
 				},
 			},
 		},
@@ -426,7 +426,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "bar", uint64(5)},
+					Params: []any{"", "bar", uint64(5)},
 				},
 			},
 		},
@@ -437,7 +437,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "Get",
-					Params: []interface{}{"", false, false},
+					Params: []any{"", false, false},
 				},
 			},
 		},
@@ -448,7 +448,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "DeleteExpiredKeys",
-					Params: []interface{}{time.Unix(0, 0)},
+					Params: []any{time.Unix(0, 0)},
 				},
 			},
 		},
@@ -458,7 +458,7 @@ func TestApplyRequest(t *testing.T) {
 			[]testutil.Action{
 				{
 					Name:   "DeleteExpiredKeys",
-					Params: []interface{}{time.Unix(0, 12345)},
+					Params: []any{time.Unix(0, 12345)},
 				},
 			},
 		},
@@ -592,7 +592,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		w := []testutil.Action{
 			{
 				Name:   "ApplyConfChange",
-				Params: []interface{}{cc},
+				Params: []any{cc},
 			},
 		}
 		if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
@@ -1479,7 +1479,7 @@ func TestUpdateMember(t *testing.T) {
 
 func TestPublishV3(t *testing.T) {
 	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
+	ch := make(chan any, 1)
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
@@ -1600,7 +1600,7 @@ func TestPublishV3Retry(t *testing.T) {
 
 func TestUpdateVersion(t *testing.T) {
 	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
+	ch := make(chan any, 1)
 	// simulate that request has gone through consensus
 	ch <- Response{}
 	w := wait.NewWithResponse(ch)
@@ -1647,7 +1647,7 @@ func TestUpdateVersion(t *testing.T) {
 
 func TestUpdateVersionV3(t *testing.T) {
 	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
+	ch := make(chan any, 1)
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
@@ -1766,7 +1766,7 @@ func (n *nodeRecorder) Campaign(ctx context.Context) error {
 	return nil
 }
 func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
-	n.Record(testutil.Action{Name: "Propose", Params: []interface{}{data}})
+	n.Record(testutil.Action{Name: "Propose", Params: []any{data}})
 	return nil
 }
 func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChangeI) error {
@@ -1783,7 +1783,7 @@ func (n *nodeRecorder) TransferLeadership(ctx context.Context, lead, transferee 
 func (n *nodeRecorder) ReadIndex(ctx context.Context, rctx []byte) error                { return nil }
 func (n *nodeRecorder) Advance()                                                        {}
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChangeI) *raftpb.ConfState {
-	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []interface{}{conf}})
+	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []any{conf}})
 	return &raftpb.ConfState{}
 }
 

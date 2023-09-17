@@ -110,13 +110,13 @@ func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.Clie
 	return strings.Join(lines, "\n"), nil
 }
 
-func runCommandAndReadJsonOutput(args []string) (map[string]interface{}, error) {
+func runCommandAndReadJsonOutput(args []string) (map[string]any, error) {
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var resp map[string]interface{}
+	var resp map[string]any
 	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &resp)
 	if err != nil {
 		return nil, err

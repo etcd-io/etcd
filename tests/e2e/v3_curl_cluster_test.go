@@ -58,9 +58,9 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 
 	var newMemberIDStr string
 	for _, m := range members {
-		mObj := m.(map[string]interface{})
+		mObj := m.(map[string]any)
 		pURLs, _ := mObj["peerURLs"]
-		pURL := pURLs.([]interface{})[0].(string)
+		pURL := pURLs.([]any)[0].(string)
 		if pURL == peerURL {
 			newMemberIDStr = mObj["ID"].(string)
 			break
@@ -108,7 +108,7 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	require.Equal(cx.t, 1, len(members))
 }
 
-func mustListMembers(cx ctlCtx) []interface{} {
+func mustListMembers(cx ctlCtx) []any {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[0], "POST", e2e.CURLReq{
 		Endpoint: "/v3/cluster/member/list",
@@ -119,5 +119,5 @@ func mustListMembers(cx ctlCtx) []interface{} {
 
 	members, ok := resp["members"]
 	require.True(cx.t, ok)
-	return members.([]interface{})
+	return members.([]any)
 }

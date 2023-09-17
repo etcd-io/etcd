@@ -176,7 +176,7 @@ func (x *intervalNode) visit(iv *Interval, sentinel *intervalNode, nv nodeVisito
 // IntervalValue represents a range tree node that contains a range and a value.
 type IntervalValue struct {
 	Ivl Interval
-	Val interface{}
+	Val any
 }
 
 // IntervalTree represents a (mostly) textbook implementation of the
@@ -184,7 +184,7 @@ type IntervalValue struct {
 // and chapter 14.3 interval tree with search supporting "stabbing queries".
 type IntervalTree interface {
 	// Insert adds a node with the given interval into the tree.
-	Insert(ivl Interval, val interface{})
+	Insert(ivl Interval, val any)
 	// Delete removes the node with the given interval from the tree, returning
 	// true if a node is in fact removed.
 	Delete(ivl Interval) bool
@@ -423,7 +423,7 @@ func (ivt *intervalTree) deleteFixup(x *intervalNode) {
 	}
 }
 
-func (ivt *intervalTree) createIntervalNode(ivl Interval, val interface{}) *intervalNode {
+func (ivt *intervalTree) createIntervalNode(ivl Interval, val any) *intervalNode {
 	return &intervalNode{
 		iv:     IntervalValue{ivl, val},
 		max:    ivl.End,
@@ -466,7 +466,7 @@ func (ivt *intervalTree) createIntervalNode(ivl Interval, val interface{}) *inte
 //	 RB-INSERT-FIXUP(T, z)
 
 // Insert adds a node with the given interval into the tree.
-func (ivt *intervalTree) Insert(ivl Interval, val interface{}) {
+func (ivt *intervalTree) Insert(ivl Interval, val any) {
 	y := ivt.sentinel
 	z := ivt.createIntervalNode(ivl, val)
 	x := ivt.root

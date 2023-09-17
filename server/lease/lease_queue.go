@@ -42,14 +42,14 @@ func (pq LeaseQueue) Swap(i, j int) {
 	pq[j].index = j
 }
 
-func (pq *LeaseQueue) Push(x interface{}) {
+func (pq *LeaseQueue) Push(x any) {
 	n := len(*pq)
 	item := x.(*LeaseWithTime)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
-func (pq *LeaseQueue) Pop() interface{} {
+func (pq *LeaseQueue) Pop() any {
 	old := *pq
 	n := len(old)
 	item := old[n-1]

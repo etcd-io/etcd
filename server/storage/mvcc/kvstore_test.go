@@ -151,12 +151,12 @@ func TestStorePut(t *testing.T) {
 		}
 
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
+			{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
 		}
 
 		if tt.rr != nil {
 			wact = []testutil.Action{
-				{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
+				{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
 			}
 		}
 
@@ -164,8 +164,8 @@ func TestStorePut(t *testing.T) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{Name: "get", Params: []interface{}{[]byte("foo"), tt.wputrev.main}},
-			{Name: "put", Params: []interface{}{[]byte("foo"), tt.wputrev}},
+			{Name: "get", Params: []any{[]byte("foo"), tt.wputrev.main}},
+			{Name: "put", Params: []any{[]byte("foo"), tt.wputrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -232,13 +232,13 @@ func TestStoreRange(t *testing.T) {
 		wstart := newRevBytes()
 		revToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
-			{Name: "range", Params: []interface{}{schema.Key, wstart, []byte(nil), int64(0)}},
+			{Name: "range", Params: []any{schema.Key, wstart, []byte(nil), int64(0)}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{Name: "range", Params: []interface{}{[]byte("foo"), []byte("goo"), wrev}},
+			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), wrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -308,14 +308,14 @@ func TestStoreDeleteRange(t *testing.T) {
 			t.Errorf("#%d: marshal err = %v, want nil", i, err)
 		}
 		wact := []testutil.Action{
-			{Name: "seqput", Params: []interface{}{schema.Key, tt.wkey, data}},
+			{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
 		}
 		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
 		}
 		wact = []testutil.Action{
-			{Name: "range", Params: []interface{}{[]byte("foo"), []byte("goo"), tt.wrrev}},
-			{Name: "tombstone", Params: []interface{}{[]byte("foo"), tt.wdelrev}},
+			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), tt.wrrev}},
+			{Name: "tombstone", Params: []any{[]byte("foo"), tt.wdelrev}},
 		}
 		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
@@ -351,18 +351,18 @@ func TestStoreCompact(t *testing.T) {
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
-		{Name: "range", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, []uint8(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, []uint8(nil), int64(0)}},
-		{Name: "put", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
-		{Name: "range", Params: []interface{}{schema.Key, make([]byte, 17), end, int64(10000)}},
-		{Name: "delete", Params: []interface{}{schema.Key, key2}},
-		{Name: "put", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "range", Params: []any{schema.Meta, schema.ScheduledCompactKeyName, []uint8(nil), int64(0)}},
+		{Name: "range", Params: []any{schema.Meta, schema.FinishedCompactKeyName, []uint8(nil), int64(0)}},
+		{Name: "put", Params: []any{schema.Meta, schema.ScheduledCompactKeyName, newTestRevBytes(revision{3, 0})}},
+		{Name: "range", Params: []any{schema.Key, make([]byte, 17), end, int64(10000)}},
+		{Name: "delete", Params: []any{schema.Key, key2}},
+		{Name: "put", Params: []any{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(revision{3, 0})}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
 	}
 	wact = []testutil.Action{
-		{Name: "compact", Params: []interface{}{int64(3)}},
+		{Name: "compact", Params: []any{int64(3)}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -411,9 +411,9 @@ func TestStoreRestore(t *testing.T) {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
 	}
 	wact := []testutil.Action{
-		{Name: "range", Params: []interface{}{schema.Meta, schema.FinishedCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{schema.Meta, schema.ScheduledCompactKeyName, []byte(nil), int64(0)}},
-		{Name: "range", Params: []interface{}{schema.Key, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
+		{Name: "range", Params: []any{schema.Meta, schema.FinishedCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []any{schema.Meta, schema.ScheduledCompactKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []any{schema.Key, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
 	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("tx actions = %+v, want %+v", g, wact)
@@ -425,8 +425,8 @@ func TestStoreRestore(t *testing.T) {
 	}
 	ki := &keyIndex{key: []byte("foo"), modified: revision{5, 0}, generations: gens}
 	wact = []testutil.Action{
-		{Name: "keyIndex", Params: []interface{}{ki}},
-		{Name: "insert", Params: []interface{}{ki}},
+		{Name: "keyIndex", Params: []any{ki}},
+		{Name: "insert", Params: []any{ki}},
 	}
 	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
 		t.Errorf("index action = %+v, want %+v", g, wact)
@@ -950,18 +950,18 @@ func (b *fakeBatchTx) RUnlock()                                 {}
 func (b *fakeBatchTx) UnsafeCreateBucket(bucket backend.Bucket) {}
 func (b *fakeBatchTx) UnsafeDeleteBucket(bucket backend.Bucket) {}
 func (b *fakeBatchTx) UnsafePut(bucket backend.Bucket, key []byte, value []byte) {
-	b.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{bucket, key, value}})
+	b.Recorder.Record(testutil.Action{Name: "put", Params: []any{bucket, key, value}})
 }
 func (b *fakeBatchTx) UnsafeSeqPut(bucket backend.Bucket, key []byte, value []byte) {
-	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []interface{}{bucket, key, value}})
+	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []any{bucket, key, value}})
 }
 func (b *fakeBatchTx) UnsafeRange(bucket backend.Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
-	b.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{bucket, key, endKey, limit}})
+	b.Recorder.Record(testutil.Action{Name: "range", Params: []any{bucket, key, endKey, limit}})
 	r := <-b.rangeRespc
 	return r.keys, r.vals
 }
 func (b *fakeBatchTx) UnsafeDelete(bucket backend.Bucket, key []byte) {
-	b.Recorder.Record(testutil.Action{Name: "delete", Params: []interface{}{bucket, key}})
+	b.Recorder.Record(testutil.Action{Name: "delete", Params: []any{bucket, key}})
 }
 func (b *fakeBatchTx) UnsafeForEach(bucket backend.Bucket, visitor func(k, v []byte) error) error {
 	return nil
@@ -1024,43 +1024,43 @@ func (i *fakeIndex) CountRevisions(key, end []byte, atRev int64) int {
 }
 
 func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created revision, ver int64, err error) {
-	i.Recorder.Record(testutil.Action{Name: "get", Params: []interface{}{key, atRev}})
+	i.Recorder.Record(testutil.Action{Name: "get", Params: []any{key, atRev}})
 	r := <-i.indexGetRespc
 	return r.rev, r.created, r.ver, r.err
 }
 func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []revision) {
-	i.Recorder.Record(testutil.Action{Name: "range", Params: []interface{}{key, end, atRev}})
+	i.Recorder.Record(testutil.Action{Name: "range", Params: []any{key, end, atRev}})
 	r := <-i.indexRangeRespc
 	return r.keys, r.revs
 }
 func (i *fakeIndex) Put(key []byte, rev revision) {
-	i.Recorder.Record(testutil.Action{Name: "put", Params: []interface{}{key, rev}})
+	i.Recorder.Record(testutil.Action{Name: "put", Params: []any{key, rev}})
 }
 func (i *fakeIndex) Tombstone(key []byte, rev revision) error {
-	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []interface{}{key, rev}})
+	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []any{key, rev}})
 	return nil
 }
 func (i *fakeIndex) RangeSince(key, end []byte, rev int64) []revision {
-	i.Recorder.Record(testutil.Action{Name: "rangeEvents", Params: []interface{}{key, end, rev}})
+	i.Recorder.Record(testutil.Action{Name: "rangeEvents", Params: []any{key, end, rev}})
 	r := <-i.indexRangeEventsRespc
 	return r.revs
 }
 func (i *fakeIndex) Compact(rev int64) map[revision]struct{} {
-	i.Recorder.Record(testutil.Action{Name: "compact", Params: []interface{}{rev}})
+	i.Recorder.Record(testutil.Action{Name: "compact", Params: []any{rev}})
 	return <-i.indexCompactRespc
 }
 func (i *fakeIndex) Keep(rev int64) map[revision]struct{} {
-	i.Recorder.Record(testutil.Action{Name: "keep", Params: []interface{}{rev}})
+	i.Recorder.Record(testutil.Action{Name: "keep", Params: []any{rev}})
 	return <-i.indexCompactRespc
 }
 func (i *fakeIndex) Equal(b index) bool { return false }
 
 func (i *fakeIndex) Insert(ki *keyIndex) {
-	i.Recorder.Record(testutil.Action{Name: "insert", Params: []interface{}{ki}})
+	i.Recorder.Record(testutil.Action{Name: "insert", Params: []any{ki}})
 }
 
 func (i *fakeIndex) KeyIndex(ki *keyIndex) *keyIndex {
-	i.Recorder.Record(testutil.Action{Name: "keyIndex", Params: []interface{}{ki}})
+	i.Recorder.Record(testutil.Action{Name: "keyIndex", Params: []any{ki}})
 	return nil
 }
 

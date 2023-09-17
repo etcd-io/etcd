@@ -448,7 +448,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
-	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject interface{}) bool { return true }
+	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject any) bool { return true }
 
 	grpcChainStreamList := []grpc.StreamServerInterceptor{
 		grpc_prometheus.StreamServerInterceptor,

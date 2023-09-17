@@ -37,7 +37,7 @@ type quotaAlarmer struct {
 
 // check whether request satisfies the quota. If there is not enough space,
 // ignore request and raise the free space alarm.
-func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
+func (qa *quotaAlarmer) check(ctx context.Context, r any) error {
 	if qa.q.Available(r) {
 		return nil
 	}

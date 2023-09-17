@@ -147,7 +147,7 @@ func testCurlV3Auth(cx ctlCtx) {
 		cURLRes, err := proc.ExpectFunc(context.Background(), lineFunc)
 		testutil.AssertNil(cx.t, err)
 
-		authRes := make(map[string]interface{})
+		authRes := make(map[string]any)
 		testutil.AssertNil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
 
 		token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
@@ -241,7 +241,7 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 
 	users, ok := resp["users"]
 	require.True(cx.t, ok)
-	userSlice := users.([]interface{})
+	userSlice := users.([]any)
 	require.Equal(cx.t, 2, len(userSlice))
 	require.Equal(cx.t, "user1", userSlice[0])
 	require.Equal(cx.t, "user3", userSlice[1])
@@ -370,7 +370,7 @@ func testCurlV3AuthRoleBasicOperations(cx ctlCtx) {
 
 	roles, ok := resp["roles"]
 	require.True(cx.t, ok)
-	roleSlice := roles.([]interface{})
+	roleSlice := roles.([]any)
 	require.Equal(cx.t, 2, len(roleSlice))
 	require.Equal(cx.t, "role1", roleSlice[0])
 	require.Equal(cx.t, "role3", roleSlice[1])

@@ -39,7 +39,7 @@ import (
 // changed through options (e.g. WithMax) on creation of the interceptor or on call (through grpc.CallOptions).
 func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClientInterceptor {
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		ctx = withVersion(ctx)
 		grpcOpts, retryOpts := filterCallOptions(opts)
 		callOpts := reuseOrNewWithCallOptions(intOpts, retryOpts)
@@ -179,9 +179,9 @@ func (c *Client) refreshToken(ctx context.Context) error {
 type serverStreamingRetryingStream struct {
 	grpc.ClientStream
 	client        *Client
-	bufferedSends []interface{} // single message that the client can sen
-	receivedGood  bool          // indicates whether any prior receives were successful
-	wasClosedSend bool          // indicates that CloseSend was closed
+	bufferedSends []any // single message that the client can sen
+	receivedGood  bool  // indicates whether any prior receives were successful
+	wasClosedSend bool  // indicates that CloseSend was closed
 	ctx           context.Context
 	callOpts      *options
 	streamerCall  func(ctx context.Context) (grpc.ClientStream, error)
@@ -200,7 +200,7 @@ func (s *serverStreamingRetryingStream) getStream() grpc.ClientStream {
 	return s.ClientStream
 }
 
-func (s *serverStreamingRetryingStream) SendMsg(m interface{}) error {
+func (s *serverStreamingRetryingStream) SendMsg(m any) error {
 	s.mu.Lock()
 	s.bufferedSends = append(s.bufferedSends, m)
 	s.mu.Unlock()
@@ -222,7 +222,7 @@ func (s *serverStreamingRetryingStream) Trailer() metadata.MD {
 	return s.getStream().Trailer()
 }
 
-func (s *serverStreamingRetryingStream) RecvMsg(m interface{}) error {
+func (s *serverStreamingRetryingStream) RecvMsg(m any) error {
 	attemptRetry, lastErr := s.receiveMsgAndIndicateRetry(m)
 	if !attemptRetry {
 		return lastErr // success or hard failure
@@ -249,7 +249,7 @@ func (s *serverStreamingRetryingStream) RecvMsg(m interface{}) error {
 	return lastErr
 }
 
-func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}) (bool, error) {
+func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool, error) {
 	s.mu.RLock()
 	wasGood := s.receivedGood
 	s.mu.RUnlock()

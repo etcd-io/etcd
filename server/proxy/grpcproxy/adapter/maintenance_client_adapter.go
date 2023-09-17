@@ -73,7 +73,7 @@ func (s *ss2scClientStream) Send(rr *pb.SnapshotRequest) error {
 	return s.SendMsg(rr)
 }
 func (s *ss2scClientStream) Recv() (*pb.SnapshotResponse, error) {
-	var v interface{}
+	var v any
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (s *ss2scServerStream) Send(rr *pb.SnapshotResponse) error {
 	return s.SendMsg(rr)
 }
 func (s *ss2scServerStream) Recv() (*pb.SnapshotRequest, error) {
-	var v interface{}
+	var v any
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}

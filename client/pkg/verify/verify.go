@@ -73,7 +73,7 @@ func Verify(f func()) {
 }
 
 // Assert will panic with a given formatted message if the given condition is false.
-func Assert(condition bool, msg string, v ...interface{}) {
+func Assert(condition bool, msg string, v ...any) {
 	if !condition {
 		panic(fmt.Sprintf("assertion failed: "+msg, v...))
 	}

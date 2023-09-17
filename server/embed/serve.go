@@ -336,11 +336,11 @@ type wsProxyZapLogger struct {
 	*zap.Logger
 }
 
-func (w wsProxyZapLogger) Warnln(i ...interface{}) {
+func (w wsProxyZapLogger) Warnln(i ...any) {
 	w.Warn(fmt.Sprint(i...))
 }
 
-func (w wsProxyZapLogger) Debugln(i ...interface{}) {
+func (w wsProxyZapLogger) Debugln(i ...any) {
 	w.Debug(fmt.Sprint(i...))
 }
 

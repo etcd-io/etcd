@@ -27,14 +27,14 @@ import (
 // considers both cases. This is represented as multiple equally possible deterministic states.
 // Failed requests fork the possible states, while successful requests merge and filter them.
 var NonDeterministicModel = porcupine.Model{
-	Init: func() interface{} {
+	Init: func() any {
 		data, err := json.Marshal(nonDeterministicState{freshEtcdState()})
 		if err != nil {
 			panic(err)
 		}
 		return string(data)
 	},
-	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
+	Step: func(st any, in any, out any) (bool, any) {
 		var states nonDeterministicState
 		err := json.Unmarshal([]byte(st.(string)), &states)
 		if err != nil {
@@ -47,7 +47,7 @@ var NonDeterministicModel = porcupine.Model{
 		}
 		return ok, string(data)
 	},
-	DescribeOperation: func(in, out interface{}) string {
+	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
 	},
 }

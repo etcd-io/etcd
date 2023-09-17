@@ -158,7 +158,7 @@ func testCurlV3KVTxn(cx ctlCtx) {
 	succeeded, responses := mustExecuteTxn(cx, string(jsonDat))
 	require.True(cx.t, succeeded)
 	require.Equal(cx.t, 1, len(responses))
-	putResponse := responses[0].(map[string]interface{})
+	putResponse := responses[0].(map[string]any)
 	_, ok := putResponse["response_put"]
 	require.True(cx.t, ok)
 
@@ -172,7 +172,7 @@ func testCurlV3KVTxn(cx ctlCtx) {
 	require.NoErrorf(cx.t, err, "testCurlV3Txn with malformed request failed")
 }
 
-func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []interface{}) {
+func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []any) {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[0], "POST", e2e.CURLReq{
 		Endpoint: "/v3/kv/txn",
@@ -187,7 +187,7 @@ func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []interface{}) {
 	responses, ok := resp["responses"]
 	require.True(cx.t, ok)
 
-	return succeeded.(bool), responses.([]interface{})
+	return succeeded.(bool), responses.([]any)
 }
 
 func testCurlV3KVCompact(cx ctlCtx) {

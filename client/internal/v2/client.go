@@ -41,7 +41,7 @@ var (
 
 	// oneShotCtxValue is set on a context using WithValue(&oneShotValue) so
 	// that Do() will not retry a request
-	oneShotCtxValue interface{}
+	oneShotCtxValue any
 )
 
 var DefaultRequestTimeout = 5 * time.Second

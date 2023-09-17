@@ -108,7 +108,7 @@ func RandomLeaseID() int64 {
 	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
 }
 
-func DataMarshal(data interface{}) (d string, e error) {
+func DataMarshal(data any) (d string, e error) {
 	m, err := json.Marshal(data)
 	if err != nil {
 		return "", err

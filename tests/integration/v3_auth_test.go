@@ -480,7 +480,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 	}
 	defer c.Close()
 
-	watchStartCh, watchEndCh := make(chan interface{}), make(chan interface{})
+	watchStartCh, watchEndCh := make(chan any), make(chan any)
 
 	go func() {
 		wChan := c.Watch(ctx, "k1", clientv3.WithRev(1))
