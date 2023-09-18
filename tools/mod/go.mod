@@ -18,7 +18,6 @@ require (
 	gotest.tools/gotestsum v1.11.0
 	gotest.tools/v3 v3.5.1
 	honnef.co/go/tools v0.4.6
-	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
 )
 
 require (

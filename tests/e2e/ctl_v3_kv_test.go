@@ -28,21 +28,21 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDialTimeout(0)) }
+func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDefaultDialTimeout()) }
 func TestCtlV3PutClientTLSFlagByEnv(t *testing.T) {
 	testCtl(t, putTest, withCfg(*e2e.NewConfigClientTLS()), withFlagByEnv())
 }
 func TestCtlV3PutIgnoreValue(t *testing.T) { testCtl(t, putTestIgnoreValue) }
 func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
-func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDialTimeout(0)) }
+func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDefaultDialTimeout()) }
 
 func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
 func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }
 func TestCtlV3GetKeysOnly(t *testing.T)  { testCtl(t, getKeysOnlyTest) }
 func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
 
-func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDialTimeout(0)) }
+func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDefaultDialTimeout()) }
 
 func TestCtlV3GetRevokedCRL(t *testing.T) {
 	cfg := e2e.NewConfig(

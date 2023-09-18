@@ -357,14 +357,11 @@ func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail [
 		}
 		cmps = append(cmps, *cmp)
 	}
-	succOps, err := getOps(ifSucess)
-	if err != nil {
-		return nil, err
-	}
-	failOps, err := getOps(ifFail)
-	if err != nil {
-		return nil, err
-	}
+
+	succOps := getOps(ifSucess)
+
+	failOps := getOps(ifFail)
+
 	txnrsp, err := txn.
 		If(cmps...).
 		Then(succOps...).
@@ -373,7 +370,7 @@ func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail [
 	return txnrsp, err
 }
 
-func getOps(ss []string) ([]clientv3.Op, error) {
+func getOps(ss []string) []clientv3.Op {
 	var ops []clientv3.Op
 	for _, s := range ss {
 		s = strings.TrimSpace(s)
@@ -387,7 +384,7 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 			ops = append(ops, clientv3.OpDelete(args[1]))
 		}
 	}
-	return ops, nil
+	return ops
 }
 
 func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {

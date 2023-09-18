@@ -499,7 +499,7 @@ func (f fakeCancelContext) Done() <-chan struct{} {
 func (f fakeCancelContext) Err() error        { return errFakeCancelContext }
 func (f fakeCancelContext) Value(key any) any { return 1 }
 
-func withTimeout(parent context.Context, timeout time.Duration) (
+func withTimeout(parent context.Context, _timeout time.Duration) (
 	ctx context.Context,
 	cancel context.CancelFunc) {
 	ctx = parent

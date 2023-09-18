@@ -47,7 +47,7 @@ func TestSTMConflict(t *testing.T) {
 	for i := range keys {
 		curEtcdc := clus.RandClient()
 		srcKey := keys[i]
-		applyf := func(stm concurrency.STM) error {
+		applyf := func(stm concurrency.STM) {
 			src := stm.Get(srcKey)
 			// must be different key to avoid double-adding
 			dstKey := srcKey
@@ -59,16 +59,21 @@ func TestSTMConflict(t *testing.T) {
 			dstV, _ := strconv.ParseInt(dst, 10, 64)
 			if srcV == 0 {
 				// can't rand.Intn on 0, so skip this transaction
-				return nil
+				return
 			}
 			xfer := int64(rand.Intn(int(srcV)) / 2)
 			stm.Put(srcKey, fmt.Sprintf("%d", srcV-xfer))
 			stm.Put(dstKey, fmt.Sprintf("%d", dstV+xfer))
-			return nil
 		}
 		go func() {
 			iso := concurrency.WithIsolation(concurrency.RepeatableReads)
-			_, err := concurrency.NewSTM(curEtcdc, applyf, iso)
+			_, err := concurrency.NewSTM(curEtcdc,
+				func(stm concurrency.STM) error {
+					applyf(stm)
+					return nil
+				},
+				iso,
+			)
 			errc <- err
 		}()
 	}

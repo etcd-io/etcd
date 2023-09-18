@@ -37,5 +37,4 @@ import (
 	_ "gotest.tools/gotestsum"
 	_ "gotest.tools/v3"
 	_ "honnef.co/go/tools/cmd/staticcheck"
-	_ "mvdan.cc/unparam"
 )

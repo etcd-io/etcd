@@ -512,7 +512,7 @@ func TestHashKVHandler(t *testing.T) {
 	var revision = 1
 
 	etcdSrv := &EtcdServer{}
-	etcdSrv.cluster = newTestCluster(t, nil)
+	etcdSrv.cluster = newTestCluster(t)
 	etcdSrv.cluster.SetID(types.ID(localClusterID), types.ID(localClusterID))
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)

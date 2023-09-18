@@ -528,7 +528,7 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 			t.Fatal(err)
 		}
 		for i := 0; i < 300; i++ {
-			go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }(i)
+			go func() { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }()
 		}
 	} else {
 		for i := 0; i < 100; i++ {

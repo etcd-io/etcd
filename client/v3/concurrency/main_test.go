@@ -22,7 +22,7 @@ import (
 
 func exampleEndpoints() []string { return nil }
 
-func forUnitTestsRunInMockedContext(mocking func(), example func()) {
+func forUnitTestsRunInMockedContext(mocking func(), _example func()) {
 	mocking()
 	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
 

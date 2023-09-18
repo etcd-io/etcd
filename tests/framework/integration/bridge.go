@@ -39,7 +39,7 @@ type bridge struct {
 	mu sync.Mutex
 }
 
-func newBridge(dialer Dialer, listener net.Listener) (*bridge, error) {
+func newBridge(dialer Dialer, listener net.Listener) *bridge {
 	b := &bridge{
 		// bridge "port" is ("%05d%05d0", port, pid) since go1.8 expects the port to be a number
 		dialer:     dialer,
@@ -52,7 +52,7 @@ func newBridge(dialer Dialer, listener net.Listener) (*bridge, error) {
 	close(b.pausec)
 	b.wg.Add(1)
 	go b.serveListen()
-	return b, nil
+	return b
 }
 
 func (b *bridge) Close() {

@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.WatchEvent) []model.WatchEvent {
+func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.WatchEvent) {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
@@ -34,7 +34,6 @@ func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.Cl
 		validateReliable(t, eventHistory, r)
 		validateResumable(t, eventHistory, r)
 	}
-	return eventHistory
 }
 
 func validateBookmarkable(t *testing.T, report report.ClientReport) {

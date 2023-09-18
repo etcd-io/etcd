@@ -410,11 +410,6 @@ function govet_shadow_pass {
   run_for_modules generic_checker govet_shadow_per_package "${shadow}"
 }
 
-function unparam_pass {
-  # TODO: transport/listener.go:129:60: newListenConfig - result 1 (error) is always nil
-  run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
-}
-
 function lint_pass {
   run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }

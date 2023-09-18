@@ -162,11 +162,11 @@ var commonTestScenarios = []modelTestCase{
 	{
 		name: "Stale Get need to match put if asking about matching revision",
 		operations: []testOperation{
-			{req: putRequest("key", "1"), resp: putResponse(2)},
-			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 3, 2), expectFailure: true},
-			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 3), expectFailure: true},
-			{req: staleGetRequest("key", 2), resp: getResponse("key", "2", 2, 2), expectFailure: true},
-			{req: staleGetRequest("key", 2), resp: getResponse("key", "1", 2, 2)},
+			{req: putRequest("key1", "1"), resp: putResponse(2)},
+			{req: staleGetRequest("key1", 2), resp: getResponse("key1", "1", 3, 2), expectFailure: true},
+			{req: staleGetRequest("key1", 2), resp: getResponse("key1", "1", 2, 3), expectFailure: true},
+			{req: staleGetRequest("key1", 2), resp: getResponse("key1", "2", 2, 2), expectFailure: true},
+			{req: staleGetRequest("key1", 2), resp: getResponse("key1", "1", 2, 2)},
 		},
 	},
 	{

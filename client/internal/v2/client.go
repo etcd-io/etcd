@@ -556,7 +556,7 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	}
 	defer hcancel()
 
-	reqcancel := requestCanceler(c.transport, req)
+	reqcancel := requestCanceler(req)
 
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {

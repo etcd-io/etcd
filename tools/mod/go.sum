@@ -294,5 +294,3 @@ honnef.co/go/tools v0.4.6 h1:oFEHCKeID7to/3autwsWfnuv69j3NsfcXbvJKuIcep8=
 honnef.co/go/tools v0.4.6/go.mod h1:+rnGS1THNh8zMwnd2oVOTL9QF6vmfyG6ZXBULae2uc0=
 k8s.io/klog/v2 v2.80.1 h1:atnLQ121W371wYYFawwYx1aEY2eUfs4l3J72wtgAwV4=
 k8s.io/klog/v2 v2.80.1/go.mod h1:y1WjHnz7Dj687irZUWR/WLkLc5N1YHtjLdmgWjndZn0=
-mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b h1:C8Pi6noat8BcrL9WnSRYeQ63fpkJk3hKVHtF5731kIw=
-mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b/go.mod h1:WqFWCt8MGPoFSYGsQSiIORRlYVhkJsIk+n2MY6rhNbA=

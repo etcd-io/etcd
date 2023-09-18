@@ -829,11 +829,8 @@ func (m *Member) addBridge() (*bridge, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", bridgeAddr, err)
 	}
-	m.GrpcBridge, err = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
-	if err != nil {
-		bridgeListener.Close()
-		return nil, err
-	}
+	m.GrpcBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
+
 	addr := bridgeListener.Addr().String()
 	m.Logger.Info("LISTEN BRIDGE SUCCESS", zap.String("grpc-address", addr), zap.String("member", m.Name))
 	m.GrpcURL = m.clientScheme() + "://" + addr

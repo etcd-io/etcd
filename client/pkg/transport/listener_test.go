@@ -28,7 +28,7 @@ import (
 	"go.uber.org/zap/zaptest"
 )
 
-func createSelfCert(t *testing.T, hosts ...string) (*TLSInfo, error) {
+func createSelfCert(t *testing.T) (*TLSInfo, error) {
 	return createSelfCertEx(t, "127.0.0.1")
 }
 
@@ -41,9 +41,9 @@ func createSelfCertEx(t *testing.T, host string, additionalUsages ...x509.ExtKey
 	return &info, nil
 }
 
-func fakeCertificateParserFunc(cert tls.Certificate, err error) func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
+func fakeCertificateParserFunc(err error) func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
 	return func(certPEMBlock, keyPEMBlock []byte) (tls.Certificate, error) {
-		return cert, err
+		return tls.Certificate{}, err
 	}
 }
 
@@ -367,7 +367,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		tt.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
+		tt.parseFunc = fakeCertificateParserFunc(nil)
 		trans, err := NewTransport(tt, time.Second)
 		if err != nil {
 			t.Fatalf("Received unexpected error from NewTransport: %v", err)
@@ -458,7 +458,7 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
+		tt.info.parseFunc = fakeCertificateParserFunc(errors.New("fake"))
 
 		if _, err = tt.info.ServerConfig(); err == nil {
 			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
@@ -496,7 +496,7 @@ func TestTLSInfoConfigFuncs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		tt.info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
+		tt.info.parseFunc = fakeCertificateParserFunc(nil)
 
 		sCfg, err := tt.info.ServerConfig()
 		if err != nil {
