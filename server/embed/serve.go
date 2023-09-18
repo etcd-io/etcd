@@ -303,6 +303,7 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 		return nil, err
 	}
 
+	// Refer to https://grpc-ecosystem.github.io/grpc-gateway/docs/mapping/customizing_your_gateway/
 	gwmux := gw.NewServeMux(
 		gw.WithMarshalerOption(gw.MIMEWildcard,
 			&gw.HTTPBodyMarshaler{
