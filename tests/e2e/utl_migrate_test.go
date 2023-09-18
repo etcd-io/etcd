@@ -28,7 +28,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -36,7 +35,6 @@ import (
 )
 
 func TestEtctlutlMigrate(t *testing.T) {
-	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 
 	tcs := []struct {
 		name           string
@@ -113,9 +111,6 @@ func TestEtctlutlMigrate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
 			lg := zaptest.NewLogger(t)
-			if tc.clusterVersion != e2e.CurrentVersion && !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
-				t.Skipf("%q does not exist", lastReleaseBinary)
-			}
 			dataDirPath := t.TempDir()
 
 			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
