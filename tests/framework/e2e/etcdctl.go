@@ -195,11 +195,11 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		return nil, err
 	}
 	for _, cmp := range compares {
-		if err := cmd.Send(cmp + "\r"); err != nil {
+		if err = cmd.Send(cmp + "\r"); err != nil {
 			return nil, err
 		}
 	}
-	if err := cmd.Send("\r"); err != nil {
+	if err = cmd.Send("\r"); err != nil {
 		return nil, err
 	}
 	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "success requests (get, put, del):"})
@@ -561,7 +561,7 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 	// If no password is provided, and NoPassword isn't set, the CLI will always
 	// wait for a password, send an enter in this case for an "empty" password.
 	if !opts.NoPassword && password == "" {
-		err := cmd.Send("\n")
+		err = cmd.Send("\n")
 		if err != nil {
 			return nil, err
 		}

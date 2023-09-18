@@ -64,7 +64,8 @@ fuzz:
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
-	verify-shellws verify-proto-annotations verify-genproto verify-goimport verify-yamllint
+	verify-shellws verify-proto-annotations verify-genproto verify-goimport verify-yamllint \
+	verify-govet-shadow
 fix: fix-goimports fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
@@ -139,6 +140,10 @@ fix-goimports:
 .PHONY: verify-yamllint
 verify-yamllint:
 	yamllint --config-file tools/.yamllint .
+
+.PHONY: verify-govet-shadow
+verify-govet-shadow:
+	PASSES="govet_shadow" ./scripts/test.sh
 
 YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 

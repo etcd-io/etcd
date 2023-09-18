@@ -59,13 +59,11 @@ func TestV3ClientMetrics(t *testing.T) {
 	// listen for all Prometheus metrics
 
 	go func() {
-		var err error
-
 		defer close(donec)
 
-		err = srv.Serve(ln)
-		if err != nil && !transport.IsClosedConnError(err) {
-			t.Errorf("Err serving http requests: %v", err)
+		serr := srv.Serve(ln)
+		if serr != nil && !transport.IsClosedConnError(serr) {
+			t.Errorf("Err serving http requests: %v", serr)
 		}
 	}()
 

@@ -190,7 +190,7 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			if tt.prepareData != nil {
-				if err := tt.prepareData(cfg); err != nil {
+				if err = tt.prepareData(cfg); err != nil {
 					t.Fatalf("failed to prepare data, unexpected error: %v", err)
 				}
 			}

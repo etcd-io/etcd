@@ -216,7 +216,7 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.Name))
 	if ep.proxy != nil {
 		ep.cfg.lg.Info("stopping proxy...", zap.String("name", ep.cfg.Name))
-		err := ep.proxy.Close()
+		err = ep.proxy.Close()
 		ep.proxy = nil
 		if err != nil {
 			return err

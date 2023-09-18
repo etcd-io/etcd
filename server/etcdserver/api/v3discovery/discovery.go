@@ -211,7 +211,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 		return "", err
 	}
 
-	if err := d.registerSelf(config); err != nil {
+	if err = d.registerSelf(config); err != nil {
 		return "", err
 	}
 

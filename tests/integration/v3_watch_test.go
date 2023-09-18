@@ -1335,9 +1335,9 @@ func TestV3WatchCancellation(t *testing.T) {
 	cli.Watch(ctx, "/foo")
 
 	for i := 0; i < 1000; i++ {
-		ctx, cancel := context.WithCancel(ctx)
-		cli.Watch(ctx, "/foo")
-		cancel()
+		wctx, wcancel := context.WithCancel(ctx)
+		cli.Watch(wctx, "/foo")
+		wcancel()
 	}
 
 	// Wait a little for cancellations to take hold
@@ -1374,9 +1374,9 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 	cli := clus.RandClient()
 
 	for i := 0; i < 1000; i++ {
-		ctx, cancel := context.WithCancel(ctx)
-		cli.Watch(ctx, "/foo")
-		cancel()
+		wctx, wcancel := context.WithCancel(ctx)
+		cli.Watch(wctx, "/foo")
+		wcancel()
 	}
 
 	// Wait a little for cancellations to take hold

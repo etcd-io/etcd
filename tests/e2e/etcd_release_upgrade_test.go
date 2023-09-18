@@ -62,7 +62,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+		if err = ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatalf("#%d: ctlV3Put error (%v)", i, err)
 		}
 	}
@@ -71,7 +71,7 @@ func TestReleaseUpgrade(t *testing.T) {
 
 	for i := range epc.Procs {
 		t.Logf("Stopping node: %v", i)
-		if err := epc.Procs[i].Stop(); err != nil {
+		if err = epc.Procs[i].Stop(); err != nil {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
 		t.Logf("Stopped node: %v", i)
@@ -79,13 +79,13 @@ func TestReleaseUpgrade(t *testing.T) {
 		epc.Procs[i].Config().KeepDataDir = true
 
 		t.Logf("Restarting node in the new version: %v", i)
-		if err := epc.Procs[i].Restart(context.TODO()); err != nil {
+		if err = epc.Procs[i].Restart(context.TODO()); err != nil {
 			t.Fatalf("error restarting etcd process (%v)", err)
 		}
 
 		t.Logf("Testing reads after node restarts: %v", i)
 		for j := range kvs {
-			if err := ctlV3Get(cx, []string{kvs[j].key}, []kv{kvs[j]}...); err != nil {
+			if err = ctlV3Get(cx, []string{kvs[j].key}, []kv{kvs[j]}...); err != nil {
 				cx.t.Fatalf("#%d-%d: ctlV3Get error (%v)", i, j, err)
 			}
 		}

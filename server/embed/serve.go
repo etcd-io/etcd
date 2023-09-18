@@ -153,7 +153,7 @@ func (sctx *serveCtx) serve(
 				Handler:  createAccessController(sctx.lg, s, httpmux),
 				ErrorLog: logger, // do not log user error
 			}
-			if err := configureHttpServer(srv, s.Cfg); err != nil {
+			if err = configureHttpServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure http server failed", zap.Error(err))
 				return err
 			}

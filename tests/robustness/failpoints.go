@@ -370,9 +370,9 @@ func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.Et
 
 	var rev int64
 	for {
-		resp, err := cc.Get(ctx, "/")
-		if err != nil {
-			return err
+		resp, gerr := cc.Get(ctx, "/")
+		if gerr != nil {
+			return gerr
 		}
 
 		rev = resp.Header.Revision

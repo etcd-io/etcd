@@ -53,8 +53,7 @@ func TestExpectFuncTimeout(t *testing.T) {
 	go func() {
 		// It's enough to have "talkative" process to stuck in the infinite loop of reading
 		for {
-			err := ep.Send("new line\n")
-			if err != nil {
+			if serr := ep.Send("new line\n"); serr != nil {
 				return
 			}
 		}
@@ -67,7 +66,7 @@ func TestExpectFuncTimeout(t *testing.T) {
 
 	require.ErrorAs(t, err, &context.DeadlineExceeded)
 
-	if err := ep.Stop(); err != nil {
+	if err = ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -111,7 +110,7 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 	require.Equal(t, 1, exitCode)
 	require.NoError(t, err)
 
-	if err := ep.Stop(); err != nil {
+	if err = ep.Stop(); err != nil {
 		t.Fatal(err)
 	}
 	err = ep.Close()
