@@ -61,7 +61,7 @@ func (s *es2ecClientStream) Send(rr *v3electionpb.LeaderRequest) error {
 	return s.SendMsg(rr)
 }
 func (s *es2ecClientStream) Recv() (*v3electionpb.LeaderResponse, error) {
-	var v interface{}
+	var v any
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func (s *es2ecServerStream) Send(rr *v3electionpb.LeaderResponse) error {
 	return s.SendMsg(rr)
 }
 func (s *es2ecServerStream) Recv() (*v3electionpb.LeaderRequest, error) {
-	var v interface{}
+	var v any
 	if err := s.RecvMsg(&v); err != nil {
 		return nil, err
 	}

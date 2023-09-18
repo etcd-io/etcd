@@ -33,7 +33,7 @@ const (
 // Field is a kv pair to record additional details of the trace.
 type Field struct {
 	Key   string
-	Value interface{}
+	Value any
 }
 
 func (f *Field) format() string {

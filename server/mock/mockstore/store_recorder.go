@@ -50,49 +50,49 @@ func (s *storeRecorder) Index() uint64 { return 0 }
 func (s *storeRecorder) Get(path string, recursive, sorted bool) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Get",
-		Params: []interface{}{path, recursive, sorted},
+		Params: []any{path, recursive, sorted},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) Set(path string, dir bool, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Set",
-		Params: []interface{}{path, dir, val, expireOpts},
+		Params: []any{path, dir, val, expireOpts},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) Update(path, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Update",
-		Params: []interface{}{path, val, expireOpts},
+		Params: []any{path, val, expireOpts},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Create",
-		Params: []interface{}{path, dir, val, uniq, expireOpts},
+		Params: []any{path, dir, val, uniq, expireOpts},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndSwap",
-		Params: []interface{}{path, prevVal, prevIdx, val, expireOpts},
+		Params: []any{path, prevVal, prevIdx, val, expireOpts},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) Delete(path string, dir, recursive bool) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Delete",
-		Params: []interface{}{path, dir, recursive},
+		Params: []any{path, dir, recursive},
 	})
 	return &v2store.Event{}, nil
 }
 func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndDelete",
-		Params: []interface{}{path, prevVal, prevIdx},
+		Params: []any{path, prevVal, prevIdx},
 	})
 	return &v2store.Event{}, nil
 }
@@ -123,7 +123,7 @@ func (s *storeRecorder) JsonStats() []byte { return nil }
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 	s.Record(testutil.Action{
 		Name:   "DeleteExpiredKeys",
-		Params: []interface{}{cutoff},
+		Params: []any{cutoff},
 	})
 }
 

@@ -523,7 +523,7 @@ func TestClusterAddMember(t *testing.T) {
 	wactions := []testutil.Action{
 		{
 			Name: "Create",
-			Params: []interface{}{
+			Params: []any{
 				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
@@ -546,7 +546,7 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	wactions := []testutil.Action{
 		{
 			Name: "Create",
-			Params: []interface{}{
+			Params: []any{
 				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null,"isLearner":true}`,
@@ -587,8 +587,8 @@ func TestClusterRemoveMember(t *testing.T) {
 	c.RemoveMember(1, true)
 
 	wactions := []testutil.Action{
-		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
-		{Name: "Create", Params: []interface{}{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
+		{Name: "Delete", Params: []any{MemberStoreKey(1), true, true}},
+		{Name: "Create", Params: []any{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
 		t.Errorf("actions = %v, want %v", st.Action(), wactions)

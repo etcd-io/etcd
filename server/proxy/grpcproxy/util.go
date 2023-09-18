@@ -56,7 +56,7 @@ func (cred *proxyTokenCredential) GetRequestMetadata(ctx context.Context, s ...s
 	}, nil
 }
 
-func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	token := getAuthTokenFromClient(ctx)
 	if token != "" {
 		tokenCred := &proxyTokenCredential{token}

@@ -21,20 +21,20 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func copyToInterface(msg ...string) []interface{} {
-	newMsg := make([]interface{}, len(msg))
+func copyToInterface(msg ...string) []any {
+	newMsg := make([]any, len(msg))
 	for i, v := range msg {
 		newMsg[i] = v
 	}
 	return newMsg
 }
 
-func AssertNil(t *testing.T, v interface{}) {
+func AssertNil(t *testing.T, v any) {
 	t.Helper()
 	assert.Nil(t, v)
 }
 
-func AssertNotNil(t *testing.T, v interface{}) {
+func AssertNotNil(t *testing.T, v any) {
 	t.Helper()
 	if v == nil {
 		t.Fatalf("expected non-nil, got %+v", v)
@@ -53,7 +53,7 @@ func AssertFalse(t *testing.T, v bool, msg ...string) {
 	assert.Equal(t, false, v, newMsg)
 }
 
-func isNil(v interface{}) bool {
+func isNil(v any) bool {
 	if v == nil {
 		return true
 	}

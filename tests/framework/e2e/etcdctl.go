@@ -660,7 +660,7 @@ func (ctl *EtcdctlV3) RoleDelete(ctx context.Context, role string) (*clientv3.Au
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output interface{}, args ...string) error {
+func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output any, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
 	if err != nil {

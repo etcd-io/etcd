@@ -27,7 +27,7 @@ type fakeCompactable struct {
 }
 
 func (fc *fakeCompactable) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
-	fc.Record(testutil.Action{Name: "c", Params: []interface{}{r}})
+	fc.Record(testutil.Action{Name: "c", Params: []any{r}})
 	return &pb.CompactionResponse{}, nil
 }
 

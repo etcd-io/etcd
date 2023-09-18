@@ -48,5 +48,5 @@ type Update struct {
 	// Metadata is the updated metadata. It is nil if there is no metadata update.
 	// Metadata is not required for a custom naming implementation.
 	// Since etcd 3.1.
-	Metadata interface{}
+	Metadata any
 }

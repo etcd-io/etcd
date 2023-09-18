@@ -216,6 +216,6 @@ func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConn
 	if err != nil {
 		return err
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	return json.Unmarshal([]byte(respData), &resp)
 }

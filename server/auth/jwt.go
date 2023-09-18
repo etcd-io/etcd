@@ -29,7 +29,7 @@ import (
 type tokenJWT struct {
 	lg         *zap.Logger
 	signMethod jwt.SigningMethod
-	key        interface{}
+	key        any
 	ttl        time.Duration
 	verifyOnly bool
 }
@@ -46,7 +46,7 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 		revision float64
 	)
 
-	parsed, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+	parsed, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		if token.Method.Alg() != t.signMethod.Alg() {
 			return nil, errors.New("invalid signing method")
 		}

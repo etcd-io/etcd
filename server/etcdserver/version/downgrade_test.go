@@ -80,7 +80,7 @@ func TestMustDetectDowngrade(t *testing.T) {
 	}
 }
 
-func tryMustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version) (err interface{}) {
+func tryMustDetectDowngrade(lg *zap.Logger, sv, cv *semver.Version) (err any) {
 	defer func() {
 		err = recover()
 	}()

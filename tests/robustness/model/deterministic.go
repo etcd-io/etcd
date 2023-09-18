@@ -38,14 +38,14 @@ import (
 //     to provide a full response. For example stale reads as model doesn't store
 //     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
-	Init: func() interface{} {
+	Init: func() any {
 		data, err := json.Marshal(freshEtcdState())
 		if err != nil {
 			panic(err)
 		}
 		return string(data)
 	},
-	Step: func(st interface{}, in interface{}, out interface{}) (bool, interface{}) {
+	Step: func(st any, in any, out any) (bool, any) {
 		var s EtcdState
 		err := json.Unmarshal([]byte(st.(string)), &s)
 		if err != nil {
@@ -58,7 +58,7 @@ var DeterministicModel = porcupine.Model{
 		}
 		return ok, string(data)
 	},
-	DescribeOperation: func(in, out interface{}) string {
+	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
 }

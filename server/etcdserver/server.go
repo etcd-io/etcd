@@ -122,7 +122,7 @@ func init() {
 	expvar.Publish(
 		"file_descriptor_limit",
 		expvar.Func(
-			func() interface{} {
+			func() any {
 				n, _ := runtime.FDLimit()
 				return n
 			},

@@ -91,7 +91,7 @@ func TestLockVerify(t *testing.T) {
 	}
 }
 
-func handlePanic(f func()) (result interface{}) {
+func handlePanic(f func()) (result any) {
 	defer func() {
 		result = recover()
 	}()

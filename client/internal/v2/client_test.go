@@ -496,8 +496,8 @@ func (f fakeCancelContext) Done() <-chan struct{} {
 	d <- struct{}{}
 	return d
 }
-func (f fakeCancelContext) Err() error                        { return errFakeCancelContext }
-func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
+func (f fakeCancelContext) Err() error        { return errFakeCancelContext }
+func (f fakeCancelContext) Value(key any) any { return 1 }
 
 func withTimeout(parent context.Context, timeout time.Duration) (
 	ctx context.Context,
