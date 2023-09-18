@@ -444,12 +444,12 @@ func TestV3AuthWatchAndTokenExpire(t *testing.T) {
 	// The first watch gets a valid auth token through watcher.newWatcherGrpcStream()
 	// We should discard the first one by waiting TTL after the first watch.
 	wChan := c.Watch(ctx, "key", clientv3.WithRev(1))
-	watchResponse := <-wChan
+	<-wChan
 
 	time.Sleep(5 * time.Second)
 
 	wChan = c.Watch(ctx, "key", clientv3.WithRev(1))
-	watchResponse = <-wChan
+	watchResponse := <-wChan
 	testutil.AssertNil(t, watchResponse.Err())
 }
 

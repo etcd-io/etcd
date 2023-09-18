@@ -69,7 +69,7 @@ func TestCompact(t *testing.T) {
 					t.Fatalf("compactTest: Compact error (%v)", err)
 				}
 
-				get, err = cc.Get(ctx, "key", config.GetOptions{Revision: 3})
+				_, err = cc.Get(ctx, "key", config.GetOptions{Revision: 3})
 				if err != nil {
 					if !strings.Contains(err.Error(), "required revision has been compacted") {
 						t.Fatalf("compactTest: Get compact key error (%v)", err)

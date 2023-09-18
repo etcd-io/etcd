@@ -442,17 +442,8 @@ function unconvert_pass {
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
 }
 
-function ineffassign_per_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-
-  # TODO: ineffassign should work with package instead of files
-  run_go_tool github.com/gordonklaus/ineffassign "${gofiles[@]}"
-}
-
 function ineffassign_pass {
-  run_for_modules generic_checker ineffassign_per_package
+  run_for_modules generic_checker run_go_tool "github.com/gordonklaus/ineffassign"
 }
 
 function nakedret_pass {
