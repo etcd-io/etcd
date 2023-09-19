@@ -1287,7 +1287,7 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 		defer close(donec)
 		for i := 0; ctx.Err() == nil; i++ {
 			key := fmt.Sprintf("key/%d", i%maxKey)
-			if _, err := putkv.Put(context.TODO(), key, "123"); err != nil {
+			if _, err = putkv.Put(context.TODO(), key, "123"); err != nil {
 				t.Errorf("fail putting key %s: %v", key, err)
 			}
 			if _, err = putkv.Get(context.TODO(), key); err != nil {

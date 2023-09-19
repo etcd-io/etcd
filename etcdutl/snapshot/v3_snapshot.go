@@ -144,16 +144,16 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 			if b == nil {
 				return fmt.Errorf("cannot get hash of bucket %s", string(next))
 			}
-			if _, err := h.Write(next); err != nil {
+			if _, err = h.Write(next); err != nil {
 				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
 			}
 			iskeyb := (string(next) == "key")
-			if err := b.ForEach(func(k, v []byte) error {
-				if _, err := h.Write(k); err != nil {
-					return fmt.Errorf("cannot write to bucket %s", err.Error())
+			if err = b.ForEach(func(k, v []byte) error {
+				if _, herr := h.Write(k); herr != nil {
+					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
-				if _, err := h.Write(v); err != nil {
-					return fmt.Errorf("cannot write to bucket %s", err.Error())
+				if _, herr := h.Write(v); herr != nil {
+					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
 				if iskeyb {
 					rev := bytesToRev(k)

@@ -231,9 +231,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
 		tctx := context.Background()
-		tracingExporter, err := newTracingExporter(tctx, cfg)
-		if err != nil {
-			return e, err
+		tracingExporter, terr := newTracingExporter(tctx, cfg)
+		if terr != nil {
+			return e, terr
 		}
 		e.tracingExporterShutdown = func() {
 			tracingExporter.Close(tctx)

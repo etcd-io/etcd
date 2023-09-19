@@ -57,7 +57,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 	dcc := MustNewHTTPClient(t, dc.EndpointsHTTP(), nil)
 	dkapi := client.NewKeysAPI(dcc)
 	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
-	if _, err := dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
+	if _, err = dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size)); err != nil {
 		t.Fatal(err)
 	}
 	cancel()

@@ -405,8 +405,8 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 	t.Log("Ensuring the restored member has the correct data...")
 	hasKVs(t, ctl, kvs, currentRev, baseRev)
 	for i := range unsnappedKVs {
-		v, err := ctl.Get(context.Background(), unsnappedKVs[i].Key, config.GetOptions{})
-		require.NoError(t, err)
+		v, gerr := ctl.Get(context.Background(), unsnappedKVs[i].Key, config.GetOptions{})
+		require.NoError(t, gerr)
 		require.Equal(t, int64(0), v.Count)
 	}
 

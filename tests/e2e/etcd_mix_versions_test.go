@@ -74,8 +74,8 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, clusterVersion, newInst
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
-		err := epc.Close()
-		require.NoError(t, err, "failed to close etcd cluster: %v", err)
+		derr := epc.Close()
+		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
 	}()
 
 	// Write more than SnapshotCount entries to trigger at least a snapshot.
@@ -83,7 +83,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, clusterVersion, newInst
 	for i := 0; i < 20; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
+		err = epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
 		require.NoError(t, err, "failed to put %q, error: %v", key, err)
 	}
 
@@ -156,8 +156,8 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, clusterVersion e2e.Clu
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
-		err := epc.Close()
-		require.NoError(t, err, "failed to close etcd cluster: %v", err)
+		derr := epc.Close()
+		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
 	}()
 	toPartitionedMember := epc.Procs[mockPartitionNodeIndex]
 
@@ -170,7 +170,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, clusterVersion e2e.Clu
 	for i := 0; i < 20; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
+		err = epc.Etcdctl().Put(context.TODO(), key, value, config.PutOptions{})
 		require.NoError(t, err, "failed to put %q, error: %v", key, err)
 	}
 

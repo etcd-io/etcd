@@ -477,8 +477,10 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 		respsLen := len(resps)
 		var lastErr error
 		for _, ep := range p.eps {
+			var resp *pb.HashKVResponse
+
 			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
-			resp, lastErr := HashByRev(ctx, s.cluster.ID(), cc, ep, rev)
+			resp, lastErr = HashByRev(ctx, s.cluster.ID(), cc, ep, rev)
 			cancel()
 			if lastErr == nil {
 				resps = append(resps, &peerHashKVResp{peerInfo: p, resp: resp, err: nil})
@@ -535,7 +537,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req := &pb.HashKVRequest{}
-	if err := json.Unmarshal(b, req); err != nil {
+	if err = json.Unmarshal(b, req); err != nil {
 		h.lg.Warn("failed to unmarshal request", zap.Error(err))
 		http.Error(w, "error unmarshalling request", http.StatusBadRequest)
 		return

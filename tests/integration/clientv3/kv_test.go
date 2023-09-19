@@ -90,7 +90,7 @@ func TestKVPutWithLease(t *testing.T) {
 
 	key := "hello"
 	val := "world"
-	if _, err := kv.Put(ctx, key, val, clientv3.WithLease(lease.ID)); err != nil {
+	if _, err = kv.Put(ctx, key, val, clientv3.WithLease(lease.ID)); err != nil {
 		t.Fatalf("couldn't put %q (%v)", key, err)
 	}
 	resp, err := kv.Get(ctx, key)
@@ -885,7 +885,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 	// wait until learner member is ready
 	<-clus.Members[3].ReadyNotify()
 
-	if _, err := cli.Get(context.Background(), "foo"); err == nil {
+	if _, err = cli.Get(context.Background(), "foo"); err == nil {
 		t.Fatalf("expect Get request to learner to fail, got no error")
 	}
 	t.Logf("Expected: Read from learner error: %v", err)

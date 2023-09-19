@@ -451,9 +451,9 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	}
 	// ensure leader is up via linearizable get
 	for {
-		ctx, cancel := context.WithTimeout(ctx, 10*framecfg.TickDuration+time.Second)
-		_, err := cc.Get(ctx, "0")
-		cancel()
+		fctx, fcancel := context.WithTimeout(ctx, 10*framecfg.TickDuration+time.Second)
+		_, err := cc.Get(fctx, "0")
+		fcancel()
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
@@ -1087,9 +1087,9 @@ func (m *Member) Launch() error {
 			// different SAN fields (e.g. example.com). To work around,
 			// re-overwrite (*tls.Config).Certificates before starting
 			// test server.
-			tlsCert, err := tlsutil.NewCert(info.CertFile, info.KeyFile, nil)
-			if err != nil {
-				return err
+			tlsCert, nerr := tlsutil.NewCert(info.CertFile, info.KeyFile, nil)
+			if nerr != nil {
+				return nerr
 			}
 			hs.TLS.Certificates = []tls.Certificate{*tlsCert}
 

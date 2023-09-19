@@ -91,8 +91,8 @@ func testCurlV3Auth(cx ctlCtx) {
 
 	//grant root role
 	for i := 0; i < len(usernames); i++ {
-		grantroleroot, err := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
-		testutil.AssertNil(cx.t, err)
+		grantroleroot, merr := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
+		testutil.AssertNil(cx.t, merr)
 
 		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/auth/user/grant",
@@ -188,7 +188,7 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 	// change password
 	user, err := json.Marshal(&pb.AuthUserChangePasswordRequest{Name: "user1", Password: "456"})
 	require.NoError(cx.t, err)
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/auth/user/changepw",
 		Value:    string(user),
 		Expected: expect.ExpectedResponse{Value: "revision"},
@@ -200,11 +200,12 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 	usernames = []string{"user1", "userX"}
 	expectedResponse := []string{"revision", "etcdserver: user name not found"}
 	for i := 0; i < len(usernames); i++ {
-		user, err := json.Marshal(&pb.AuthUserGetRequest{
+		user, err = json.Marshal(&pb.AuthUserGetRequest{
 			Name: usernames[i],
 		})
+
 		require.NoError(cx.t, err)
-		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/auth/user/get",
 			Value:    string(user),
 			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
@@ -217,11 +218,11 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 	usernames = []string{"user2", "userX"}
 	expectedResponse = []string{"revision", "etcdserver: user name not found"}
 	for i := 0; i < len(usernames); i++ {
-		user, err := json.Marshal(&pb.AuthUserDeleteRequest{
+		user, err = json.Marshal(&pb.AuthUserDeleteRequest{
 			Name: usernames[i],
 		})
 		require.NoError(cx.t, err)
-		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/auth/user/delete",
 			Value:    string(user),
 			Expected: expect.ExpectedResponse{Value: expectedResponse[i]},
@@ -403,7 +404,7 @@ func testCurlV3AuthRoleManagePermission(cx ctlCtx) {
 	})
 	require.NoError(cx.t, err)
 
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/auth/role/grant",
 		Value:    string(grantPermissionReq),
 		Expected: expect.ExpectedResponse{Value: "revision"},

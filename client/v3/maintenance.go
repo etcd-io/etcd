@@ -244,18 +244,19 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 	}
 	go func() {
 		// Saving response is blocking
-		err = m.save(resp, pw)
+		err := m.save(resp, pw)
 		if err != nil {
 			m.logAndCloseWithError(err, pw)
 			return
 		}
 		for {
-			resp, err := ss.Recv()
+			sresp, err := ss.Recv()
 			if err != nil {
 				m.logAndCloseWithError(err, pw)
 				return
 			}
-			err = m.save(resp, pw)
+
+			err = m.save(sresp, pw)
 			if err != nil {
 				m.logAndCloseWithError(err, pw)
 				return
@@ -267,7 +268,7 @@ func (m *maintenance) SnapshotWithVersion(ctx context.Context) (*SnapshotRespons
 		Header:   resp.GetHeader(),
 		Snapshot: &snapshotReadCloser{ctx: ctx, ReadCloser: pr},
 		Version:  resp.GetVersion(),
-	}, err
+	}, nil
 }
 
 func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
@@ -293,7 +294,7 @@ func (m *maintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
 			}
 		}
 	}()
-	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, err
+	return &snapshotReadCloser{ctx: ctx, ReadCloser: pr}, nil
 }
 
 func (m *maintenance) logAndCloseWithError(err error, pw *io.PipeWriter) {

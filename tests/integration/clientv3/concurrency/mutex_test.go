@@ -46,7 +46,7 @@ func TestMutexLockSessionExpired(t *testing.T) {
 	m2 := concurrency.NewMutex(s2, "/my-lock/")
 
 	// acquire lock for s1
-	if err := m1.Lock(context.TODO()); err != nil {
+	if err = m1.Lock(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -94,11 +94,11 @@ func TestMutexUnlock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := m1.Lock(context.TODO()); err != nil {
+	if err = m1.Lock(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := m1.Unlock(context.TODO()); err != nil {
+	if err = m1.Unlock(context.TODO()); err != nil {
 		t.Fatal(err)
 	}
 

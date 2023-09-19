@@ -212,7 +212,7 @@ func TestFirstCommitNotification(t *testing.T) {
 	t.Logf("Submitting write to make sure empty and 'foo' index entry was already flushed")
 	cli := cluster.RandClient()
 
-	if _, err := cli.Put(ctx, "foo", "bar"); err != nil {
+	if _, err = cli.Put(ctx, "foo", "bar"); err != nil {
 		t.Fatalf("Failed to put kv pair.")
 	}
 
@@ -225,7 +225,8 @@ func TestFirstCommitNotification(t *testing.T) {
 	group, groupContext := errgroup.WithContext(ctx)
 
 	for i, notifier := range notifiers {
-		member, notifier := cluster.Members[i], notifier
+		member := cluster.Members[i]
+		notifier := notifier
 		group.Go(func() error {
 			return checkFirstCommitNotification(groupContext, t, member, leaderAppliedIndex, notifier)
 		})

@@ -409,9 +409,9 @@ func (l *lessor) keepAliveOnce(ctx context.Context, id LeaseID) (karesp *LeaseKe
 	}
 
 	defer func() {
-		if err := stream.CloseSend(); err != nil {
+		if cerr := stream.CloseSend(); cerr != nil {
 			if ferr == nil {
-				ferr = toErr(ctx, err)
+				ferr = toErr(ctx, cerr)
 			}
 			return
 		}

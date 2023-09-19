@@ -181,33 +181,33 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 	var steps []string
 	lastStepTime := t.startTime
 	for i := 0; i < len(t.steps); i++ {
-		step := t.steps[i]
+		tstep := t.steps[i]
 		// add subtrace common fields which defined at the beginning to each sub-steps
-		if step.isSubTraceStart {
+		if tstep.isSubTraceStart {
 			for j := i + 1; j < len(t.steps) && !t.steps[j].isSubTraceEnd; j++ {
-				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
+				t.steps[j].fields = append(tstep.fields, t.steps[j].fields...)
 			}
 			continue
 		}
 		// add subtrace common fields which defined at the end to each sub-steps
-		if step.isSubTraceEnd {
+		if tstep.isSubTraceEnd {
 			for j := i - 1; j >= 0 && !t.steps[j].isSubTraceStart; j-- {
-				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
+				t.steps[j].fields = append(tstep.fields, t.steps[j].fields...)
 			}
 			continue
 		}
 	}
 	for i := 0; i < len(t.steps); i++ {
-		step := t.steps[i]
-		if step.isSubTraceStart || step.isSubTraceEnd {
+		tstep := t.steps[i]
+		if tstep.isSubTraceStart || tstep.isSubTraceEnd {
 			continue
 		}
-		stepDuration := step.time.Sub(lastStepTime)
+		stepDuration := tstep.time.Sub(lastStepTime)
 		if stepDuration > threshold {
 			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
-				traceNum, step.msg, writeFields(step.fields), stepDuration))
+				traceNum, tstep.msg, writeFields(tstep.fields), stepDuration))
 		}
-		lastStepTime = step.time
+		lastStepTime = tstep.time
 	}
 
 	fs := []zap.Field{zap.String("detail", writeFields(t.fields)),

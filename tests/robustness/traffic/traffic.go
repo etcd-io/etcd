@@ -69,9 +69,9 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
-		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
-		if err != nil {
-			t.Fatal(err)
+		c, nerr := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+		if nerr != nil {
+			t.Fatal(nerr)
 		}
 		go func(c *RecordingClient) {
 			defer wg.Done()

@@ -126,20 +126,21 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 	for i := 0; i < waiters; i++ {
 		go func() {
 			defer wgDone.Done()
-			session, err := concurrency.NewSession(clus.RandClient())
-			if err != nil {
-				t.Error(err)
+
+			gsession, gerr := concurrency.NewSession(clus.RandClient())
+			if gerr != nil {
+				t.Error(gerr)
 			}
-			defer session.Orphan()
+			defer gsession.Orphan()
 
 			bb := recipe.NewDoubleBarrier(session, "test-barrier", waiters)
-			if err := bb.Enter(); err != nil {
-				t.Errorf("could not enter on barrier (%v)", err)
+			if gerr = bb.Enter(); gerr != nil {
+				t.Errorf("could not enter on barrier (%v)", gerr)
 			}
 			wgEntered.Done()
 			<-donec
-			if err := bb.Leave(); err != nil {
-				t.Errorf("could not leave on barrier (%v)", err)
+			if gerr = bb.Leave(); gerr != nil {
+				t.Errorf("could not leave on barrier (%v)", gerr)
 			}
 		}()
 	}
@@ -148,7 +149,7 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 	// no any other client can enter the barrier.
 	wgEntered.Wait()
 	t.Log("Try to enter into double barrier")
-	if err := b.Enter(); err != recipe.ErrTooManyClients {
+	if err = b.Enter(); err != recipe.ErrTooManyClients {
 		t.Errorf("Unexcepted error, expected: ErrTooManyClients, got: %v", err)
 	}
 

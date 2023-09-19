@@ -64,7 +64,7 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	discoveryToken := "8A591FAB-1D72-41FA-BDF2-A27162FDA1E0"
 	configSizeKey := fmt.Sprintf("/_etcd/registry/%s/_config/size", discoveryToken)
 	configSizeValStr := strconv.Itoa(targetClusterSize)
-	if err := ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
+	if err = ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
 		t.Errorf("failed to configure cluster size to discovery serivce, error: %v", err)
 	}
 

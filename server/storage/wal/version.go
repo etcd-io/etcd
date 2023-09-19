@@ -161,7 +161,7 @@ func visitMessageDescriptor(md protoreflect.MessageDescriptor, visitor Visitor) 
 
 	enums := md.Enums()
 	for i := 0; i < enums.Len(); i++ {
-		err := visitEnumDescriptor(enums.Get(i), visitor)
+		err = visitEnumDescriptor(enums.Get(i), visitor)
 		if err != nil {
 			return err
 		}

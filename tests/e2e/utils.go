@@ -44,11 +44,10 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	if tlscfg != nil {
-		tls, err := tlscfg.ClientConfig()
+		ccfg.TLS, err = tlscfg.ClientConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
-		ccfg.TLS = tls
 	}
 	c, err := clientv3.New(ccfg)
 	if err != nil {

@@ -199,7 +199,7 @@ func TestV3LeaseNegativeID(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 			// restore lessor from db file
 			clus.Members[2].Stop(t)
-			if err := clus.Members[2].Restart(t); err != nil {
+			if err = clus.Members[2].Restart(t); err != nil {
 				t.Fatal(err)
 			}
 
