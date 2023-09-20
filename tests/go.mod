@@ -40,7 +40,7 @@ require (
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
-	google.golang.org/grpc v1.41.0
+	google.golang.org/grpc v1.47.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
