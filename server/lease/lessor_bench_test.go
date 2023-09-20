@@ -90,7 +90,6 @@ func benchmarkLessorGrant(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		b.StartTimer()
@@ -117,7 +116,6 @@ func benchmarkLessorRevoke(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -148,7 +146,6 @@ func benchmarkLessorRenew(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -181,7 +178,6 @@ func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {

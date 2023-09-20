@@ -71,6 +71,7 @@ func memberListSerializableTest(cx ctlCtx) {
 	require.NoError(cx.t, err)
 
 	resp, err = getMemberList(cx, true)
+	require.NoError(cx.t, err)
 	require.Equal(cx.t, 2, len(resp.Members))
 }
 

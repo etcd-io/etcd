@@ -71,6 +71,8 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	// update member
 	cx.t.Logf("Update peerURL from %q to %q for member %q", peerURL, updatedPeerURL, newMemberIDStr)
 	newMemberID, err := strconv.ParseUint(newMemberIDStr, 10, 64)
+	require.NoError(cx.t, err)
+
 	updateMemberReq, err := json.Marshal(&pb.MemberUpdateRequest{ID: newMemberID, PeerURLs: []string{updatedPeerURL}})
 	require.NoError(cx.t, err)
 

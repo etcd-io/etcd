@@ -510,7 +510,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
 
-	dataDirPath := cfg.DataDirPath
+	var dataDirPath string
 	if cfg.DataDirPath == "" {
 		dataDirPath = tb.TempDir()
 	} else {

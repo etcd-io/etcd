@@ -324,6 +324,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 
 	t.Log("compaction started...")
 	_, err = cc.Compact(ctx, 5, config.CompactOption{})
+	require.NoError(t, err)
 
 	err = epc.Procs[slowCompactionNodeIndex].Close()
 	require.NoError(t, err)
@@ -333,6 +334,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 
 	t.Logf("restart proc %d to interrupt its compaction...", slowCompactionNodeIndex)
 	err = epc.Procs[slowCompactionNodeIndex].Restart(ctx)
+	require.NoError(t, err)
 
 	// Wait until the node finished compaction and the leader finished compaction hash check
 	_, err = epc.Procs[slowCompactionNodeIndex].Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "finished scheduled compaction"})
