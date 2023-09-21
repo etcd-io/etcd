@@ -20,7 +20,7 @@ require (
 	go.etcd.io/raft/v3 v3.0.0-20221201111702-eaa6808e1f7a
 	gotest.tools/gotestsum v1.11.0
 	gotest.tools/v3 v3.5.0
-	honnef.co/go/tools v0.4.5
+	honnef.co/go/tools v0.4.6
 	mvdan.cc/unparam v0.0.0-20220316160445-06cc5682983b
 )
 
@@ -82,7 +82,7 @@ require (
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/tools v0.12.0 // indirect
+	golang.org/x/tools v0.12.1-0.20230825192346-2191a27a6dc5 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20230803162519-f966b187b2e5 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
