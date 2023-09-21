@@ -693,7 +693,7 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		k := fmt.Sprintf("k-%d", i)
 		rr := tresp.Responses[i].GetResponseRange()
 		if rr == nil {
-			t.Errorf("expected get response, got %+v", tresp.Responses[i])
+			t.Fatalf("expected get response, got %+v", tresp.Responses[i])
 		}
 		if string(rr.Kvs[0].Key) != k || string(rr.Kvs[0].Value) != k+k {
 			t.Errorf(`expected key for %q, got %+v`, k, rr.Kvs)

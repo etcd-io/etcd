@@ -426,10 +426,44 @@ function unparam_pass {
 }
 
 function staticcheck_pass {
-  # TODO: we should upgrade pb or ignore the pb package
+  local tmp_lintyaml
+  tmp_lintyaml=$(mktemp -t 'tmp_golangcilint_staticcheckXXX.yaml')
+
+  # shellcheck disable=SC2064
+  trap "rm ${tmp_lintyaml}; trap - RETURN" RETURN
+
+  # TODO: The golangci-lint commandline doesn't support listener-settings. And
+  # staticcheck command[1] not just verifies the staticcheck, but also includes
+  # stylecheck and unused. So copy the tools/.golangci.yaml and just run the
+  # staticcheck rule. It should be removed when closes #16610
   #
-  # versionpb/version.pb.go:69:15: proto.RegisterFile is deprecated: Use protoregistry.GlobalFiles.RegisterFile instead.  (SA1019)
-  run_for_modules generic_checker run_go_tool "honnef.co/go/tools/cmd/staticcheck"
+  # REF:
+  # [1] https://github.com/dominikh/go-tools/blob/v0.4.5/cmd/staticcheck/staticcheck.go#L29
+  cat > "${tmp_lintyaml}" <<EOF
+---
+run:
+  timeout: 30m
+  skip-files: [^zz_generated.*]
+issues:
+  max-same-issues: 0
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    # exclude ineffassing linter for generated files for conversion
+    - path: conversion\.go
+      linters: [ineffassign]
+linters:
+  disable-all: true
+  enable:
+    - staticcheck
+linters-settings:
+  staticcheck:
+    checks:
+      - all
+      - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
+      - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn't allowed
+EOF
+
+  run_for_modules generic_checker run golangci-lint run --config "${tmp_lintyaml}"
 }
 
 function revive_pass {

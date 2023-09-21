@@ -40,7 +40,7 @@ func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p
 			traceutil.Field{Key: "key", Value: string(p.Key)},
 			traceutil.Field{Key: "req_size", Value: p.Size()},
 		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
 	leaseID := lease.LeaseID(p.Lease)
 	if leaseID != lease.NoLease {
@@ -102,7 +102,7 @@ func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteR
 			traceutil.Field{Key: "key", Value: string(dr.Key)},
 			traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
 		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
 	txnWrite := kv.Write(trace)
 	defer txnWrite.End()
@@ -136,7 +136,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 	trace = traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("range", lg)
-		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
@@ -248,7 +248,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	trace := traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("transaction", lg)
-		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of

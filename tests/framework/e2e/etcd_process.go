@@ -189,10 +189,12 @@ func (ep *EtcdServerProcess) Restart(ctx context.Context) error {
 }
 
 func (ep *EtcdServerProcess) Stop() (err error) {
-	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
+
+	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
+
 	defer func() {
 		ep.proc = nil
 	}()

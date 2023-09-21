@@ -71,10 +71,9 @@ func (b *DoubleBarrier) Enter() error {
 			// delete itself now, otherwise other processes may need to wait
 			// until these keys are automatically deleted when the related
 			// lease expires.
-			if err = b.myKey.Delete(); err != nil {
-				// Nothing to do here. We have to wait for the key to be
-				// deleted when the lease expires.
-			}
+			b.myKey.Delete()
+			// Nothing to do here even if we run into error.
+			// We have to wait for the key to be deleted when the lease expires.
 			return ErrTooManyClients
 		}
 

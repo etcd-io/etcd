@@ -89,7 +89,10 @@ func (lc *lazyCluster) mustLazyInit() {
 }
 
 func (lc *lazyCluster) Terminate() {
-	lc.tb.Logf("Terminating...")
+	if lc != nil && lc.tb != nil {
+		lc.tb.Logf("Terminating...")
+	}
+
 	if lc != nil && lc.cluster != nil {
 		lc.cluster.Terminate(nil)
 		lc.cluster = nil
