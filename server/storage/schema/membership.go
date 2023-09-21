@@ -18,13 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 )
 
 const (

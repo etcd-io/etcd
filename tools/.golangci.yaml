@@ -17,7 +17,7 @@ linters:
     # - deadcode
     # - structcheck
     # - varcheck
-    # - goimports  # TODO: enable by #16610
+    - goimports
     - ineffassign
     # - revive     # TODO: enable by #16610
     - staticcheck

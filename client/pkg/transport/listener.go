@@ -32,11 +32,11 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
-
-	"go.uber.org/zap"
 )
 
 // NewListener creates a new listner.

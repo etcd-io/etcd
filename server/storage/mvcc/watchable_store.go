@@ -18,14 +18,14 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-
-	"go.uber.org/zap"
 )
 
 // non-const so modifiable by tests

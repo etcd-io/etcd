@@ -17,6 +17,8 @@ package apply
 import (
 	"context"
 
+	"github.com/coreos/go-semver/semver"
+	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -35,9 +37,6 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-
-	"github.com/coreos/go-semver/semver"
-	"github.com/gogo/protobuf/proto"
 )
 
 const (

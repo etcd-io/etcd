@@ -21,14 +21,14 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/raft/v3"
-
-	"github.com/dustin/go-humanize"
-	"go.uber.org/zap"
 )
 
 var (

@@ -17,9 +17,8 @@ package schema
 import (
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/server/v3/storage/backend"
-
 	"go.etcd.io/etcd/api/v3/authpb"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 func (abe *authBackend) GetUser(username string) *authpb.User {

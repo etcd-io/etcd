@@ -17,9 +17,9 @@ package adapter
 import (
 	"context"
 
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
-
 	"google.golang.org/grpc"
+
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 )
 
 type es2ec struct{ es v3electionpb.ElectionServer }

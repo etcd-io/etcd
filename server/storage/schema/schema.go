@@ -21,7 +21,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 

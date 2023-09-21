@@ -22,6 +22,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -34,10 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/raft/v3"
-
-	"github.com/gogo/protobuf/proto"
-	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (

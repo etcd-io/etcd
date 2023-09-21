@@ -25,14 +25,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 )
 
 // isMemberBootstrapped tries to check if the given member has been bootstrapped
