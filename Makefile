@@ -91,7 +91,7 @@ verify-dep:
 # still depends on legacy {ineffassign,nakedret,unparam,...}_pass. These X_pass
 # will be removed when the golangci-lint covers all the sub modules.
 .PHONY: verify-lint
-verify-lint: verify-ineffassign
+verify-lint: verify-golangcilint
 	golangci-lint run --config tools/.golangci.yaml
 
 .PHONY: fix-lint
@@ -150,9 +150,9 @@ verify-yamllint:
 verify-govet-shadow:
 	PASSES="govet_shadow" ./scripts/test.sh
 
-.PHONY: verify-ineffassign
-verify-ineffassign:
-	PASSES="ineffassign" ./scripts/test.sh
+.PHONY: verify-golangcilint
+verify-golangcilint:
+	PASSES="golangcilint" ./scripts/test.sh
 
 YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 

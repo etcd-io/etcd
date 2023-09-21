@@ -425,20 +425,15 @@ function unparam_pass {
   run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
 }
 
-function staticcheck_pass {
+function golangcilint_pass {
   local tmp_lintyaml
-  tmp_lintyaml=$(mktemp -t 'tmp_golangcilint_staticcheckXXX.yaml')
+  tmp_lintyaml=$(mktemp -t 'tmp_golangcilint_XXX.yaml')
 
   # shellcheck disable=SC2064
   trap "rm ${tmp_lintyaml}; trap - RETURN" RETURN
 
-  # TODO: The golangci-lint commandline doesn't support listener-settings. And
-  # staticcheck command[1] not just verifies the staticcheck, but also includes
-  # stylecheck and unused. So copy the tools/.golangci.yaml and just run the
-  # staticcheck rule. It should be removed when closes #16610
-  #
-  # REF:
-  # [1] https://github.com/dominikh/go-tools/blob/v0.4.5/cmd/staticcheck/staticcheck.go#L29
+  # TODO: Copy the tools/.golangci.yaml and run the linters for which we have
+  # already fixed. It should be removed when closes #16610.
   cat > "${tmp_lintyaml}" <<EOF
 ---
 run:
@@ -453,7 +448,13 @@ issues:
       linters: [ineffassign]
 linters:
   disable-all: true
-  enable:
+  enable: # please keep this alphabetized
+    # Don't use soon to deprecated[1] linters that lead to false
+    # https://github.com/golangci/golangci-lint/issues/1841
+    # - deadcode
+    # - structcheck
+    # - varcheck
+    - ineffassign
     - staticcheck
 linters-settings:
   staticcheck:
@@ -474,10 +475,6 @@ function revive_pass {
 function unconvert_pass {
   # TODO: pb package should be filtered out.
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
-}
-
-function ineffassign_pass {
-  run_for_modules generic_checker run_go_tool "github.com/gordonklaus/ineffassign"
 }
 
 function nakedret_pass {
