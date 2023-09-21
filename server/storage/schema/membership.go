@@ -183,7 +183,7 @@ func mustParseMemberIDFromBytes(lg *zap.Logger, key []byte) types.ID {
 }
 
 // ClusterVersionFromBackend reads cluster version from backend.
-// The field is populated since etcd v3.5.
+// The field is populated since etcd v3.4.
 func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
 	ckey := ClusterClusterVersionKeyName
 	tx := s.be.ReadTx()

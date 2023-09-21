@@ -105,99 +105,115 @@ func TestMigrate(t *testing.T) {
 		targetVersion semver.Version
 		walEntries    []etcdserverpb.InternalRaftRequest
 
-		expectVersion  *semver.Version
-		expectError    bool
-		expectErrorMsg string
+		expectSchemaVersion    semver.Version
+		expectedStorageVersion *semver.Version
+		expectError            bool
+		expectErrorMsg         string
 	}{
 		// As storage version field was added in v3.6, for v3.5 we will not set it.
 		// For storage to be considered v3.5 it have both confstate and term key set.
 		{
-			name:           `Upgrading v3.5 to v3.6 should be rejected if confstate is not set`,
-			version:        version.V3_5,
-			overrideKeys:   func(tx backend.UnsafeReadWriter) {},
-			targetVersion:  version.V3_6,
-			expectVersion:  nil,
-			expectError:    true,
-			expectErrorMsg: `cannot detect storage schema version: missing confstate information`,
+			name:    `Upgrading v3.5 to v3.6 should be rejected if confstate is not set`,
+			version: version.V3_5,
+			overrideKeys: func(tx backend.UnsafeReadWriter) {
+				UnsafeUpdateConsistentIndex(tx, 1, 1)
+			},
+			targetVersion:          version.V3_6,
+			expectedStorageVersion: nil,
+			expectError:            true,
+			expectErrorMsg:         `cannot detect storage schema version: missing confstate information`,
 		},
 		{
 			name:    `Upgrading v3.5 to v3.6 should be rejected if term is not set`,
 			version: version.V3_5,
 			overrideKeys: func(tx backend.UnsafeReadWriter) {
-				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
+				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{Voters: []uint64{1}})
 			},
-			targetVersion:  version.V3_6,
-			expectVersion:  nil,
-			expectError:    true,
-			expectErrorMsg: `cannot detect storage schema version: missing term information`,
+			targetVersion:          version.V3_6,
+			expectedStorageVersion: nil,
+			expectError:            true,
+			expectErrorMsg:         `cannot detect storage schema version: missing term information`,
 		},
 		{
-			name:          `Upgrading v3.5 to v3.6 should succeed; all required fields are set`,
-			version:       version.V3_5,
-			targetVersion: version.V3_6,
-			expectVersion: &version.V3_6,
+			name:                   `Upgrading v3.5 to v3.6 should succeed; all required fields are set`,
+			version:                version.V3_5,
+			targetVersion:          version.V3_6,
+			expectSchemaVersion:    version.V3_6,
+			expectedStorageVersion: &version.V3_6,
 		},
 		{
-			name:          `Migrate on same v3.5 version passes and doesn't set storage version'`,
-			version:       version.V3_5,
-			targetVersion: version.V3_5,
-			expectVersion: nil,
+			name:                   `Migrate on same v3.5 version passes and doesn't set storage version'`,
+			version:                version.V3_5,
+			targetVersion:          version.V3_5,
+			expectSchemaVersion:    version.V3_5,
+			expectedStorageVersion: nil,
 		},
 		{
-			name:          `Migrate on same v3.6 version passes`,
-			version:       version.V3_6,
-			targetVersion: version.V3_6,
-			expectVersion: &version.V3_6,
+			name:                   `Migrate on same v3.6 version passes`,
+			version:                version.V3_6,
+			targetVersion:          version.V3_6,
+			expectSchemaVersion:    version.V3_6,
+			expectedStorageVersion: &version.V3_6,
 		},
 		{
-			name:          `Migrate on same v3.7 version passes`,
-			version:       version.V3_7,
-			targetVersion: version.V3_7,
-			expectVersion: &version.V3_7,
+			name:                   `Migrate on same v3.7 version passes`,
+			version:                version.V3_7,
+			targetVersion:          version.V3_7,
+			expectSchemaVersion:    version.V3_7,
+			expectedStorageVersion: &version.V3_7,
 		},
 		{
-			name:           "Upgrading 3.6 to v3.7 is not supported",
-			version:        version.V3_6,
-			targetVersion:  version.V3_7,
-			expectVersion:  &version.V3_6,
-			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: version "3.7.0" is not supported`,
+			name:                   "Upgrading 3.6 to v3.7 is not supported",
+			version:                version.V3_6,
+			targetVersion:          version.V3_7,
+			expectedStorageVersion: &version.V3_6,
+			expectError:            true,
+			expectErrorMsg:         `cannot create migration plan: version "3.7.0" is not supported`,
 		},
 		{
-			name:           "Downgrading v3.7 to v3.6 is not supported",
-			version:        version.V3_7,
-			targetVersion:  version.V3_6,
-			expectVersion:  &version.V3_7,
-			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: version "3.7.0" is not supported`,
+			name:                   "Downgrading v3.7 to v3.6 is not supported",
+			version:                version.V3_7,
+			targetVersion:          version.V3_6,
+			expectedStorageVersion: &version.V3_7,
+			expectError:            true,
+			expectErrorMsg:         `cannot create migration plan: version "3.7.0" is not supported`,
 		},
 		{
-			name:          "Downgrading v3.6 to v3.5 works as there are no v3.6 wal entries",
-			version:       version.V3_6,
-			targetVersion: version.V3_5,
+			name:                "Downgrading v3.6 to v3.5 works as there are no v3.6 wal entries",
+			version:             version.V3_6,
+			targetVersion:       version.V3_5,
+			expectSchemaVersion: version.V3_5,
 			walEntries: []etcdserverpb.InternalRaftRequest{
 				{Range: &etcdserverpb.RangeRequest{Key: []byte("\x00"), RangeEnd: []byte("\xff")}},
 			},
-			expectVersion: nil,
+			expectedStorageVersion: nil,
 		},
 		{
-			name:          "Downgrading v3.6 to v3.5 fails if there are newer WAL entries",
-			version:       version.V3_6,
-			targetVersion: version.V3_5,
+			name:                "Downgrading v3.6 to v3.5 fails if there are newer WAL entries",
+			version:             version.V3_6,
+			targetVersion:       version.V3_5,
+			expectSchemaVersion: version.V3_5,
 			walEntries: []etcdserverpb.InternalRaftRequest{
 				{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{Ver: "3.6.0"}},
 			},
-			expectVersion:  &version.V3_6,
-			expectError:    true,
-			expectErrorMsg: "cannot downgrade storage, WAL contains newer entries",
+			expectedStorageVersion: &version.V3_6,
+			expectError:            true,
+			expectErrorMsg:         "cannot downgrade storage, WAL contains newer entries",
 		},
 		{
-			name:           "Downgrading v3.5 to v3.4 is not supported as schema was introduced in v3.6",
-			version:        version.V3_5,
-			targetVersion:  version.V3_4,
-			expectVersion:  nil,
-			expectError:    true,
-			expectErrorMsg: `cannot create migration plan: version "3.5.0" is not supported`,
+			name:                "Downgrading v3.5 to v3.4 is supported",
+			version:             version.V3_5,
+			targetVersion:       version.V3_4,
+			expectSchemaVersion: version.V3_4,
+			// note: 3.4 doesn't have storageVersion, this field was added in 3.6
+			expectedStorageVersion: nil,
+		},
+		{
+			name:                   `Upgrading v3.4 to v3.5 should succeed`,
+			version:                version.V3_4,
+			targetVersion:          version.V3_5,
+			expectSchemaVersion:    version.V3_5,
+			expectedStorageVersion: nil,
 		},
 	}
 	for _, tc := range tcs {
@@ -221,8 +237,18 @@ func TestMigrate(t *testing.T) {
 			if err != nil && err.Error() != tc.expectErrorMsg {
 				t.Errorf("Migrate(lg, tx, %q) = %q, expected error message: %q", tc.targetVersion, err, tc.expectErrorMsg)
 			}
-			v := UnsafeReadStorageVersion(b.BatchTx())
-			assert.Equal(t, tc.expectVersion, v)
+			b.ForceCommit()
+
+			storeV := UnsafeReadStorageVersion(b.BatchTx())
+			assert.Equal(t, tc.expectedStorageVersion, storeV)
+
+			if !tc.expectError {
+				v, err := DetectSchemaVersion(lg, b.ReadTx())
+				if err != nil {
+					t.Errorf("Migrate(lg, tx, %q) failed DetectSchemaVersion: %q", tc.targetVersion, err)
+				}
+				assert.Equal(t, tc.expectSchemaVersion, v)
+			}
 		})
 	}
 }
@@ -303,6 +329,7 @@ func setupBackendData(t *testing.T, ver semver.Version, overrideKeys func(tx bac
 	}
 	tx.Lock()
 	UnsafeCreateMetaBucket(tx)
+	tx.UnsafeCreateBucket(Cluster)
 	if overrideKeys != nil {
 		overrideKeys(tx)
 	} else {

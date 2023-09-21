@@ -21,6 +21,7 @@ const (
 	MinorityLastVersion ClusterVersion = "minority-last-version"
 	QuorumLastVersion   ClusterVersion = "quorum-last-version"
 	LastVersion         ClusterVersion = "last-version"
+	BeforeLastVersion   ClusterVersion = "before-last-version"
 )
 
 type ClusterContext struct {
