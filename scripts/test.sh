@@ -425,46 +425,8 @@ function unparam_pass {
   run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
 }
 
-function golangcilint_pass {
-  local tmp_lintyaml
-  tmp_lintyaml=$(mktemp -t 'tmp_golangcilint_XXX.yaml')
-
-  # shellcheck disable=SC2064
-  trap "rm ${tmp_lintyaml}; trap - RETURN" RETURN
-
-  # TODO: Copy the tools/.golangci.yaml and run the linters for which we have
-  # already fixed. It should be removed when closes #16610.
-  cat > "${tmp_lintyaml}" <<EOF
----
-run:
-  timeout: 30m
-  skip-files: [^zz_generated.*]
-issues:
-  max-same-issues: 0
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    # exclude ineffassing linter for generated files for conversion
-    - path: conversion\.go
-      linters: [ineffassign]
-linters:
-  disable-all: true
-  enable: # please keep this alphabetized
-    # Don't use soon to deprecated[1] linters that lead to false
-    # https://github.com/golangci/golangci-lint/issues/1841
-    # - deadcode
-    # - structcheck
-    # - varcheck
-    - ineffassign
-    - staticcheck
-linters-settings:
-  staticcheck:
-    checks:
-      - all
-      - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
-      - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn't allowed
-EOF
-
-  run_for_modules generic_checker run golangci-lint run --config "${tmp_lintyaml}"
+function lint_pass {
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
 function revive_pass {
