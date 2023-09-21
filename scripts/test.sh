@@ -425,11 +425,8 @@ function unparam_pass {
   run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
 }
 
-function staticcheck_pass {
-  # TODO: we should upgrade pb or ignore the pb package
-  #
-  # versionpb/version.pb.go:69:15: proto.RegisterFile is deprecated: Use protoregistry.GlobalFiles.RegisterFile instead.  (SA1019)
-  run_for_modules generic_checker run_go_tool "honnef.co/go/tools/cmd/staticcheck"
+function lint_pass {
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
 function revive_pass {
@@ -440,10 +437,6 @@ function revive_pass {
 function unconvert_pass {
   # TODO: pb package should be filtered out.
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
-}
-
-function ineffassign_pass {
-  run_for_modules generic_checker run_go_tool "github.com/gordonklaus/ineffassign"
 }
 
 function nakedret_pass {

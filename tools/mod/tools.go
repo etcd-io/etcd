@@ -29,7 +29,6 @@ import (
 	_ "github.com/coreos/license-bill-of-materials"
 	_ "github.com/google/addlicense"
 	_ "github.com/google/yamlfmt/cmd/yamlfmt"
-	_ "github.com/gordonklaus/ineffassign"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
 	_ "github.com/mdempsky/unconvert"

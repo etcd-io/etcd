@@ -85,14 +85,9 @@ fix-bom:
 verify-dep:
 	PASSES="dep" ./scripts/test.sh
 
-# TODO: https://github.com/etcd-io/etcd/issues/16610
-#
-# The golangci-lint doesn't verify sub modules. Before #16610 fixed, verify-lint
-# still depends on legacy {ineffassign,nakedret,unparam,...}_pass. These X_pass
-# will be removed when the golangci-lint covers all the sub modules.
 .PHONY: verify-lint
-verify-lint: verify-ineffassign
-	golangci-lint run --config tools/.golangci.yaml
+verify-lint:
+	PASSES="lint" ./scripts/test.sh
 
 .PHONY: fix-lint
 fix-lint:
@@ -149,10 +144,6 @@ verify-yamllint:
 .PHONY: verify-govet-shadow
 verify-govet-shadow:
 	PASSES="govet_shadow" ./scripts/test.sh
-
-.PHONY: verify-ineffassign
-verify-ineffassign:
-	PASSES="ineffassign" ./scripts/test.sh
 
 YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 

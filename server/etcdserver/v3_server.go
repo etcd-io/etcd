@@ -105,7 +105,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
 		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
-	ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+	ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 
 	var resp *pb.RangeResponse
 	var err error
@@ -140,7 +140,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
-	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
+	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
@@ -162,7 +162,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 			s.Logger(),
 			traceutil.Field{Key: "read_only", Value: true},
 		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey, trace)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 		if !txn.IsTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
@@ -190,7 +190,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		return resp, err
 	}
 
-	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
+	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Txn: r})
 	if err != nil {
 		return nil, err
@@ -671,7 +671,7 @@ func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftReque
 	if result.Err != nil {
 		return nil, result.Err
 	}
-	if startTime, ok := ctx.Value(traceutil.StartTimeKey).(time.Time); ok && result.Trace != nil {
+	if startTime, ok := ctx.Value(traceutil.StartTimeKey{}).(time.Time); ok && result.Trace != nil {
 		applyStart := result.Trace.GetStartTime()
 		// The trace object is created in toApply. Here reset the start time to trace
 		// the raft request time by the difference between the request start time

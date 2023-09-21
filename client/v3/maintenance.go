@@ -133,7 +133,6 @@ func NewMaintenance(c *Client) Maintenance {
 
 func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client) Maintenance {
 	api := &maintenance{
-		lg: c.lg,
 		dial: func(string) (pb.MaintenanceClient, func(), error) {
 			return remote, func() {}, nil
 		},
@@ -141,6 +140,7 @@ func NewMaintenanceFromMaintenanceClient(remote pb.MaintenanceClient, c *Client)
 	}
 	if c != nil {
 		api.callOpts = c.callOpts
+		api.lg = c.lg
 	}
 	return api
 }

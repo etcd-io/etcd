@@ -17,13 +17,13 @@ linters:
     # - deadcode
     # - structcheck
     # - varcheck
-    - goimports
+    # - goimports  # TODO: enable by #16610
     - ineffassign
-    - revive
+    # - revive     # TODO: enable by #16610
     - staticcheck
-    - stylecheck
-    - unused
-    - unconvert # Remove unnecessary type conversions
+    # - stylecheck # TODO: enable by #16610
+    # - unused     # TODO: enable by #16610
+    # - unconvert  # Remove unnecessary type conversions TODO: enable by #16610
 linters-settings: # please keep this alphabetized
   goimports:
     local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.

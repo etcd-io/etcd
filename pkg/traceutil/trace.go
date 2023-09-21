@@ -25,10 +25,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	TraceKey     = "trace"
-	StartTimeKey = "startTime"
-)
+// TraceKey is used as a key of context for Trace.
+type TraceKey struct{}
+
+// StartTimeKey is used as a key of context for start time of operation.
+type StartTimeKey struct{}
 
 // Field is a kv pair to record additional details of the trace.
 type Field struct {
@@ -81,7 +82,7 @@ func TODO() *Trace {
 }
 
 func Get(ctx context.Context) *Trace {
-	if trace, ok := ctx.Value(TraceKey).(*Trace); ok && trace != nil {
+	if trace, ok := ctx.Value(TraceKey{}).(*Trace); ok && trace != nil {
 		return trace
 	}
 	return TODO()

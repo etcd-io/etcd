@@ -37,7 +37,7 @@ func getAuthTokenFromClient(ctx context.Context) string {
 func withClientAuthToken(ctx, ctxWithToken context.Context) context.Context {
 	token := getAuthTokenFromClient(ctxWithToken)
 	if token != "" {
-		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPC, token)
+		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPCKey{}, token)
 	}
 	return ctx
 }
@@ -66,7 +66,7 @@ func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply a
 }
 
 func AuthStreamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-	tokenif := ctx.Value(rpctypes.TokenFieldNameGRPC)
+	tokenif := ctx.Value(rpctypes.TokenFieldNameGRPCKey{})
 	if tokenif != nil {
 		tokenCred := &proxyTokenCredential{tokenif.(string)}
 		opts = append(opts, grpc.PerRPCCredentials(tokenCred))
