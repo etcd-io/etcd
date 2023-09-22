@@ -10,12 +10,11 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
-	go.uber.org/zap v1.25.0
-	google.golang.org/grpc v1.58.0
+	go.uber.org/zap v1.26.0
+	google.golang.org/grpc v1.58.1
 )
 
 require (
-	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
