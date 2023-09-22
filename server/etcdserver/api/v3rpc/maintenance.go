@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -33,8 +34,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/raft/v3"
-
-	"go.uber.org/zap"
 )
 
 type KVGetter interface {

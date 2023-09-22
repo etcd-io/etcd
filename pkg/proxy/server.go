@@ -27,10 +27,10 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
-
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 var (

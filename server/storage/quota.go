@@ -17,11 +17,11 @@ package storage
 import (
 	"sync"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 const (

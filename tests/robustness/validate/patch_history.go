@@ -17,9 +17,8 @@ package validate
 import (
 	"github.com/anishathalye/porcupine"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 

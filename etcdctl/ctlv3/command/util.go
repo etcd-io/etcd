@@ -26,11 +26,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
+
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-
-	"github.com/spf13/cobra"
 )
 
 func printKV(isHex bool, valueOnly bool, kv *pb.KeyValue) {

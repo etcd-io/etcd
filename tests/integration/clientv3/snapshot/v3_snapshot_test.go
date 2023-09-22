@@ -24,13 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap/zaptest"
 )
 
 // TestSaveSnapshotFilePermissions ensures that the snapshot is saved with

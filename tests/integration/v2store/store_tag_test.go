@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"

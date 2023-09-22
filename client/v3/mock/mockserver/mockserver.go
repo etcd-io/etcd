@@ -21,10 +21,10 @@ import (
 	"os"
 	"sync"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
 // MockServer provides a mocked out grpc server of the etcdserver interface.

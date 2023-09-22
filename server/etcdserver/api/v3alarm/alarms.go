@@ -18,11 +18,11 @@ package v3alarm
 import (
 	"sync"
 
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-
-	"go.uber.org/zap"
 )
 
 type BackendGetter interface {

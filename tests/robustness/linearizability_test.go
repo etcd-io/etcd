@@ -20,17 +20,15 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/tests/v3/robustness/model"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )

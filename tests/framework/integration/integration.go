@@ -20,15 +20,13 @@ import (
 	"strings"
 	"testing"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-
 	"go.uber.org/zap"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )

@@ -19,9 +19,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 )
 
 // filePipeline pipelines allocating disk space

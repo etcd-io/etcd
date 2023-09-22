@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dustin/go-humanize"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-
-	"github.com/dustin/go-humanize"
 )
 
 type printer interface {

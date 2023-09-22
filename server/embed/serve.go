@@ -24,6 +24,15 @@ import (
 	"strings"
 	"time"
 
+	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/soheilhy/cmux"
+	"github.com/tmc/grpc-websocket-proxy/wsproxy"
+	"go.uber.org/zap"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/trace"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
@@ -38,15 +47,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
-
-	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/soheilhy/cmux"
-	"github.com/tmc/grpc-websocket-proxy/wsproxy"
-	"go.uber.org/zap"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/trace"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 type serveCtx struct {

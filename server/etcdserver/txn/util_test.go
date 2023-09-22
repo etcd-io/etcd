@@ -18,10 +18,10 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
-
-	"go.uber.org/zap/zaptest"
 )
 
 // TestWarnOfExpensiveReadOnlyTxnRequest verifies WarnOfExpensiveReadOnlyTxnRequest

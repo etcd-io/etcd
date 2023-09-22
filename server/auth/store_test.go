@@ -26,7 +26,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
-
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/metadata"
 

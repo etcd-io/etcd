@@ -20,15 +20,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
-
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 var epClusterEndpoints bool

@@ -21,13 +21,12 @@ import (
 	"os"
 	"sync"
 
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-
-	"go.uber.org/zap"
 )
 
 // allow maximum 1 retry per second

@@ -429,6 +429,10 @@ function lint_pass {
   run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
+function lint_fix_pass {
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
+}
+
 function revive_pass {
   # TODO: etcdserverpb/raft_internal_stringer.go:15:1: should have a package comment
   run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..." -exclude "out/..."
@@ -669,21 +673,6 @@ function proto_annotations_pass {
 
 function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
-}
-
-function goimport_for_module {
-  GOFILES=$(run go list  --f "{{with \$d:=.}}{{range .GoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
-  TESTGOFILES=$(run go list  --f "{{with \$d:=.}}{{range .TestGoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
-  cd "${ETCD_ROOT_DIR}/tools/mod"
-  FILESNEEDSFIX=$(echo "${GOFILES}" "${TESTGOFILES}" | grep -v '.gw.go' | grep -v '.pb.go' | xargs -n 100 go run golang.org/x/tools/cmd/goimports -l -local go.etcd.io)
-  if [ -n "$FILESNEEDSFIX" ]; then
-    log_error -e "the following files are not sync with 'goimports'. run 'make fix'\\n$FILESNEEDSFIX"
-    return 255
-  fi
-}
-
-function goimport_pass {
-  run_for_modules goimport_for_module
 }
 
 ########### MAIN ###############################################################

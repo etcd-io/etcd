@@ -19,11 +19,10 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
-
-	"go.uber.org/zap"
 )
 
 func TestAddRemoveMember(t *testing.T) {

@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/spf13/cobra"
+
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-
-	"github.com/spf13/cobra"
 )
 
 // NewLeaseCommand returns the cobra command for "lease".

@@ -22,11 +22,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.etcd.io/raft/v3"
-
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/interfaces"
+	"go.etcd.io/raft/v3"
 )
 
 func TestGracefulShutdown(t *testing.T) {

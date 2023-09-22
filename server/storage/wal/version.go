@@ -23,9 +23,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	"go.etcd.io/etcd/api/v3/version"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
 )

@@ -22,10 +22,10 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-
-	"go.uber.org/zap"
 )
 
 func newEmbedURLs(n int) (urls []url.URL) {

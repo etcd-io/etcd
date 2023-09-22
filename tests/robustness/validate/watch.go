@@ -20,9 +20,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 func validateWatch(t *testing.T, cfg Config, reports []report.ClientReport) []model.WatchEvent {

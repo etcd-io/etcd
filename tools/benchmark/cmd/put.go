@@ -24,13 +24,13 @@ import (
 	"strings"
 	"time"
 
-	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/report"
-
 	"github.com/cheggaaa/pb/v3"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
+
+	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/report"
 )
 
 // putCmd represents the put command

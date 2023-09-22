@@ -23,7 +23,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/bbolt"
-
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )

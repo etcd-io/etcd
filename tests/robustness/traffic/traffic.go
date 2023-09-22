@@ -23,10 +23,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (

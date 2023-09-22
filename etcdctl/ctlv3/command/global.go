@@ -23,6 +23,10 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	"go.uber.org/zap"
+	"google.golang.org/grpc/grpclog"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
@@ -30,11 +34,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
-
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"go.uber.org/zap"
-	"google.golang.org/grpc/grpclog"
 )
 
 // GlobalFlags are flags that defined globally

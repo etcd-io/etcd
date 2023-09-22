@@ -17,10 +17,10 @@ package etcdserver
 import (
 	"errors"
 
-	"go.etcd.io/raft/v3"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"go.etcd.io/raft/v3"
 )
 
 // NewRaftLogger builds "raft.Logger" from "*zap.Config".

@@ -24,6 +24,8 @@ import (
 	"runtime"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
@@ -32,8 +34,6 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-
-	"go.uber.org/zap"
 )
 
 var (

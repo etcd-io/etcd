@@ -17,12 +17,12 @@ package etcdserver
 import (
 	"io"
 
+	humanize "github.com/dustin/go-humanize"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/raft/v3/raftpb"
-
-	humanize "github.com/dustin/go-humanize"
-	"go.uber.org/zap"
 )
 
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),

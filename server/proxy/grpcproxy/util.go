@@ -17,10 +17,10 @@ package grpcproxy
 import (
 	"context"
 
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 func getAuthTokenFromClient(ctx context.Context) string {

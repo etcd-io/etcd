@@ -64,9 +64,9 @@ fuzz:
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
-	verify-shellws verify-proto-annotations verify-genproto verify-goimport verify-yamllint \
+	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-govet-shadow
-fix: fix-goimports fix-bom fix-lint fix-yamllint
+fix: fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -91,7 +91,7 @@ verify-lint:
 
 .PHONY: fix-lint
 fix-lint:
-	golangci-lint run --config tools/.golangci.yaml --fix
+	PASSES="lint_fix" ./scripts/test.sh
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
@@ -128,14 +128,6 @@ verify-proto-annotations:
 .PHONY: verify-genproto
 verify-genproto:
 	PASSES="genproto" ./scripts/test.sh
-
-.PHONY: verify-goimport
-verify-goimport:
-	PASSES="goimport" ./scripts/test.sh
-
-.PHONY: fix-goimports
-fix-goimports:
-	./scripts/fix-goimports.sh
 
 .PHONY: verify-yamllint
 verify-yamllint:

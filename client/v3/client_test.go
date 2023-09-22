@@ -27,16 +27,14 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-
-	"google.golang.org/grpc"
 )
 
 func NewClient(t *testing.T, cfg Config) (*Client, error) {

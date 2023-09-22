@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
-
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 // This represents the base command when called without any subcommands
