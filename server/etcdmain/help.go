@@ -187,6 +187,8 @@ Security:
     Allowed TLS hostname for client cert authentication.
   --trusted-ca-file ''
     Path to the client server TLS trusted CA cert file.
+  --client-root-ca-reload 'false'
+    Enable client server TLS root CA dynamic reload to support root CA rotation.
   --auto-tls 'false'
     Client TLS using generated certificates.
   --peer-cert-file ''
@@ -201,6 +203,8 @@ Security:
     Path to an explicit peer client TLS key file otherwise peer key file will be used when client auth is required.
   --peer-trusted-ca-file ''
     Path to the peer server TLS trusted CA file.
+  --peer-root-ca-reload 'false'
+    Enable peer client TLS root CA dynamic reload to support root CA rotation.
   --peer-cert-allowed-cn ''
     Required CN for client certs connecting to the peer endpoint.
   --peer-cert-allowed-hostname ''

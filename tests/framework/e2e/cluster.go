@@ -51,6 +51,18 @@ type ClientConfig struct {
 	CertAuthority  bool
 	AutoTLS        bool
 	RevokeCerts    bool
+	CertFile       string
+	KeyFile        string
+	CAFile         string
+	CAReload       bool
+}
+
+func DefaultClientConfig() ClientConfig {
+	return ClientConfig{
+		CAFile:   CaPath,
+		CertFile: CertPath,
+		KeyFile:  PrivateKeyPath,
+	}
 }
 
 // allow alphanumerics, underscores and dashes
@@ -159,6 +171,10 @@ type EtcdProcessClusterConfig struct {
 	ClientHttpSeparate bool
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
+	PeerCertFile       string
+	PeerKeyFile        string
+	PeerCAFile         string
+	PeerCAReload       bool
 	CN                 bool
 
 	CipherSuites []string
@@ -204,7 +220,38 @@ func DefaultConfig() *EtcdProcessClusterConfig {
 
 		SnapshotCount:          etcdserver.DefaultSnapshotCount,
 		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+
+		Client: ClientConfig{
+			CAFile:   CaPath,
+			CertFile: CertPath,
+			KeyFile:  PrivateKeyPath,
+		},
+		PeerCAFile:   CaPath,
+		PeerCertFile: CertPath,
+		PeerKeyFile:  PrivateKeyPath,
 	}
+}
+
+func PopulateTLSDefaults(c EtcdProcessClusterConfig) EtcdProcessClusterConfig {
+	if c.Client.CAFile == "" {
+		c.Client.CAFile = CaPath
+	}
+	if c.Client.CertFile == "" {
+		c.Client.CertFile = CertPath
+	}
+	if c.Client.KeyFile == "" {
+		c.Client.KeyFile = PrivateKeyPath
+	}
+	if c.PeerCAFile == "" {
+		c.PeerCAFile = CaPath
+	}
+	if c.PeerCertFile == "" {
+		c.PeerCertFile = CertPath
+	}
+	if c.PeerKeyFile == "" {
+		c.PeerKeyFile = PrivateKeyPath
+	}
+	return c
 }
 
 func NewConfig(opts ...EPClusterOption) *EtcdProcessClusterConfig {
@@ -686,14 +733,17 @@ func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
 			args = append(args, "--auto-tls")
 		} else {
 			tlsClientArgs := []string{
-				"--cert-file", CertPath,
-				"--key-file", PrivateKeyPath,
-				"--trusted-ca-file", CaPath,
+				"--cert-file", cfg.Client.CertFile,
+				"--key-file", cfg.Client.KeyFile,
+				"--trusted-ca-file", cfg.Client.CAFile,
 			}
 			args = append(args, tlsClientArgs...)
 
 			if cfg.Client.CertAuthority {
 				args = append(args, "--client-cert-auth")
+			}
+			if cfg.Client.CAReload {
+				args = append(args, "--client-root-ca-reload")
 			}
 		}
 	}
@@ -703,11 +753,15 @@ func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
 			args = append(args, "--peer-auto-tls")
 		} else {
 			tlsPeerArgs := []string{
-				"--peer-cert-file", CertPath,
-				"--peer-key-file", PrivateKeyPath,
-				"--peer-trusted-ca-file", CaPath,
+				"--peer-cert-file", cfg.PeerCertFile,
+				"--peer-key-file", cfg.PeerKeyFile,
+				"--peer-trusted-ca-file", cfg.PeerCAFile,
 			}
 			args = append(args, tlsPeerArgs...)
+
+			if cfg.PeerCAReload {
+				args = append(args, "--peer-root-ca-reload")
+			}
 		}
 	}
 

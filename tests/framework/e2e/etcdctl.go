@@ -27,6 +27,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -77,6 +78,16 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 	return func(c any) {
 		ctl := c.(*EtcdctlV3)
 		ctl.endpoints = endpoints
+	}
+}
+
+func WithTLSInfo(tlsInfo *transport.TLSInfo) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.cfg.CAFile = tlsInfo.TrustedCAFile
+		ctl.cfg.CAReload = tlsInfo.EnableRootCAReload
+		ctl.cfg.CertFile = tlsInfo.CertFile
+		ctl.cfg.KeyFile = tlsInfo.KeyFile
 	}
 }
 
@@ -328,9 +339,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 			fmap["cert"] = RevokedCertPath
 			fmap["key"] = RevokedPrivateKeyPath
 		} else {
-			fmap["cacert"] = CaPath
-			fmap["cert"] = CertPath
-			fmap["key"] = PrivateKeyPath
+			fmap["cacert"] = ctl.cfg.CAFile
+			fmap["cert"] = ctl.cfg.CertFile
+			fmap["key"] = ctl.cfg.KeyFile
 		}
 	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")

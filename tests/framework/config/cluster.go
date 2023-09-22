@@ -16,6 +16,8 @@ package config
 
 import (
 	"time"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 type TLSConfig string
@@ -32,6 +34,8 @@ type ClusterConfig struct {
 	ClusterSize         int
 	PeerTLS             TLSConfig
 	ClientTLS           TLSConfig
+	PeerTLSInfo         *transport.TLSInfo
+	ClientTLSInfo       *transport.TLSInfo
 	QuotaBackendBytes   int64
 	StrictReconfigCheck bool
 	AuthToken           string

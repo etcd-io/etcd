@@ -17,6 +17,7 @@
 package common
 
 import (
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -38,5 +39,9 @@ func WithAuth(userName, password string) config.ClientOption {
 }
 
 func WithEndpoints(endpoints []string) config.ClientOption {
+	return func(any) {}
+}
+
+func WithTLSInfo(tlsInfo *transport.TLSInfo) config.ClientOption {
 	return func(any) {}
 }

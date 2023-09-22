@@ -84,6 +84,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		tc := tc
+		tc.config = e2e.PopulateTLSDefaults(tc.config)
 		tc.config.WatchProcessNotifyInterval = watchResponsePeriod
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
@@ -105,6 +106,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 func TestWatchDelayForManualProgressNotification(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
+		tc.config = e2e.PopulateTLSDefaults(tc.config)
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
@@ -138,6 +140,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 func TestWatchDelayForEvent(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
+		tc.config = e2e.PopulateTLSDefaults(tc.config)
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)

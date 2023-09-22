@@ -71,6 +71,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
+			cfg = e2e.PopulateTLSDefaults(cfg)
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&cfg))
 			require.NoError(t, err)
 			defer clus.Close()
@@ -109,14 +110,16 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.Et
 	default:
 		panic(fmt.Sprintf("Unsupported conn type %v", connType))
 	}
+	clientConfig := e2e.DefaultClientConfig()
+	clientConfig.ConnectionType = connType
 	t.Run("etcdctl", func(t *testing.T) {
-		etcdctl, err := e2e.NewEtcdctl(e2e.ClientConfig{ConnectionType: connType}, []string{grpcEndpoint})
+		etcdctl, err := e2e.NewEtcdctl(clientConfig, []string{grpcEndpoint})
 		require.NoError(t, err)
 		_, err = etcdctl.Get(ctx, "a", config.GetOptions{})
 		assert.NoError(t, err)
 	})
 	t.Run("clientv3", func(t *testing.T) {
-		c := newClient(t, []string{grpcEndpoint}, e2e.ClientConfig{ConnectionType: connType})
+		c := newClient(t, []string{grpcEndpoint}, clientConfig)
 		_, err := c.Get(ctx, "a")
 		assert.NoError(t, err)
 	})
