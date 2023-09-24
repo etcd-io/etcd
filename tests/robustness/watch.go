@@ -66,8 +66,8 @@ type watchConfig struct {
 
 // watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
 func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
-	var maxRevision int64 = 0
-	var lastRevision int64 = 0
+	var maxRevision int64
+	var lastRevision int64
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	watch := c.Watch(ctx, "", 1, true, true)

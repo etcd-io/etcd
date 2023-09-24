@@ -114,7 +114,7 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *st
 	hasMore := true
 	rangeStart := keyPrefix
 	var kvs []*mvccpb.KeyValue
-	var revision int64 = 0
+	var revision int64
 
 	for hasMore {
 		readCtx, cancel := context.WithTimeout(ctx, RequestTimeout)

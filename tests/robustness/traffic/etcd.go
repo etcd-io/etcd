@@ -161,7 +161,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 
-	var limit int64 = 0
+	var limit int64
 	switch request {
 	case StaleGet:
 		_, rev, err = c.client.Get(opCtx, c.randomKey(), lastRev)

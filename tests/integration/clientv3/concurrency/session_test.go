@@ -58,7 +58,7 @@ func TestSessionTTLOptions(t *testing.T) {
 	}
 	defer cli.Close()
 
-	var setTTL int = 90
+	var setTTL = 90
 	s, err := concurrency.NewSession(cli, concurrency.WithTTL(setTTL))
 	if err != nil {
 		t.Fatal(err)

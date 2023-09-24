@@ -91,14 +91,14 @@ func TestConnectionMultiplexing(t *testing.T) {
 					name = "ClientTLS"
 				}
 				t.Run(name, func(t *testing.T) {
-					testConnectionMultiplexing(t, ctx, clus.Procs[0], clientTLS)
+					testConnectionMultiplexing(ctx, t, clus.Procs[0], clientTLS)
 				})
 			}
 		})
 	}
 }
 
-func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.EtcdProcess, connType e2e.ClientConnType) {
+func testConnectionMultiplexing(ctx context.Context, t *testing.T, member e2e.EtcdProcess, connType e2e.ClientConnType) {
 	httpEndpoint := member.EndpointsHTTP()[0]
 	grpcEndpoint := member.EndpointsGRPC()[0]
 	switch connType {

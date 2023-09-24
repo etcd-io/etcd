@@ -111,9 +111,8 @@ type Event struct {
 func (e Event) Match(request WatchRequest) bool {
 	if request.WithPrefix {
 		return strings.HasPrefix(e.Key, request.Key)
-	} else {
-		return e.Key == request.Key
 	}
+	return e.Key == request.Key
 }
 
 type WatchRequest struct {
