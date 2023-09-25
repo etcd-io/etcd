@@ -175,13 +175,6 @@ func verifyClusterHealth(ctx context.Context, t *testing.T, clus *e2e.EtcdProces
 	return nil
 }
 
-type FailpointConfig struct {
-	failpoint           Failpoint
-	count               int
-	retries             int
-	waitBetweenTriggers time.Duration
-}
-
 type Failpoint interface {
 	Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
 	Name() string

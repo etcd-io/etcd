@@ -15,7 +15,6 @@
 package testutil
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -51,12 +50,4 @@ func AssertFalse(t *testing.T, v bool, msg ...string) {
 	t.Helper()
 	newMsg := copyToInterface(msg...)
 	assert.Equal(t, false, v, newMsg)
-}
-
-func isNil(v any) bool {
-	if v == nil {
-		return true
-	}
-	rv := reflect.ValueOf(v)
-	return rv.Kind() != reflect.Struct && rv.IsNil()
 }

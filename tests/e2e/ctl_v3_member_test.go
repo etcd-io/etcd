@@ -162,11 +162,6 @@ func memberListWithHexTest(cx ctlCtx) {
 	}
 }
 
-func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
-	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("%s removed from cluster %s", memberID, clusterID)})
-}
-
 func memberAddTest(cx ctlCtx) {
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
 	if err := ctlV3MemberAdd(cx, peerURL, false); err != nil {

@@ -22,7 +22,7 @@ linters:
     - revive
     - staticcheck
     - stylecheck
-    # - unused     # TODO: enable by #16610
+    - unused
     # - unconvert  # Remove unnecessary type conversions TODO: enable by #16610
 linters-settings: # please keep this alphabetized
   goimports:

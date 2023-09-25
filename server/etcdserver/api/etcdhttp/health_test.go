@@ -34,12 +34,6 @@ import (
 	"go.etcd.io/raft/v3"
 )
 
-type fakeStats struct{}
-
-func (s *fakeStats) SelfStats() []byte   { return nil }
-func (s *fakeStats) LeaderStats() []byte { return nil }
-func (s *fakeStats) StoreStats() []byte  { return nil }
-
 type fakeHealthServer struct {
 	fakeServer
 	health   string
