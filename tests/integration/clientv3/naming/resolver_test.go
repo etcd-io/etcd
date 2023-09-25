@@ -126,7 +126,7 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 
 		// Allow 25% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5
-		assert.InEpsilon(t, float64(expected), float64(responses), 0.25, "unexpected total responses from foo: %s", string(lastResponse))
+		assert.InEpsilon(t, expected, float64(responses), 0.25, "unexpected total responses from foo: %s", string(lastResponse))
 	}
 }
 
