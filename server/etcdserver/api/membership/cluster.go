@@ -873,7 +873,7 @@ func (c *RaftCluster) Store(store v2store.Store) {
 			zap.Bool("is-learner", m.IsLearner),
 		)
 	}
-	for id, _ := range c.removed {
+	for id := range c.removed {
 		//We do not need to delete the member since the store is empty.
 		mustAddToRemovedMembersInStore(c.lg, store, id)
 	}

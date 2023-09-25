@@ -237,7 +237,7 @@ type goPanicFailpoint struct {
 }
 
 type trigger interface {
-	Trigger(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error
+	Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error
 	AvailabilityChecker
 }
 
@@ -270,7 +270,7 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 		}
 		if f.trigger != nil {
 			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
-			err = f.trigger.Trigger(t, ctx, member, clus)
+			err = f.trigger.Trigger(ctx, t, member, clus)
 			if err != nil {
 				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			}
@@ -330,7 +330,7 @@ func (f goPanicFailpoint) Name() string {
 
 type triggerDefrag struct{}
 
-func (t triggerDefrag) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
+func (t triggerDefrag) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            member.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
@@ -356,7 +356,7 @@ type triggerCompact struct {
 	multiBatchCompaction bool
 }
 
-func (t triggerCompact) Trigger(_ *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
+func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            member.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
@@ -399,7 +399,7 @@ type blackholePeerNetworkFailpoint struct {
 
 func (f blackholePeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	return f.Trigger(t, ctx, member, clus)
+	return f.Trigger(ctx, t, member, clus)
 }
 
 func (f blackholePeerNetworkFailpoint) Name() string {
@@ -410,8 +410,8 @@ type triggerBlackhole struct {
 	waitTillSnapshot bool
 }
 
-func (tb triggerBlackhole) Trigger(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
-	return blackhole(t, ctx, member, clus, tb.waitTillSnapshot)
+func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
+	return blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
@@ -421,7 +421,7 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
 }
 
-func blackhole(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
+func blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
 	proxy := member.PeerProxy()
 
 	// Blackholing will cause peers to not be able to use streamWriters registered with member
@@ -437,10 +437,9 @@ func blackhole(t *testing.T, ctx context.Context, member e2e.EtcdProcess, clus *
 	}()
 	if shouldWaitTillSnapshot {
 		return waitTillSnapshot(ctx, t, clus, member)
-	} else {
-		time.Sleep(time.Second)
-		return nil
 	}
+	time.Sleep(time.Second)
+	return nil
 }
 
 func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, blackholedMember e2e.EtcdProcess) error {

@@ -122,9 +122,8 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 					if err != nil {
 						if strings.Contains(err.Error(), "context deadline exceeded") {
 							return nil
-						} else {
-							return err
 						}
+						return err
 					}
 					time.Sleep(watchResponsePeriod)
 				}
@@ -155,9 +154,8 @@ func TestWatchDelayForEvent(t *testing.T) {
 					if err != nil {
 						if strings.Contains(err.Error(), "context deadline exceeded") {
 							return nil
-						} else {
-							return err
 						}
+						return err
 					}
 					time.Sleep(watchResponsePeriod)
 				}
@@ -204,9 +202,8 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 				if err != nil {
 					if strings.Contains(err.Error(), "context deadline exceeded") {
 						return nil
-					} else {
-						return err
 					}
+					return err
 				}
 				respSize := 0
 				for _, kv := range resp.Kvs {

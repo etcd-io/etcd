@@ -71,9 +71,8 @@ func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 				return nil, fmt.Errorf("failed to generate cert: %s", err)
 			}
 			return &tls, nil
-		} else {
-			return &integration.TestTLSInfo, nil
 		}
+		return &integration.TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %v not supported", cfg)
 	}

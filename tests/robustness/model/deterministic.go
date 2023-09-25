@@ -96,12 +96,11 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
 			resp := s.getRange(request.Range.RangeOptions)
 			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
-		} else {
-			if request.Range.Revision > s.Revision {
-				return s, MaybeEtcdResponse{Error: EtcdFutureRevErr.Error()}
-			}
-			return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
 		}
+		if request.Range.Revision > s.Revision {
+			return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+		}
+		return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -148,7 +147,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 			}
 		}
 		if increaseRevision {
-			s.Revision += 1
+			s.Revision++
 		}
 		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}}
 	case LeaseGrant:
@@ -174,7 +173,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		//delete the lease
 		delete(s.Leases, request.LeaseRevoke.LeaseID)
 		if keyDeleted {
-			s.Revision += 1
+			s.Revision++
 		}
 		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
@@ -193,7 +192,7 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 		for k, v := range s.KeyValues {
 			if k >= options.Start && k < options.End {
 				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
-				count += 1
+				count++
 			}
 		}
 		sort.Slice(response.KVs, func(j, k int) bool {
@@ -315,7 +314,7 @@ type MaybeEtcdResponse struct {
 	Error           string
 }
 
-var EtcdFutureRevErr = errors.New("future rev")
+var ErrEtcdFutureRev = errors.New("future rev")
 
 type EtcdResponse struct {
 	Txn         *TxnResponse

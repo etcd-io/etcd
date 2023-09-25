@@ -43,7 +43,7 @@ func validateWatch(t *testing.T, cfg Config, reports []report.ClientReport) []mo
 }
 
 func validateBookmarkable(t *testing.T, report report.ClientReport) {
-	var lastProgressNotifyRevision int64 = 0
+	var lastProgressNotifyRevision int64
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
@@ -175,7 +175,7 @@ func mergeWatchEventHistory(t *testing.T, reports []report.ClientReport) []model
 	}
 	revisionToEvents := map[int64]revisionEvents{}
 	var lastClientId = 0
-	var lastRevision int64 = 0
+	var lastRevision int64
 	events := []model.WatchEvent{}
 	for _, r := range reports {
 		for _, op := range r.Watch {
