@@ -21,7 +21,7 @@ linters:
     - ineffassign
     - revive
     - staticcheck
-    # - stylecheck # TODO: enable by #16610
+    - stylecheck
     # - unused     # TODO: enable by #16610
     # - unconvert  # Remove unnecessary type conversions TODO: enable by #16610
 linters-settings: # please keep this alphabetized
