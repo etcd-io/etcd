@@ -16,8 +16,9 @@ github.com/alexfalkowski/gocovmerge v1.2.0 h1:1TsHhtHbALNTdGFdeACK7EeJZ/zo2Z1TSC
 github.com/alexfalkowski/gocovmerge v1.2.0/go.mod h1:wtgdp1De/7EXB7N1KBP5yBiUkeiwPIdZUrs1q3RekPc=
 github.com/alexkohler/nakedret v1.0.2 h1:Svug5bxPnxbjw1jYlbHlnYAEORehXzsotyMUn2NQO2E=
 github.com/alexkohler/nakedret v1.0.2/go.mod h1:pRpUzThUf0nEk2mzur20zmf+6AVzw+3pDWQA0ehUZhI=
-github.com/bitfield/gotestdox v0.2.1 h1:Zj8IMLAO5/oiAKoMmtN96eyFiPZraJRTH2p0zDgtxc0=
 github.com/bitfield/gotestdox v0.2.1/go.mod h1:D+gwtS0urjBrzguAkTM2wodsTQYFHdpx8eqRJ3N+9pY=
+github.com/bitfield/gotestdox v0.2.2 h1:x6RcPAbBbErKLnapz1QeAlf3ospg8efBsedU93CDsnE=
+github.com/bitfield/gotestdox v0.2.2/go.mod h1:D+gwtS0urjBrzguAkTM2wodsTQYFHdpx8eqRJ3N+9pY=
 github.com/bmatcuk/doublestar/v4 v4.0.2/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
 github.com/bmatcuk/doublestar/v4 v4.6.0 h1:HTuxyug8GyFbRkrffIpzNCSK4luc0TY3wzXvzIZhEXc=
 github.com/bmatcuk/doublestar/v4 v4.6.0/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=

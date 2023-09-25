@@ -30,7 +30,7 @@ require (
 	github.com/a8m/envsubst v1.4.2 // indirect
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
 	github.com/alecthomas/participle/v2 v2.0.0 // indirect
-	github.com/bitfield/gotestdox v0.2.1 // indirect
+	github.com/bitfield/gotestdox v0.2.2 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/braydonk/yaml v0.7.0 // indirect
 	github.com/chavacava/garif v0.0.0-20230608123814-4bd63c2919ab // indirect
