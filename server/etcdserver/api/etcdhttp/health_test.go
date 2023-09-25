@@ -2,11 +2,11 @@ package etcdhttp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"go.uber.org/zap/zaptest"
@@ -17,15 +17,14 @@ import (
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 type fakeHealthServer struct {
 	fakeServer
-	health    string
-	apiError  error
-	authStore auth.AuthStore
+	apiError      error
+	missingLeader bool
+	authStore     auth.AuthStore
 }
 
 func (s *fakeHealthServer) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -37,87 +36,91 @@ func (s *fakeHealthServer) Config() config.ServerConfig {
 }
 
 func (s *fakeHealthServer) Leader() types.ID {
-	if s.health == "true" {
+	if !s.missingLeader {
 		return 1
 	}
 	return types.ID(raft.None)
 }
-func (s *fakeHealthServer) Do(_ context.Context, _ pb.Request) (etcdserver.Response, error) {
-	if s.health == "true" {
-		return etcdserver.Response{}, nil
-	}
-	return etcdserver.Response{}, fmt.Errorf("fail health check")
-}
-func (s *fakeHealthServer) AuthStore() auth.AuthStore   { return s.authStore }
+
+func (s *fakeHealthServer) AuthStore() auth.AuthStore { return s.authStore }
+
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
+
+type healthTestCase struct {
+	name             string
+	healthCheckURL   string
+	expectStatusCode int
+	inResult         []string
+	notInResult      []string
+
+	alarms        []*pb.AlarmMember
+	apiError      error
+	missingLeader bool
+}
 
 func TestHealthHandler(t *testing.T) {
 	// define the input and expected output
 	// input: alarms, and healthCheckURL
-	tests := []struct {
-		name           string
-		alarms         []*pb.AlarmMember
-		healthCheckURL string
-		apiError       error
-
-		expectStatusCode int
-		expectHealth     string
-	}{
+	tests := []healthTestCase{
 		{
 			name:             "Healthy if no alarm",
 			alarms:           []*pb.AlarmMember{},
 			healthCheckURL:   "/health",
 			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
 		},
 		{
 			name:             "Unhealthy if NOSPACE alarm is on",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health",
 			expectStatusCode: http.StatusServiceUnavailable,
-			expectHealth:     "false",
 		},
 		{
 			name:             "Healthy if NOSPACE alarm is on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
 		},
 		{
 			name:             "Healthy if NOSPACE alarm is excluded",
 			alarms:           []*pb.AlarmMember{},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
 		},
 		{
 			name:             "Healthy if multiple NOSPACE alarms are on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(1), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(2), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(3), Alarm: pb.AlarmType_NOSPACE}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
 		},
 		{
 			name:             "Unhealthy if NOSPACE alarms is excluded and CORRUPT is on",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			healthCheckURL:   "/health?exclude=NOSPACE",
 			expectStatusCode: http.StatusServiceUnavailable,
-			expectHealth:     "false",
 		},
 		{
 			name:             "Unhealthy if both NOSPACE and CORRUPT are on and excluded",
 			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}, {MemberID: uint64(1), Alarm: pb.AlarmType_CORRUPT}},
 			healthCheckURL:   "/health?exclude=NOSPACE&exclude=CORRUPT",
 			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
 		},
 		{
 			name:             "Unhealthy if api is not available",
 			healthCheckURL:   "/health",
 			apiError:         fmt.Errorf("Unexpected error"),
 			expectStatusCode: http.StatusServiceUnavailable,
-			expectHealth:     "false",
+		},
+		{
+			name:             "Unhealthy if no leader",
+			healthCheckURL:   "/health",
+			expectStatusCode: http.StatusServiceUnavailable,
+			missingLeader:    true,
+		},
+		{
+			name:             "Healthy if no leader and serializable=true",
+			healthCheckURL:   "/health?serializable=true",
+			expectStatusCode: http.StatusOK,
+			missingLeader:    true,
 		},
 	}
 
@@ -128,44 +131,179 @@ func TestHealthHandler(t *testing.T) {
 			be, _ := betesting.NewDefaultTmpBackend(t)
 			defer betesting.Close(t, be)
 			HandleHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
-				fakeServer: fakeServer{alarms: tt.alarms},
-				health:     tt.expectHealth,
-				apiError:   tt.apiError,
-				authStore:  auth.NewAuthStore(lg, be, nil, 0),
+				fakeServer:    fakeServer{alarms: tt.alarms},
+				apiError:      tt.apiError,
+				missingLeader: tt.missingLeader,
+				authStore:     auth.NewAuthStore(lg, be, nil, 0),
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
-
-			res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+tt.healthCheckURL)})
-			if err != nil {
-				t.Errorf("fail serve http request %s %v", tt.healthCheckURL, err)
-			}
-			if res == nil {
-				t.Errorf("got nil http response with http request %s", tt.healthCheckURL)
-				return
-			}
-			if res.StatusCode != tt.expectStatusCode {
-				t.Errorf("want statusCode %d but got %d", tt.expectStatusCode, res.StatusCode)
-			}
-			health, err := parseHealthOutput(res.Body)
-			if err != nil {
-				t.Errorf("fail parse health check output %v", err)
-			}
-			if health.Health != tt.expectHealth {
-				t.Errorf("want health %s but got %s", tt.expectHealth, health.Health)
-			}
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, nil, nil)
 		})
 	}
 }
 
-func parseHealthOutput(body io.Reader) (Health, error) {
-	obj := Health{}
-	d, derr := io.ReadAll(body)
-	if derr != nil {
-		return obj, derr
+func TestHttpSubPath(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "/readyz/data_corruption ok",
+			healthCheckURL:   "/readyz/data_corruption",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "/readyz/serializable_read not ok with error",
+			apiError:         fmt.Errorf("Unexpected error"),
+			healthCheckURL:   "/readyz/serializable_read",
+			expectStatusCode: http.StatusServiceUnavailable,
+			notInResult:      []string{"data_corruption"},
+		},
+		{
+			name:             "/readyz/non_exist 404",
+			healthCheckURL:   "/readyz/non_exist",
+			expectStatusCode: http.StatusNotFound,
+		},
 	}
-	if err := json.Unmarshal(d, &obj); err != nil {
-		return obj, err
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				apiError:  tt.apiError,
+				authStore: auth.NewAuthStore(logger, be, nil, 0),
+			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+		})
 	}
-	return obj, nil
+}
+
+func TestDataCorruptionCheck(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "Live if CORRUPT alarm is on",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_CORRUPT}},
+			healthCheckURL:   "/livez",
+			expectStatusCode: http.StatusOK,
+			notInResult:      []string{"data_corruption"},
+		},
+		{
+			name:             "Not ready if CORRUPT alarm is on",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_CORRUPT}},
+			healthCheckURL:   "/readyz",
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]data_corruption failed: alarm activated: CORRUPT"},
+		},
+		{
+			name:             "ready if CORRUPT alarm is not on",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
+			healthCheckURL:   "/readyz",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "ready if CORRUPT alarm is excluded",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_CORRUPT}, {MemberID: uint64(0), Alarm: pb.AlarmType_NOSPACE}},
+			healthCheckURL:   "/readyz?exclude=data_corruption",
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "Not ready if CORRUPT alarm is on",
+			alarms:           []*pb.AlarmMember{{MemberID: uint64(0), Alarm: pb.AlarmType_CORRUPT}},
+			healthCheckURL:   "/readyz?exclude=non_exist",
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]data_corruption failed: alarm activated: CORRUPT"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				authStore: auth.NewAuthStore(logger, be, nil, 0),
+			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			// OK before alarms are activated.
+			checkHttpResponse(t, ts, tt.healthCheckURL, http.StatusOK, nil, nil)
+			// Activate the alarms.
+			s.alarms = tt.alarms
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+		})
+	}
+}
+
+func TestSerializableReadCheck(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "Alive normal",
+			healthCheckURL:   "/livez?verbose",
+			expectStatusCode: http.StatusOK,
+			inResult:         []string{"[+]serializable_read ok"},
+		},
+		{
+			name:             "Not alive if range api is not available",
+			healthCheckURL:   "/livez",
+			apiError:         fmt.Errorf("Unexpected error"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]serializable_read failed: range error: Unexpected error"},
+		},
+		{
+			name:             "Not ready if range api is not available",
+			healthCheckURL:   "/readyz",
+			apiError:         fmt.Errorf("Unexpected error"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]serializable_read failed: range error: Unexpected error"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				apiError:  tt.apiError,
+				authStore: auth.NewAuthStore(logger, be, nil, 0),
+			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+		})
+	}
+}
+
+func checkHttpResponse(t *testing.T, ts *httptest.Server, url string, expectStatusCode int, inResult []string, notInResult []string) {
+	res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+url)})
+
+	if err != nil {
+		t.Fatalf("fail serve http request %s %v", url, err)
+	}
+	if res.StatusCode != expectStatusCode {
+		t.Errorf("want statusCode %d but got %d", expectStatusCode, res.StatusCode)
+	}
+	defer res.Body.Close()
+	b, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response for %s", url)
+	}
+	result := string(b)
+	for _, substr := range inResult {
+		if !strings.Contains(result, substr) {
+			t.Errorf("Could not find substring : %s, in response: %s", substr, result)
+			return
+		}
+	}
+	for _, substr := range notInResult {
+		if strings.Contains(result, substr) {
+			t.Errorf("Do not expect substring : %s, in response: %s", substr, result)
+			return
+		}
+	}
 }
