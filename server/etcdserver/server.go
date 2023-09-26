@@ -244,6 +244,7 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
+	// TODO: Remove v2store references
 	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
@@ -320,7 +321,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
+		v2store:               nil,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberId:              b.cluster.nodeID,
@@ -742,6 +743,10 @@ func (s *EtcdServer) run() {
 	if err != nil {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
 	}
+	hardState, ConfState, err := s.r.raftStorage.InitialState()
+	if err != nil {
+		lg.Panic("failed to get initialState Raft storage", zap.Error(err))
+	}
 
 	// asynchronously accept toApply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler(lg)
@@ -804,10 +809,11 @@ func (s *EtcdServer) run() {
 	s.r.start(rh)
 
 	ep := etcdProgress{
-		confState: sn.Metadata.ConfState,
-		snapi:     sn.Metadata.Index,
-		appliedt:  sn.Metadata.Term,
-		appliedi:  sn.Metadata.Index,
+		confState: ConfState,
+		appliedt:  hardState.Term,
+		appliedi:  hardState.Commit,
+		// TODO: Remove in v3.7 when we stop generating snapshots.
+		snapi: sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -848,7 +854,7 @@ func (s *EtcdServer) run() {
 			lg.Warn("data-dir used by this member must be removed")
 			return
 		case <-getSyncC():
-			if s.v2store.HasTTLKeys() {
+			if s.v2store != nil && s.v2store.HasTTLKeys() {
 				s.sync(s.Cfg.ReqTimeout())
 			}
 		case <-s.stop:

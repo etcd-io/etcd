@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -93,20 +92,4 @@ func OpenBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 	}
 
 	return <-beOpened
-}
-
-// RecoverSnapshotBackend recovers the DB from a snapshot in case etcd crashes
-// before updating the backend db after persisting raft snapshot to disk,
-// violating the invariant snapshot.Metadata.Index < db.consistentIndex. In this
-// case, replace the db with the snapshot db sent by the leader.
-func RecoverSnapshotBackend(cfg config.ServerConfig, oldbe backend.Backend, snapshot raftpb.Snapshot, beExist bool, hooks *BackendHooks) (backend.Backend, error) {
-	consistentIndex := uint64(0)
-	if beExist {
-		consistentIndex, _ = schema.ReadConsistentIndex(oldbe.ReadTx())
-	}
-	if snapshot.Metadata.Index <= consistentIndex {
-		return oldbe, nil
-	}
-	oldbe.Close()
-	return OpenSnapshotBackend(cfg, snap.New(cfg.Logger, cfg.SnapDir()), snapshot, hooks)
 }
