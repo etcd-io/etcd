@@ -37,9 +37,6 @@ import (
 )
 
 var (
-	authEnabled  = []byte{1}
-	authDisabled = []byte{0}
-
 	rootPerm = authpb.Permission{PermType: authpb.READWRITE, Key: []byte{}, RangeEnd: []byte{0}}
 
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")

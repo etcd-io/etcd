@@ -410,7 +410,6 @@ type storageMock struct {
 	clusterVersion *semver.Version
 	storageVersion *semver.Version
 	downgradeInfo  *DowngradeInfo
-	locked         bool
 }
 
 var _ Server = (*storageMock)(nil)

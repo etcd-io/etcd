@@ -15,22 +15,10 @@
 package client_test
 
 import (
-	"net/http"
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
-
-func exampleEndpoints() []string        { return nil }
-func exampleTransport() *http.Transport { return nil }
-
-func forUnitTestsRunInMockedContext(mocking func(), example func()) {
-	mocking()
-	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
-
-	// The real testing logic of examples gets executed
-	// as part of ./tests/integration/client/example/...
-}
 
 func TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)

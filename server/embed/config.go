@@ -1116,14 +1116,6 @@ func (cfg *Config) getListenClientUrls() (ss []string) {
 	return ss
 }
 
-func (cfg *Config) getListenClientHttpUrls() (ss []string) {
-	ss = make([]string, len(cfg.ListenClientHttpUrls))
-	for i := range cfg.ListenClientHttpUrls {
-		ss[i] = cfg.ListenClientHttpUrls[i].String()
-	}
-	return ss
-}
-
 func (cfg *Config) getMetricsURLs() (ss []string) {
 	ss = make([]string, len(cfg.ListenMetricsUrls))
 	for i := range cfg.ListenMetricsUrls {

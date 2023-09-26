@@ -34,15 +34,6 @@ func maintenanceInitKeys(cx ctlCtx) {
 	}
 }
 
-func ctlV3OnlineDefrag(cx ctlCtx) error {
-	cmdArgs := append(cx.PrefixArgs(), "defrag")
-	lines := make([]expect.ExpectedResponse, cx.epc.Cfg.ClusterSize)
-	for i := range lines {
-		lines[i] = expect.ExpectedResponse{Value: "Finished defragmenting etcd member"}
-	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
-}
-
 func ctlV3OfflineDefrag(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgsUtl(), "defrag", "--data-dir", cx.dataDir)
 	lines := []expect.ExpectedResponse{{Value: "finished defragmenting directory"}}

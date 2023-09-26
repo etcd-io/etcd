@@ -90,13 +90,6 @@ func newMigrationStep(v semver.Version, isUpgrade bool, changes []schemaChange) 
 	return step
 }
 
-// execute runs actions required to migrate etcd storage between two minor versions.
-func (s migrationStep) execute(lg *zap.Logger, tx backend.BatchTx) error {
-	tx.LockOutsideApply()
-	defer tx.Unlock()
-	return s.unsafeExecute(lg, tx)
-}
-
 // unsafeExecute is non thread-safe version of execute.
 func (s migrationStep) unsafeExecute(lg *zap.Logger, tx backend.UnsafeReadWriter) error {
 	err := s.actions.unsafeExecute(lg, tx)

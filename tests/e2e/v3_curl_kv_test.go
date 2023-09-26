@@ -183,7 +183,7 @@ func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []any) {
 	clus := cx.epc
 	args := e2e.CURLPrefixArgsCluster(clus.Cfg, clus.Procs[0], "POST", e2e.CURLReq{
 		Endpoint: "/v3/kv/txn",
-		Value:    string(reqData),
+		Value:    reqData,
 	})
 	resp, err := runCommandAndReadJsonOutput(args)
 	require.NoError(cx.t, err)

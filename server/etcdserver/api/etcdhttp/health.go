@@ -23,7 +23,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -154,9 +153,9 @@ func checkAlarms(lg *zap.Logger, srv ServerHealth, excludedAlarms AlarmSet) Heal
 
 			h.Health = "false"
 			switch v.Alarm {
-			case etcdserverpb.AlarmType_NOSPACE:
+			case pb.AlarmType_NOSPACE:
 				h.Reason = "ALARM NOSPACE"
-			case etcdserverpb.AlarmType_CORRUPT:
+			case pb.AlarmType_CORRUPT:
 				h.Reason = "ALARM CORRUPT"
 			default:
 				h.Reason = "ALARM UNKNOWN"
@@ -183,7 +182,7 @@ func checkAPI(lg *zap.Logger, srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
 	cfg := srv.Config()
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
-	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+	_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
 	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
 		h.Health = "false"

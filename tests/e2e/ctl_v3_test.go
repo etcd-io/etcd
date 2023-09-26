@@ -182,10 +182,6 @@ func withCorruptFunc(f func(string) error) ctlOption {
 	return func(cx *ctlCtx) { cx.corruptFunc = f }
 }
 
-func withDisableStrictReconfig() ctlOption {
-	return func(cx *ctlCtx) { cx.disableStrictReconfigCheck = true }
-}
-
 func withFlagByEnv() ctlOption {
 	return func(cx *ctlCtx) { cx.envMap = make(map[string]string) }
 }
@@ -344,25 +340,4 @@ func (cx *ctlCtx) PrefixArgsUtl() []string {
 
 func isGRPCTimedout(err error) bool {
 	return strings.Contains(err.Error(), "grpc: timed out trying to connect")
-}
-
-func (cx *ctlCtx) memberToRemove() (ep string, memberID string, clusterID string) {
-	n1 := cx.cfg.ClusterSize
-	if n1 < 2 {
-		cx.t.Fatalf("%d-node is too small to test 'member remove'", n1)
-	}
-
-	resp, err := getMemberList(*cx, false)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if n1 != len(resp.Members) {
-		cx.t.Fatalf("expected %d, got %d", n1, len(resp.Members))
-	}
-
-	ep = resp.Members[0].ClientURLs[0]
-	clusterID = fmt.Sprintf("%x", resp.Header.ClusterId)
-	memberID = fmt.Sprintf("%x", resp.Members[1].ID)
-
-	return ep, memberID, clusterID
 }

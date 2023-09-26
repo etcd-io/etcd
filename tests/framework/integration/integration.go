@@ -53,7 +53,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
-		SnapshotCount:              uint64(cfg.SnapshotCount),
+		SnapshotCount:              cfg.SnapshotCount,
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
 	if err != nil {
