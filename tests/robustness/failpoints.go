@@ -17,7 +17,9 @@ package robustness
 import (
 	"context"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"math/rand"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -66,15 +68,9 @@ var (
 	RaftAfterWALReleasePanic                 Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftBeforeSaveSnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftAfterSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	MemberReplace                            Failpoint = memberReplace{}
 	allFailpoints                                      = []Failpoint{
-		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
-		DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
-		BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
-		BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
-		CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
-		CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
-		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
-		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
+		MemberReplace,
 	}
 )
 
@@ -534,4 +530,94 @@ func (f delayPeerNetworkFailpoint) Name() string {
 
 func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
+}
+
+type memberReplace struct{}
+
+func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	cc, err := clientv3.New(clientv3.Config{
+		Endpoints:            clus.EndpointsGRPC(),
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    10 * time.Second,
+		DialKeepAliveTimeout: 100 * time.Millisecond,
+	})
+	defer cc.Close()
+	if err != nil {
+		return err
+	}
+	memberID, err := getID(ctx, cc, member.Config().Name)
+	if err != nil {
+		return err
+	}
+	time.Sleep(etcdserver.HealthInterval)
+	lg.Info("Removing member", zap.String("member", member.Config().Name))
+	_, err = cc.MemberRemove(ctx, memberID)
+	if err != nil {
+		return err
+	}
+	for member.IsRunning() {
+		err := member.Kill()
+		if err != nil {
+			lg.Info("Sending kill signal failed", zap.Error(err))
+		}
+		err = member.Wait(ctx)
+		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			lg.Info("Failed to kill the process", zap.Error(err))
+			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
+		}
+	}
+	lg.Info("Adding member back", zap.String("member", member.Config().Name))
+	_, err = cc.MemberAdd(ctx, []string{member.Config().PeerURL.String()})
+	if err != nil {
+		return err
+	}
+	lg.Info("Removing member data", zap.String("member", member.Config().Name))
+	err = os.RemoveAll(member.Config().DataDirPath)
+	if err != nil {
+		return err
+	}
+	err = patchInitialClusterState(member.Config().Args, "existing")
+	if err != nil {
+		return err
+	}
+	lg.Info("Starting member", zap.String("member", member.Config().Name))
+	err = member.Start(ctx)
+	if err != nil {
+		return err
+	}
+
+	time.Sleep(etcdserver.HealthInterval)
+	return nil
+}
+
+func (f memberReplace) Name() string {
+	return "MemberReplace"
+}
+
+func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess) bool {
+	return config.ClusterSize > 1
+}
+
+func getID(ctx context.Context, cc *clientv3.Client, name string) (uint64, error) {
+	resp, err := cc.MemberList(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, member := range resp.Members {
+		if name == member.Name {
+			return member.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("member with name %q not found", name)
+}
+
+func patchInitialClusterState(args []string, newValue string) error {
+	for i, arg := range args {
+		if arg == "--initial-cluster-state" {
+			args[i+1] = newValue
+			return nil
+		}
+	}
+	return fmt.Errorf("--initial-cluster-state flag not found")
 }
