@@ -193,6 +193,8 @@ type EtcdProcessClusterConfig struct {
 	ExperimentalWarningUnaryRequestDuration time.Duration
 	PeerProxy                               bool
 	WatchProcessNotifyInterval              time.Duration
+
+	WaitClusterReadyTimeout time.Duration
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -369,6 +371,14 @@ func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.WatchProcessNotifyInterval = interval }
+}
+
+func WithWaitClusterReadyTimeout(readyTimeout time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.WaitClusterReadyTimeout = readyTimeout }
+}
+
+func WithEnvVars(ev map[string]string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.EnvVars = ev }
 }
 
 func WithPeerProxy(enabled bool) EPClusterOption {
@@ -609,6 +619,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.WatchProcessNotifyInterval != 0 {
 		args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+	}
+	if cfg.WaitClusterReadyTimeout != 0 {
+		args = append(args, "--experimental-wait-cluster-ready-timeout", cfg.WaitClusterReadyTimeout.String())
 	}
 	if cfg.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
