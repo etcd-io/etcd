@@ -303,9 +303,27 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
 	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+	var membersMap map[types.ID]*Member
+	var removedMap map[types.ID]bool
+	if c.v2store != nil {
+		membersMap, removedMap = membersFromStore(c.lg, c.v2store)
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	}
+
+	if c.be != nil && shouldApplyV3 {
+		membersMap, removedMap = c.be.MustReadMembersFromBackend()
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *RaftCluster) validateConfigurationChange(cc raftpb.ConfChange, membersMap map[types.ID]*Member, removedMap map[types.ID]bool) error {
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved
@@ -395,19 +413,19 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(m)
+
+		c.members[m.ID] = m
+		c.updateMembershipMetric(m.ID, true)
+
+		c.lg.Info(
+			"added member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("added-peer-id", m.ID.String()),
+			zap.Strings("added-peer-peer-urls", m.PeerURLs),
+			zap.Bool("added-peer-is-learner", m.IsLearner),
+		)
 	}
-
-	c.members[m.ID] = m
-	c.updateMembershipMetric(m.ID, true)
-
-	c.lg.Info(
-		"added member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-		zap.String("added-peer-id", m.ID.String()),
-		zap.Strings("added-peer-peer-urls", m.PeerURLs),
-		zap.Bool("added-peer-is-learner", m.IsLearner),
-	)
 }
 
 // RemoveMember removes a member from the store.
@@ -420,29 +438,29 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
-	}
 
-	m, ok := c.members[id]
-	delete(c.members, id)
-	c.removed[id] = true
-	c.updateMembershipMetric(id, false)
+		m, ok := c.members[id]
+		delete(c.members, id)
+		c.removed[id] = true
+		c.updateMembershipMetric(id, false)
 
-	if ok {
-		c.lg.Info(
-			"removed member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("removed-remote-peer-id", id.String()),
-			zap.Strings("removed-remote-peer-urls", m.PeerURLs),
-			zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
-		)
-	} else {
-		c.lg.Warn(
-			"skipped removing already removed member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("removed-remote-peer-id", id.String()),
-		)
+		if ok {
+			c.lg.Info(
+				"removed member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+				zap.Strings("removed-remote-peer-urls", m.PeerURLs),
+				zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
+			)
+		} else {
+			c.lg.Warn(
+				"skipped removing already removed member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+			)
+		}
 	}
 }
 
@@ -491,13 +509,13 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
-	}
 
-	c.lg.Info(
-		"promote member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-	)
+		c.lg.Info(
+			"promote member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	}
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 ShouldApplyV3) {
@@ -510,16 +528,16 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(c.members[id])
-	}
 
-	c.lg.Info(
-		"updated member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-		zap.String("updated-remote-peer-id", id.String()),
-		zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
-		zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
-	)
+		c.lg.Info(
+			"updated member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+		)
+	}
 }
 
 func (c *RaftCluster) Version() *semver.Version {
