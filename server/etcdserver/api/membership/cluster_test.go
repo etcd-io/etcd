@@ -468,6 +468,9 @@ func TestClusterGenID(t *testing.T) {
 		newTestMember(2, nil, "", nil),
 	})
 
+	be := newMembershipBackend()
+	cs.SetBackend(be)
+
 	cs.genID()
 	if cs.ID() == 0 {
 		t.Fatalf("cluster.ID = %v, want not 0", cs.ID())
