@@ -278,6 +278,8 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 
 func TestClusterValidateConfigurationChange(t *testing.T) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
+	be := newMembershipBackend()
+	cl.SetBackend(be)
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
@@ -455,7 +457,7 @@ func TestClusterValidateConfigurationChange(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc)
+		err := cl.ValidateConfigurationChange(tt.cc, true)
 		if err != tt.werr {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -647,7 +649,8 @@ func TestNodeToMember(t *testing.T) {
 }
 
 func newTestCluster(t testing.TB, membs []*Member) *RaftCluster {
-	c := &RaftCluster{lg: zaptest.NewLogger(t), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	lg := zaptest.NewLogger(t)
+	c := &RaftCluster{lg: lg, members: make(map[types.ID]*Member), removed: make(map[types.ID]bool), rs: NewReplayStore(lg)}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}
@@ -1040,5 +1043,23 @@ func TestClusterStore(t *testing.T) {
 			// Verify that removed members are correctly stored
 			assert.Equal(t, tt.removed, rst)
 		})
+	}
+}
+
+func TestValidateConfigurationChange_AddMemberTwice(t *testing.T) {
+	// Create an initial cluster configuration with one member
+	cluster := newTestCluster(t, nil)
+	cluster.AddMember(newTestMember(1, nil, "node1", nil), false)
+
+	// The ValidateConfigurationChange function should detect duplicate addition regardless of backend consistent index(shouldApply is false).
+	ctx, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(1)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc := raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: ctx}
+	if err := cluster.ValidateConfigurationChange(cc, false); err == nil {
+		t.Fatal("expected an error when adding the same member again, but got no error")
+	} else if err != ErrIDExists {
+		t.Fatalf("expected ErrIDExists, but got %v", err)
 	}
 }
