@@ -41,7 +41,6 @@ func init() {
 	})
 
 	rootCmd.AddCommand(
-		etcdutl.NewBackupCommand(),
 		etcdutl.NewDefragCommand(),
 		etcdutl.NewSnapshotCommand(),
 		etcdutl.NewVersionCommand(),
