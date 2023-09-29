@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -58,10 +59,15 @@ func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
 }
 
+// TestCtlV3ConsistentMemberList requires the gofailpoint to be enabled.
+// If you execute this case locally, please do not forget to execute
+// `make gofail-enable`.
 func TestCtlV3ConsistentMemberList(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	ctx := context.Background()
+
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
 		e2e.WithWaitClusterReadyTimeout(0),
 		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("2s")`}),
@@ -73,14 +79,14 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 	}()
 
 	t.Log("Adding and then removing a learner")
-	resp, err := epc.Etcdctl().MemberAddAsLearner(context.TODO(), "newLearner", []string{fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)})
+	resp, err := epc.Etcdctl().MemberAddAsLearner(ctx, "newLearner", []string{fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)})
 	require.NoError(t, err)
-	_, err = epc.Etcdctl().MemberRemove(context.TODO(), resp.Member.ID)
+	_, err = epc.Etcdctl().MemberRemove(ctx, resp.Member.ID)
 	require.NoError(t, err)
 	t.Logf("Added and then removed a learner with ID: %x", resp.Member.ID)
 
 	t.Log("Restarting the etcd process to ensure all data is persisted")
-	err = epc.Procs[0].Restart(context.TODO())
+	err = epc.Procs[0].Restart(ctx)
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -100,7 +106,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			default:
 			}
 
-			merr := epc.Procs[0].Restart(context.TODO())
+			merr := epc.Procs[0].Restart(ctx)
 			require.NoError(t, merr)
 			epc.WaitLeader(t)
 
@@ -123,7 +129,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			default:
 			}
 
-			mresp, merr := epc.Etcdctl().MemberList(context.TODO(), true)
+			mresp, merr := epc.Etcdctl().MemberList(ctx, true)
 			if merr != nil {
 				continue
 			}
@@ -134,6 +140,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 	}()
 
 	wg.Wait()
+	assert.Greater(t, count, 0)
 	t.Logf("Checked the member list %d times", count)
 }
 
