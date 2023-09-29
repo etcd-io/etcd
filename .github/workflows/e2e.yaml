@@ -35,10 +35,10 @@ jobs:
           case "${TARGET}" in
             linux-amd64-e2e)
               make gofail-enable
-              VERBOSE=1 GOOS=linux GOARCH=amd64 CPU=4 EXPECT_DEBUG=true make test-e2e-release
+              VERBOSE=1 GOOS=linux GOARCH=amd64 CPU=4 EXPECT_DEBUG=false make test-e2e-release
               ;;
             linux-386-e2e)
-              VERBOSE=1 GOOS=linux GOARCH=386 CPU=4 EXPECT_DEBUG=true make test-e2e
+              VERBOSE=1 GOOS=linux GOARCH=386 CPU=4 EXPECT_DEBUG=false make test-e2e
               ;;
             *)
               echo "Failed to find target"
