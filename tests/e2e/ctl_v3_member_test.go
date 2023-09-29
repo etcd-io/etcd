@@ -15,13 +15,17 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -53,6 +57,91 @@ func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
 }
 func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
+}
+
+// TestCtlV3ConsistentMemberList requires the gofailpoint to be enabled.
+// If you execute this case locally, please do not forget to execute
+// `make gofail-enable`.
+func TestCtlV3ConsistentMemberList(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	ctx := context.Background()
+
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+		e2e.WithClusterSize(1),
+		e2e.WithWaitClusterReadyTimeout(0),
+		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("2s")`}),
+	)
+	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+	defer func() {
+		derr := epc.Close()
+		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+	}()
+
+	t.Log("Adding and then removing a learner")
+	resp, err := epc.Etcdctl().MemberAddAsLearner(ctx, "newLearner", []string{fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)})
+	require.NoError(t, err)
+	_, err = epc.Etcdctl().MemberRemove(ctx, resp.Member.ID)
+	require.NoError(t, err)
+	t.Logf("Added and then removed a learner with ID: %x", resp.Member.ID)
+
+	t.Log("Restarting the etcd process to ensure all data is persisted")
+	err = epc.Procs[0].Restart(ctx)
+	require.NoError(t, err)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	stopc := make(chan struct{}, 2)
+
+	t.Log("Starting a goroutine to repeatedly restart etcdserver")
+	go func() {
+		defer func() {
+			stopc <- struct{}{}
+			wg.Done()
+		}()
+		for i := 0; i < 3; i++ {
+			select {
+			case <-stopc:
+				return
+			default:
+			}
+
+			merr := epc.Procs[0].Restart(ctx)
+			require.NoError(t, merr)
+			epc.WaitLeader(t)
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	t.Log("Starting a goroutine to repeated check the member list")
+	count := 0
+	go func() {
+		defer func() {
+			stopc <- struct{}{}
+			wg.Done()
+		}()
+
+		for {
+			select {
+			case <-stopc:
+				return
+			default:
+			}
+
+			mresp, merr := epc.Etcdctl().MemberList(ctx, true)
+			if merr != nil {
+				continue
+			}
+
+			count++
+			require.Equal(t, 1, len(mresp.Members))
+		}
+	}()
+
+	wg.Wait()
+	assert.Greater(t, count, 0)
+	t.Logf("Checked the member list %d times", count)
 }
 
 func memberListTest(cx ctlCtx) {

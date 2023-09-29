@@ -1827,6 +1827,8 @@ func (s *EtcdServer) apply(
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
+			// gofail: var beforeApplyOneConfChange struct{}
+
 			// We need to toApply all WAL entries on top of v2store
 			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
 			shouldApplyV3 := membership.ApplyV2storeOnly
