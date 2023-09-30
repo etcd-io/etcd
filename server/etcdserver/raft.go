@@ -216,6 +216,14 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 
 				updateCommittedIndex(&ap, rh)
 
+				waitWALSync := shouldWaitWALSync(rd)
+				if waitWALSync {
+					// gofail: var raftBeforeSaveWaitWalSync struct{}
+					if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					}
+				}
+
 				select {
 				case r.applyc <- ap:
 				case <-r.stopped:
@@ -240,9 +248,11 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
-				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
-					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+				if !waitWALSync {
+					// gofail: var raftBeforeSave struct{}
+					if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+						r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+					}
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
 					proposalsCommitted.Set(float64(rd.HardState.Commit))
@@ -327,6 +337,16 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 			}
 		}
 	}()
+}
+
+// If the hardstate isn't empty, we must sync the hardstate to WAL file before
+// applying the committed entries. Otherwise, etcd may have already responded
+// to the client, but the hardstate isn't persisted to the WAL file. When etcd
+// starts again, it loads the stale hardstate, and accordingly a linearizable
+// request may get the stale readIndex (actually committed Index), eventually
+// it won't wait for the latest applied data before responding to the client.
+func shouldWaitWALSync(rd raft.Ready) bool {
+	return !raft.IsEmptyHardState(rd.HardState) && len(rd.CommittedEntries) > 0
 }
 
 func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
