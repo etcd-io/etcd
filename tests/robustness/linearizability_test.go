@@ -69,6 +69,8 @@ func TestRobustness(t *testing.T) {
 		e2e.WithGoFailEnabled(true),
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
+		e2e.WithWaitClusterReadyTimeout(time.Nanosecond),
+		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("0.1s")`}),
 	}
 	scenarios := []testScenario{}
 	for _, tp := range trafficProfiles {
