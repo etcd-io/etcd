@@ -102,15 +102,15 @@ func testCurlV3MaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 	//	(a) generate ${concurrentNumber} concurrent watch streams;
 	//	(b) submit a range request.
 	var wg sync.WaitGroup
-	concurrentNumber := cx.cfg.MaxConcurrentStreams - 1
+	concurrentNumber := cx.cfg.ServerConfig.MaxConcurrentStreams - 1
 	expectedResponse := `"revision":"`
 	if reachLimit {
-		concurrentNumber = cx.cfg.MaxConcurrentStreams
+		concurrentNumber = cx.cfg.ServerConfig.MaxConcurrentStreams
 		expectedResponse = "Operation timed out"
 	}
 	wg.Add(int(concurrentNumber))
 	t.Logf("Running the test, MaxConcurrentStreams: %d, concurrentNumber: %d, expected range's response: %s\n",
-		cx.cfg.MaxConcurrentStreams, concurrentNumber, expectedResponse)
+		cx.cfg.ServerConfig.MaxConcurrentStreams, concurrentNumber, expectedResponse)
 
 	closeServerCh := make(chan struct{})
 	submitConcurrentWatch(cx, int(concurrentNumber), &wg, closeServerCh)

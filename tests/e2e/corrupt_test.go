@@ -40,7 +40,7 @@ func TestEtcdCorruptHash(t *testing.T) {
 	cfg := e2e.NewConfigNoTLS()
 
 	// trigger snapshot so that restart member can load peers from disk
-	cfg.SnapshotCount = 3
+	cfg.ServerConfig.SnapshotCount = 3
 
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
