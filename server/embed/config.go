@@ -360,6 +360,9 @@ type Config struct {
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
 
+	// LeaseRead enables to read value from leader lease without communicating with quorum.
+	LeaseRead bool `json:"lease-read"`
+
 	EnablePprof           bool   `json:"enable-pprof"`
 	Metrics               string `json:"metrics"`
 	ListenMetricsUrls     []url.URL
@@ -642,6 +645,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.StrictReconfigCheck, "strict-reconfig-check", cfg.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 
 	fs.BoolVar(&cfg.PreVote, "pre-vote", cfg.PreVote, "Enable to run an additional Raft election phase.")
+	fs.BoolVar(&cfg.LeaseRead, "lease-read", false, "Enable to read value from leader lease without communicating with quorum.")
 
 	// security
 	fs.StringVar(&cfg.ClientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")

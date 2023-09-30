@@ -50,6 +50,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
+	"go.etcd.io/raft/v3"
 )
 
 const (
@@ -166,6 +167,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
+	readOnlyOption := raft.ReadOnlySafe
+	if cfg.LeaseRead {
+		readOnlyOption = raft.ReadOnlyLeaseBased
+	}
+
 	srvcfg := config.ServerConfig{
 		Name:                                     cfg.Name,
 		ClientURLs:                               cfg.AdvertiseClientUrls,
@@ -211,6 +217,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PreVote:                                  cfg.PreVote,
 		Logger:                                   cfg.logger,
 		ForceNewCluster:                          cfg.ForceNewCluster,
+		ReadOnlyOption:                           readOnlyOption,
 		EnableGRPCGateway:                        cfg.EnableGRPCGateway,
 		ExperimentalEnableDistributedTracing:     cfg.ExperimentalEnableDistributedTracing,
 		UnsafeNoFsync:                            cfg.UnsafeNoFsync,

@@ -526,6 +526,7 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
 		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
+		ReadOnlyOption:  cfg.ReadOnlyOption,
 	}
 }
 

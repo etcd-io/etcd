@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/raft/v3"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -161,6 +162,8 @@ type ServerConfig struct {
 	Logger *zap.Logger
 
 	ForceNewCluster bool
+
+	ReadOnlyOption raft.ReadOnlyOption `json:"read-only-option"`
 
 	// EnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
 	EnableLeaseCheckpoint bool

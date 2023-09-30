@@ -162,6 +162,8 @@ Clustering:
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
+  --lease-read 'false'
+    Enable to read value from leader lease without communicating with quorum.
   --v2-deprecation '` + string(cconfig.V2_DEPR_DEFAULT) + `'
     Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
     Supported values:
