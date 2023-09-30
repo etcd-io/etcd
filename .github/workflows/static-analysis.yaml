@@ -30,3 +30,13 @@ jobs:
           set -euo pipefail
 
           make fix
+
+          DIFF=$(git status --porcelain)
+
+          if [ -n "$DIFF" ]; then
+            echo "These files were modified:"
+            echo
+            echo "$DIFF"
+            echo
+            exit 1
+          fi
