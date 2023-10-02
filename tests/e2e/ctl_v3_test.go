@@ -190,13 +190,13 @@ func withFlagByEnv() ctlOption {
 // may be overwritten by `withCfg`.
 func withMaxConcurrentStreams(streams uint32) ctlOption {
 	return func(cx *ctlCtx) {
-		cx.cfg.MaxConcurrentStreams = streams
+		cx.cfg.ServerConfig.MaxConcurrentStreams = streams
 	}
 }
 
 func withLogLevel(logLevel string) ctlOption {
 	return func(cx *ctlCtx) {
-		cx.cfg.LogLevel = logLevel
+		cx.cfg.ServerConfig.LogLevel = logLevel
 	}
 }
 
@@ -221,9 +221,9 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	if !ret.quorum {
 		ret.cfg = *e2e.ConfigStandalone(ret.cfg)
 	}
-	ret.cfg.StrictReconfigCheck = !ret.disableStrictReconfigCheck
+	ret.cfg.ServerConfig.StrictReconfigCheck = !ret.disableStrictReconfigCheck
 	if ret.initialCorruptCheck {
-		ret.cfg.InitialCorruptCheck = ret.initialCorruptCheck
+		ret.cfg.ServerConfig.ExperimentalInitialCorruptCheck = ret.initialCorruptCheck
 	}
 	if testOfflineFunc != nil {
 		ret.cfg.KeepDataDir = true

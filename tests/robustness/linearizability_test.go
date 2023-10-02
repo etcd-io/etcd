@@ -204,7 +204,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	report.Client = s.run(ctx, t, lg, report.Cluster)
 	forcestopCluster(report.Cluster)
 
-	watchProgressNotifyEnabled := report.Cluster.Cfg.WatchProcessNotifyInterval != 0
+	watchProgressNotifyEnabled := report.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
 	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)

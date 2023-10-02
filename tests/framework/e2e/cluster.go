@@ -32,6 +32,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
@@ -131,81 +132,61 @@ type EtcdProcessCluster struct {
 }
 
 type EtcdProcessClusterConfig struct {
-	Logger  *zap.Logger
+	ServerConfig embed.Config
+
+	// Test config
+
+	KeepDataDir   bool
+	Logger        *zap.Logger
+	GoFailEnabled bool
+	LazyFSEnabled bool
+	PeerProxy     bool
+
+	// Process config
+
+	EnvVars map[string]string
 	Version ClusterVersion
-	// DataDirPath specifies the data-dir for the members. If test cases
-	// do not specify `DataDirPath`, then e2e framework creates a
+
+	// Cluster setup config
+
+	ClusterSize  int
+	RollingStart bool
+	// BaseDataDirPath specifies the data-dir for the members. If test cases
+	// do not specify `BaseDataDirPath`, then e2e framework creates a
 	// temporary directory for each member; otherwise, it creates a
 	// subdirectory (e.g. member-0, member-1 and member-2) under the given
-	// `DataDirPath` for each member.
-	DataDirPath string
-	KeepDataDir bool
-	EnvVars     map[string]string
+	// `BaseDataDirPath` for each member.
+	BaseDataDirPath string
 
-	ClusterSize int
+	// Dynamic per member configuration
 
-	// BasePeerScheme specifies scheme of --listen-peer-urls and --initial-advertise-peer-urls
-	BasePeerScheme string
-	BasePort       int
-	// BaseClientScheme specifies scheme of --listen-client-urls, --listen-client-http-urls and --initial-advertise-client-urls
-	BaseClientScheme string
-
-	MetricsURLScheme string
-
-	SnapshotCount          uint64
-	SnapshotCatchUpEntries uint64
-
+	BasePeerScheme     string
+	BasePort           int
+	BaseClientScheme   string
+	MetricsURLScheme   string
 	Client             ClientConfig
 	ClientHttpSeparate bool
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
 	CN                 bool
 
-	CipherSuites []string
-
-	ForceNewCluster     bool
-	InitialToken        string
-	QuotaBackendBytes   int64
-	StrictReconfigCheck bool
-	EnableV2            bool
-	InitialCorruptCheck bool
-	AuthTokenOpts       string
-	V2deprecation       string
-
-	RollingStart bool
+	// Removed in v3.6
 
 	Discovery string // v2 discovery
-
-	DiscoveryEndpoints []string // v3 discovery
-	DiscoveryToken     string
-	LogLevel           string
-
-	MaxConcurrentStreams    uint32 // default is math.MaxUint32
-	CorruptCheckTime        time.Duration
-	CompactHashCheckEnabled bool
-	CompactHashCheckTime    time.Duration
-	GoFailEnabled           bool
-	LazyFSEnabled           bool
-	CompactionBatchLimit    int
-	CompactionSleepInterval time.Duration
-
-	WarningUnaryRequestDuration             time.Duration
-	ExperimentalWarningUnaryRequestDuration time.Duration
-	PeerProxy                               bool
-	WatchProcessNotifyInterval              time.Duration
-
-	WaitClusterReadyTimeout time.Duration
+	EnableV2  bool
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{
-		ClusterSize:         3,
-		InitialToken:        "new",
-		StrictReconfigCheck: true,
-		CN:                  true,
+		ClusterSize: 3,
+		CN:          true,
 
-		SnapshotCount:          etcdserver.DefaultSnapshotCount,
-		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+		ServerConfig: embed.Config{
+			InitialClusterToken:    "new",
+			StrictReconfigCheck:    true,
+			SnapshotCount:          etcdserver.DefaultSnapshotCount,
+			SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+		},
 	}
 }
 
@@ -228,7 +209,7 @@ func WithVersion(version ClusterVersion) EPClusterOption {
 }
 
 func WithDataDirPath(path string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.DataDirPath = path }
+	return func(c *EtcdProcessClusterConfig) { c.BaseDataDirPath = path }
 }
 
 func WithKeepDataDir(keep bool) EPClusterOption {
@@ -236,11 +217,11 @@ func WithKeepDataDir(keep bool) EPClusterOption {
 }
 
 func WithSnapshotCount(count uint64) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.SnapshotCount = count }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.SnapshotCount = count }
 }
 
 func WithSnapshotCatchUpEntries(count uint64) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.SnapshotCatchUpEntries = count }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.SnapshotCatchUpEntries = count }
 }
 
 func WithClusterSize(size int) EPClusterOption {
@@ -288,11 +269,11 @@ func WithCN(cn bool) EPClusterOption {
 }
 
 func WithQuotaBackendBytes(bytes int64) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.QuotaBackendBytes = bytes }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.QuotaBackendBytes = bytes }
 }
 
 func WithStrictReconfigCheck(strict bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.StrictReconfigCheck = strict }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.StrictReconfigCheck = strict }
 }
 
 func WithEnableV2(enable bool) EPClusterOption {
@@ -300,7 +281,7 @@ func WithEnableV2(enable bool) EPClusterOption {
 }
 
 func WithAuthTokenOpts(token string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.AuthTokenOpts = token }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.AuthToken = token }
 }
 
 func WithRollingStart(rolling bool) EPClusterOption {
@@ -312,35 +293,35 @@ func WithDiscovery(discovery string) EPClusterOption {
 }
 
 func WithDiscoveryEndpoints(endpoints []string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.DiscoveryEndpoints = endpoints }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.DiscoveryCfg.Endpoints = endpoints }
 }
 
 func WithDiscoveryToken(token string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.DiscoveryToken = token }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.DiscoveryCfg.Token = token }
 }
 
 func WithLogLevel(level string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.LogLevel = level }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.LogLevel = level }
 }
 
 func WithCorruptCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.CorruptCheckTime = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
 }
 
 func WithInitialClusterToken(token string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.InitialToken = token }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.InitialClusterToken = token }
 }
 
 func WithInitialCorruptCheck(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.InitialCorruptCheck = enabled }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalInitialCorruptCheck = enabled }
 }
 
 func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.CompactHashCheckEnabled = enabled }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckEnabled = enabled }
 }
 
 func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.CompactHashCheckTime = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckTime = time }
 }
 
 func WithGoFailEnabled(enabled bool) EPClusterOption {
@@ -352,29 +333,29 @@ func WithLazyFSEnabled(enabled bool) EPClusterOption {
 }
 
 func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.WarningUnaryRequestDuration = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WarningUnaryRequestDuration = time }
 }
 
 // WithExperimentalWarningUnaryRequestDuration sets a value for `-experimental-warning-unary-request-duration`.
 // TODO(ahrtr): remove this function when the corresponding experimental flag is decommissioned.
 func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ExperimentalWarningUnaryRequestDuration = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWarningUnaryRequestDuration = time }
 }
 
 func WithCompactionBatchLimit(limit int) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.CompactionBatchLimit = limit }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
 }
 
 func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.CompactionSleepInterval = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionSleepInterval = time }
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.WatchProcessNotifyInterval = interval }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWatchProgressNotifyInterval = interval }
 }
 
 func WithWaitClusterReadyTimeout(readyTimeout time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.WaitClusterReadyTimeout = readyTimeout }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWaitClusterReadyTimeout = readyTimeout }
 }
 
 func WithEnvVars(ev map[string]string) EPClusterOption {
@@ -408,8 +389,8 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 	if cfg.BasePort == 0 {
 		cfg.BasePort = EtcdProcessBasePort
 	}
-	if cfg.SnapshotCount == 0 {
-		cfg.SnapshotCount = etcdserver.DefaultSnapshotCount
+	if cfg.ServerConfig.SnapshotCount == 0 {
+		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
 
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
@@ -473,15 +454,15 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 }
 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
-	if cfg.Discovery == "" && len(cfg.DiscoveryEndpoints) == 0 {
+	if cfg.Discovery == "" && len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
 		serverCfg.InitialCluster = strings.Join(initialCluster, ",")
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster", serverCfg.InitialCluster)
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state", initialClusterState)
 	}
 
-	if len(cfg.DiscoveryEndpoints) > 0 {
-		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-token=%s", cfg.DiscoveryToken))
-		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(cfg.DiscoveryEndpoints, ",")))
+	if len(cfg.ServerConfig.DiscoveryCfg.Endpoints) > 0 {
+		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-token=%s", cfg.ServerConfig.DiscoveryCfg.Token))
+		serverCfg.Args = append(serverCfg.Args, fmt.Sprintf("--discovery-endpoints=%s", strings.Join(cfg.ServerConfig.DiscoveryCfg.Endpoints, ",")))
 	}
 }
 
@@ -521,15 +502,15 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
 
 	var dataDirPath string
-	if cfg.DataDirPath == "" {
+	if cfg.BaseDataDirPath == "" {
 		dataDirPath = tb.TempDir()
 	} else {
-		// When test cases specify the DataDirPath and there are more than
+		// When test cases specify the BaseDataDirPath and there are more than
 		// one member in the cluster, we need to create a subdirectory for
 		// each member to avoid conflict.
 		// We also create a subdirectory for one-member cluster, because we
 		// support dynamically adding new member.
-		dataDirPath = filepath.Join(cfg.DataDirPath, fmt.Sprintf("member-%d", i))
+		dataDirPath = filepath.Join(cfg.BaseDataDirPath, fmt.Sprintf("member-%d", i))
 	}
 
 	args := []string{
@@ -538,9 +519,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--advertise-client-urls", strings.Join(curls, ","),
 		"--listen-peer-urls", peerListenUrl.String(),
 		"--initial-advertise-peer-urls", peerAdvertiseUrl.String(),
-		"--initial-cluster-token", cfg.InitialToken,
+		"--initial-cluster-token", cfg.ServerConfig.InitialClusterToken,
 		"--data-dir", dataDirPath,
-		"--snapshot-count", fmt.Sprintf("%d", cfg.SnapshotCount),
+		"--snapshot-count", fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
 	var clientHttpUrl string
 	if cfg.ClientHttpSeparate {
@@ -548,21 +529,21 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--listen-client-http-urls", clientHttpUrl)
 	}
 
-	if cfg.ForceNewCluster {
+	if cfg.ServerConfig.ForceNewCluster {
 		args = append(args, "--force-new-cluster")
 	}
-	if cfg.QuotaBackendBytes > 0 {
+	if cfg.ServerConfig.QuotaBackendBytes > 0 {
 		args = append(args,
-			"--quota-backend-bytes", fmt.Sprintf("%d", cfg.QuotaBackendBytes),
+			"--quota-backend-bytes", fmt.Sprintf("%d", cfg.ServerConfig.QuotaBackendBytes),
 		)
 	}
-	if !cfg.StrictReconfigCheck {
+	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
 	}
 	if cfg.EnableV2 {
 		args = append(args, "--enable-v2")
 	}
-	if cfg.InitialCorruptCheck {
+	if cfg.ServerConfig.ExperimentalInitialCorruptCheck {
 		args = append(args, "--experimental-initial-corrupt-check")
 	}
 	var murl string
@@ -576,56 +557,56 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	args = append(args, cfg.TlsArgs()...)
 
-	if cfg.AuthTokenOpts != "" {
-		args = append(args, "--auth-token", cfg.AuthTokenOpts)
+	if cfg.ServerConfig.AuthToken != "" {
+		args = append(args, "--auth-token", cfg.ServerConfig.AuthToken)
 	}
 
-	if cfg.V2deprecation != "" {
-		args = append(args, "--v2-deprecation", cfg.V2deprecation)
+	if cfg.ServerConfig.V2Deprecation != "" {
+		args = append(args, "--v2-deprecation", string(cfg.ServerConfig.V2Deprecation))
 	}
 
 	if cfg.Discovery != "" {
 		args = append(args, "--discovery", cfg.Discovery)
 	}
 
-	if cfg.LogLevel != "" {
-		args = append(args, "--log-level", cfg.LogLevel)
+	if cfg.ServerConfig.LogLevel != "" {
+		args = append(args, "--log-level", cfg.ServerConfig.LogLevel)
 	}
 
-	if cfg.MaxConcurrentStreams != 0 {
-		args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.MaxConcurrentStreams))
+	if cfg.ServerConfig.MaxConcurrentStreams != 0 {
+		args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.ServerConfig.MaxConcurrentStreams))
 	}
 
-	if cfg.CorruptCheckTime != 0 {
-		args = append(args, "--experimental-corrupt-check-time", fmt.Sprintf("%s", cfg.CorruptCheckTime))
+	if cfg.ServerConfig.ExperimentalCorruptCheckTime != 0 {
+		args = append(args, "--experimental-corrupt-check-time", fmt.Sprintf("%s", cfg.ServerConfig.ExperimentalCorruptCheckTime))
 	}
-	if cfg.CompactHashCheckEnabled {
+	if cfg.ServerConfig.ExperimentalCompactHashCheckEnabled {
 		args = append(args, "--experimental-compact-hash-check-enabled")
 	}
-	if cfg.CompactHashCheckTime != 0 {
-		args = append(args, "--experimental-compact-hash-check-time", cfg.CompactHashCheckTime.String())
+	if cfg.ServerConfig.ExperimentalCompactHashCheckTime != 0 {
+		args = append(args, "--experimental-compact-hash-check-time", cfg.ServerConfig.ExperimentalCompactHashCheckTime.String())
 	}
-	if cfg.CompactionBatchLimit != 0 {
-		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
+	if cfg.ServerConfig.ExperimentalCompactionBatchLimit != 0 {
+		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.ServerConfig.ExperimentalCompactionBatchLimit))
 	}
-	if cfg.CompactionSleepInterval != 0 {
-		args = append(args, "--experimental-compaction-sleep-interval", cfg.CompactionSleepInterval.String())
+	if cfg.ServerConfig.ExperimentalCompactionSleepInterval != 0 {
+		args = append(args, "--experimental-compaction-sleep-interval", cfg.ServerConfig.ExperimentalCompactionSleepInterval.String())
 	}
-	if cfg.WarningUnaryRequestDuration != 0 {
-		args = append(args, "--warning-unary-request-duration", cfg.WarningUnaryRequestDuration.String())
+	if cfg.ServerConfig.WarningUnaryRequestDuration != 0 {
+		args = append(args, "--warning-unary-request-duration", cfg.ServerConfig.WarningUnaryRequestDuration.String())
 	}
-	if cfg.ExperimentalWarningUnaryRequestDuration != 0 {
-		args = append(args, "--experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration.String())
+	if cfg.ServerConfig.ExperimentalWarningUnaryRequestDuration != 0 {
+		args = append(args, "--experimental-warning-unary-request-duration", cfg.ServerConfig.ExperimentalWarningUnaryRequestDuration.String())
 	}
-	if cfg.WatchProcessNotifyInterval != 0 {
-		args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+	if cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0 {
+		args = append(args, "--experimental-watch-progress-notify-interval", cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval.String())
 	}
-	if cfg.WaitClusterReadyTimeout != 0 {
-		args = append(args, "--experimental-wait-cluster-ready-timeout", cfg.WaitClusterReadyTimeout.String())
+	if cfg.ServerConfig.ExperimentalWaitClusterReadyTimeout != 0 {
+		args = append(args, "--experimental-wait-cluster-ready-timeout", cfg.ServerConfig.ExperimentalWaitClusterReadyTimeout.String())
 	}
-	if cfg.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
-			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
+			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCatchUpEntries))
 		}
 	}
 	envVars := map[string]string{}
@@ -674,7 +655,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		ClientURL:     curl,
 		ClientHTTPURL: clientHttpUrl,
 		MetricsURL:    murl,
-		InitialToken:  cfg.InitialToken,
+		InitialToken:  cfg.ServerConfig.InitialClusterToken,
 		GoFailPort:    gofailPort,
 		Proxy:         proxyCfg,
 		LazyFSEnabled: cfg.LazyFSEnabled,
@@ -728,8 +709,8 @@ func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
 		args = append(args, "--client-crl-file", CrlPath, "--client-cert-auth")
 	}
 
-	if len(cfg.CipherSuites) > 0 {
-		args = append(args, "--cipher-suites", strings.Join(cfg.CipherSuites, ","))
+	if len(cfg.ServerConfig.CipherSuites) > 0 {
+		args = append(args, "--cipher-suites", strings.Join(cfg.ServerConfig.CipherSuites, ","))
 	}
 
 	return args

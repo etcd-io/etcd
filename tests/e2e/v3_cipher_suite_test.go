@@ -32,7 +32,7 @@ func TestCurlV3CipherSuitesMismatch(t *testing.T) { testCurlV3CipherSuites(t, fa
 func testCurlV3CipherSuites(t *testing.T, valid bool) {
 	cc := e2e.NewConfigClientTLS()
 	cc.ClusterSize = 1
-	cc.CipherSuites = []string{
+	cc.ServerConfig.CipherSuites = []string{
 		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",

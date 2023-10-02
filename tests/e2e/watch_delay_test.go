@@ -84,7 +84,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		tc := tc
-		tc.config.WatchProcessNotifyInterval = watchResponsePeriod
+		tc.config.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
 			require.NoError(t, err)
