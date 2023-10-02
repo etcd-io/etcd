@@ -354,10 +354,6 @@ func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWatchProgressNotifyInterval = interval }
 }
 
-func WithWaitClusterReadyTimeout(readyTimeout time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWaitClusterReadyTimeout = readyTimeout }
-}
-
 func WithEnvVars(ev map[string]string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.EnvVars = ev }
 }
@@ -600,9 +596,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0 {
 		args = append(args, "--experimental-watch-progress-notify-interval", cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval.String())
-	}
-	if cfg.ServerConfig.ExperimentalWaitClusterReadyTimeout != 0 {
-		args = append(args, "--experimental-wait-cluster-ready-timeout", cfg.ServerConfig.ExperimentalWaitClusterReadyTimeout.String())
 	}
 	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {

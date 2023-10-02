@@ -22,7 +22,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
@@ -100,15 +99,7 @@ func (sctx *serveCtx) serve(
 	splitHttp bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
-
-	// When the quorum isn't satisfied, then etcd server will be blocked
-	// on <-s.ReadyNotify(). Set a timeout here so that the etcd server
-	// can continue to serve serializable read request.
-	select {
-	case <-time.After(s.Cfg.WaitClusterReadyTimeout):
-		sctx.lg.Warn("timed out waiting for the ready notification")
-	case <-s.ReadyNotify():
-	}
+	<-s.ReadyNotify()
 
 	sctx.lg.Info("ready to serve client requests")
 
