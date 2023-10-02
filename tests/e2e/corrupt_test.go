@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cluster_proxy
+// +build !cluster_proxy
+
 package e2e
 
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -152,23 +156,31 @@ func TestInPlaceRecovery(t *testing.T) {
 	newCc := NewEtcdctl(epcNew.EndpointsV3(), clientNonTLS, false, false)
 	assert.NoError(t, err)
 
+	wg := sync.WaitGroup{}
 	// Rolling recovery of the servers.
 	t.Log("rolling updating servers in place...")
-	for i, newProc := range epcNew.procs {
+	for i := range epcNew.procs {
 		oldProc := epcOld.procs[i]
 		err = oldProc.Close()
 		if err != nil {
 			t.Fatalf("could not stop etcd process (%v)", err)
 		}
 		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().name)
-		err = newProc.Start()
-		if err != nil {
-			t.Fatalf("could not start etcd process (%v)", err)
-		}
-		t.Logf("new cluster server %d: %s started in-place with blank db.", i, newProc.Config().name)
+		wg.Add(1)
+		// Start servers in background to avoid blocking on server start.
+		// EtcdProcess.Start waits until etcd becomes healthy, which will not happen here until we restart at least 2 members.
+		go func(proc etcdProcess) {
+			defer wg.Done()
+			err = proc.Start()
+			if err != nil {
+				t.Errorf("could not start etcd process (%v)", err)
+			}
+			t.Logf("new cluster server: %s started in-place with blank db.", proc.Config().name)
+		}(epcNew.procs[i])
 		t.Log("sleeping 5 sec to let nodes do periodical check...")
 		time.Sleep(5 * time.Second)
 	}
+	wg.Wait()
 	t.Log("new cluster started.")
 
 	alarmResponse, err := newCc.AlarmList()
