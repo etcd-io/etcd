@@ -12,8 +12,8 @@ github.com/alecthomas/participle/v2 v2.1.0 h1:z7dElHRrOEEq45F2TG5cbQihMtNTv8vwld
 github.com/alecthomas/participle/v2 v2.1.0/go.mod h1:Y1+hAs8DHPmc3YUFzqllV+eSQ9ljPTk0ZkPMtEdAx2c=
 github.com/alecthomas/repr v0.2.0 h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk=
 github.com/alecthomas/repr v0.2.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/alexfalkowski/gocovmerge v1.2.0 h1:1TsHhtHbALNTdGFdeACK7EeJZ/zo2Z1TSC3ZBNZWSP8=
-github.com/alexfalkowski/gocovmerge v1.2.0/go.mod h1:wtgdp1De/7EXB7N1KBP5yBiUkeiwPIdZUrs1q3RekPc=
+github.com/alexfalkowski/gocovmerge v1.2.1 h1:A5j5eGZL1vwGmtMFu2pu9p2skraWTHTQTuf31Pc+Bvc=
+github.com/alexfalkowski/gocovmerge v1.2.1/go.mod h1:fKKMhPUyPBf/SF8xvMVkgpblgOT1zSXBK5+03gwgqJM=
 github.com/alexkohler/nakedret v1.0.2 h1:Svug5bxPnxbjw1jYlbHlnYAEORehXzsotyMUn2NQO2E=
 github.com/alexkohler/nakedret v1.0.2/go.mod h1:pRpUzThUf0nEk2mzur20zmf+6AVzw+3pDWQA0ehUZhI=
 github.com/bitfield/gotestdox v0.2.1 h1:Zj8IMLAO5/oiAKoMmtN96eyFiPZraJRTH2p0zDgtxc0=
