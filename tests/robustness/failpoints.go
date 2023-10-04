@@ -66,6 +66,7 @@ var (
 	RaftAfterWALReleasePanic                 Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftBeforeSaveSnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftAfterSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	beforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
 	allFailpoints                                      = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
 		DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
@@ -75,6 +76,7 @@ var (
 		CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
 		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
+		beforeApplyOneConfChangeSleep,
 	}
 )
 
@@ -252,7 +254,7 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 		default:
 		}
 		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
-		err := member.Failpoints().Setup(ctx, f.failpoint, "panic")
+		err := member.Failpoints().SetupHTTP(ctx, f.failpoint, "panic")
 		if err != nil {
 			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			continue
@@ -318,7 +320,7 @@ func (f goPanicFailpoint) Available(config e2e.EtcdProcessClusterConfig, member 
 }
 
 func (f goPanicFailpoint) Name() string {
-	return f.failpoint
+	return fmt.Sprintf("%s=panic()", f.failpoint)
 }
 
 type triggerDefrag struct{}
@@ -526,4 +528,49 @@ func (f delayPeerNetworkFailpoint) Name() string {
 
 func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
+}
+
+type killAndGofailSleep struct {
+	failpoint string
+	time      time.Duration
+}
+
+func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	for member.IsRunning() {
+		err := member.Kill()
+		if err != nil {
+			lg.Info("Sending kill signal failed", zap.Error(err))
+		}
+		err = member.Wait(ctx)
+		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			lg.Info("Failed to kill the process", zap.Error(err))
+			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
+		}
+	}
+	lg.Info("Setting up goFailpoint", zap.String("failpoint", f.Name()))
+	err := member.Failpoints().SetupEnv(f.failpoint, fmt.Sprintf(`sleep(%q)`, f.time))
+	if err != nil {
+		return err
+	}
+	err = member.Start(ctx)
+	if err != nil {
+		return err
+	}
+	// TODO: Check gofail status (https://github.com/etcd-io/gofail/pull/47) and wait for sleep to beis executed at least once.
+	return nil
+}
+
+func (f killAndGofailSleep) Name() string {
+	return fmt.Sprintf("%s=sleep(%s)", f.failpoint, f.time)
+}
+
+func (f killAndGofailSleep) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
+	memberFailpoints := member.Failpoints()
+	if memberFailpoints == nil {
+		return false
+	}
+	available := memberFailpoints.Available()
+	_, found := available[f.failpoint]
+	return found
 }
