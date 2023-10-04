@@ -69,7 +69,6 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
-		e2e.WithWaitClusterReadyTimeout(1*time.Nanosecond),
 		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("2s")`}),
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)

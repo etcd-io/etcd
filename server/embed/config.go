@@ -68,7 +68,6 @@ const (
 	DefaultGRPCKeepAliveInterval       = 2 * time.Hour
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
 	DefaultDowngradeCheckTime          = 5 * time.Second
-	DefaultWaitClusterReadyTimeout     = 5 * time.Second
 	DefaultAutoCompactionMode          = "periodic"
 
 	DefaultDiscoveryDialTimeout      = 2 * time.Second
@@ -242,10 +241,9 @@ type Config struct {
 	Durl         string                      `json:"discovery"`
 	DiscoveryCfg v3discovery.DiscoveryConfig `json:"discovery-config"`
 
-	InitialCluster                      string        `json:"initial-cluster"`
-	InitialClusterToken                 string        `json:"initial-cluster-token"`
-	StrictReconfigCheck                 bool          `json:"strict-reconfig-check"`
-	ExperimentalWaitClusterReadyTimeout time.Duration `json:"wait-cluster-ready-timeout"`
+	InitialCluster      string `json:"initial-cluster"`
+	InitialClusterToken string `json:"initial-cluster-token"`
+	StrictReconfigCheck bool   `json:"strict-reconfig-check"`
 
 	// AutoCompactionMode is either 'periodic' or 'revision'.
 	AutoCompactionMode string `json:"auto-compaction-mode"`
@@ -502,9 +500,8 @@ func NewConfig() *Config {
 		AdvertisePeerUrls:   []url.URL{*apurl},
 		AdvertiseClientUrls: []url.URL{*acurl},
 
-		ClusterState:                        ClusterStateFlagNew,
-		InitialClusterToken:                 "etcd-cluster",
-		ExperimentalWaitClusterReadyTimeout: DefaultWaitClusterReadyTimeout,
+		ClusterState:        ClusterStateFlagNew,
+		InitialClusterToken: "etcd-cluster",
 
 		StrictReconfigCheck: DefaultStrictReconfigCheck,
 		Metrics:             "basic",
@@ -728,7 +725,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
 	fs.UintVar(&cfg.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
 	fs.IntVar(&cfg.ExperimentalMaxLearners, "experimental-max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
-	fs.DurationVar(&cfg.ExperimentalWaitClusterReadyTimeout, "experimental-wait-cluster-ready-timeout", cfg.ExperimentalWaitClusterReadyTimeout, "Maximum duration to wait for the cluster to be ready.")
 	fs.Uint64Var(&cfg.SnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries.")
 
 	// unsafe
