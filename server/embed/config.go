@@ -56,19 +56,21 @@ const (
 	ClusterStateFlagNew      = "new"
 	ClusterStateFlagExisting = "existing"
 
-	DefaultName                        = "default"
-	DefaultMaxSnapshots                = 5
-	DefaultMaxWALs                     = 5
-	DefaultMaxTxnOps                   = uint(128)
-	DefaultWarningApplyDuration        = 100 * time.Millisecond
-	DefaultWarningUnaryRequestDuration = 300 * time.Millisecond
-	DefaultMaxRequestBytes             = 1.5 * 1024 * 1024
-	DefaultMaxConcurrentStreams        = math.MaxUint32
-	DefaultGRPCKeepAliveMinTime        = 5 * time.Second
-	DefaultGRPCKeepAliveInterval       = 2 * time.Hour
-	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
-	DefaultDowngradeCheckTime          = 5 * time.Second
-	DefaultAutoCompactionMode          = "periodic"
+	DefaultName                             = "default"
+	DefaultMaxSnapshots                     = 5
+	DefaultMaxWALs                          = 5
+	DefaultMaxTxnOps                        = uint(128)
+	DefaultWarningApplyDuration             = 100 * time.Millisecond
+	DefaultWarningUnaryRequestDuration      = 300 * time.Millisecond
+	DefaultMaxRequestBytes                  = 1.5 * 1024 * 1024
+	DefaultMaxConcurrentStreams             = math.MaxUint32
+	DefaultGRPCKeepAliveMinTime             = 5 * time.Second
+	DefaultGRPCKeepAliveInterval            = 2 * time.Hour
+	DefaultGRPCKeepAliveTimeout             = 20 * time.Second
+	DefaultDowngradeCheckTime               = 5 * time.Second
+	DefaultAutoCompactionMode               = "periodic"
+	DefaultAuthToken                        = "simple"
+	DefaultExperimentalCompactHashCheckTime = time.Minute
 
 	DefaultDiscoveryDialTimeout      = 2 * time.Second
 	DefaultDiscoveryRequestTimeOut   = 5 * time.Second
@@ -509,7 +511,7 @@ func NewConfig() *Config {
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
 
-		AuthToken:    "simple",
+		AuthToken:    DefaultAuthToken,
 		BcryptCost:   uint(bcrypt.DefaultCost),
 		AuthTokenTTL: 300,
 
@@ -530,7 +532,7 @@ func NewConfig() *Config {
 		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
 
 		ExperimentalCompactHashCheckEnabled: false,
-		ExperimentalCompactHashCheckTime:    time.Minute,
+		ExperimentalCompactHashCheckTime:    DefaultExperimentalCompactHashCheckTime,
 
 		V2Deprecation: config.V2_DEPR_DEFAULT,
 

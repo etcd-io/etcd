@@ -30,8 +30,10 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	config2 "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -177,17 +179,14 @@ type EtcdProcessClusterConfig struct {
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
-	return &EtcdProcessClusterConfig{
+	cfg := &EtcdProcessClusterConfig{
 		ClusterSize: 3,
 		CN:          true,
 
-		ServerConfig: embed.Config{
-			InitialClusterToken:    "new",
-			StrictReconfigCheck:    true,
-			SnapshotCount:          etcdserver.DefaultSnapshotCount,
-			SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
-		},
+		ServerConfig: *embed.NewConfig(),
 	}
+	cfg.ServerConfig.InitialClusterToken = "new"
+	return cfg
 }
 
 func NewConfig(opts ...EPClusterOption) *EtcdProcessClusterConfig {
@@ -553,11 +552,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	args = append(args, cfg.TlsArgs()...)
 
-	if cfg.ServerConfig.AuthToken != "" {
+	if cfg.ServerConfig.AuthToken != "" && cfg.ServerConfig.AuthToken != embed.DefaultAuthToken {
 		args = append(args, "--auth-token", cfg.ServerConfig.AuthToken)
 	}
 
-	if cfg.ServerConfig.V2Deprecation != "" {
+	if cfg.ServerConfig.V2Deprecation != "" && cfg.ServerConfig.V2Deprecation != config2.V2_DEPR_DEFAULT {
 		args = append(args, "--v2-deprecation", string(cfg.ServerConfig.V2Deprecation))
 	}
 
@@ -565,11 +564,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--discovery", cfg.Discovery)
 	}
 
-	if cfg.ServerConfig.LogLevel != "" {
+	if cfg.ServerConfig.LogLevel != "" && cfg.ServerConfig.LogLevel != logutil.DefaultLogLevel {
 		args = append(args, "--log-level", cfg.ServerConfig.LogLevel)
 	}
 
-	if cfg.ServerConfig.MaxConcurrentStreams != 0 {
+	if cfg.ServerConfig.MaxConcurrentStreams != 0 && cfg.ServerConfig.MaxConcurrentStreams != embed.DefaultMaxConcurrentStreams {
 		args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.ServerConfig.MaxConcurrentStreams))
 	}
 
@@ -579,7 +578,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.ServerConfig.ExperimentalCompactHashCheckEnabled {
 		args = append(args, "--experimental-compact-hash-check-enabled")
 	}
-	if cfg.ServerConfig.ExperimentalCompactHashCheckTime != 0 {
+	if cfg.ServerConfig.ExperimentalCompactHashCheckTime != 0 && cfg.ServerConfig.ExperimentalCompactHashCheckTime != embed.DefaultExperimentalCompactHashCheckTime {
 		args = append(args, "--experimental-compact-hash-check-time", cfg.ServerConfig.ExperimentalCompactHashCheckTime.String())
 	}
 	if cfg.ServerConfig.ExperimentalCompactionBatchLimit != 0 {
@@ -597,7 +596,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0 {
 		args = append(args, "--experimental-watch-progress-notify-interval", cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval.String())
 	}
-	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+	if cfg.ServerConfig.SnapshotCatchUpEntries != 0 && cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
 			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCatchUpEntries))
 		}
