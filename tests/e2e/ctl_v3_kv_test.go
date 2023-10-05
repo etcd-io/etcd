@@ -17,9 +17,11 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -179,9 +181,11 @@ func getFormatTest(cx ctlCtx) {
 			cmdArgs = append(cmdArgs, "--print-value-only")
 		}
 		cmdArgs = append(cmdArgs, "abc")
-		if err := e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: tt.wstr}); err != nil {
-			cx.t.Errorf("#%d: error (%v), wanted %v", i, err, tt.wstr)
+		lines, err := e2e.RunUtilCompletion(cmdArgs, cx.envMap)
+		if err != nil {
+			cx.t.Errorf("#%d: error (%v)", i, err)
 		}
+		assert.Contains(cx.t, strings.Join(lines, "\n"), tt.wstr)
 	}
 }
 
