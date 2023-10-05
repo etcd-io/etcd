@@ -43,8 +43,8 @@ func validateWatch(t *testing.T, cfg Config, reports []report.ClientReport) []mo
 }
 
 func validateBookmarkable(t *testing.T, report report.ClientReport) {
-	var lastProgressNotifyRevision int64
 	for _, op := range report.Watch {
+		var lastProgressNotifyRevision int64
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision <= lastProgressNotifyRevision {
@@ -59,8 +59,8 @@ func validateBookmarkable(t *testing.T, report report.ClientReport) {
 }
 
 func validateOrdered(t *testing.T, report report.ClientReport) {
-	var lastEventRevision int64 = 1
 	for _, op := range report.Watch {
+		var lastEventRevision int64 = 1
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision < lastEventRevision {
@@ -73,9 +73,8 @@ func validateOrdered(t *testing.T, report report.ClientReport) {
 }
 
 func validateUnique(t *testing.T, expectUniqueRevision bool, report report.ClientReport) {
-	uniqueOperations := map[any]struct{}{}
-
 	for _, op := range report.Watch {
+		uniqueOperations := map[any]struct{}{}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				var key any
@@ -97,8 +96,8 @@ func validateUnique(t *testing.T, expectUniqueRevision bool, report report.Clien
 }
 
 func validateAtomic(t *testing.T, report report.ClientReport) {
-	var lastEventRevision int64 = 1
 	for _, op := range report.Watch {
+		var lastEventRevision int64 = 1
 		for _, resp := range op.Responses {
 			if len(resp.Events) > 0 {
 				if resp.Events[0].Revision == lastEventRevision {

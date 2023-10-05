@@ -23,6 +23,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
@@ -44,6 +45,173 @@ func TestValidate(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+		})
+	}
+}
+
+func TestValidateWatch(t *testing.T) {
+	tcs := []struct {
+		name    string
+		reports []report.ClientReport
+	}{
+		{
+			name: "earlier event after bookmark in separate request",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									IsProgressNotify: true,
+									Revision:         100,
+								},
+							},
+						},
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 99,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											Event: model.Event{
+												Type: model.PutOperation,
+												Key:  "a",
+												Value: model.ValueOrHash{
+													Value: "99",
+												},
+											},
+											Revision: 99,
+										},
+									},
+									Revision: 100,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "earlier event after in separate request",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											Event: model.Event{
+												Type: model.PutOperation,
+												Key:  "a",
+												Value: model.ValueOrHash{
+													Value: "100",
+												},
+											},
+											Revision: 100,
+										},
+									},
+									Revision: 100,
+								},
+							},
+						},
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 99,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											Event: model.Event{
+												Type: model.PutOperation,
+												Key:  "a",
+												Value: model.ValueOrHash{
+													Value: "99",
+												},
+											},
+											Revision: 99,
+										},
+									},
+									Revision: 100,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "duplicated event between two separate requests",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											Event: model.Event{
+												Type: model.PutOperation,
+												Key:  "a",
+												Value: model.ValueOrHash{
+													Value: "100",
+												},
+											},
+											Revision: 100,
+										},
+									},
+									Revision: 100,
+								},
+							},
+						},
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 100,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											Event: model.Event{
+												Type: model.PutOperation,
+												Key:  "a",
+												Value: model.ValueOrHash{
+													Value: "100",
+												},
+											},
+											Revision: 100,
+										},
+									},
+									Revision: 100,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			validateWatch(t, Config{ExpectRevisionUnique: true}, tc.reports)
 		})
 	}
 }
