@@ -25,7 +25,7 @@ Access to the infrastructure is defined by the infra admins table below:
 |---------------------------|----------------|--------------------|--------------------|
 | Marek Siarkowicz          | @serathius     | @ Serathius        | Ref MAINTAINERS    |
 | Benjamin Wang             | @ahrtr         | @ Benjamin Wang    | Ref MAINTAINERS    |
-| Davanum Srinivas          | @dimns         | @ Dims             | davanum@gmail.com  |
+| Davanum Srinivas          | @dims          | @ Dims             | davanum@gmail.com  |
 | Chao Chen                 | @chaochn47     | @ Chao Chen        | chaochn@amazon.com |
 | James Blair               | @jmhbnz        | @ James Blair      | Ref MAINTAINERS    |
 
@@ -36,6 +36,8 @@ Individuals in this table are granted access to the infrastructure in two ways:
 An etcd project exists under the CNCF organisation in the Equinix Metal web console. The direct url to the etcd console is <https://console.equinix.com/projects/1b8c1eb7-983c-4b40-97e0-e317406e232e>.
 
 When a new person is added to the infra admins table, an existing member or etcd maintainer should raise an issue in the [CNCF Community Infrastructure Labs](https://github.com/cncf/cluster/issues) to ensure they are granted web console access.
+
+Refer to example issue: <https://github.com/cncf/cluster/issues/242>.
 
 ### 2. Server ssh access
 
