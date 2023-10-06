@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap/zaptest"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -16,16 +18,17 @@ import (
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.uber.org/zap/zaptest"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 type fakeHealthServer struct {
 	fakeServer
-	health   string
-	apiError error
+	health    string
+	apiError  error
+	authStore auth.AuthStore
 }
 
-func (s *fakeHealthServer) Range(ctx context.Context, request *pb.RangeRequest) (*pb.RangeResponse, error) {
+func (s *fakeHealthServer) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
 	return nil, s.apiError
 }
 
@@ -39,12 +42,13 @@ func (s *fakeHealthServer) Leader() types.ID {
 	}
 	return types.ID(raft.None)
 }
-func (s *fakeHealthServer) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
+func (s *fakeHealthServer) Do(_ context.Context, _ pb.Request) (etcdserver.Response, error) {
 	if s.health == "true" {
 		return etcdserver.Response{}, nil
 	}
 	return etcdserver.Response{}, fmt.Errorf("fail health check")
 }
+func (s *fakeHealthServer) AuthStore() auth.AuthStore   { return s.authStore }
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
 
 func TestHealthHandler(t *testing.T) {
@@ -109,20 +113,6 @@ func TestHealthHandler(t *testing.T) {
 			expectHealth:     "true",
 		},
 		{
-			name:             "Healthy even if authentication failed",
-			healthCheckURL:   "/health",
-			apiError:         auth.ErrUserEmpty,
-			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
-		},
-		{
-			name:             "Healthy even if authorization failed",
-			healthCheckURL:   "/health",
-			apiError:         auth.ErrPermissionDenied,
-			expectStatusCode: http.StatusOK,
-			expectHealth:     "true",
-		},
-		{
 			name:             "Unhealthy if api is not available",
 			healthCheckURL:   "/health",
 			apiError:         fmt.Errorf("Unexpected error"),
@@ -134,10 +124,14 @@ func TestHealthHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mux := http.NewServeMux()
+			lg := zaptest.NewLogger(t)
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			defer betesting.Close(t, be)
 			HandleHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
 				fakeServer: fakeServer{alarms: tt.alarms},
 				health:     tt.expectHealth,
 				apiError:   tt.apiError,
+				authStore:  auth.NewAuthStore(lg, be, nil, 0),
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()

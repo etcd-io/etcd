@@ -41,6 +41,7 @@ type ServerHealth interface {
 	serverHealthV2V3
 	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
 	Config() config.ServerConfig
+	AuthStore() auth.AuthStore
 }
 
 type serverHealthV2V3 interface {
@@ -50,33 +51,33 @@ type serverHealthV2V3 interface {
 
 // HandleHealth registers metrics and health handlers for v2.
 func HandleHealthForV2(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
+	mux.Handle(PathHealth, NewHealthHandler(lg, func(ctx context.Context, excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
 			return h
 		}
 		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkV2API(lg, srv)
+		return checkV2API(ctx, lg, srv)
 	}))
 }
 
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
 func HandleHealth(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
-	mux.Handle(PathHealth, NewHealthHandler(lg, func(excludedAlarms AlarmSet, serializable bool) Health {
+	mux.Handle(PathHealth, NewHealthHandler(lg, func(ctx context.Context, excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
 			return h
 		}
 		if h := checkLeader(lg, srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkAPI(lg, srv, serializable)
+		return checkAPI(ctx, lg, srv, serializable)
 	}))
 }
 
 // NewHealthHandler handles '/health' requests.
-func NewHealthHandler(lg *zap.Logger, hfunc func(excludedAlarms AlarmSet, Serializable bool) Health) http.HandlerFunc {
+func NewHealthHandler(lg *zap.Logger, hfunc func(ctx context.Context, excludedAlarms AlarmSet, Serializable bool) Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -90,7 +91,7 @@ func NewHealthHandler(lg *zap.Logger, hfunc func(excludedAlarms AlarmSet, Serial
 		// This is useful for probes attempting to validate the liveness of
 		// the etcd process vs readiness of the cluster to serve requests.
 		serializableFlag := getSerializableFlag(r)
-		h := hfunc(excludedAlarms, serializableFlag)
+		h := hfunc(r.Context(), excludedAlarms, serializableFlag)
 		defer func() {
 			if h.Health == "true" {
 				healthSuccess.Inc()
@@ -197,9 +198,9 @@ func checkLeader(lg *zap.Logger, srv serverHealthV2V3, serializable bool) Health
 	return h
 }
 
-func checkV2API(lg *zap.Logger, srv etcdserver.ServerV2) Health {
+func checkV2API(ctx context.Context, lg *zap.Logger, srv etcdserver.ServerV2) Health {
 	h := Health{Health: "true"}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	_, err := srv.Do(ctx, pb.Request{Method: "QGET"})
 	cancel()
 	if err != nil {
@@ -212,13 +213,14 @@ func checkV2API(lg *zap.Logger, srv etcdserver.ServerV2) Health {
 	return h
 }
 
-func checkAPI(lg *zap.Logger, srv ServerHealth, serializable bool) Health {
+func checkAPI(ctx context.Context, lg *zap.Logger, srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
 	cfg := srv.Config()
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
-	_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+	ctx = srv.AuthStore().WithRoot(ctx)
+	cctx, cancel := context.WithTimeout(ctx, cfg.ReqTimeout())
+	_, err := srv.Range(cctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
-	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
+	if err != nil {
 		h.Health = "false"
 		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
 		lg.Warn("serving /health false; Range fails", zap.Error(err))
