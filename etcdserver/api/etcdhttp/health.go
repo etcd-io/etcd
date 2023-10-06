@@ -38,6 +38,7 @@ type ServerHealth interface {
 	serverHealthV2V3
 	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
 	Config() etcdserver.ServerConfig
+	AuthStore() auth.AuthStore
 }
 
 type serverHealthV2V3 interface {
@@ -47,33 +48,33 @@ type serverHealthV2V3 interface {
 
 // HandleHealthForV2 registers metrics and health handlers for v2.
 func HandleHealthForV2(mux *http.ServeMux, srv etcdserver.ServerV2) {
-	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
+	mux.Handle(PathHealth, NewHealthHandler(func(ctx context.Context, excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
 			return h
 		}
 		if h := checkLeader(srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkV2API(srv)
+		return checkV2API(ctx, srv)
 	}))
 }
 
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
 func HandleHealth(mux *http.ServeMux, srv ServerHealth) {
-	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
+	mux.Handle(PathHealth, NewHealthHandler(func(ctx context.Context, excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
 			return h
 		}
 		if h := checkLeader(srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkAPI(srv, serializable)
+		return checkAPI(ctx, srv, serializable)
 	}))
 }
 
 // NewHealthHandler handles '/health' requests.
-func NewHealthHandler(hfunc func(excludedAlarms AlarmSet, serializable bool) Health) http.HandlerFunc {
+func NewHealthHandler(hfunc func(ctx context.Context, excludedAlarms AlarmSet, serializable bool) Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -87,7 +88,7 @@ func NewHealthHandler(hfunc func(excludedAlarms AlarmSet, serializable bool) Hea
 		// This is useful for probes attempting to validate the liveness of
 		// the etcd process vs readiness of the cluster to serve requests.
 		serializableFlag := getSerializableFlag(r)
-		h := hfunc(excludedAlarms, serializableFlag)
+		h := hfunc(r.Context(), excludedAlarms, serializableFlag)
 		defer func() {
 			if h.Health == "true" {
 				healthSuccess.Inc()
@@ -193,9 +194,9 @@ func checkLeader(srv serverHealthV2V3, serializable bool) Health {
 	return h
 }
 
-func checkV2API(srv etcdserver.ServerV2) Health {
+func checkV2API(ctx context.Context, srv etcdserver.ServerV2) Health {
 	h := Health{Health: "true"}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
 	_, err := srv.Do(ctx, pb.Request{Method: "QGET"})
 	cancel()
 	if err != nil {
@@ -207,13 +208,14 @@ func checkV2API(srv etcdserver.ServerV2) Health {
 	return h
 }
 
-func checkAPI(srv ServerHealth, serializable bool) Health {
+func checkAPI(ctx context.Context, srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
 	cfg := srv.Config()
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
-	_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+	ctx = srv.AuthStore().WithRoot(ctx)
+	cctx, cancel := context.WithTimeout(ctx, cfg.ReqTimeout())
+	_, err := srv.Range(cctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
-	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
+	if err != nil {
 		h.Health = "false"
 		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
 		plog.Warningf("serving /health false; Range failed %v (status code %d)", err, http.StatusServiceUnavailable)
