@@ -316,7 +316,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	epc, err = e2e.StartEtcdProcessCluster(ctx, epc, cfg)
+	epc, err = e2e.StartEtcdProcessCluster(ctx, t, epc, cfg)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

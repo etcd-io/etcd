@@ -120,5 +120,5 @@ func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []str
 	}
 
 	// start the cluster
-	return e2e.StartEtcdProcessCluster(context.TODO(), epc, cfg)
+	return e2e.StartEtcdProcessCluster(context.TODO(), t, epc, cfg)
 }

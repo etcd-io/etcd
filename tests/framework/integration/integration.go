@@ -169,6 +169,11 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 }
 
 func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
+	if opts.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
 	var clientOpts []clientv3.OpOption
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
