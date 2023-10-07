@@ -314,9 +314,7 @@ func (f goPanicFailpoint) Available(config e2e.EtcdProcessClusterConfig, member 
 	if memberFailpoints == nil {
 		return false
 	}
-	available := memberFailpoints.Available()
-	_, found := available[f.failpoint]
-	return found
+	return memberFailpoints.Available(f.failpoint)
 }
 
 func (f goPanicFailpoint) Name() string {
@@ -570,7 +568,5 @@ func (f killAndGofailSleep) Available(config e2e.EtcdProcessClusterConfig, membe
 	if memberFailpoints == nil {
 		return false
 	}
-	available := memberFailpoints.Available()
-	_, found := available[f.failpoint]
-	return found
+	return memberFailpoints.Available(f.failpoint)
 }
