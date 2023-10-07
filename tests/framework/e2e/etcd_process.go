@@ -17,6 +17,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -338,7 +339,15 @@ type BinaryFailpoints struct {
 	availableCache map[string]struct{}
 }
 
-func (f *BinaryFailpoints) Setup(ctx context.Context, failpoint, payload string) error {
+func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
+	if f.member.IsRunning() {
+		return errors.New("cannot setup environment variable while process is running")
+	}
+	f.member.Config().EnvVars["GOFAIL_FAILPOINTS"] = fmt.Sprintf("%s=%s", failpoint, payload)
+	return nil
+}
+
+func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
 	failpointUrl := url.URL{
 		Scheme: "http",
