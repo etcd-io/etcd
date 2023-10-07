@@ -39,10 +39,11 @@ const (
 )
 
 type testCase struct {
-	name          string
-	config        e2e.EtcdProcessClusterConfig
-	maxWatchDelay time.Duration
-	dbSizeBytes   int
+	name                string
+	client              e2e.ClientConfig
+	clientHttpSerparate bool
+	maxWatchDelay       time.Duration
+	dbSizeBytes         int
 }
 
 const (
@@ -56,27 +57,27 @@ const (
 var tcs = []testCase{
 	{
 		name:          "NoTLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "TLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}},
+		client:        e2e.ClientConfig{ConnectionType: e2e.ClientTLS},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
-		name:          "SeparateHttpNoTLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, ClientHttpSeparate: true},
-		maxWatchDelay: 150 * time.Millisecond,
-		dbSizeBytes:   5 * Mega,
+		name:                "SeparateHttpNoTLS",
+		clientHttpSerparate: true,
+		maxWatchDelay:       150 * time.Millisecond,
+		dbSizeBytes:         5 * Mega,
 	},
 	{
-		name:          "SeparateHttpTLS",
-		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}, ClientHttpSeparate: true},
-		maxWatchDelay: 150 * time.Millisecond,
-		dbSizeBytes:   5 * Mega,
+		name:                "SeparateHttpTLS",
+		client:              e2e.ClientConfig{ConnectionType: e2e.ClientTLS},
+		clientHttpSerparate: true,
+		maxWatchDelay:       150 * time.Millisecond,
+		dbSizeBytes:         5 * Mega,
 	},
 }
 
@@ -84,12 +85,16 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		tc := tc
-		tc.config.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
+		cfg := e2e.DefaultConfig()
+		cfg.ClusterSize = 1
+		cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
+		cfg.Client = tc.client
+		cfg.ClientHttpSeparate = tc.clientHttpSerparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
+			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -105,11 +110,16 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 func TestWatchDelayForManualProgressNotification(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
+		tc := tc
+		cfg := e2e.DefaultConfig()
+		cfg.ClusterSize = 1
+		cfg.Client = tc.client
+		cfg.ClientHttpSeparate = tc.clientHttpSerparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
+			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -137,11 +147,16 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 func TestWatchDelayForEvent(t *testing.T) {
 	e2e.BeforeTest(t)
 	for _, tc := range tcs {
+		tc := tc
+		cfg := e2e.DefaultConfig()
+		cfg.ClusterSize = 1
+		cfg.Client = tc.client
+		cfg.ClientHttpSeparate = tc.clientHttpSerparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(&tc.config))
+			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsGRPC(), tc.config.Client)
+			c := newClient(t, clus.EndpointsGRPC(), tc.client)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
