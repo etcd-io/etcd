@@ -336,7 +336,7 @@ func (ep *EtcdServerProcess) Failpoints() *BinaryFailpoints {
 
 type BinaryFailpoints struct {
 	member         EtcdProcess
-	availableCache map[string]struct{}
+	availableCache map[string]string
 }
 
 func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
@@ -373,18 +373,28 @@ var httpClient = http.Client{
 	Timeout: 10 * time.Millisecond,
 }
 
-func (f *BinaryFailpoints) Available() map[string]struct{} {
+func (f *BinaryFailpoints) Available(failpoint string) bool {
 	if f.availableCache == nil {
-		fs, err := fetchFailpoints(f.member)
+		fs, err := failpoints(f.member)
 		if err != nil {
 			panic(err)
 		}
 		f.availableCache = fs
 	}
-	return f.availableCache
+	_, found := f.availableCache[failpoint]
+	return found
 }
 
-func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
+func failpoints(member EtcdProcess) (map[string]string, error) {
+	body, err := fetchFailpointsBody(member)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	return parseFailpointsBody(body)
+}
+
+func fetchFailpointsBody(member EtcdProcess) (io.ReadCloser, error) {
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
 	failpointUrl := url.URL{
 		Scheme: "http",
@@ -394,15 +404,30 @@ func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("invalid status code, %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+func parseFailpointsBody(body io.Reader) (map[string]string, error) {
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
-	text := strings.ReplaceAll(string(body), "=", "")
-	failpoints := map[string]struct{}{}
-	for _, f := range strings.Split(text, "\n") {
-		failpoints[f] = struct{}{}
+	lines := strings.Split(string(data), "\n")
+	failpoints := map[string]string{}
+	for _, line := range lines {
+		// Format:
+		// failpoint=value
+		parts := strings.SplitN(line, "=", 2)
+		failpoint := parts[0]
+		var value string
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		failpoints[failpoint] = value
 	}
 	return failpoints, nil
 }
