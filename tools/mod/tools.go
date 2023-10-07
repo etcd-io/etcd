@@ -22,7 +22,6 @@ package tools
 
 import (
 	_ "github.com/alexfalkowski/gocovmerge"
-	_ "github.com/alexkohler/nakedret"
 	_ "github.com/chzchzchz/goword"
 	_ "github.com/cloudflare/cfssl/cmd/cfssl"
 	_ "github.com/cloudflare/cfssl/cmd/cfssljson"

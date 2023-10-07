@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	github.com/alexfalkowski/gocovmerge v1.2.1
-	github.com/alexkohler/nakedret v1.0.2
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e

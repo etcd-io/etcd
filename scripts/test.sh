@@ -438,10 +438,6 @@ function unconvert_pass {
   run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
 }
 
-function nakedret_pass {
-  run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret/cmd/nakedret"
-}
-
 function license_header_per_module {
   # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()

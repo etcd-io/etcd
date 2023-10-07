@@ -19,6 +19,7 @@ linters:
     # - varcheck
     - goimports
     - ineffassign
+    - nakedret
     - revive
     - staticcheck
     - stylecheck
@@ -27,6 +28,9 @@ linters:
 linters-settings: # please keep this alphabetized
   goimports:
     local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.
+  nakedret:
+    # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
+    max-func-lines: 5
   revive:
     ignore-generated-header: false
     severity: error
