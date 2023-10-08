@@ -1262,6 +1262,17 @@ func (s *EtcdServer) Stop() {
 	s.HardStop()
 }
 
+// IsRaftLoopBlocked checks whether the raft loop has blocked for at least
+// the duration specified by `timeout`, and it defaults to 2*ElectionTimeout,
+// which is the maximum time to trigger a new leader election.
+// If the returned error isn't nil, then it's blocked; otherwise not.
+func (s *EtcdServer) IsRaftLoopBlocked(timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = 2 * s.Cfg.ElectionTimeout()
+	}
+	return s.r.trySendDummyEvent(timeout)
+}
+
 // ReadyNotify returns a channel that will be closed when the server
 // is ready to serve client requests
 func (s *EtcdServer) ReadyNotify() <-chan struct{} { return s.readych }
