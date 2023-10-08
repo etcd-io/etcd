@@ -83,6 +83,7 @@ func TestRobustness(t *testing.T) {
 		scenarios = append(scenarios, testScenario{
 			name:    name,
 			traffic: tp.Traffic,
+			profile: tp.Profile,
 			cluster: *e2e.NewConfig(clusterOfSize1Options...),
 		})
 	}
@@ -98,12 +99,15 @@ func TestRobustness(t *testing.T) {
 		scenarios = append(scenarios, testScenario{
 			name:    name,
 			traffic: tp.Traffic,
+			profile: tp.Profile,
 			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue14370",
 		failpoint: RaftBeforeSavePanic,
+		profile:   traffic.LowTraffic,
+		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
@@ -112,6 +116,8 @@ func TestRobustness(t *testing.T) {
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue14685",
 		failpoint: DefragBeforeCopyPanic,
+		profile:   traffic.LowTraffic,
+		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
@@ -131,6 +137,8 @@ func TestRobustness(t *testing.T) {
 		watch: watchConfig{
 			requestProgress: true,
 		},
+		profile: traffic.LowTraffic,
+		traffic: traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 		),
@@ -151,13 +159,6 @@ func TestRobustness(t *testing.T) {
 		})
 	}
 	for _, scenario := range scenarios {
-		if scenario.traffic == nil {
-			scenario.traffic = traffic.EtcdPutDeleteLease
-		}
-		if scenario.profile == (traffic.Profile{}) {
-			scenario.profile = traffic.LowTraffic
-		}
-
 		t.Run(scenario.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.cluster.Logger = lg
