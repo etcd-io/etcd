@@ -22,6 +22,13 @@ jobs:
         with:
           version: '3.20.3'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: |
+          set -euo pipefail
+
+          cargo install marker --version 0.9.0
       - run: |
           set -euo pipefail
 

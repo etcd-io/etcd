@@ -35,7 +35,7 @@ A public disclosure date is negotiated by the etcd Product Security Committee an
 ## Security Audit
 
 A third party security audit was performed by Trail of Bits, find the full report [here](SECURITY_AUDIT.pdf).
-A third party fuzzing audit was performed by Ada Logics, find the full report [here](FUZZING_AUDIT_2022.pdf).
+A third party fuzzing audit was performed by Ada Logics, find the full report [here](FUZZING_AUDIT_2022.PDF).
 
 ## Private Distributor List
 
