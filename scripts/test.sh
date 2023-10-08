@@ -358,16 +358,6 @@ function shellws_pass {
   fi
 }
 
-function markdown_you_find_eschew_you {
-  local find_you_cmd="find . -name \\*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' ! -path './release/*' -exec grep -E --color '[Yy]ou[r]?[ '\\''.,;]' {} + || true"
-  run eval "${find_you_cmd}"
-}
-
-function markdown_you_pass {
-  # TODO: ./CONTRIBUTING.md:## Get your pull request reviewed
-  generic_checker markdown_you_find_eschew_you
-}
-
 function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if tool_exists "marker" "https://crates.io/crates/marker"; then
