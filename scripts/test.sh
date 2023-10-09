@@ -433,11 +433,6 @@ function lint_fix_pass {
   run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
-function unconvert_pass {
-  # TODO: pb package should be filtered out.
-  run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
-}
-
 function license_header_per_module {
   # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()
