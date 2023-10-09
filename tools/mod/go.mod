@@ -11,8 +11,6 @@ require (
 	github.com/google/addlicense v1.1.1
 	github.com/google/yamlfmt v0.10.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
-	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
-	github.com/mgechev/revive v1.3.4
 	github.com/mikefarah/yq/v4 v4.35.2
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
@@ -32,12 +30,10 @@ require (
 	github.com/bitfield/gotestdox v0.2.1 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
 	github.com/braydonk/yaml v0.7.0 // indirect
-	github.com/chavacava/garif v0.1.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/elliotchance/orderedmap v1.5.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
-	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
@@ -57,16 +53,10 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
-	github.com/mgechev/dots v0.0.0-20210922191527-e955255bf517 // indirect
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/spf13/cobra v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
