@@ -37,15 +37,6 @@ var (
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
 )
 
-const (
-	// markedRevBytesLen is the byte length of marked revision.
-	// The first `revBytesLen` bytes represents a normal revision. The last
-	// one byte is the mark.
-	markedRevBytesLen      = revBytesLen + 1
-	markBytePosition       = markedRevBytesLen - 1
-	markTombstone     byte = 't'
-)
-
 var restoreChunkKeys = 10000 // non-const for testing
 var defaultCompactBatchLimit = 1000
 var minimumBatchInterval = 10 * time.Millisecond
@@ -320,9 +311,9 @@ func (s *store) Restore(b backend.Backend) error {
 func (s *store) restore() error {
 	s.setupMetricsReporter()
 
-	min, max := newRevBytes(), newRevBytes()
-	revToBytes(revision{main: 1}, min)
-	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
+	min, max := NewRevBytes(), NewRevBytes()
+	min = RevToBytes(Revision{Main: 1}, min)
+	max = RevToBytes(Revision{Main: math.MaxInt64, Sub: math.MaxInt64}, max)
 
 	keyToLease := make(map[string]lease.LeaseID)
 
@@ -359,9 +350,9 @@ func (s *store) restore() error {
 			break
 		}
 		// next set begins after where this one ended
-		newMin := bytesToRev(keys[len(keys)-1][:revBytesLen])
-		newMin.sub++
-		revToBytes(newMin, min)
+		newMin := BytesToRev(keys[len(keys)-1][:revBytesLen])
+		newMin.Sub++
+		min = RevToBytes(newMin, min)
 	}
 	close(rkvc)
 
@@ -448,18 +439,18 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					ok = true
 				}
 			}
-			rev := bytesToRev(rkv.key)
-			currentRev = rev.main
+			rev := BytesToRev(rkv.key)
+			currentRev = rev.Main
 			if ok {
 				if isTombstone(rkv.key) {
-					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
+					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {
 						lg.Warn("tombstone encountered error", zap.Error(err))
 					}
 					continue
 				}
-				ki.put(lg, rev.main, rev.sub)
+				ki.put(lg, rev.Main, rev.Sub)
 			} else if !isTombstone(rkv.key) {
-				ki.restore(lg, revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				ki.restore(lg, Revision{Main: rkv.kv.CreateRevision}, rev, rkv.kv.Version)
 				idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}
@@ -517,23 +508,6 @@ func (s *store) setupMetricsReporter() {
 		return float64(s.compactMainRev)
 	}
 	reportCompactRevMu.Unlock()
-}
-
-// appendMarkTombstone appends tombstone mark to normal revision bytes.
-func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
-	if len(b) != revBytesLen {
-		lg.Panic(
-			"cannot append tombstone mark to non-normal revision bytes",
-			zap.Int("expected-revision-bytes-size", revBytesLen),
-			zap.Int("given-revision-bytes-size", len(b)),
-		)
-	}
-	return append(b, markTombstone)
-}
-
-// isTombstone checks whether the revision bytes is a tombstone.
-func isTombstone(b []byte) bool {
-	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
 }
 
 func (s *store) HashStorage() HashStorage {

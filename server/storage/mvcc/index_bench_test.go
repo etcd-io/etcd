@@ -33,7 +33,7 @@ func benchmarkIndexCompact(b *testing.B, size int) {
 	bytesN := 64
 	keys := createBytesSlice(bytesN, size)
 	for i := 1; i < size; i++ {
-		kvindex.Put(keys[i], revision{main: int64(i), sub: int64(i)})
+		kvindex.Put(keys[i], Revision{Main: int64(i), Sub: int64(i)})
 	}
 	b.ResetTimer()
 	for i := 1; i < b.N; i++ {
@@ -49,7 +49,7 @@ func BenchmarkIndexPut(b *testing.B) {
 	keys := createBytesSlice(bytesN, b.N)
 	b.ResetTimer()
 	for i := 1; i < b.N; i++ {
-		kvindex.Put(keys[i], revision{main: int64(i), sub: int64(i)})
+		kvindex.Put(keys[i], Revision{Main: int64(i), Sub: int64(i)})
 	}
 }
 
@@ -60,7 +60,7 @@ func BenchmarkIndexGet(b *testing.B) {
 	bytesN := 64
 	keys := createBytesSlice(bytesN, b.N)
 	for i := 1; i < b.N; i++ {
-		kvindex.Put(keys[i], revision{main: int64(i), sub: int64(i)})
+		kvindex.Put(keys[i], Revision{Main: int64(i), Sub: int64(i)})
 	}
 	b.ResetTimer()
 	for i := 1; i < b.N; i++ {

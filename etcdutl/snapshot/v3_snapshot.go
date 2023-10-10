@@ -156,8 +156,8 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
 				if iskeyb {
-					rev := bytesToRev(k)
-					ds.Revision = rev.main
+					rev := mvcc.BytesToRev(k)
+					ds.Revision = rev.Main
 				}
 				ds.TotalKey++
 				return nil
@@ -346,42 +346,42 @@ func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
 		return err
 	}
 
-	latest = s.unsafeBumpRevision(tx, latest, int64(bumpAmount))
+	latest = s.unsafeBumpBucketsRevision(tx, latest, int64(bumpAmount))
 	s.unsafeMarkRevisionCompacted(tx, latest)
 
 	return nil
 }
 
-func (s *v3Manager) unsafeBumpRevision(tx backend.UnsafeWriter, latest revision, amount int64) revision {
+func (s *v3Manager) unsafeBumpBucketsRevision(tx backend.UnsafeWriter, latest mvcc.Revision, amount int64) mvcc.Revision {
 	s.lg.Info(
 		"bumping latest revision",
-		zap.Int64("latest-revision", latest.main),
+		zap.Int64("latest-revision", latest.Main),
 		zap.Int64("bump-amount", amount),
-		zap.Int64("new-latest-revision", latest.main+amount),
+		zap.Int64("new-latest-revision", latest.Main+amount),
 	)
 
-	latest.main += amount
-	latest.sub = 0
-	k := make([]byte, 17)
-	revToBytes(k, latest)
+	latest.Main += amount
+	latest.Sub = 0
+	k := mvcc.NewRevBytes()
+	k = mvcc.RevToBytes(latest, k)
 	tx.UnsafePut(schema.Key, k, []byte{})
 
 	return latest
 }
 
-func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.UnsafeWriter, latest revision) {
+func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.UnsafeWriter, latest mvcc.Revision) {
 	s.lg.Info(
 		"marking revision compacted",
-		zap.Int64("revision", latest.main),
+		zap.Int64("revision", latest.Main),
 	)
 
-	mvcc.UnsafeSetScheduledCompact(tx, latest.main)
+	mvcc.UnsafeSetScheduledCompact(tx, latest.Main)
 }
 
-func (s *v3Manager) unsafeGetLatestRevision(tx backend.UnsafeReader) (revision, error) {
-	var latest revision
+func (s *v3Manager) unsafeGetLatestRevision(tx backend.UnsafeReader) (mvcc.Revision, error) {
+	var latest mvcc.Revision
 	err := tx.UnsafeForEach(schema.Key, func(k, _ []byte) (err error) {
-		rev := bytesToRev(k)
+		rev := mvcc.BytesToRev(k)
 
 		if rev.GreaterThan(latest) {
 			latest = rev
