@@ -63,8 +63,8 @@ var tcs = []testCase{
 	{
 		name:          "TLS",
 		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: e2e.ClientTLS}},
-		maxWatchDelay: 3 * time.Second,
-		dbSizeBytes:   500 * Kilo,
+		maxWatchDelay: 150 * time.Millisecond,
+		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpNoTLS",
