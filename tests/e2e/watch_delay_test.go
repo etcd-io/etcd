@@ -63,8 +63,8 @@ var tcs = []testCase{
 	{
 		name:          "TLS",
 		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS},
-		maxWatchDelay: 2 * time.Second,
-		dbSizeBytes:   500 * Kilo,
+		maxWatchDelay: 100 * time.Millisecond,
+		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpNoTLS",
