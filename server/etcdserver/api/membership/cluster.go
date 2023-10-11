@@ -303,9 +303,18 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+	if c.be != nil && shouldApplyV3 {
+		membersMap, removedMap := c.be.MustReadMembersFromBackend()
+		if err := c.validateConfigurationChange(cc, membersMap, removedMap); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *RaftCluster) validateConfigurationChange(cc raftpb.ConfChange, membersMap map[types.ID]*Member, removedMap map[types.ID]bool) error {
+
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved
