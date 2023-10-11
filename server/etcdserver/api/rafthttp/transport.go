@@ -172,7 +172,17 @@ func (t *Transport) Get(id types.ID) Peer {
 	return t.peers[id]
 }
 
+func (t *Transport) shouldSkipSendForRobustness() bool {
+	// gofail: var ProbabilisticPacketLoss bool
+	// return ProbabilisticPacketLoss
+	return false
+}
+
 func (t *Transport) Send(msgs []raftpb.Message) {
+	if t.shouldSkipSendForRobustness() {
+		return
+	}
+
 	for _, m := range msgs {
 		if m.To == 0 {
 			// ignore intentionally dropped message
