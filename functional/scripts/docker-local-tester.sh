@@ -6,7 +6,7 @@ if ! [[ "${0}" =~ "scripts/docker-local-tester.sh" ]]; then
 fi
 
 if [[ -z "${GO_VERSION}" ]]; then
-  GO_VERSION=1.20.9
+  GO_VERSION=1.20.10
 fi
 echo "Running with GO_VERSION:" ${GO_VERSION}
 
