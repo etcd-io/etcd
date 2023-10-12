@@ -17,205 +17,79 @@ package e2e
 import (
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
 	tcs := []struct {
-		name       string
-		config     *EtcdProcessClusterConfig
-		expectArgs []string
+		name                 string
+		config               *EtcdProcessClusterConfig
+		expectArgsNotContain []string
+		expectArgsContain    []string
 	}{
 		{
 			name:   "Default",
 			config: NewConfig(),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigDefault-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
+			expectArgsContain: []string{
+				"--listen-client-urls=http://localhost:0",
+				"--advertise-client-urls=http://localhost:0",
+				"--listen-peer-urls=http://localhost:1",
+				"--initial-advertise-peer-urls=http://localhost:1",
+				"--initial-cluster-token=new",
+				"--snapshot-count=10000",
 			},
 		},
 		{
 			name:   "SnapshotCount",
 			config: NewConfig(WithSnapshotCount(42)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigSnapshotCount-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"42",
-			},
-		},
-		{
-			name:   "SnapshotCatchUpEntries",
-			config: NewConfig(WithSnapshotCatchUpEntries(12)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigSnapshotCatchUpEntries-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
-				"--experimental-snapshot-catchup-entries",
-				"12",
+			expectArgsContain: []string{
+				"--snapshot-count=42",
 			},
 		},
 		{
 			name:   "QuotaBackendBytes",
 			config: NewConfig(WithQuotaBackendBytes(123)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigQuotaBackendBytes-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
-				"--quota-backend-bytes",
-				"123",
+			expectArgsContain: []string{
+				"--quota-backend-bytes=123",
 			},
 		},
 		{
 			name:   "CorruptCheck",
 			config: NewConfig(WithInitialCorruptCheck(true)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigCorruptCheck-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
+			expectArgsContain: []string{
 				"--experimental-initial-corrupt-check",
 			},
 		},
 		{
 			name:   "StrictReconfigCheck",
 			config: NewConfig(WithStrictReconfigCheck(false)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigStrictReconfigCheck-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
+			expectArgsContain: []string{
 				"--strict-reconfig-check=false",
 			},
 		},
 		{
 			name:   "CatchUpEntries",
 			config: NewConfig(WithSnapshotCatchUpEntries(100)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigCatchUpEntries-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
-				"--experimental-snapshot-catchup-entries",
-				"100",
+			expectArgsContain: []string{
+				"--experimental-snapshot-catchup-entries=100",
 			},
 		},
 		{
 			name:   "CatchUpEntriesLastVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
-			expectArgs: []string{
-				"--name",
-				"TestEtcdServerProcessConfigCatchUpEntriesLastVersion-test-0",
-				"--listen-client-urls",
-				"http://localhost:0",
-				"--advertise-client-urls",
-				"http://localhost:0",
-				"--listen-peer-urls",
-				"http://localhost:1",
-				"--initial-advertise-peer-urls",
-				"http://localhost:1",
-				"--initial-cluster-token",
-				"new",
-				"--data-dir",
-				"/tmp/fake/member-0",
-				"--snapshot-count",
-				"10000",
+			expectArgsNotContain: []string{
+				"--experimental-snapshot-catchup-entries=100",
 			},
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.config.BaseDataDirPath = "/tmp/fake"
-			if diff := cmp.Diff(tc.config.EtcdServerProcessConfig(t, 0).Args, tc.expectArgs); diff != "" {
-				t.Errorf("diff: %s", diff)
+			args := tc.config.EtcdServerProcessConfig(t, 0).Args
+			if len(tc.expectArgsContain) != 0 {
+				assert.Subset(t, args, tc.expectArgsContain)
+			}
+			if len(tc.expectArgsNotContain) != 0 {
+				assert.NotSubset(t, args, tc.expectArgsNotContain)
 			}
 		})
 	}

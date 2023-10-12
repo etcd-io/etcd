@@ -451,8 +451,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
 	if cfg.Discovery == "" && len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
 		serverCfg.InitialCluster = strings.Join(initialCluster, ",")
-		serverCfg.Args = append(serverCfg.Args, "--initial-cluster", serverCfg.InitialCluster)
-		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state", initialClusterState)
+		serverCfg.Args = append(serverCfg.Args, "--initial-cluster="+serverCfg.InitialCluster)
+		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state="+initialClusterState)
 	}
 
 	if len(cfg.ServerConfig.DiscoveryCfg.Endpoints) > 0 {
@@ -509,19 +509,19 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	args := []string{
-		"--name", name,
-		"--listen-client-urls", strings.Join(curls, ","),
-		"--advertise-client-urls", strings.Join(curls, ","),
-		"--listen-peer-urls", peerListenUrl.String(),
-		"--initial-advertise-peer-urls", peerAdvertiseUrl.String(),
-		"--initial-cluster-token", cfg.ServerConfig.InitialClusterToken,
+		"--name=" + name,
+		"--listen-client-urls=" + strings.Join(curls, ","),
+		"--advertise-client-urls=" + strings.Join(curls, ","),
+		"--listen-peer-urls=" + peerListenUrl.String(),
+		"--initial-advertise-peer-urls=" + peerAdvertiseUrl.String(),
+		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
 		"--data-dir", dataDirPath,
-		"--snapshot-count", fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
+		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
 	var clientHttpUrl string
 	if cfg.ClientHttpSeparate {
 		clientHttpUrl = clientURL(cfg.ClientScheme(), clientHttpPort, cfg.Client.ConnectionType)
-		args = append(args, "--listen-client-http-urls", clientHttpUrl)
+		args = append(args, "--listen-client-http-urls="+clientHttpUrl)
 	}
 
 	if cfg.ServerConfig.ForceNewCluster {
@@ -529,7 +529,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.ServerConfig.QuotaBackendBytes > 0 {
 		args = append(args,
-			"--quota-backend-bytes", fmt.Sprintf("%d", cfg.ServerConfig.QuotaBackendBytes),
+			"--quota-backend-bytes="+fmt.Sprintf("%d", cfg.ServerConfig.QuotaBackendBytes),
 		)
 	}
 	if !cfg.ServerConfig.StrictReconfigCheck {
@@ -547,58 +547,58 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 			Scheme: cfg.MetricsURLScheme,
 			Host:   fmt.Sprintf("localhost:%d", metricsPort),
 		}).String()
-		args = append(args, "--listen-metrics-urls", murl)
+		args = append(args, "--listen-metrics-urls="+murl)
 	}
 
 	args = append(args, cfg.TlsArgs()...)
 
 	if cfg.ServerConfig.AuthToken != "" && cfg.ServerConfig.AuthToken != embed.DefaultAuthToken {
-		args = append(args, "--auth-token", cfg.ServerConfig.AuthToken)
+		args = append(args, "--auth-token="+cfg.ServerConfig.AuthToken)
 	}
 
 	if cfg.ServerConfig.V2Deprecation != "" && cfg.ServerConfig.V2Deprecation != config2.V2_DEPR_DEFAULT {
-		args = append(args, "--v2-deprecation", string(cfg.ServerConfig.V2Deprecation))
+		args = append(args, "--v2-deprecation="+string(cfg.ServerConfig.V2Deprecation))
 	}
 
 	if cfg.Discovery != "" {
-		args = append(args, "--discovery", cfg.Discovery)
+		args = append(args, "--discovery="+cfg.Discovery)
 	}
 
 	if cfg.ServerConfig.LogLevel != "" && cfg.ServerConfig.LogLevel != logutil.DefaultLogLevel {
-		args = append(args, "--log-level", cfg.ServerConfig.LogLevel)
+		args = append(args, "--log-level="+cfg.ServerConfig.LogLevel)
 	}
 
 	if cfg.ServerConfig.MaxConcurrentStreams != 0 && cfg.ServerConfig.MaxConcurrentStreams != embed.DefaultMaxConcurrentStreams {
-		args = append(args, "--max-concurrent-streams", fmt.Sprintf("%d", cfg.ServerConfig.MaxConcurrentStreams))
+		args = append(args, "--max-concurrent-streams="+fmt.Sprintf("%d", cfg.ServerConfig.MaxConcurrentStreams))
 	}
 
 	if cfg.ServerConfig.ExperimentalCorruptCheckTime != 0 {
-		args = append(args, "--experimental-corrupt-check-time", fmt.Sprintf("%s", cfg.ServerConfig.ExperimentalCorruptCheckTime))
+		args = append(args, "--experimental-corrupt-check-time="+fmt.Sprintf("%s", cfg.ServerConfig.ExperimentalCorruptCheckTime))
 	}
 	if cfg.ServerConfig.ExperimentalCompactHashCheckEnabled {
 		args = append(args, "--experimental-compact-hash-check-enabled")
 	}
 	if cfg.ServerConfig.ExperimentalCompactHashCheckTime != 0 && cfg.ServerConfig.ExperimentalCompactHashCheckTime != embed.DefaultExperimentalCompactHashCheckTime {
-		args = append(args, "--experimental-compact-hash-check-time", cfg.ServerConfig.ExperimentalCompactHashCheckTime.String())
+		args = append(args, "--experimental-compact-hash-check-time="+cfg.ServerConfig.ExperimentalCompactHashCheckTime.String())
 	}
 	if cfg.ServerConfig.ExperimentalCompactionBatchLimit != 0 {
-		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.ServerConfig.ExperimentalCompactionBatchLimit))
+		args = append(args, "--experimental-compaction-batch-limit="+fmt.Sprintf("%d", cfg.ServerConfig.ExperimentalCompactionBatchLimit))
 	}
 	if cfg.ServerConfig.ExperimentalCompactionSleepInterval != 0 {
-		args = append(args, "--experimental-compaction-sleep-interval", cfg.ServerConfig.ExperimentalCompactionSleepInterval.String())
+		args = append(args, "--experimental-compaction-sleep-interval="+cfg.ServerConfig.ExperimentalCompactionSleepInterval.String())
 	}
 	if cfg.ServerConfig.WarningUnaryRequestDuration != 0 {
-		args = append(args, "--warning-unary-request-duration", cfg.ServerConfig.WarningUnaryRequestDuration.String())
+		args = append(args, "--warning-unary-request-duration="+cfg.ServerConfig.WarningUnaryRequestDuration.String())
 	}
 	if cfg.ServerConfig.ExperimentalWarningUnaryRequestDuration != 0 {
-		args = append(args, "--experimental-warning-unary-request-duration", cfg.ServerConfig.ExperimentalWarningUnaryRequestDuration.String())
+		args = append(args, "--experimental-warning-unary-request-duration="+cfg.ServerConfig.ExperimentalWarningUnaryRequestDuration.String())
 	}
 	if cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0 {
-		args = append(args, "--experimental-watch-progress-notify-interval", cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval.String())
+		args = append(args, "--experimental-watch-progress-notify-interval="+cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval.String())
 	}
 	if cfg.ServerConfig.SnapshotCatchUpEntries != 0 && cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2) {
-			args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCatchUpEntries))
+			args = append(args, "--experimental-snapshot-catchup-entries="+fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCatchUpEntries))
 		}
 	}
 	envVars := map[string]string{}
