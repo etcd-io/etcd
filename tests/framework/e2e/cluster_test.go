@@ -47,13 +47,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
-			name:   "SnapshotCatchUpEntries",
-			config: NewConfig(WithSnapshotCatchUpEntries(12)),
-			expectArgsContain: []string{
-				"--experimental-snapshot-catchup-entries=12",
-			},
-		},
-		{
 			name:   "QuotaBackendBytes",
 			config: NewConfig(WithQuotaBackendBytes(123)),
 			expectArgsContain: []string{
