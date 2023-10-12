@@ -10,7 +10,7 @@ jobs:
       run:
         shell: bash
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
           - linux-amd64-grpcproxy-integration
