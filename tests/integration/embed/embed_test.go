@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -258,6 +259,47 @@ func testEmbedEtcdClusterGracefulStop(t *testing.T, secure bool) {
 	}
 }
 
+func TestEmbedEtcdClusterStartPartialInsecure(t *testing.T) {
+	testEmbedEtcdClusterStartPartial(t, false)
+}
+
+func testEmbedEtcdClusterStartPartial(t *testing.T, secure bool) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
+	nodes := 3 // need to be an odd number larger than 1
+
+	urls := newEmbedURLs(secure, nodes*2)
+
+	// set up a cluster but only start the first node
+	cfg := make([]*embed.Config, nodes)
+	for i := 0; i < nodes; i++ {
+		cfg[i] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], i)
+	}
+	e, err := embed.StartEtcd(cfg[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-e.Server.ReadyNotify():
+		t.Fatal("server should not have been ready")
+	case <-e.Server.StopNotify():
+		t.Fatal("server should not have been stopped")
+	case <-time.After(time.Second):
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		e.Close()
+	}()
+	select {
+	case <-donec:
+	case <-time.After(2*time.Second + e.Server.Cfg.ReqTimeout()):
+		printCallstacks()
+		t.Fatalf("took too long to close servers")
+	}
+}
+
 func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 	scheme := "unix"
 	if secure {
@@ -322,4 +364,11 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	duration_to_compare, _ := time.ParseDuration("2h0m0s")
 	assert.Equal(t, duration_to_compare, autoCompactionRetention)
 	e.Close()
+}
+
+func printCallstacks() {
+	buf := make([]byte, 64*1024)
+	bytes := runtime.Stack(buf, true)
+
+	println(string(buf[0:bytes]))
 }
