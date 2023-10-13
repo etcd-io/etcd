@@ -187,6 +187,77 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	}
 }
 
+//func TestEmbedEtcdClusterGracefulStopSecure(t *testing.T) {
+//	testEmbedEtcdClusterGracefulStop(t, true)
+//}
+
+func TestEmbedEtcdClusterGracefulStopInsecure(t *testing.T) {
+	testEmbedEtcdClusterGracefulStop(t, false)
+}
+
+func testEmbedEtcdClusterGracefulStop(t *testing.T, secure bool) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
+	nodes := 3 // need to be an odd number larger than 1
+
+	urls := newEmbedURLs(secure, nodes*2)
+
+	// start a cluster
+	var err error
+	cfg := make([]*embed.Config, nodes)
+	e := make([]*embed.Etcd, nodes)
+	for i := 0; i < nodes; i++ {
+		cfg[i] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], i)
+		e[i], err = embed.StartEtcd(cfg[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// wait for all nodes to be ready
+	for i := 0; i < nodes; i++ {
+		select {
+		case <-e[i].Server.ReadyNotify(): // wait for e.Server to join the cluster
+		case <-time.After(10 * time.Second):
+			t.Fatalf("node %d did not join the cluster in time", i)
+		}
+	}
+
+	// stop one node
+	e[nodes-1].Close()
+
+	// remove the stopped node from the cluster
+	_, err = e[0].Server.RemoveMember(context.Background(), uint64(e[nodes-1].Server.MemberId()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// start the node again -> fails as it was removed from the cluster
+	cfg[nodes-1] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], nodes-1)
+	e[nodes-1], err = embed.StartEtcd(cfg[nodes-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-e[nodes-1].Server.ReadyNotify():
+		t.Fatal("the start should have failed")
+	case <-e[nodes-1].Server.StopNotify():
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		for i := 0; i < nodes; i++ {
+			e[i].Close()
+		}
+	}()
+	select {
+	case <-donec:
+	case <-time.After(2*time.Second + e[0].Server.Cfg.ReqTimeout()):
+		t.Fatalf("took too long to close servers")
+	}
+}
+
 func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 	scheme := "unix"
 	if secure {
@@ -211,6 +282,30 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 		cfg.InitialCluster += ",default=" + purls[i].String()
 	}
 	cfg.InitialCluster = cfg.InitialCluster[1:]
+}
+
+func setupEmbedClusterCfg(t *testing.T, secure bool, curls []url.URL, purls []url.URL, n int) *embed.Config {
+	cfg := embed.NewConfig()
+	if secure {
+		cfg.ClientTLSInfo = testTLSInfo
+		cfg.PeerTLSInfo = testTLSInfo
+	}
+
+	cfg.Logger = "zap"
+	cfg.LogOutputs = []string{"/dev/null"}
+
+	cfg.Name = fmt.Sprintf("node-%d", n)
+	cfg.ClusterState = "new"
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = []url.URL{curls[n]}, []url.URL{curls[n]}
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = []url.URL{purls[n]}, []url.URL{purls[n]}
+	cfg.InitialCluster = ""
+	for i := range purls {
+		cfg.InitialCluster += fmt.Sprintf(",node-%d=%s", i, purls[i].String())
+	}
+	cfg.InitialCluster = cfg.InitialCluster[1:]
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd-%d", n))
+
+	return cfg
 }
 
 func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
