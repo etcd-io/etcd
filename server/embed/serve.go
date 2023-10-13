@@ -46,6 +46,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 )
 
 type serveCtx struct {
@@ -99,7 +100,15 @@ func (sctx *serveCtx) serve(
 	splitHttp bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
+
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer close(sctx.serversC)
+
+	select {
+	case <-s.ReadyNotify(): // wait for e.Server to join the cluster
+	case <-s.StopNotify(): // publish aborted from 'ErrStopped'
+		return errors.ErrStopped
+	}
 
 	sctx.lg.Info("ready to serve client requests")
 
@@ -114,8 +123,6 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	// Make sure serversC is closed even if we prematurely exit the function.
-	defer close(sctx.serversC)
 	var gwmux *gw.ServeMux
 	if s.Cfg.EnableGRPCGateway {
 		// GRPC gateway connects to grpc server via connection provided by grpc dial.
