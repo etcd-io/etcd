@@ -211,7 +211,11 @@ func TestValidateWatch(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			validateWatch(t, Config{ExpectRevisionUnique: true}, tc.reports)
+			eventHistory, err := mergeWatchEventHistory(tc.reports)
+			if err != nil {
+				t.Fatal(err)
+			}
+			validateWatch(t, zaptest.NewLogger(t), Config{ExpectRevisionUnique: true}, tc.reports, eventHistory)
 		})
 	}
 }
