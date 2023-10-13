@@ -15,27 +15,22 @@
 package validate
 
 import (
-	"sort"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func validateWatch(t *testing.T, cfg Config, reports []report.ClientReport) []model.WatchEvent {
+func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.WatchEvent) []model.WatchEvent {
+	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		validateOrdered(t, r)
 		validateUnique(t, cfg.ExpectRevisionUnique, r)
 		validateAtomic(t, r)
 		validateBookmarkable(t, r)
-	}
-	// TODO: Use linearization result instead of event history to get order of events
-	// This is currently impossible as porcupine doesn't expose operation order created during linearization.
-	eventHistory := mergeWatchEventHistory(t, reports)
-	for _, r := range reports {
 		validateReliable(t, eventHistory, r)
 		validateResumable(t, eventHistory, r)
 	}
@@ -164,60 +159,4 @@ func firstWatchEvent(op model.WatchOperation) *model.WatchEvent {
 		}
 	}
 	return nil
-}
-
-func mergeWatchEventHistory(t *testing.T, reports []report.ClientReport) []model.WatchEvent {
-	type revisionEvents struct {
-		events   []model.WatchEvent
-		revision int64
-		clientId int
-	}
-	revisionToEvents := map[int64]revisionEvents{}
-	var lastClientId = 0
-	var lastRevision int64
-	events := []model.WatchEvent{}
-	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
-				for _, event := range resp.Events {
-					if event.Revision == lastRevision && lastClientId == r.ClientId {
-						events = append(events, event)
-					} else {
-						if prev, found := revisionToEvents[lastRevision]; found {
-							// This assumes that there are txn that would be observed differently by two watches.
-							// TODO: Implement merging events from multiple watches about single revision based on operations.
-							if diff := cmp.Diff(prev.events, events); diff != "" {
-								t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
-							}
-						} else {
-							revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
-						}
-						lastClientId = r.ClientId
-						lastRevision = event.Revision
-						events = []model.WatchEvent{event}
-					}
-				}
-			}
-		}
-	}
-	if prev, found := revisionToEvents[lastRevision]; found {
-		if diff := cmp.Diff(prev.events, events); diff != "" {
-			t.Errorf("Events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
-		}
-	} else {
-		revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
-	}
-
-	var allRevisionEvents []revisionEvents
-	for _, revEvents := range revisionToEvents {
-		allRevisionEvents = append(allRevisionEvents, revEvents)
-	}
-	sort.Slice(allRevisionEvents, func(i, j int) bool {
-		return allRevisionEvents[i].revision < allRevisionEvents[j].revision
-	})
-	var eventHistory []model.WatchEvent
-	for _, revEvents := range allRevisionEvents {
-		eventHistory = append(eventHistory, revEvents.events...)
-	}
-	return eventHistory
 }
