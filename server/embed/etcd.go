@@ -68,8 +68,9 @@ const (
 
 // Etcd contains a running etcd server and its listeners.
 type Etcd struct {
-	Peers   []*peerListener
-	Clients []net.Listener
+	Peers      []*peerListener
+	Clients    []net.Listener
+	listenerWg *sync.WaitGroup
 	// a map of contexts for the servers that serves client requests.
 	sctxs            map[string]*serveCtx
 	metricsListeners []net.Listener
@@ -99,7 +100,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return nil, err
 	}
 	serving := false
-	e = &Etcd{cfg: *inCfg, stopc: make(chan struct{})}
+	e = &Etcd{listenerWg: &sync.WaitGroup{}, cfg: *inCfg, stopc: make(chan struct{})}
 	cfg := &e.cfg
 	defer func() {
 		if e == nil || err == nil {
@@ -402,17 +403,19 @@ func (e *Etcd) Close() {
 		lg.Sync()
 	}()
 
+	// in case the server did not start or did not stop on its own stop it directly
+	if e.Server != nil {
+		select {
+		case <-e.Server.ReadyNotify():
+		case <-e.Server.StopNotify():
+		default:
+			e.Server.Stop()
+		}
+	}
+
 	e.closeOnce.Do(func() {
 		close(e.stopc)
 	})
-
-	// in case the server did not start or did not stop on its own stop it directly
-	select {
-	case <-e.Server.ReadyNotify():
-	case <-e.Server.StopNotify():
-	default:
-		e.Server.Stop()
-	}
 
 	// close client requests with request timeout
 	timeout := 2 * time.Second
@@ -460,6 +463,7 @@ func (e *Etcd) Close() {
 		}
 	}
 	if e.errc != nil {
+		e.listenerWg.Wait()
 		close(e.errc)
 	}
 }
@@ -608,7 +612,9 @@ func (e *Etcd) servePeers() (err error) {
 
 	// start peer servers in a goroutine
 	for _, pl := range e.Peers {
+		e.listenerWg.Add(1)
 		go func(l *peerListener) {
+			defer e.listenerWg.Done()
 			u := l.Addr().String()
 			e.cfg.logger.Info(
 				"serving peer traffic",
@@ -775,7 +781,9 @@ func (e *Etcd) serveClients() (err error) {
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
+		e.listenerWg.Add(1)
 		go func(s *serveCtx) {
+			defer e.listenerWg.Done()
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
 		}(sctx)
 	}
