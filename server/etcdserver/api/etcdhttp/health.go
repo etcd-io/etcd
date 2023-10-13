@@ -143,27 +143,25 @@ func getSerializableFlag(r *http.Request) bool {
 
 func checkAlarms(lg *zap.Logger, srv ServerHealth, excludedAlarms AlarmSet) Health {
 	h := Health{Health: "true"}
-	as := srv.Alarms()
-	if len(as) > 0 {
-		for _, v := range as {
-			alarmName := v.Alarm.String()
-			if _, found := excludedAlarms[alarmName]; found {
-				lg.Debug("/health excluded alarm", zap.String("alarm", v.String()))
-				continue
-			}
 
-			h.Health = "false"
-			switch v.Alarm {
-			case pb.AlarmType_NOSPACE:
-				h.Reason = "ALARM NOSPACE"
-			case pb.AlarmType_CORRUPT:
-				h.Reason = "ALARM CORRUPT"
-			default:
-				h.Reason = "ALARM UNKNOWN"
-			}
-			lg.Warn("serving /health false due to an alarm", zap.String("alarm", v.String()))
-			return h
+	for _, v := range srv.Alarms() {
+		alarmName := v.Alarm.String()
+		if _, found := excludedAlarms[alarmName]; found {
+			lg.Debug("/health excluded alarm", zap.String("alarm", v.String()))
+			continue
 		}
+
+		h.Health = "false"
+		switch v.Alarm {
+		case pb.AlarmType_NOSPACE:
+			h.Reason = "ALARM NOSPACE"
+		case pb.AlarmType_CORRUPT:
+			h.Reason = "ALARM CORRUPT"
+		default:
+			h.Reason = "ALARM UNKNOWN"
+		}
+		lg.Warn("serving /health false due to an alarm", zap.String("alarm", v.String()))
+		return h
 	}
 
 	return h
