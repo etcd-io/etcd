@@ -32,7 +32,7 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	patchedOperations := patchedOperationHistory(reports)
 	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations)
 	if linearizable != porcupine.Ok {
-		lg.Error("Failed linearization, skipping further validation")
+		t.Error("Failed linearization, skipping further validation")
 		return visualize
 	}
 	// TODO: Don't use watch events to get event history.
