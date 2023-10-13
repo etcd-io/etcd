@@ -65,7 +65,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow
+	verify-govet-shadow verify-markdown-marker
 fix: fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
@@ -136,6 +136,10 @@ verify-yamllint:
 .PHONY: verify-govet-shadow
 verify-govet-shadow:
 	PASSES="govet_shadow" ./scripts/test.sh
+
+.PHONY: verify-markdown-marker
+verify-markdown-marker:
+	PASSES="markdown_marker" ./scripts/test.sh
 
 YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 

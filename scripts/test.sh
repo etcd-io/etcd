@@ -361,7 +361,7 @@ function shellws_pass {
 function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if tool_exists "marker" "https://crates.io/crates/marker"; then
-    generic_checker run marker --skip-http --root ./Documentation 2>&1
+    generic_checker run marker --skip-http --allow-absolute-paths --root "${ETCD_ROOT_DIR}" -e ./CHANGELOG -e ./etcdctl -e etcdutl -e ./tools 2>&1
   fi
 }
 
