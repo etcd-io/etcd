@@ -406,6 +406,14 @@ func (e *Etcd) Close() {
 		close(e.stopc)
 	})
 
+	// in case the server did not start or did not stop on its own stop it directly
+	select {
+	case <-e.Server.ReadyNotify():
+	case <-e.Server.StopNotify():
+	default:
+		e.Server.Stop()
+	}
+
 	// close client requests with request timeout
 	timeout := 2 * time.Second
 	if e.Server != nil {
