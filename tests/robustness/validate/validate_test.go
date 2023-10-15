@@ -35,10 +35,16 @@ func TestValidate(t *testing.T) {
 	assert.GreaterOrEqual(t, len(files), 1)
 	for _, file := range files {
 		t.Run(file.Name(), func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			path := filepath.Join(testdataPath, file.Name())
 			reports, err := report.LoadClientReports(path)
 			assert.NoError(t, err)
-			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, 5*time.Second)
+
+			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
+			if err != nil {
+				t.Error(err)
+			}
+			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 10*time.Second)
 
 			if t.Failed() {
 				err := visualize(filepath.Join(path, "history.html"))
