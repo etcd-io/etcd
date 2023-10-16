@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package robustness
+package failpoint
 
 import (
 	"context"
@@ -80,10 +80,10 @@ var (
 	}
 )
 
-func pickRandomFailpoint(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
+func PickRandom(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
 	availableFailpoints := make([]Failpoint, 0, len(allFailpoints))
 	for _, failpoint := range allFailpoints {
-		err := validateFailpoint(clus, failpoint)
+		err := Validate(clus, failpoint)
 		if err != nil {
 			continue
 		}
@@ -96,7 +96,7 @@ func pickRandomFailpoint(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
 	return availableFailpoints[rand.Int()%len(availableFailpoints)]
 }
 
-func validateFailpoint(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
+func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	for _, proc := range clus.Procs {
 		if !failpoint.Available(*clus.Cfg, proc) {
 			return fmt.Errorf("failpoint %q not available on %s", failpoint.Name(), proc.Config().Name)
@@ -105,7 +105,7 @@ func validateFailpoint(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error 
 	return nil
 }
 
-func injectFailpoints(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error

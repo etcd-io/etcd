@@ -26,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
@@ -105,7 +106,7 @@ func TestRobustness(t *testing.T) {
 	}
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue14370",
-		failpoint: RaftBeforeSavePanic,
+		failpoint: failpoint.RaftBeforeSavePanic,
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
@@ -115,7 +116,7 @@ func TestRobustness(t *testing.T) {
 	})
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue14685",
-		failpoint: DefragBeforeCopyPanic,
+		failpoint: failpoint.DefragBeforeCopyPanic,
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
@@ -125,7 +126,7 @@ func TestRobustness(t *testing.T) {
 	})
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue13766",
-		failpoint: KillFailpoint,
+		failpoint: failpoint.KillFailpoint,
 		profile:   traffic.HighTrafficProfile,
 		traffic:   traffic.EtcdPut,
 		cluster: *e2e.NewConfig(
@@ -147,7 +148,7 @@ func TestRobustness(t *testing.T) {
 	if v.Compare(version.V3_6) >= 0 {
 		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
-			failpoint: BlackholeUntilSnapshot,
+			failpoint: failpoint.BlackholeUntilSnapshot,
 			profile:   traffic.HighTrafficProfile,
 			traffic:   traffic.EtcdPut,
 			cluster: *e2e.NewConfig(
@@ -170,7 +171,7 @@ func TestRobustness(t *testing.T) {
 
 type testScenario struct {
 	name      string
-	failpoint Failpoint
+	failpoint failpoint.Failpoint
 	cluster   e2e.EtcdProcessClusterConfig
 	traffic   traffic.Traffic
 	profile   traffic.Profile
@@ -187,9 +188,9 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer report.Cluster.Close()
 
 	if s.failpoint == nil {
-		s.failpoint = pickRandomFailpoint(t, report.Cluster)
+		s.failpoint = failpoint.PickRandom(t, report.Cluster)
 	} else {
-		err = validateFailpoint(report.Cluster, s.failpoint)
+		err = failpoint.Validate(report.Cluster, s.failpoint)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -224,7 +225,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	ids := identity.NewIdProvider()
 	g.Go(func() error {
 		defer close(finishTraffic)
-		injectFailpoints(ctx, t, lg, clus, s.failpoint)
+		failpoint.Inject(ctx, t, lg, clus, s.failpoint)
 		time.Sleep(time.Second)
 		return nil
 	})
