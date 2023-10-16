@@ -29,7 +29,6 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [panic in etcd validate secure endpoints](https://github.com/etcd-io/etcd/pull/16565)
 
 ### Dependencies
-- Compile binaries using [go 1.20.9](https://github.com/etcd-io/etcd/pull/16730).
 - Compile binaries using [go 1.20.10](https://github.com/etcd-io/etcd/pull/16745).
 
 <hr>
