@@ -10,8 +10,9 @@ require (
 )
 
 require (
+	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	google.golang.org/protobuf v1.26.0 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 )
 
 // Bad imports are sometimes causing attempts to pull that code.
