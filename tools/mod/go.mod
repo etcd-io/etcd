@@ -82,3 +82,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 )
+replace go.etcd.io/gofail => github.com/pchan/gofail v0.1.1-0.20230605030243-4e2ac034f230

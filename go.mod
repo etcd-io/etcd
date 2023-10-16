@@ -99,3 +99,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace go.etcd.io/gofail => github.com/pchan/gofail v0.1.1-0.20230605030243-4e2ac034f230
