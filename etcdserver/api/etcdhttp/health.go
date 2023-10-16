@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file defines the http endpoints for etcd health checks.
+// The endpoints include /livez, /readyz and /health.
+
 package etcdhttp
 
 import (
@@ -34,7 +37,12 @@ import (
 )
 
 const (
-	PathHealth = "/health"
+	PathHealth                 = "/health"
+	HealthStatusSuccess string = "success"
+	HealthStatusError   string = "error"
+	checkTypeLivez             = "livez"
+	checkTypeReadyz            = "readyz"
+	checkTypeHealth            = "health"
 )
 
 type ServerHealth interface {
@@ -126,11 +134,29 @@ var (
 		Name:      "health_failures",
 		Help:      "The total number of failed health checks",
 	})
+	healthCheckGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "healthcheck",
+		Help:      "The result of each kind of healthcheck.",
+	},
+		[]string{"type", "name"},
+	)
+	healthCheckCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "healthchecks_total",
+		Help:      "The total number of each kind of healthcheck.",
+	},
+		[]string{"type", "name", "status"},
+	)
 )
 
 func init() {
 	prometheus.MustRegister(healthSuccess)
 	prometheus.MustRegister(healthFailed)
+	prometheus.MustRegister(healthCheckGauge)
+	prometheus.MustRegister(healthCheckCounter)
 }
 
 // Health defines etcd server health status.
@@ -138,6 +164,12 @@ func init() {
 type Health struct {
 	Health string `json:"health"`
 	Reason string `json:"-"`
+}
+
+// HealthStatus is used in new /readyz or /livez health checks instead of the Health struct.
+type HealthStatus struct {
+	Reason string `json:"reason"`
+	Status string `json:"status"`
 }
 
 func getQuerySet(r *http.Request, query string) StringSet {
@@ -232,18 +264,18 @@ func checkAPI(ctx context.Context, srv ServerHealth, serializable bool) Health {
 type HealthCheck func(ctx context.Context) error
 
 type CheckRegistry struct {
-	path   string
-	checks map[string]HealthCheck
+	checkType string
+	checks    map[string]HealthCheck
 }
 
 func installLivezEndpoints(mux *http.ServeMux, server ServerHealth) {
-	reg := CheckRegistry{path: "/livez", checks: make(map[string]HealthCheck)}
+	reg := CheckRegistry{checkType: checkTypeLivez, checks: make(map[string]HealthCheck)}
 	reg.Register("serializable_read", serializableReadCheck(server))
 	reg.InstallHttpEndpoints(mux)
 }
 
 func installReadyzEndpoints(mux *http.ServeMux, server ServerHealth) {
-	reg := CheckRegistry{path: "/readyz", checks: make(map[string]HealthCheck)}
+	reg := CheckRegistry{checkType: checkTypeReadyz, checks: make(map[string]HealthCheck)}
 	reg.Register("data_corruption", activeAlarmCheck(server, pb.AlarmType_CORRUPT))
 	reg.Register("serializable_read", serializableReadCheck(server))
 	reg.InstallHttpEndpoints(mux)
@@ -253,6 +285,10 @@ func (reg *CheckRegistry) Register(name string, check HealthCheck) {
 	reg.checks[name] = check
 }
 
+func (reg *CheckRegistry) RootPath() string {
+	return "/" + reg.checkType
+}
+
 func (reg *CheckRegistry) InstallHttpEndpoints(mux *http.ServeMux) {
 	checkNames := make([]string, 0, len(reg.checks))
 	for k := range reg.checks {
@@ -260,19 +296,19 @@ func (reg *CheckRegistry) InstallHttpEndpoints(mux *http.ServeMux) {
 	}
 
 	// installs the http handler for the root path.
-	reg.installRootHttpEndpoint(mux, reg.path, checkNames...)
+	reg.installRootHttpEndpoint(mux, checkNames...)
 	for _, checkName := range checkNames {
 		// installs the http handler for the individual check sub path.
-		subpath := path.Join(reg.path, checkName)
+		subpath := path.Join(reg.RootPath(), checkName)
 		check := checkName
-		mux.Handle(subpath, newHealthHandler(subpath, func(r *http.Request) Health {
+		mux.Handle(subpath, newHealthHandler(subpath, func(r *http.Request) HealthStatus {
 			return reg.runHealthChecks(r.Context(), check)
 		}))
 	}
 }
 
-func (reg *CheckRegistry) runHealthChecks(ctx context.Context, checkNames ...string) Health {
-	h := Health{Health: "true"}
+func (reg *CheckRegistry) runHealthChecks(ctx context.Context, checkNames ...string) HealthStatus {
+	h := HealthStatus{Status: HealthStatusSuccess}
 	var individualCheckOutput bytes.Buffer
 	for _, checkName := range checkNames {
 		check, found := reg.checks[checkName]
@@ -281,9 +317,11 @@ func (reg *CheckRegistry) runHealthChecks(ctx context.Context, checkNames ...str
 		}
 		if err := check(ctx); err != nil {
 			fmt.Fprintf(&individualCheckOutput, "[-]%s failed: %v\n", checkName, err)
-			h.Health = "false"
+			h.Status = HealthStatusError
+			recordMetrics(reg.checkType, checkName, HealthStatusError)
 		} else {
 			fmt.Fprintf(&individualCheckOutput, "[+]%s ok\n", checkName)
+			recordMetrics(reg.checkType, checkName, HealthStatusSuccess)
 		}
 	}
 	h.Reason = individualCheckOutput.String()
@@ -291,19 +329,20 @@ func (reg *CheckRegistry) runHealthChecks(ctx context.Context, checkNames ...str
 }
 
 // installRootHttpEndpoint installs the http handler for the root path.
-func (reg *CheckRegistry) installRootHttpEndpoint(mux *http.ServeMux, path string, checks ...string) {
-	hfunc := func(r *http.Request) Health {
+func (reg *CheckRegistry) installRootHttpEndpoint(mux *http.ServeMux, checks ...string) {
+	hfunc := func(r *http.Request) HealthStatus {
 		// extracts the health check names to be excludeList from the query param
 		excluded := getQuerySet(r, "exclude")
 
 		filteredCheckNames := filterCheckList(listToStringSet(checks), excluded)
-		return reg.runHealthChecks(r.Context(), filteredCheckNames...)
+		h := reg.runHealthChecks(r.Context(), filteredCheckNames...)
+		return h
 	}
-	mux.Handle(path, newHealthHandler(path, hfunc))
+	mux.Handle(reg.RootPath(), newHealthHandler(reg.RootPath(), hfunc))
 }
 
 // newHealthHandler generates a http HandlerFunc for a health check function hfunc.
-func newHealthHandler(path string, hfunc func(*http.Request) Health) http.HandlerFunc {
+func newHealthHandler(path string, hfunc func(*http.Request) HealthStatus) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -313,7 +352,7 @@ func newHealthHandler(path string, hfunc func(*http.Request) Health) http.Handle
 		}
 		h := hfunc(r)
 		// Always returns detailed reason for failed checks.
-		if h.Health != "true" {
+		if h.Status == HealthStatusError {
 			http.Error(w, h.Reason, http.StatusServiceUnavailable)
 			plog.Errorf("Health check error path=%s, reason=%s (status code %d)", path, h.Reason, http.StatusServiceUnavailable)
 			return
@@ -371,6 +410,22 @@ func listToStringSet(list []string) StringSet {
 		set[s] = struct{}{}
 	}
 	return set
+}
+
+func recordMetrics(checkType, name string, status string) {
+	val := 0.0
+	if status == HealthStatusSuccess {
+		val = 1.0
+	}
+	healthCheckGauge.With(prometheus.Labels{
+		"type": checkType,
+		"name": name,
+	}).Set(val)
+	healthCheckCounter.With(prometheus.Labels{
+		"type":   checkType,
+		"name":   name,
+		"status": status,
+	}).Inc()
 }
 
 // activeAlarmCheck checks if a specific alarm type is active in the server.
