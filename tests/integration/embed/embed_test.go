@@ -31,9 +31,12 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -224,14 +227,14 @@ func testEmbedEtcdClusterGracefulStop(t *testing.T, secure bool) {
 		}
 	}
 
+	// make sure all nodes joined the cluster and are not learners
+	requireHealthClusterEventually(t, e, 50*time.Millisecond, time.Second, secure)
+
 	// stop one node
 	e[nodes-1].Close()
 
 	// remove the stopped node from the cluster
-	_, err = e[0].Server.RemoveMember(context.Background(), uint64(e[nodes-1].Server.MemberId()))
-	if err != nil {
-		t.Fatal(err)
-	}
+	removeMember(t, e[0], e[nodes-1].Server.MemberId(), secure)
 
 	// start the node again -> fails as it was removed from the cluster
 	cfg[nodes-1] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], nodes-1)
@@ -348,6 +351,81 @@ func setupEmbedClusterCfg(t *testing.T, secure bool, curls []url.URL, purls []ur
 	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd-%d", n))
 
 	return cfg
+}
+
+func requireHealthClusterEventually(t *testing.T, instances []*embed.Etcd, checkPeriod time.Duration, timeout time.Duration, secure bool) {
+	var clients []*clientv3.Client
+	defer func() {
+		for _, client := range clients {
+			assert.NoError(t, client.Close())
+		}
+	}()
+
+	for _, instance := range instances {
+		clientCfg := clientv3.Config{
+			Endpoints: []string{instance.Config().AdvertiseClientUrls[0].String()},
+		}
+		if secure {
+			var err error
+			clientCfg.TLS, err = testTLSInfo.ClientConfig()
+			require.NoError(t, err)
+		}
+		cli, err := integration2.NewClient(t, clientCfg)
+		require.NoError(t, err)
+		clients = append(clients, cli)
+	}
+
+	timeoutCtx, timeoutCtxCancel := context.WithTimeout(context.Background(), timeout)
+	defer timeoutCtxCancel()
+
+	for {
+		select {
+		case <-time.After(checkPeriod):
+			allPassed := true
+			for _, client := range clients {
+				if !isHealthy(client) {
+					allPassed = false
+					break
+				}
+			}
+			if allPassed {
+				return
+			}
+		case <-timeoutCtx.Done():
+			t.Fatal("nodes did not become members in time")
+		}
+	}
+}
+
+// perform a similar test as what "etcdctl endpoint health" does
+func isHealthy(cli *clientv3.Client) bool {
+	ctx, ctxCanel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer ctxCanel()
+
+	// get a random key. As long as we can get the response without an error, the endpoint is health.
+	_, err := cli.Get(ctx, "health")
+	// permission denied is OK since proposal goes through consensus to get it
+	return err == nil || err == rpctypes.ErrPermissionDenied
+}
+
+func removeMember(t *testing.T, instance *embed.Etcd, memberID types.ID, secure bool) {
+	ctx, ctxCanel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCanel()
+
+	clientCfg := clientv3.Config{
+		Endpoints: []string{instance.Config().AdvertiseClientUrls[0].String()},
+	}
+	if secure {
+		var err error
+		clientCfg.TLS, err = testTLSInfo.ClientConfig()
+		require.NoError(t, err)
+	}
+	cli, err := integration2.NewClient(t, clientCfg)
+	require.NoError(t, err)
+	defer cli.Close()
+
+	_, err = cli.MemberRemove(ctx, uint64(memberID))
+	require.NoError(t, err)
 }
 
 func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
