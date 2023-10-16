@@ -67,6 +67,9 @@ var (
 	RaftBeforeSaveSnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftAfterSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	beforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
+	BeforeCommitSleep                        Failpoint = gofailSleep{"beforeCommit", time.Second}
+	AfterCommitSleep                         Failpoint = gofailSleep{"afterCommit", time.Second}
+	RaftBeforeSaveSleep                      Failpoint = gofailSleep{"raftBeforeSave", 10 * time.Millisecond}
 	allFailpoints                                      = []Failpoint{
 		KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
 		DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
@@ -77,6 +80,8 @@ var (
 		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
 		beforeApplyOneConfChangeSleep,
+		BeforeCommitSleep, AfterCommitSleep,
+		RaftBeforeSaveSleep,
 	}
 )
 
@@ -560,10 +565,55 @@ func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Lo
 }
 
 func (f killAndGofailSleep) Name() string {
-	return fmt.Sprintf("%s=sleep(%s)", f.failpoint, f.time)
+	return fmt.Sprintf("kill, %s=sleep(%s)", f.failpoint, f.time)
 }
 
 func (f killAndGofailSleep) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
+	memberFailpoints := member.Failpoints()
+	if memberFailpoints == nil {
+		return false
+	}
+	return memberFailpoints.Available(f.failpoint)
+}
+
+type gofailSleep struct {
+	failpoint string
+	time      time.Duration
+}
+
+func (f gofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	err := member.Failpoints().SetupHTTP(ctx, f.failpoint, fmt.Sprintf(`sleep(%q)`, f.time))
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		time.Sleep(100 * time.Millisecond)
+		count, err := member.Failpoints().Count(ctx, f.failpoint)
+		if err != nil {
+			continue
+		}
+		lg.Info("Failpoint count", zap.String("failpoint", f.failpoint), zap.Int64("count", count))
+		if count > 0 {
+			break
+		}
+	}
+	return nil
+}
+
+func (f gofailSleep) Name() string {
+	return fmt.Sprintf("%s=sleep(%s)", f.failpoint, f.time)
+}
+
+func (f gofailSleep) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
 	memberFailpoints := member.Failpoints()
 	if memberFailpoints == nil {
 		return false

@@ -86,3 +86,5 @@ replace (
 replace go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
 
 replace go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
+
+replace go.etcd.io/gofail => github.com/pchan/gofail v0.1.1-0.20230605030243-4e2ac034f230

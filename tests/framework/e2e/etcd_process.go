@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -367,6 +368,37 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 		return fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 	return nil
+}
+
+func (f *BinaryFailpoints) Count(ctx context.Context, failpoint string) (int64, error) {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint + "/count",
+	}
+	r, err := http.NewRequestWithContext(ctx, "GET", failpointUrl.String(), nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return 0, fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return 0, err
+	}
+	count, err := strconv.ParseInt(string(body), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 var httpClient = http.Client{
