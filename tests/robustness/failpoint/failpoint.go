@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -121,27 +121,19 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 
 func verifyClusterHealth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) error {
 	for i := 0; i < len(clus.Procs); i++ {
-		clusterClient, err := clientv3.New(clientv3.Config{
+		c, err := clientv3.New(clientv3.Config{
 			Endpoints:            clus.Procs[i].EndpointsGRPC(),
 			Logger:               zap.NewNop(),
 			DialKeepAliveTime:    10 * time.Second,
 			DialKeepAliveTimeout: 100 * time.Millisecond,
 		})
 		if err != nil {
-			return fmt.Errorf("Error creating client for cluster %s: %v", clus.Procs[i].Config().Name, err)
+			return fmt.Errorf("error creating client for member %s: %v", clus.Procs[i].Config().Name, err)
 		}
-		defer clusterClient.Close()
-
-		cli := healthpb.NewHealthClient(clusterClient.ActiveConnection())
-		resp, err := cli.Check(ctx, &healthpb.HealthCheckRequest{})
+		defer c.Close()
+		_, err = c.Get(ctx, "/fake")
 		if err != nil {
-			return fmt.Errorf("Error checking member %s health: %v", clus.Procs[i].Config().Name, err)
-		}
-		if resp.Status != healthpb.HealthCheckResponse_SERVING {
-			return fmt.Errorf("Member %s health status expected %s, got %s",
-				clus.Procs[i].Config().Name,
-				healthpb.HealthCheckResponse_SERVING,
-				resp.Status)
+			return fmt.Errorf("error making get request to member %s, err: %v", clus.Procs[i].Config().Name, err)
 		}
 	}
 	return nil
