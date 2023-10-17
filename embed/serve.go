@@ -291,8 +291,6 @@ func configureHttpServer(srv *http.Server, cfg etcdserver.ServerConfig) error {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
-		// Override to avoid using priority scheduler which is affected by https://github.com/golang/go/issues/58804.
-		NewWriteScheduler: http2.NewRandomWriteScheduler,
 	})
 }
 
