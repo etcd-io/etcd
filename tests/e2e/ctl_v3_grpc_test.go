@@ -19,11 +19,13 @@ package e2e
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
@@ -37,44 +39,44 @@ func TestAuthority(t *testing.T) {
 		clientURLPattern string
 
 		// Pattern used to validate authority received by server. Fields filled:
-		// %d - will be filled with first member grpc port
+		// ${MEMBER_PORT} - will be filled with member grpc port
 		expectAuthorityPattern string
 	}{
 		{
 			name:                   "http://domain[:port]",
 			clientURLPattern:       "http://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "http://address[:port]",
 			clientURLPattern:       "http://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://domain[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://address[:port] insecure",
 			useTLS:                 true,
 			useInsecureTLS:         true,
 			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://domain[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://localhost:%d",
-			expectAuthorityPattern: "localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
 		},
 		{
 			name:                   "https://address[:port]",
 			useTLS:                 true,
 			clientURLPattern:       "https://127.0.0.1:%d",
-			expectAuthorityPattern: "127.0.0.1:%d",
+			expectAuthorityPattern: "127.0.0.1:${MEMBER_PORT}",
 		},
 	}
 	for _, tc := range tcs {
@@ -99,16 +101,17 @@ func TestAuthority(t *testing.T) {
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)
 
 				client := clusterEtcdctlV3(cfg, endpoints)
-				err = client.Put("foo", "bar")
-				if err != nil {
-					t.Fatal(err)
+				for i := 0; i < 100; i++ {
+					err = client.Put("foo", "bar")
+					if err != nil {
+						t.Fatal(err)
+					}
 				}
 
 				executeWithTimeout(t, 5*time.Second, func() {
-					assertAuthority(t, fmt.Sprintf(tc.expectAuthorityPattern, 20000), epc)
+					assertAuthority(t, tc.expectAuthorityPattern, epc)
 				})
 			})
-
 		}
 	}
 }
@@ -129,28 +132,19 @@ func templateEndpoints(t *testing.T, pattern string, clus *etcdProcessCluster) [
 	return endpoints
 }
 
-func assertAuthority(t *testing.T, expectAurhority string, clus *etcdProcessCluster) {
-	logs := []logsExpect{}
-	for _, proc := range clus.procs {
-		logs = append(logs, proc.Logs())
+func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *etcdProcessCluster) {
+	for i := range clus.procs {
+		line, _ := clus.procs[i].Logs().Expect(`http2: decoded hpack field header field ":authority"`)
+		line = strings.TrimSuffix(line, "\n")
+		line = strings.TrimSuffix(line, "\r")
+		u, err := url.Parse(clus.procs[i].EndpointsGRPC()[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		expectAuthority := strings.ReplaceAll(expectAuthorityPattern, "${MEMBER_PORT}", u.Port())
+		expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAuthority)
+		assert.True(t, strings.HasSuffix(line, expectLine), fmt.Sprintf("Got %q expected suffix %q", line, expectLine))
 	}
-	line := firstMatch(t, `http2: decoded hpack field header field ":authority"`, logs...)
-	line = strings.TrimSuffix(line, "\n")
-	line = strings.TrimSuffix(line, "\r")
-	expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAurhority)
-	assert.True(t, strings.HasSuffix(line, expectLine), fmt.Sprintf("Got %q expected suffix %q", line, expectLine))
-}
-
-func firstMatch(t *testing.T, expectLine string, logs ...logsExpect) string {
-	t.Helper()
-	match := make(chan string, len(logs))
-	for i := range logs {
-		go func(l logsExpect) {
-			line, _ := l.Expect(expectLine)
-			match <- line
-		}(logs[i])
-	}
-	return <-match
 }
 
 func executeWithTimeout(t *testing.T, timeout time.Duration, f func()) {
