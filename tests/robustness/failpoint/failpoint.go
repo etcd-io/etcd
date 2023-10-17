@@ -47,6 +47,7 @@ var (
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
 		beforeApplyOneConfChangeSleep,
 		MemberReplace,
+		DropPeerNetwork,
 	}
 )
 

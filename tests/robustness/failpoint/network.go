@@ -30,6 +30,7 @@ var (
 	BlackholePeerNetwork   Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: false}}
 	BlackholeUntilSnapshot Failpoint = blackholePeerNetworkFailpoint{triggerBlackhole{waitTillSnapshot: true}}
 	DelayPeerNetwork       Failpoint = delayPeerNetworkFailpoint{duration: time.Second, baseLatency: 75 * time.Millisecond, randomizedLatency: 50 * time.Millisecond}
+	DropPeerNetwork        Failpoint = dropPeerNetworkFailpoint{duration: time.Second, dropProbabilityPercent: 50}
 )
 
 type blackholePeerNetworkFailpoint struct {
@@ -42,7 +43,7 @@ func (f blackholePeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T,
 }
 
 func (f blackholePeerNetworkFailpoint) Name() string {
-	return "blackhole"
+	return "blackholePeerNetwork"
 }
 
 type triggerBlackhole struct {
@@ -167,9 +168,43 @@ func (f delayPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg 
 }
 
 func (f delayPeerNetworkFailpoint) Name() string {
-	return "delay"
+	return "delayPeerNetwork"
 }
 
 func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
+	return config.ClusterSize > 1 && clus.PeerProxy() != nil
+}
+
+type dropPeerNetworkFailpoint struct {
+	duration               time.Duration
+	dropProbabilityPercent int
+}
+
+func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	proxy := member.PeerProxy()
+
+	proxy.ModifyRx(f.modifyPacket)
+	proxy.ModifyTx(f.modifyPacket)
+	lg.Info("Dropping traffic from and to member", zap.String("member", member.Config().Name), zap.Int("probability", f.dropProbabilityPercent))
+	time.Sleep(f.duration)
+	lg.Info("Traffic drop removed", zap.String("member", member.Config().Name))
+	proxy.UnmodifyRx()
+	proxy.UnmodifyTx()
+	return nil
+}
+
+func (f dropPeerNetworkFailpoint) modifyPacket(data []byte) []byte {
+	if rand.Intn(100) < f.dropProbabilityPercent {
+		return nil
+	}
+	return data
+}
+
+func (f dropPeerNetworkFailpoint) Name() string {
+	return "dropPeerNetwork"
+}
+
+func (f dropPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
 }
