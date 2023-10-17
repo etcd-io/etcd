@@ -9,7 +9,7 @@ function(config) {
     + var.datasource.generalOptions.withLabel('Data Source'),
 
   cluster:
-    var.query.new(config.clusterLabel)
+    var.query.new('cluster')
     + var.query.generalOptions.withLabel('cluster')
     + var.query.withDatasourceFromVariable(self.datasource)
     + { refresh: config.dashboard_var_refresh }
