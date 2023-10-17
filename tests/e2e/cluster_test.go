@@ -181,6 +181,17 @@ type etcdProcessClusterConfig struct {
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new etcdProcessCluster once all nodes are ready to accept client requests.
 func newEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
+	epc, err := initEtcdProcessCluster(t, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return startEtcdProcessCluster(epc, cfg)
+}
+
+// initEtcdProcessCluster initializes a new cluster based on the given config.
+// It doesn't start the cluster.
+func initEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	skipInShortMode(t)
 
 	etcdCfgs := cfg.etcdServerProcessConfigs(t)
@@ -199,7 +210,11 @@ func newEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdPr
 		}
 		epc.procs[i] = proc
 	}
+	return epc, nil
+}
 
+// startEtcdProcessCluster launches a new cluster from etcd processes.
+func startEtcdProcessCluster(epc *etcdProcessCluster, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	if cfg.rollingStart {
 		if err := epc.RollingStart(); err != nil {
 			return nil, fmt.Errorf("Cannot rolling-start: %v", err)

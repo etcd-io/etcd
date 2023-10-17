@@ -15,16 +15,28 @@
 package etcdserver
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/server/v3/lease"
 
 	"github.com/stretchr/testify/assert"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/mvcc"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -83,6 +95,13 @@ func TestInitialCheck(t *testing.T) {
 		{
 			name:          "Peer returned different hash and compaction rev",
 			hasher:        fakeHasher{hashByRevResponses: []hashByRev{{hash: mvcc.KeyValueHash{Hash: 1, CompactRevision: 1}}}, peerHashes: []*peerHashKVResp{{resp: &pb.HashKVResponse{Header: &pb.ResponseHeader{}, Hash: 2, CompactRevision: 2}}}},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "HashByRev(0)", "PeerHashByRev(0)", "MemberId()", "MemberId()"},
+		},
+		{
+			name: "Cluster ID Mismatch does not fail CorruptionChecker.InitialCheck()",
+			hasher: fakeHasher{
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+			},
 			expectActions: []string{"MemberId()", "ReqTimeout()", "HashByRev(0)", "PeerHashByRev(0)", "MemberId()", "MemberId()"},
 		},
 	}
@@ -202,6 +221,13 @@ func TestPeriodicCheck(t *testing.T) {
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)", "TriggerCorruptAlarm(0)"},
 			expectCorrupt: true,
 		},
+		{
+			name: "Cluster ID Mismatch does not fail CorruptionChecker.PeriodicCheck()",
+			hasher: fakeHasher{
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+			},
+			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)"},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -290,6 +316,14 @@ func TestCompactHashCheck(t *testing.T) {
 			},
 			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(1)"},
 		},
+		{
+			name: "Cluster ID Mismatch does not fail CorruptionChecker.CompactHashCheck()",
+			hasher: fakeHasher{
+				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}},
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+			},
+			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(1)"},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -374,4 +408,89 @@ func (f *fakeHasher) LinearizableReadNotify(ctx context.Context) error {
 func (f *fakeHasher) TriggerCorruptAlarm(memberId types.ID) {
 	f.actions = append(f.actions, fmt.Sprintf("TriggerCorruptAlarm(%d)", memberId))
 	f.alarmTriggered = true
+}
+
+func TestHashKVHandler(t *testing.T) {
+	var remoteClusterID = 111195
+	var localClusterID = 111196
+	var revision = 1
+
+	etcdSrv := &EtcdServer{}
+	etcdSrv.cluster = newTestCluster(t, nil)
+	etcdSrv.cluster.SetID(types.ID(localClusterID), types.ID(localClusterID))
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	etcdSrv.kv = mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	ph := &hashKVHandler{
+		lg:     zap.NewNop(),
+		server: etcdSrv,
+	}
+	srv := httptest.NewServer(ph)
+	defer srv.Close()
+
+	tests := []struct {
+		name            string
+		remoteClusterID int
+		wcode           int
+		wKeyWords       string
+	}{
+		{
+			name:            "HashKV returns 200 if cluster hash matches",
+			remoteClusterID: localClusterID,
+			wcode:           http.StatusOK,
+			wKeyWords:       "",
+		},
+		{
+			name:            "HashKV returns 400 if cluster hash doesn't matche",
+			remoteClusterID: remoteClusterID,
+			wcode:           http.StatusPreconditionFailed,
+			wKeyWords:       "cluster ID mismatch",
+		},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hashReq := &pb.HashKVRequest{Revision: int64(revision)}
+			hashReqBytes, err := json.Marshal(hashReq)
+			if err != nil {
+				t.Fatalf("failed to marshal request: %v", err)
+			}
+			req, err := http.NewRequest(http.MethodGet, srv.URL+PeerHashKVPath, bytes.NewReader(hashReqBytes))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			req.Header.Set("X-Etcd-Cluster-ID", strconv.FormatUint(uint64(tt.remoteClusterID), 16))
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("failed to get http response: %v", err)
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				t.Fatalf("unexpected io.ReadAll error: %v", err)
+			}
+			if resp.StatusCode != tt.wcode {
+				t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
+			}
+			if resp.StatusCode != http.StatusOK {
+				if !strings.Contains(string(body), tt.wKeyWords) {
+					t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
+				}
+				return
+			}
+
+			hashKVResponse := pb.HashKVResponse{}
+			err = json.Unmarshal(body, &hashKVResponse)
+			if err != nil {
+				t.Fatalf("unmarshal response error: %v", err)
+			}
+			hashValue, _, err := etcdSrv.KV().HashStorage().HashByRev(int64(revision))
+			if err != nil {
+				t.Fatalf("etcd server hash failed: %v", err)
+			}
+			if hashKVResponse.Hash != hashValue.Hash {
+				t.Fatalf("hash value inconsistent: %d != %d", hashKVResponse.Hash, hashValue)
+			}
+		})
+	}
 }
