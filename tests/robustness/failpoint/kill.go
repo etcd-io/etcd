@@ -27,12 +27,13 @@ import (
 )
 
 var (
-	KillFailpoint Failpoint = killFailpoint{}
+	ForcefulShutdown Failpoint = forcefulShutdownFailpoint{}
+	GracefulShutdown Failpoint = gracefulShutdownFailpoint{}
 )
 
-type killFailpoint struct{}
+type forcefulShutdownFailpoint struct{}
 
-func (f killFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f forcefulShutdownFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 
 	for member.IsRunning() {
@@ -60,10 +61,36 @@ func (f killFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	return nil
 }
 
-func (f killFailpoint) Name() string {
-	return "Kill"
+func (f forcefulShutdownFailpoint) Name() string {
+	return "forceful-shutdown"
 }
 
-func (f killFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
+func (f forcefulShutdownFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
+	return true
+}
+
+type gracefulShutdownFailpoint struct{}
+
+func (f gracefulShutdownFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	member := clus.Procs[rand.Int()%len(clus.Procs)]
+	for member.IsRunning() {
+		err := member.Terminate()
+		if err != nil {
+			lg.Info("Terminating etcd failed", zap.Error(err))
+		}
+		err = member.Wait(ctx)
+		if err != nil {
+			lg.Info("Failed to terminate the etcd", zap.Error(err))
+			return fmt.Errorf("failed to terminate the process within %s, err: %w", triggerTimeout, err)
+		}
+	}
+	return member.Start(ctx)
+}
+
+func (f gracefulShutdownFailpoint) Name() string {
+	return "graceful-shutdown"
+}
+
+func (f gracefulShutdownFailpoint) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
 	return true
 }

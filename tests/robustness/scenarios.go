@@ -144,7 +144,7 @@ func regressionScenarios(t *testing.T) []testScenario {
 	})
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue13766",
-		failpoint: failpoint.KillFailpoint,
+		failpoint: failpoint.ForcefulShutdown,
 		profile:   traffic.HighTrafficProfile,
 		traffic:   traffic.EtcdPut,
 		cluster: *e2e.NewConfig(
