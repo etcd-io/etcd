@@ -195,6 +195,7 @@ var (
 			expectedRespSubStrings: []string{
 				`[+]serializable_read ok`,
 				`[+]data_corruption ok`,
+				`[+]read_index ok`,
 			},
 		},
 	}
@@ -232,16 +233,44 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 			name:           "network partitioned",
 			injectFailure:  blackhole,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithIsPeerTLS(true), e2e.WithPeerProxy(true)},
-			// TODO expected behavior of readyz check should be 503 or timeout after ReadIndex check is implemented.
-			healthChecks: defaultHealthCheckConfigs,
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+					expectedRespSubStrings: []string{
+						`[+]serializable_read ok`,
+						`[+]data_corruption ok`,
+						`[-]read_index failed: etcdserver: leader changed`,
+					},
+				},
+			},
 		},
 		{
 			name:           "raft loop deadlock",
 			injectFailure:  triggerRaftLoopDeadLock,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
 			// TODO expected behavior of livez check should be 503 or timeout after RaftLoopDeadLock check is implemented.
-			// TODO expected behavior of readyz check should be 503 or timeout after ReadIndex check is implemented.
-			healthChecks: defaultHealthCheckConfigs,
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+					expectedRespSubStrings: []string{
+						`[+]serializable_read ok`,
+						`[+]data_corruption ok`,
+						`[-]read_index failed: etcdserver: leader changed`,
+					},
+				},
+			},
 		},
 		// verify that auth enabled serializable read must go through mvcc
 		{

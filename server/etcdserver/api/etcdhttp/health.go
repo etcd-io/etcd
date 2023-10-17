@@ -44,6 +44,7 @@ type ServerHealth interface {
 	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
 	Config() config.ServerConfig
 	AuthStore() auth.AuthStore
+	GetReadIndex(ctx context.Context) (uint64, error)
 }
 
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
@@ -215,6 +216,7 @@ func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHea
 	reg := CheckRegistry{path: "/readyz", checks: make(map[string]HealthCheck)}
 	reg.Register("data_corruption", activeAlarmCheck(server, pb.AlarmType_CORRUPT))
 	reg.Register("serializable_read", serializableReadCheck(server))
+	reg.Register("read_index", readIndexCheck(server))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
@@ -363,5 +365,12 @@ func serializableReadCheck(srv ServerHealth) func(ctx context.Context) error {
 			return fmt.Errorf("range error: %w", err)
 		}
 		return nil
+	}
+}
+
+func readIndexCheck(srv ServerHealth) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		_, err := srv.GetReadIndex(ctx)
+		return err
 	}
 }

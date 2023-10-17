@@ -38,9 +38,10 @@ import (
 
 type fakeHealthServer struct {
 	fakeServer
-	apiError      error
-	missingLeader bool
-	authStore     auth.AuthStore
+	apiError       error
+	missingLeader  bool
+	authStore      auth.AuthStore
+	readIndexError error
 }
 
 func (s *fakeHealthServer) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -58,6 +59,10 @@ func (s *fakeHealthServer) Leader() types.ID {
 	return types.ID(raft.None)
 }
 
+func (s *fakeHealthServer) GetReadIndex(ctx context.Context) (uint64, error) {
+	return 0, s.readIndexError
+}
+
 func (s *fakeHealthServer) AuthStore() auth.AuthStore { return s.authStore }
 
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
@@ -69,9 +74,10 @@ type healthTestCase struct {
 	inResult         []string
 	notInResult      []string
 
-	alarms        []*pb.AlarmMember
-	apiError      error
-	missingLeader bool
+	alarms         []*pb.AlarmMember
+	apiError       error
+	readIndexError error
+	missingLeader  bool
 }
 
 func TestHealthHandler(t *testing.T) {
@@ -286,6 +292,40 @@ func TestSerializableReadCheck(t *testing.T) {
 			s := &fakeHealthServer{
 				apiError:  tt.apiError,
 				authStore: auth.NewAuthStore(logger, schema.NewAuthBackend(logger, be), nil, 0),
+			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+		})
+	}
+}
+
+func TestReadIndexCheck(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "Alive ok",
+			healthCheckURL:   "/livez",
+			readIndexError:   fmt.Errorf("failed to get read index"),
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "Not ready if read index error",
+			healthCheckURL:   "/readyz",
+			readIndexError:   fmt.Errorf("failed to get read index"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]read_index failed: failed to get read index"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				readIndexError: tt.readIndexError,
+				authStore:      auth.NewAuthStore(logger, schema.NewAuthBackend(logger, be), nil, 0),
 			}
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
