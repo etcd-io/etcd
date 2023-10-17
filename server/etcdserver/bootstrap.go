@@ -76,8 +76,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-	backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+	backend, err := bootstrapBackend(cfg, haveWAL, ss)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
-	s, err := bootstrapStorage(cfg, st, backend, bwal, cluster)
+	s, err := bootstrapStorage(cfg, backend, bwal, cluster)
 	if err != nil {
 		backend.Close()
 		return nil, err
@@ -165,14 +164,13 @@ type bootstrappedRaft struct {
 	storage *raft.MemoryStorage
 }
 
-func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
+func bootstrapStorage(cfg config.ServerConfig, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
 	if wal == nil {
 		wal = bootstrapNewWAL(cfg, cl)
 	}
 
 	return &bootstrappedStorage{
 		backend: be,
-		st:      st,
 		wal:     wal,
 	}, nil
 }
@@ -198,7 +196,7 @@ func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
-func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, ss *snap.Snapshotter) (backend *bootstrappedBackend, err error) {
+func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, ss *snap.Snapshotter) (backend *bootstrappedBackend, err error) {
 	beExist := fileutil.Exist(cfg.BackendPath())
 	ci := cindex.NewConsistentIndex(nil)
 	beHooks := serverstorage.NewBackendHooks(cfg.Logger, ci)
@@ -221,7 +219,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 	// TODO(serathius): Implement schema setup in fresh storage
 	var snapshot *raftpb.Snapshot
 	if haveWAL {
-		snapshot, be, err = recoverSnapshot(cfg, st, be, beExist, beHooks, ci, ss)
+		snapshot, be, err = recoverSnapshot(cfg, be, beExist, beHooks, ci, ss)
 		if err != nil {
 			return nil, err
 		}
@@ -378,7 +376,7 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*
 	}, nil
 }
 
-func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backend, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer, ss *snap.Snapshotter) (*raftpb.Snapshot, backend.Backend, error) {
+func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer, ss *snap.Snapshotter) (*raftpb.Snapshot, backend.Backend, error) {
 	// Find a snapshot to start/restart a raft node
 	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
 	if err != nil {
@@ -392,20 +390,10 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 	}
 
 	if snapshot != nil {
-		if err = st.Recovery(snapshot.Data); err != nil {
-			cfg.Logger.Panic("failed to recover from snapshot", zap.Error(err))
-		}
-
-		if err = serverstorage.AssertNoV2StoreContent(cfg.Logger, st, cfg.V2Deprecation); err != nil {
-			cfg.Logger.Error("illegal v2store content", zap.Error(err))
+		if err = serverstorage.AssertV2DeprecationStage(cfg.Logger, cfg.V2Deprecation); err != nil {
+			cfg.Logger.Error("illegal v2store deprecation stage. This version does not recover from v2 snapshot", zap.Error(err))
 			return nil, be, err
 		}
-
-		cfg.Logger.Info(
-			"recovered v2 store from snapshot",
-			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
-		)
 
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
@@ -446,7 +434,6 @@ func (c *bootstrapedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedSt
 	if !s.wal.haveWAL {
 		c.cl.SetID(c.nodeID, c.cl.ID())
 	}
-	c.cl.SetStore(s.st)
 	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, s.backend.be))
 	if s.wal.haveWAL {
 		c.cl.Recover(api.UpdateCapability)

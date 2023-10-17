@@ -28,7 +28,7 @@ const (
 	// ability to rollback to etcd v3.5.
 	V2_DEPR_2_GONE = V2DeprecationEnum("gone")
 
-	V2_DEPR_DEFAULT = V2_DEPR_1_WRITE_ONLY
+	V2_DEPR_DEFAULT = V2_DEPR_1_WRITE_ONLY_DROP
 )
 
 func (e V2DeprecationEnum) IsAtLeast(v2d V2DeprecationEnum) bool {

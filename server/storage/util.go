@@ -25,24 +25,14 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-// AssertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
-// if the v2store contains custom content.
-func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage config.V2DeprecationEnum) error {
-	metaOnly, err := membership.IsMetaStoreOnly(st)
-	if err != nil {
-		return err
+func AssertV2DeprecationStage(lg *zap.Logger, deprecationStage config.V2DeprecationEnum) error {
+	//supported stages are "write-only-drop-data" and "gone"
+	if !deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY_DROP) {
+		return fmt.Errorf("Unsupported stage --v2-deprecation=%s", deprecationStage)
 	}
-	if metaOnly {
-		return nil
-	}
-	if deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
-		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
-	}
-	lg.Warn("detected custom v2store content. Etcd v3.5 is the last version allowing to access it using API v2. Please remove the content.")
 	return nil
 }
 
