@@ -17,7 +17,7 @@ require (
 	github.com/anishathalye/porcupine v0.1.4
 	github.com/coreos/go-semver v0.3.1
 	github.com/golang/protobuf v1.5.3
-	github.com/google/go-cmp v0.5.9
+	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
@@ -42,7 +42,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.0.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.14.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 	golang.org/x/time v0.3.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.31.0

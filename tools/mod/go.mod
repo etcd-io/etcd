@@ -3,7 +3,7 @@ module go.etcd.io/etcd/tools/v3
 go 1.21
 
 require (
-	github.com/alexfalkowski/gocovmerge v1.2.1
+	github.com/alexfalkowski/gocovmerge v1.2.2
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.4
 	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e
@@ -42,7 +42,7 @@ require (
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/certificate-transparency-go v1.1.4 // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/copier v0.4.0 // indirect
@@ -65,13 +65,13 @@ require (
 	github.com/zmap/zlint/v3 v3.4.1 // indirect
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20221208152030-732eee02a75a // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
+	golang.org/x/tools v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	google.golang.org/genproto v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230920204549-e6e6cdab5c13 // indirect
