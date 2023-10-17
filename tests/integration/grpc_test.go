@@ -22,8 +22,9 @@ import (
 	"testing"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func TestAuthority(t *testing.T) {
@@ -107,12 +108,14 @@ func TestAuthority(t *testing.T) {
 				kv := setupClient(t, tc.clientURLPattern, clus, tlsConfig)
 				defer kv.Close()
 
-				_, err := kv.Put(context.TODO(), "foo", "bar")
-				if err != nil {
-					t.Fatal(err)
+				for i := 0; i < 100; i++ {
+					_, err := kv.Put(context.TODO(), "foo", "bar")
+					if err != nil {
+						t.Fatal(err)
+					}
 				}
 
-				assertAuthority(t, templateAuthority(t, tc.expectAuthorityPattern, clus.Members[0]), clus)
+				assertAuthority(t, tc.expectAuthorityPattern, clus)
 			})
 		}
 	}
@@ -180,18 +183,20 @@ func templateAuthority(t *testing.T, pattern string, m *member) string {
 	return authority
 }
 
-func assertAuthority(t *testing.T, expectedAuthority string, clus *ClusterV3) {
+func assertAuthority(t *testing.T, expectedAuthorityPattern string, clus *ClusterV3) {
 	t.Helper()
-	requestsFound := 0
 	for _, m := range clus.Members {
+		requestsFound := 0
+		expectedAuthority := templateAuthority(t, expectedAuthorityPattern, m)
 		for _, r := range m.RecordedRequests() {
-			requestsFound++
-			if r.Authority != expectedAuthority {
+			if r.Authority == expectedAuthority {
+				requestsFound++
+			} else {
 				t.Errorf("Got unexpected authority header, member: %q, request: %q, got authority: %q, expected %q", m.Name, r.FullMethod, r.Authority, expectedAuthority)
 			}
 		}
-	}
-	if requestsFound == 0 {
-		t.Errorf("Expected at least one request")
+		if requestsFound == 0 {
+			t.Errorf("Expected at least one request with matched authority header value was recorded by the server intercepter on member %s but got 0", m.Name)
+		}
 	}
 }
