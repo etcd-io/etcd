@@ -21,13 +21,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
+
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
 )
 
 // This test mimics scenario described in grpc_naming.md doc.
