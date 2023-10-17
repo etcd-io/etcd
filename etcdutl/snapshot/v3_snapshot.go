@@ -30,7 +30,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -263,7 +263,6 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
-		zap.Stack("stack"),
 	)
 
 	if err = s.saveDB(); err != nil {
