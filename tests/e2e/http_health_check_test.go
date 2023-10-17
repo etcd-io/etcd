@@ -21,9 +21,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 
 	"github.com/stretchr/testify/require"
 
@@ -158,6 +162,147 @@ func TestHTTPHealthHandler(t *testing.T) {
 	}
 }
 
+func TestHTTPLivezReadyzHandler(t *testing.T) {
+	e2e.BeforeTest(t)
+	client := &http.Client{}
+	tcs := []struct {
+		name           string
+		injectFailure  func(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster)
+		clusterOptions []e2e.EPClusterOption
+		healthChecks   []healthCheckConfig
+	}{
+		{
+			name:           "no failures", // happy case
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name:           "activated no space alarm",
+			injectFailure:  triggerNoSpaceAlarm,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithQuotaBackendBytes(int64(13 * os.Getpagesize()))},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name:           "overloaded server slow apply",
+			injectFailure:  triggerSlowApply,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithGoFailEnabled(true)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name:           "network partitioned",
+			injectFailure:  blackhole,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithIsPeerTLS(true), e2e.WithPeerProxy(true)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name:           "raft loop deadlock",
+			injectFailure:  triggerRaftLoopDeadLock,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
+			healthChecks: []healthCheckConfig{
+				{
+					// current kubeadm etcd liveness check failed to detect raft loop deadlock in steady state
+					// ref. https://github.com/kubernetes/kubernetes/blob/master/cmd/kubeadm/app/phases/etcd/local.go#L225-L226
+					// current liveness probe depends on the etcd /health check has a flaw that new /livez check should resolve.
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		// verify that auth enabled serializable read must go through mvcc
+		{
+			name:           "slow buffer write back with auth enabled",
+			injectFailure:  triggerSlowBufferWriteBackWithAuth,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                  "/livez",
+					expectedTimeoutError: true,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusOK,
+				},
+			},
+		},
+		{
+			name:           "corrupt",
+			injectFailure:  triggerCorrupt,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithCorruptCheckTime(time.Second)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                "/readyz",
+					expectedStatusCode: http.StatusServiceUnavailable,
+				},
+			},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, tc.clusterOptions...)
+			require.NoError(t, err)
+			defer clus.Close()
+			testutils.ExecuteUntil(ctx, t, func() {
+				if tc.injectFailure != nil {
+					tc.injectFailure(ctx, t, clus)
+				}
+
+				for _, hc := range tc.healthChecks {
+					requestURL := clus.Procs[0].EndpointsHTTP()[0] + hc.url
+					t.Logf("health check URL is %s", requestURL)
+					doHealthCheckAndVerify(t, client, requestURL, hc.expectedStatusCode, hc.expectedTimeoutError)
+				}
+			})
+		})
+	}
+}
+
 func doHealthCheckAndVerify(t *testing.T, client *http.Client, url string, expectStatusCode int, expectTimeoutError bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
@@ -223,4 +368,38 @@ func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus 
 
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "beforeWritebackBuf", `sleep("3s")`))
 	clus.Procs[0].Etcdctl(e2e.WithAuth("root", "root")).Put(context.Background(), "foo", "bar", config.PutOptions{Timeout: 200 * time.Millisecond})
+}
+
+func triggerCorrupt(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) {
+	etcdctl := clus.Procs[0].Etcdctl()
+	for i := 0; i < 10; i++ {
+		err := etcdctl.Put(ctx, "foo", "bar", config.PutOptions{})
+		require.NoError(t, err)
+	}
+	err := clus.Procs[0].Kill()
+	require.NoError(t, err)
+	err = clus.Procs[0].Wait(ctx)
+	require.NoError(t, err)
+	err = testutil.CorruptBBolt(path.Join(clus.Procs[0].Config().DataDirPath, "member", "snap", "db"))
+	require.NoError(t, err)
+	err = clus.Procs[0].Start(ctx)
+	for {
+		time.Sleep(time.Second)
+		select {
+		case <-ctx.Done():
+			require.NoError(t, err)
+		default:
+		}
+		response, err := etcdctl.AlarmList(ctx)
+		if err != nil {
+			continue
+		}
+		if len(response.Alarms) == 0 {
+			continue
+		}
+		require.Len(t, response.Alarms, 1)
+		if response.Alarms[0].Alarm == etcdserverpb.AlarmType_CORRUPT {
+			break
+		}
+	}
 }
