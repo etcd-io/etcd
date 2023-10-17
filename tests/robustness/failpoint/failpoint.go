@@ -46,6 +46,7 @@ var (
 		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
 		beforeApplyOneConfChangeSleep,
+		MemberReplace,
 	}
 )
 
