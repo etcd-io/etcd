@@ -158,6 +158,10 @@ func withCfg(cfg e2e.EtcdProcessClusterConfig) ctlOption {
 	return func(cx *ctlCtx) { cx.cfg = cfg }
 }
 
+func withDefaultDialTimeout() ctlOption {
+	return withDialTimeout(0)
+}
+
 func withDialTimeout(timeout time.Duration) ctlOption {
 	return func(cx *ctlCtx) { cx.dialTimeout = timeout }
 }

@@ -60,11 +60,7 @@ func newListener(addr, scheme string, opts ...ListenerOption) (net.Listener, err
 	switch {
 	case lnOpts.IsSocketOpts():
 		// new ListenConfig with socket options.
-		config, err := newListenConfig(lnOpts.socketOpts)
-		if err != nil {
-			return nil, err
-		}
-		lnOpts.ListenConfig = config
+		lnOpts.ListenConfig = newListenConfig(lnOpts.socketOpts)
 		// check for timeout
 		fallthrough
 	case lnOpts.IsTimeout(), lnOpts.IsSocketOpts():
@@ -129,7 +125,7 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 	return newTLSListener(l, tlsinfo, checkSAN)
 }
 
-func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
+func newListenConfig(sopts *SocketOpts) net.ListenConfig {
 	lc := net.ListenConfig{}
 	if sopts != nil {
 		ctls := getControls(sopts)
@@ -137,7 +133,7 @@ func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
 			lc.Control = ctls.Control
 		}
 	}
-	return lc, nil
+	return lc
 }
 
 type TLSInfo struct {

@@ -96,11 +96,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
-	s, err := bootstrapStorage(cfg, st, backend, bwal, cluster)
-	if err != nil {
-		backend.Close()
-		return nil, err
-	}
+	s := bootstrapStorage(cfg, st, backend, bwal, cluster)
 
 	if err = cluster.Finalize(cfg, s); err != nil {
 		backend.Close()
@@ -165,7 +161,7 @@ type bootstrappedRaft struct {
 	storage *raft.MemoryStorage
 }
 
-func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
+func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) *bootstrappedStorage {
 	if wal == nil {
 		wal = bootstrapNewWAL(cfg, cl)
 	}
@@ -174,7 +170,7 @@ func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappe
 		backend: be,
 		st:      st,
 		wal:     wal,
-	}, nil
+	}
 }
 
 func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {

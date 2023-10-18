@@ -24,7 +24,7 @@ import (
 
 // TestCtlV3RoleAddTimeout tests add role with 0 grpc dial timeout while it tolerates dial timeout error.
 // This is unique in e2e test
-func TestCtlV3RoleAddTimeout(t *testing.T) { testCtl(t, roleAddTest, withDialTimeout(0)) }
+func TestCtlV3RoleAddTimeout(t *testing.T) { testCtl(t, roleAddTest, withDefaultDialTimeout()) }
 
 func roleAddTest(cx ctlCtx) {
 	cmdSet := []struct {

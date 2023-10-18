@@ -23,8 +23,9 @@ linters:
     - revive
     - staticcheck
     - stylecheck
-    - unused
     - unconvert # Remove unnecessary type conversions
+    - unparam
+    - unused
 linters-settings: # please keep this alphabetized
   goimports:
     local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.

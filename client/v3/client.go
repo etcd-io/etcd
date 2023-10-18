@@ -220,7 +220,9 @@ func (c *Client) autoSync() {
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) []grpc.DialOption {
+	var opts []grpc.DialOption
+
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:                c.cfg.DialKeepAliveTime,
@@ -248,7 +250,7 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
 	)
 
-	return opts, nil
+	return opts
 }
 
 // Dial connects to a single endpoint using the client's config.
@@ -289,10 +291,8 @@ func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, e
 
 // dial configures and dials any grpc balancer target.
 func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(creds, dopts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure dialer: %v", err)
-	}
+	opts := c.dialSetupOpts(creds, dopts...)
+
 	if c.authTokenBundle != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}

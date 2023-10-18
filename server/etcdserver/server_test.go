@@ -187,7 +187,7 @@ func TestApplyRepeat(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
@@ -1366,7 +1366,7 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
@@ -1416,7 +1416,7 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
@@ -1467,7 +1467,7 @@ func TestUpdateMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(st)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1929,12 +1929,8 @@ func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
 	return nil
 }
 
-func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
-	c := membership.NewCluster(zaptest.NewLogger(t))
-	for _, m := range membs {
-		c.AddMember(m, true)
-	}
-	return c
+func newTestCluster(t testing.TB) *membership.RaftCluster {
+	return membership.NewCluster(zaptest.NewLogger(t))
 }
 
 func newTestClusterWithBackend(t testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {

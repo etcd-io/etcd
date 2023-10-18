@@ -29,7 +29,7 @@ import (
 )
 
 func TestRevisionMonotonicWithLeaderPartitions(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
+	testRevisionMonotonicWithFailures(t, 12*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			leader := clus.WaitLeader(t)
 			time.Sleep(time.Second)

@@ -71,7 +71,7 @@ func TestDowngradeWithUserAuth(t *testing.T) {
 	testDowngradeWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testDowngradeWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+func testDowngradeWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
 	// TODO(ahrtr): finish this after we added interface methods `Downgrade` into `Client`
 	t.Skip()
 }
@@ -121,7 +121,7 @@ func TestMoveLeaderWithUserAuth(t *testing.T) {
 	testMoveLeaderWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testMoveLeaderWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+func testMoveLeaderWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
 	// TODO(ahrtr): finish this after we added interface methods `MoveLeader` into `Client`
 	t.Skip()
 }
@@ -145,7 +145,7 @@ func TestSnapshotWithUserAuth(t *testing.T) {
 	testSnapshotWithAuth(t, false, true, WithAuth("user0", "user0Pass"))
 }
 
-func testSnapshotWithAuth(t *testing.T, expectConnectionError, expectOperationError bool, opts ...config.ClientOption) {
+func testSnapshotWithAuth(t *testing.T, _expectConnectionError, _expectOperationError bool, _opts ...config.ClientOption) {
 	// TODO(ahrtr): finish this after we added interface methods `Snapshot` into `Client`
 	t.Skip()
 }

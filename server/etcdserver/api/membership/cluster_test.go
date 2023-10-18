@@ -544,7 +544,7 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
 	c.SetStore(st)
-	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil), true)
+	c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
 
 	wactions := []testutil.Action{
 		{
@@ -552,7 +552,7 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 			Params: []any{
 				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
-				`{"peerURLs":null,"isLearner":true}`,
+				`{"peerURLs":[],"isLearner":true}`,
 				false,
 				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
 			},

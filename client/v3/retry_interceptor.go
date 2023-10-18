@@ -377,10 +377,10 @@ var (
 // with the next iteration.
 type backoffFunc func(attempt uint) time.Duration
 
-// withRetryPolicy sets the retry policy of this call.
-func withRetryPolicy(rp retryPolicy) retryOption {
+// withRepeatablePolicy sets the repeatable policy of this call.
+func withRepeatablePolicy() retryOption {
 	return retryOption{applyFunc: func(o *options) {
-		o.retryPolicy = rp
+		o.retryPolicy = repeatable
 	}}
 }
 

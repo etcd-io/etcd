@@ -268,12 +268,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	e.Server.Start()
 
-	if err = e.servePeers(); err != nil {
-		return e, err
-	}
-	if err = e.serveClients(); err != nil {
-		return e, err
-	}
+	e.servePeers()
+
+	e.serveClients()
+
 	if err = e.serveMetrics(); err != nil {
 		return e, err
 	}
@@ -561,7 +559,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 }
 
 // configure peer handlers after rafthttp.Transport started
-func (e *Etcd) servePeers() (err error) {
+func (e *Etcd) servePeers() {
 	ph := etcdhttp.NewPeerHandler(e.GetLogger(), e.Server)
 
 	for _, p := range e.Peers {
@@ -609,7 +607,6 @@ func (e *Etcd) servePeers() (err error) {
 			e.errHandler(l.serve())
 		}(pl)
 	}
-	return nil
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
@@ -727,7 +724,7 @@ func resolveUrl(u url.URL) (addr string, secure bool, network string) {
 	return addr, secure, network
 }
 
-func (e *Etcd) serveClients() (err error) {
+func (e *Etcd) serveClients() {
 	if !e.cfg.ClientTLSInfo.Empty() {
 		e.cfg.logger.Info(
 			"starting with client TLS",
@@ -771,7 +768,6 @@ func (e *Etcd) serveClients() (err error) {
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
 		}(sctx)
 	}
-	return nil
 }
 
 func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {

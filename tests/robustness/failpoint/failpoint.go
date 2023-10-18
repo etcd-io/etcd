@@ -45,7 +45,7 @@ var (
 		CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
 		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
 		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
-		beforeApplyOneConfChangeSleep,
+		BeforeApplyOneConfChangeSleep,
 		MemberReplace,
 	}
 )
@@ -119,7 +119,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 	return
 }
 
-func verifyClusterHealth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) error {
+func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProcessCluster) error {
 	for i := 0; i < len(clus.Procs); i++ {
 		clusterClient, err := clientv3.New(clientv3.Config{
 			Endpoints:            clus.Procs[i].EndpointsGRPC(),

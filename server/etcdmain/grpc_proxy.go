@@ -231,7 +231,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if grpcProxyAdvertiseClientURL != "" {
 		proxyClient = mustNewProxyClient(lg, tlsInfo)
 	}
-	httpClient := mustNewHTTPClient(lg)
+	httpClient := mustNewHTTPClient()
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient)
 
@@ -505,7 +505,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 }
 
 func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
-	httpClient := mustNewHTTPClient(lg)
+	httpClient := mustNewHTTPClient()
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
@@ -535,7 +535,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 	return srvhttp, m.Match(cmux.Any())
 }
 
-func mustNewHTTPClient(lg *zap.Logger) *http.Client {
+func mustNewHTTPClient() *http.Client {
 	transport, err := newHTTPTransport(grpcProxyCA, grpcProxyCert, grpcProxyKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
