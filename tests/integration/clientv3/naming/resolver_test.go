@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	testpb "google.golang.org/grpc/interop/grpc_testing"
 
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -75,7 +76,7 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 	}
 
 	// Create connection with provided lb policy
-	conn, err := grpc.Dial("etcd:///foo", grpc.WithInsecure(), grpc.WithResolvers(b),
+	conn, err := grpc.Dial("etcd:///foo", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithResolvers(b),
 		grpc.WithDefaultServiceConfig(fmt.Sprintf(`{"loadBalancingPolicy":"%s"}`, lbPolicy)))
 	if err != nil {
 		t.Fatal("failed to connect to foo", err)
