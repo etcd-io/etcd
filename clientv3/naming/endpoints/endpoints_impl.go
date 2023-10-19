@@ -18,37 +18,66 @@ package endpoints
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/naming/endpoints/internal"
 )
 
 type endpointManager struct {
-	// TODO: To be implemented, tracked by: https://github.com/etcd-io/etcd/issues/12652
+	client *clientv3.Client
+	target string
 }
 
 func NewManager(client *clientv3.Client, target string) (Manager, error) {
-	// To be implemented (https://github.com/etcd-io/etcd/issues/12652)
-	return nil, fmt.Errorf("Not implemented yet")
+	if client == nil {
+		return nil, errors.New("invalid etcd client")
+	}
+
+	if target == "" {
+		return nil, errors.New("invalid target")
+	}
+
+	em := &endpointManager{
+		client: client,
+		target: target,
+	}
+	return em, nil
 }
 
-func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts) error {
-	// TODO: For loop in a single transaction:
-	internalUpdate := &internal.Update{} // translate UpdateWithOpts into json format.
-	switch internalUpdate.Op {
-	//case internal.Add:
-	//	var v []byte
-	//	if v, err = json.Marshal(internalUpdate); err != nil {
-	//		return status.Error(codes.InvalidArgument, err.Error())
-	//	}
-	//	_, err = gr.Client.KV.Put(ctx, target+"/"+nm.Addr, string(v), opts...)
-	//case internal.Delete:
-	//	_, err = gr.Client.Delete(ctx, target+"/"+nm.Addr, opts...)
-	//default:
-	//	return status.Error(codes.InvalidArgument, "naming: bad naming op")
+func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts) (err error) {
+	ops := make([]clientv3.Op, 0, len(updates))
+	for _, update := range updates {
+		if !strings.HasPrefix(update.Key, m.target+"/") {
+			return status.Errorf(codes.InvalidArgument, "endpoints: endpoint key should be prefixed with %s/", m.target)
+		}
+		switch update.Op {
+		case Add:
+			internalUpdate := &internal.Update{
+				Op:       internal.Add,
+				Addr:     update.Endpoint.Addr,
+				Metadata: update.Endpoint.Metadata,
+			}
+
+			var v []byte
+			if v, err = json.Marshal(internalUpdate); err != nil {
+				return status.Error(codes.InvalidArgument, err.Error())
+			}
+			ops = append(ops, clientv3.OpPut(update.Key, string(v), update.Opts...))
+		case Delete:
+			ops = append(ops, clientv3.OpDelete(update.Key, update.Opts...))
+		default:
+			return status.Error(codes.InvalidArgument, "endpoints: bad update op")
+		}
 	}
-	return fmt.Errorf("Not implemented yet")
+	_, err = m.client.KV.Txn(ctx).Then(ops...).Commit()
+	return err
 }
 
 func (m *endpointManager) AddEndpoint(ctx context.Context, key string, endpoint Endpoint, opts ...clientv3.OpOption) error {
@@ -130,6 +159,19 @@ func (m *endpointManager) NewWatchChannel(ctx context.Context) (WatchChannel, er
 }
 
 func (m *endpointManager) List(ctx context.Context) (Key2EndpointMap, error) {
-	// TODO: Implementation
-	return nil, fmt.Errorf("Not implemented yet")
+	resp, err := m.client.Get(ctx, m.target, clientv3.WithPrefix(), clientv3.WithSerializable())
+	if err != nil {
+		return nil, err
+	}
+
+	eps := make(Key2EndpointMap)
+	for _, kv := range resp.Kvs {
+		var iup internal.Update
+		if err := json.Unmarshal(kv.Value, &iup); err != nil {
+			continue
+		}
+
+		eps[string(kv.Key)] = Endpoint{Addr: iup.Addr, Metadata: iup.Metadata}
+	}
+	return eps, nil
 }
