@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -17,9 +18,15 @@ type builder struct {
 }
 
 func (b builder) Build(target gresolver.Target, cc gresolver.ClientConn, opts gresolver.BuildOptions) (gresolver.Resolver, error) {
+	// Refer to https://github.com/grpc/grpc-go/blob/16d3df80f029f57cff5458f1d6da6aedbc23545d/clientconn.go#L1587-L1611
+	endpoint := target.URL.Path
+	if endpoint == "" {
+		endpoint = target.URL.Opaque
+	}
+	endpoint = strings.TrimPrefix(endpoint, "/")
 	r := &resolver{
 		c:      b.c,
-		target: target.Endpoint,
+		target: endpoint,
 		cc:     cc,
 	}
 	r.ctx, r.cancel = context.WithCancel(context.Background())

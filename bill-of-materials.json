@@ -648,7 +648,25 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto",
+		"project": "google.golang.org/genproto/googleapis/api",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "google.golang.org/genproto/googleapis/rpc",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "google.golang.org/genproto/protobuf/field_mask",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
