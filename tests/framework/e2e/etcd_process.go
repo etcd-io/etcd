@@ -373,6 +373,14 @@ var httpClient = http.Client{
 	Timeout: 10 * time.Millisecond,
 }
 
+func (f *BinaryFailpoints) Enabled() bool {
+	_, err := failpoints(f.member)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 func (f *BinaryFailpoints) Available(failpoint string) bool {
 	if f.availableCache == nil {
 		fs, err := failpoints(f.member)

@@ -369,7 +369,7 @@ func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterO
 		return nil, err
 	}
 
-	return StartEtcdProcessCluster(ctx, epc, cfg)
+	return StartEtcdProcessCluster(ctx, t, epc, cfg)
 }
 
 // InitEtcdProcessCluster initializes a new cluster based on the given config.
@@ -409,7 +409,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 }
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
-func StartEtcdProcessCluster(ctx context.Context, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	if cfg.RollingStart {
 		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %v", err)
@@ -417,6 +417,13 @@ func StartEtcdProcessCluster(ctx context.Context, epc *EtcdProcessCluster, cfg *
 	} else {
 		if err := epc.Start(ctx); err != nil {
 			return nil, fmt.Errorf("cannot start: %v", err)
+		}
+	}
+
+	for _, proc := range epc.Procs {
+		if cfg.GoFailEnabled && !proc.Failpoints().Enabled() {
+			epc.Close()
+			t.Skip("please run 'make gofail-enable && make build' before running the test")
 		}
 	}
 
