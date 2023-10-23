@@ -12,6 +12,7 @@ replace (
 	go.etcd.io/etcd/pkg/v3 => ./pkg
 	go.etcd.io/etcd/server/v3 => ./server
 	go.etcd.io/etcd/tests/v3 => ./tests
+	go.etcd.io/raft/v3 => github.com/mitake/raft/v3 v3.0.0-disable-proposal-forwarding
 )
 
 require (
