@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"context"
 	"expvar"
 	"fmt"
 	"log"
@@ -432,4 +433,8 @@ func (r *raftNode) advanceTicks(ticks int) {
 	for i := 0; i < ticks; i++ {
 		r.tick()
 	}
+}
+
+func (r *raftNode) ForgetLeader(ctx context.Context) error {
+	return nil
 }
