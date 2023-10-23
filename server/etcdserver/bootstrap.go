@@ -522,6 +522,21 @@ func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft
 		CheckQuorum:     true,
 		PreVote:         cfg.PreVote,
 		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
+		DisableProposalForwardingCallback: func(m raftpb.Message) bool {
+			for _, entry := range m.Entries {
+				var raftReq etcdserverpb.InternalRaftRequest
+				if !pbutil.MaybeUnmarshal(&raftReq, entry.Data) {
+					continue
+				}
+
+				if raftReq.LeaseRevoke != nil {
+					// If at least one of the entries has LeaseRevoke, the entire m will be discarded.
+					// TODO: LeaseCheckPoint should be discarded neither?
+					return true
+				}
+			}
+			return false
+		},
 	}
 }
 
