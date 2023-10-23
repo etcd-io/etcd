@@ -1832,6 +1832,10 @@ func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.Record(testutil.Action{Name: "Compact"})
 }
 
+func (n *nodeRecorder) ForgetLeader(ctx context.Context) error {
+	return nil
+}
+
 type nodeProposalBlockerRecorder struct {
 	nodeRecorder
 }
@@ -1862,6 +1866,10 @@ func newNopReadyNode() *readyNode {
 }
 
 func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
+
+func (n *readyNode) ForgetLeader(ctx context.Context) error {
+	return nil
+}
 
 type nodeConfChangeCommitterRecorder struct {
 	readyNode
