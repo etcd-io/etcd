@@ -27,7 +27,7 @@ require (
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
 	github.com/alecthomas/participle/v2 v2.1.0 // indirect
 	github.com/bitfield/gotestdox v0.2.1 // indirect
-	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.1 // indirect
 	github.com/braydonk/yaml v0.7.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
