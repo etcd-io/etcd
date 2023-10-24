@@ -6,6 +6,16 @@ on:
   # with individual checkout actions for each of the active release branches
   schedule:
     - cron: '30 1 * * *' # runs daily at 1:30 am.
+
+  # @alexellis
+  # Temporary triggers requested by @ahrtr, remove after merging
+  # PR: 16801
+  push:
+  pull_request:
+
+  # workflow_dispatch enables manual testing of this job by maintainers
+  workflow_dispatch:
+
 jobs:
   main-arm64:
     uses: ./.github/workflows/e2e-arm64-template.yaml
