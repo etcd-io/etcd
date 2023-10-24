@@ -1832,6 +1832,10 @@ func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.Record(testutil.Action{Name: "Compact"})
 }
 
+func (n *nodeRecorder) ForgetLeader(ctx context.Context) error {
+	return nil
+}
+
 type nodeProposalBlockerRecorder struct {
 	nodeRecorder
 }
