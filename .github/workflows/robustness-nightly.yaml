@@ -10,12 +10,6 @@ on:
   # workflow_dispatch enables manual testing of this job by maintainers
   workflow_dispatch:
 
-  # @alexellis
-  # Temporary triggers requested by @ahrtr, remove after merging
-  # PR: 16801
-  push:
-  pull_request:
-
 jobs:
   main:
     # GHA has a maximum amount of 6h execution time, we try to get done within 3h
