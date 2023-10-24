@@ -20,10 +20,9 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/concurrency"
-	"go.etcd.io/etcd/clientv3/naming"
+	"go.etcd.io/etcd/clientv3/naming/endpoints"
 
 	"golang.org/x/time/rate"
-	gnaming "google.golang.org/grpc/naming"
 )
 
 // allow maximum 1 retry per second
@@ -67,8 +66,12 @@ func registerSession(c *clientv3.Client, prefix string, addr string, ttl int) (*
 		return nil, err
 	}
 
-	gr := &naming.GRPCResolver{Client: c}
-	if err = gr.Update(c.Ctx(), prefix, gnaming.Update{Op: gnaming.Add, Addr: addr, Metadata: getMeta()}, clientv3.WithLease(ss.Lease())); err != nil {
+	em, err := endpoints.NewManager(c, prefix)
+	if err != nil {
+		return nil, err
+	}
+	endpoint := endpoints.Endpoint{Addr: addr, Metadata: getMeta()}
+	if err = em.AddEndpoint(c.Ctx(), prefix+"/"+addr, endpoint, clientv3.WithLease(ss.Lease())); err != nil {
 		return nil, err
 	}
 
