@@ -270,7 +270,7 @@
 		]
 	},
 	{
-		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
+		"project": "github.com/matttproud/golang_protobuf_extensions/v2/pbutil",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
