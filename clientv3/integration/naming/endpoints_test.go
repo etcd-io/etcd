@@ -27,8 +27,6 @@ import (
 )
 
 func TestEndpointManager(t *testing.T) {
-	t.Skip("Not implemented yet")
-
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -54,10 +52,10 @@ func TestEndpointManager(t *testing.T) {
 	us := <-w
 
 	if us == nil {
-		t.Fatal("failed to get update", err)
+		t.Fatal("failed to get update")
 	}
 
-	wu := endpoints.Update{
+	wu := &endpoints.Update{
 		Op:       endpoints.Add,
 		Key:      "foo/a1",
 		Endpoint: e1,
@@ -69,21 +67,21 @@ func TestEndpointManager(t *testing.T) {
 
 	err = em.DeleteEndpoint(context.TODO(), "foo/a1")
 	if err != nil {
-		t.Fatalf("failed to udpate %v", err)
+		t.Fatalf("failed to update %v", err)
 	}
 
 	us = <-w
-	if err != nil {
-		t.Fatalf("failed to get udpate %v", err)
+	if us == nil {
+		t.Fatal("failed to get update")
 	}
 
-	wu = endpoints.Update{
+	wu = &endpoints.Update{
 		Op:  endpoints.Delete,
 		Key: "foo/a1",
 	}
 
-	if !reflect.DeepEqual(us, wu) {
-		t.Fatalf("up = %#v, want %#v", us[1], wu)
+	if !reflect.DeepEqual(us[0], wu) {
+		t.Fatalf("up = %#v, want %#v", us[0], wu)
 	}
 }
 
@@ -91,8 +89,6 @@ func TestEndpointManager(t *testing.T) {
 // correctly with multiple hosts and correctly receive multiple
 // updates in a single revision.
 func TestEndpointManagerAtomicity(t *testing.T) {
-	t.Skip("Not implemented yet")
-
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})

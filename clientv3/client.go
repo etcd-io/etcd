@@ -26,18 +26,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"go.etcd.io/etcd/clientv3/balancer"
-	"go.etcd.io/etcd/clientv3/balancer/picker"
-	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
-	"go.etcd.io/etcd/clientv3/credentials"
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
-	"go.etcd.io/etcd/pkg/logutil"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	grpccredentials "google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/status"
+
+	"go.etcd.io/etcd/clientv3/balancer"
+	"go.etcd.io/etcd/clientv3/balancer/picker"
+	"go.etcd.io/etcd/clientv3/balancer/resolver/endpoint"
+	"go.etcd.io/etcd/clientv3/credentials"
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/logutil"
 )
 
 var (
@@ -95,7 +96,8 @@ type Client struct {
 
 	callOpts []grpc.CallOption
 
-	lg *zap.Logger
+	lgMu *sync.RWMutex
+	lg   *zap.Logger
 }
 
 // New creates a new etcdv3 client from a given configuration.
@@ -112,7 +114,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	return &Client{ctx: cctx, cancel: cancel}
+	return &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex), lg: zap.NewNop()}
 }
 
 // NewFromURL creates a new etcdv3 client from a URL.
@@ -123,6 +125,23 @@ func NewFromURL(url string) (*Client, error) {
 // NewFromURLs creates a new etcdv3 client from URLs.
 func NewFromURLs(urls []string) (*Client, error) {
 	return New(Config{Endpoints: urls})
+}
+
+// WithLogger sets a logger
+func (c *Client) WithLogger(lg *zap.Logger) *Client {
+	c.lgMu.Lock()
+	c.lg = lg
+	c.lgMu.Unlock()
+	return c
+}
+
+// GetLogger gets the logger.
+// NOTE: This method is for internal use of etcd-client library and should not be used as general-purpose logger.
+func (c *Client) GetLogger() *zap.Logger {
+	c.lgMu.RLock()
+	l := c.lg
+	c.lgMu.RUnlock()
+	return l
 }
 
 // Close shuts down the client's etcd connections.
@@ -423,6 +442,7 @@ func newClient(cfg *Config) (*Client, error) {
 		cancel:   cancel,
 		mu:       new(sync.RWMutex),
 		callOpts: defaultCallOpts,
+		lgMu:     new(sync.RWMutex),
 	}
 
 	lcfg := logutil.DefaultZapLoggerConfig
