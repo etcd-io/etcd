@@ -74,10 +74,13 @@ type maintenanceServer struct {
 	cs     ClusterStatusGetter
 	d      Downgrader
 	vs     serverversion.Server
+	hn     HealthNotifier
+
+	stopServingOnDefrag bool
 }
 
-func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
-	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, hasher: s.KV().HashStorage(), bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s, vs: etcdserver.NewServerVersionAdapter(s)}
+func NewMaintenanceServer(s *etcdserver.EtcdServer, hn HealthNotifier) pb.MaintenanceServer {
+	srv := &maintenanceServer{lg: s.Cfg.Logger, rg: s, hasher: s.KV().HashStorage(), bg: s, a: s, lt: s, hdr: newHeader(s), cs: s, d: s, vs: etcdserver.NewServerVersionAdapter(s), hn: hn, stopServingOnDefrag: s.Cfg.ExperimentalStopGRPCServiceOnDefrag}
 	if srv.lg == nil {
 		srv.lg = zap.NewNop()
 	}
@@ -86,6 +89,10 @@ func NewMaintenanceServer(s *etcdserver.EtcdServer) pb.MaintenanceServer {
 
 func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRequest) (*pb.DefragmentResponse, error) {
 	ms.lg.Info("starting defragment")
+	if ms.stopServingOnDefrag {
+		ms.hn.StopServe("defrag is active")
+		defer ms.hn.StartServe()
+	}
 	err := ms.bg.Backend().Defrag()
 	if err != nil {
 		ms.lg.Warn("failed to defragment", zap.Error(err))

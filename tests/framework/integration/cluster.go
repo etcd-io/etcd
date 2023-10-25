@@ -172,6 +172,8 @@ type ClusterConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+
+	ExperimentalStopGRPCServiceOnDefrag bool
 }
 
 type Cluster struct {
@@ -262,32 +264,33 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        fmt.Sprintf("m%v", memberNumber),
-			MemberNumber:                memberNumber,
-			AuthToken:                   c.Cfg.AuthToken,
-			AuthTokenTTL:                c.Cfg.AuthTokenTTL,
-			PeerTLS:                     c.Cfg.PeerTLS,
-			ClientTLS:                   c.Cfg.ClientTLS,
-			QuotaBackendBytes:           c.Cfg.QuotaBackendBytes,
-			MaxTxnOps:                   c.Cfg.MaxTxnOps,
-			MaxRequestBytes:             c.Cfg.MaxRequestBytes,
-			SnapshotCount:               c.Cfg.SnapshotCount,
-			SnapshotCatchUpEntries:      c.Cfg.SnapshotCatchUpEntries,
-			GrpcKeepAliveMinTime:        c.Cfg.GRPCKeepAliveMinTime,
-			GrpcKeepAliveInterval:       c.Cfg.GRPCKeepAliveInterval,
-			GrpcKeepAliveTimeout:        c.Cfg.GRPCKeepAliveTimeout,
-			ClientMaxCallSendMsgSize:    c.Cfg.ClientMaxCallSendMsgSize,
-			ClientMaxCallRecvMsgSize:    c.Cfg.ClientMaxCallRecvMsgSize,
-			UseIP:                       c.Cfg.UseIP,
-			UseBridge:                   c.Cfg.UseBridge,
-			UseTCP:                      c.Cfg.UseTCP,
-			EnableLeaseCheckpoint:       c.Cfg.EnableLeaseCheckpoint,
-			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
-			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
-			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
-			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
-			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
-			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
+			Name:                                fmt.Sprintf("m%v", memberNumber),
+			MemberNumber:                        memberNumber,
+			AuthToken:                           c.Cfg.AuthToken,
+			AuthTokenTTL:                        c.Cfg.AuthTokenTTL,
+			PeerTLS:                             c.Cfg.PeerTLS,
+			ClientTLS:                           c.Cfg.ClientTLS,
+			QuotaBackendBytes:                   c.Cfg.QuotaBackendBytes,
+			MaxTxnOps:                           c.Cfg.MaxTxnOps,
+			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
+			SnapshotCount:                       c.Cfg.SnapshotCount,
+			SnapshotCatchUpEntries:              c.Cfg.SnapshotCatchUpEntries,
+			GrpcKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
+			GrpcKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
+			GrpcKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
+			ClientMaxCallSendMsgSize:            c.Cfg.ClientMaxCallSendMsgSize,
+			ClientMaxCallRecvMsgSize:            c.Cfg.ClientMaxCallRecvMsgSize,
+			UseIP:                               c.Cfg.UseIP,
+			UseBridge:                           c.Cfg.UseBridge,
+			UseTCP:                              c.Cfg.UseTCP,
+			EnableLeaseCheckpoint:               c.Cfg.EnableLeaseCheckpoint,
+			LeaseCheckpointInterval:             c.Cfg.LeaseCheckpointInterval,
+			LeaseCheckpointPersist:              c.Cfg.LeaseCheckpointPersist,
+			WatchProgressNotifyInterval:         c.Cfg.WatchProgressNotifyInterval,
+			ExperimentalMaxLearners:             c.Cfg.ExperimentalMaxLearners,
+			DisableStrictReconfigCheck:          c.Cfg.DisableStrictReconfigCheck,
+			CorruptCheckTime:                    c.Cfg.CorruptCheckTime,
+			ExperimentalStopGRPCServiceOnDefrag: c.Cfg.ExperimentalStopGRPCServiceOnDefrag,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	return m
@@ -614,6 +617,8 @@ type MemberConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+
+	ExperimentalStopGRPCServiceOnDefrag bool
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -723,6 +728,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	if mcfg.CorruptCheckTime > time.Duration(0) {
 		m.CorruptCheckTime = mcfg.CorruptCheckTime
 	}
+	m.ExperimentalStopGRPCServiceOnDefrag = mcfg.ExperimentalStopGRPCServiceOnDefrag
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 	m.ExperimentalMaxLearners = membership.DefaultMaxLearners
