@@ -27,7 +27,7 @@ jobs:
       count: 80
       testTimeout: 200m
       artifactName: main-arm64
-      runs-on: actuated-arm64-8cpu-32gb
+      runs-on: "['self-hosted', 'Linux', 'ARM64']"
   release-35:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -43,7 +43,7 @@ jobs:
       count: 100
       testTimeout: 200m
       artifactName: release-35-arm64
-      runs-on: actuated-arm64-8cpu-32gb
+      runs-on: "['self-hosted', 'Linux', 'ARM64']"
   release-34:
     uses: ./.github/workflows/robustness-template.yaml
     with:
