@@ -53,7 +53,7 @@ type Update struct {
 }
 
 // WatchChannel is used to deliver notifications about endpoints updates.
-type WatchChannel chan []*Update
+type WatchChannel <-chan []*Update
 
 // Key2EndpointMap maps etcd key into struct describing the endpoint.
 type Key2EndpointMap map[string]Endpoint

@@ -27,8 +27,6 @@ import (
 )
 
 func TestEndpointManager(t *testing.T) {
-	t.Skip("Not implemented yet")
-
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -54,10 +52,10 @@ func TestEndpointManager(t *testing.T) {
 	us := <-w
 
 	if us == nil {
-		t.Fatal("failed to get update", err)
+		t.Fatal("failed to get update")
 	}
 
-	wu := endpoints.Update{
+	wu := &endpoints.Update{
 		Op:       endpoints.Add,
 		Key:      "foo/a1",
 		Endpoint: e1,
@@ -69,21 +67,21 @@ func TestEndpointManager(t *testing.T) {
 
 	err = em.DeleteEndpoint(context.TODO(), "foo/a1")
 	if err != nil {
-		t.Fatalf("failed to udpate %v", err)
+		t.Fatalf("failed to update %v", err)
 	}
 
 	us = <-w
-	if err != nil {
-		t.Fatalf("failed to get udpate %v", err)
+	if us == nil {
+		t.Fatal("failed to get update")
 	}
 
-	wu = endpoints.Update{
+	wu = &endpoints.Update{
 		Op:  endpoints.Delete,
 		Key: "foo/a1",
 	}
 
-	if !reflect.DeepEqual(us, wu) {
-		t.Fatalf("up = %#v, want %#v", us[1], wu)
+	if !reflect.DeepEqual(us[0], wu) {
+		t.Fatalf("up = %#v, want %#v", us[0], wu)
 	}
 }
 
@@ -91,8 +89,6 @@ func TestEndpointManager(t *testing.T) {
 // correctly with multiple hosts and correctly receive multiple
 // updates in a single revision.
 func TestEndpointManagerAtomicity(t *testing.T) {
-	t.Skip("Not implemented yet")
-
 	defer testutil.AfterTest(t)
 
 	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
@@ -131,5 +127,86 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 	updates = <-w
 	if len(updates) != 2 || (updates[0].Op != endpoints.Delete && updates[1].Op != endpoints.Delete) {
 		t.Fatalf("expected two delete updates, got %+v", updates)
+	}
+}
+
+func TestEndpointManagerCRUD(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	em, err := endpoints.NewManager(clus.RandClient(), "foo")
+	if err != nil {
+		t.Fatal("failed to create EndpointManager", err)
+	}
+
+	// Add
+	k1 := "foo/a1"
+	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata1"}
+	err = em.AddEndpoint(context.TODO(), k1, e1)
+	if err != nil {
+		t.Fatal("failed to add", k1, err)
+	}
+
+	k2 := "foo/a2"
+	e2 := endpoints.Endpoint{Addr: "127.0.0.2", Metadata: "metadata2"}
+	err = em.AddEndpoint(context.TODO(), k2, e2)
+	if err != nil {
+		t.Fatal("failed to add", k2, err)
+	}
+
+	eps, err := em.List(context.TODO())
+	if err != nil {
+		t.Fatal("failed to list foo")
+	}
+	if len(eps) != 2 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k1], e1) {
+		t.Fatalf("unexpected endpoints: %s", k1)
+	}
+	if !reflect.DeepEqual(eps[k2], e2) {
+		t.Fatalf("unexpected endpoints: %s", k2)
+	}
+
+	// Delete
+	err = em.DeleteEndpoint(context.TODO(), k1)
+	if err != nil {
+		t.Fatal("failed to delete", k2, err)
+	}
+
+	eps, err = em.List(context.TODO())
+	if err != nil {
+		t.Fatal("failed to list foo")
+	}
+	if len(eps) != 1 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k2], e2) {
+		t.Fatalf("unexpected endpoints: %s", k2)
+	}
+
+	// Update
+	k3 := "foo/a3"
+	e3 := endpoints.Endpoint{Addr: "127.0.0.3", Metadata: "metadata3"}
+	updates := []*endpoints.UpdateWithOpts{
+		{Update: endpoints.Update{Op: endpoints.Add, Key: k3, Endpoint: e3}},
+		{Update: endpoints.Update{Op: endpoints.Delete, Key: k2}},
+	}
+	err = em.Update(context.TODO(), updates)
+	if err != nil {
+		t.Fatal("failed to update", err)
+	}
+
+	eps, err = em.List(context.TODO())
+	if err != nil {
+		t.Fatal("failed to list foo")
+	}
+	if len(eps) != 1 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k3], e3) {
+		t.Fatalf("unexpected endpoints: %s", k3)
 	}
 }

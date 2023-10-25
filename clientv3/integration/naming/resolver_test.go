@@ -15,56 +15,112 @@
 package naming
 
 import (
+	"bytes"
 	"context"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc"
+	testpb "google.golang.org/grpc/test/grpc_testing"
 
 	"go.etcd.io/etcd/clientv3/naming/endpoints"
 	"go.etcd.io/etcd/clientv3/naming/resolver"
 	"go.etcd.io/etcd/integration"
+	grpctest "go.etcd.io/etcd/pkg/grpc_testing"
 	"go.etcd.io/etcd/pkg/testutil"
 )
 
 // This test mimics scenario described in grpc_naming.md doc.
 
 func TestEtcdGrpcResolver(t *testing.T) {
-	t.Skip("Not implemented yet")
-
 	defer testutil.AfterTest(t)
+	s1PayloadBody := []byte{'1'}
+	s1 := newDummyStubServer(s1PayloadBody)
+	if err := s1.Start(nil); err != nil {
+		t.Fatal("failed to start dummy grpc server (s1)", err)
+	}
+	defer s1.Stop()
 
-	// s1 :=  // TODO: Dummy GRPC service listening on 127.0.0.1:20000
-	// s2 :=  // TODO: Dummy GRPC service listening on 127.0.0.1:20001
+	s2PayloadBody := []byte{'2'}
+	s2 := newDummyStubServer(s2PayloadBody)
+	if err := s2.Start(nil); err != nil {
+		t.Fatal("failed to start dummy grpc server (s2)", err)
+	}
+	defer s2.Stop()
 
-	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	em, err := endpoints.NewManager(clus.RandClient(), "foo")
+	em, err := endpoints.NewManager(clus.Client(0), "foo")
 	if err != nil {
 		t.Fatal("failed to create EndpointManager", err)
 	}
 
-	e1 := endpoints.Endpoint{Addr: "127.0.0.1:20000"}
-	e2 := endpoints.Endpoint{Addr: "127.0.0.1:20001"}
+	e1 := endpoints.Endpoint{Addr: s1.Addr()}
+	e2 := endpoints.Endpoint{Addr: s2.Addr()}
 
 	err = em.AddEndpoint(context.TODO(), "foo/e1", e1)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
 	}
-	etcdResolver, err := resolver.NewBuilder(clus.RandClient())
 
-	conn, err := grpc.Dial("etc://foo", grpc.WithResolvers(etcdResolver))
+	b, err := resolver.NewBuilder(clus.Client(1))
 	if err != nil {
-		t.Fatal("failed to connect to foo (e1)", err)
+		t.Fatal("failed to new resolver builder", err)
 	}
+	conn, err := grpc.Dial("etcd:///foo", grpc.WithInsecure(), grpc.WithResolvers(b))
+	if err != nil {
+		t.Fatal("failed to connect to foo", err)
+	}
+	defer conn.Close()
 
-	// TODO: send requests to conn, ensure s1 received it.
+	c := testpb.NewTestServiceClient(conn)
+	resp, err := c.UnaryCall(context.TODO(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
+	if err != nil {
+		t.Fatal("failed to invoke rpc to foo (e1)", err)
+	}
+	if resp.GetPayload() == nil || !bytes.Equal(resp.GetPayload().GetBody(), s1PayloadBody) {
+		t.Fatalf("unexpected response from foo (e1): %s", resp.GetPayload().GetBody())
+	}
 
 	em.DeleteEndpoint(context.TODO(), "foo/e1")
 	em.AddEndpoint(context.TODO(), "foo/e2", e2)
 
-	// TODO: Send requests to conn and make sure s2 receive it.
-	// Might require restarting s1 to break the existing (open) connection.
+	// We use a loop with deadline of 30s to avoid test getting flake
+	// as it's asynchronous for gRPC Client to update underlying connections.
+	maxRetries := 300
+	retryPeriod := 100 * time.Millisecond
+	retries := 0
+	for {
+		time.Sleep(retryPeriod)
+		retries++
 
-	conn.GetState() // this line is to avoid compiler warning that conn is unused.
+		resp, err = c.UnaryCall(context.TODO(), &testpb.SimpleRequest{})
+		if err != nil {
+			if retries < maxRetries {
+				continue
+			}
+			t.Fatal("failed to invoke rpc to foo (e2)", err)
+		}
+		if resp.GetPayload() == nil || !bytes.Equal(resp.GetPayload().GetBody(), s2PayloadBody) {
+			if retries < maxRetries {
+				continue
+			}
+			t.Fatalf("unexpected response from foo (e2): %s", resp.GetPayload().GetBody())
+		}
+		break
+	}
+}
+
+func newDummyStubServer(body []byte) *grpctest.StubServer {
+	return &grpctest.StubServer{
+		UnaryCallF: func(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+			return &testpb.SimpleResponse{
+				Payload: &testpb.Payload{
+					Type: testpb.PayloadType_COMPRESSABLE,
+					Body: body,
+				},
+			}, nil
+		},
+	}
 }

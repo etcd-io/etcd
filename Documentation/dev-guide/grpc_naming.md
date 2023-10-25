@@ -18,7 +18,7 @@ import (
 
 cli, cerr := clientv3.NewFromURL("http://localhost:2379")
 etcdResolver, err := resolver.NewBuilder(clus.RandClient());
-conn, gerr := grpc.Dial("etcd://foo/bar/my-service", grpc.WithResolvers(etcdResolver))
+conn, gerr := grpc.Dial("etcd:///foo/bar/my-service", grpc.WithResolvers(etcdResolver))
 ```
 
 ## Managing service endpoints

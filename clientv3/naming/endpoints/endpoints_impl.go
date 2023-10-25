@@ -18,37 +18,66 @@ package endpoints
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
+	"errors"
+	"strings"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/clientv3/naming/endpoints/internal"
 )
 
 type endpointManager struct {
-	// TODO: To be implemented, tracked by: https://github.com/etcd-io/etcd/issues/12652
+	client *clientv3.Client
+	target string
 }
 
 func NewManager(client *clientv3.Client, target string) (Manager, error) {
-	// To be implemented (https://github.com/etcd-io/etcd/issues/12652)
-	return nil, fmt.Errorf("Not implemented yet")
+	if client == nil {
+		return nil, errors.New("invalid etcd client")
+	}
+
+	if target == "" {
+		return nil, errors.New("invalid target")
+	}
+
+	em := &endpointManager{
+		client: client,
+		target: target,
+	}
+	return em, nil
 }
 
-func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts) error {
-	// TODO: For loop in a single transaction:
-	internalUpdate := &internal.Update{} // translate UpdateWithOpts into json format.
-	switch internalUpdate.Op {
-	//case internal.Add:
-	//	var v []byte
-	//	if v, err = json.Marshal(internalUpdate); err != nil {
-	//		return status.Error(codes.InvalidArgument, err.Error())
-	//	}
-	//	_, err = gr.Client.KV.Put(ctx, target+"/"+nm.Addr, string(v), opts...)
-	//case internal.Delete:
-	//	_, err = gr.Client.Delete(ctx, target+"/"+nm.Addr, opts...)
-	//default:
-	//	return status.Error(codes.InvalidArgument, "naming: bad naming op")
+func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts) (err error) {
+	ops := make([]clientv3.Op, 0, len(updates))
+	for _, update := range updates {
+		if !strings.HasPrefix(update.Key, m.target+"/") {
+			return status.Errorf(codes.InvalidArgument, "endpoints: endpoint key should be prefixed with '%s/' got: '%s'", m.target, update.Key)
+		}
+		switch update.Op {
+		case Add:
+			internalUpdate := &internal.Update{
+				Op:       internal.Add,
+				Addr:     update.Endpoint.Addr,
+				Metadata: update.Endpoint.Metadata,
+			}
+
+			var v []byte
+			if v, err = json.Marshal(internalUpdate); err != nil {
+				return status.Error(codes.InvalidArgument, err.Error())
+			}
+			ops = append(ops, clientv3.OpPut(update.Key, string(v), update.Opts...))
+		case Delete:
+			ops = append(ops, clientv3.OpDelete(update.Key, update.Opts...))
+		default:
+			return status.Error(codes.InvalidArgument, "endpoints: bad update op")
+		}
 	}
-	return fmt.Errorf("Not implemented yet")
+	_, err = m.client.KV.Txn(ctx).Then(ops...).Commit()
+	return err
 }
 
 func (m *endpointManager) AddEndpoint(ctx context.Context, key string, endpoint Endpoint, opts ...clientv3.OpOption) error {
@@ -60,76 +89,98 @@ func (m *endpointManager) DeleteEndpoint(ctx context.Context, key string, opts .
 }
 
 func (m *endpointManager) NewWatchChannel(ctx context.Context) (WatchChannel, error) {
-	return nil, fmt.Errorf("Not implemented yet")
+	resp, err := m.client.Get(ctx, m.target, clientv3.WithPrefix(), clientv3.WithSerializable())
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: Implementation to be inspired by:
-	// Next gets the next set of updates from the etcd resolver.
-	//// Calls to Next should be serialized; concurrent calls are not safe since
-	//// there is no way to reconcile the update ordering.
-	//func (gw *gRPCWatcher) Next() ([]*naming.Update, error) {
-	//	if gw.wch == nil {
-	//		// first Next() returns all addresses
-	//		return gw.firstNext()
-	//	}
-	//	if gw.err != nil {
-	//		return nil, gw.err
-	//	}
-	//
-	//	// process new events on target/*
-	//	wr, ok := <-gw.wch
-	//	if !ok {
-	//		gw.err = status.Error(codes.Unavailable, ErrWatcherClosed.Error())
-	//		return nil, gw.err
-	//	}
-	//	if gw.err = wr.Err(); gw.err != nil {
-	//		return nil, gw.err
-	//	}
-	//
-	//	updates := make([]*naming.Update, 0, len(wr.Events))
-	//	for _, e := range wr.Events {
-	//		var jupdate naming.Update
-	//		var err error
-	//		switch e.Type {
-	//		case etcd.EventTypePut:
-	//			err = json.Unmarshal(e.Kv.Value, &jupdate)
-	//			jupdate.Op = naming.Add
-	//		case etcd.EventTypeDelete:
-	//			err = json.Unmarshal(e.PrevKv.Value, &jupdate)
-	//			jupdate.Op = naming.Delete
-	//		default:
-	//			continue
-	//		}
-	//		if err == nil {
-	//			updates = append(updates, &jupdate)
-	//		}
-	//	}
-	//	return updates, nil
-	//}
-	//
-	//func (gw *gRPCWatcher) firstNext() ([]*naming.Update, error) {
-	//	// Use serialized request so resolution still works if the target etcd
-	//	// server is partitioned away from the quorum.
-	//	resp, err := gw.c.Get(gw.ctx, gw.target, etcd.WithPrefix(), etcd.WithSerializable())
-	//	if gw.err = err; err != nil {
-	//		return nil, err
-	//	}
-	//
-	//	updates := make([]*naming.Update, 0, len(resp.Kvs))
-	//	for _, kv := range resp.Kvs {
-	//		var jupdate naming.Update
-	//		if err := json.Unmarshal(kv.Value, &jupdate); err != nil {
-	//			continue
-	//		}
-	//		updates = append(updates, &jupdate)
-	//	}
-	//
-	//	opts := []etcd.OpOption{etcd.WithRev(resp.Header.Revision + 1), etcd.WithPrefix(), etcd.WithPrevKV()}
-	//	gw.wch = gw.c.Watch(gw.ctx, gw.target, opts...)
-	//	return updates, nil
-	//}
+	lg := m.client.GetLogger()
+	initUpdates := make([]*Update, 0, len(resp.Kvs))
+	for _, kv := range resp.Kvs {
+		var iup internal.Update
+		if err := json.Unmarshal(kv.Value, &iup); err != nil {
+			lg.Warn("unmarshal endpoint update failed", zap.String("key", string(kv.Key)), zap.Error(err))
+			continue
+		}
+		up := &Update{
+			Op:       Add,
+			Key:      string(kv.Key),
+			Endpoint: Endpoint{Addr: iup.Addr, Metadata: iup.Metadata},
+		}
+		initUpdates = append(initUpdates, up)
+	}
+
+	upch := make(chan []*Update, 1)
+	if len(initUpdates) > 0 {
+		upch <- initUpdates
+	}
+	go m.watch(ctx, resp.Header.Revision+1, upch)
+	return upch, nil
+}
+
+func (m *endpointManager) watch(ctx context.Context, rev int64, upch chan []*Update) {
+	defer close(upch)
+
+	lg := m.client.GetLogger()
+	opts := []clientv3.OpOption{clientv3.WithRev(rev), clientv3.WithPrefix()}
+	wch := m.client.Watch(ctx, m.target, opts...)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case wresp, ok := <-wch:
+			if !ok {
+				lg.Warn("watch closed", zap.String("target", m.target))
+				return
+			}
+			if wresp.Err() != nil {
+				lg.Warn("watch failed", zap.String("target", m.target), zap.Error(wresp.Err()))
+				return
+			}
+
+			deltaUps := make([]*Update, 0, len(wresp.Events))
+			for _, e := range wresp.Events {
+				var iup internal.Update
+				var err error
+				var op Operation
+				switch e.Type {
+				case clientv3.EventTypePut:
+					err = json.Unmarshal(e.Kv.Value, &iup)
+					op = Add
+					if err != nil {
+						lg.Warn("unmarshal endpoint update failed", zap.String("key", string(e.Kv.Key)), zap.Error(err))
+						continue
+					}
+				case clientv3.EventTypeDelete:
+					iup = internal.Update{Op: internal.Delete}
+					op = Delete
+				default:
+					continue
+				}
+				up := &Update{Op: op, Key: string(e.Kv.Key), Endpoint: Endpoint{Addr: iup.Addr, Metadata: iup.Metadata}}
+				deltaUps = append(deltaUps, up)
+			}
+			if len(deltaUps) > 0 {
+				upch <- deltaUps
+			}
+		}
+	}
 }
 
 func (m *endpointManager) List(ctx context.Context) (Key2EndpointMap, error) {
-	// TODO: Implementation
-	return nil, fmt.Errorf("Not implemented yet")
+	resp, err := m.client.Get(ctx, m.target, clientv3.WithPrefix(), clientv3.WithSerializable())
+	if err != nil {
+		return nil, err
+	}
+
+	eps := make(Key2EndpointMap)
+	for _, kv := range resp.Kvs {
+		var iup internal.Update
+		if err := json.Unmarshal(kv.Value, &iup); err != nil {
+			continue
+		}
+
+		eps[string(kv.Key)] = Endpoint{Addr: iup.Addr, Metadata: iup.Metadata}
+	}
+	return eps, nil
 }

@@ -192,7 +192,8 @@ function integration_pass {
 			INTEGTESTPKG=("${REPO_PATH}/integration"
 						  "${REPO_PATH}/client/integration"
 						  "${REPO_PATH}/clientv3/integration/..."
-						  "${REPO_PATH}/contrib/raftexample")
+						  "${REPO_PATH}/contrib/raftexample"
+						  "${REPO_PATH}/proxy/grpcproxy")
 		else
 			INTEGTESTPKG=("${TEST[@]}")
 		fi
@@ -205,6 +206,7 @@ function integration_extra {
 	go test -timeout 25m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration/..."
 	go test -timeout 1m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/contrib/raftexample"
 	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
+	go test -timeout 5m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/proxy/grpcproxy"
 	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
 }
 
