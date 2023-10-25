@@ -340,6 +340,12 @@ func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOp
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWarningUnaryRequestDuration = time }
 }
 
+func WithExperimentalStopGRPCServiceOnDefrag(stopGRPCServiceOnDefrag bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ExperimentalStopGRPCServiceOnDefrag = stopGRPCServiceOnDefrag
+	}
+}
+
 func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
 }
