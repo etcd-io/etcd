@@ -1,14 +1,14 @@
 ---
 name: Robustness Nightly
 permissions: read-all
-on:
+on: pull_request
   # schedules always run against the main branch, hence we have to create separate jobs
   # with individual checkout actions for each of the active release branches
-  schedule:
-    - cron: '25 9 * * *' # runs every day at 09:25 UTC
+  #schedule:
+  #  - cron: '25 9 * * *' # runs every day at 09:25 UTC
 
   # workflow_dispatch enables manual testing of this job by maintainers
-  workflow_dispatch:
+  #workflow_dispatch:
 
 jobs:
   main:
@@ -27,7 +27,7 @@ jobs:
       count: 80
       testTimeout: 200m
       artifactName: main-arm64
-      runs-on: "['self-hosted', 'Linux', 'ARM64']"
+      runs-on: "['actuated-arm64-8cpu-32gb']"
   release-35:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -43,7 +43,7 @@ jobs:
       count: 100
       testTimeout: 200m
       artifactName: release-35-arm64
-      runs-on: "['self-hosted', 'Linux', 'ARM64']"
+      runs-on: "['actuated-arm64-8cpu-32gb']"
   release-34:
     uses: ./.github/workflows/robustness-template.yaml
     with:
