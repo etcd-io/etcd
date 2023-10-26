@@ -5,10 +5,6 @@ permissions: read-all
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: golang:1.21-bookworm
-    defaults:
-      run:
-        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -20,8 +16,6 @@ jobs:
           - linux-386-unit-1-cpu
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      # https://github.com/actions/checkout/issues/1169
-      - run: git config --system --add safe.directory '*'
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
