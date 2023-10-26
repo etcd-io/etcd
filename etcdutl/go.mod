@@ -24,7 +24,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.1.3
-	go.etcd.io/bbolt v1.3.7
+	go.etcd.io/bbolt v1.3.8-0.20231025191010-42a914d8be19
 	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9
 	go.etcd.io/etcd/client/v3 v3.5.9
