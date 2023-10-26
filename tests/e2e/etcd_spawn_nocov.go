@@ -18,6 +18,7 @@
 package e2e
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -27,7 +28,11 @@ import (
 const noOutputLineCount = 0 // regular binaries emit no extra lines
 
 func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	env := os.Environ()
+	return spawnCmdWithEnv(args, nil)
+}
+
+func spawnCmdWithEnv(args []string, envVars map[string]string) (*expect.ExpectProcess, error) {
+	env := mergeEnvVariables(envVars)
 	switch {
 	case strings.HasSuffix(args[0], ctlBinPath+"2"):
 		env = append(env, "ETCDCTL_API=2")
@@ -37,4 +42,24 @@ func spawnCmd(args []string) (*expect.ExpectProcess, error) {
 		args[0] = ctlBinPath
 	}
 	return expect.NewExpectWithEnv(args[0], args[1:], env)
+}
+
+func mergeEnvVariables(envVars map[string]string) []string {
+	var env []string
+	// Environment variables are passed as parameter have higher priority
+	// than os environment variables.
+	for k, v := range envVars {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Now, we can set os environment variables not passed as parameter.
+	currVars := os.Environ()
+	for _, v := range currVars {
+		p := strings.Split(v, "=")
+		if _, ok := envVars[p[0]]; !ok {
+			env = append(env, fmt.Sprintf("%s=%s", p[0], p[1]))
+		}
+	}
+
+	return env
 }

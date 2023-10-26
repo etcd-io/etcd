@@ -23,10 +23,11 @@ import (
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"go.etcd.io/etcd/clientv3/credentials"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	"go.etcd.io/etcd/clientv3/credentials"
 )
 
 const (
@@ -34,18 +35,23 @@ const (
 	maxSendBytes      = math.MaxInt32
 )
 
-func Server(s *etcdserver.EtcdServer, tls *tls.Config, gopts ...grpc.ServerOption) *grpc.Server {
+func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnaryServerInterceptor, gopts ...grpc.ServerOption) *grpc.Server {
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
 		bundle := credentials.NewBundle(credentials.Config{TLSConfig: tls})
 		opts = append(opts, grpc.Creds(bundle.TransportCredentials()))
 	}
-	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+
+	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
 		newUnaryInterceptor(s),
 		grpc_prometheus.UnaryServerInterceptor,
-	)))
+	}
+	if interceptor != nil {
+		chainUnaryInterceptors = append(chainUnaryInterceptors, interceptor)
+	}
+	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(chainUnaryInterceptors...)))
 	opts = append(opts, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
 		newStreamInterceptor(s),
 		grpc_prometheus.StreamServerInterceptor,
