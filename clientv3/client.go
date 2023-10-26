@@ -211,10 +211,8 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	}
 	grpc.WithDisableRetry()
 
-	// Interceptor retry and backoff.
-	// TODO: Replace all of clientv3/retry.go with interceptor based retry, or with
-	// https://github.com/grpc/proposal/blob/master/A6-client-retries.md#retry-policy
-	// once it is available.
+	// TODO: Replace all of clientv3/retry.go with RetryPolicy:
+	// https://github.com/grpc/grpc-proto/blob/cdd9ed5c3d3f87aef62f373b93361cf7bddc620d/grpc/service_config/service_config.proto#L130
 	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
 	opts = append(opts,
 		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
@@ -255,8 +253,8 @@ func (c *Client) getToken(ctx context.Context) error {
 
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
 // of the provided endpoint determines the scheme used for all endpoints of the client connection.
-func (c *Client) dialWithBalancer(ep string, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	creds := c.credentialsForEndpoint(ep)
+func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
+	creds := c.credentialsForEndpoint(c.Endpoints()[0])
 	opts := append(dopts, grpc.WithResolvers(c.resolver))
 	return c.dial(creds, opts...)
 }
@@ -281,7 +279,9 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
 	}
 
-	conn, err := grpc.DialContext(dctx, c.resolver.Scheme()+":///", opts...)
+	initialEndpoints := strings.Join(c.cfg.Endpoints, ";")
+	target := fmt.Sprintf("%s://%p/#initially=[%s]", resolver.Schema, c, initialEndpoints)
+	conn, err := grpc.DialContext(dctx, target, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -289,13 +289,20 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 }
 
 func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCredentials {
-	if c.creds != nil {
+	r := endpoint.RequiresCredentials(ep)
+	switch r {
+	case endpoint.CREDS_DROP:
+		return nil
+	case endpoint.CREDS_OPTIONAL:
 		return c.creds
-	}
-	if endpoint.RequiresCredentials(ep) {
+	case endpoint.CREDS_REQUIRE:
+		if c.creds != nil {
+			return c.creds
+		}
 		return credentials.NewBundle(credentials.Config{}).TransportCredentials()
+	default:
+		panic(fmt.Errorf("Unsupported CredsRequirement: %v", r))
 	}
-	return nil
 }
 
 func newClient(cfg *Config) (*Client, error) {
@@ -362,18 +369,16 @@ func newClient(cfg *Config) (*Client, error) {
 	if len(cfg.Endpoints) < 1 {
 		return nil, fmt.Errorf("at least one Endpoint must is required in client config")
 	}
-	dialEndpoint := cfg.Endpoints[0]
 
 	// Use a provided endpoint target so that for https:// without any tls config given, then
 	// grpc will assume the certificate server name is the endpoint host.
-	conn, err := client.dialWithBalancer(dialEndpoint)
+	conn, err := client.dialWithBalancer()
 	if err != nil {
 		client.cancel()
 		client.resolver.Close()
+		// TODO: Error like `fmt.Errorf(dialing [%s] failed: %v, strings.Join(cfg.Endpoints, ";"), err)` would help with debugging a lot.
 		return nil, err
 	}
-	// TODO: With the old grpc balancer interface, we waited until the dial timeout
-	// for the balancer to be ready. Is there an equivalent wait we should do with the new grpc balancer interface?
 	client.conn = conn
 
 	client.Cluster = NewCluster(client)
@@ -392,6 +397,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if err != nil {
 		client.Close()
 		cancel()
+		//TODO: Consider fmt.Errorf("communicating with [%s] failed: %v", strings.Join(cfg.Endpoints, ";"), err)
 		return nil, err
 	}
 	cancel()
