@@ -77,8 +77,9 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	pb.RegisterAuthServer(grpcServer, NewAuthServer(s))
 
 	hsrv := health.NewServer()
-	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s, NewHealthNotifier(hsrv, s.Logger())))
+	healthNotifier := newHealthNotifier(hsrv, s)
 	healthpb.RegisterHealthServer(grpcServer, hsrv)
+	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s, healthNotifier))
 
 	// set zero values for metrics registered for this grpc server
 	grpc_prometheus.Register(grpcServer)
