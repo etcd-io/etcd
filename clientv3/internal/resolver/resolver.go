@@ -22,6 +22,10 @@ import (
 	"google.golang.org/grpc/serviceconfig"
 )
 
+const (
+	Schema = "etcd-endpoints"
+)
+
 // EtcdManualResolver is a Resolver (and resolver.Builder) that can be updated
 // using SetEndpoints.
 type EtcdManualResolver struct {
@@ -31,7 +35,7 @@ type EtcdManualResolver struct {
 }
 
 func New(endpoints ...string) *EtcdManualResolver {
-	r := manual.NewBuilderWithScheme("etcd-endpoints")
+	r := manual.NewBuilderWithScheme(Schema)
 	return &EtcdManualResolver{Resolver: r, endpoints: endpoints, serviceConfig: nil}
 }
 
