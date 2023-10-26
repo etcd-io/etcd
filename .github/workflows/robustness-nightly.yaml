@@ -1,14 +1,14 @@
 ---
 name: Robustness Nightly
 permissions: read-all
-on: pull_request
+on:
   # schedules always run against the main branch, hence we have to create separate jobs
   # with individual checkout actions for each of the active release branches
-  #schedule:
-  #  - cron: '25 9 * * *' # runs every day at 09:25 UTC
+  schedule:
+    - cron: '25 9 * * *' # runs every day at 09:25 UTC
 
   # workflow_dispatch enables manual testing of this job by maintainers
-  #workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   main:
