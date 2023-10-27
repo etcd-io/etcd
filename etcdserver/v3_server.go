@@ -703,13 +703,16 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		ID: s.reqIDGen.Next(),
 	}
 
-	authInfo, err := s.AuthInfoFromCtx(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if authInfo != nil {
-		r.Header.Username = authInfo.Username
-		r.Header.AuthRevision = authInfo.Revision
+	// check authinfo if it is not InternalAuthenticateRequest
+	if r.Authenticate == nil {
+		authInfo, err := s.AuthInfoFromCtx(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if authInfo != nil {
+			r.Header.Username = authInfo.Username
+			r.Header.AuthRevision = authInfo.Revision
+		}
 	}
 
 	data, err := r.Marshal()

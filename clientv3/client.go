@@ -292,43 +292,20 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 
 func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
-	var auth *authenticator
 
-	eps := c.Endpoints()
-	for _, ep := range eps {
-		// use dial options without dopts to avoid reusing the client balancer
-		var dOpts []grpc.DialOption
-		_, host, _ := endpoint.ParseEndpoint(ep)
-		target := c.resolverGroup.Target(host)
-		creds := c.dialWithBalancerCreds(ep)
-		dOpts, err = c.dialSetupOpts(creds, c.cfg.DialOptions...)
-		if err != nil {
-			err = fmt.Errorf("failed to configure auth dialer: %v", err)
-			continue
-		}
-		dOpts = append(dOpts, grpc.WithBalancerName(roundRobinBalancerName))
-		auth, err = newAuthenticator(ctx, target, dOpts, c)
-		if err != nil {
-			continue
-		}
-		defer auth.close()
-
-		var resp *AuthenticateResponse
-		resp, err = auth.authenticate(ctx, c.Username, c.Password)
-		if err != nil {
-			// return err without retrying other endpoints
-			if err == rpctypes.ErrAuthNotEnabled {
-				c.authTokenBundle.UpdateAuthToken("")
-				return err
-			}
-			continue
-		}
-
-		c.authTokenBundle.UpdateAuthToken(resp.Token)
+	if c.Username == "" || c.Password == "" {
 		return nil
 	}
 
-	return err
+	resp, err := c.Auth.Authenticate(ctx, c.Username, c.Password)
+	if err != nil {
+		if err == rpctypes.ErrAuthNotEnabled {
+			return nil
+		}
+		return err
+	}
+	c.authTokenBundle.UpdateAuthToken(resp.Token)
+	return nil
 }
 
 // dialWithBalancer dials the client's current load balanced resolver group.  The scheme of the host
@@ -349,25 +326,7 @@ func (c *Client) dial(target string, creds grpccredentials.TransportCredentials,
 
 	if c.Username != "" && c.Password != "" {
 		c.authTokenBundle = credentials.NewBundle(credentials.Config{})
-
-		ctx, cancel := c.ctx, func() {}
-		if c.cfg.DialTimeout > 0 {
-			ctx, cancel = context.WithTimeout(ctx, c.cfg.DialTimeout)
-		}
-
-		err = c.getToken(ctx)
-		if err != nil {
-			if toErr(ctx, err) != rpctypes.ErrAuthNotEnabled {
-				if err == ctx.Err() && ctx.Err() != c.ctx.Err() {
-					err = context.DeadlineExceeded
-				}
-				cancel()
-				return nil, err
-			}
-		} else {
-			opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
-		}
-		cancel()
+		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
 
 	opts = append(opts, c.cfg.DialOptions...)
@@ -509,6 +468,19 @@ func newClient(cfg *Config) (*Client, error) {
 	client.Watcher = NewWatcher(client)
 	client.Auth = NewAuth(client)
 	client.Maintenance = NewMaintenance(client)
+
+	//get token with established connection
+	ctx, cancel = client.ctx, func() {}
+	if client.cfg.DialTimeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, client.cfg.DialTimeout)
+	}
+	err = client.getToken(ctx)
+	if err != nil {
+		client.Close()
+		cancel()
+		return nil, err
+	}
+	cancel()
 
 	if cfg.RejectOldCluster {
 		if err := client.checkVersion(); err != nil {
