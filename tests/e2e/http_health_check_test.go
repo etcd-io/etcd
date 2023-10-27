@@ -210,7 +210,7 @@ func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) {
 
 func triggerRaftLoopDeadLock(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) {
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "raftBeforeSave", `sleep("3s")`))
-	clus.Procs[0].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{})
+	clus.Procs[0].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{Timeout: 100 * time.Millisecond})
 }
 
 func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster) {

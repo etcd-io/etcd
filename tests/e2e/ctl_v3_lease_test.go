@@ -15,13 +15,19 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
@@ -95,4 +101,40 @@ func ctlV3LeaseKeepAlive(cx ctlCtx, leaseID string) error {
 func ctlV3LeaseRevoke(cx ctlCtx, leaseID string) error {
 	cmdArgs := append(cx.PrefixArgs(), "lease", "revoke", leaseID)
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("lease %s revoked", leaseID)})
+}
+
+func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	clus, cerr := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true))
+	require.NoError(t, cerr)
+	defer clus.Close()
+
+	testutils.ExecuteUntil(ctx, t, func() {
+		cc := clus.Etcdctl()
+		leaseResp, err := cc.Grant(ctx, 2)
+		require.NoError(t, err)
+
+		err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+		require.NoError(t, err)
+
+		getResp, err := cc.Get(ctx, "foo", config.GetOptions{})
+		require.NoError(t, err)
+		require.Equal(t, int64(1), getResp.Count)
+
+		triggerRaftLoopDeadLock(ctx, t, clus)
+
+		time.Sleep(3 * time.Second)
+
+		ttlResp, err := cc.TimeToLive(ctx, leaseResp.ID, config.LeaseOption{})
+		require.NoError(t, err)
+		require.Equal(t, int64(-1), ttlResp.TTL)
+
+		getResp, err = cc.Get(ctx, "foo", config.GetOptions{})
+		require.NoError(t, err)
+		// Value should expire with the lease
+		require.Equal(t, int64(0), getResp.Count)
+	})
 }
