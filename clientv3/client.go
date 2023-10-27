@@ -253,10 +253,6 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 	dialer := endpoint.Dialer
 	if creds != nil {
 		opts = append(opts, grpc.WithTransportCredentials(creds))
-		// gRPC load balancer workaround. See credentials.transportCredential for details.
-		if credsDialer, ok := creds.(TransportCredentialsWithDialer); ok {
-			dialer = credsDialer.Dialer
-		}
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
@@ -650,10 +646,4 @@ func IsConnCanceled(err error) bool {
 
 	// <= gRPC v1.7.x returns 'errors.New("grpc: the client connection is closing")'
 	return strings.Contains(err.Error(), "grpc: the client connection is closing")
-}
-
-// TransportCredentialsWithDialer is for a gRPC load balancer workaround. See credentials.transportCredential for details.
-type TransportCredentialsWithDialer interface {
-	grpccredentials.TransportCredentials
-	Dialer(ctx context.Context, dialEp string) (net.Conn, error)
 }
