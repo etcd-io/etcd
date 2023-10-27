@@ -1,3 +1,23 @@
+# Conjur Developers Notes:
+
+This is a local fork of the etcd repo we use when [compiling the appliance](https://github.cyberng.com/Conjur-Enterprise/appliance/blob/master/Dockerfile#L20).
+We currently use version 3.5 of etcd which corresponds to the `release-3.5` branch
+of the main project. We have one extra [commit](https://github.com/conjurinc/etcd/commit/2bc748fa4ac430caf7a0e31df01d3f7c748be796)
+applied on top of the standard etcd project. This commit sits on top
+of a branch `conjur-3.5.<minor version`.
+
+It is recommended that you keep a remote setup on your local
+git repository tracking the `etcd-io/etcd` repo so you can easily
+pull in changes:
+`git remote add upstream git@github.com:etcd-io/etcd.git`
+
+Once the upstream is setup you can then rebase onto `etcd-io/etcd` branches
+to pull in changes from the original repo. Note that you should not pull in
+commits from the default branch but instead from the stable release branch
+corresponding to the version of etcd we are using. e.g. `upstream/release-3.5`.
+
+
+
 # etcd
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/etcd-io/etcd?style=flat-square)](https://goreportcard.com/report/github.com/etcd-io/etcd)
