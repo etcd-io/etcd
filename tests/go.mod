@@ -28,14 +28,14 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.1
-	go.etcd.io/etcd/api/v3 v3.5.9
-	go.etcd.io/etcd/client/pkg/v3 v3.5.9
-	go.etcd.io/etcd/client/v2 v2.305.9
-	go.etcd.io/etcd/client/v3 v3.5.9
-	go.etcd.io/etcd/etcdutl/v3 v3.5.9
-	go.etcd.io/etcd/pkg/v3 v3.5.9
-	go.etcd.io/etcd/raft/v3 v3.5.9
-	go.etcd.io/etcd/server/v3 v3.5.9
+	go.etcd.io/etcd/api/v3 v3.5.10
+	go.etcd.io/etcd/client/pkg/v3 v3.5.10
+	go.etcd.io/etcd/client/v2 v2.305.10
+	go.etcd.io/etcd/client/v3 v3.5.10
+	go.etcd.io/etcd/etcdutl/v3 v3.5.10
+	go.etcd.io/etcd/pkg/v3 v3.5.10
+	go.etcd.io/etcd/raft/v3 v3.5.10
+	go.etcd.io/etcd/server/v3 v3.5.10
 	go.uber.org/zap v1.17.0
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.3.0
