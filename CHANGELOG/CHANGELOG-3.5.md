@@ -4,7 +4,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.10 (tbd)
+## v3.5.10 (2023-10-27)
 
 ### etcd server
 - Fix [`--socket-reuse-port` and `--socket-reuse-address` not able to be set in configuration file](https://github.com/etcd-io/etcd/pull/16435).
@@ -31,6 +31,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.20.10](https://github.com/etcd-io/etcd/pull/16745).
 - Upgrade gRPC to 1.58.3 in https://github.com/etcd-io/etcd/pull/16625, https://github.com/etcd-io/etcd/pull/16781 and https://github.com/etcd-io/etcd/pull/16790. Note that gRPC server will reject requests with connection header (refer to https://github.com/grpc/grpc-go/pull/4803).
+- Upgrade [bbolt to v1.3.8](https://github.com/etcd-io/etcd/pull/16833)
 
 <hr>
 
