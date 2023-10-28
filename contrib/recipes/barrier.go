@@ -49,7 +49,7 @@ func (b *Barrier) Release() error {
 // Wait blocks on the barrier key until it is deleted. If there is no key, Wait
 // assumes Release has already been called and returns immediately.
 func (b *Barrier) Wait() error {
-	resp, err := b.client.Get(b.ctx, b.key, v3.WithFirstKey()...)
+	resp, err := b.client.Get(b.ctx, b.key)
 	if err != nil {
 		return err
 	}
