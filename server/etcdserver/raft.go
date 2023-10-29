@@ -164,13 +164,22 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 	internalTimeout := time.Second
 
 	go func() {
+		for {
+			select {
+			case <-r.ticker.C:
+				r.tick()
+			case <-r.done:
+				return
+			}
+		}
+	}()
+
+	go func() {
 		defer r.onStop()
 		islead := false
 
 		for {
 			select {
-			case <-r.ticker.C:
-				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
 					newLeader := rd.SoftState.Lead != raft.None && rh.getLead() != rd.SoftState.Lead

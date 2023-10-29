@@ -323,7 +323,7 @@ func monitorLeader(s *etcdserver.EtcdServer) *streamsMap {
 			case <-s.StoppingNotify():
 				return
 			case <-time.After(election):
-				if s.Leader() == types.ID(raft.None) {
+				if s.RaftStatus().Lead == raft.None {
 					noLeaderCnt++
 				} else {
 					noLeaderCnt = 0

@@ -1492,9 +1492,9 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 		return err
 	}
 
-	rs := s.raftStatus()
+	rs := s.RaftStatus()
 
-	// leader's raftStatus.Progress is not nil
+	// leader's RaftStatus.Progress is not nil
 	if rs.Progress == nil {
 		return errors.ErrNotLeader
 	}
@@ -2451,8 +2451,8 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 	return s.cluster.IsMemberExist(id)
 }
 
-// raftStatus returns the raft status of this etcd node.
-func (s *EtcdServer) raftStatus() raft.Status {
+// RaftStatus returns the raft status of this etcd node.
+func (s *EtcdServer) RaftStatus() raft.Status {
 	return s.r.Node.Status()
 }
 
