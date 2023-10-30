@@ -17,7 +17,9 @@ package clientv3
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -186,6 +188,110 @@ func TestSyncFiltersMembers(t *testing.T) {
 		t.Error("Client.Sync uses learner and/or non-started member client URLs")
 	}
 	c.Close()
+}
+
+func TestClientRejectOldCluster(t *testing.T) {
+	defer testutil.AfterTest(t)
+	var tests = []struct {
+		name          string
+		endpoints     []string
+		versions      []string
+		expectedError error
+	}{
+		{
+			name:          "all new versions with the same value",
+			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
+			versions:      []string{"3.4.4", "3.4.4", "3.4.4"},
+			expectedError: nil,
+		},
+		{
+			name:          "all new versions with different values",
+			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
+			versions:      []string{"3.4.4", "3.4.4", "3.4.0"},
+			expectedError: nil,
+		},
+		{
+			name:          "all old versions with different values",
+			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
+			versions:      []string{"3.2.0", "3.2.0", "3.3.0"},
+			expectedError: ErrOldCluster,
+		},
+		{
+			name:          "all old versions with the same value",
+			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
+			versions:      []string{"3.2.0", "3.2.0", "3.2.0"},
+			expectedError: ErrOldCluster,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if len(tt.endpoints) != len(tt.versions) || len(tt.endpoints) == 0 {
+				t.Errorf("Unexpected endpoints and versions length, len(endpoints):%d, len(versions):%d", len(tt.endpoints), len(tt.versions))
+				return
+			}
+			endpointToVersion := make(map[string]string)
+			for j := range tt.endpoints {
+				endpointToVersion[tt.endpoints[j]] = tt.versions[j]
+			}
+			c := &Client{
+				ctx: context.Background(),
+				cfg: Config{
+					Endpoints: tt.endpoints,
+				},
+				Maintenance: &mockMaintenance{
+					Version: endpointToVersion,
+				},
+				mu: new(sync.RWMutex),
+			}
+
+			if err := c.checkVersion(); err != tt.expectedError {
+				t.Errorf("checkVersion err:%v", err)
+			}
+		})
+
+	}
+
+}
+
+type mockMaintenance struct {
+	Version map[string]string
+}
+
+func (mm mockMaintenance) Status(ctx context.Context, endpoint string) (*StatusResponse, error) {
+	return &StatusResponse{Version: mm.Version[endpoint]}, nil
+}
+
+func (mm mockMaintenance) AlarmList(ctx context.Context) (*AlarmResponse, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) AlarmDisarm(ctx context.Context, m *AlarmMember) (*AlarmResponse, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) Defragment(ctx context.Context, endpoint string) (*DefragmentResponse, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) SnapshotWithVersion(ctx context.Context) error {
+	return nil
+}
+
+func (mm mockMaintenance) Snapshot(ctx context.Context) (io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) MoveLeader(ctx context.Context, transfereeID uint64) (*MoveLeaderResponse, error) {
+	return nil, nil
+}
+
+func (mm mockMaintenance) Downgrade(ctx context.Context, version string) error {
+	return nil
 }
 
 type mockCluster struct {
