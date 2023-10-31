@@ -22,8 +22,9 @@ import (
 	"net"
 	"sync"
 
-	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	grpccredentials "google.golang.org/grpc/credentials"
+
+	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 )
 
 // Config defines gRPC credential configuration.
