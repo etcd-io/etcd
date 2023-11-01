@@ -237,14 +237,12 @@ func TestClientRejectOldCluster(t *testing.T) {
 				endpointToVersion[tt.endpoints[j]] = tt.versions[j]
 			}
 			c := &Client{
-				ctx: context.Background(),
-				cfg: Config{
-					Endpoints: tt.endpoints,
-				},
+				ctx:       context.Background(),
+				endpoints: tt.endpoints,
+				epMu:      new(sync.RWMutex),
 				Maintenance: &mockMaintenance{
 					Version: endpointToVersion,
 				},
-				mu: new(sync.RWMutex),
 			}
 
 			if err := c.checkVersion(); err != tt.expectedError {
