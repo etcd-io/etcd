@@ -369,6 +369,28 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 	return nil
 }
 
+func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string) error {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
 var httpClient = http.Client{
 	Timeout: 10 * time.Millisecond,
 }
