@@ -199,21 +199,18 @@ type gofailSleepAndDeactivate struct {
 
 func (f gofailSleepAndDeactivate) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-	}
 	lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
 	err := member.Failpoints().SetupHTTP(ctx, f.failpoint, fmt.Sprintf(`sleep(%q)`, f.time))
 	if err != nil {
 		lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+		return fmt.Errorf("goFailpoint %s setup failed, err:%w", f.Name(), err)
 	}
 	time.Sleep(f.time)
 	lg.Info("Deactivating gofailpoint", zap.String("failpoint", f.Name()))
 	err = member.Failpoints().DeactivateHTTP(ctx, f.failpoint)
 	if err != nil {
 		lg.Info("goFailpoint deactivate failed", zap.String("failpoint", f.Name()), zap.Error(err))
+		return fmt.Errorf("goFailpoint %s deactivate failed, err: %w", f.Name(), err)
 	}
 	return nil
 }
