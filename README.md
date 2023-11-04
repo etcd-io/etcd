@@ -40,7 +40,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Maintainers
 
-[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
+[Maintainers](OWNERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. Maintainers aim to build productive relationships across different companies and disciplines. Read more about [Maintainers role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
 
 ## Getting started
 
