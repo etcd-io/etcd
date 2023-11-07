@@ -4,9 +4,9 @@ go 1.21
 
 require (
 	github.com/alexfalkowski/gocovmerge v1.2.2
+	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.4
-	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e
 	github.com/gogo/protobuf v1.3.2
 	github.com/google/addlicense v1.1.1
 	github.com/google/yamlfmt v0.10.0

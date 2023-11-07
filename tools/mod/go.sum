@@ -14,6 +14,8 @@ github.com/alecthomas/repr v0.2.0 h1:HAzS41CIzNW5syS8Mf9UwXhNH1J9aix/BvDRf1Ml2Yk
 github.com/alecthomas/repr v0.2.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
 github.com/alexfalkowski/gocovmerge v1.2.2 h1:u/bWOCfOg0i4EUGOgdNrIVohqkY+kx9h7lGcStWepyk=
 github.com/alexfalkowski/gocovmerge v1.2.2/go.mod h1:CzvCVcq2uBcjYM7V37cKG8+g74O4wPpUzPqFCwNDrMU=
+github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c h1:xv0ICJ4AO52aNZ+vI2KFUYZBMh7dHvROixZ1vzMMfu8=
+github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c/go.mod h1:Y5/1I+0gnnhHKyX4z65mgaGTJ08tnz9WUgkoymA/cws=
 github.com/bitfield/gotestdox v0.2.1 h1:Zj8IMLAO5/oiAKoMmtN96eyFiPZraJRTH2p0zDgtxc0=
 github.com/bitfield/gotestdox v0.2.1/go.mod h1:D+gwtS0urjBrzguAkTM2wodsTQYFHdpx8eqRJ3N+9pY=
 github.com/bmatcuk/doublestar/v4 v4.0.2/go.mod h1:xBQ8jztBU6kakFMg+8WGxn0c6z1fTSPVIjEY1Wr7jzc=
