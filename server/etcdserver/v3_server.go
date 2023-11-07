@@ -116,6 +116,11 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 				traceutil.Field{Key: "response_count", Value: len(resp.Kvs)},
 				traceutil.Field{Key: "response_revision", Value: resp.Header.Revision},
 			)
+
+			// collect the metric on very large responses only, because the key dimensionality might blow up Prometheus.
+			if rangeResponseKvCount != nil && len(resp.Kvs) > 1000 {
+				rangeResponseKvCount.WithLabelValues(string(r.Key)).Observe(float64(len(resp.Kvs)))
+			}
 		}
 		trace.LogIfLong(traceThreshold)
 	}(time.Now())
@@ -136,9 +141,6 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		err = serr
 		return nil, err
 	}
-
-	rangeResponseKvCount.WithLabelValues(string(r.Key)).Observe(float64(len(resp.Kvs)))
-
 	return resp, err
 }
 
