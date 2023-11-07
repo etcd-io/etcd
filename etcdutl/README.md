@@ -59,6 +59,10 @@ The snapshot restore options closely resemble to those used in the `etcd` comman
 
 - skip-hash-check -- Ignore snapshot integrity hash value (required if copied from data directory)
 
+- bump-revision -- How much to increase the latest revision after restore
+
+- mark-compacted -- Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)
+
 #### Output
 
 A new etcd data directory initialized with the snapshot.
