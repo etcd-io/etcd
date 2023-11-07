@@ -136,6 +136,9 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		err = serr
 		return nil, err
 	}
+
+	rangeResponseKvCount.WithLabelValues(string(r.Key)).Observe(float64(len(resp.Kvs)))
+
 	return resp, err
 }
 

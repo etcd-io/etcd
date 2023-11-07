@@ -118,6 +118,12 @@ var (
 		Name:      "lease_expired_total",
 		Help:      "The total number of expired leases.",
 	})
+	rangeResponseKvCount = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "range_response_kv_count",
+		Help:      "The number of KVs returned by range calls.",
+	}, []string{"range_begin"})
 
 	currentVersion = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: "etcd",
@@ -168,6 +174,7 @@ func init() {
 	prometheus.MustRegister(slowReadIndex)
 	prometheus.MustRegister(readIndexFailed)
 	prometheus.MustRegister(leaseExpired)
+	prometheus.MustRegister(rangeResponseKvCount)
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
