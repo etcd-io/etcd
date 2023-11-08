@@ -502,7 +502,7 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/coreos/license-bill-of-materials \
+  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -652,7 +652,7 @@ function run_pass {
   local pass="${1}"
   shift 1
   log_callout -e "\\n'${pass}' started at $(date)"
-  if "${pass}_pass" "$@" ; then
+  if "${pass}_pass" "${@}" ; then
     log_success "'${pass}' PASSED and completed at $(date)"
     return 0
   else
@@ -668,7 +668,7 @@ function run_pass {
 log_callout "Starting at: $(date)"
 fail_flag=false
 for pass in $PASSES; do
-  if run_pass "${pass}" "${@}"; then
+  if run_pass "${pass}" "$@"; then
     continue
   else
     fail_flag=true
