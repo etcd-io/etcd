@@ -350,6 +350,8 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 	}
 }
 
+// TestWatchResumeInitRev tests watch resume with disconnect before the first event.
+// It ensures that correct events are returned corresponding to the start revision. 
 func TestWatchResumeInitRev(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
@@ -367,7 +369,10 @@ func TestWatchResumeInitRev(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// watch from revision 1
 	wch := clus.Client(0).Watch(context.Background(), "a", clientv3.WithRev(1), clientv3.WithCreatedNotify())
+	// response for the create watch request, no events are in this response
+	// the current revision of etcd should be 4
 	if resp, ok := <-wch; !ok || resp.Header.Revision != 4 {
 		t.Fatalf("got (%v, %v), expected create notification rev=4", resp, ok)
 	}
@@ -392,6 +397,7 @@ func TestWatchResumeInitRev(t *testing.T) {
 		if len(resp.Events) == 0 {
 			t.Fatal("expected event on watch")
 		}
+		// Events should be put(a, 3) and put(a, 4)
 		if string(resp.Events[0].Kv.Value) != "3" {
 			t.Fatalf("expected value=3, got event %+v", resp.Events[0])
 		}
