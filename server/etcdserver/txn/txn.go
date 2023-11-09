@@ -22,7 +22,6 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -32,7 +31,8 @@ import (
 )
 
 const (
-	v3Version = "v3"
+	v3Version                        = "v3"
+	DefaultRangeWarningApplyDuration = 100 * time.Millisecond
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
@@ -147,7 +147,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(v3Version, op, success, time.Since(start))
-		WarnOfExpensiveRequest(lg, embed.DefaultWarningApplyDuration, start, stringer, nil, nil)
+		WarnOfExpensiveRequest(lg, DefaultRangeWarningApplyDuration, start, stringer, nil, nil)
 	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
