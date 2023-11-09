@@ -248,8 +248,8 @@ func (fkv *fakeKVForCheckCluster) Get(ctx context.Context, key string, opts ...c
 				},
 			},
 		}, nil
-
-	} else if key == clusterMembersKey {
+	}
+	if key == clusterMembersKey {
 		if fkv.getMembersRetries > 0 {
 			fkv.getMembersRetries--
 			// discovery client should retry on error.
@@ -263,10 +263,9 @@ func (fkv *fakeKVForCheckCluster) Get(ctx context.Context, key string, opts ...c
 			},
 			Kvs: kvs,
 		}, nil
-	} else {
-		fkv.t.Errorf("unexpected key: %s", key)
-		return nil, fmt.Errorf("unexpected key: %s", key)
 	}
+	fkv.t.Errorf("unexpected key: %s", key)
+	return nil, fmt.Errorf("unexpected key: %s", key)
 }
 
 func TestCheckCluster(t *testing.T) {

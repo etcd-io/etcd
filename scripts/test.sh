@@ -652,7 +652,7 @@ function run_pass {
   local pass="${1}"
   shift 1
   log_callout -e "\\n'${pass}' started at $(date)"
-  if "${pass}_pass" "${@}" ; then
+  if "${pass}_pass" "$@" ; then
     log_success "'${pass}' PASSED and completed at $(date)"
     return 0
   else
