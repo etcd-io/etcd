@@ -140,9 +140,9 @@ Now it's time to dig into the full etcd API and other guides.
 
 ### Community meetings
 
-etcd contributors and maintainers meet every two weeks at 11:00 AM (USA Pacific) on Thursday.
+etcd contributors and maintainers meet every week at 11:00 AM (USA Pacific) on Thursday and meetings alternate between community meetings and issue triage meetings. An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas. 
 
-An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
+Issue triage meetings are aimed at getting through our backlog of PRs and Issues. Triage meetings are open to any contributor; you don't have to be a reviewer or approver to help out! They can also be a good way to get started contributing.
 
 Meeting recordings are uploaded to official etcd [YouTube channel].
 
