@@ -2,11 +2,11 @@
 
 This doc outlines the various responsibilities of contributor roles in etcd. 
 
-| Role       | Responsibilities                             | Requirements                                                  | Defined by                           |
-|------------|----------------------------------------------|---------------------------------------------------------------|--------------------------------------|
-| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member               |
-| Reviewer   | Review contributions from other members      | History of review and authorship                              | [MAINTAINERS] file reviewer entry    |
-| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [MAINTAINERS] file maintainers entry |
+| Role       | Responsibilities                             | Requirements                                                  | Defined by                    |
+|------------|----------------------------------------------|---------------------------------------------------------------|-------------------------------|
+| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member        |
+| Reviewer   | Review contributions from other members      | History of review and authorship                              | [OWNERS] file reviewer entry  |
+| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [OWNERS] file approver entry  |
 
 ## New contributors
 
@@ -69,7 +69,7 @@ the codebase and software engineering principles. Their LGTM counts towards
 merging a code change into the project. A reviewer is generally on the ladder towards
 maintainership. 
 
-**Defined by:** *reviewers* entry in the [MAINTAINERS] file.
+**Defined by:** *reviewers* entry in the [OWNERS] file.
 
 ### Requirements
 
@@ -101,7 +101,7 @@ are committed to the long term success of a project. Maintainership is about bui
 trust with the current maintainers and being a person that they can
 depend on to make decisions in the best interest of the project in a consistent manner.
 
-**Defined by:** *maintainers* entry in the [MAINTAINERS] file.
+**Defined by:** *approvers* entry in the [OWNERS] file.
 
 ### Requirements
 
@@ -119,7 +119,7 @@ depend on to make decisions in the best interest of the project in a consistent 
     - Include a list of contributions representative of your work on the project.
     - Existing maintainers vote will privately and respond to the email with either acceptance or with feedback for suggested improvement.
 - With your membership approved you are expected to:
-  - Open a PR and add an entry to the [MAINTAINERS] file
+  - Open a PR and add an entry to the [OWNERS] file
   - Subscribe to etcd-maintainers@googlegroups.com and etcd-maintainers-private@googlegroups.com
   - Request to join to [etcd-maintainer teams of etcd organization of GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
   - Request to join to the private slack channel for etcd maintainers on [kubernetes slack](http://slack.kubernetes.io/)
@@ -159,7 +159,7 @@ of at least two active maintainers.
 
 Contributor roles and responsibilities were written based on [Kubernetes community membership]
 
-[MAINTAINERS]: /MAINTAINERS
+[OWNERS]: /OWNERS
 [contributor guide]: /CONTRIBUTING.md
 [membership nomination]:https://github.com/etcd-io/etcd/issues/new?assignees=&labels=area%2Fcommunity&template=membership-request.yml 
 [Kubernetes community membership]: https://github.com/kubernetes/community/blob/master/community-membership.md

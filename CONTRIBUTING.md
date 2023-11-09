@@ -40,7 +40,7 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 [github issue tracker]: https://github.com/etcd-io/etcd/issues
 [good first issue]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22good+first+issue%22
 [help wanted]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22help+wanted%22
-[maintainers]: https://github.com/etcd-io/etcd/blob/main/MAINTAINERS
+[maintainers]: https://github.com/etcd-io/etcd/blob/main/OWNERS
 [priority/important]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22priority%2Fimportant%22
 
 ## Setup development environment
