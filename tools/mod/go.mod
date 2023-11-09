@@ -31,7 +31,7 @@ require (
 	github.com/braydonk/yaml v0.7.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
-	github.com/elliotchance/orderedmap v1.5.0 // indirect
+	github.com/elliotchance/orderedmap v1.5.1 // indirect
 	github.com/fatih/color v1.15.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
