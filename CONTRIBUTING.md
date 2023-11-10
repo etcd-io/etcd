@@ -50,7 +50,7 @@ The etcd project supports two options for development:
  1. Manually setup local environment.
  2. Automatically setup [devcontainer](https://containers.dev).
 
-For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and mainter support that is currently lacking in the etcd project.
+For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and maintainer support that is currently lacking in the etcd project.
 
 If you would like etcd to support your preferred environment you can [file an issue].
 
@@ -62,8 +62,10 @@ Follow the steps below to setup the environment:
 
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
-- Install build tools (`make`):
-  - For debian based distributions you can run `sudo apt-get install build-essential`
+- Install build tools:
+  - `make`: For debian based distributions you can run `sudo apt-get install build-essential`
+  - `protoc`: You can download for your os. Use version [`v3.20.3`](https://github.com/protocolbuffers/protobuf/releases/tag/v3.20.3).
+  - `yamllint`: For debian based distribution you can run `sudo apt-get install yamllint`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
