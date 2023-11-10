@@ -27,7 +27,7 @@ func forUnitTestsRunInMockedContext(mocking func(), _example func()) {
 	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
 
 	// The real testing logic of examples gets executed
-	// as part of ./tests/integration/clientv3/integration/...
+	// as part of ./tests/integration/clientv3/concurrency/...
 }
 
 func TestMain(m *testing.M) {
