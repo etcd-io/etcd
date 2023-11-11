@@ -392,7 +392,7 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 }
 
 var httpClient = http.Client{
-	Timeout: 10 * time.Millisecond,
+	Timeout: 1 * time.Second,
 }
 
 func (f *BinaryFailpoints) Enabled() bool {
