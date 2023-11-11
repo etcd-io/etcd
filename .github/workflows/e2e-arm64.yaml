@@ -1,5 +1,5 @@
 ---
-name: Reusable Arm64 E2E Workflow
+name: E2E-Arm64
 on: [push, pull_request]
 permissions: read-all
 jobs:
