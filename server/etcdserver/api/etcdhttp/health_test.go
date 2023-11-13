@@ -60,6 +60,8 @@ func (s *fakeHealthServer) Leader() types.ID {
 
 func (s *fakeHealthServer) AuthStore() auth.AuthStore { return s.authStore }
 
+func (s *fakeHealthServer) TickElapsed() uint64 { return 1 }
+
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
 
 type healthTestCase struct {

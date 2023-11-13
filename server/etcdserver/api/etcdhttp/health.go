@@ -22,9 +22,12 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -36,6 +39,8 @@ import (
 const (
 	PathHealth      = "/health"
 	PathProxyHealth = "/proxy/health"
+
+	LivezRaftLoopDeadLockCheckInterval = 5 * time.Second
 )
 
 type ServerHealth interface {
@@ -44,6 +49,7 @@ type ServerHealth interface {
 	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
 	Config() config.ServerConfig
 	AuthStore() auth.AuthStore
+	TickElapsed() uint64
 }
 
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
@@ -203,11 +209,19 @@ type HealthCheck func(ctx context.Context) error
 type CheckRegistry struct {
 	path   string
 	checks map[string]HealthCheck
+
+	// tickElapsed and rate limiter is only used in livez check registry.
+	mu                  sync.Mutex
+	lastRaftTickElapsed uint64
+
+	rateLimiter *rate.Limiter
 }
 
 func installLivezEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
-	reg := CheckRegistry{path: "/livez", checks: make(map[string]HealthCheck)}
+	rl := rate.NewLimiter(rate.Every(LivezRaftLoopDeadLockCheckInterval), 1)
+	reg := CheckRegistry{path: "/livez", checks: make(map[string]HealthCheck), rateLimiter: rl}
 	reg.Register("serializable_read", serializableReadCheck(server))
+	reg.Register("raft_loop_progress", raftLoopDeadLockCheck(server, &reg))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
@@ -361,6 +375,21 @@ func serializableReadCheck(srv ServerHealth) func(ctx context.Context) error {
 		_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: true})
 		if err != nil {
 			return fmt.Errorf("range error: %w", err)
+		}
+		return nil
+	}
+}
+
+func raftLoopDeadLockCheck(srv ServerHealth, reg *CheckRegistry) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
+		if reg.rateLimiter.Allow() {
+			tickElapsed := srv.TickElapsed()
+			reg.mu.Lock()
+			defer reg.mu.Unlock()
+			if tickElapsed <= reg.lastRaftTickElapsed {
+				return fmt.Errorf("raft loop dead lock")
+			}
+			reg.lastRaftTickElapsed = tickElapsed
 		}
 		return nil
 	}

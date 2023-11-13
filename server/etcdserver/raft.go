@@ -23,12 +23,13 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/contention"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 const (
@@ -82,6 +83,7 @@ type raftNode struct {
 
 	tickMu *sync.Mutex
 	raftNodeConfig
+	tickElapsed uint64
 
 	// a chan to send/receive snapshot
 	msgSnapC chan raftpb.Message
@@ -155,7 +157,14 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 func (r *raftNode) tick() {
 	r.tickMu.Lock()
 	r.Tick()
+	r.tickElapsed++
 	r.tickMu.Unlock()
+}
+
+func (r *raftNode) safeReadTickElapsed() uint64 {
+	r.tickMu.Lock()
+	defer r.tickMu.Unlock()
+	return r.tickElapsed
 }
 
 // start prepares and starts raftNode in a new goroutine. It is no longer safe

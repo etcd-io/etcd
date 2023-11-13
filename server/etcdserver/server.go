@@ -33,6 +33,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -67,8 +70,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 const (
@@ -1642,6 +1643,10 @@ func (s *EtcdServer) CommittedIndex() uint64 { return s.getCommittedIndex() }
 func (s *EtcdServer) AppliedIndex() uint64 { return s.getAppliedIndex() }
 
 func (s *EtcdServer) Term() uint64 { return s.getTerm() }
+
+// TickElapsed returns the raft tick elapsed counter.
+// It is used to check if etcdserver raft loop is deadlocked.
+func (s *EtcdServer) TickElapsed() uint64 { return s.r.safeReadTickElapsed() }
 
 type confChangeResponse struct {
 	membs        []*membership.Member
