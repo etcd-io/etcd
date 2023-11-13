@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
+	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
@@ -64,8 +65,16 @@ func scenarios(t *testing.T) []testScenario {
 		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
 	}
 	enableLazyFS := e2e.BinPath.LazyFSAvailable()
+	randomizableOptions := []e2e.EPClusterOption{
+		options.WithClusterOptionGroups(
+			options.ClusterOptions{options.WithTickMs(29), options.WithElectionMs(271)},
+			options.ClusterOptions{options.WithTickMs(101), options.WithElectionMs(521)},
+			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
+	}
+
 	baseOptions := []e2e.EPClusterOption{
-		e2e.WithSnapshotCount(100),
+		options.WithSnapshotCount(50, 100, 1000),
+		options.WithSubsetOptions(randomizableOptions...),
 		e2e.WithGoFailEnabled(true),
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
@@ -109,6 +118,7 @@ func scenarios(t *testing.T) []testScenario {
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
+			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
@@ -119,6 +129,7 @@ func scenarios(t *testing.T) []testScenario {
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
+			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
@@ -140,6 +151,7 @@ func scenarios(t *testing.T) []testScenario {
 		profile: traffic.LowTraffic,
 		traffic: traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
+			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 		),
 	})
@@ -151,6 +163,7 @@ func scenarios(t *testing.T) []testScenario {
 			profile:   traffic.HighTrafficProfile,
 			traffic:   traffic.EtcdPut,
 			cluster: *e2e.NewConfig(
+				options.WithSubsetOptions(randomizableOptions...),
 				e2e.WithSnapshotCatchUpEntries(100),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
