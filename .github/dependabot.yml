@@ -1,21 +1,99 @@
 ---
 version: 2
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-
-  - package-ecosystem: gomod
-    directory: /
-    schedule:
-      interval: weekly
-    allow:
-      - dependency-type: all
-
-  - package-ecosystem: gomod
-    directory: /tools/mod # Not linked from /go.mod
-    schedule:
-      interval: weekly
-    allow:
-      - dependency-type: all
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+- package-ecosystem: gomod
+  directory: /
+  schedule:
+    interval: weekly
+  allow:
+  - dependency-type: all
+- package-ecosystem: gomod
+  directory: /tools/mod
+  schedule:
+    interval: weekly
+  allow:
+  - dependency-type: all
+- package-ecosystem: docker
+  directory: /tests
+  schedule:
+    interval: weekly
+- package-ecosystem: docker
+  directory: /
+  schedule:
+    interval: weekly
+- package-ecosystem: gomod
+  directory: /pkg
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /etcdutl
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /api
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /server
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /client/pkg
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /client/internal/v2
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /tests
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /client/v3
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
+- package-ecosystem: gomod
+  directory: /etcdctl
+  schedule:
+    interval: weekly
+  groups:
+    gomod-dependencies:
+      patterns:
+      - '*'
