@@ -144,11 +144,9 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
 	op := "range"
-	stringer := &pb.InternalRaftStringer{Request: &pb.InternalRaftRequest{Range: r}}
 	defer func(start time.Time) {
 		success := err == nil
-		RangeSecObserve(v3Version, op, success, time.Since(start))
-		WarnOfExpensiveRequest(lg, DefaultRangeWarningApplyDuration, start, stringer, nil, nil)
+		RangeSecObserve(op, success, time.Since(start))
 	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
