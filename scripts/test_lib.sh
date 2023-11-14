@@ -452,3 +452,20 @@ function git_assert_branch_in_sync {
     log_warning "Cannot verify consistency with the origin, as git is on detached branch."
   fi
 }
+
+function run_pass {
+  local pass="${1}"
+  shift 1
+  log_callout -e "\\n'${pass}' started at $(date)"
+  if "${pass}_pass" "$@" ; then
+    log_success "'${pass}' PASSED and completed at $(date)"
+    return 0
+  else
+    log_error "FAIL: '${pass}' FAILED at $(date)"
+    if [ "$KEEP_GOING_SUITE" = true ]; then
+      return 2
+    else
+      exit 255
+    fi
+  fi
+}
