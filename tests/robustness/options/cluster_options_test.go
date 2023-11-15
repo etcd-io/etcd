@@ -22,16 +22,17 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func resetRand() {
-	internalRand = rand.New(rand.NewSource(1))
-}
-
-func init() {
-	resetRand()
+func mockRand(source rand.Source) func() {
+	tmp := internalRand
+	internalRand = rand.New(source)
+	return func() {
+		internalRand = tmp
+	}
 }
 
 func TestWithClusterOptionGroups(t *testing.T) {
-	defer resetRand()
+	restore := mockRand(rand.NewSource(1))
+	defer restore()
 	tickOptions1 := ClusterOptions{WithTickMs(101), WithElectionMs(1001)}
 	tickOptions2 := ClusterOptions{WithTickMs(202), WithElectionMs(2002)}
 	tickOptions3 := ClusterOptions{WithTickMs(303), WithElectionMs(3003)}
@@ -67,7 +68,8 @@ func TestWithClusterOptionGroups(t *testing.T) {
 }
 
 func TestWithOptionsSubset(t *testing.T) {
-	defer resetRand()
+	restore := mockRand(rand.NewSource(1))
+	defer restore()
 	tickOptions := ClusterOptions{WithTickMs(50), WithElectionMs(500)}
 	opts := ClusterOptions{
 		WithSnapshotCatchUpEntries(100),
