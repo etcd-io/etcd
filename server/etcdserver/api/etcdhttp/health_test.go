@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
@@ -61,6 +62,8 @@ func (s *fakeHealthServer) Leader() types.ID {
 
 func (s *fakeHealthServer) AuthStore() auth.AuthStore { return s.authStore }
 
+func (s *fakeHealthServer) Backend() backend.Backend { return nil }
+
 func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
 
 type healthTestCase struct {
@@ -70,9 +73,10 @@ type healthTestCase struct {
 	inResult         []string
 	notInResult      []string
 
-	alarms        []*pb.AlarmMember
-	apiError      error
-	missingLeader bool
+	alarms         []*pb.AlarmMember
+	apiError       error
+	missingLeader  bool
+	isDefragActive bool
 }
 
 func TestHealthHandler(t *testing.T) {
@@ -190,7 +194,10 @@ func TestHttpSubPath(t *testing.T) {
 				apiError:  tt.apiError,
 				authStore: auth.NewAuthStore(logger, schema.NewAuthBackend(logger, be), nil, 0),
 			}
-			HandleHealth(logger, mux, s)
+			notifier := &healthNotifier{isDefragActive: tt.isDefragActive}
+			installLivezEndpoints(logger, mux, s, notifier)
+			installReadyzEndpoints(logger, mux, s, notifier)
+
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
@@ -244,7 +251,10 @@ func TestDataCorruptionCheck(t *testing.T) {
 			s := &fakeHealthServer{
 				authStore: auth.NewAuthStore(logger, schema.NewAuthBackend(logger, be), nil, 0),
 			}
-			HandleHealth(logger, mux, s)
+			notifier := &healthNotifier{isDefragActive: tt.isDefragActive}
+			installLivezEndpoints(logger, mux, s, notifier)
+			installReadyzEndpoints(logger, mux, s, notifier)
+
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			// OK before alarms are activated.
@@ -280,6 +290,21 @@ func TestSerializableReadCheck(t *testing.T) {
 			expectStatusCode: http.StatusServiceUnavailable,
 			inResult:         []string{"[-]serializable_read failed: range error: Unexpected error"},
 		},
+		{
+			name:             "Alive if defrag is active and range api is not available",
+			healthCheckURL:   "/livez",
+			isDefragActive:   true,
+			apiError:         fmt.Errorf("timeout error"),
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "Not ready if defrag is active and range api is not available",
+			healthCheckURL:   "/readyz",
+			isDefragActive:   true,
+			apiError:         fmt.Errorf("timeout error"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[-]serializable_read failed: defrag is active"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -289,7 +314,10 @@ func TestSerializableReadCheck(t *testing.T) {
 				apiError:  tt.apiError,
 				authStore: auth.NewAuthStore(logger, schema.NewAuthBackend(logger, be), nil, 0),
 			}
-			HandleHealth(logger, mux, s)
+			notifier := &healthNotifier{isDefragActive: tt.isDefragActive}
+			installLivezEndpoints(logger, mux, s, notifier)
+			installReadyzEndpoints(logger, mux, s, notifier)
+
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)

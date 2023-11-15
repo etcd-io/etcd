@@ -20,18 +20,14 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 const (
 	allGRPCServices = ""
 )
 
-type notifier interface {
-	defragStarted()
-	defragFinished()
-}
-
-func newHealthNotifier(hs *health.Server, s *etcdserver.EtcdServer) notifier {
+func newHealthNotifier(hs *health.Server, s *etcdserver.EtcdServer) backend.DefragNotifier {
 	if hs == nil {
 		panic("unexpected nil gRPC health server")
 	}
@@ -49,14 +45,14 @@ type healthNotifier struct {
 	stopGRPCServiceOnDefrag bool
 }
 
-func (hc *healthNotifier) defragStarted() {
+func (hc *healthNotifier) DefragStarted() {
 	if !hc.stopGRPCServiceOnDefrag {
 		return
 	}
 	hc.stopServe("defrag is active")
 }
 
-func (hc *healthNotifier) defragFinished() { hc.startServe() }
+func (hc *healthNotifier) DefragFinished() { hc.startServe() }
 
 func (hc *healthNotifier) startServe() {
 	hc.lg.Info(

@@ -37,8 +37,9 @@ import (
 )
 
 const (
-	healthCheckTimeout = 2 * time.Second
-	putCommandTimeout  = 200 * time.Millisecond
+	healthCheckTimeout   = 2 * time.Second
+	putCommandTimeout    = 200 * time.Millisecond
+	defragCommandTimeout = 200 * time.Millisecond
 )
 
 type healthCheckConfig struct {
@@ -279,6 +280,27 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 				},
 			},
 		},
+		// verify that when defrag is active livez is ok and readyz is not ok.
+		{
+			name:           "defrag active",
+			injectFailure:  triggerSlowDefrag,
+			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+					expectedRespSubStrings: []string{
+						`[-]serializable_read failed: defrag is active`,
+						`[+]data_corruption ok`,
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range tcs {
@@ -373,6 +395,11 @@ func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus 
 
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "beforeWritebackBuf", fmt.Sprintf(`sleep("%s")`, duration)))
 	clus.Procs[0].Etcdctl(e2e.WithAuth("root", "root")).Put(context.Background(), "foo", "bar", config.PutOptions{Timeout: putCommandTimeout})
+}
+
+func triggerSlowDefrag(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
+	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "defragBeforeRename", fmt.Sprintf(`sleep("%s")`, duration)))
+	clus.Procs[0].Etcdctl().Defragment(ctx, config.DefragOption{Timeout: defragCommandTimeout})
 }
 
 func triggerCorrupt(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
