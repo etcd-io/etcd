@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/raft/v3"
@@ -193,6 +194,7 @@ func TestHttpSubPath(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkMetrics(t, tt.healthCheckURL, "", tt.expectStatusCode)
 		})
 	}
 }
@@ -291,6 +293,7 @@ func TestSerializableReadCheck(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkMetrics(t, tt.healthCheckURL, "serializable_read", tt.expectStatusCode)
 		})
 	}
 }
@@ -320,6 +323,57 @@ func checkHttpResponse(t *testing.T, ts *httptest.Server, url string, expectStat
 		if strings.Contains(result, substr) {
 			t.Errorf("Do not expect substring : %s, in response: %s", substr, result)
 			return
+		}
+	}
+}
+
+func checkMetrics(t *testing.T, url, checkName string, expectStatusCode int) {
+	defer healthCheckGauge.Reset()
+	defer healthCheckCounter.Reset()
+
+	typeName := strings.TrimPrefix(strings.Split(url, "?")[0], "/")
+	if len(checkName) == 0 {
+		checkName = strings.Split(typeName, "/")[1]
+		typeName = strings.Split(typeName, "/")[0]
+	}
+
+	expectedSuccessCount := 1
+	expectedErrorCount := 0
+	if expectStatusCode != http.StatusOK {
+		expectedSuccessCount = 0
+		expectedErrorCount = 1
+	}
+
+	gather, _ := prometheus.DefaultGatherer.Gather()
+	for _, mf := range gather {
+		name := *mf.Name
+		val := 0
+		switch name {
+		case "etcd_server_healthcheck":
+			val = int(mf.GetMetric()[0].GetGauge().GetValue())
+		case "etcd_server_healthcheck_total":
+			val = int(mf.GetMetric()[0].GetCounter().GetValue())
+		default:
+			continue
+		}
+		labelMap := make(map[string]string)
+		for _, label := range mf.GetMetric()[0].Label {
+			labelMap[label.GetName()] = label.GetValue()
+		}
+		if typeName != labelMap["type"] {
+			continue
+		}
+		if labelMap["name"] != checkName {
+			continue
+		}
+		if statusLabel, found := labelMap["status"]; found && statusLabel == HealthStatusError {
+			if val != expectedErrorCount {
+				t.Fatalf("%s got errorCount %d, wanted %d\n", name, val, expectedErrorCount)
+			}
+		} else {
+			if val != expectedSuccessCount {
+				t.Fatalf("%s got expectedSuccessCount %d, wanted %d\n", name, val, expectedSuccessCount)
+			}
 		}
 	}
 }
