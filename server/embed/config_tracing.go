@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"fmt"
 
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -25,6 +26,19 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.uber.org/zap"
 )
+
+const maxSamplingRatePerMillion = 1000000
+
+func validateTracingConfig(samplingRate int) error {
+	if samplingRate < 0 {
+		return fmt.Errorf("tracing sampling rate must be positive")
+	}
+	if samplingRate > maxSamplingRatePerMillion {
+		return fmt.Errorf("tracing sampling rate must be less than %d", maxSamplingRatePerMillion)
+	}
+
+	return nil
+}
 
 func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
 	exporter, err = otlptracegrpc.New(ctx,
@@ -77,6 +91,14 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 	)
 
 	return exporter, options, err
+}
+
+func determineSampler(samplingRate int) tracesdk.Sampler {
+	sampler := tracesdk.NeverSample()
+	if samplingRate == 0 {
+		return sampler
+	}
+	return tracesdk.TraceIDRatioBased(float64(samplingRate) / float64(maxSamplingRatePerMillion))
 }
 
 // As Tracing service Instance ID must be unique, it should
