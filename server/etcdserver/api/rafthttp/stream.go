@@ -260,6 +260,9 @@ func (cw *streamWriter) run() {
 			cw.working = true
 			cw.mu.Unlock()
 
+			// gofail: var faultyNetwork struct{}
+			// enc, cw.closer = wrapEncoderWithFaultyNetwork(enc, cw.closer, cw.localID, cw.peerID, cw.lg)
+
 			if closed {
 				if cw.lg != nil {
 					cw.lg.Warn(
@@ -488,7 +491,6 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	}
 	cr.mu.Unlock()
 
-	// gofail: labelRaftDropHeartbeat:
 	for {
 		m, err := dec.decode()
 		if err != nil {
@@ -497,9 +499,6 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			cr.mu.Unlock()
 			return err
 		}
-
-		// gofail-go: var raftDropHeartbeat struct{}
-		// continue labelRaftDropHeartbeat
 		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
 
 		cr.mu.Lock()

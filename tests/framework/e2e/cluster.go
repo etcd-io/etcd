@@ -137,11 +137,12 @@ type EtcdProcessClusterConfig struct {
 
 	// Test config
 
-	KeepDataDir   bool
-	Logger        *zap.Logger
-	GoFailEnabled bool
-	LazyFSEnabled bool
-	PeerProxy     bool
+	KeepDataDir             bool
+	Logger                  *zap.Logger
+	GoFailEnabled           bool
+	LazyFSEnabled           bool
+	PeerProxy               bool
+	FaultyTransitionEnabled bool
 
 	// Process config
 
@@ -364,6 +365,10 @@ func WithEnvVars(ev map[string]string) EPClusterOption {
 
 func WithPeerProxy(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.PeerProxy = enabled }
+}
+
+func WithFaultyTransition(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.FaultyTransitionEnabled = enabled }
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -609,23 +614,24 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	return &EtcdServerProcessConfig{
-		lg:            cfg.Logger,
-		ExecPath:      execPath,
-		Args:          args,
-		EnvVars:       envVars,
-		TlsArgs:       cfg.TlsArgs(),
-		Client:        cfg.Client,
-		DataDirPath:   dataDirPath,
-		KeepDataDir:   cfg.KeepDataDir,
-		Name:          name,
-		PeerURL:       peerAdvertiseUrl,
-		ClientURL:     curl,
-		ClientHTTPURL: clientHttpUrl,
-		MetricsURL:    murl,
-		InitialToken:  cfg.ServerConfig.InitialClusterToken,
-		GoFailPort:    gofailPort,
-		Proxy:         proxyCfg,
-		LazyFSEnabled: cfg.LazyFSEnabled,
+		lg:                      cfg.Logger,
+		ExecPath:                execPath,
+		Args:                    args,
+		EnvVars:                 envVars,
+		TlsArgs:                 cfg.TlsArgs(),
+		Client:                  cfg.Client,
+		DataDirPath:             dataDirPath,
+		KeepDataDir:             cfg.KeepDataDir,
+		Name:                    name,
+		PeerURL:                 peerAdvertiseUrl,
+		ClientURL:               curl,
+		ClientHTTPURL:           clientHttpUrl,
+		MetricsURL:              murl,
+		InitialToken:            cfg.ServerConfig.InitialClusterToken,
+		GoFailPort:              gofailPort,
+		Proxy:                   proxyCfg,
+		LazyFSEnabled:           cfg.LazyFSEnabled,
+		FaultyTransitionEnabled: cfg.FaultyTransitionEnabled,
 	}
 }
 
