@@ -152,7 +152,7 @@ endif
 
 # Tools
 
-GOLANGCI_LINT_VERSION = "v1.55.2"
+GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
 .PHONY: install-golangci-lint
 
 install-golangci-lint:
