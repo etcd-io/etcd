@@ -37,11 +37,7 @@ const v2Version = "v2"
 
 // ApplierV2 is the interface for processing V2 raft messages
 type ApplierV2 interface {
-	Delete(r *RequestV2) Response
-	Post(r *RequestV2) Response
 	Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response
-	QGet(r *RequestV2) Response
-	Sync(r *RequestV2) Response
 }
 
 func NewApplierV2(lg *zap.Logger, s v2store.Store, c *membership.RaftCluster) ApplierV2 {
@@ -55,19 +51,6 @@ type applierV2store struct {
 	lg      *zap.Logger
 	store   v2store.Store
 	cluster *membership.RaftCluster
-}
-
-func (a *applierV2store) Delete(r *RequestV2) Response {
-	switch {
-	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.store.CompareAndDelete(r.Path, r.PrevValue, r.PrevIndex))
-	default:
-		return toResponse(a.store.Delete(r.Path, r.Dir, r.Recursive))
-	}
-}
-
-func (a *applierV2store) Post(r *RequestV2) Response {
-	return toResponse(a.store.Create(r.Path, r.Dir, r.Val, true, r.TTLOptions()))
 }
 
 func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response {
@@ -109,15 +92,6 @@ func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV
 	}
 }
 
-func (a *applierV2store) QGet(r *RequestV2) Response {
-	return toResponse(a.store.Get(r.Path, r.Recursive, r.Sorted))
-}
-
-func (a *applierV2store) Sync(r *RequestV2) Response {
-	a.store.DeleteExpiredKeys(time.Unix(0, r.Time))
-	return Response{}
-}
-
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) (resp Response) {
@@ -136,16 +110,8 @@ func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.Shoul
 	}(time.Now())
 
 	switch r.Method {
-	case "POST":
-		return s.applyV2.Post(r)
 	case "PUT":
 		return s.applyV2.Put(r, shouldApplyV3)
-	case "DELETE":
-		return s.applyV2.Delete(r)
-	case "QGET":
-		return s.applyV2.QGet(r)
-	case "SYNC":
-		return s.applyV2.Sync(r)
 	default:
 		// This should never be reached, but just in case:
 		return Response{Err: errors.ErrUnknownMethod}
