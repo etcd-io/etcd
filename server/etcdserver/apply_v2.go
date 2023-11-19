@@ -49,42 +49,25 @@ type applierV2store struct {
 }
 
 func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) Response {
-	ttlOptions := r.TTLOptions()
-	exists, existsSet := pbutil.GetBool(r.PrevExist)
-	switch {
-	case existsSet:
-		if exists {
-			if r.PrevIndex == 0 && r.PrevValue == "" {
-				return toResponse(a.store.Update(r.Path, r.Val, ttlOptions))
-			}
-			return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
+	if storeMemberAttributeRegexp.MatchString(r.Path) {
+		id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(r.Path))
+		var attr membership.Attributes
+		if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
+			a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 		}
-		return toResponse(a.store.Create(r.Path, r.Dir, r.Val, false, ttlOptions))
-	case r.PrevIndex > 0 || r.PrevValue != "":
-		return toResponse(a.store.CompareAndSwap(r.Path, r.PrevValue, r.PrevIndex, r.Val, ttlOptions))
-	default:
-		if storeMemberAttributeRegexp.MatchString(r.Path) {
-			id := membership.MustParseMemberIDFromKey(a.lg, path.Dir(r.Path))
-			var attr membership.Attributes
-			if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-				a.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
-			}
-			if a.cluster != nil {
-				a.cluster.UpdateAttributes(id, attr, shouldApplyV3)
-			}
-			// return an empty response since there is no consumer.
-			return Response{}
+		if a.cluster != nil {
+			a.cluster.UpdateAttributes(id, attr, shouldApplyV3)
 		}
-		// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
-		if r.Path == membership.StoreClusterVersionKey() {
-			if a.cluster != nil {
-				// persist to backend given v2store can be very stale
-				a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
-			}
-			return Response{}
-		}
-		return toResponse(a.store.Set(r.Path, r.Dir, r.Val, ttlOptions))
 	}
+	// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
+	if r.Path == membership.StoreClusterVersionKey() {
+		if a.cluster != nil {
+			// persist to backend given v2store can be very stale
+			a.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
+		}
+	}
+	// return an empty response since there is no consumer.
+	return Response{}
 }
 
 // applyV2Request interprets r as a call to v2store.X
@@ -106,8 +89,4 @@ func (r *RequestV2) TTLOptions() v2store.TTLOptionSet {
 		ttlOptions.ExpireTime = time.Unix(0, r.Expiration)
 	}
 	return ttlOptions
-}
-
-func toResponse(ev *v2store.Event, err error) Response {
-	return Response{Event: ev, Err: err}
 }
