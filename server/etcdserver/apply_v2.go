@@ -16,24 +16,19 @@ package etcdserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"path"
 	"time"
-	"unicode/utf8"
 
 	"github.com/coreos/go-semver/semver"
+
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
-
-	"go.uber.org/zap"
 )
-
-const v2Version = "v2"
 
 // ApplierV2 is the interface for processing V2 raft messages
 type ApplierV2 interface {
@@ -95,20 +90,6 @@ func (a *applierV2store) Put(r *RequestV2, shouldApplyV3 membership.ShouldApplyV
 // applyV2Request interprets r as a call to v2store.X
 // and returns a Response interpreted from v2store.Event
 func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) (resp Response) {
-	stringer := panicAlternativeStringer{
-		stringer:    r,
-		alternative: func() string { return fmt.Sprintf("id:%d,method:%s,path:%s", r.ID, r.Method, r.Path) },
-	}
-	defer func(start time.Time) {
-		if !utf8.ValidString(r.Method) {
-			s.lg.Info("method is not valid utf-8")
-			return
-		}
-		success := resp.Err == nil
-		txn.ApplySecObserve(v2Version, r.Method, success, time.Since(start))
-		txn.WarnOfExpensiveRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, stringer, nil, nil)
-	}(time.Now())
-
 	switch r.Method {
 	case "PUT":
 		return s.applyV2.Put(r, shouldApplyV3)
