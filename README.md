@@ -135,7 +135,7 @@ Now it's time to dig into the full etcd API and other guides.
 ## Contact
 
 * Email: [etcd-dev](https://groups.google.com/g/etcd-dev)
-* Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
+* Slack: [#sig-etcd](https://kubernetes.slack.com/archives/C3HD8ARJ5) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
 * [Community meetings](#community-meetings)
 
 ### Community meetings
