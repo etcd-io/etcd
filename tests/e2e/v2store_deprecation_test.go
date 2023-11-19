@@ -58,6 +58,34 @@ func TestV2DeprecationNotYet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestV2DeprecationWriteOnlyWAL(t *testing.T) {
+	e2e.BeforeTest(t)
+	dataDirPath := t.TempDir()
+
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithEnableV2(true),
+		e2e.WithDataDirPath(dataDirPath),
+	))
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	assert.NoError(t, err)
+	memberDataDir := epc.Procs[0].Config().DataDirPath
+
+	writeCustomV2Data(t, epc, 1)
+
+	assert.NoError(t, epc.Stop())
+
+	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
+	assert.NoError(t, err)
+
+	_, err = proc.Expect("detected disallowed v2 WAL for stage --v2-deprecation=write-only")
+	assert.NoError(t, err)
+}
+
 func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
