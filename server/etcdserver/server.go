@@ -140,8 +140,6 @@ type ServerV2 interface {
 	Server
 	Leader() types.ID
 
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
 	ClientCertAuthEnabled() bool
 }
 
