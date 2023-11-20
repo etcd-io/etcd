@@ -23,13 +23,17 @@ import (
 
 type fakeHealthServer struct {
 	fakeServer
-	apiError      error
-	missingLeader bool
-	authStore     auth.AuthStore
+	serializableReadError error
+	linearizableReadError error
+	missingLeader         bool
+	authStore             auth.AuthStore
 }
 
-func (s *fakeHealthServer) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return nil, s.apiError
+func (s *fakeHealthServer) Range(_ context.Context, req *pb.RangeRequest) (*pb.RangeResponse, error) {
+	if req.Serializable {
+		return nil, s.serializableReadError
+	}
+	return nil, s.linearizableReadError
 }
 
 func (s *fakeHealthServer) Config() config.ServerConfig {
@@ -132,10 +136,11 @@ func TestHealthHandler(t *testing.T) {
 			be, _ := betesting.NewDefaultTmpBackend(t)
 			defer betesting.Close(t, be)
 			HandleHealth(zaptest.NewLogger(t), mux, &fakeHealthServer{
-				fakeServer:    fakeServer{alarms: tt.alarms},
-				apiError:      tt.apiError,
-				missingLeader: tt.missingLeader,
-				authStore:     auth.NewAuthStore(lg, be, nil, 0),
+				fakeServer:            fakeServer{alarms: tt.alarms},
+				serializableReadError: tt.apiError,
+				linearizableReadError: tt.apiError,
+				missingLeader:         tt.missingLeader,
+				authStore:             auth.NewAuthStore(lg, be, nil, 0),
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
@@ -171,8 +176,8 @@ func TestHttpSubPath(t *testing.T) {
 			mux := http.NewServeMux()
 			logger := zaptest.NewLogger(t)
 			s := &fakeHealthServer{
-				apiError:  tt.apiError,
-				authStore: auth.NewAuthStore(logger, be, nil, 0),
+				serializableReadError: tt.apiError,
+				authStore:             auth.NewAuthStore(logger, be, nil, 0),
 			}
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
@@ -255,14 +260,14 @@ func TestSerializableReadCheck(t *testing.T) {
 			healthCheckURL:   "/livez",
 			apiError:         fmt.Errorf("Unexpected error"),
 			expectStatusCode: http.StatusServiceUnavailable,
-			inResult:         []string{"[-]serializable_read failed: range error: Unexpected error"},
+			inResult:         []string{"[-]serializable_read failed: Unexpected error"},
 		},
 		{
 			name:             "Not ready if range api is not available",
 			healthCheckURL:   "/readyz",
 			apiError:         fmt.Errorf("Unexpected error"),
 			expectStatusCode: http.StatusServiceUnavailable,
-			inResult:         []string{"[-]serializable_read failed: range error: Unexpected error"},
+			inResult:         []string{"[-]serializable_read failed: Unexpected error"},
 		},
 	}
 	for _, tt := range tests {
@@ -270,14 +275,55 @@ func TestSerializableReadCheck(t *testing.T) {
 			mux := http.NewServeMux()
 			logger := zaptest.NewLogger(t)
 			s := &fakeHealthServer{
-				apiError:  tt.apiError,
-				authStore: auth.NewAuthStore(logger, be, nil, 0),
+				serializableReadError: tt.apiError,
+				authStore:             auth.NewAuthStore(logger, be, nil, 0),
 			}
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
 			checkMetrics(t, tt.healthCheckURL, "serializable_read", tt.expectStatusCode)
+		})
+	}
+}
+
+func TestLinearizableReadCheck(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "Alive normal",
+			healthCheckURL:   "/livez?verbose",
+			expectStatusCode: http.StatusOK,
+			inResult:         []string{"[+]serializable_read ok"},
+		},
+		{
+			name:             "Alive if lineariable range api is not available",
+			healthCheckURL:   "/livez",
+			apiError:         fmt.Errorf("Unexpected error"),
+			expectStatusCode: http.StatusOK,
+		},
+		{
+			name:             "Not ready if range api is not available",
+			healthCheckURL:   "/readyz",
+			apiError:         fmt.Errorf("Unexpected error"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			inResult:         []string{"[+]serializable_read ok", "[-]linearizable_read failed: Unexpected error"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				linearizableReadError: tt.apiError,
+				authStore:             auth.NewAuthStore(logger, be, nil, 0),
+			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkMetrics(t, tt.healthCheckURL, "linearizable_read", tt.expectStatusCode)
 		})
 	}
 }
