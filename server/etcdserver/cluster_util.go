@@ -240,6 +240,9 @@ func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper, time
 	cc := &http.Client{
 		Transport: rt,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	var (
 		err  error
