@@ -239,14 +239,19 @@ type CheckRegistry struct {
 
 func installLivezEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
 	reg := CheckRegistry{checkType: checkTypeLivez, checks: make(map[string]HealthCheck)}
-	reg.Register("serializable_read", serializableReadCheck(server))
+	reg.Register("serializable_read", readCheck(server, true /* serializable */))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
 func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
 	reg := CheckRegistry{checkType: checkTypeReadyz, checks: make(map[string]HealthCheck)}
 	reg.Register("data_corruption", activeAlarmCheck(server, pb.AlarmType_CORRUPT))
-	reg.Register("serializable_read", serializableReadCheck(server))
+	// serializable_read checks if local read is ok.
+	// linearizable_read checks if there is consensus in the cluster.
+	// Having both serializable_read and linearizable_read helps isolate the cause of problems if there is a read failure.
+	reg.Register("serializable_read", readCheck(server, true))
+	// linearizable_read check would be replaced by read_index check in 3.6
+	reg.Register("linearizable_read", readCheck(server, false))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
@@ -410,13 +415,10 @@ func activeAlarmCheck(srv ServerHealth, at pb.AlarmType) func(context.Context) e
 	}
 }
 
-func serializableReadCheck(srv ServerHealth) func(ctx context.Context) error {
+func readCheck(srv ServerHealth, serializable bool) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
 		ctx = srv.AuthStore().WithRoot(ctx)
-		_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: true})
-		if err != nil {
-			return fmt.Errorf("range error: %w", err)
-		}
-		return nil
+		_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+		return err
 	}
 }

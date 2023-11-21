@@ -226,22 +226,54 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 			name:           "overloaded server slow apply",
 			injectFailure:  triggerSlowApply,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithGoFailEnabled(true)},
-			healthChecks:   defaultHealthCheckConfigs,
+			// TODO expected behavior of readyz check should be 200 after ReadIndex check is implemented to replace linearizable read.
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+				},
+			},
 		},
 		{
 			name:           "network partitioned",
 			injectFailure:  blackhole,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(3), e2e.WithIsPeerTLS(true), e2e.WithPeerProxy(true)},
-			// TODO expected behavior of readyz check should be 503 or timeout after ReadIndex check is implemented.
-			healthChecks: defaultHealthCheckConfigs,
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+					expectedRespSubStrings: []string{
+						`[-]linearizable_read failed: etcdserver: leader changed`,
+					},
+				},
+			},
 		},
 		{
 			name:           "raft loop deadlock",
 			injectFailure:  triggerRaftLoopDeadLock,
 			clusterOptions: []e2e.EPClusterOption{e2e.WithClusterSize(1), e2e.WithGoFailEnabled(true)},
 			// TODO expected behavior of livez check should be 503 or timeout after RaftLoopDeadLock check is implemented.
-			// TODO expected behavior of readyz check should be 503 or timeout after ReadIndex check is implemented.
-			healthChecks: defaultHealthCheckConfigs,
+			healthChecks: []healthCheckConfig{
+				{
+					url:                "/livez",
+					expectedStatusCode: http.StatusOK,
+				},
+				{
+					url:                  "/readyz",
+					expectedTimeoutError: true,
+					expectedStatusCode:   http.StatusServiceUnavailable,
+				},
+			},
 		},
 		// verify that auth enabled serializable read must go through mvcc
 		{
