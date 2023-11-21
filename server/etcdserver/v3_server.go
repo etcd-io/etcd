@@ -780,16 +780,11 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
 func (s *EtcdServer) linearizableReadLoop() {
 	for {
-		requestId := s.reqIDGen.Next()
-		leaderChangedNotifier := s.leaderChanged.Receive()
 		select {
-		case <-leaderChangedNotifier:
-			continue
 		case <-s.readwaitc:
 		case <-s.stopping:
 			return
 		}
-
 		// as a single loop is can unlock multiple reads, it is not very useful
 		// to propagate the trace from Txn or Range.
 		trace := traceutil.New("linearizableReadLoop", s.Logger())
@@ -799,8 +794,9 @@ func (s *EtcdServer) linearizableReadLoop() {
 		nr := s.readNotifier
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
-
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestId)
+		ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
+		confirmedIndex, err := s.GetReadIndex(ctx)
+		cancel()
 		if isStopped(err) {
 			return
 		}
@@ -828,6 +824,59 @@ func (s *EtcdServer) linearizableReadLoop() {
 		trace.Step("applied index is now lower than readState.Index")
 
 		trace.LogAllStepsIfLong(traceThreshold)
+	}
+}
+
+func (s *EtcdServer) readIndexLoop() {
+	for {
+		requestId := s.reqIDGen.Next()
+		leaderChangedNotifier := s.leaderChanged.Receive()
+		select {
+		case <-leaderChangedNotifier:
+			continue
+		case <-s.readIndexWaitc:
+		case <-s.stopping:
+			return
+		}
+
+		nextnr := newNotifier()
+		s.readMu.Lock()
+		nr := s.readIndexNotifier
+		s.readIndexNotifier = nextnr
+		s.readMu.Unlock()
+
+		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestId)
+		if isStopped(err) {
+			return
+		}
+		if err != nil {
+			nr.notify(err)
+			continue
+		}
+		nr.uint64Val = confirmedIndex
+		// unblock all read index requested at indices before confirmedIndex
+		nr.notify(nil)
+	}
+}
+
+func (s *EtcdServer) GetReadIndex(ctx context.Context) (uint64, error) {
+	s.readMu.RLock()
+	nc := s.readIndexNotifier
+	s.readMu.RUnlock()
+
+	// signal linearizable loop for current notify if it hasn't been already
+	select {
+	case s.readIndexWaitc <- struct{}{}:
+	default:
+	}
+	// wait for read state notification
+	select {
+	case <-nc.c:
+		return nc.uint64Val, nc.err
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	case <-s.done:
+		return 0, errors.ErrStopped
 	}
 }
 
