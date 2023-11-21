@@ -71,6 +71,8 @@ type Backend interface {
 
 	// SetTxPostLockInsideApplyHook sets a txPostLockInsideApplyHook.
 	SetTxPostLockInsideApplyHook(func())
+
+	SubscribeDefragNotifier(notifier DefragNotifier)
 }
 
 type Snapshot interface {
@@ -80,6 +82,11 @@ type Snapshot interface {
 	WriteTo(w io.Writer) (n int64, err error)
 	// Close closes the snapshot.
 	Close() error
+}
+
+type DefragNotifier interface {
+	DefragStarted()
+	DefragFinished()
 }
 
 type txReadBufferCache struct {
@@ -127,6 +134,9 @@ type backend struct {
 	txPostLockInsideApplyHook func()
 
 	lg *zap.Logger
+
+	defragNotifiers []DefragNotifier
+	notifierMu      sync.RWMutex
 }
 
 type BackendConfig struct {
@@ -445,6 +455,27 @@ func (b *backend) Defrag() error {
 	return b.defrag()
 }
 
+func (b *backend) SubscribeDefragNotifier(notifier DefragNotifier) {
+	if notifier == nil {
+		return
+	}
+	b.notifierMu.Lock()
+	defer b.notifierMu.Unlock()
+	b.defragNotifiers = append(b.defragNotifiers, notifier)
+}
+
+func (b *backend) defragStarted() {
+	for _, notifier := range b.defragNotifiers {
+		notifier.DefragStarted()
+	}
+}
+
+func (b *backend) defragFinished() {
+	for _, notifier := range b.defragNotifiers {
+		notifier.DefragFinished()
+	}
+}
+
 func (b *backend) defrag() error {
 	now := time.Now()
 	isDefragActive.Set(1)
@@ -459,6 +490,9 @@ func (b *backend) defrag() error {
 	// lock database after lock tx to avoid deadlock.
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	// send notifications after acquiring the lock.
+	b.defragStarted()
+	defer b.defragFinished()
 
 	// block concurrent read requests while resetting tx
 	b.readTx.Lock()

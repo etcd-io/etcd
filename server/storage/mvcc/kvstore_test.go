@@ -977,6 +977,7 @@ func (b *fakeBackend) ForceCommit()                                             
 func (b *fakeBackend) Defrag() error                                              { return nil }
 func (b *fakeBackend) Close() error                                               { return nil }
 func (b *fakeBackend) SetTxPostLockInsideApplyHook(func())                        {}
+func (b *fakeBackend) SubscribeDefragNotifier(backend.DefragNotifier)             {}
 
 type indexGetResp struct {
 	rev     Revision

@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -33,6 +34,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/raft/v3"
 )
 
@@ -52,11 +54,16 @@ type ServerHealth interface {
 	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
 	Config() config.ServerConfig
 	AuthStore() auth.AuthStore
+	Backend() backend.Backend
 }
 
 // HandleHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
 func HandleHealth(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
+	notifier := &healthNotifier{}
+	if srv.Backend() != nil {
+		srv.Backend().SubscribeDefragNotifier(notifier)
+	}
 	mux.Handle(PathHealth, NewHealthHandler(lg, func(ctx context.Context, excludedAlarms StringSet, serializable bool) Health {
 		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
 			return h
@@ -67,8 +74,8 @@ func HandleHealth(lg *zap.Logger, mux *http.ServeMux, srv ServerHealth) {
 		return checkAPI(ctx, lg, srv, serializable)
 	}))
 
-	installLivezEndpoints(lg, mux, srv)
-	installReadyzEndpoints(lg, mux, srv)
+	installLivezEndpoints(lg, mux, srv, notifier)
+	installReadyzEndpoints(lg, mux, srv, notifier)
 }
 
 // NewHealthHandler handles '/health' requests.
@@ -237,16 +244,16 @@ type CheckRegistry struct {
 	checks    map[string]HealthCheck
 }
 
-func installLivezEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
+func installLivezEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth, notifier *healthNotifier) {
 	reg := CheckRegistry{checkType: checkTypeLivez, checks: make(map[string]HealthCheck)}
-	reg.Register("serializable_read", serializableReadCheck(server))
+	reg.Register("serializable_read", serializableReadCheck(server, notifier, true /* skipCheckDuringDefrag */))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
-func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
+func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth, notifier *healthNotifier) {
 	reg := CheckRegistry{checkType: checkTypeReadyz, checks: make(map[string]HealthCheck)}
 	reg.Register("data_corruption", activeAlarmCheck(server, pb.AlarmType_CORRUPT))
-	reg.Register("serializable_read", serializableReadCheck(server))
+	reg.Register("serializable_read", serializableReadCheck(server, notifier, false /* skipCheckDuringDefrag */))
 	reg.InstallHttpEndpoints(lg, mux)
 }
 
@@ -410,8 +417,33 @@ func activeAlarmCheck(srv ServerHealth, at pb.AlarmType) func(context.Context) e
 	}
 }
 
-func serializableReadCheck(srv ServerHealth) func(ctx context.Context) error {
+type healthNotifier struct {
+	lock           sync.RWMutex
+	isDefragActive bool
+}
+
+func (n *healthNotifier) DefragStarted() {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	n.isDefragActive = true
+}
+
+func (n *healthNotifier) DefragFinished() {
+	n.lock.Lock()
+	defer n.lock.Unlock()
+	n.isDefragActive = false
+}
+
+func serializableReadCheck(srv ServerHealth, notifier *healthNotifier, skipCheckDuringDefrag bool) func(ctx context.Context) error {
 	return func(ctx context.Context) error {
+		// skips the check if defrag is active.
+		if skipCheckDuringDefrag && notifier.isDefragActive {
+			return nil
+		}
+		// returns early if defrag is active.
+		if notifier.isDefragActive {
+			return fmt.Errorf("defrag is active")
+		}
 		ctx = srv.AuthStore().WithRoot(ctx)
 		_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: true})
 		if err != nil {
