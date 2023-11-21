@@ -140,8 +140,6 @@ type ServerV2 interface {
 	Server
 	Leader() types.ID
 
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
 	ClientCertAuthEnabled() bool
 }
 
@@ -2264,46 +2262,6 @@ func (s *EtcdServer) monitorCompactHash() {
 			continue
 		}
 		s.corruptionChecker.CompactHashCheck()
-	}
-}
-
-func (s *EtcdServer) updateClusterVersionV2(ver string) {
-	lg := s.Logger()
-
-	if s.cluster.Version() == nil {
-		lg.Info(
-			"setting up initial cluster version using v2 API",
-			zap.String("cluster-version", version.Cluster(ver)),
-		)
-	} else {
-		lg.Info(
-			"updating cluster version using v2 API",
-			zap.String("from", version.Cluster(s.cluster.Version().String())),
-			zap.String("to", version.Cluster(ver)),
-		)
-	}
-
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
-	cancel()
-
-	switch err {
-	case nil:
-		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
-		return
-
-	case errors.ErrStopped:
-		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
-		return
-
-	default:
-		lg.Warn("failed to update cluster version", zap.Error(err))
 	}
 }
 
