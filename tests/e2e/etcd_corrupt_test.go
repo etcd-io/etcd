@@ -20,11 +20,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/clientv3"
+	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc/mvccpb"
+	"go.etcd.io/etcd/pkg/testutil"
 
 	bolt "go.etcd.io/bbolt"
 )
@@ -126,4 +131,97 @@ func corruptHash(fpath string) error {
 		}
 		return nil
 	})
+}
+
+func TestInPlaceRecovery(t *testing.T) {
+	defer testutil.AfterTest(t)
+
+	basePort := 20000
+
+	// Initialize the cluster.
+	cfgOld := etcdProcessClusterConfig{
+		clusterSize:      3,
+		initialToken:     "old",
+		keepDataDir:      false,
+		clientTLS:        clientNonTLS,
+		corruptCheckTime: time.Second,
+		basePort:         basePort,
+	}
+	epcOld, err := newEtcdProcessCluster(&cfgOld)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epcOld.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+	t.Log("Old cluster started.")
+
+	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
+	t.Log("putting 10 keys...")
+	oldEtcdctl := NewEtcdctl(epcOld.EndpointsV3(), cfgOld.clientTLS, false, false)
+	for i := 0; i < 10; i++ {
+		err := oldEtcdctl.Put(fmt.Sprintf("%d", i), fmt.Sprintf("%d", i))
+		assert.NoError(t, err, "error on put")
+	}
+
+	// Create a new cluster config, but with the same port numbers. In this way the new servers can stay in
+	// contact with the old ones.
+	cfgNew := etcdProcessClusterConfig{
+		clusterSize:         3,
+		initialToken:        "new",
+		keepDataDir:         false,
+		clientTLS:           clientNonTLS,
+		initialCorruptCheck: true,
+		corruptCheckTime:    time.Second,
+		basePort:            basePort,
+	}
+	epcNew, err := initEtcdProcessCluster(&cfgNew)
+	if err != nil {
+		t.Fatalf("could not start etcd process cluster (%v)", err)
+	}
+	t.Cleanup(func() {
+		if errC := epcNew.Close(); errC != nil {
+			t.Fatalf("error closing etcd processes (%v)", errC)
+		}
+	})
+	t.Log("New cluster initialized.")
+
+	newEtcdctl := NewEtcdctl(epcNew.EndpointsV3(), cfgNew.clientTLS, false, false)
+	// Rolling recovery of the servers.
+	var wg sync.WaitGroup
+	t.Log("rolling updating servers in place...")
+	for i, newProc := range epcNew.procs {
+		oldProc := epcOld.procs[i]
+		err = oldProc.Close()
+		if err != nil {
+			t.Fatalf("could not stop etcd process (%v)", err)
+		}
+		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().name)
+
+		wg.Add(1)
+		go func(proc etcdProcess) {
+			defer wg.Done()
+			perr := proc.Start()
+			if perr != nil {
+				t.Fatalf("failed to start etcd process: %v", perr)
+				return
+			}
+			t.Logf("new etcd server %q started in-place with blank db", proc.Config().name)
+		}(newProc)
+		t.Log("sleeping 5 sec to let nodes do periodical check...")
+		time.Sleep(5 * time.Second)
+	}
+	wg.Wait()
+	t.Log("new cluster started.")
+
+	alarmResponse, err := newEtcdctl.AlarmList()
+	assert.NoError(t, err, "error on alarm list")
+	for _, alarm := range alarmResponse.Alarms {
+		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
+			t.Fatalf("there is no corruption after in-place recovery, but corruption reported.")
+		}
+	}
+	t.Log("no corruption detected.")
 }

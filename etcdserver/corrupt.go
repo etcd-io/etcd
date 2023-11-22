@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"go.etcd.io/etcd/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc"
@@ -125,6 +126,19 @@ func (s *EtcdServer) CheckInitialHashKV() error {
 					)
 				} else {
 					plog.Warningf("%s cannot check the hash of peer(%q) at revision %d: local node is lagging behind(%q)", s.ID(), p.eps, rev, p.err.Error())
+				}
+			case rpctypes.ErrClusterIdMismatch:
+				if lg != nil {
+					lg.Warn(
+						"cluster ID mismatch",
+						zap.String("local-member-id", s.ID().String()),
+						zap.Int64("local-member-revision", rev),
+						zap.Int64("local-member-compact-revision", crev),
+						zap.Uint32("local-member-hash", h),
+						zap.String("remote-peer-id", p.id.String()),
+						zap.Strings("remote-peer-endpoints", p.eps),
+						zap.Error(err),
+					)
 				}
 			}
 		}
@@ -353,7 +367,7 @@ func (s *EtcdServer) getPeerHashKVs(rev int64) []*peerHashKVResp {
 			ctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 
 			var resp *pb.HashKVResponse
-			resp, lastErr = s.getPeerHashKVHTTP(ctx, ep, rev)
+			resp, lastErr = s.getPeerHashKVHTTP(ctx, s.cluster.ID(), ep, rev)
 			cancel()
 			if lastErr == nil {
 				resps = append(resps, &peerHashKVResp{peerInfo: p, resp: resp, err: nil})
@@ -440,6 +454,10 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad path", http.StatusBadRequest)
 		return
 	}
+	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != "" && gcid != h.server.cluster.ID().String() {
+		http.Error(w, rafthttp.ErrClusterIDMismatch.Error(), http.StatusPreconditionFailed)
+		return
+	}
 
 	defer r.Body.Close()
 	b, err := ioutil.ReadAll(r.Body)
@@ -478,7 +496,7 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // getPeerHashKVHTTP fetch hash of kv store at the given rev via http call to the given url
-func (s *EtcdServer) getPeerHashKVHTTP(ctx context.Context, url string, rev int64) (*pb.HashKVResponse, error) {
+func (s *EtcdServer) getPeerHashKVHTTP(ctx context.Context, cid types.ID, url string, rev int64) (*pb.HashKVResponse, error) {
 	cc := &http.Client{Transport: s.peerRt}
 	hashReq := &pb.HashKVRequest{Revision: rev}
 	hashReqBytes, err := json.Marshal(hashReq)
@@ -492,6 +510,7 @@ func (s *EtcdServer) getPeerHashKVHTTP(ctx context.Context, url string, rev int6
 	}
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Etcd-Cluster-ID", cid.String())
 	req.Cancel = ctx.Done()
 
 	resp, err := cc.Do(req)
@@ -510,6 +529,10 @@ func (s *EtcdServer) getPeerHashKVHTTP(ctx context.Context, url string, rev int6
 		}
 		if strings.Contains(string(b), mvcc.ErrFutureRev.Error()) {
 			return nil, rpctypes.ErrFutureRev
+		}
+	} else if resp.StatusCode == http.StatusPreconditionFailed {
+		if strings.Contains(string(b), rafthttp.ErrClusterIDMismatch.Error()) {
+			return nil, rpctypes.ErrClusterIdMismatch
 		}
 	}
 	if resp.StatusCode != http.StatusOK {

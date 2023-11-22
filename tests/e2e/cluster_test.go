@@ -128,6 +128,7 @@ type etcdProcessClusterConfig struct {
 	noStrictReconfig    bool
 	enableV2            bool
 	initialCorruptCheck bool
+	corruptCheckTime    time.Duration
 	authTokenOpts       string
 
 	MaxConcurrentStreams       uint32 // default is math.MaxUint32
@@ -141,6 +142,17 @@ type etcdProcessClusterConfig struct {
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new etcdProcessCluster once all nodes are ready to accept client requests.
 func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
+	epc, err := initEtcdProcessCluster(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return startEtcdProcessCluster(epc, cfg)
+}
+
+// `initEtcdProcessCluster` initializes a new cluster based on the given config.
+// It doesn't start the cluster.
+func initEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	etcdCfgs := cfg.etcdServerProcessConfigs()
 	epc := &etcdProcessCluster{
 		cfg:   cfg,
@@ -158,6 +170,11 @@ func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, 
 		epc.procs[i] = proc
 	}
 
+	return epc, nil
+}
+
+// `startEtcdProcessCluster` launches a new cluster from etcd processes.
+func startEtcdProcessCluster(epc *etcdProcessCluster, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	if err := epc.Start(); err != nil {
 		return nil, err
 	}
@@ -261,6 +278,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		}
 		if cfg.initialCorruptCheck {
 			args = append(args, "--experimental-initial-corrupt-check")
+		}
+		if cfg.corruptCheckTime != 0 {
+			args = append(args, "--experimental-corrupt-check-time", cfg.corruptCheckTime.String())
 		}
 		var murl string
 		if cfg.metricsURLScheme != "" {
