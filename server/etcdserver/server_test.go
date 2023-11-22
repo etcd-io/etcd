@@ -93,7 +93,7 @@ func TestApplyRepeat(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
+	s.applyV2 = NewApplierV2(lg, s.v2store, s.cluster)
 	s.start()
 	req := &pb.Request{Method: "QGET", ID: uint64(1)}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
@@ -363,7 +363,7 @@ func TestApplyRequest(t *testing.T) {
 			lg:      zaptest.NewLogger(t),
 			v2store: st,
 		}
-		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+		srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
 		resp := srv.applyV2Request((*RequestV2)(&tt.req), membership.ApplyBoth)
 
 		if !reflect.DeepEqual(resp, tt.wresp) {
@@ -386,7 +386,7 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+	srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
 
 	req := pb.Request{
 		Method: "PUT",
@@ -690,7 +690,7 @@ func TestSync(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+	srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
 
 	// check that sync is non-blocking
 	done := make(chan struct{}, 1)
@@ -735,7 +735,7 @@ func TestSyncTimeout(t *testing.T) {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
+	srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
 
 	// check that sync is non-blocking
 	done := make(chan struct{}, 1)
@@ -917,7 +917,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
+	s.applyV2 = NewApplierV2(s.lg, s.v2store, s.cluster)
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
@@ -1008,7 +1008,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
+	s.applyV2 = NewApplierV2(s.lg, s.v2store, s.cluster)
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
