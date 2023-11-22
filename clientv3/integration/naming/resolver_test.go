@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
 
 	"go.etcd.io/etcd/clientv3/naming/endpoints"
 	"go.etcd.io/etcd/clientv3/naming/resolver"
