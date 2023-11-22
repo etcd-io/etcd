@@ -38,6 +38,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/idutil"
+	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -92,10 +93,14 @@ func TestApplyRepeat(t *testing.T) {
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
+		uberApply:    uberApplierMock{},
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 	s.start()
-	req := &pb.Request{Method: "QGET", ID: uint64(1)}
+	req := &pb.InternalRaftRequest{
+		Header: &pb.RequestHeader{ID: 1},
+		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+	}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
 	n.readyc <- raft.Ready{CommittedEntries: ents}
 	// dup msg
@@ -131,6 +136,12 @@ func TestApplyRepeat(t *testing.T) {
 	if err = <-stopc; err != nil {
 		t.Fatalf("error on stop (%v)", err)
 	}
+}
+
+type uberApplierMock struct{}
+
+func (uberApplierMock) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply2.Result {
+	return &apply2.Result{}
 }
 
 func TestApplyRequest(t *testing.T) {
@@ -997,16 +1008,20 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	})
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           lg,
-		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:            *r,
-		v2store:      st,
-		snapshotter:  snap.New(lg, testdir),
-		cluster:      cl,
-		SyncTicker:   &time.Ticker{},
-		consistIndex: ci,
-		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		lgMu:              new(sync.RWMutex),
+		lg:                lg,
+		Cfg:               config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:                 *r,
+		v2store:           st,
+		snapshotter:       snap.New(lg, testdir),
+		cluster:           cl,
+		SyncTicker:        &time.Ticker{},
+		consistIndex:      ci,
+		beHooks:           serverstorage.NewBackendHooks(lg, ci),
+		firstCommitInTerm: notify.NewNotifier(),
+		lessor:            &lease.FakeLessor{},
+		uberApply:         uberApplierMock{},
+		authStore:         auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 1),
 	}
 	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
@@ -1023,7 +1038,10 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	for k := 1; k <= 101; k++ {
 		idx++
 		ch := s.w.Register(idx)
-		req := &pb.Request{Method: "QGET", ID: idx}
+		req := &pb.InternalRaftRequest{
+			Header: &pb.RequestHeader{ID: idx},
+			Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+		}
 		ent := raftpb.Entry{Index: idx, Data: pbutil.MustMarshal(req)}
 		ready := raft.Ready{Entries: []raftpb.Entry{ent}}
 		n.readyc <- ready
