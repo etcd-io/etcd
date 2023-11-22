@@ -27,12 +27,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -43,6 +45,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -387,7 +390,9 @@ func TestApplyRequest(t *testing.T) {
 	}
 }
 
-func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
+// TestV2SetMemberAttributes validates support of hybrid v3.5 cluster which still uses v2 request.
+// TODO: Remove in v3.7
+func TestV2SetMemberAttributes(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
@@ -409,6 +414,33 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
+	}
+}
+
+// TestV2SetClusterVersion validates support of hybrid v3.5 cluster which still uses v2 request.
+// TODO: Remove in v3.7
+func TestV2SetClusterVersion(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
+	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
+	srv := &EtcdServer{
+		lgMu:    new(sync.RWMutex),
+		lg:      zaptest.NewLogger(t),
+		v2store: mockstore.NewRecorder(),
+		cluster: cl,
+	}
+	srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
+
+	req := pb.Request{
+		Method: "PUT",
+		ID:     1,
+		Path:   membership.StoreClusterVersionKey(),
+		Val:    "3.5.0",
+	}
+	srv.applyV2Request((*RequestV2)(&req), membership.ApplyBoth)
+	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
+		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
 	}
 }
 
