@@ -40,7 +40,7 @@ func NewEtcdctl(endpoints []string, connType clientConnType, isAutoTLS bool, v2 
 
 func (ctl *Etcdctl) Get(key string) (*clientv3.GetResponse, error) {
 	var resp clientv3.GetResponse
-	err := ctl.spawnJsonCmd(&resp, "get", key)
+	err := ctl.spawnJsonCmd(&resp, "", "get", key)
 	return &resp, err
 }
 
@@ -67,7 +67,7 @@ func (ctl *Etcdctl) AlarmList() (*clientv3.AlarmResponse, error) {
 		panic("Unsupported method for v2")
 	}
 	var resp clientv3.AlarmResponse
-	err := ctl.spawnJsonCmd(&resp, "alarm", "list")
+	err := ctl.spawnJsonCmd(&resp, "{", "alarm", "list")
 	return &resp, err
 }
 
@@ -76,7 +76,7 @@ func (ctl *Etcdctl) MemberList() (*clientv3.MemberListResponse, error) {
 		panic("Unsupported method for v2")
 	}
 	var resp clientv3.MemberListResponse
-	err := ctl.spawnJsonCmd(&resp, "member", "list")
+	err := ctl.spawnJsonCmd(&resp, "", "member", "list")
 	return &resp, err
 }
 
@@ -88,13 +88,16 @@ func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	return nil, spawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
 }
 
-func (ctl *Etcdctl) spawnJsonCmd(output interface{}, args ...string) error {
+func (ctl *Etcdctl) spawnJsonCmd(output interface{}, expectedOutput string, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...))
 	if err != nil {
 		return err
 	}
-	line, err := cmd.Expect("header")
+	if expectedOutput == "" {
+		expectedOutput = "header"
+	}
+	line, err := cmd.Expect(expectedOutput)
 	if err != nil {
 		return err
 	}

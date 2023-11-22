@@ -86,10 +86,10 @@ func checkPostResponse(resp *http.Response, body []byte, req *http.Request, to t
 		case errIncompatibleVersion.Error():
 			plog.Errorf("request sent was ignored by peer %s (server version incompatible)", to)
 			return errIncompatibleVersion
-		case errClusterIDMismatch.Error():
+		case ErrClusterIDMismatch.Error():
 			plog.Errorf("request sent was ignored (cluster ID mismatch: remote[%s]=%s, local=%s)",
 				to, resp.Header.Get("X-Etcd-Cluster-ID"), req.Header.Get("X-Etcd-Cluster-ID"))
-			return errClusterIDMismatch
+			return ErrClusterIDMismatch
 		default:
 			return fmt.Errorf("unhandled error %q when precondition failed", string(body))
 		}
