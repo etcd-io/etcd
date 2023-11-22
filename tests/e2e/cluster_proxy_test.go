@@ -116,6 +116,10 @@ func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
 	return p.etcdProc.WithStopSignal(sig)
 }
 
+func (p *proxyEtcdProcess) Logs() logsExpect {
+	return p.etcdProc.Logs()
+}
+
 type proxyProc struct {
 	execPath string
 	args     []string
