@@ -31,12 +31,7 @@ import (
 // StubServer is a server that is easy to customize within individual test
 // cases.
 type StubServer struct {
-	// Guarantees we satisfy this interface; panics if unimplemented methods are called.
-	testpb.TestServiceServer
-
-	EmptyCallF      func(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error)
-	UnaryCallF      func(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error)
-	FullDuplexCallF func(stream testpb.TestService_FullDuplexCallServer) error
+	testService testpb.TestServiceServer
 
 	s *grpc.Server
 
@@ -47,19 +42,8 @@ type StubServer struct {
 	cleanups []func() // Lambdas executed in Stop(); populated by Start().
 }
 
-// EmptyCall is the handler for testpb.EmptyCall.
-func (ss *StubServer) EmptyCall(ctx context.Context, in *testpb.Empty) (*testpb.Empty, error) {
-	return ss.EmptyCallF(ctx, in)
-}
-
-// UnaryCall is the handler for testpb.UnaryCall.
-func (ss *StubServer) UnaryCall(ctx context.Context, in *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
-	return ss.UnaryCallF(ctx, in)
-}
-
-// FullDuplexCall is the handler for testpb.FullDuplexCall.
-func (ss *StubServer) FullDuplexCall(stream testpb.TestService_FullDuplexCallServer) error {
-	return ss.FullDuplexCallF(stream)
+func New(testService testpb.TestServiceServer) *StubServer {
+	return &StubServer{testService: testService}
 }
 
 // Start starts the server and creates a client connected to it.
@@ -79,7 +63,7 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 	ss.cleanups = append(ss.cleanups, func() { lis.Close() })
 
 	s := grpc.NewServer(sopts...)
-	testpb.RegisterTestServiceServer(s, ss)
+	testpb.RegisterTestServiceServer(s, ss.testService)
 	go s.Serve(lis)
 	ss.cleanups = append(ss.cleanups, s.Stop)
 	ss.s = s
@@ -97,4 +81,24 @@ func (ss *StubServer) Stop() {
 // Addr gets the address the server listening on.
 func (ss *StubServer) Addr() string {
 	return ss.Address
+}
+
+type dummyStubServer struct {
+	testpb.UnimplementedTestServiceServer
+	body []byte
+}
+
+func (d dummyStubServer) UnaryCall(context.Context, *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+	return &testpb.SimpleResponse{
+		Payload: &testpb.Payload{
+			Type: testpb.PayloadType_COMPRESSABLE,
+			Body: d.body,
+		},
+	}, nil
+}
+
+// NewDummyStubServer creates a simple test server that serves Unary calls with
+// responses with the given payload.
+func NewDummyStubServer(body []byte) *StubServer {
+	return New(dummyStubServer{body: body})
 }
