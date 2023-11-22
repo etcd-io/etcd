@@ -100,6 +100,7 @@ type etcdProcessClusterConfig struct {
 	execPath    string
 	dataDirPath string
 	keepDataDir bool
+	envVars     map[string]string
 
 	clusterSize int
 
@@ -291,6 +292,7 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		etcdCfgs[i] = &etcdServerProcessConfig{
 			execPath:      cfg.execPath,
 			args:          args,
+			envVars:       cfg.envVars,
 			tlsArgs:       cfg.tlsArgs(),
 			dataDirPath:   dataDirPath,
 			keepDataDir:   cfg.keepDataDir,
