@@ -24,6 +24,9 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
+// TestEndpointSwitchResolvesViolation ensures
+// - ErrNoGreaterRev error is returned from partitioned member when it has stale revision
+// - no more error after partition recovers
 func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
@@ -78,8 +81,16 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	if err != ordering.ErrNoGreaterRev {
 		t.Fatal("While speaking to partitioned leader, we should get ErrNoGreaterRev error")
 	}
+
+	clus.Members[2].RecoverPartition(t, clus.Members[:2]...)
+	time.Sleep(1 * time.Second) // give enough time for the operation
+	_, err = orderingKv.Get(ctx, "foo")
+	if err != nil {
+		t.Fatal("After partition recovered, third member should recover and return no error")
+	}
 }
 
+// TestUnresolvableOrderViolation ensures ErrNoGreaterRev error is returned when available members only have stale revisions
 func TestUnresolvableOrderViolation(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 5, UseBridge: true})
