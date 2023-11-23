@@ -308,6 +308,7 @@ function go_test {
 
   if [ "${VERBOSE:-}" == "1" ]; then
     goTestFlags="-v "
+    goTestFlags+="-json "
   fi
 
   # Expanding patterns (like ./...) into list of packages
