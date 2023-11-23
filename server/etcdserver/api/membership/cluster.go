@@ -73,8 +73,8 @@ type ConfigChangeContext struct {
 type ShouldApplyV3 bool
 
 const (
-	ApplyBoth        = ShouldApplyV3(true)
-	ApplyV2storeOnly = ShouldApplyV3(false)
+	ApplyV3Store = ShouldApplyV3(true)
+	DontApply    = ShouldApplyV3(false)
 )
 
 // NewClusterFromURLsMap creates a new raft cluster using provided urls map. Currently, it does not support creating
@@ -305,7 +305,7 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 // ensures that it is still valid.
 func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+	membersMap, removedMap := c.be.MustReadMembersFromBackend()
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved

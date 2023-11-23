@@ -1785,22 +1785,19 @@ func (s *EtcdServer) apply(
 		case raftpb.EntryConfChange:
 			// gofail: var beforeApplyOneConfChange struct{}
 
-			// We need to toApply all WAL entries on top of v2store
-			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
-			shouldApplyV3 := membership.ApplyV2storeOnly
-
+			var cc raftpb.ConfChange
+			var err error
+			pbutil.MustUnmarshal(&cc, e.Data)
 			// set the consistent index of current executing entry
 			if e.Index > s.consistIndex.ConsistentIndex() {
 				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-				shouldApplyV3 = membership.ApplyBoth
-			}
 
-			var cc raftpb.ConfChange
-			pbutil.MustUnmarshal(&cc, e.Data)
-			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
-			s.setAppliedIndex(e.Index)
-			s.setTerm(e.Term)
-			shouldStop = shouldStop || removedSelf
+				var removedSelf bool
+				removedSelf, err = s.applyConfChange(cc, confState, membership.ApplyV3Store)
+				s.setAppliedIndex(e.Index)
+				s.setTerm(e.Term)
+				shouldStop = shouldStop || removedSelf
+			}
 			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), raftAdvancedC, err})
 
 		default:
@@ -1817,13 +1814,13 @@ func (s *EtcdServer) apply(
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
-	shouldApplyV3 := membership.ApplyV2storeOnly
+	shouldApplyV3 := membership.DontApply
 	var ar *apply.Result
 	index := s.consistIndex.ConsistentIndex()
 	if e.Index > index {
 		// set the consistent index of current executing entry
 		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-		shouldApplyV3 = membership.ApplyBoth
+		shouldApplyV3 = membership.ApplyV3Store
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
 			// in which we should move the consistent index forward directly.
@@ -1946,7 +1943,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 		// The txPostLock callback will not get called in this case,
 		// so we should set the consistent index directly.
-		if s.consistIndex != nil && membership.ApplyBoth == shouldApplyV3 {
+		if s.consistIndex != nil && membership.ApplyV3Store == shouldApplyV3 {
 			applyingIndex, applyingTerm := s.consistIndex.ConsistentApplyingIndex()
 			s.consistIndex.SetConsistentIndex(applyingIndex, applyingTerm)
 		}

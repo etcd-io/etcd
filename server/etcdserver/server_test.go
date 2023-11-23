@@ -194,7 +194,7 @@ func TestV2SetClusterVersion(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
-	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
+	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyV3Store)
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),

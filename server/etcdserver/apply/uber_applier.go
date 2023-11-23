@@ -131,6 +131,10 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 		}
 	}(time.Now())
 
+	if !shouldApplyV3 {
+		return nil
+	}
+
 	switch {
 	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
 		op = "ClusterVersionSet"
@@ -144,10 +148,6 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 		op = "DowngradeInfoSet" // Implemented in 3.5.x
 		a.applyV3.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
 		return ar
-	}
-
-	if !shouldApplyV3 {
-		return nil
 	}
 
 	switch {
