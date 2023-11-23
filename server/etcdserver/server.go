@@ -744,21 +744,6 @@ func (s *EtcdServer) run() {
 	// asynchronously accept toApply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler(lg)
 
-	var (
-		smu   sync.RWMutex
-		syncC <-chan time.Time
-	)
-	setSyncC := func(ch <-chan time.Time) {
-		smu.Lock()
-		syncC = ch
-		smu.Unlock()
-	}
-	getSyncC := func() (ch <-chan time.Time) {
-		smu.RLock()
-		ch = syncC
-		smu.RUnlock()
-		return
-	}
 	rh := &raftReadyHandler{
 		getLead:    func() (lead uint64) { return s.getLead() },
 		updateLead: func(lead uint64) { s.setLead(lead) },
@@ -770,7 +755,6 @@ func (s *EtcdServer) run() {
 				if s.compactor != nil {
 					s.compactor.Pause()
 				}
-				setSyncC(nil)
 			} else {
 				if newLeader {
 					t := time.Now()
@@ -778,7 +762,6 @@ func (s *EtcdServer) run() {
 					s.leadElectedTime = t
 					s.leadTimeMu.Unlock()
 				}
-				setSyncC(s.SyncTicker.C)
 				if s.compactor != nil {
 					s.compactor.Resume()
 				}
@@ -845,10 +828,6 @@ func (s *EtcdServer) run() {
 			lg.Warn("server error", zap.Error(err))
 			lg.Warn("data-dir used by this member must be removed")
 			return
-		case <-getSyncC():
-			if s.v2store.HasTTLKeys() {
-				s.sync(s.Cfg.ReqTimeout())
-			}
 		case <-s.stop:
 			return
 		}
@@ -1687,25 +1666,6 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 	case <-s.stopping:
 		return nil, errors.ErrStopped
 	}
-}
-
-// sync proposes a SYNC request and is non-blocking.
-// This makes no guarantee that the request will be proposed or performed.
-// The request will be canceled after the given timeout.
-func (s *EtcdServer) sync(timeout time.Duration) {
-	req := pb.Request{
-		Method: "SYNC",
-		ID:     s.reqIDGen.Next(),
-		Time:   time.Now().UnixNano(),
-	}
-	data := pbutil.MustMarshal(&req)
-	// There is no promise that node has leader when do SYNC request,
-	// so it uses goroutine to propose.
-	ctx, cancel := context.WithTimeout(s.ctx, timeout)
-	s.GoAttach(func() {
-		s.r.Propose(ctx, data)
-		cancel()
-	})
 }
 
 // publishV3 registers server information into the cluster using v3 request. The
