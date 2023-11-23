@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -50,6 +51,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -153,11 +155,19 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	defer betesting.Close(t, be)
 	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
 	srv := &EtcdServer{
-		lgMu:    new(sync.RWMutex),
-		lg:      zaptest.NewLogger(t),
-		v2store: mockstore.NewRecorder(),
-		cluster: cl,
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		v2store:      mockstore.NewRecorder(),
+		cluster:      cl,
+		consistIndex: cindex.NewConsistentIndex(be),
+		w:            wait.New(),
 	}
+	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.alarmStore = as
+	srv.uberApply = srv.NewUberApplier()
 
 	req := pb.Request{
 		Method: "PUT",
@@ -165,7 +175,13 @@ func TestV2SetMemberAttributes(t *testing.T) {
 		Path:   membership.MemberAttributesStorePath(1),
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
-	srv.applyV2Request((*RequestV2)(&req), membership.ApplyBoth)
+	data, err := proto.Marshal(&req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.applyEntryNormal(&raftpb.Entry{
+		Data: data,
+	})
 	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
 	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
 		t.Errorf("attributes = %v, want %v", g, w)
@@ -180,11 +196,19 @@ func TestV2SetClusterVersion(t *testing.T) {
 	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
 	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
 	srv := &EtcdServer{
-		lgMu:    new(sync.RWMutex),
-		lg:      zaptest.NewLogger(t),
-		v2store: mockstore.NewRecorder(),
-		cluster: cl,
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		v2store:      mockstore.NewRecorder(),
+		cluster:      cl,
+		consistIndex: cindex.NewConsistentIndex(be),
+		w:            wait.New(),
 	}
+	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.alarmStore = as
+	srv.uberApply = srv.NewUberApplier()
 
 	req := pb.Request{
 		Method: "PUT",
@@ -192,7 +216,13 @@ func TestV2SetClusterVersion(t *testing.T) {
 		Path:   membership.StoreClusterVersionKey(),
 		Val:    "3.5.0",
 	}
-	srv.applyV2Request((*RequestV2)(&req), membership.ApplyBoth)
+	data, err := proto.Marshal(&req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.applyEntryNormal(&raftpb.Entry{
+		Data: data,
+	})
 	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
 		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
 	}
