@@ -35,6 +35,7 @@ import (
 
 const (
 	maxNoLeaderCnt = 3
+	snapshotMethod = "/etcdserverpb.Maintenance/Snapshot"
 )
 
 type streamsMap struct {
@@ -200,7 +201,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 			return rpctypes.ErrGRPCNotCapable
 		}
 
-		if s.IsMemberExist(s.ID()) && s.IsLearner() { // learner does not support stream RPC
+		if s.IsMemberExist(s.ID()) && s.IsLearner() && info.FullMethod != snapshotMethod { // learner does not support stream RPC except Snapshot
 			return rpctypes.ErrGPRCNotSupportedForLearner
 		}
 
