@@ -98,7 +98,6 @@ func TestApplyRepeat(t *testing.T) {
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		uberApply:    uberApplierMock{},
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 	s.start()
 	req := &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{ID: 1},
@@ -159,7 +158,6 @@ func TestV2SetMemberAttributes(t *testing.T) {
 		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	req := pb.Request{
 		Method: "PUT",
@@ -187,7 +185,6 @@ func TestV2SetClusterVersion(t *testing.T) {
 		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = NewApplierV2(srv.lg, srv.v2store, srv.cluster)
 
 	req := pb.Request{
 		Method: "PUT",
@@ -580,7 +577,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
@@ -675,7 +671,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		uberApply:         uberApplierMock{},
 		authStore:         auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 1),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be

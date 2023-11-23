@@ -245,8 +245,6 @@ type EtcdServer struct {
 	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
-	applyV2 ApplierV2
-
 	uberApply apply.UberApplier
 
 	applyWait wait.WaitTime
@@ -336,7 +334,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
-	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -1860,14 +1857,16 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		s.applyV2Request((*RequestV2)(rp), shouldApplyV3)
+		s.w.Trigger(r.ID, Response{})
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		s.applyV2Request(req, shouldApplyV3)
+		s.w.Trigger(req.ID, Response{})
 		return
 	}
 
