@@ -62,13 +62,13 @@ type Result struct {
 	Trace *traceutil.Trace
 }
 
-type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
+type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest) *Result
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
 	// delegates the actual execution to the applyFunc method.
-	Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
+	Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result
 
 	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
@@ -146,8 +146,8 @@ func newApplierV3Backend(
 		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
-func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
-	return applyFunc(ctx, r, shouldApplyV3)
+func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
+	return applyFunc(ctx, r)
 }
 
 func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {

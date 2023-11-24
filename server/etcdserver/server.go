@@ -1913,7 +1913,10 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 
 func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply.Result {
 	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil {
-		return s.uberApply.Apply(r, shouldApplyV3)
+		if !shouldApplyV3 {
+			return nil
+		}
+		return s.uberApply.Apply(r)
 	}
 	membershipApplier := apply.NewApplierMembership(s.lg, s.cluster, s)
 	op := "unknown"
