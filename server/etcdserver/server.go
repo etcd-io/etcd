@@ -1771,30 +1771,30 @@ func (s *EtcdServer) apply(
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
 		e := es[i]
+		index := s.consistIndex.ConsistentIndex()
 		s.lg.Debug("Applying entry",
-			zap.Uint64("index", e.Index),
-			zap.Uint64("term", e.Term),
-			zap.Stringer("type", e.Type))
+			zap.Uint64("consistent-index", index),
+			zap.Uint64("entry-index", e.Index),
+			zap.Uint64("entry-term", e.Term),
+			zap.Stringer("entry-type", e.Type))
+
+		// We need to toApply all WAL entries on top of v2store
+		// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
+		shouldApplyV3 := membership.ApplyV2storeOnly
+		if e.Index > index {
+			shouldApplyV3 = membership.ApplyBoth
+			// set the consistent index of current executing entry
+			s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
+		}
 		switch e.Type {
 		case raftpb.EntryNormal:
 			// gofail: var beforeApplyOneEntryNormal struct{}
-			s.applyEntryNormal(&e)
+			s.applyEntryNormal(&e, shouldApplyV3)
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
 			// gofail: var beforeApplyOneConfChange struct{}
-
-			// We need to toApply all WAL entries on top of v2store
-			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
-			shouldApplyV3 := membership.ApplyV2storeOnly
-
-			// set the consistent index of current executing entry
-			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-				shouldApplyV3 = membership.ApplyBoth
-			}
-
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
@@ -1816,14 +1816,9 @@ func (s *EtcdServer) apply(
 }
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
-func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
-	shouldApplyV3 := membership.ApplyV2storeOnly
+func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.ShouldApplyV3) {
 	var ar *apply.Result
-	index := s.consistIndex.ConsistentIndex()
-	if e.Index > index {
-		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-		shouldApplyV3 = membership.ApplyBoth
+	if shouldApplyV3 {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
 			// in which we should move the consistent index forward directly.
@@ -1833,10 +1828,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 			}
 		}()
 	}
-	s.lg.Debug("toApply entry normal",
-		zap.Uint64("consistent-index", index),
-		zap.Uint64("entry-index", e.Index),
-		zap.Bool("should-applyV3", bool(shouldApplyV3)))
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
