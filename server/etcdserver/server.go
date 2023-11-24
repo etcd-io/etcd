@@ -1101,8 +1101,15 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 	if len(ents) == 0 {
 		return
 	}
-	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.raftAdvancedC); shouldstop {
+	s.lg.Debug("Applying entries", zap.Int("num-entries", len(ents)))
+	var shouldStop bool
+	for i := range ents {
+		e := ents[i]
+		removedSelf := s.applyEntry(&e, &ep.confState, apply.raftAdvancedC)
+		shouldStop = shouldStop || removedSelf
+		ep.appliedi, ep.appliedt = e.Index, e.Term
+	}
+	if shouldStop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1760,59 +1767,49 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	})
 }
 
-// toApply takes entries received from Raft (after it has been committed) and
+// applyEntry takes entry received from Raft (after it has been committed) and
 // applies them to the current state of the EtcdServer.
-// The given entries should not be empty.
-func (s *EtcdServer) apply(
-	es []raftpb.Entry,
-	confState *raftpb.ConfState,
-	raftAdvancedC <-chan struct{},
-) (appliedt uint64, appliedi uint64, shouldStop bool) {
-	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
-	for i := range es {
-		e := es[i]
-		index := s.consistIndex.ConsistentIndex()
-		s.lg.Debug("Applying entry",
-			zap.Uint64("consistent-index", index),
-			zap.Uint64("entry-index", e.Index),
-			zap.Uint64("entry-term", e.Term),
-			zap.Stringer("entry-type", e.Type))
+func (s *EtcdServer) applyEntry(e *raftpb.Entry, confState *raftpb.ConfState, raftAdvancedC <-chan struct{}) (removedSelf bool) {
+	index := s.consistIndex.ConsistentIndex()
+	s.lg.Debug("Applying entry",
+		zap.Uint64("consistent-index", index),
+		zap.Uint64("entry-index", e.Index),
+		zap.Uint64("entry-term", e.Term),
+		zap.Stringer("entry-type", e.Type))
 
-		// We need to toApply all WAL entries on top of v2store
-		// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
-		shouldApplyV3 := membership.ApplyV2storeOnly
-		if e.Index > index {
-			shouldApplyV3 = membership.ApplyBoth
-			// set the consistent index of current executing entry
-			s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-		}
-		switch e.Type {
-		case raftpb.EntryNormal:
-			// gofail: var beforeApplyOneEntryNormal struct{}
-			s.applyEntryNormal(&e, shouldApplyV3)
-			s.setAppliedIndex(e.Index)
-			s.setTerm(e.Term)
-
-		case raftpb.EntryConfChange:
-			// gofail: var beforeApplyOneConfChange struct{}
-			var cc raftpb.ConfChange
-			pbutil.MustUnmarshal(&cc, e.Data)
-			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
-			s.setAppliedIndex(e.Index)
-			s.setTerm(e.Term)
-			shouldStop = shouldStop || removedSelf
-			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), raftAdvancedC, err})
-
-		default:
-			lg := s.Logger()
-			lg.Panic(
-				"unknown entry type; must be either EntryNormal or EntryConfChange",
-				zap.String("type", e.Type.String()),
-			)
-		}
-		appliedi, appliedt = e.Index, e.Term
+	// We need to toApply all WAL entries on top of v2store
+	// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
+	shouldApplyV3 := membership.ApplyV2storeOnly
+	if e.Index > index {
+		shouldApplyV3 = membership.ApplyBoth
+		// set the consistent index of current executing entry
+		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 	}
-	return appliedt, appliedi, shouldStop
+	switch e.Type {
+	case raftpb.EntryNormal:
+		// gofail: var beforeApplyOneEntryNormal struct{}
+		s.applyEntryNormal(e, shouldApplyV3)
+		s.setAppliedIndex(e.Index)
+		s.setTerm(e.Term)
+
+	case raftpb.EntryConfChange:
+		// gofail: var beforeApplyOneConfChange struct{}
+		var cc raftpb.ConfChange
+		pbutil.MustUnmarshal(&cc, e.Data)
+		var err error
+		removedSelf, err = s.applyConfChange(cc, confState, shouldApplyV3)
+		s.setAppliedIndex(e.Index)
+		s.setTerm(e.Term)
+		s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), raftAdvancedC, err})
+
+	default:
+		lg := s.Logger()
+		lg.Panic(
+			"unknown entry type; must be either EntryNormal or EntryConfChange",
+			zap.String("type", e.Type.String()),
+		)
+	}
+	return removedSelf
 }
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
