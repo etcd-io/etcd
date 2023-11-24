@@ -102,12 +102,6 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
-
-	// processing internal V3 raft request
-
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
 type SnapshotServer interface {
@@ -401,7 +395,21 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 	return resp, err
 }
 
-func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+type applierMembership struct {
+	lg             *zap.Logger
+	cluster        *membership.RaftCluster
+	snapshotServer SnapshotServer
+}
+
+func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) *applierMembership {
+	return &applierMembership{
+		lg:             lg,
+		cluster:        cluster,
+		snapshotServer: snapshotServer,
+	}
+}
+
+func (a *applierMembership) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	prevVersion := a.cluster.Version()
 	newVersion := semver.Must(semver.NewVersion(r.Ver))
 	a.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
@@ -418,7 +426,7 @@ func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRe
 	}
 }
 
-func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *applierMembership) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	a.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
@@ -429,7 +437,7 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 	)
 }
 
-func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *applierMembership) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	d := version.DowngradeInfo{Enabled: false}
 	if r.Enabled {
 		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
