@@ -527,8 +527,35 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 		cfg.ClientCAs = cp
 	}
 
-	// "h2" NextProtos is necessary for enabling HTTP2 for go's HTTP server
-	cfg.NextProtos = []string{"h2"}
+	// If manually defined ciphers are provided and TLS1.3 is not allowed, the
+	// list of ciphers may not allow HTTP2.  Test for this and disable if this is the case.
+	//
+	// TODO: There is a longstanding upstream issue of testing for bad ciphers.
+	// This test could be simplified in the future once this is resolved:
+	//   https://github.com/golang/go/issues/41068#issuecomment-722549561
+	if len(cfg.CipherSuites) > 0 && cfg.MaxVersion > 0 && cfg.MaxVersion < tls.VersionTLS13 {
+
+		// Test for the cases where TLS1.3 is not allowed, and thus http2 may not
+		// be possible when select cipherSuites are defined.
+		var hasHTTP2cipher bool
+		for _, c := range cfg.CipherSuites {
+			switch c {
+			// If one of these cipher suites are defined, then the h2 protocol is possible.
+			case tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:
+				hasHTTP2cipher = true
+				break
+			}
+		}
+		if hasHTTP2cipher {
+			cfg.NextProtos = []string{"h2"}
+		} else {
+			// Display a warning that none of the h2 ciphers are available and likewise GRBC cannot be started.
+			info.Logger.Info("CipherSuites is missing an HTTP2 capable cipher (TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256).  Disabling HTTP2 protocol.")
+		}
+	} else {
+		// "h2" NextProtos is necessary for enabling HTTP2 for go's HTTP server
+		cfg.NextProtos = []string{"h2"}
+	}
 
 	return cfg, nil
 }
