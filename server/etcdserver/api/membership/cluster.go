@@ -823,23 +823,6 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	return ids
 }
 
-// PushMembershipToStorage is overriding storage information about cluster's
-// members, such that they fully reflect internal RaftCluster's storage.
-func (c *RaftCluster) PushMembershipToStorage() {
-	if c.be != nil {
-		c.be.TrimMembershipFromBackend()
-		for _, m := range c.members {
-			c.be.MustSaveMemberToBackend(m)
-		}
-	}
-	if c.v2store != nil {
-		TrimMembershipFromV2Store(c.lg, c.v2store)
-		for _, m := range c.members {
-			mustSaveMemberToStore(c.lg, c.v2store, m)
-		}
-	}
-}
-
 // buildMembershipMetric sets the knownPeers metric based on the current
 // members of the cluster.
 func (c *RaftCluster) buildMembershipMetric() {
