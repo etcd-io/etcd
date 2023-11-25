@@ -1935,7 +1935,7 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 
