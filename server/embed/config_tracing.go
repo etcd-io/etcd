@@ -40,13 +40,19 @@ func validateTracingConfig(samplingRate int) error {
 	return nil
 }
 
-func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.SpanExporter, options []otelgrpc.Option, err error) {
-	exporter, err = otlptracegrpc.New(ctx,
+type tracingExporter struct {
+	exporter tracesdk.SpanExporter
+	opts     []otelgrpc.Option
+	provider *tracesdk.TracerProvider
+}
+
+func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, error) {
+	exporter, err := otlptracegrpc.New(ctx,
 		otlptracegrpc.WithInsecure(),
 		otlptracegrpc.WithEndpoint(cfg.ExperimentalDistributedTracingAddress),
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	res, err := resource.New(ctx,
@@ -55,7 +61,7 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 		),
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if resWithIDKey := determineResourceWithIDKey(cfg.ExperimentalDistributedTracingServiceInstanceID); resWithIDKey != nil {
@@ -63,11 +69,19 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 		// resource in case of duplicates.
 		res, err = resource.Merge(res, resWithIDKey)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	options = append(options,
+		traceProvider := tracesdk.NewTracerProvider(
+		tracesdk.WithBatcher(exporter),
+		tracesdk.WithResource(res),
+		tracesdk.WithSampler(
+			tracesdk.ParentBased(determineSampler(cfg.ExperimentalDistributedTracingSamplingRatePerMillion)),
+		),
+	)
+
+	options := []otelgrpc.Option{
 		otelgrpc.WithPropagators(
 			propagation.NewCompositeTextMapPropagator(
 				propagation.TraceContext{},
@@ -75,13 +89,9 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 			),
 		),
 		otelgrpc.WithTracerProvider(
-			tracesdk.NewTracerProvider(
-				tracesdk.WithBatcher(exporter),
-				tracesdk.WithResource(res),
-				tracesdk.WithSampler(tracesdk.ParentBased(tracesdk.NeverSample())),
-			),
+			traceProvider,
 		),
-	)
+	}
 
 	cfg.logger.Debug(
 		"distributed tracing enabled",
@@ -90,7 +100,21 @@ func setupTracingExporter(ctx context.Context, cfg *Config) (exporter tracesdk.S
 		zap.String("service-instance-id", cfg.ExperimentalDistributedTracingServiceInstanceID),
 	)
 
-	return exporter, options, err
+	return &tracingExporter{
+		exporter: exporter,
+		opts:     options,
+		provider: traceProvider,
+	}, nil
+}
+
+func (te *tracingExporter) Close(ctx context.Context) {
+	if te.provider != nil {
+		te.provider.Shutdown(ctx)
+	}
+
+	if te.exporter != nil {
+		te.exporter.Shutdown(ctx)
+	}
 }
 
 func determineSampler(samplingRate int) tracesdk.Sampler {
