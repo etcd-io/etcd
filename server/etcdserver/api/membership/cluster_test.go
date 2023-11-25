@@ -17,14 +17,12 @@ package membership
 import (
 	"encoding/json"
 	"fmt"
-	"path"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
@@ -519,52 +517,6 @@ func TestNodeToMemberBad(t *testing.T) {
 	}
 }
 
-func TestClusterAddMember(t *testing.T) {
-	st := mockstore.NewRecorder()
-	c := newTestCluster(t, nil)
-	c.SetStore(st)
-	c.AddMember(newTestMember(1, nil, "node1", nil), true)
-
-	wactions := []testutil.Action{
-		{
-			Name: "Create",
-			Params: []any{
-				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
-				false,
-				`{"peerURLs":null}`,
-				false,
-				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
-			},
-		},
-	}
-	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("actions = %v, want %v", g, wactions)
-	}
-}
-
-func TestClusterAddMemberAsLearner(t *testing.T) {
-	st := mockstore.NewRecorder()
-	c := newTestCluster(t, nil)
-	c.SetStore(st)
-	c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
-
-	wactions := []testutil.Action{
-		{
-			Name: "Create",
-			Params: []any{
-				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
-				false,
-				`{"peerURLs":[],"isLearner":true}`,
-				false,
-				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
-			},
-		},
-	}
-	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("actions = %v, want %v", g, wactions)
-	}
-}
-
 func TestClusterMembers(t *testing.T) {
 	cls := newTestCluster(t, []*Member{
 		{ID: 1},
@@ -582,21 +534,6 @@ func TestClusterMembers(t *testing.T) {
 	}
 	if g := cls.Members(); !reflect.DeepEqual(g, w) {
 		t.Fatalf("Members()=%#v, want %#v", g, w)
-	}
-}
-
-func TestClusterRemoveMember(t *testing.T) {
-	st := mockstore.NewRecorder()
-	c := newTestCluster(t, nil)
-	c.SetStore(st)
-	c.RemoveMember(1, true)
-
-	wactions := []testutil.Action{
-		{Name: "Delete", Params: []any{MemberStoreKey(1), true, true}},
-		{Name: "Create", Params: []any{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
-	}
-	if !reflect.DeepEqual(st.Action(), wactions) {
-		t.Errorf("actions = %v, want %v", st.Action(), wactions)
 	}
 }
 
@@ -905,7 +842,7 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 			// 1/1 members ready, should succeed (quorum = 1, new quorum = 2)
 			[]*Member{
 				newTestMember(1, nil, "1", nil),
-				newTestMemberAsLearner(2, nil, "2", nil),
+				newTestMemberAsLearner(2, []string{}, "2", []string{}),
 			},
 			2,
 			true,
