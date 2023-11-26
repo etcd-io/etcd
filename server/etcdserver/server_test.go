@@ -198,6 +198,115 @@ func TestV2SetClusterVersion(t *testing.T) {
 	}
 }
 
+func TestApplyConfStateWithRestart(t *testing.T) {
+	n := newNodeRecorder()
+	srv := newServer(t, n)
+
+	assert.Equal(t, srv.consistIndex.ConsistentIndex(), uint64(0))
+
+	var nodeID uint64 = 1
+	memberData, err := json.Marshal(&membership.Member{ID: types.ID(nodeID), RaftAttributes: membership.RaftAttributes{PeerURLs: []string{""}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entries := []raftpb.Entry{
+		{
+			Term:  1,
+			Index: 1,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}),
+		},
+		{
+			Term:  1,
+			Index: 2,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: nodeID,
+			}),
+		},
+		{
+			Term:  1,
+			Index: 3,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}),
+		},
+	}
+	want := []testutil.Action{
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}},
+		},
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: nodeID,
+			}},
+		},
+		// This action is expected to fail validation, thus NodeID is set to 0
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				Context: memberData,
+				NodeID:  0,
+			}},
+		},
+	}
+
+	confState := raftpb.ConfState{}
+
+	t.Log("Applying entries for the first time")
+	srv.apply(entries, &confState, nil)
+	if got, _ := n.Wait(len(want)); !reflect.DeepEqual(got, want) {
+		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
+	}
+
+	t.Log("Simulating etcd restart by clearing v2 store")
+	srv.cluster.SetStore(v2store.New())
+
+	t.Log("Reapplying same entries after restart")
+	srv.apply(entries, &confState, nil)
+	if got, _ := n.Wait(2 * len(want)); !reflect.DeepEqual(got[len(want):], want) {
+		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
+	}
+}
+
+func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	t.Cleanup(func() {
+		betesting.Close(t, be)
+	})
+	srv := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		r:            *newRaftNode(raftNodeConfig{lg: lg, Node: recorder}),
+		cluster:      membership.NewCluster(lg),
+		consistIndex: cindex.NewConsistentIndex(be),
+	}
+	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
+	srv.cluster.SetStore(v2store.New())
+	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
+	srv.r.transport = newNopTransporter()
+	srv.w = mockwait.NewNop()
+	return srv
+}
+
 func TestApplyConfChangeError(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
