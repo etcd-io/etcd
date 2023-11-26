@@ -219,6 +219,8 @@ Experimental distributed tracing:
     Distributed tracing service name, must be same across all etcd instances.
   --experimental-distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
+  --experimental-distributed-tracing-sampling-rate '0'
+    Number of samples to collect per million spans for distributed tracing. Disabled by default.
 
 v2 Proxy (to be deprecated in v3.6):
   --proxy 'off'
