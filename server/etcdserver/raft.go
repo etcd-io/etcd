@@ -107,7 +107,7 @@ type raftNodeConfig struct {
 	// to check if msg receiver is removed from cluster
 	isIDRemoved func(id uint64) bool
 	raft.Node
-	raftStorage *raft.MemoryStorage
+	raftStorage *MemoryStorage
 	storage     serverstorage.Storage
 	heartbeat   time.Duration // for logging
 	// transport specifies the transport to send and receive msgs to members.

@@ -83,7 +83,7 @@ func TestApplyRepeat(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		lg:          zaptest.NewLogger(t),
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   newNopTransporter(),
 	})
@@ -482,7 +482,7 @@ func TestSnapshot(t *testing.T) {
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
 
-	s := raft.NewMemoryStorage()
+	s := NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
@@ -553,7 +553,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		t.Fatalf("couldn't make snap dir (%v)", err)
 	}
 
-	rs := raft.NewMemoryStorage()
+	rs := NewMemoryStorage()
 	p := mockstorage.NewStorageRecorderStream(testdir)
 	tr, snapDoneC := newSnapTransporter(lg, snapdir)
 	r := newRaftNode(raftNodeConfig{
@@ -644,7 +644,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		t.Fatalf("Couldn't make snap dir (%v)", err)
 	}
 
-	rs := raft.NewMemoryStorage()
+	rs := NewMemoryStorage()
 	tr, snapDoneC := newSnapTransporter(lg, testdir)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -747,7 +747,7 @@ func TestAddMember(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   newNopTransporter(),
 	})
@@ -797,7 +797,7 @@ func TestRemoveMember(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   newNopTransporter(),
 	})
@@ -846,7 +846,7 @@ func TestUpdateMember(t *testing.T) {
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		storage:     mockstorage.NewStorageRecorder(""),
 		transport:   newNopTransporter(),
 	})
