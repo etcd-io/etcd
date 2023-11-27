@@ -32,7 +32,7 @@ import (
 )
 
 type UberApplier interface {
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
+	Apply(r *pb.InternalRaftRequest) *Result
 }
 
 type uberApplier struct {
@@ -108,18 +108,18 @@ func (a *uberApplier) restoreAlarms() {
 	}
 }
 
-func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
 	// We first execute chain of Apply() calls down the hierarchy:
 	// (i.e. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
 	// then dispatch() unpacks the request to a specific method (like Put),
 	// that gets executed down the hierarchy again:
 	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
-	return a.applyV3.Apply(context.TODO(), r, shouldApplyV3, a.dispatch)
+	return a.applyV3.Apply(context.TODO(), r, a.dispatch)
 }
 
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
-func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
+func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest) *Result {
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
@@ -130,25 +130,6 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest, s
 			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
 		}
 	}(time.Now())
-
-	switch {
-	case r.ClusterVersionSet != nil: // Implemented in 3.5.x
-		op = "ClusterVersionSet"
-		a.applyV3.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
-		return ar
-	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		a.applyV3.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
-		return ar
-	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		a.applyV3.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
-		return ar
-	}
-
-	if !shouldApplyV3 {
-		return nil
-	}
 
 	switch {
 	case r.Range != nil:
