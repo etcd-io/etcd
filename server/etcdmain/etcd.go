@@ -416,7 +416,7 @@ func startProxy(cfg *config) error {
 		go func() {
 			lg.Info("v2 proxy started listening on client requests", zap.String("host", host))
 			mux := http.NewServeMux()
-			etcdhttp.HandlePrometheus(mux) // v2 proxy just uses the same port
+			etcdhttp.HandleMetrics(mux) // v2 proxy just uses the same port
 			mux.Handle("/", ph)
 			lg.Fatal("done serving", zap.Error(http.Serve(l, mux)))
 		}()

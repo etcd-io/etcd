@@ -746,7 +746,8 @@ func (e *Etcd) serveClients() (err error) {
 	} else {
 		mux := http.NewServeMux()
 		etcdhttp.HandleBasic(e.cfg.logger, mux, e.Server)
-		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, mux, e.Server)
+		etcdhttp.HandleMetrics(mux)
+		etcdhttp.HandleHealth(e.cfg.logger, mux, e.Server)
 		h = mux
 	}
 
@@ -835,7 +836,8 @@ func (e *Etcd) serveMetrics() (err error) {
 
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
-		etcdhttp.HandleMetricsHealthForV3(e.cfg.logger, metricsMux, e.Server)
+		etcdhttp.HandleMetrics(metricsMux)
+		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			tlsInfo := &e.cfg.ClientTLSInfo
