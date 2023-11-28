@@ -350,9 +350,9 @@ func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
 	}
 }
 
-// TestWatchResumeInitRev tests watch resume with disconnect before the first event.
-// It ensures that correct events are returned corresponding to the start revision. 
-func TestWatchResumeInitRev(t *testing.T) {
+// TestWatchResumeAfterDisconnect tests watch resume after member disconnects then connects.
+// It ensures that correct events are returned corresponding to the start revision.
+func TestWatchResumeAfterDisconnect(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
@@ -394,12 +394,15 @@ func TestWatchResumeInitRev(t *testing.T) {
 		if !ok {
 			t.Fatal("unexpected watch close")
 		}
-		if len(resp.Events) == 0 {
-			t.Fatal("expected event on watch")
-		}
 		// Events should be put(a, 3) and put(a, 4)
+		if len(resp.Events) != 2 {
+			t.Fatal("expected two events on watch")
+		}
 		if string(resp.Events[0].Kv.Value) != "3" {
 			t.Fatalf("expected value=3, got event %+v", resp.Events[0])
+		}
+		if string(resp.Events[1].Kv.Value) != "4" {
+			t.Fatalf("expected value=4, got event %+v", resp.Events[1])
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("watch timed out")
