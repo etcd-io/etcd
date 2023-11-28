@@ -303,9 +303,16 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
-	// TODO: this must be switched to backend as well.
-	membersMap, removedMap := membersFromStore(c.lg, c.v2store)
+func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldApplyV3 ShouldApplyV3) error {
+	var membersMap map[types.ID]*Member
+	var removedMap map[types.ID]bool
+
+	if shouldApplyV3 {
+		membersMap, removedMap = c.be.MustReadMembersFromBackend()
+	} else {
+		membersMap, removedMap = membersFromStore(c.lg, c.v2store)
+	}
+
 	id := types.ID(cc.NodeID)
 	if removedMap[id] {
 		return ErrIDRemoved
@@ -821,23 +828,6 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	}
 	sort.Sort(types.IDSlice(ids))
 	return ids
-}
-
-// PushMembershipToStorage is overriding storage information about cluster's
-// members, such that they fully reflect internal RaftCluster's storage.
-func (c *RaftCluster) PushMembershipToStorage() {
-	if c.be != nil {
-		c.be.TrimMembershipFromBackend()
-		for _, m := range c.members {
-			c.be.MustSaveMemberToBackend(m)
-		}
-	}
-	if c.v2store != nil {
-		TrimMembershipFromV2Store(c.lg, c.v2store)
-		for _, m := range c.members {
-			mustSaveMemberToStore(c.lg, c.v2store, m)
-		}
-	}
 }
 
 // buildMembershipMetric sets the knownPeers metric based on the current

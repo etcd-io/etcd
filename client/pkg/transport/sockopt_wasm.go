@@ -1,4 +1,4 @@
-// Copyright 2021 The etcd Authors
+// Copyright 2023 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !windows && !solaris && !wasm && !js
+//go:build wasm || js
 
 package transport
 
 import (
+	"errors"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
 
-func setReusePort(network, address string, conn syscall.RawConn) error {
-	return conn.Control(func(fd uintptr) {
-		syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-	})
+func setReusePort(network, address string, c syscall.RawConn) error {
+	return errors.New("port reuse is not supported on WASM")
 }
 
-func setReuseAddress(network, address string, conn syscall.RawConn) error {
-	return conn.Control(func(fd uintptr) {
-		syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-	})
+func setReuseAddress(network, addr string, conn syscall.RawConn) error {
+	return errors.New("address reuse is not supported on WASM")
 }

@@ -3,57 +3,13 @@ name: Tests
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - linux-amd64-integration-1-cpu
-          - linux-amd64-integration-2-cpu
-          - linux-amd64-integration-4-cpu
-          - linux-amd64-unit-4-cpu
-          - linux-386-unit-1-cpu
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
-      - id: goversion
-        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
-        with:
-          go-version: ${{ steps.goversion.outputs.goversion }}
-      - env:
-          TARGET: ${{ matrix.target }}
-        run: |
-          set -euo pipefail
-          go clean -testcache
-
-          mkdir "${TARGET}"
-          export JUNIT_REPORT_DIR=$(realpath ${TARGET})
-          case "${TARGET}" in
-            linux-amd64-integration-1-cpu)
-              make gofail-enable
-              GOOS=linux GOARCH=amd64 CPU=1 make test-integration
-              ;;
-            linux-amd64-integration-2-cpu)
-              make gofail-enable
-              GOOS=linux GOARCH=amd64 CPU=2 make test-integration
-              ;;
-            linux-amd64-integration-4-cpu)
-              make gofail-enable
-              GOOS=linux GOARCH=amd64 CPU=4 make test-integration
-              ;;
-            linux-amd64-unit-4-cpu)
-              GOOS=linux GOARCH=amd64 CPU=4 GO_TEST_FLAGS='-p=2' make test-unit
-              ;;
-            linux-386-unit-1-cpu)
-              GOOS=linux GOARCH=386 CPU=1 GO_TEST_FLAGS='-p=4' make test-unit
-              ;;
-            *)
-              echo "Failed to find target"
-              exit 1
-              ;;
-          esac
-      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
-        if: always()
-        with:
-          path: ./**/junit_*.xml
+  amd64:
+    uses: ./.github/workflows/tests-template.yaml
+    with:
+      arch: amd64
+      runs-on: ubuntu-latest
+  arm64:
+    uses: ./.github/workflows/tests-template.yaml
+    with:
+      arch: arm64
+      runs-on: actuated-arm64-8cpu-32gb

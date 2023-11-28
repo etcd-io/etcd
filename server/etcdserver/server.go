@@ -60,6 +60,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
@@ -140,8 +141,6 @@ type ServerV2 interface {
 	Server
 	Leader() types.ID
 
-	// Do takes a V2 request and attempts to fulfill it, returning a Response.
-	Do(ctx context.Context, r pb.Request) (Response, error)
 	ClientCertAuthEnabled() bool
 }
 
@@ -247,8 +246,6 @@ type EtcdServer struct {
 	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
-	applyV2 ApplierV2
-
 	uberApply apply.UberApplier
 
 	applyWait wait.WaitTime
@@ -338,7 +335,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
-	srv.applyV2 = NewApplierV2(cfg.Logger, srv.v2store, srv.cluster)
 
 	srv.be = b.storage.backend.be
 	srv.beHooks = b.storage.backend.beHooks
@@ -746,21 +742,6 @@ func (s *EtcdServer) run() {
 	// asynchronously accept toApply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler(lg)
 
-	var (
-		smu   sync.RWMutex
-		syncC <-chan time.Time
-	)
-	setSyncC := func(ch <-chan time.Time) {
-		smu.Lock()
-		syncC = ch
-		smu.Unlock()
-	}
-	getSyncC := func() (ch <-chan time.Time) {
-		smu.RLock()
-		ch = syncC
-		smu.RUnlock()
-		return
-	}
 	rh := &raftReadyHandler{
 		getLead:    func() (lead uint64) { return s.getLead() },
 		updateLead: func(lead uint64) { s.setLead(lead) },
@@ -772,7 +753,6 @@ func (s *EtcdServer) run() {
 				if s.compactor != nil {
 					s.compactor.Pause()
 				}
-				setSyncC(nil)
 			} else {
 				if newLeader {
 					t := time.Now()
@@ -780,7 +760,6 @@ func (s *EtcdServer) run() {
 					s.leadElectedTime = t
 					s.leadTimeMu.Unlock()
 				}
-				setSyncC(s.SyncTicker.C)
 				if s.compactor != nil {
 					s.compactor.Resume()
 				}
@@ -847,10 +826,6 @@ func (s *EtcdServer) run() {
 			lg.Warn("server error", zap.Error(err))
 			lg.Warn("data-dir used by this member must be removed")
 			return
-		case <-getSyncC():
-			if s.v2store.HasTTLKeys() {
-				s.sync(s.Cfg.ReqTimeout())
-			}
 		case <-s.stop:
 			return
 		}
@@ -1691,25 +1666,6 @@ func (s *EtcdServer) configure(ctx context.Context, cc raftpb.ConfChange) ([]*me
 	}
 }
 
-// sync proposes a SYNC request and is non-blocking.
-// This makes no guarantee that the request will be proposed or performed.
-// The request will be canceled after the given timeout.
-func (s *EtcdServer) sync(timeout time.Duration) {
-	req := pb.Request{
-		Method: "SYNC",
-		ID:     s.reqIDGen.Next(),
-		Time:   time.Now().UnixNano(),
-	}
-	data := pbutil.MustMarshal(&req)
-	// There is no promise that node has leader when do SYNC request,
-	// so it uses goroutine to propose.
-	ctx, cancel := context.WithTimeout(s.ctx, timeout)
-	s.GoAttach(func() {
-		s.r.Propose(ctx, data)
-		cancel()
-	})
-}
-
 // publishV3 registers server information into the cluster using v3 request. The
 // information is the JSON representation of this server's member struct, updated
 // with the static clientURLs of the server.
@@ -1816,30 +1772,30 @@ func (s *EtcdServer) apply(
 	s.lg.Debug("Applying entries", zap.Int("num-entries", len(es)))
 	for i := range es {
 		e := es[i]
+		index := s.consistIndex.ConsistentIndex()
 		s.lg.Debug("Applying entry",
-			zap.Uint64("index", e.Index),
-			zap.Uint64("term", e.Term),
-			zap.Stringer("type", e.Type))
+			zap.Uint64("consistent-index", index),
+			zap.Uint64("entry-index", e.Index),
+			zap.Uint64("entry-term", e.Term),
+			zap.Stringer("entry-type", e.Type))
+
+		// We need to toApply all WAL entries on top of v2store
+		// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
+		shouldApplyV3 := membership.ApplyV2storeOnly
+		if e.Index > index {
+			shouldApplyV3 = membership.ApplyBoth
+			// set the consistent index of current executing entry
+			s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
+		}
 		switch e.Type {
 		case raftpb.EntryNormal:
 			// gofail: var beforeApplyOneEntryNormal struct{}
-			s.applyEntryNormal(&e)
+			s.applyEntryNormal(&e, shouldApplyV3)
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 
 		case raftpb.EntryConfChange:
 			// gofail: var beforeApplyOneConfChange struct{}
-
-			// We need to toApply all WAL entries on top of v2store
-			// and only 'unapplied' (e.Index>backend.ConsistentIndex) on the backend.
-			shouldApplyV3 := membership.ApplyV2storeOnly
-
-			// set the consistent index of current executing entry
-			if e.Index > s.consistIndex.ConsistentIndex() {
-				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-				shouldApplyV3 = membership.ApplyBoth
-			}
-
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
@@ -1861,14 +1817,9 @@ func (s *EtcdServer) apply(
 }
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
-func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
-	shouldApplyV3 := membership.ApplyV2storeOnly
+func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.ShouldApplyV3) {
 	var ar *apply.Result
-	index := s.consistIndex.ConsistentIndex()
-	if e.Index > index {
-		// set the consistent index of current executing entry
-		s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
-		shouldApplyV3 = membership.ApplyBoth
+	if shouldApplyV3 {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
 			// in which we should move the consistent index forward directly.
@@ -1878,10 +1829,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 			}
 		}()
 	}
-	s.lg.Debug("toApply entry normal",
-		zap.Uint64("consistent-index", index),
-		zap.Uint64("entry-index", e.Index),
-		zap.Bool("should-applyV3", bool(shouldApplyV3)))
 
 	// raft state machine may generate noop entry when leader confirmation.
 	// skip it in advance to avoid some potential bug in the future
@@ -1902,14 +1849,16 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.w.Trigger(r.ID, s.applyV2Request((*RequestV2)(rp), shouldApplyV3))
+		s.applyV2Request((*RequestV2)(rp), shouldApplyV3)
+		s.w.Trigger(r.ID, Response{})
 		return
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.w.Trigger(req.ID, s.applyV2Request(req, shouldApplyV3))
+		s.applyV2Request(req, shouldApplyV3)
+		s.w.Trigger(req.ID, Response{})
 		return
 	}
 
@@ -1926,7 +1875,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
+		ar = s.applyInternalRaftRequest(&raftReq, shouldApplyV3)
 	}
 
 	// do not re-toApply applied entries.
@@ -1962,6 +1911,37 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry) {
 	})
 }
 
+func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply.Result {
+	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil {
+		if !shouldApplyV3 {
+			return nil
+		}
+		return s.uberApply.Apply(r)
+	}
+	membershipApplier := apply.NewApplierMembership(s.lg, s.cluster, s)
+	op := "unknown"
+	defer func(start time.Time) {
+		txn.ApplySecObserve("v3", op, true, time.Since(start))
+		txn.WarnOfExpensiveRequest(s.lg, s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, nil, nil)
+	}(time.Now())
+	switch {
+	case r.ClusterVersionSet != nil:
+		op = "ClusterVersionSet" // Implemented in 3.5.x
+		membershipApplier.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
+		return &apply.Result{}
+	case r.ClusterMemberAttrSet != nil:
+		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
+		membershipApplier.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
+	case r.DowngradeInfoSet != nil:
+		op = "DowngradeInfoSet" // Implemented in 3.5.x
+		membershipApplier.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
+	default:
+		s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
+		return nil
+	}
+	return &apply.Result{}
+}
+
 func noSideEffect(r *pb.InternalRaftRequest) bool {
 	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
 }
@@ -1987,7 +1967,7 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil {
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 
@@ -2264,46 +2244,6 @@ func (s *EtcdServer) monitorCompactHash() {
 			continue
 		}
 		s.corruptionChecker.CompactHashCheck()
-	}
-}
-
-func (s *EtcdServer) updateClusterVersionV2(ver string) {
-	lg := s.Logger()
-
-	if s.cluster.Version() == nil {
-		lg.Info(
-			"setting up initial cluster version using v2 API",
-			zap.String("cluster-version", version.Cluster(ver)),
-		)
-	} else {
-		lg.Info(
-			"updating cluster version using v2 API",
-			zap.String("from", version.Cluster(s.cluster.Version().String())),
-			zap.String("to", version.Cluster(ver)),
-		)
-	}
-
-	req := pb.Request{
-		Method: "PUT",
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    ver,
-	}
-
-	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
-	_, err := s.Do(ctx, req)
-	cancel()
-
-	switch err {
-	case nil:
-		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
-		return
-
-	case errors.ErrStopped:
-		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
-		return
-
-	default:
-		lg.Warn("failed to update cluster version", zap.Error(err))
 	}
 }
 

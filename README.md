@@ -40,7 +40,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Maintainers
 
-[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
+[Maintainers](OWNERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. Maintainers aim to build productive relationships across different companies and disciplines. Read more about [Maintainers role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
 
 ## Getting started
 
@@ -135,14 +135,14 @@ Now it's time to dig into the full etcd API and other guides.
 ## Contact
 
 * Email: [etcd-dev](https://groups.google.com/g/etcd-dev)
-* Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
+* Slack: [#sig-etcd](https://kubernetes.slack.com/archives/C3HD8ARJ5) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
 * [Community meetings](#community-meetings)
 
 ### Community meetings
 
-etcd contributors and maintainers meet every two weeks at 11:00 AM (USA Pacific) on Thursday.
+etcd contributors and maintainers meet every week at 11:00 AM (USA Pacific) on Thursday and meetings alternate between community meetings and issue triage meetings. An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas. 
 
-An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
+Issue triage meetings are aimed at getting through our backlog of PRs and Issues. Triage meetings are open to any contributor; you don't have to be a reviewer or approver to help out! They can also be a good way to get started contributing.
 
 Meeting recordings are uploaded to official etcd [YouTube channel].
 

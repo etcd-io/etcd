@@ -86,7 +86,7 @@ verify-dep:
 	PASSES="dep" ./scripts/test.sh
 
 .PHONY: verify-lint
-verify-lint:
+verify-lint: install-golangci-lint
 	PASSES="lint" ./scripts/test.sh
 
 .PHONY: fix-lint
@@ -151,6 +151,14 @@ endif
 	yamlfmt -conf tools/.yamlfmt .
 
 # Tools
+
+GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
+.PHONY: install-golangci-lint
+
+install-golangci-lint:
+ifeq (, $(shell which golangci-lint))
+	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
+endif
 
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs

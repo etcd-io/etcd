@@ -40,7 +40,7 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 [github issue tracker]: https://github.com/etcd-io/etcd/issues
 [good first issue]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22good+first+issue%22
 [help wanted]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22help+wanted%22
-[maintainers]: https://github.com/etcd-io/etcd/blob/main/MAINTAINERS
+[maintainers]: https://github.com/etcd-io/etcd/blob/main/OWNERS
 [priority/important]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22priority%2Fimportant%22
 
 ## Setup development environment
@@ -50,7 +50,7 @@ The etcd project supports two options for development:
  1. Manually setup local environment.
  2. Automatically setup [devcontainer](https://containers.dev).
 
-For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and mainter support that is currently lacking in the etcd project.
+For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and maintainer support that is currently lacking in the etcd project.
 
 If you would like etcd to support your preferred environment you can [file an issue].
 
@@ -62,8 +62,10 @@ Follow the steps below to setup the environment:
 
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
-- Install build tools (`make`):
-  - For debian based distributions you can run `sudo apt-get install build-essential`
+- Install build tools:
+  - `make`: For debian based distributions you can run `sudo apt-get install build-essential`
+  - `protoc`: You can download for your os. Use version [`v3.20.3`](https://github.com/protocolbuffers/protobuf/releases/tag/v3.20.3).
+  - `yamllint`: For debian based distribution you can run `sudo apt-get install yamllint`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,

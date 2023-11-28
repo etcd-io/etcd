@@ -39,4 +39,4 @@ Changes in project governance could be initiated by opening a GitHub PR.
 [community membership]: /Documentation/contributor-guide/community-membership.md
 [Code of Conduct]: /code-of-conduct.md
 [contributor guide]: /CONTRIBUTING.md
-[maintainers]: /MAINTAINERS
+[maintainers]: /OWNERS
