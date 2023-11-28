@@ -275,6 +275,9 @@ func isCompatibleWithVers(lg *zap.Logger, vers map[string]*version.Versions, loc
 func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper) (*version.Versions, error) {
 	cc := &http.Client{
 		Transport: rt,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	var (
 		err  error
