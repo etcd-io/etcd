@@ -136,7 +136,7 @@ function robustness_pass {
 
 function integration_e2e_pass {
   run_pass "integration" "${@}"
-  run_pass "e2e" "${@}"
+  test_executor "e2e_test" "${@}"
 }
 
 # generic_checker [cmd...]

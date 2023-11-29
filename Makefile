@@ -27,7 +27,7 @@ GO_TEST_FLAGS?=
 .PHONY: test
 test:
 	PASSES="unit integration release" ./scripts/test.sh $(GO_TEST_FLAGS)
-	PASSES="e2e" ./scripts/test_e2e.sh $(GO_TEST_FLAGS)
+	./scripts/test_e2e.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-unit
 test-unit:
@@ -39,7 +39,7 @@ test-integration:
 
 .PHONY: test-e2e
 test-e2e: build
-	PASSES="e2e" ./scripts/test_e2e.sh $(GO_TEST_FLAGS)
+	./scripts/test_e2e.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-grpcproxy-integration
 test-grpcproxy-integration:
@@ -52,7 +52,7 @@ test-grpcproxy-e2e: build
 .PHONY: test-e2e-release
 test-e2e-release: build
 	PASSES="release" ./scripts/test.sh $(GO_TEST_FLAGS)
-	PASSES="e2e" ./scripts/test_e2e.sh $(GO_TEST_FLAGS)
+	./scripts/test_e2e.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-robustness
 test-robustness:

@@ -26,7 +26,6 @@ if [ -n "${OUTPUT_FILE}" ]; then
   exec > >(tee -a "${OUTPUT_FILE}") 2>&1
 fi
 
-PASSES=${PASSES:-"gofmt bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
@@ -59,43 +58,18 @@ if [ -n "${TESTCASE:-}" ]; then
   RUN_ARG=("-run=${TESTCASE}")
 fi
 
-################Run e2e tests###############################################
-function e2e_pass {
-  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
-}
-########### MAIN ###############################################################
-function run_pass {
-  local pass="${1}"
-  shift 1
-  log_callout -e "\\n'${pass}' started at $(date)"
-  if "${pass}_pass" "$@" ; then
-    log_success "'${pass}' PASSED and completed at $(date)"
-    return 0
-  else
-    log_error "FAIL: '${pass}' FAILED at $(date)"
-    if [ "$KEEP_GOING_SUITE" = true ]; then
-      return 2
-    else
-      exit 255
-    fi
-  fi
-}
-
+################### MAIN ##############################################################
 log_callout "Starting at: $(date)"
 fail_flag=false
 
-  if run_pass "${PASSES}" "${@}"; then
+  if test_executor "e2e_test" "${@}"; then
     :
   else
     fail_flag=true
   fi
 
 if [ "$fail_flag" = true ]; then
-  log_error "There was FAILURE in the e2e test suite run. Look above log detail"
+  log_error "There was FAILURE in the e2e test suite run. Look above for log detail"
   exit 255
 fi
 
