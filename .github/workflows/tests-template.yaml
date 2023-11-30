@@ -26,6 +26,8 @@ jobs:
           - linux-${{ inputs.arch }}-unit-4-cpu
           - linux-386-unit-1-cpu
     steps:
+      - name: Collect Workflow Telemetry
+        uses: catchpoint/workflow-telemetry-action@v1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
