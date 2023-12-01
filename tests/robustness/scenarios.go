@@ -102,6 +102,7 @@ func scenarios(t *testing.T) []testScenario {
 		clusterOfSize3Options := baseOptions
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithIsPeerTLS(true))
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithPeerProxy(true))
+		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithFaultyTransition(true))
 		if !v.LessThan(version.V3_6) {
 			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
 		}

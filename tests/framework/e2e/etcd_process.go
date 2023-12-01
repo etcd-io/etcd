@@ -99,8 +99,9 @@ type EtcdServerProcessConfig struct {
 	InitialCluster string
 	GoFailPort     int
 
-	LazyFSEnabled bool
-	Proxy         *proxy.ServerConfig
+	LazyFSEnabled           bool
+	Proxy                   *proxy.ServerConfig
+	FaultyTransitionEnabled bool
 }
 
 func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -162,6 +163,9 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+	if ep.cfg.FaultyTransitionEnabled {
+		ep.Failpoints().SetupEnv("faultyNetwork", "return")
 	}
 
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
