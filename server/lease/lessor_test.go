@@ -269,10 +269,11 @@ func TestLessorRenewWithCheckpointer(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
-	fakerCheckerpointer := func(ctx context.Context, cp *pb.LeaseCheckpointRequest) {
+	fakerCheckerpointer := func(ctx context.Context, cp *pb.LeaseCheckpointRequest) error {
 		for _, cp := range cp.GetCheckpoints() {
 			le.Checkpoint(LeaseID(cp.GetID()), cp.GetRemaining_TTL())
 		}
+		return nil
 	}
 	defer le.Stop()
 	// Set checkpointer
@@ -556,7 +557,7 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 	defer le.Stop()
 	le.minLeaseTTL = 1
 	checkpointedC := make(chan struct{})
-	le.SetCheckpointer(func(ctx context.Context, lc *pb.LeaseCheckpointRequest) {
+	le.SetCheckpointer(func(ctx context.Context, lc *pb.LeaseCheckpointRequest) error {
 		close(checkpointedC)
 		if len(lc.Checkpoints) != 1 {
 			t.Errorf("expected 1 checkpoint but got %d", len(lc.Checkpoints))
@@ -565,6 +566,7 @@ func TestLessorCheckpointScheduling(t *testing.T) {
 		if c.Remaining_TTL != 1 {
 			t.Errorf("expected checkpoint to be called with Remaining_TTL=%d but got %d", 1, c.Remaining_TTL)
 		}
+		return nil
 	})
 	_, err := le.Grant(1, 2)
 	if err != nil {
