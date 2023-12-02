@@ -95,9 +95,10 @@ type EtcdServerProcessConfig struct {
 	ClientHTTPURL string
 	MetricsURL    string
 
-	InitialToken   string
-	InitialCluster string
-	GoFailPort     int
+	InitialToken        string
+	InitialCluster      string
+	GoFailPort          int
+	GoFailClientTimeout time.Duration
 
 	LazyFSEnabled bool
 	Proxy         *proxy.ServerConfig
@@ -117,7 +118,10 @@ func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServ
 	}
 	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}
 	if cfg.GoFailPort != 0 {
-		ep.failpoints = &BinaryFailpoints{member: ep}
+		ep.failpoints = &BinaryFailpoints{
+			member:        ep,
+			clientTimeout: cfg.GoFailClientTimeout,
+		}
 	}
 	if cfg.LazyFSEnabled {
 		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, t)
@@ -337,6 +341,7 @@ func (ep *EtcdServerProcess) Failpoints() *BinaryFailpoints {
 type BinaryFailpoints struct {
 	member         EtcdProcess
 	availableCache map[string]string
+	clientTimeout  time.Duration
 }
 
 func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
@@ -357,6 +362,12 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
+	}
+	httpClient := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
 	}
 	resp, err := httpClient.Do(r)
 	if err != nil {
@@ -380,6 +391,12 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 	if err != nil {
 		return err
 	}
+	httpClient := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
+	}
 	resp, err := httpClient.Do(r)
 	if err != nil {
 		return err
@@ -389,10 +406,6 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 		return fmt.Errorf("bad status code: %d", resp.StatusCode)
 	}
 	return nil
-}
-
-var httpClient = http.Client{
-	Timeout: 1 * time.Second,
 }
 
 func (f *BinaryFailpoints) Enabled() bool {

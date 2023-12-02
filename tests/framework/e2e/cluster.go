@@ -137,11 +137,12 @@ type EtcdProcessClusterConfig struct {
 
 	// Test config
 
-	KeepDataDir   bool
-	Logger        *zap.Logger
-	GoFailEnabled bool
-	LazyFSEnabled bool
-	PeerProxy     bool
+	KeepDataDir         bool
+	Logger              *zap.Logger
+	GoFailEnabled       bool
+	GoFailClientTimeout time.Duration
+	LazyFSEnabled       bool
+	PeerProxy           bool
 
 	// Process config
 
@@ -324,6 +325,10 @@ func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
 
 func WithGoFailEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
+}
+
+func WithGoFailClientTimeout(dur time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.GoFailClientTimeout = dur }
 }
 
 func WithLazyFSEnabled(enabled bool) EPClusterOption {
@@ -609,23 +614,24 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	return &EtcdServerProcessConfig{
-		lg:            cfg.Logger,
-		ExecPath:      execPath,
-		Args:          args,
-		EnvVars:       envVars,
-		TlsArgs:       cfg.TlsArgs(),
-		Client:        cfg.Client,
-		DataDirPath:   dataDirPath,
-		KeepDataDir:   cfg.KeepDataDir,
-		Name:          name,
-		PeerURL:       peerAdvertiseUrl,
-		ClientURL:     curl,
-		ClientHTTPURL: clientHttpUrl,
-		MetricsURL:    murl,
-		InitialToken:  cfg.ServerConfig.InitialClusterToken,
-		GoFailPort:    gofailPort,
-		Proxy:         proxyCfg,
-		LazyFSEnabled: cfg.LazyFSEnabled,
+		lg:                  cfg.Logger,
+		ExecPath:            execPath,
+		Args:                args,
+		EnvVars:             envVars,
+		TlsArgs:             cfg.TlsArgs(),
+		Client:              cfg.Client,
+		DataDirPath:         dataDirPath,
+		KeepDataDir:         cfg.KeepDataDir,
+		Name:                name,
+		PeerURL:             peerAdvertiseUrl,
+		ClientURL:           curl,
+		ClientHTTPURL:       clientHttpUrl,
+		MetricsURL:          murl,
+		InitialToken:        cfg.ServerConfig.InitialClusterToken,
+		GoFailPort:          gofailPort,
+		GoFailClientTimeout: cfg.GoFailClientTimeout,
+		Proxy:               proxyCfg,
+		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
 }
 
