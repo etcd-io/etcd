@@ -22,35 +22,27 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-// TestLeaseRevokeByOldLeader verifies that leases shouldn't be revoked by
-// old leader.
-// See the first case in the section "Root Cause" in
-// https://docs.google.com/document/d/1peLDjwebnSuNR69ombuUiJ5fkSw7Rd3Slv_mUpOLsmg/edit
-func TestLeaseRevokeByOldLeader(t *testing.T) {
-	testLeaseRevokeIssue(t, func(cluster *e2e.EtcdProcessCluster, leaderIndex int) []string {
-		// return the endpoint of a follower
-		return cluster.Procs[(leaderIndex+1)%len(cluster.Procs)].EndpointsGRPC()
-	})
+// TestLeaseRevoke_IgnoreOldLeader verifies that leases shouldn't be revoked
+// by old leader.
+// See the case 1 in https://github.com/etcd-io/etcd/issues/15247#issuecomment-1777862093.
+func TestLeaseRevoke_IgnoreOldLeader(t *testing.T) {
+	testLeaseRevokeIssue(t, true)
 }
 
-// TestLeaseRevokeByOldLeader verifies that leases shouldn't be revoked by
-// new leader.
-// See the second case in the section "Root Cause" in
-// https://docs.google.com/document/d/1peLDjwebnSuNR69ombuUiJ5fkSw7Rd3Slv_mUpOLsmg/edit
-func TestLeaseRevokeByNewLeader(t *testing.T) {
-	testLeaseRevokeIssue(t, func(cluster *e2e.EtcdProcessCluster, leaderIndex int) []string {
-		// return all members' endpoints, so that the client can switch to
-		// other member in case the leader gets stuck on writing disk.
-		return cluster.EndpointsGRPC()
-	})
+// TestLeaseRevoke_ClientSwitchToOtherMember verifies that leases shouldn't
+// be revoked by new leader.
+// See the case 2 in https://github.com/etcd-io/etcd/issues/15247#issuecomment-1777862093.
+func TestLeaseRevoke_ClientSwitchToOtherMember(t *testing.T) {
+	testLeaseRevokeIssue(t, false)
 }
 
-func testLeaseRevokeIssue(t *testing.T, epsFn func(cluster *e2e.EtcdProcessCluster, leaderIndex int) []string) {
+func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
 	e2e.BeforeTest(t)
 
 	ctx := context.Background()
@@ -77,7 +69,12 @@ func testLeaseRevokeIssue(t *testing.T, epsFn func(cluster *e2e.EtcdProcessClust
 	require.NoError(t, err)
 	defer client.Close()
 
-	epsForLeaseKeepAlive := epsFn(epc, leaderIdx)
+	var epsForLeaseKeepAlive []string
+	if connectToOneFollower {
+		epsForLeaseKeepAlive = epc.Procs[(leaderIdx+1)%3].EndpointsGRPC()
+	} else {
+		epsForLeaseKeepAlive = epc.EndpointsGRPC()
+	}
 	t.Logf("Creating a client for the leaseKeepAlive operation: %v", epsForLeaseKeepAlive)
 	clientForKeepAlive, err := clientv3.New(clientv3.Config{Endpoints: epsForLeaseKeepAlive, DialTimeout: 3 * time.Second})
 	require.NoError(t, err)
