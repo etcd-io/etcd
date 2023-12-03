@@ -88,6 +88,8 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 }
 
 func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	g := errgroup.Group{}
 	var operationReport, watchReport []report.ClientReport
 	finishTraffic := make(chan struct{})
@@ -98,15 +100,22 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	ids := identity.NewIdProvider()
 	g.Go(func() error {
 		defer close(finishTraffic)
-		failpoint.Inject(ctx, t, lg, clus, s.failpoint)
+		err := failpoint.Inject(ctx, t, lg, clus, s.failpoint)
+		if err != nil {
+			t.Error(err)
+			cancel()
+		}
 		time.Sleep(time.Second)
+		lg.Info("Finished injecting failures")
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, finishTraffic, baseTime, ids)
-		maxRevisionChan <- operationsMaxRevision(operationReport)
+		maxRevision := operationsMaxRevision(operationReport)
+		maxRevisionChan <- maxRevision
+		lg.Info("Finished simulating traffic", zap.Int64("max-revision", maxRevision))
 		return nil
 	})
 	g.Go(func() error {

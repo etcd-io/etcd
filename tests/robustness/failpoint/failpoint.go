@@ -78,7 +78,7 @@ func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	return nil
 }
 
-func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error
@@ -89,8 +89,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 
 		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", failpoint.Name()))
 		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			t.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
-			return
+			return fmt.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
 		}
 
 		lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
@@ -98,8 +97,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 		if err != nil {
 			select {
 			case <-ctx.Done():
-				t.Errorf("Triggering failpoints timed out, err: %v", ctx.Err())
-				return
+				return fmt.Errorf("Triggering failpoints timed out, err: %v", ctx.Err())
 			default:
 			}
 			lg.Info("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
@@ -109,8 +107,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 
 		lg.Info("Verifying cluster health after failpoint", zap.String("failpoint", failpoint.Name()))
 		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			t.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
-			return
+			return fmt.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
 		}
 
 		successes++
@@ -119,7 +116,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
 	}
 
-	return
+	return nil
 }
 
 func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProcessCluster) error {
