@@ -31,9 +31,9 @@ import (
 )
 
 type proxyEtcdProcess struct {
-	etcdProc EtcdProcess
-	proxyV2  *proxyV2Proc
-	proxyV3  *proxyV3Proc
+	*EtcdServerProcess
+	proxyV2 *proxyV2Proc
+	proxyV3 *proxyV3Proc
 }
 
 func NewEtcdProcess(cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
@@ -46,14 +46,14 @@ func NewProxyEtcdProcess(cfg *EtcdServerProcessConfig) (*proxyEtcdProcess, error
 		return nil, err
 	}
 	pep := &proxyEtcdProcess{
-		etcdProc: ep,
-		proxyV2:  newProxyV2Proc(cfg),
-		proxyV3:  newProxyV3Proc(cfg),
+		EtcdServerProcess: ep,
+		proxyV2:           newProxyV2Proc(cfg),
+		proxyV3:           newProxyV3Proc(cfg),
 	}
 	return pep, nil
 }
 
-func (p *proxyEtcdProcess) Config() *EtcdServerProcessConfig { return p.etcdProc.Config() }
+func (p *proxyEtcdProcess) Config() *EtcdServerProcessConfig { return p.EtcdServerProcess.Config() }
 
 func (p *proxyEtcdProcess) EndpointsV2() []string   { return p.EndpointsHTTP() }
 func (p *proxyEtcdProcess) EndpointsV3() []string   { return p.EndpointsGRPC() }
@@ -64,7 +64,7 @@ func (p *proxyEtcdProcess) EndpointsMetrics() []string {
 }
 
 func (p *proxyEtcdProcess) Start() error {
-	if err := p.etcdProc.Start(); err != nil {
+	if err := p.EtcdServerProcess.Start(); err != nil {
 		return err
 	}
 	if err := p.proxyV2.Start(); err != nil {
@@ -74,7 +74,7 @@ func (p *proxyEtcdProcess) Start() error {
 }
 
 func (p *proxyEtcdProcess) Restart() error {
-	if err := p.etcdProc.Restart(); err != nil {
+	if err := p.EtcdServerProcess.Restart(); err != nil {
 		return err
 	}
 	if err := p.proxyV2.Restart(); err != nil {
@@ -88,7 +88,7 @@ func (p *proxyEtcdProcess) Stop() error {
 	if v3err := p.proxyV3.Stop(); err == nil {
 		err = v3err
 	}
-	if eerr := p.etcdProc.Stop(); eerr != nil && err == nil {
+	if eerr := p.EtcdServerProcess.Stop(); eerr != nil && err == nil {
 		// fails on go-grpc issue #1384
 		if !strings.Contains(eerr.Error(), "exit status 2") {
 			err = eerr
@@ -102,7 +102,7 @@ func (p *proxyEtcdProcess) Close() error {
 	if v3err := p.proxyV3.Close(); err == nil {
 		err = v3err
 	}
-	if eerr := p.etcdProc.Close(); eerr != nil && err == nil {
+	if eerr := p.EtcdServerProcess.Close(); eerr != nil && err == nil {
 		// fails on go-grpc issue #1384
 		if !strings.Contains(eerr.Error(), "exit status 2") {
 			err = eerr
@@ -114,11 +114,11 @@ func (p *proxyEtcdProcess) Close() error {
 func (p *proxyEtcdProcess) WithStopSignal(sig os.Signal) os.Signal {
 	p.proxyV3.WithStopSignal(sig)
 	p.proxyV3.WithStopSignal(sig)
-	return p.etcdProc.WithStopSignal(sig)
+	return p.EtcdServerProcess.WithStopSignal(sig)
 }
 
 func (p *proxyEtcdProcess) Logs() LogsExpect {
-	return p.etcdProc.Logs()
+	return p.EtcdServerProcess.Logs()
 }
 
 type proxyProc struct {
