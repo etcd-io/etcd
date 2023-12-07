@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestAuthority(t *testing.T) {
@@ -82,18 +83,18 @@ func TestAuthority(t *testing.T) {
 	for _, tc := range tcs {
 		for _, clusterSize := range []int{1, 3} {
 			t.Run(fmt.Sprintf("Size: %d, Scenario: %q", clusterSize, tc.name), func(t *testing.T) {
-				BeforeTest(t)
+				e2e.BeforeTest(t)
 
-				cfg := newConfigNoTLS()
-				cfg.clusterSize = clusterSize
+				cfg := e2e.NewConfigNoTLS()
+				cfg.ClusterSize = clusterSize
 				if tc.useTLS {
-					cfg.clientTLS = clientTLS
+					cfg.ClientTLS = e2e.ClientTLS
 				}
-				cfg.isClientAutoTLS = tc.useInsecureTLS
+				cfg.IsClientAutoTLS = tc.useInsecureTLS
 				// Enable debug mode to get logs with http2 headers (including authority)
-				cfg.envVars = map[string]string{"GODEBUG": "http2debug=2"}
+				cfg.EnvVars = map[string]string{"GODEBUG": "http2debug=2"}
 
-				epc, err := newEtcdProcessCluster(t, cfg)
+				epc, err := e2e.NewEtcdProcessCluster(t, cfg)
 				if err != nil {
 					t.Fatalf("could not start etcd process cluster (%v)", err)
 				}
@@ -116,13 +117,13 @@ func TestAuthority(t *testing.T) {
 	}
 }
 
-func templateEndpoints(t *testing.T, pattern string, clus *etcdProcessCluster) []string {
+func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluster) []string {
 	t.Helper()
 	endpoints := []string{}
-	for i := 0; i < clus.cfg.clusterSize; i++ {
+	for i := 0; i < clus.Cfg.ClusterSize; i++ {
 		ent := pattern
 		if strings.Contains(ent, "%d") {
-			ent = fmt.Sprintf(ent, etcdProcessBasePort+i*5)
+			ent = fmt.Sprintf(ent, e2e.EtcdProcessBasePort+i*5)
 		}
 		if strings.Contains(ent, "%") {
 			t.Fatalf("Failed to template pattern, %% symbol left %q", ent)
@@ -132,12 +133,12 @@ func templateEndpoints(t *testing.T, pattern string, clus *etcdProcessCluster) [
 	return endpoints
 }
 
-func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *etcdProcessCluster) {
-	for i := range clus.procs {
-		line, _ := clus.procs[i].Logs().Expect(`http2: decoded hpack field header field ":authority"`)
+func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.EtcdProcessCluster) {
+	for i := range clus.Procs {
+		line, _ := clus.Procs[i].Logs().Expect(`http2: decoded hpack field header field ":authority"`)
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
-		u, err := url.Parse(clus.procs[i].EndpointsGRPC()[0])
+		u, err := url.Parse(clus.Procs[i].EndpointsGRPC()[0])
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -162,11 +163,11 @@ func executeWithTimeout(t *testing.T, timeout time.Duration, f func()) {
 }
 
 type etcdctlV3 struct {
-	cfg       *etcdProcessClusterConfig
+	cfg       *e2e.EtcdProcessClusterConfig
 	endpoints []string
 }
 
-func clusterEtcdctlV3(cfg *etcdProcessClusterConfig, endpoints []string) *etcdctlV3 {
+func clusterEtcdctlV3(cfg *e2e.EtcdProcessClusterConfig, endpoints []string) *etcdctlV3 {
 	return &etcdctlV3{
 		cfg:       cfg,
 		endpoints: endpoints,
@@ -178,28 +179,28 @@ func (ctl *etcdctlV3) Put(key, value string) error {
 }
 
 func (ctl *etcdctlV3) runCmd(args ...string) error {
-	cmdArgs := []string{ctlBinPath + "3"}
+	cmdArgs := []string{e2e.CtlBinPath + "3"}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
 	}
 	cmdArgs = append(cmdArgs, args...)
-	return spawnWithExpect(cmdArgs, "OK")
+	return e2e.SpawnWithExpect(cmdArgs, "OK")
 }
 
 func (ctl *etcdctlV3) flags() map[string]string {
 	fmap := make(map[string]string)
-	if ctl.cfg.clientTLS == clientTLS {
-		if ctl.cfg.isClientAutoTLS {
+	if ctl.cfg.ClientTLS == e2e.ClientTLS {
+		if ctl.cfg.IsClientAutoTLS {
 			fmap["insecure-transport"] = "false"
 			fmap["insecure-skip-tls-verify"] = "true"
-		} else if ctl.cfg.isClientCRL {
-			fmap["cacert"] = caPath
-			fmap["cert"] = revokedCertPath
-			fmap["key"] = revokedPrivateKeyPath
+		} else if ctl.cfg.IsClientCRL {
+			fmap["cacert"] = e2e.CaPath
+			fmap["cert"] = e2e.RevokedCertPath
+			fmap["key"] = e2e.RevokedPrivateKeyPath
 		} else {
-			fmap["cacert"] = caPath
-			fmap["cert"] = certPath
-			fmap["key"] = privateKeyPath
+			fmap["cacert"] = e2e.CaPath
+			fmap["cert"] = e2e.CertPath
+			fmap["key"] = e2e.PrivateKeyPath
 		}
 	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")

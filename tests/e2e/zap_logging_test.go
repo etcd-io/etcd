@@ -21,20 +21,22 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestServerJsonLogging(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
-	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize:  1,
-		initialToken: "new",
-		logLevel:     "debug",
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:  1,
+		InitialToken: "new",
+		LogLevel:     "debug",
 	})
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
-	logs := epc.procs[0].Logs()
+	logs := epc.Procs[0].Logs()
 	time.Sleep(time.Second)
 	if err = epc.Close(); err != nil {
 		t.Fatalf("error closing etcd processes (%v)", err)

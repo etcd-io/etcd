@@ -14,19 +14,23 @@
 
 package e2e
 
-import "testing"
+import (
+	"testing"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
+)
 
 func TestCtlV3TxnInteractiveSuccess(t *testing.T) {
 	testCtl(t, txnTestSuccess, withInteractive())
 }
 func TestCtlV3TxnInteractiveSuccessNoTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigNoTLS()))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigNoTLS()))
 }
 func TestCtlV3TxnInteractiveSuccessClientTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigClientTLS()))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigClientTLS()))
 }
 func TestCtlV3TxnInteractiveSuccessPeerTLS(t *testing.T) {
-	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*newConfigPeerTLS()))
+	testCtl(t, txnTestSuccess, withInteractive(), withCfg(*e2e.NewConfigPeerTLS()))
 }
 func TestCtlV3TxnInteractiveFail(t *testing.T) {
 	testCtl(t, txnTestFail, withInteractive())
@@ -102,7 +106,7 @@ func ctlV3Txn(cx ctlCtx, rqs txnRequests) error {
 	if cx.interactive {
 		cmdArgs = append(cmdArgs, "--interactive")
 	}
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return err
 	}

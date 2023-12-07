@@ -14,7 +14,11 @@
 
 package e2e
 
-import "testing"
+import (
+	"testing"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
+)
 
 func TestCtlV3DefragOnline(t *testing.T) { testCtl(t, defragOnlineTest) }
 
@@ -48,17 +52,17 @@ func defragOnlineTest(cx ctlCtx) {
 
 func ctlV3OnlineDefrag(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "defrag")
-	lines := make([]string, cx.epc.cfg.clusterSize)
+	lines := make([]string, cx.epc.Cfg.ClusterSize)
 	for i := range lines {
 		lines[i] = "Finished defragmenting etcd member"
 	}
-	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func ctlV3OfflineDefrag(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgsUtl(), "defrag", "--data-dir", cx.dataDir)
 	lines := []string{"finished defragmenting directory"}
-	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
 func defragOfflineTest(cx ctlCtx) {

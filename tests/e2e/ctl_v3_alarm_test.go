@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3Alarm(t *testing.T) {
@@ -53,7 +54,7 @@ func alarmTest(cx ctlCtx) {
 	}
 
 	// '/health' handler should return 'false'
-	if err := cURLGet(cx.epc, cURLReq{endpoint: "/health", expected: `{"health":"false","reason":"ALARM NOSPACE"}`}); err != nil {
+	if err := e2e.CURLGet(cx.epc, e2e.CURLReq{Endpoint: "/health", Expected: `{"health":"false","reason":"ALARM NOSPACE"}`}); err != nil {
 		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 
@@ -101,5 +102,5 @@ func alarmTest(cx ctlCtx) {
 
 func ctlV3Alarm(cx ctlCtx, cmd string, as ...string) error {
 	cmdArgs := append(cx.PrefixArgs(), "alarm", cmd)
-	return spawnWithExpects(cmdArgs, cx.envMap, as...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, as...)
 }

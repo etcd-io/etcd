@@ -17,6 +17,6 @@
 
 package e2e
 
-func newEtcdProcess(cfg *etcdServerProcessConfig) (etcdProcess, error) {
-	return newEtcdServerProcess(cfg)
+func NewEtcdProcess(cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
+	return NewEtcdServerProcess(cfg)
 }
