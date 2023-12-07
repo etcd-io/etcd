@@ -470,7 +470,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		memberId:     1,
-		r:            *realisticRaftNode(lg),
+		r:            *realisticRaftNode(lg, nil),
 		cluster:      cl,
 		w:            wait.New(),
 		consistIndex: ci,
@@ -514,9 +514,15 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	assert.Equal(t, consistIndex, rindex)
 }
 
-func realisticRaftNode(lg *zap.Logger) *raftNode {
+func realisticRaftNode(lg *zap.Logger, snap *raftpb.Snapshot) *raftNode {
 	storage := raft.NewMemoryStorage()
 	storage.SetHardState(raftpb.HardState{Commit: 0, Term: 0})
+	if snap != nil {
+		err := storage.ApplySnapshot(*snap)
+		if err != nil {
+			panic(err)
+		}
+	}
 	c := &raft.Config{
 		ID:              1,
 		ElectionTick:    10,
@@ -886,6 +892,56 @@ func TestAddMember(t *testing.T) {
 	}
 	if cl.Member(1234) == nil {
 		t.Errorf("member with id 1234 is not added")
+	}
+}
+
+// TestProcessIgnoreMismatchMessage tests Process must ignore messages to
+// mismatch member.
+func TestProcessIgnoreMismatchMessage(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	cl := newTestCluster(t)
+	st := v2store.New()
+	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
+	// Bootstrap a 3-node cluster
+	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
+	cl.AddMember(&membership.Member{ID: types.ID(2)}, true)
+	cl.AddMember(&membership.Member{ID: types.ID(3)}, true)
+	r := realisticRaftNode(lg, &raftpb.Snapshot{
+		Metadata: raftpb.SnapshotMetadata{
+			Index:     11, // magic number
+			Term:      11, // magic number
+			ConfState: raftpb.ConfState{Voters: []uint64{1, 2, 3}},
+		},
+	})
+	s := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           lg,
+		r:            *r,
+		v2store:      st,
+		cluster:      cl,
+		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
+		SyncTicker:   &time.Ticker{},
+		consistIndex: cindex.NewFakeConsistentIndex(0),
+		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+	}
+	// Mock a mad switch dispatching messages to wrong node.
+	m := raftpb.Message{
+		Type:   raftpb.MsgHeartbeat,
+		To:     2, // Wrong ID.
+		From:   3,
+		Term:   11,
+		Commit: 42, // Commit is larger than the last index.
+	}
+	if types.ID(m.To) == s.MemberId() {
+		t.Fatalf("To must mismatch")
+	}
+	err := s.Process(context.Background(), m)
+	if err == nil {
+		t.Fatalf("Must ignore the message and return an error")
 	}
 }
 
