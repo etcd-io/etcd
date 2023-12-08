@@ -2,21 +2,16 @@
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 
-## v3.5.12 (tbd)
-
-## Dependencies
-- Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
-
 <hr>
 
-## v3.5.11 (tbd)
+## v3.5.11 (2023-12-07)
 
 ### etcd server
 - Fix distributed tracing by ensuring `--experimental-distributed-tracing-sampling-rate` configuration option is available to [set tracing sample rate](https://github.com/etcd-io/etcd/pull/16951).
 - Fix [url redirects while checking peer urls during new member addition](https://github.com/etcd-io/etcd/pull/16986)
 
 ### Dependencies
-- Compile binaries using [go 1.20.11](https://github.com/etcd-io/etcd/pull/16915)
+- Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
 - Fix [CVE-2023-47108](https://github.com/advisories/GHSA-8pgv-569h-w5rw) by [bumping go.opentelemetry.io/otel to 1.20.0 and go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to 0.46.0](https://github.com/etcd-io/etcd/pull/16946).
 
 <hr>
