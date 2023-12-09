@@ -204,6 +204,9 @@ type ServerConfig struct {
 
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
+
+	// LocalAddr is the local IP address to use when communicating peer.
+	LocalAddr string `json:"local-address"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

@@ -221,6 +221,9 @@ Security:
     Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.
   --tls-max-version ''
     Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty will be auto-populated by Go).
+  --peer-local-addr ''
+    LocalAddr is the local IP address to use when communicating peer.
+
 
 Auth:
   --auth-token 'simple'

@@ -327,6 +327,9 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
+	// PeerLocalAddr is the local IP address to use when communicating peer.
+	PeerLocalAddr string `json:"peer-local-addr"`
+
 	ExperimentalInitialCorruptCheck     bool          `json:"experimental-initial-corrupt-check"`
 	ExperimentalCorruptCheckTime        time.Duration `json:"experimental-corrupt-check-time"`
 	ExperimentalCompactHashCheckEnabled bool          `json:"experimental-compact-hash-check-enabled"`
@@ -662,6 +665,8 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.PeerTLSInfo.ClientKeyFile, "peer-client-key-file", "", "Path to an explicit peer client TLS key file otherwise peer key file will be used when client auth is required.")
 	fs.BoolVar(&cfg.PeerTLSInfo.ClientCertAuth, "peer-client-cert-auth", false, "Enable peer client cert authentication.")
 	fs.StringVar(&cfg.PeerTLSInfo.TrustedCAFile, "peer-trusted-ca-file", "", "Path to the peer server TLS trusted CA file.")
+	fs.StringVar(&cfg.PeerTLSInfo.LocalAddr, "peer-local-addr", "", "peer-local-addr is the local IP address to use when communicating peer.")
+
 	fs.BoolVar(&cfg.PeerAutoTLS, "peer-auto-tls", false, "Peer TLS using generated certificates")
 	fs.UintVar(&cfg.SelfSignedCertValidity, "self-signed-cert-validity", 1, "The validity period of the client and peer certificates, unit is year")
 	fs.StringVar(&cfg.PeerTLSInfo.CRLFile, "peer-crl-file", "", "Path to the peer certificate revocation list file.")
