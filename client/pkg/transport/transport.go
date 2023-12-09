@@ -30,10 +30,19 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		return nil, err
 	}
 
+	var ipAddr net.Addr
+	if info.LocalAddr != "" {
+		ipAddr, err = net.ResolveTCPAddr("tcp", info.LocalAddr+":0")
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout: dialtimeoutd,
+			Timeout:   dialtimeoutd,
+			LocalAddr: ipAddr,
 			// value taken from http.DefaultTransport
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
