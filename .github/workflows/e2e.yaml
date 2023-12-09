@@ -25,7 +25,8 @@ jobs:
         echo "${TARGET}"
         case "${TARGET}" in
           linux-amd64-e2e)
-            CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' make test-e2e-release
+            make install-gofail
+            CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' FAILPOINTS='true' make test-e2e-release
             ;;
           linux-386-e2e)
             GOARCH=386 CPU='4' EXPECT_DEBUG='true' COVER='false' RACE='true' make test-e2e
