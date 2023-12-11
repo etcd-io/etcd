@@ -52,7 +52,7 @@ gofail-disable: install-gofail
 
 .PHONY: install-gofail
 install-gofail:
-	cd tools/mod; go install go.etcd.io/gofail@${GOFAIL_VERSION}
+	go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
 # Build previous releases for robustness tests
 
