@@ -117,6 +117,21 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	if err != rpctypes.ErrLeaseNotFound {
 		t.Errorf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
+
+	clus.Members[1].Stop(t)
+	clus.Members[2].Stop(t)
+
+	// wait for election timeout, then member[0] will not have a leader.
+	var (
+		electionTicks = 10
+		tickDuration  = 10 * time.Millisecond
+	)
+	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
+
+	_, err = lapi.KeepAliveOnce(context.Background(), resp.ID)
+	if err != rpctypes.ErrNoLeader {
+		t.Errorf("expected %v, got %v", rpctypes.ErrNoLeader, err)
+	}
 }
 
 func TestLeaseKeepAlive(t *testing.T) {
