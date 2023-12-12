@@ -9,7 +9,7 @@ As part of a joint program between Ampere and the CNCF, [actuated.dev](https://a
 To use the new infrastructure, add the following to your workflow:
 
 ```yaml
-runs-on: actuated-arm64-8cpu-32gb
+runs-on: actuated-arm64-8cpu-8gb
 ```
 
 The vCPUs and RAM are customizable, i.e. `actuated-arm64-8cpu-16gb` or `actuated-arm64-8cpu-32gb`.
