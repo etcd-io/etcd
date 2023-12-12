@@ -23,7 +23,8 @@ import (
 
 	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver"
-	"go.etcd.io/etcd/etcdserver/etcdserverpb"
+	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/pkg/types"
 	"go.etcd.io/etcd/raft"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,8 +36,19 @@ const (
 	PathHealth  = "/health"
 )
 
-// HandleMetricsHealth registers metrics and health handlers.
-func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
+type ServerHealth interface {
+	serverHealthV2V3
+	Range(context.Context, *pb.RangeRequest) (*pb.RangeResponse, error)
+	Config() etcdserver.ServerConfig
+}
+
+type serverHealthV2V3 interface {
+	Alarms() []*pb.AlarmMember
+	Leader() types.ID
+}
+
+// HandleMetricsHealthForV2 registers metrics and health handlers for v2.
+func HandleMetricsHealthForV2(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathMetrics, promhttp.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
@@ -49,9 +61,9 @@ func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	}))
 }
 
-// HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
+// HandleMetricsHealth registers metrics and health handlers. it checks health by using v3 range request
 // and its corresponding timeout.
-func HandleMetricsHealthForV3(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+func HandleMetricsHealth(mux *http.ServeMux, srv ServerHealth) {
 	mux.Handle(PathMetrics, promhttp.Handler())
 	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
 		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
@@ -60,7 +72,7 @@ func HandleMetricsHealthForV3(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
 		if h := checkLeader(srv, serializable); h.Health != "true" {
 			return h
 		}
-		return checkV3API(srv, serializable)
+		return checkAPI(srv, serializable)
 	}))
 }
 
@@ -152,7 +164,7 @@ func getSerializableFlag(r *http.Request) bool {
 
 // TODO: etcdserver.ErrNoLeader in health API
 
-func checkAlarms(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
+func checkAlarms(srv serverHealthV2V3, excludedAlarms AlarmSet) Health {
 	h := Health{Health: "true"}
 	as := srv.Alarms()
 	if len(as) > 0 {
@@ -165,9 +177,9 @@ func checkAlarms(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
 
 			h.Health = "false"
 			switch v.Alarm {
-			case etcdserverpb.AlarmType_NOSPACE:
+			case pb.AlarmType_NOSPACE:
 				h.Reason = "ALARM NOSPACE"
-			case etcdserverpb.AlarmType_CORRUPT:
+			case pb.AlarmType_CORRUPT:
 				h.Reason = "ALARM CORRUPT"
 			default:
 				h.Reason = "ALARM UNKNOWN"
@@ -180,7 +192,7 @@ func checkAlarms(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
 	return h
 }
 
-func checkLeader(srv etcdserver.ServerV2, serializable bool) Health {
+func checkLeader(srv serverHealthV2V3, serializable bool) Health {
 	h := Health{Health: "true"}
 	if !serializable && (uint64(srv.Leader()) == raft.None) {
 		h.Health = "false"
@@ -193,7 +205,7 @@ func checkLeader(srv etcdserver.ServerV2, serializable bool) Health {
 func checkV2API(srv etcdserver.ServerV2) Health {
 	h := Health{Health: "true"}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+	_, err := srv.Do(ctx, pb.Request{Method: "QGET"})
 	cancel()
 	if err != nil {
 		h.Health = "false"
@@ -204,10 +216,11 @@ func checkV2API(srv etcdserver.ServerV2) Health {
 	return h
 }
 
-func checkV3API(srv *etcdserver.EtcdServer, serializable bool) Health {
+func checkAPI(srv ServerHealth, serializable bool) Health {
 	h := Health{Health: "true"}
-	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
-	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+	cfg := srv.Config()
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ReqTimeout())
+	_, err := srv.Range(ctx, &pb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
 	cancel()
 	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
 		h.Health = "false"

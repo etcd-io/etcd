@@ -667,6 +667,10 @@ func (s *EtcdServer) getLogger() *zap.Logger {
 	return l
 }
 
+func (s *EtcdServer) Config() ServerConfig {
+	return s.Cfg
+}
+
 func tickToDur(ticks int, tickMs uint) string {
 	return fmt.Sprintf("%v", time.Duration(ticks)*time.Duration(tickMs)*time.Millisecond)
 }

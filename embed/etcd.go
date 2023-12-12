@@ -773,6 +773,7 @@ func (e *Etcd) serveClients() (err error) {
 	} else {
 		mux := http.NewServeMux()
 		etcdhttp.HandleBasic(mux, e.Server)
+		etcdhttp.HandleMetricsHealth(mux, e.Server)
 		h = mux
 	}
 

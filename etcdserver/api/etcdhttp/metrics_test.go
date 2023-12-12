@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver"
 	stats "go.etcd.io/etcd/etcdserver/api/v2stats"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
@@ -38,25 +39,34 @@ func (s *fakeStats) SelfStats() []byte   { return nil }
 func (s *fakeStats) LeaderStats() []byte { return nil }
 func (s *fakeStats) StoreStats() []byte  { return nil }
 
-type fakeServerV2 struct {
+type fakeHealthServer struct {
 	fakeServer
 	stats.Stats
-	health string
+	health   string
+	apiError error
 }
 
-func (s *fakeServerV2) Leader() types.ID {
+func (s *fakeHealthServer) Range(ctx context.Context, request *pb.RangeRequest) (*pb.RangeResponse, error) {
+	return nil, s.apiError
+}
+
+func (s *fakeHealthServer) Config() etcdserver.ServerConfig {
+	return etcdserver.ServerConfig{}
+}
+
+func (s *fakeHealthServer) Leader() types.ID {
 	if s.health == "true" {
 		return 1
 	}
 	return types.ID(raft.None)
 }
-func (s *fakeServerV2) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
+func (s *fakeHealthServer) Do(ctx context.Context, r pb.Request) (etcdserver.Response, error) {
 	if s.health == "true" {
 		return etcdserver.Response{}, nil
 	}
 	return etcdserver.Response{}, fmt.Errorf("fail health check")
 }
-func (s *fakeServerV2) ClientCertAuthEnabled() bool { return false }
+func (s *fakeHealthServer) ClientCertAuthEnabled() bool { return false }
 
 func TestHealthHandler(t *testing.T) {
 	// define the input and expected output
@@ -65,6 +75,7 @@ func TestHealthHandler(t *testing.T) {
 		name           string
 		alarms         []*pb.AlarmMember
 		healthCheckURL string
+		apiError       error
 
 		expectStatusCode int
 		expectHealth     string
@@ -118,15 +129,34 @@ func TestHealthHandler(t *testing.T) {
 			expectStatusCode: http.StatusOK,
 			expectHealth:     "true",
 		},
+		{
+			healthCheckURL:   "/health",
+			apiError:         auth.ErrUserEmpty,
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
+		},
+		{
+			healthCheckURL:   "/health",
+			apiError:         auth.ErrPermissionDenied,
+			expectStatusCode: http.StatusOK,
+			expectHealth:     "true",
+		},
+		{
+			healthCheckURL:   "/health",
+			apiError:         fmt.Errorf("Unexpected error"),
+			expectStatusCode: http.StatusServiceUnavailable,
+			expectHealth:     "false",
+		},
 	}
 
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mux := http.NewServeMux()
-			HandleMetricsHealth(mux, &fakeServerV2{
+			HandleMetricsHealth(mux, &fakeHealthServer{
 				fakeServer: fakeServer{alarms: tt.alarms},
 				Stats:      &fakeStats{},
 				health:     tt.expectHealth,
+				apiError:   tt.apiError,
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
