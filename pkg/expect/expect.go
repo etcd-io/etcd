@@ -203,3 +203,7 @@ func (ep *ExpectProcess) Lines() []string {
 	defer ep.mu.Unlock()
 	return ep.lines
 }
+
+func (ep *ExpectProcess) IsRunning() bool {
+	return ep.cmd != nil
+}

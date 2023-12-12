@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -125,4 +126,24 @@ func ToTLS(s string) string {
 
 func SkipInShortMode(t testing.TB) {
 	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
+}
+
+func ExecuteUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
+
+	select {
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
+	case <-donec:
+	}
 }

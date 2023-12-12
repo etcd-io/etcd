@@ -20,11 +20,27 @@ GOARCH=${GOARCH:-$(go env GOARCH)}
 GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
 GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS:-}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
+GOFAIL_VERSION=$(cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
 # enable/disable failpoints
 toggle_failpoints() {
   mode="$1"
   if command -v gofail >/dev/null 2>&1; then
-    run gofail "$mode" server/etcdserver/ server/mvcc/backend/ server/wal/
+    run gofail "$mode" server/etcdserver/ server/mvcc/ server/wal/ server/mvcc/backend/
+    if [[ "$mode" == "enable" ]]; then
+      go get go.etcd.io/gofail@${GOFAIL_VERSION}
+      cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+      cd ../etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+      cd ../etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+      cd ../tests && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+      cd ../
+    else
+      go mod tidy
+      cd ./server && go mod tidy
+      cd ../etcdutl && go mod tidy
+      cd ../etcdctl && go mod tidy
+      cd ../tests && go mod tidy
+      cd ../
+    fi
   elif [[ "$mode" != "disable" ]]; then
     log_error "FAILPOINTS set but gofail not found"
     exit 1

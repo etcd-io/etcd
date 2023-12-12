@@ -18,6 +18,7 @@ require (
 	github.com/mgechev/revive v1.0.2
 	github.com/mikefarah/yq/v3 v3.0.0-20201125113350-f42728eef735
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
+	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
