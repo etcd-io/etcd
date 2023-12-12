@@ -6,17 +6,16 @@ on:
       arch:
         required: true
         type: string
-      # runs-on:
-      #   required: true
-      #   type: string
+      runs-on:
+        required: true
+        type: string
 permissions: read-all
 
 jobs:
   test:
+    runs-on: ${{ inputs.runs-on }}
     # this is to prevent arm64 jobs from running at forked projects
-    if: inputs.arch == 'arm64' || github.repository == 'etcd-io/etcd'
-    # this is to tune memory allocation of arm64 architecture
-    runs-on: ${{ if inputs.arch == 'arm64' then 'actuated-arm64-8cpu-8gb' else inputs.runs-on end }}
+    if: inputs.arch == 'amd64' || github.repository == 'etcd-io/etcd'
     strategy:
       fail-fast: false
       matrix:
