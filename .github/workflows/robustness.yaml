@@ -18,4 +18,4 @@ jobs:
       count: 12
       testTimeout: 30m
       artifactName: main-arm64
-      runs-on: "['actuated-arm64-8cpu-32gb']"
+      runs-on: "['actuated-arm64-8cpu-8gb']"
