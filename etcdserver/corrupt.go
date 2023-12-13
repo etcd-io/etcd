@@ -497,7 +497,12 @@ func (h *hashKVHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // getPeerHashKVHTTP fetch hash of kv store at the given rev via http call to the given url
 func (s *EtcdServer) getPeerHashKVHTTP(ctx context.Context, cid types.ID, url string, rev int64) (*pb.HashKVResponse, error) {
-	cc := &http.Client{Transport: s.peerRt}
+	cc := &http.Client{
+		Transport: s.peerRt,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	hashReq := &pb.HashKVRequest{Revision: rev}
 	hashReqBytes, err := json.Marshal(hashReq)
 	if err != nil {
