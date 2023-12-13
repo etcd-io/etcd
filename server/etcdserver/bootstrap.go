@@ -90,18 +90,22 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		bwal = bootstrapWALFromSnapshot(cfg, backend.snapshot)
 	}
 
+	cfg.Logger.Info("bootstrapping cluster")
 	cluster, err := bootstrapCluster(cfg, bwal, prt)
 	if err != nil {
 		backend.Close()
 		return nil, err
 	}
 
+	cfg.Logger.Info("bootstrapping storage")
 	s := bootstrapStorage(cfg, st, backend, bwal, cluster)
 
 	if err = cluster.Finalize(cfg, s); err != nil {
 		backend.Close()
 		return nil, err
 	}
+
+	cfg.Logger.Info("bootstrapping raft")
 	raft := bootstrapRaft(cfg, cluster, s.wal)
 	return &bootstrappedServer{
 		prt:     prt,
