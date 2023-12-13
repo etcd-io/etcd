@@ -549,9 +549,12 @@ func (l *lessor) recvKeepAlive(resp *pb.LeaseKeepAliveResponse) {
 // deadlineLoop reaps any keep alive channels that have not received a response
 // within the lease TTL
 func (l *lessor) deadlineLoop() {
+	timer := time.NewTimer(time.Second)
+	defer timer.Stop()
 	for {
+		timer.Reset(time.Second)
 		select {
-		case <-time.After(time.Second):
+		case <-timer.C:
 		case <-l.donec:
 			return
 		}
