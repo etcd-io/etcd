@@ -31,7 +31,28 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-func TestMemberReplace(t *testing.T) {
+func TestMemberReplaceMultiple(t *testing.T) {
+	// Loop for adding member is hard to repro
+	for i := 0; i < 10; i++ {
+		succeed := t.Run("LoopForAdd", func(t *testing.T) {
+			memberReplaceTest(t, true)
+		})
+		if !succeed {
+			t.Fatalf("LoopForAdd failed")
+		}
+	}
+	// Only call member add once is easy to repro
+	for i := 0; i < 10; i++ {
+		succeed := t.Run("OneStepAdd", func(t *testing.T) {
+			memberReplaceTest(t, false)
+		})
+		if !succeed {
+			t.Fatalf("LoopForAdd failed")
+		}
+	}
+}
+
+func memberReplaceTest(t *testing.T, loopForAdd bool) {
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -77,14 +98,27 @@ func TestMemberReplace(t *testing.T) {
 
 	t.Logf("Adding member %s back", memberName)
 	removedMemberPeerUrl := member.Config().PeerURL.String()
-	_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerUrl})
-	require.NoError(t, err)
+	// To repro issue #17052, we only log the error and continue execute test.
+	if loopForAdd {
+		for {
+			_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerUrl})
+			if err == nil {
+				break
+			}
+			t.Logf("Adding member %s back failed: %v", memberName, err)
+		}
+	} else {
+		_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerUrl})
+		if err != nil {
+			t.Logf("Adding member %s back failed: %v", memberName, err)
+		}
+	}
 	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
 
 	t.Logf("Starting member %s", memberName)
 	err = member.Start(ctx)
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to start member, %v", err)
 	testutils.ExecuteUntil(ctx, t, func() {
 		for {
 			_, found, err := getMemberIdByName(ctx, c, memberName)
