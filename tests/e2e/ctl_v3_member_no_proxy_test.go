@@ -40,18 +40,17 @@ func TestMemberReplace(t *testing.T) {
 	require.NoError(t, err)
 	defer epc.Close()
 
-	memberId := rand.Int() % len(epc.Procs)
-	member := epc.Procs[memberId]
+	memberIdx := rand.Int() % len(epc.Procs)
+	member := epc.Procs[memberIdx]
 	memberName := member.Config().Name
 	var endpoints []string
 	for i := 1; i < len(epc.Procs); i++ {
-		endpoints = append(endpoints, epc.Procs[(memberId+i)%len(epc.Procs)].EndpointsGRPC()...)
+		endpoints = append(endpoints, epc.Procs[(memberIdx+i)%len(epc.Procs)].EndpointsGRPC()...)
 	}
 	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, endpoints)
 	require.NoError(t, err)
 
-	c := epc.Etcdctl()
-	memberID, found, err := getMemberIdByName(ctx, c, memberName)
+	memberID, found, err := getMemberIdByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, found, true, "Member not found")
 
@@ -59,9 +58,9 @@ func TestMemberReplace(t *testing.T) {
 	time.Sleep(etcdserver.HealthInterval)
 
 	t.Logf("Removing member %s", memberName)
-	_, err = c.MemberRemove(ctx, memberID)
+	_, err = cc.MemberRemove(ctx, memberID)
 	require.NoError(t, err)
-	_, found, err = getMemberIdByName(ctx, c, memberName)
+	_, found, err = getMemberIdByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, found, false, "Expected member to be removed")
 	for member.IsRunning() {
@@ -82,12 +81,14 @@ func TestMemberReplace(t *testing.T) {
 	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
 
+	// Sleep 100ms to bypass the known issue https://github.com/etcd-io/etcd/issues/16687.
+	time.Sleep(100 * time.Millisecond)
 	t.Logf("Starting member %s", memberName)
 	err = member.Start(ctx)
 	require.NoError(t, err)
 	testutils.ExecuteUntil(ctx, t, func() {
 		for {
-			_, found, err := getMemberIdByName(ctx, c, memberName)
+			_, found, err := getMemberIdByName(ctx, cc, memberName)
 			if err != nil || !found {
 				time.Sleep(10 * time.Millisecond)
 				continue

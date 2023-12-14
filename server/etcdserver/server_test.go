@@ -298,6 +298,7 @@ func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
 		r:            *newRaftNode(raftNodeConfig{lg: lg, Node: recorder}),
 		cluster:      membership.NewCluster(lg),
 		consistIndex: cindex.NewConsistentIndex(be),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
 	srv.cluster.SetStore(v2store.New())
@@ -475,6 +476,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		w:            wait.New(),
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 
 	// create EntryConfChange entry
@@ -567,6 +569,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 		w:            wait.New(),
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	var ents []raftpb.Entry
 	for i := 1; i <= 4; i++ {
@@ -876,6 +879,7 @@ func TestAddMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
@@ -981,6 +985,7 @@ func TestRemoveMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
 	_, err := s.RemoveMember(context.Background(), 1234)
@@ -1030,6 +1035,7 @@ func TestUpdateMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}

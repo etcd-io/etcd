@@ -72,9 +72,28 @@ func (s *membershipBackend) MustDeleteMemberFromBackend(id types.ID) {
 
 	tx := s.be.BatchTx()
 	tx.LockInsideApply()
-	defer tx.Unlock()
 	tx.UnsafeDelete(Members, mkey)
 	tx.UnsafePut(MembersRemoved, mkey, []byte("removed"))
+	tx.Unlock()
+
+	// We need to forcibly commit the transaction, otherwise etcd might
+	// run into a situation that it haven't finished committing the data
+	// into backend storage (note: etcd periodically commits the bbolt
+	// transactions instead of on each request) when it receives next
+	// confChange request. Accordingly, etcd may still reads the stale
+	// data from bbolt when processing next confChange request. So it
+	// breaks linearizability.
+	//
+	// Note we don't need to forcibly commit the transaction for other
+	// kinds of request (e.g. normal key/value operations, member add
+	// or update requests), because there is a buffer on top of the bbolt.
+	// Each time when etcd reads data from backend storage, it will read
+	// data from both bbolt and the buffer. But there is no such a buffer
+	// for member delete requests.
+	//
+	// Please also refer to
+	// https://github.com/etcd-io/etcd/pull/17119#issuecomment-1857547158
+	s.be.ForceCommit()
 }
 
 func (s *membershipBackend) MustReadMembersFromBackend() (map[types.ID]*membership.Member, map[types.ID]bool) {
