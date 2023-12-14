@@ -298,8 +298,10 @@ type EtcdServer struct {
 func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	b, err := bootstrap(cfg)
 	if err != nil {
+		cfg.Logger.Error("bootstrap failed", zap.Error(err))
 		return nil, err
 	}
+	cfg.Logger.Info("bootstrap successfully")
 
 	defer func() {
 		if err != nil {
@@ -1975,7 +1977,9 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
+	lg := s.Logger()
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+		lg.Error("Validation on configuration change failed", zap.Bool("shouldApplyV3", bool(shouldApplyV3)), zap.Error(err))
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 
@@ -1988,7 +1992,6 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		return false, err
 	}
 
-	lg := s.Logger()
 	*confState = *s.r.ApplyConfChange(cc)
 	s.beHooks.SetConfState(confState)
 	switch cc.Type {
