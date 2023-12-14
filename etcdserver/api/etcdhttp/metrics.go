@@ -17,9 +17,11 @@ package etcdhttp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"go.etcd.io/etcd/auth"
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/raft"
@@ -36,7 +38,30 @@ const (
 // HandleMetricsHealth registers metrics and health handlers.
 func HandleMetricsHealth(mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathMetrics, promhttp.Handler())
-	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet) Health { return checkHealth(srv, excludedAlarms) }))
+	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
+		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
+			return h
+		}
+		if h := checkLeader(srv, serializable); h.Health != "true" {
+			return h
+		}
+		return checkV2API(srv)
+	}))
+}
+
+// HandleMetricsHealthForV3 registers metrics and health handlers. it checks health by using v3 range request
+// and its corresponding timeout.
+func HandleMetricsHealthForV3(mux *http.ServeMux, srv *etcdserver.EtcdServer) {
+	mux.Handle(PathMetrics, promhttp.Handler())
+	mux.Handle(PathHealth, NewHealthHandler(func(excludedAlarms AlarmSet, serializable bool) Health {
+		if h := checkAlarms(srv, excludedAlarms); h.Health != "true" {
+			return h
+		}
+		if h := checkLeader(srv, serializable); h.Health != "true" {
+			return h
+		}
+		return checkV3API(srv, serializable)
+	}))
 }
 
 // HandlePrometheus registers prometheus handler on '/metrics'.
@@ -45,7 +70,7 @@ func HandlePrometheus(mux *http.ServeMux) {
 }
 
 // NewHealthHandler handles '/health' requests.
-func NewHealthHandler(hfunc func(excludedAlarms AlarmSet) Health) http.HandlerFunc {
+func NewHealthHandler(hfunc func(excludedAlarms AlarmSet, serializable bool) Health) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
@@ -54,7 +79,19 @@ func NewHealthHandler(hfunc func(excludedAlarms AlarmSet) Health) http.HandlerFu
 			return
 		}
 		excludedAlarms := getExcludedAlarms(r)
-		h := hfunc(excludedAlarms)
+		// Passing the query parameter "serializable=true" ensures that the
+		// health of the local etcd is checked vs the health of the cluster.
+		// This is useful for probes attempting to validate the liveness of
+		// the etcd process vs readiness of the cluster to serve requests.
+		serializableFlag := getSerializableFlag(r)
+		h := hfunc(excludedAlarms, serializableFlag)
+		defer func() {
+			if h.Health == "true" {
+				healthSuccess.Inc()
+			} else {
+				healthFailed.Inc()
+			}
+		}()
 		d, _ := json.Marshal(h)
 		if h.Health != "true" {
 			http.Error(w, string(d), http.StatusServiceUnavailable)
@@ -62,6 +99,7 @@ func NewHealthHandler(hfunc func(excludedAlarms AlarmSet) Health) http.HandlerFu
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write(d)
+		plog.Debugf("/health OK (status code %d)", http.StatusOK)
 	}
 }
 
@@ -89,6 +127,7 @@ func init() {
 // TODO: remove manual parsing in etcdctl cluster-health
 type Health struct {
 	Health string `json:"health"`
+	Reason string `json:"-"`
 }
 
 type AlarmSet map[string]struct{}
@@ -107,11 +146,14 @@ func getExcludedAlarms(r *http.Request) (alarms AlarmSet) {
 	return alarms
 }
 
-// TODO: server NOSPACE, etcdserver.ErrNoLeader in health API
+func getSerializableFlag(r *http.Request) bool {
+	return r.URL.Query().Get("serializable") == "true"
+}
 
-func checkHealth(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
+// TODO: etcdserver.ErrNoLeader in health API
+
+func checkAlarms(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
 	h := Health{Health: "true"}
-
 	as := srv.Alarms()
 	if len(as) > 0 {
 		for _, v := range as {
@@ -120,34 +162,58 @@ func checkHealth(srv etcdserver.ServerV2, excludedAlarms AlarmSet) Health {
 				plog.Debugf("/health excluded alarm %s", v.String())
 				continue
 			}
+
 			h.Health = "false"
+			switch v.Alarm {
+			case etcdserverpb.AlarmType_NOSPACE:
+				h.Reason = "ALARM NOSPACE"
+			case etcdserverpb.AlarmType_CORRUPT:
+				h.Reason = "ALARM CORRUPT"
+			default:
+				h.Reason = "ALARM UNKNOWN"
+			}
 			plog.Warningf("/health error due to %s", v.String())
 			return h
 		}
 	}
 
-	if h.Health == "true" {
-		if uint64(srv.Leader()) == raft.None {
-			h.Health = "false"
-			plog.Warningf("/health error; no leader (status code %d)", http.StatusServiceUnavailable)
-		}
-	}
+	return h
+}
 
-	if h.Health == "true" {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
-		cancel()
-		if err != nil {
-			h.Health = "false"
-			plog.Warningf("/health error; QGET failed %v (status code %d)", err, http.StatusServiceUnavailable)
-		}
+func checkLeader(srv etcdserver.ServerV2, serializable bool) Health {
+	h := Health{Health: "true"}
+	if !serializable && (uint64(srv.Leader()) == raft.None) {
+		h.Health = "false"
+		h.Reason = "RAFT NO LEADER"
+		plog.Warningf("/health error; no leader (status code %d)", http.StatusServiceUnavailable)
 	}
+	return h
+}
 
-	if h.Health == "true" {
-		healthSuccess.Inc()
-		plog.Debugf("/health OK (status code %d)", http.StatusOK)
-	} else {
-		healthFailed.Inc()
+func checkV2API(srv etcdserver.ServerV2) Health {
+	h := Health{Health: "true"}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	_, err := srv.Do(ctx, etcdserverpb.Request{Method: "QGET"})
+	cancel()
+	if err != nil {
+		h.Health = "false"
+		h.Reason = fmt.Sprintf("QGET ERROR:%s", err)
+		plog.Warningf("/health error; QGET failed %v (status code %d)", err, http.StatusServiceUnavailable)
+		return h
+	}
+	return h
+}
+
+func checkV3API(srv *etcdserver.EtcdServer, serializable bool) Health {
+	h := Health{Health: "true"}
+	ctx, cancel := context.WithTimeout(context.Background(), srv.Cfg.ReqTimeout())
+	_, err := srv.Range(ctx, &etcdserverpb.RangeRequest{KeysOnly: true, Limit: 1, Serializable: serializable})
+	cancel()
+	if err != nil && err != auth.ErrUserEmpty && err != auth.ErrPermissionDenied {
+		h.Health = "false"
+		h.Reason = fmt.Sprintf("RANGE ERROR:%s", err)
+		plog.Warningf("serving /health false; Range failed %v (status code %d)", err, http.StatusServiceUnavailable)
+		return h
 	}
 	return h
 }
