@@ -79,13 +79,10 @@ func (logOb *LogObserver) ExpectFunc(ctx context.Context, filter func(string) bo
 			}
 
 			if len(res) >= count {
-				break
+				return res, nil
 			}
 		}
 
-		if len(res) >= count {
-			return res, nil
-		}
 		time.Sleep(10 * time.Millisecond)
 	}
 }
