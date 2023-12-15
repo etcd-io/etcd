@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
+
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
@@ -204,4 +206,63 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestRangeAfterDeleteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	tx.Commit()
+
+	checkTxnResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+
+	tx.Lock()
+	tx.UnsafeDelete(schema.Test, []byte("foo"))
+	tx.Unlock()
+
+	checkTxnResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+}
+
+func TestRangeAfterCommitMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.Unlock()
+
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	tx.Commit()
+
+	checkTxnResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), []byte("foo3"), 1)
+
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("foo2"), []byte("bar2"))
+	tx.Unlock()
+
+	checkTxnResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), []byte("foo3"), 1)
+}
+
+func checkTxnResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, key, endKey []byte, limit int64) {
+	tx.Lock()
+	ks1, _ := tx.UnsafeRange(schema.Test, key, endKey, limit)
+	tx.Unlock()
+
+	rtx.RLock()
+	ks2, _ := rtx.UnsafeRange(schema.Test, key, endKey, limit)
+	rtx.RUnlock()
+
+	if diff := cmp.Diff(ks1, ks2); diff != "" {
+		t.Errorf("keys on read and batch transaction doesn't match, diff: %s", diff)
+	}
 }
