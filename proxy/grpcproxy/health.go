@@ -26,7 +26,7 @@ import (
 
 // HandleHealth registers health handler on '/health'.
 func HandleHealth(mux *http.ServeMux, c *clientv3.Client) {
-	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(func(excludedAlarms etcdhttp.AlarmSet) etcdhttp.Health { return checkHealth(c) }))
+	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(func(excludedAlarms etcdhttp.AlarmSet, serializable bool) etcdhttp.Health { return checkHealth(c) }))
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {

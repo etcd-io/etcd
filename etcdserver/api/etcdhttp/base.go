@@ -51,7 +51,6 @@ func HandleBasic(mux *http.ServeMux, server etcdserver.ServerPeer) {
 	// TODO: deprecate '/config/local/log' in v3.5
 	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
 
-	HandleMetricsHealth(mux, server)
 	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 }
 
