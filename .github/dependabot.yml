@@ -19,3 +19,8 @@ updates:
       interval: weekly
     allow:
       - dependency-type: all
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
