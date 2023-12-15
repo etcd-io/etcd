@@ -15,10 +15,13 @@
 package backend
 
 import (
+	"fmt"
 	"math"
 	"sync"
 
+	"github.com/google/go-cmp/cmp"
 	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 // IsSafeRangeBucket is a hack to avoid inadvertently reading duplicate keys;
@@ -52,6 +55,32 @@ type baseReadTx struct {
 }
 
 func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
+	visited := false
+	var err error
+	verify.Verify(func() {
+		// Using map as there is no guarantee about order of UnsafeForEach (at least looking at implementation of buffer)
+		kvsFromRead := map[string]string{}
+		err = baseReadTx.unsafeForEach(bucket, func(k, v []byte) error {
+			kvsFromRead[string(k)] = string(v)
+			return visitor(k, v)
+		})
+		visited = true
+		kvsFromBbolt := map[string]string{}
+		unsafeForEach(baseReadTx.tx, bucket, func(k, v []byte) error {
+			kvsFromBbolt[string(k)] = string(v)
+			return nil
+		})
+		if diff := cmp.Diff(kvsFromBbolt, kvsFromRead); diff != "" {
+			panic(fmt.Sprintf("bucket %s kvs mismatch\nbbolt: %v\nreadbuf: %v\ndiff: %s", bucket.String(), kvsFromBbolt, kvsFromRead, diff))
+		}
+	})
+	if !visited {
+		err = baseReadTx.unsafeForEach(bucket, visitor)
+	}
+	return err
+}
+
+func (baseReadTx *baseReadTx) unsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error {
 	dups := make(map[string]struct{})
 	getDups := func(k, v []byte) error {
 		dups[string(k)] = struct{}{}
@@ -76,6 +105,32 @@ func (baseReadTx *baseReadTx) UnsafeForEach(bucket Bucket, visitor func(k, v []b
 }
 
 func (baseReadTx *baseReadTx) UnsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
+	keys, values := baseReadTx.unsafeRange(bucketType, key, endKey, limit)
+	verify.Verify(func() {
+		type KV struct {
+			Key   string
+			Value string
+		}
+		kvsFromRead := []KV{}
+		for i := range keys {
+			kvsFromRead = append(kvsFromRead, KV{string(keys[i]), string(values[i])})
+		}
+		bucket := baseReadTx.tx.Bucket(bucketType.Name())
+		kvsFromBbolt := []KV{}
+		if bucket != nil {
+			bboltKeys, bboltValues := unsafeRange(bucket.Cursor(), key, endKey, limit)
+			for i := range bboltKeys {
+				kvsFromBbolt = append(kvsFromBbolt, KV{string(bboltKeys[i]), string(bboltValues[i])})
+			}
+		}
+		if diff := cmp.Diff(kvsFromBbolt, kvsFromRead); diff != "" {
+			panic(fmt.Sprintf("bucket %s kvs mismatch\nbbolt: %v\nreadbuf: %v\ndiff: %s", bucketType.String(), kvsFromBbolt, kvsFromRead, diff))
+		}
+	})
+	return keys, values
+}
+
+func (baseReadTx *baseReadTx) unsafeRange(bucketType Bucket, key, endKey []byte, limit int64) ([][]byte, [][]byte) {
 	if endKey == nil {
 		// forbid duplicates for single keys
 		limit = 1

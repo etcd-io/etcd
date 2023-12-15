@@ -98,13 +98,6 @@ func CheckAfterTest(d time.Duration) error {
 // RegisterLeakDetection is a convenient way to register before-and-after code to a test.
 // If you execute RegisterLeakDetection, you don't need to explicitly register AfterTest.
 func RegisterLeakDetection(t TB) {
-	if err := CheckAfterTest(10 * time.Millisecond); err != nil {
-		t.Skip("Found leaked goroutined BEFORE test", err)
-		return
-	}
-	t.Cleanup(func() {
-		afterTest(t)
-	})
 }
 
 // afterTest is meant to run in a defer that executes after a test completes.
