@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"os"
@@ -47,6 +48,56 @@ func TestStartEtcdWrongToken(t *testing.T) {
 
 	_, err := StartEtcd(cfg)
 	require.ErrorIsf(t, err, auth.ErrInvalidAuthOpts, "expected %v, got %v", auth.ErrInvalidAuthOpts, err)
+}
+
+func TestStartEtcdCustomTLSConfig(t *testing.T) {
+	tdir := t.TempDir()
+
+	caSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	caCert, caPrivateKey := generateCACert(t, caSubject)
+
+	serverSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	// Similar to function in integration/embed/embed_test.go for setting up Config.
+	urls := newEmbedURLs(2)
+	curls := []url.URL{urls[0]}
+	purls := []url.URL{urls[1]}
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
+	cfg.InitialCluster = ""
+	for i := range purls {
+		cfg.InitialCluster += ",default=" + purls[i].String()
+	}
+	cfg.InitialCluster = cfg.InitialCluster[1:]
+	cfg.Dir = tdir
+
+	e, err := StartEtcd(cfg)
+	if err != nil {
+		t.Fatalf("error %v", err)
+	}
+	e.Close()
 }
 
 func newEmbedURLs(n int) (urls []url.URL) {

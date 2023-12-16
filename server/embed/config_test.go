@@ -15,10 +15,17 @@
 package embed
 
 import (
+	"bytes"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
+	"math/big"
 	"net"
 	"net/url"
 	"os"
@@ -783,4 +790,170 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 	})); diff != "" {
 		t.Errorf("Diff: %s", diff)
 	}
+}
+
+type CertificateSubject struct {
+	Organization  []string
+	Country       []string
+	Province      []string
+	Locality      []string
+	StreetAddress []string
+	PostalCode    []string
+}
+
+func generateCACert(t *testing.T, subject *CertificateSubject) (*x509.Certificate, *rsa.PrivateKey) {
+	caCert := &x509.Certificate{
+		IsCA:         true,
+		SerialNumber: big.NewInt(2023),
+		Subject: pkix.Name{
+			Organization:  subject.Organization,
+			Country:       subject.Country,
+			Province:      subject.Province,
+			Locality:      subject.Locality,
+			StreetAddress: subject.StreetAddress,
+			PostalCode:    subject.PostalCode,
+		},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(0, 0, 1),
+		BasicConstraintsValid: true,
+	}
+
+	caPrivateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	require.NoError(t, err)
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, caCert, caCert, &caPrivateKey.PublicKey, caPrivateKey)
+	require.NoError(t, err)
+
+	caPEM := new(bytes.Buffer)
+	pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	caPrivateKeyPEM := new(bytes.Buffer)
+	pem.Encode(caPrivateKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivateKey),
+	})
+
+	return caCert, caPrivateKey
+}
+
+func generateHostCertificateFromCA(t *testing.T, caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject *CertificateSubject) tls.Certificate {
+	tlsCertSpecification := &x509.Certificate{
+		IsCA:         false,
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization:  subject.Organization,
+			Country:       subject.Country,
+			Province:      subject.Province,
+			Locality:      subject.Locality,
+			StreetAddress: subject.StreetAddress,
+			PostalCode:    subject.PostalCode,
+		},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		IPAddresses:  []net.IP{net.IPv4(127, 0, 0, 1)},
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+	}
+
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	require.NoError(t, err)
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, tlsCertSpecification, caCert, &certPrivKey.PublicKey, caPrivateKey)
+	require.NoError(t, err)
+
+	certPEM := new(bytes.Buffer)
+	pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	certPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(certPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
+	})
+
+	serverCert, err := tls.X509KeyPair(certPEM.Bytes(), certPrivKeyPEM.Bytes())
+	require.NoError(t, err)
+
+	return serverCert
+}
+
+func TestUpdateCipherSuiteWithTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	caSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	caCert, caPrivateKey := generateCACert(t, caSubject)
+
+	serverSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	err := updateCipherSuites(tlsConfig, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
+	if assert.Error(t, err) {
+		assert.Equal(t, fmt.Errorf("tlsConfig.CipherSuites should not be updated, the default is already secure"), err)
+	}
+}
+
+func TestMinMaxVersion(t *testing.T) {
+	t.Parallel()
+
+	caSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	caCert, caPrivateKey := generateCACert(t, caSubject)
+
+	serverSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	expMinVersion := uint16(0x303)
+	expMaxVersion := uint16(0x304)
+	updateMinMaxVersions(tlsConfig, "TLS1.2", "TLS1.3")
+	assert.Equal(t, expMinVersion, tlsConfig.MinVersion)
+	assert.Equal(t, expMaxVersion, tlsConfig.MaxVersion)
 }
