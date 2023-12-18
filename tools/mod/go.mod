@@ -206,7 +206,7 @@ require (
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.2.0 // indirect
 	github.com/ykadowak/zerologlint v0.1.3 // indirect
-	github.com/yuin/gopher-lua v1.1.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/zmap/zcrypto v0.0.0-20220402174210-599ec18ecbac // indirect
 	github.com/zmap/zlint/v3 v3.4.1 // indirect
 	gitlab.com/bosi/decorder v0.4.1 // indirect
