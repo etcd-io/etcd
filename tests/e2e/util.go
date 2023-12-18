@@ -15,13 +15,20 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
+	"testing"
 	"time"
 
+	"go.etcd.io/bbolt"
+	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/expect"
+	"go.etcd.io/etcd/pkg/testutil"
 )
 
 func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
@@ -107,4 +114,61 @@ func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 
 func toTLS(s string) string {
 	return strings.Replace(s, "http://", "https://", 1)
+}
+
+func executeUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
+
+	select {
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
+	case <-donec:
+	}
+}
+
+func corruptBBolt(fpath string) error {
+	db, derr := bbolt.Open(fpath, os.ModePerm, &bbolt.Options{})
+	if derr != nil {
+		return derr
+	}
+	defer db.Close()
+
+	return db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket([]byte("key"))
+		if b == nil {
+			return errors.New("got nil bucket for 'key'")
+		}
+		keys, vals := [][]byte{}, [][]byte{}
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			keys = append(keys, k)
+			var kv mvccpb.KeyValue
+			if uerr := kv.Unmarshal(v); uerr != nil {
+				return uerr
+			}
+			kv.Key[0]++
+			kv.Value[0]++
+			v2, v2err := kv.Marshal()
+			if v2err != nil {
+				return v2err
+			}
+			vals = append(vals, v2)
+		}
+		for i := range keys {
+			if perr := b.Put(keys[i], vals[i]); perr != nil {
+				return perr
+			}
+		}
+		return nil
+	})
 }
