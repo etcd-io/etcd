@@ -6,6 +6,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 - [Disable following HTTP redirects in peer communication](https://github.com/etcd-io/etcd/pull/17112)
+- [Add livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17128)
 
 ### Dependencies
 - Compile binaries using go [1.20.12](https://github.com/etcd-io/etcd/pull/17076).
