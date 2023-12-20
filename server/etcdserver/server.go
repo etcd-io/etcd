@@ -393,7 +393,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 
 	defer func() {
-		if err != nil {
+		if be != nil && err != nil {
 			be.Close()
 		}
 	}()
