@@ -51,7 +51,7 @@ type triggerBlackhole struct {
 }
 
 func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
-	return blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
+	return Blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
@@ -61,7 +61,7 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
 }
 
-func blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
+func Blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
 	proxy := member.PeerProxy()
 
 	// Blackholing will cause peers to not be able to use streamWriters registered with member

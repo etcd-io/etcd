@@ -53,6 +53,7 @@ var (
 	RaftAfterWALReleasePanic                 Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftBeforeSaveSnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	RaftAfterSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	ApplyBeforeOpenSnapshot                  Failpoint = goPanicFailpoint{"applyBeforeOpenSnapshot", triggerBlackhole{waitTillSnapshot: true}, Follower}
 	BeforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
 	RaftBeforeSaveSleep                      Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
 	RaftAfterSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}

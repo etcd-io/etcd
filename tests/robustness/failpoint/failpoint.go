@@ -50,6 +50,7 @@ var (
 		DropPeerNetwork,
 		RaftBeforeSaveSleep,
 		RaftAfterSaveSleep,
+		ApplyBeforeOpenSnapshot,
 	}
 )
 
