@@ -155,7 +155,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 		} else {
 			choices := t.writeChoices
 			if !nonUniqueWriteLimiter.Take() {
-				choices = filterOutNonUniqueKuberntesWrites(t.writeChoices)
+				choices = filterOutNonUniqueKubernetesWrites(t.writeChoices)
 			}
 			op := pickRandom(choices)
 			switch op {
@@ -178,7 +178,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	return nil
 }
 
-func filterOutNonUniqueKuberntesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
+func filterOutNonUniqueKubernetesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
 	for _, choice := range choices {
 		if choice.choice != KubernetesDelete {
 			resp = append(resp, choice)
