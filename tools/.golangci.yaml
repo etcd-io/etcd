@@ -83,9 +83,10 @@ linters-settings: # please keep this alphabetized
       - name: context-keys-type
         severity: error
         disabled: false
-      # TODO: enable the following rules
       - name: error-strings
-        disabled: true
+        severity: error
+        disabled: false
+      # TODO: enable the following rules
       - name: var-naming
         disabled: true
       - name: exported
