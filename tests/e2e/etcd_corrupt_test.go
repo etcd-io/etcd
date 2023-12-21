@@ -147,7 +147,7 @@ func TestInPlaceRecovery(t *testing.T) {
 		corruptCheckTime: time.Second,
 		basePort:         basePort,
 	}
-	epcOld, err := newEtcdProcessCluster(&cfgOld)
+	epcOld, err := newEtcdProcessCluster(t, &cfgOld)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

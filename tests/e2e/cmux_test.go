@@ -71,7 +71,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 				clientHttpSeparate: tc.separateHttpPort,
 				stopSignal:         syscall.SIGTERM, // check graceful stop
 			}
-			clus, err := newEtcdProcessCluster(&cfg)
+			clus, err := newEtcdProcessCluster(t, &cfg)
 			require.NoError(t, err)
 
 			defer func() {

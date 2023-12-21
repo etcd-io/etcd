@@ -86,7 +86,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		tc := tc
 		tc.config.WatchProcessNotifyInterval = watchResponsePeriod
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(&tc.config)
+			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
@@ -106,7 +106,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 	defer testutil.AfterTest(t)
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(&tc.config)
+			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
@@ -138,7 +138,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 	defer testutil.AfterTest(t)
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(&tc.config)
+			clus, err := newEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)

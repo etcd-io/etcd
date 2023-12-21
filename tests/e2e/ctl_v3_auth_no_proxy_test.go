@@ -58,7 +58,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 		initialToken:          "new",
 	}
 
-	epc, err := newEtcdProcessCluster(&cx.cfg)
+	epc, err := newEtcdProcessCluster(t, &cx.cfg)
 	if err != nil {
 		t.Fatalf("Failed to start etcd cluster: %v", err)
 	}

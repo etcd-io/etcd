@@ -53,6 +53,15 @@ func (ctl *Etcdctl) Put(key, value string) error {
 	return spawnWithExpect(args, "OK")
 }
 
+func (ctl *Etcdctl) PutWithAuth(key, value, username, password string) error {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	args := ctl.cmdArgs()
+	args = append(args, "--user", fmt.Sprintf("%s:%s", username, password), "put", key, value)
+	return spawnWithExpect(args, "OK")
+}
+
 func (ctl *Etcdctl) Set(key, value string) error {
 	if !ctl.v2 {
 		panic("Unsupported method for v3")
@@ -60,6 +69,32 @@ func (ctl *Etcdctl) Set(key, value string) error {
 	args := ctl.cmdArgs()
 	args = append(args, "set", key, value)
 	return spawnWithExpect(args, value)
+}
+
+func (ctl *Etcdctl) AuthEnable() error {
+	args := ctl.cmdArgs("auth", "enable")
+	return spawnWithExpect(args, "Authentication Enabled")
+}
+
+func (ctl *Etcdctl) UserGrantRole(user string, role string) (*clientv3.AuthUserGrantRoleResponse, error) {
+	var resp clientv3.AuthUserGrantRoleResponse
+	err := ctl.spawnJsonCmd(&resp, "", "user", "grant-role", user, role)
+	return &resp, err
+}
+
+func (ctl *Etcdctl) UserAdd(name, password string) (*clientv3.AuthUserAddResponse, error) {
+	args := []string{"user", "add"}
+	if password == "" {
+		args = append(args, name)
+		args = append(args, "--no-password")
+	} else {
+		args = append(args, fmt.Sprintf("%s:%s", name, password))
+	}
+	args = append(args, "--interactive=false")
+
+	var resp clientv3.AuthUserAddResponse
+	err := ctl.spawnJsonCmd(&resp, "", args...)
+	return &resp, err
 }
 
 func (ctl *Etcdctl) AlarmList() (*clientv3.AlarmResponse, error) {

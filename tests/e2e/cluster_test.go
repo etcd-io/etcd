@@ -20,9 +20,12 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"go.etcd.io/etcd/etcdserver"
+	"go.etcd.io/etcd/pkg/proxy"
+	"go.uber.org/zap"
 )
 
 const etcdProcessBasePort = 20000
@@ -97,10 +100,12 @@ type etcdProcessCluster struct {
 }
 
 type etcdProcessClusterConfig struct {
-	execPath    string
-	dataDirPath string
-	keepDataDir bool
-	envVars     map[string]string
+	execPath      string
+	dataDirPath   string
+	keepDataDir   bool
+	goFailEnabled bool
+	peerProxy     bool
+	envVars       map[string]string
 
 	clusterSize int
 
@@ -141,13 +146,13 @@ type etcdProcessClusterConfig struct {
 
 // newEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new etcdProcessCluster once all nodes are ready to accept client requests.
-func newEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
+func newEtcdProcessCluster(t testing.TB, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	epc, err := initEtcdProcessCluster(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return startEtcdProcessCluster(epc, cfg)
+	return startEtcdProcessCluster(t, epc, cfg)
 }
 
 // `initEtcdProcessCluster` initializes a new cluster based on the given config.
@@ -174,7 +179,7 @@ func initEtcdProcessCluster(cfg *etcdProcessClusterConfig) (*etcdProcessCluster,
 }
 
 // `startEtcdProcessCluster` launches a new cluster from etcd processes.
-func startEtcdProcessCluster(epc *etcdProcessCluster, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
+func startEtcdProcessCluster(t testing.TB, epc *etcdProcessCluster, cfg *etcdProcessClusterConfig) (*etcdProcessCluster, error) {
 	if err := epc.Start(); err != nil {
 		return nil, err
 	}
@@ -183,6 +188,12 @@ func startEtcdProcessCluster(epc *etcdProcessCluster, cfg *etcdProcessClusterCon
 	if cfg.stopSignal != nil {
 		for _, proc := range epc.procs {
 			proc.WithStopSignal(cfg.stopSignal)
+		}
+	}
+	for _, proc := range epc.procs {
+		if cfg.goFailEnabled && !proc.Failpoints().Enabled() {
+			epc.Close()
+			t.Skip("please run test with 'FAILPOINTS=true'")
 		}
 	}
 	return epc, nil
@@ -223,6 +234,8 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		var curls []string
 		var curl string
 		port := cfg.basePort + 5*i
+		peerPort := port + 1
+		peer2Port := port + 3
 		clientPort := port
 		clientHttpPort := port + 4
 
@@ -235,6 +248,20 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 		}
 
 		purl := url.URL{Scheme: cfg.peerScheme(), Host: fmt.Sprintf("localhost:%d", port+1)}
+		peerAdvertiseUrl := url.URL{Scheme: cfg.peerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+		var proxyCfg *proxy.ServerConfig
+		if cfg.peerProxy {
+			if !cfg.isPeerTLS {
+				panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
+			}
+			peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
+			proxyCfg = &proxy.ServerConfig{
+				Logger: zap.NewNop(),
+				To:     purl,
+				From:   peerAdvertiseUrl,
+			}
+		}
+
 		name := fmt.Sprintf("testname%d", i)
 		dataDirPath := cfg.dataDirPath
 		if cfg.dataDirPath == "" {
@@ -244,14 +271,14 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 				panic(fmt.Sprintf("could not get tempdir for datadir: %s", derr))
 			}
 		}
-		initialCluster[i] = fmt.Sprintf("%s=%s", name, purl.String())
+		initialCluster[i] = fmt.Sprintf("%s=%s", name, peerAdvertiseUrl.String())
 
 		args := []string{
 			"--name", name,
 			"--listen-client-urls", strings.Join(curls, ","),
 			"--advertise-client-urls", strings.Join(curls, ","),
 			"--listen-peer-urls", purl.String(),
-			"--initial-advertise-peer-urls", purl.String(),
+			"--initial-advertise-peer-urls", peerAdvertiseUrl.String(),
 			"--initial-cluster-token", cfg.initialToken,
 			"--data-dir", dataDirPath,
 			"--snapshot-count", fmt.Sprintf("%d", cfg.snapshotCount),
@@ -309,19 +336,31 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 			args = append(args, "--debug")
 		}
 
+		envVars := map[string]string{}
+		for key, value := range cfg.envVars {
+			envVars[key] = value
+		}
+		var gofailPort int
+		if cfg.goFailEnabled {
+			gofailPort = (i+1)*10000 + 2381
+			envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
+		}
+
 		etcdCfgs[i] = &etcdServerProcessConfig{
 			execPath:      cfg.execPath,
 			args:          args,
-			envVars:       cfg.envVars,
+			envVars:       envVars,
 			tlsArgs:       cfg.tlsArgs(),
 			dataDirPath:   dataDirPath,
 			keepDataDir:   cfg.keepDataDir,
 			name:          name,
-			purl:          purl,
+			purl:          peerAdvertiseUrl,
 			acurl:         curl,
 			murl:          murl,
 			initialToken:  cfg.initialToken,
 			clientHttpUrl: clientHttpUrl,
+			goFailPort:    gofailPort,
+			proxy:         proxyCfg,
 		}
 	}
 

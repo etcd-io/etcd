@@ -15,12 +15,20 @@
 package e2e
 
 import (
+	"bytes"
+	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
+	"strings"
+	"time"
 
 	"go.etcd.io/etcd/pkg/expect"
 	"go.etcd.io/etcd/pkg/fileutil"
+	"go.etcd.io/etcd/pkg/proxy"
 )
 
 var (
@@ -45,6 +53,9 @@ type etcdProcess interface {
 	Config() *etcdServerProcessConfig
 
 	Logs() logsExpect
+	PeerProxy() proxy.Server
+	Failpoints() *BinaryFailpoints
+	IsRunning() bool
 }
 
 type logsExpect interface {
@@ -52,9 +63,11 @@ type logsExpect interface {
 }
 
 type etcdServerProcess struct {
-	cfg   *etcdServerProcessConfig
-	proc  *expect.ExpectProcess
-	donec chan struct{} // closed when Interact() terminates
+	cfg        *etcdServerProcessConfig
+	proc       *expect.ExpectProcess
+	proxy      proxy.Server
+	failpoints *BinaryFailpoints
+	donec      chan struct{} // closed when Interact() terminates
 }
 
 type etcdServerProcessConfig struct {
@@ -76,6 +89,9 @@ type etcdServerProcessConfig struct {
 
 	initialToken   string
 	initialCluster string
+
+	proxy      *proxy.ServerConfig
+	goFailPort int
 }
 
 func newEtcdServerProcess(cfg *etcdServerProcessConfig) (*etcdServerProcess, error) {
@@ -87,7 +103,11 @@ func newEtcdServerProcess(cfg *etcdServerProcessConfig) (*etcdServerProcess, err
 			return nil, err
 		}
 	}
-	return &etcdServerProcess{cfg: cfg, donec: make(chan struct{})}, nil
+	ep := &etcdServerProcess{cfg: cfg, donec: make(chan struct{})}
+	if cfg.goFailPort != 0 {
+		ep.failpoints = &BinaryFailpoints{member: ep}
+	}
+	return ep, nil
 }
 
 func (ep *etcdServerProcess) EndpointsV2() []string   { return ep.EndpointsHTTP() }
@@ -104,6 +124,14 @@ func (ep *etcdServerProcess) EndpointsMetrics() []string { return []string{ep.cf
 func (ep *etcdServerProcess) Start() error {
 	if ep.proc != nil {
 		panic("already started")
+	}
+	if ep.cfg.proxy != nil && ep.proxy == nil {
+		ep.proxy = proxy.NewServer(*ep.cfg.proxy)
+		select {
+		case <-ep.proxy.Ready():
+		case err := <-ep.proxy.Error():
+			return err
+		}
 	}
 	proc, err := spawnCmdWithEnv(append([]string{ep.cfg.execPath}, ep.cfg.args...), ep.cfg.envVars)
 	if err != nil {
@@ -138,6 +166,13 @@ func (ep *etcdServerProcess) Stop() (err error) {
 			return err
 		}
 	}
+	if ep.proxy != nil {
+		err = ep.proxy.Close()
+		ep.proxy = nil
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -166,4 +201,152 @@ func (ep *etcdServerProcess) Logs() logsExpect {
 		panic("please grab logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func (ep *etcdServerProcess) PeerProxy() proxy.Server {
+	return ep.proxy
+}
+
+func (ep *etcdServerProcess) Failpoints() *BinaryFailpoints {
+	return ep.failpoints
+}
+
+func (ep *etcdServerProcess) IsRunning() bool {
+	if ep.proc == nil {
+		return false
+	}
+
+	if ep.proc.IsRunning() {
+		return true
+	}
+	ep.proc = nil
+	return false
+}
+
+type BinaryFailpoints struct {
+	member         etcdProcess
+	availableCache map[string]string
+}
+
+func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
+	if f.member.IsRunning() {
+		return errors.New("cannot setup environment variable while process is running")
+	}
+	f.member.Config().envVars["GOFAIL_FAILPOINTS"] = fmt.Sprintf("%s=%s", failpoint, payload)
+	return nil
+}
+
+func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload string) error {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().goFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string) error {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().goFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointUrl.String(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
+}
+
+var httpClient = http.Client{
+	Timeout: 1 * time.Second,
+}
+
+func (f *BinaryFailpoints) Enabled() bool {
+	_, err := failpoints(f.member)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (f *BinaryFailpoints) Available(failpoint string) bool {
+	if f.availableCache == nil {
+		fs, err := failpoints(f.member)
+		if err != nil {
+			panic(err)
+		}
+		f.availableCache = fs
+	}
+	_, found := f.availableCache[failpoint]
+	return found
+}
+
+func failpoints(member etcdProcess) (map[string]string, error) {
+	body, err := fetchFailpointsBody(member)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	return parseFailpointsBody(body)
+}
+
+func fetchFailpointsBody(member etcdProcess) (io.ReadCloser, error) {
+	address := fmt.Sprintf("127.0.0.1:%d", member.Config().goFailPort)
+	failpointUrl := url.URL{
+		Scheme: "http",
+		Host:   address,
+	}
+	resp, err := http.Get(failpointUrl.String())
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("invalid status code, %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+func parseFailpointsBody(body io.Reader) (map[string]string, error) {
+	data, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	lines := strings.Split(string(data), "\n")
+	failpoints := map[string]string{}
+	for _, line := range lines {
+		// Format:
+		// failpoint=value
+		parts := strings.SplitN(line, "=", 2)
+		failpoint := parts[0]
+		var value string
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		failpoints[failpoint] = value
+	}
+	return failpoints, nil
 }

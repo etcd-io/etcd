@@ -167,3 +167,7 @@ func (ep *ExpectProcess) Send(command string) error {
 	_, err := io.WriteString(ep.fpty, command)
 	return err
 }
+
+func (ep *ExpectProcess) IsRunning() bool {
+	return ep.cmd != nil
+}
