@@ -341,7 +341,7 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 	be := openBackend(cfg)
 
 	defer func() {
-		if err != nil {
+		if be != nil && err != nil {
 			be.Close()
 		}
 	}()
