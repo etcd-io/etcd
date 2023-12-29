@@ -15,12 +15,17 @@
 package transport
 
 import (
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -571,5 +576,159 @@ func TestSocktOptsEmpty(t *testing.T) {
 		if tt.want != got {
 			t.Errorf("#%d: result of Empty() incorrect: want=%t got=%t", i, tt.want, got)
 		}
+	}
+}
+
+// TestNewListenerWithACRLFile tests when a revocation list is present.
+func TestNewListenerWithACRLFile(t *testing.T) {
+	clientTLSInfo, err := createSelfCertEx(t, "127.0.0.1", x509.ExtKeyUsageClientAuth)
+	if err != nil {
+		t.Fatalf("unable to create client cert: %v", err)
+	}
+
+	loadFileAsPEM := func(fileName string) []byte {
+		loaded, readErr := os.ReadFile(fileName)
+		if readErr != nil {
+			t.Fatalf("unable to read file %q: %v", fileName, readErr)
+		}
+		block, _ := pem.Decode(loaded)
+		return block.Bytes
+	}
+
+	clientCert, err := x509.ParseCertificate(loadFileAsPEM(clientTLSInfo.CertFile))
+	if err != nil {
+		t.Fatalf("unable to parse client cert: %v", err)
+	}
+
+	tests := map[string]struct {
+		expectHandshakeError      bool
+		revokedCertificateEntries []x509.RevocationListEntry
+		revocationListContents    []byte
+	}{
+		"empty revocation list": {
+			expectHandshakeError: false,
+		},
+		"client cert is revoked": {
+			expectHandshakeError: true,
+			revokedCertificateEntries: []x509.RevocationListEntry{
+				{
+					SerialNumber:   clientCert.SerialNumber,
+					RevocationTime: time.Now(),
+				},
+			},
+		},
+		"invalid CRL file content": {
+			expectHandshakeError:   true,
+			revocationListContents: []byte("@invalidcontent"),
+		},
+	}
+
+	for testName, test := range tests {
+		t.Run(testName, func(t *testing.T) {
+			tmpdir := t.TempDir()
+			tlsInfo, err := createSelfCert(t)
+			if err != nil {
+				t.Fatalf("unable to create server cert: %v", err)
+			}
+			tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
+			tlsInfo.CRLFile = filepath.Join(tmpdir, "revoked.r0")
+
+			cert, err := x509.ParseCertificate(loadFileAsPEM(tlsInfo.CertFile))
+			if err != nil {
+				t.Fatalf("unable to decode server cert: %v", err)
+			}
+
+			key, err := x509.ParseECPrivateKey(loadFileAsPEM(tlsInfo.KeyFile))
+			if err != nil {
+				t.Fatalf("unable to parse server key: %v", err)
+			}
+
+			revocationListContents := test.revocationListContents
+			if len(revocationListContents) == 0 {
+				tmpl := &x509.RevocationList{
+					RevokedCertificateEntries: test.revokedCertificateEntries,
+					ThisUpdate:                time.Now(),
+					NextUpdate:                time.Now().Add(time.Hour),
+					Number:                    big.NewInt(1),
+				}
+				revocationListContents, err = x509.CreateRevocationList(rand.Reader, tmpl, cert, key)
+				if err != nil {
+					t.Fatalf("unable to create revocation list: %v", err)
+				}
+			}
+
+			if err = os.WriteFile(tlsInfo.CRLFile, revocationListContents, 0600); err != nil {
+				t.Fatalf("unable to write revocation list: %v", err)
+			}
+
+			chHandshakeFailure := make(chan error, 1)
+			tlsInfo.HandshakeFailure = func(_ *tls.Conn, err error) {
+				if err != nil {
+					chHandshakeFailure <- err
+				}
+			}
+
+			rootCAs := x509.NewCertPool()
+			rootCAs.AddCert(cert)
+
+			clientCert, err := tls.LoadX509KeyPair(clientTLSInfo.CertFile, clientTLSInfo.KeyFile)
+			if err != nil {
+				t.Fatalf("unable to create peer cert: %v", err)
+			}
+
+			ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
+			if err != nil {
+				t.Fatalf("unable to start listener: %v", err)
+			}
+
+			tlsConfig := &tls.Config{}
+			tlsConfig.InsecureSkipVerify = false
+			tlsConfig.Certificates = []tls.Certificate{clientCert}
+			tlsConfig.RootCAs = rootCAs
+
+			tr := &http.Transport{TLSClientConfig: tlsConfig}
+			cli := &http.Client{Transport: tr, Timeout: 5 * time.Second}
+			var wg sync.WaitGroup
+			wg.Add(2)
+			go func() {
+				defer wg.Done()
+				if _, gerr := cli.Get("https://" + ln.Addr().String()); gerr != nil {
+					t.Logf("http GET failed: %v", gerr)
+				}
+			}()
+
+			chAcceptConn := make(chan net.Conn, 1)
+			go func() {
+				defer wg.Done()
+				conn, err := ln.Accept()
+				if err == nil {
+					chAcceptConn <- conn
+				}
+			}()
+
+			timer := time.NewTimer(5 * time.Second)
+			defer func() {
+				if !timer.Stop() {
+					<-timer.C
+				}
+			}()
+
+			select {
+			case err := <-chHandshakeFailure:
+				if !test.expectHandshakeError {
+					t.Errorf("expecting no handshake error, got: %v", err)
+				}
+			case conn := <-chAcceptConn:
+				if test.expectHandshakeError {
+					t.Errorf("expecting handshake error, got nothing")
+				}
+				conn.Close()
+			case <-timer.C:
+				t.Error("timed out waiting for closed connection or handshake error")
+			}
+
+			ln.Close()
+			wg.Wait()
+		})
 	}
 }
