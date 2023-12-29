@@ -218,15 +218,10 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		assert.NoError(t, err, "error on put")
 	}
 
-	members, err := cc.MemberList()
+	_, found, err := getMemberIdByName(context.Background(), cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
-	var memberID uint64
-	for _, m := range members.Members {
-		if m.Name == epc.Procs[0].Config().Name {
-			memberID = m.ID
-		}
-	}
-	assert.NotZero(t, memberID, "member not found")
+	assert.Equal(t, found, true, "member not found")
+
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
 	assert.NoError(t, err)

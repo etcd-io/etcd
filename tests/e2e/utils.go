@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -113,4 +114,30 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 		})
 	}
 	return g.Wait()
+}
+
+func getMemberIdByName(ctx context.Context, c *Etcdctl, name string) (id uint64, found bool, err error) {
+	resp, err := c.MemberList()
+	if err != nil {
+		return 0, false, err
+	}
+	for _, member := range resp.Members {
+		if name == member.Name {
+			return member.ID, true, nil
+		}
+	}
+	return 0, false, nil
+}
+
+// Different implementations here since 3.5 e2e test framework does not have "initial-cluster-state" as a default argument
+// Append new flag if not exist, otherwise replace the value
+func patchArgs(args []string, flag, newValue string) []string {
+	for i, arg := range args {
+		if strings.Contains(arg, flag) {
+			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
+			return args
+		}
+	}
+	args = append(args, fmt.Sprintf("--%s=%s", flag, newValue))
+	return args
 }
