@@ -12,7 +12,7 @@ require (
 	github.com/google/addlicense v1.1.1
 	github.com/google/yamlfmt v0.10.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
-	github.com/mikefarah/yq/v4 v4.40.4
+	github.com/mikefarah/yq/v4 v4.40.5
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.0.0-20231012085229-7c3ed830bbb0
@@ -38,7 +38,7 @@ require (
 	github.com/a8m/envsubst v1.4.2 // indirect
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
 	github.com/alecthomas/go-check-sumtype v0.1.3 // indirect
-	github.com/alecthomas/participle/v2 v2.1.0 // indirect
+	github.com/alecthomas/participle/v2 v2.1.1 // indirect
 	github.com/alexkohler/nakedret/v2 v2.0.2 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
 	github.com/alingse/asasalint v0.0.11 // indirect
@@ -206,7 +206,7 @@ require (
 	github.com/yagipy/maintidx v1.0.0 // indirect
 	github.com/yeya24/promlinter v0.2.0 // indirect
 	github.com/ykadowak/zerologlint v0.1.3 // indirect
-	github.com/yuin/gopher-lua v1.1.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	github.com/zmap/zcrypto v0.0.0-20220402174210-599ec18ecbac // indirect
 	github.com/zmap/zlint/v3 v3.4.1 // indirect
 	gitlab.com/bosi/decorder v0.4.1 // indirect
