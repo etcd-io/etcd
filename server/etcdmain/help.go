@@ -249,6 +249,8 @@ Experimental feature:
     Serve v2 requests through the v3 backend under a given prefix. Deprecated and to be decommissioned in v3.6.
   --experimental-enable-lease-checkpoint 'false'
     ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+  --experimental-enable-lease-checkpoint-persist 'false'
+    Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.
   --experimental-compaction-batch-limit 1000
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'
