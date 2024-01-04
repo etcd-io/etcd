@@ -40,7 +40,7 @@ func TestPurgeFile(t *testing.T) {
 	stop, purgec := make(chan struct{}), make(chan string, 10)
 
 	// keep 3 most recent files
-	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil)
+	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil, false)
 	select {
 	case f := <-purgec:
 		t.Errorf("unexpected purge on %q", f)
@@ -107,7 +107,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	stop, purgec := make(chan struct{}), make(chan string, 10)
-	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil)
+	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil, true)
 
 	for i := 0; i < 5; i++ {
 		select {
