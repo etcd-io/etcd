@@ -40,6 +40,7 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
 
   download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-${file}.zip"
   echo "Running on ${arch}."
+  mkdir -p bin
   wget ${download_url} && unzip -p protoc-3.20.3-linux-${file}.zip bin/protoc > tmpFile && mv tmpFile bin/protoc 
   rm protoc-3.20.3-linux-${file}.zip
   chmod +x bin/protoc
