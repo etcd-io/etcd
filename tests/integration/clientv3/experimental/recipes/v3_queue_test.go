@@ -17,8 +17,10 @@ package recipes_test
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -76,6 +78,27 @@ func TestQueueOneReaderManyWriter(t *testing.T) {
 
 func TestQueueManyReaderManyWriter(t *testing.T) {
 	testQueueNReaderMWriter(t, manyQueueClients, manyQueueClients)
+}
+
+// TestQueueAuthTokenExpired queue should return err on watch failed
+func TestQueueWatchError(t *testing.T) {
+	integration2.BeforeTest(t)
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	etcdc := clus.RandClient()
+	queue := recipe.NewQueue(etcdc, "testq")
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		_, err := queue.Dequeue()
+		if err != recipe.ErrWatchFailed {
+			t.Errorf("expect ErrWatchFailed, got %v", err)
+		}
+		wg.Done()
+	}()
+	time.Sleep(1 * time.Second)
+	// queue.Enqueue("1")
+	clus.Terminate(t)
+	wg.Wait()
 }
 
 // BenchmarkQueue benchmarks Queues using many/many readers/writers
