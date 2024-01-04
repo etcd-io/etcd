@@ -25,18 +25,24 @@ import (
 )
 
 func PurgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}) <-chan error {
-	return purgeFile(lg, dirname, suffix, max, interval, stop, nil, nil)
+	return purgeFile(lg, dirname, suffix, max, interval, stop, nil, nil, true)
 }
 
 func PurgeFileWithDoneNotify(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}) (<-chan struct{}, <-chan error) {
 	doneC := make(chan struct{})
-	errC := purgeFile(lg, dirname, suffix, max, interval, stop, nil, doneC)
+	errC := purgeFile(lg, dirname, suffix, max, interval, stop, nil, doneC, true)
+	return doneC, errC
+}
+
+func PurgeFileWithoutFlock(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}) (<-chan struct{}, <-chan error) {
+	doneC := make(chan struct{})
+	errC := purgeFile(lg, dirname, suffix, max, interval, stop, nil, doneC, false)
 	return doneC, errC
 }
 
 // purgeFile is the internal implementation for PurgeFile which can post purged files to purgec if non-nil.
 // if donec is non-nil, the function closes it to notify its exit.
-func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}, purgec chan<- string, donec chan<- struct{}) <-chan error {
+func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval time.Duration, stop <-chan struct{}, purgec chan<- string, donec chan<- struct{}, flock bool) <-chan error {
 	errC := make(chan error, 1)
 	if lg != nil {
 		lg.Info("started to purge file",
@@ -73,14 +79,17 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 			fnames = newfnames
 			for len(newfnames) > int(max) {
 				f := filepath.Join(dirname, newfnames[0])
-				l, err := TryLockFile(f, os.O_WRONLY, PrivateFileMode)
-				if err != nil {
-					if lg != nil {
-						lg.Warn("failed to lock file", zap.String("path", f), zap.Error(err))
-					} else {
-						plog.Warningf("failed to lock file, path: %s, error: %v", f, err)
+				var l *LockedFile
+				if flock {
+					l, err = TryLockFile(f, os.O_WRONLY, PrivateFileMode)
+					if err != nil {
+						if lg != nil {
+							lg.Warn("failed to lock file", zap.String("path", f), zap.Error(err))
+						} else {
+							plog.Warningf("failed to lock file, path: %s, error: %v", f, err)
+						}
+						break
 					}
-					break
 				}
 				if err = os.Remove(f); err != nil {
 					if lg != nil {
@@ -91,14 +100,16 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 					errC <- err
 					return
 				}
-				if err = l.Close(); err != nil {
-					if lg != nil {
-						lg.Error("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
-					} else {
-						plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
+				if flock {
+					if err = l.Close(); err != nil {
+						if lg != nil {
+							lg.Error("failed to unlock/close", zap.String("path", l.Name()), zap.Error(err))
+						} else {
+							plog.Errorf("error unlocking %s when purging file (%v)", l.Name(), err)
+						}
+						errC <- err
+						return
 					}
-					errC <- err
-					return
 				}
 				if lg != nil {
 					lg.Info("purged", zap.String("path", f))
