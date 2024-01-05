@@ -85,6 +85,8 @@ Member:
     Minimum duration interval that a client should wait before pinging server.
   --grpc-keepalive-interval '2h'
     Frequency duration of server-to-client ping to check if a connection is alive (0 to disable).
+  --enable-grpc-gateway
+    Enable GRPC gateway.
   --grpc-keepalive-timeout '20s'
     Additional duration of wait before closing a non-responsive connection (0 to disable).
 
@@ -229,6 +231,8 @@ Experimental feature:
 Unsafe feature:
   --force-new-cluster 'false'
     Force to create a new one-member cluster.
+  --unsafe-no-fsync 'false'
+    Disables fsync, unsafe, will cause data loss.
 
 CAUTIOUS with unsafe flag! It may break the guarantees given by the consensus protocol!
 
