@@ -18,6 +18,7 @@ import (
 	"encoding/binary"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 )
 
@@ -53,10 +54,17 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
+			// gofail: var compactAfterSetFinishedCompact struct{}
+			size, sizeInUse := s.b.Size(), s.b.SizeInUse()
 			s.lg.Info(
 				"finished scheduled compaction",
 				zap.Int64("compact-revision", compactMainRev),
 				zap.Duration("took", time.Since(totalStart)),
+				zap.Uint32("hash", hash.Hash),
+				zap.Int64("current-db-size-bytes", size),
+				zap.String("current-db-size", humanize.Bytes(uint64(size))),
+				zap.Int64("current-db-size-in-use-bytes", sizeInUse),
+				zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
 			)
 			return true
 		}
