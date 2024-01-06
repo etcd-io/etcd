@@ -63,7 +63,7 @@ fuzz:
 # Static analysis
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
-	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
+	verify-govet verify-license-header verify-receiver-name verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-govet-shadow verify-markdown-marker
 fix: fix-bom fix-lint fix-yamllint
@@ -131,7 +131,15 @@ verify-genproto:
 
 .PHONY: verify-yamllint
 verify-yamllint:
+ifeq (, $(shell which yamllint))
+	@echo "Installing yamllint..."
+	python3 -m venv bin/python
+	bin/python/bin/python3 -m pip install yamllint
+	./bin/python/bin/yamllint --config-file tools/.yamllint .
+else
+	@echo "yamllint already installed..."
 	yamllint --config-file tools/.yamllint .
+endif
 
 .PHONY: verify-govet-shadow
 verify-govet-shadow:
@@ -154,7 +162,6 @@ endif
 
 GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
 .PHONY: install-golangci-lint
-
 install-golangci-lint:
 ifeq (, $(shell which golangci-lint))
 	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
@@ -162,7 +169,6 @@ endif
 
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
-
 bin/lazyfs:
 	rm /tmp/lazyfs -rf
 	git clone --depth 1 --branch 0.2.0 https://github.com/dsrhaslab/lazyfs /tmp/lazyfs
