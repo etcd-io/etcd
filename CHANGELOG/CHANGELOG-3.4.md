@@ -2,11 +2,18 @@
 
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
-## v3.4.29 (tbd)
+## v3.4.30 (tbd)
+
+<hr>
+
+## v3.4.29 (2024-01-09)
 
 ### etcd server
 - [Disable following HTTP redirects in peer communication](https://github.com/etcd-io/etcd/pull/17112)
 - [Add livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17128)
+- Fix [Check if be is nil to avoid panic when be is overriden with nil](https://github.com/etcd-io/etcd/pull/17154)
+- Fix [Add missing experimental-enable-lease-checkpoint-persist flag in etcd help](https://github.com/etcd-io/etcd/pull/17189)
+- Fix [Don't flock snapshot files](https://github.com/etcd-io/etcd/pull/17208)
 
 ### Dependencies
 - Compile binaries using go [1.20.12](https://github.com/etcd-io/etcd/pull/17076).
