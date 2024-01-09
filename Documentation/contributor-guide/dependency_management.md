@@ -97,7 +97,7 @@ Please refer to [build(deps): bump arduino/setup-protoc from 1.3.0 to 2.0.0](htt
 ### Rotation worksheet
 
 The dependabot scheduling interval is weekly; it means dependabot will automatically raise a bunch of PRs per week.
-Usually human intervention is required each time. We have a [rotation worksheet](https://docs.google.com/spreadsheets/d/1DDWzbcOx1p32MhyelaPZ_SfYtAD6xRsrtGRZ9QXPOyQ/edit#gid=0),
+Usually human intervention is required each time. We have a [rotation worksheet](https://docs.google.com/spreadsheets/d/1jodHIO7Dk2VWTs1IRnfMFaRktS9IH8XRyifOnPdSY8I/edit#gid=1394774387),
 and everyone is welcome to participate; you just need to register your name in the worksheet.
 
 ## Stable branches
