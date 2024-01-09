@@ -2,11 +2,12 @@
 
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
-## v3.4.29 (tbd)
+## v3.4.29 (2024-01-09)
 
 ### etcd server
 - [Disable following HTTP redirects in peer communication](https://github.com/etcd-io/etcd/pull/17112)
 - [Add livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17128)
+- [Do not lock snapshot files in the purge goroutine](https://github.com/etcd-io/etcd/pull/17208)
 
 ### Dependencies
 - Compile binaries using go [1.20.12](https://github.com/etcd-io/etcd/pull/17076).
