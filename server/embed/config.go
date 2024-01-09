@@ -1122,7 +1122,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 	return clusterStrs, multierr.Combine(cerr, httpCerr)
 }
 
-func (cfg Config) InitialClusterFromName(name string) (ret string) {
+func (cfg *Config) InitialClusterFromName(name string) (ret string) {
 	if len(cfg.AdvertisePeerUrls) == 0 {
 		return ""
 	}
@@ -1136,21 +1136,21 @@ func (cfg Config) InitialClusterFromName(name string) (ret string) {
 	return ret[1:]
 }
 
-func (cfg Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
-func (cfg Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
+func (cfg *Config) IsNewCluster() bool { return cfg.ClusterState == ClusterStateFlagNew }
+func (cfg *Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs) }
 
-func (cfg Config) V2DeprecationEffective() config.V2DeprecationEnum {
+func (cfg *Config) V2DeprecationEffective() config.V2DeprecationEnum {
 	if cfg.V2Deprecation == "" {
 		return config.V2_DEPR_DEFAULT
 	}
 	return cfg.V2Deprecation
 }
 
-func (cfg Config) defaultPeerHost() bool {
+func (cfg *Config) defaultPeerHost() bool {
 	return len(cfg.AdvertisePeerUrls) == 1 && cfg.AdvertisePeerUrls[0].String() == DefaultInitialAdvertisePeerURLs
 }
 
-func (cfg Config) defaultClientHost() bool {
+func (cfg *Config) defaultClientHost() bool {
 	return len(cfg.AdvertiseClientUrls) == 1 && cfg.AdvertiseClientUrls[0].String() == DefaultAdvertiseClientURLs
 }
 
