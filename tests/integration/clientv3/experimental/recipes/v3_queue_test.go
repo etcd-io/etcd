@@ -80,7 +80,7 @@ func TestQueueManyReaderManyWriter(t *testing.T) {
 	testQueueNReaderMWriter(t, manyQueueClients, manyQueueClients)
 }
 
-// TestQueueAuthTokenExpired queue should return err on watch failed
+// TestQueueWatchError queue should return err on watch failed
 func TestQueueWatchError(t *testing.T) {
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
