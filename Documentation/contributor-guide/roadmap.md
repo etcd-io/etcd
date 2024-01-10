@@ -6,10 +6,7 @@ Proposed milestones is what we think we can deliver with people we have. If we h
 stuff, we could pick up more items from backlog. Note that etcd will continue to mainly focus on technical debt over
 the next few major or minor releases.
 
-Each item has an assigned priority:
-- P0 - Critical for the current milestone, and blocks the release.
-- P1 - Important for the current milestone, and critical for the next milestone.
-- P2 - Nice to have, can be always skipped and should not block anything.
+Each item has an assigned priority. Refer to [priority definitions](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/triage_issues.md#step-5---prioritise-the-issue).
 
 ## v3.6.0
 
@@ -17,16 +14,16 @@ For a full list of tasks in `v3.6.0`, please see [milestone etcd-v3.6](https://g
 
 | Title                                                                                                              | Priority | Status      | Note                                                                                                         |
 |--------------------------------------------------------------------------------------------------------------------|----------|-------------|--------------------------------------------------------------------------------------------------------------|
-| [Support downgrade](https://github.com/etcd-io/etcd/issues/11716)                                                  | P0       | In progress | etcd will support downgrade starting from 3.6.0. But it will also support offline downgrade from 3.5 to 3.4. |
-| [StoreV2 deprecation](https://github.com/etcd-io/etcd/issues/12913)                                                | P0       | In progress | This task will be covered in both 3.6 and 3.7.                                                               |
-| [Release raft 3.6.0](https://github.com/etcd-io/raft/issues/89)                                                    | P0       | Not started | etcd 3.6.0 will depends on raft 3.6.0                                                                        |
-| [Release bbolt 1.4.0](https://github.com/etcd-io/bbolt/issues/553)                                                 | P0       | Not started | etcd 3.6.0 will depends on bbolt 1.4.0                                                                       |
-| [Support /livez and /readyz endpoints](https://github.com/etcd-io/etcd/issues/16007)                               | P1       | In progress | It provides clearer APIs, and can also workaround the stalled writes issue                                   |
-| [Bump gRPC](https://github.com/etcd-io/etcd/issues/16290)                                                          | P1       | Completed   | It isn't guaranteed to be resolved in 3.6, and might be postponed to 3.7 depending on the effort and risk.   |
-| [Deprecate grpc-gateway or bump it](https://github.com/etcd-io/etcd/issues/14499)                                  | P1       | Completed   | It isn't guaranteed to be resolved in 3.6, and might be postponed to 3.7 depending on the effort and risk.   |
-| [bbolt: Add logger into bbolt](https://github.com/etcd-io/bbolt/issues/509)                                        | P1       | In progress | It's important to diagnose bbolt issues                                                                      |
-| [bbolt: Add surgery commands](https://github.com/etcd-io/bbolt/issues/370)                                         | P1       | Completed   | Surgery commands are important for fixing corrupted db files                                                 |
-| [Evaluate and (Gradulate or deprecate/remove) experimental features](https://github.com/etcd-io/etcd/issues/16292) | P2       | Not started | This task will be covered in both 3.6 and 3.7.                                                               |
+| [Support downgrade](https://github.com/etcd-io/etcd/issues/11716)                                                  | priority/important-soon | In progress | etcd will support downgrade starting from 3.6.0. But it will also support offline downgrade from 3.5 to 3.4. |
+| [StoreV2 deprecation](https://github.com/etcd-io/etcd/issues/12913)                                                | priority/important-soon | In progress | This task will be covered in both 3.6 and 3.7.                                                               |
+| [Release raft 3.6.0](https://github.com/etcd-io/raft/issues/89)                                                    | priority/important-soon | Not started | etcd 3.6.0 will depends on raft 3.6.0                                                                        |
+| [Release bbolt 1.4.0](https://github.com/etcd-io/bbolt/issues/553)                                                 | priority/important-soon | Not started | etcd 3.6.0 will depends on bbolt 1.4.0                                                                       |
+| [Support /livez and /readyz endpoints](https://github.com/etcd-io/etcd/issues/16007)                               | priority/important-longterm | In progress | It provides clearer APIs, and can also workaround the stalled writes issue                                   |
+| [Bump gRPC](https://github.com/etcd-io/etcd/issues/16290)                                                          | priority/important-longterm | Completed   | It isn't guaranteed to be resolved in 3.6, and might be postponed to 3.7 depending on the effort and risk.   |
+| [Deprecate grpc-gateway or bump it](https://github.com/etcd-io/etcd/issues/14499)                                  | priority/important-longterm | Completed   | It isn't guaranteed to be resolved in 3.6, and might be postponed to 3.7 depending on the effort and risk.   |
+| [bbolt: Add logger into bbolt](https://github.com/etcd-io/bbolt/issues/509)                                        | priority/important-longterm | Completed   | It's important to diagnose bbolt issues                                                                      |
+| [bbolt: Add surgery commands](https://github.com/etcd-io/bbolt/issues/370)                                         | priority/important-longterm | Completed   | Surgery commands are important for fixing corrupted db files                                                 |
+| [Evaluate and (Gradulate or deprecate/remove) experimental features](https://github.com/etcd-io/etcd/issues/16292) | priority/backlog | Not started | This task will be covered in both 3.6 and 3.7.                                                               |
 
 ## v3.7.0
 
