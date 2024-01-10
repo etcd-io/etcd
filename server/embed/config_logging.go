@@ -34,7 +34,7 @@ import (
 )
 
 // GetLogger returns the logger.
-func (cfg Config) GetLogger() *zap.Logger {
+func (cfg *Config) GetLogger() *zap.Logger {
 	cfg.loggerMu.RLock()
 	l := cfg.logger
 	cfg.loggerMu.RUnlock()
