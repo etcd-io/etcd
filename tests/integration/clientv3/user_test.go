@@ -19,8 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"google.golang.org/grpc"
 )
@@ -52,6 +53,56 @@ func TestUserError(t *testing.T) {
 	if err != rpctypes.ErrRoleNotFound {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 	}
+}
+
+func TestAddUserAfterDelete(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	authapi := clus.RandClient()
+	authSetupRoot(t, authapi.Auth)
+	cfg := clientv3.Config{
+		Endpoints:   authapi.Endpoints(),
+		DialTimeout: 5 * time.Second,
+		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	}
+	cfg.Username, cfg.Password = "root", "123"
+	authed, err := integration.NewClient(t, cfg)
+	require.NoError(t, err)
+	defer authed.Close()
+
+	// add user
+	_, err = authed.UserAdd(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
+	_, err = authapi.Authenticate(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
+	// delete user
+	_, err = authed.UserDelete(context.TODO(), "foo")
+	require.NoError(t, err)
+	if _, err = authed.Authenticate(context.TODO(), "foo", "bar"); err == nil {
+		t.Errorf("expect Authenticate error for old password")
+	}
+	// add user back
+	_, err = authed.UserAdd(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
+	_, err = authed.Authenticate(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
+	// change password
+	_, err = authed.UserChangePassword(context.TODO(), "foo", "bar2")
+	require.NoError(t, err)
+	_, err = authed.UserChangePassword(context.TODO(), "foo", "bar1")
+	require.NoError(t, err)
+
+	if _, err = authed.Authenticate(context.TODO(), "foo", "bar"); err == nil {
+		t.Errorf("expect Authenticate error for old password")
+	}
+	if _, err = authed.Authenticate(context.TODO(), "foo", "bar2"); err == nil {
+		t.Errorf("expect Authenticate error for old password")
+	}
+	_, err = authed.Authenticate(context.TODO(), "foo", "bar1")
+	require.NoError(t, err)
 }
 
 func TestUserErrorAuth(t *testing.T) {
