@@ -142,7 +142,8 @@ type ClusterConfig struct {
 	AuthToken    string
 	AuthTokenTTL uint
 
-	QuotaBackendBytes int64
+	QuotaBackendBytes    int64
+	BackendBatchInterval time.Duration
 
 	MaxTxnOps              uint
 	MaxRequestBytes        uint
@@ -271,6 +272,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			PeerTLS:                             c.Cfg.PeerTLS,
 			ClientTLS:                           c.Cfg.ClientTLS,
 			QuotaBackendBytes:                   c.Cfg.QuotaBackendBytes,
+			BackendBatchInterval:                c.Cfg.BackendBatchInterval,
 			MaxTxnOps:                           c.Cfg.MaxTxnOps,
 			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
 			SnapshotCount:                       c.Cfg.SnapshotCount,
@@ -598,6 +600,7 @@ type MemberConfig struct {
 	AuthToken                   string
 	AuthTokenTTL                uint
 	QuotaBackendBytes           int64
+	BackendBatchInterval        time.Duration
 	MaxTxnOps                   uint
 	MaxRequestBytes             uint
 	SnapshotCount               uint64
@@ -671,6 +674,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.TickMs = uint(framecfg.TickDuration / time.Millisecond)
 	m.PreVote = true
 	m.QuotaBackendBytes = mcfg.QuotaBackendBytes
+	m.BackendBatchInterval = mcfg.BackendBatchInterval
 	m.MaxTxnOps = mcfg.MaxTxnOps
 	if m.MaxTxnOps == 0 {
 		m.MaxTxnOps = embed.DefaultMaxTxnOps
