@@ -125,6 +125,24 @@ func (ctl *Etcdctl) MemberList() (*clientv3.MemberListResponse, error) {
 	return &resp, err
 }
 
+func (ctl *Etcdctl) MemberAdd(name string, peerURLs []string) (*clientv3.MemberAddResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	var resp clientv3.MemberAddResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--peer-urls", strings.Join(peerURLs, ","))
+	return &resp, err
+}
+
+func (ctl *Etcdctl) MemberRemove(id uint64) (*clientv3.MemberRemoveResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	var resp clientv3.MemberRemoveResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "remove", fmt.Sprintf("%x", id))
+	return &resp, err
+}
+
 func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	if ctl.v2 {
 		panic("Unsupported method for v2")
