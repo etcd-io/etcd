@@ -185,6 +185,7 @@ clean:
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
 	rm -rf ./bin/lazyfs
+	rm -rf ./bin/python
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./release
