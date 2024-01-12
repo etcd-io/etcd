@@ -180,6 +180,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.NoSync = bcfg.UnsafeNoFsync
 	bopts.NoGrowSync = bcfg.UnsafeNoFsync
 	bopts.Mlock = bcfg.Mlock
+	bopts.Logger = newBoltLoggerZap(bcfg)
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
@@ -658,4 +659,21 @@ func (s *snapshot) Close() error {
 	close(s.stopc)
 	<-s.donec
 	return s.Tx.Rollback()
+}
+
+func newBoltLoggerZap(bcfg BackendConfig) bolt.Logger {
+	lg := bcfg.Logger.Named("bbolt")
+	return &zapBoltLogger{lg.WithOptions(zap.AddCallerSkip(1)).Sugar()}
+}
+
+type zapBoltLogger struct {
+	*zap.SugaredLogger
+}
+
+func (zl *zapBoltLogger) Warning(args ...any) {
+	zl.SugaredLogger.Warn(args...)
+}
+
+func (zl *zapBoltLogger) Warningf(format string, args ...any) {
+	zl.SugaredLogger.Warnf(format, args...)
 }
