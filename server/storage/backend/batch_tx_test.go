@@ -252,6 +252,53 @@ func TestRangeAfterDeleteMatch(t *testing.T) {
 	checkForEach(t, b.BatchTx(), b.ReadTx(), nil, nil)
 }
 
+func TestRangeAfterOverwriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), []byte("foo3"), 1)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+}
+
+func TestRangeAfterOverwriteAndDeleteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar3"))
+	tx.UnsafeDelete(schema.Test, []byte("foo1"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo1"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar3")})
+}
+
 func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, key, endKey []byte, limit int64) {
 	tx.Lock()
 	ks1, vs1 := tx.UnsafeRange(schema.Test, key, endKey, limit)
