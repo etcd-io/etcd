@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -194,4 +195,69 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestRangeAfterDeleteMatch(t *testing.T) {
+	b, tmpPath := NewTmpBackend(time.Hour, 10000)
+	defer cleanup(b, tmpPath)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket([]byte("test"))
+	tx.UnsafePut([]byte("test"), []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	tx.Commit()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar")})
+	tx.Lock()
+	tx.UnsafeDelete([]byte("test"), []byte("foo"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), nil, nil)
+}
+
+func checkRangeResponseMatch(t *testing.T, tx BatchTx, rtx ReadTx, key, endKey []byte, limit int64) {
+	tx.Lock()
+	ks1, vs1 := tx.UnsafeRange([]byte("test"), key, endKey, limit)
+	tx.Unlock()
+
+	rtx.RLock()
+	ks2, vs2 := rtx.UnsafeRange([]byte("test"), key, endKey, limit)
+	rtx.RUnlock()
+
+	if diff := cmp.Diff(ks1, ks2); diff != "" {
+		t.Errorf("keys on read and batch transaction doesn't match, diff: %s", diff)
+	}
+	if diff := cmp.Diff(vs1, vs2); diff != "" {
+		t.Errorf("values on read and batch transaction doesn't match, diff: %s", diff)
+	}
+}
+
+func checkForEach(t *testing.T, tx BatchTx, rtx ReadTx, expectedKeys, expectedValues [][]byte) {
+	tx.Lock()
+	checkUnsafeForEach(t, tx, expectedKeys, expectedValues)
+	tx.Unlock()
+
+	rtx.RLock()
+	checkUnsafeForEach(t, rtx, expectedKeys, expectedValues)
+	rtx.RUnlock()
+}
+
+func checkUnsafeForEach(t *testing.T, tx ReadTx, expectedKeys, expectedValues [][]byte) {
+	var ks, vs [][]byte
+	tx.UnsafeForEach([]byte("test"), func(k, v []byte) error {
+		ks = append(ks, k)
+		vs = append(vs, v)
+		return nil
+	})
+
+	if diff := cmp.Diff(ks, expectedKeys); diff != "" {
+		t.Errorf("keys on transaction doesn't match expected, diff: %s", diff)
+	}
+	if diff := cmp.Diff(vs, expectedValues); diff != "" {
+		t.Errorf("values on transaction doesn't match expected, diff: %s", diff)
+	}
 }
