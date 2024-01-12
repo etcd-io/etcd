@@ -29,6 +29,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jonboulle/clockwork"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
@@ -49,7 +51,7 @@ var (
 func TestNew(t *testing.T) {
 	p := t.TempDir()
 
-	w, err := Create(zaptest.NewLogger(t), p, []byte("somedata"))
+	w, err := Create(zaptest.NewLogger(t), p, []byte("somedata"), clockwork.NewFakeClock())
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
@@ -75,17 +77,18 @@ func TestNew(t *testing.T) {
 
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
-	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0})
+	err = e.encode(&walpb.Record{Type: CrcType, Crc: 0, CreatedAt: w.clock.Now().Unix()})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata")})
+	err = e.encode(&walpb.Record{Type: MetadataType, Data: []byte("somedata"), CreatedAt: w.clock.Now().Unix()})
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
 	r := &walpb.Record{
-		Type: SnapshotType,
-		Data: pbutil.MustMarshal(&walpb.Snapshot{}),
+		Type:      SnapshotType,
+		Data:      pbutil.MustMarshal(&walpb.Snapshot{}),
+		CreatedAt: w.clock.Now().Unix(),
 	}
 	if err = e.encode(r); err != nil {
 		t.Fatalf("err = %v, want nil", err)
