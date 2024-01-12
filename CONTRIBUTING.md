@@ -138,6 +138,11 @@ If you are still working on the pull request, you can convert it to draft by cli
 
 Multiple small PRs are preferred over single large ones (>500 lines of code).
 
+Please make sure there is an associated issue for each PR you submit. Create one if it doesn't exist yet, and close the issue
+once the PR gets merged and has been backported to previous stable releases, if necessary. If there are multiple PRs linked to
+the same issue, refrain from closing the issue until all PRs have been merged and, if needed, backported to previous stable
+releases.
+
 ## Get your pull request reviewed
 
 Before requesting review please ensure that all GitHub checks were successful.
