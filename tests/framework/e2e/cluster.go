@@ -780,7 +780,21 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 // Phase 1 - Inform cluster of new configuration
 // Phase 2 - Start new member
 func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, addAsLearner bool, opts ...config.ClientOption) (memberID uint64, err error) {
-	var serverCfg *EtcdServerProcessConfig
+	memberID, serverCfg, err := epc.AddMember(ctx, cfg, tb, addAsLearner, opts...)
+	if err != nil {
+		return 0, err
+	}
+
+	// Then start process
+	if err = epc.StartNewProcFromConfig(ctx, tb, serverCfg); err != nil {
+		return 0, err
+	}
+
+	return memberID, nil
+}
+
+// AddMember adds a new member to the cluster without starting it.
+func (epc *EtcdProcessCluster) AddMember(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, addAsLearner bool, opts ...config.ClientOption) (memberID uint64, serverCfg *EtcdServerProcessConfig, err error) {
 	if cfg != nil {
 		serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
 	} else {
@@ -808,20 +822,24 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 		resp, err = memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
 	}
 	if err != nil {
-		return 0, fmt.Errorf("failed to add new member: %w", err)
+		return 0, nil, fmt.Errorf("failed to add new member: %w", err)
 	}
 
-	// Then start process
+	return resp.Member.ID, serverCfg, nil
+}
+
+// StartNewProcFromConfig starts a new member process from the given config.
+func (epc *EtcdProcessCluster) StartNewProcFromConfig(ctx context.Context, tb testing.TB, serverCfg *EtcdServerProcessConfig) error {
 	tb.Log("start new member")
 	proc, err := NewEtcdProcess(tb, serverCfg)
 	if err != nil {
 		epc.Close()
-		return 0, fmt.Errorf("cannot configure: %v", err)
+		return fmt.Errorf("cannot configure: %v", err)
 	}
 
 	epc.Procs = append(epc.Procs, proc)
 
-	return resp.Member.ID, proc.Start(ctx)
+	return proc.Start(ctx)
 }
 
 // UpdateProcOptions updates the options for a specific process. If no opt is set, then the config is identical
