@@ -239,24 +239,115 @@ func TestRangeAfterDeleteMatch(t *testing.T) {
 	tx.Unlock()
 	tx.Commit()
 
-	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), nil, 0)
 	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar")})
 
 	tx.Lock()
 	tx.UnsafeDelete(buckets.Test, []byte("foo"))
 	tx.Unlock()
 
-	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), []byte("foo"), nil, 0)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), nil, 0)
 	checkForEach(t, b.BatchTx(), b.ReadTx(), nil, nil)
 }
 
-func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, key, endKey []byte, limit int64) {
+func TestRangeAfterUnorderedKeyWriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
 	tx.Lock()
-	ks1, vs1 := tx.UnsafeRange(buckets.Test, key, endKey, limit)
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("foo5"), []byte("bar5"))
+	tx.UnsafePut(buckets.Test, []byte("foo2"), []byte("bar2"))
+	tx.UnsafePut(buckets.Test, []byte("foo1"), []byte("bar1"))
+	tx.UnsafePut(buckets.Test, []byte("foo3"), []byte("bar3"))
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafePut(buckets.Test, []byte("foo4"), []byte("bar4"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), nil, 1)
+}
+
+func TestRangeAfterAlternatingBucketWriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(buckets.Key)
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafeSeqPut(buckets.Key, []byte("key1"), []byte("val1"))
+	tx.Unlock()
+
+	tx.Lock()
+	tx.UnsafeSeqPut(buckets.Key, []byte("key2"), []byte("val2"))
+	tx.Unlock()
+	tx.Commit()
+	tx.Commit()
+
+	tx.Lock()
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Key, []byte("key"), []byte("key5"), 100)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), []byte("foo3"), 1)
+}
+
+func TestRangeAfterOverwriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(buckets.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(buckets.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), []byte("foo3"), 1)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+}
+
+func TestRangeAfterOverwriteAndDeleteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(buckets.Test)
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(buckets.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(buckets.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+
+	tx.Lock()
+	tx.UnsafePut(buckets.Test, []byte("foo"), []byte("bar3"))
+	tx.UnsafeDelete(buckets.Test, []byte("foo1"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo"), nil, 0)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), buckets.Test, []byte("foo1"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar3")})
+}
+
+func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, bucket backend.Bucket, key, endKey []byte, limit int64) {
+	tx.Lock()
+	ks1, vs1 := tx.UnsafeRange(bucket, key, endKey, limit)
 	tx.Unlock()
 
 	rtx.RLock()
-	ks2, vs2 := rtx.UnsafeRange(buckets.Test, key, endKey, limit)
+	ks2, vs2 := rtx.UnsafeRange(bucket, key, endKey, limit)
 	rtx.RUnlock()
 
 	if diff := cmp.Diff(ks1, ks2); diff != "" {
