@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.uber.org/zap"
 )
 
@@ -46,6 +47,7 @@ type EtcdProcess interface {
 	EndpointsGRPC() []string
 	EndpointsHTTP() []string
 	EndpointsMetrics() []string
+	Etcdctl(opts ...config.ClientOption) *EtcdctlV3
 
 	Start() error
 	Restart() error
@@ -80,6 +82,7 @@ type EtcdServerProcessConfig struct {
 	Args     []string
 	TlsArgs  []string
 	EnvVars  map[string]string
+	Client   ClientConfig
 
 	DataDirPath string
 	KeepDataDir bool
@@ -124,6 +127,14 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 	return []string{ep.cfg.ClientHttpUrl}
 }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
+
+func (ep *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(ep.Config().Client, ep.EndpointsGRPC(), opts...)
+	if err != nil {
+		panic(err)
+	}
+	return etcdctl
+}
 
 func (ep *EtcdServerProcess) Start() error {
 	if ep.proc != nil {

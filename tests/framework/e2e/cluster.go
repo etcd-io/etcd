@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -25,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 )
@@ -38,6 +40,13 @@ const (
 	ClientTLS
 	ClientTLSAndNonTLS
 )
+
+type ClientConfig struct {
+	ConnectionType ClientConnType
+	CertAuthority  bool
+	AutoTLS        bool
+	RevokeCerts    bool
+}
 
 func NewConfigNoTLS() *EtcdProcessClusterConfig {
 	return &EtcdProcessClusterConfig{ClusterSize: 3,
@@ -150,6 +159,7 @@ type EtcdProcessClusterConfig struct {
 	BasePort   int
 
 	MetricsURLScheme string
+	Client           ClientConfig
 
 	SnapshotCount int // default is 10000
 
@@ -575,4 +585,81 @@ func (epc *EtcdProcessCluster) WithStopSignal(sig os.Signal) (ret os.Signal) {
 		ret = p.WithStopSignal(sig)
 	}
 	return ret
+}
+
+func (epc *EtcdProcessCluster) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC(), opts...)
+	if err != nil {
+		panic(err)
+	}
+	return etcdctl
+}
+
+func (epc *EtcdProcessCluster) EndpointsGRPC() []string {
+	return epc.Endpoints(func(ep EtcdProcess) []string { return ep.EndpointsGRPC() })
+}
+
+func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
+}
+
+// WaitMembersForLeader waits until given members agree on the same leader,
+// and returns its 'index' in the 'membs' list
+func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
+	cc := epc.Etcdctl()
+
+	// ensure leader is up via linearizable get
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("WaitMembersForLeader timeout")
+		default:
+		}
+		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
+		if err == nil || strings.Contains(err.Error(), "Key not found") {
+			break
+		}
+		t.Logf("WaitMembersForLeader Get err: %v", err)
+	}
+
+	leaders := make(map[uint64]struct{})
+	members := make(map[uint64]int)
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("WaitMembersForLeader timeout")
+		default:
+		}
+		for i := range membs {
+			resp, err := membs[i].Etcdctl().Status(ctx)
+			if err != nil {
+				if strings.Contains(err.Error(), "connection refused") {
+					// if member[i] has stopped
+					continue
+				} else {
+					t.Fatal(err)
+				}
+			}
+			members[resp[0].Header.MemberId] = i
+			leaders[resp[0].Leader] = struct{}{}
+		}
+		// members agree on the same leader
+		if len(leaders) == 1 {
+			break
+		}
+		leaders = make(map[uint64]struct{})
+		members = make(map[uint64]int)
+		time.Sleep(10 * config.TickDuration)
+	}
+	for l := range leaders {
+		if index, ok := members[l]; ok {
+			t.Logf("members agree on a leader, members:%v , leader:%v", members, l)
+			return index
+		}
+		t.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
+	}
+	t.Fatal("impossible path of execution")
+	return -1
 }
