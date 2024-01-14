@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
@@ -175,6 +176,12 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer rc1.Close()
+
+	// read 16 bytes to ensure that server opens snapshot
+	buf := make([]byte, 16)
+	n, err := rc1.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, 16, n)
 
 	cancel()
 	_, err = io.Copy(io.Discard, rc1)
