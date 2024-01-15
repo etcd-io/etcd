@@ -218,8 +218,9 @@ github.com/go-toolsmith/astcast v1.1.0/go.mod h1:qdcuFWeGGS2xX5bLM/c3U9lewg7+Zu4
 github.com/go-toolsmith/astcopy v1.1.0 h1:YGwBN0WM+ekI/6SS6+52zLDEf8Yvp3n2seZITCUBt5s=
 github.com/go-toolsmith/astcopy v1.1.0/go.mod h1:hXM6gan18VA1T/daUEHCFcYiW8Ai1tIwIzHY6srfEAw=
 github.com/go-toolsmith/astequal v1.0.3/go.mod h1:9Ai4UglvtR+4up+bAD4+hCj7iTo4m/OXVTSLnCyTAx4=
-github.com/go-toolsmith/astequal v1.1.0 h1:kHKm1AWqClYn15R0K1KKE4RG614D46n+nqUQ06E1dTw=
 github.com/go-toolsmith/astequal v1.1.0/go.mod h1:sedf7VIdCL22LD8qIvv7Nn9MuWJruQA/ysswh64lffQ=
+github.com/go-toolsmith/astequal v1.2.0 h1:3Fs3CYZ1k9Vo4FzFhwwewC3CHISHDnVUPC4x0bI2+Cw=
+github.com/go-toolsmith/astequal v1.2.0/go.mod h1:c8NZ3+kSFtFY/8lPso4v8LuJjdJiUFVnSuU3s0qrrDY=
 github.com/go-toolsmith/astfmt v1.1.0 h1:iJVPDPp6/7AaeLJEruMsBUlOYCmvg0MoCfJprsOmcco=
 github.com/go-toolsmith/astfmt v1.1.0/go.mod h1:OrcLlRwu0CuiIBp/8b5PYF9ktGVZUjlNMV634mhwuQ4=
 github.com/go-toolsmith/astp v1.1.0 h1:dXPuCl6u2llURjdPLLDxJeZInAeZ0/eZwFJmqZMnpQA=
