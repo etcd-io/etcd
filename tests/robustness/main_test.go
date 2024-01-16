@@ -39,9 +39,21 @@ func TestMain(m *testing.M) {
 	testRunner.TestMain(m)
 }
 
-func TestRobustness(t *testing.T) {
+func TestRobustnessExploratory(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, scenario := range scenarios(t) {
+	for _, scenario := range exploratoryScenarios(t) {
+		t.Run(scenario.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			scenario.cluster.Logger = lg
+			ctx := context.Background()
+			testRobustness(ctx, t, lg, scenario)
+		})
+	}
+}
+
+func TestRobustnessRegression(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, scenario := range regressionScenarios(t) {
 		t.Run(scenario.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.cluster.Logger = lg

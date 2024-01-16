@@ -11,6 +11,7 @@ jobs:
       testTimeout: 30m
       artifactName: main
       runs-on: "['ubuntu-latest-8-cores']"
+      scenario: TestRobustness
   main-arm64:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -19,3 +20,4 @@ jobs:
       testTimeout: 30m
       artifactName: main-arm64
       runs-on: "['actuated-arm64-8cpu-8gb']"
+      scenario: TestRobustness

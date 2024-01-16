@@ -12,22 +12,22 @@ test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin
 
 .PHONY: test-robustness-issue14370
 test-robustness-issue14370: /tmp/etcd-v3.5.4-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue13766
 test-robustness-issue13766: /tmp/etcd-v3.5.2-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue14685
 test-robustness-issue14685: /tmp/etcd-v3.5.5-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue15271
 test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 # Failpoints
