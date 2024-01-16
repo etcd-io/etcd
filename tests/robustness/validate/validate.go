@@ -38,7 +38,8 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	// TODO: Don't use watch events to get event history.
 	eventHistory, err := mergeWatchEventHistory(reports)
 	if err != nil {
-		t.Errorf("Failed merging watch history to create event history, skipping further validation, err: %s", err)
+		t.Errorf("Failed merging watch history to create event history, err: %s", err)
+		validateWatch(t, lg, cfg, reports, nil)
 		return visualize
 	}
 	validateWatch(t, lg, cfg, reports, eventHistory)
