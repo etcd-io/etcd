@@ -112,8 +112,7 @@ func (t *batchTx) Unlock() {
 }
 
 func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
-	_, err := t.tx.CreateBucket(bucket.Name())
-	if err != nil && err != bolt.ErrBucketExists {
+	if _, err := t.tx.CreateBucketIfNotExists(bucket.Name()); err != nil {
 		t.backend.lg.Fatal(
 			"failed to create a bucket",
 			zap.Stringer("bucket-name", bucket),
