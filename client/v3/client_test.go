@@ -149,6 +149,57 @@ func TestDialNoTimeout(t *testing.T) {
 	c.Close()
 }
 
+func TestMaxUnaryRetries(t *testing.T) {
+	maxUnaryRetries := uint(10)
+	cfg := Config{
+		Endpoints:       []string{"127.0.0.1:12345"},
+		MaxUnaryRetries: maxUnaryRetries,
+	}
+	c, err := NewClient(t, cfg)
+	if c == nil || err != nil {
+		t.Fatalf("new client with MaxUnaryRetries should succeed, got %v", err)
+	}
+	defer c.Close()
+
+	if c.cfg.MaxUnaryRetries != maxUnaryRetries {
+		t.Fatalf("client MaxUnaryRetries should be %d, got %d", maxUnaryRetries, c.cfg.MaxUnaryRetries)
+	}
+}
+
+func TestBackoff(t *testing.T) {
+	backoffWaitBetween := 100 * time.Millisecond
+	cfg := Config{
+		Endpoints:          []string{"127.0.0.1:12345"},
+		BackoffWaitBetween: backoffWaitBetween,
+	}
+	c, err := NewClient(t, cfg)
+	if c == nil || err != nil {
+		t.Fatalf("new client with BackoffWaitBetween should succeed, got %v", err)
+	}
+	defer c.Close()
+
+	if c.cfg.BackoffWaitBetween != backoffWaitBetween {
+		t.Fatalf("client BackoffWaitBetween should be %v, got %v", backoffWaitBetween, c.cfg.BackoffWaitBetween)
+	}
+}
+
+func TestBackoffJitterFraction(t *testing.T) {
+	backoffJitterFraction := float64(0.9)
+	cfg := Config{
+		Endpoints:             []string{"127.0.0.1:12345"},
+		BackoffJitterFraction: backoffJitterFraction,
+	}
+	c, err := NewClient(t, cfg)
+	if c == nil || err != nil {
+		t.Fatalf("new client with BackoffJitterFraction should succeed, got %v", err)
+	}
+	defer c.Close()
+
+	if c.cfg.BackoffJitterFraction != backoffJitterFraction {
+		t.Fatalf("client BackoffJitterFraction should be %v, got %v", backoffJitterFraction, c.cfg.BackoffJitterFraction)
+	}
+}
+
 func TestIsHaltErr(t *testing.T) {
 	if !isHaltErr(context.TODO(), fmt.Errorf("etcdserver: some etcdserver error")) {
 		t.Errorf(`error prefixed with "etcdserver: " should be Halted by default`)
