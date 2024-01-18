@@ -270,15 +270,6 @@
 		]
 	},
 	{
-		"project": "github.com/matttproud/golang_protobuf_extensions/v2/pbutil",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/olekukonko/tablewriter",
 		"licenses": [
 			{
