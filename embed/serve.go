@@ -96,7 +96,9 @@ func (sctx *serveCtx) serve(
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 
-	if sctx.lg == nil {
+	if sctx.lg != nil {
+		sctx.lg.Info("ready to serve client requests")
+	} else {
 		plog.Info("ready to serve client requests")
 	}
 
@@ -118,7 +120,11 @@ func (sctx *serveCtx) serve(
 		// GRPC gateway connects to grpc server via connection provided by grpc dial.
 		gwmux, err = sctx.registerGateway(grpcDialForRestGatewayBackends)
 		if err != nil {
-			sctx.lg.Error("registerGateway failed", zap.Error(err))
+			if sctx.lg != nil {
+				sctx.lg.Error("registerGateway failed", zap.Error(err))
+			} else {
+				plog.Errorf("registerGateway failed: %v", err)
+			}
 			return err
 		}
 	}
@@ -142,7 +148,12 @@ func (sctx *serveCtx) serve(
 				ErrorLog: logger, // do not log user error
 			}
 			if err := configureHttpServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure http server failed", zap.Error(err))
+				if sctx.lg != nil {
+					sctx.lg.Error("Configure http server failed", zap.Error(err))
+				} else {
+					plog.Errorf("Configure http server failed: %v", err)
+				}
+
 				return err
 			}
 		}
@@ -253,7 +264,11 @@ func (sctx *serveCtx) serve(
 				ErrorLog:  logger, // do not log user error
 			}
 			if err := configureHttpServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure https server failed", zap.Error(err))
+				if sctx.lg != nil {
+					sctx.lg.Error("Configure https server failed", zap.Error(err))
+				} else {
+					plog.Errorf("Configure https server failed: %v", err)
+				}
 				return err
 			}
 		}
