@@ -2,7 +2,12 @@
 
 Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.3.md).
 
+<hr>
+
 ## v3.4.30 (tbd)
+
+### etcd server
+- Fix [nil pointer panicking due to using the wrong log library](https://github.com/etcd-io/etcd/pull/17270)
 
 <hr>
 
