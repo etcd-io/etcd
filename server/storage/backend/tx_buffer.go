@@ -83,7 +83,6 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 		if !ok {
 			delete(txw.buckets, k)
 			txr.buckets[k] = wb
-			wb.dedupe()
 			continue
 		}
 		if seq, ok := txw.bucket2seq[k]; ok && !seq && wb.used > 1 {
@@ -204,12 +203,10 @@ func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 	if bytes.Compare(bb.buf[(bb.used-bbsrc.used)-1].key, bbsrc.buf[0].key) < 0 {
 		return
 	}
-	bb.dedupe()
-}
 
-// dedupe removes duplicates, using only newest update
-func (bb *bucketBuffer) dedupe() {
 	sort.Stable(bb)
+
+	// remove duplicates, using only newest update
 	widx := 0
 	for ridx := 1; ridx < bb.used; ridx++ {
 		if !bytes.Equal(bb.buf[ridx].key, bb.buf[widx].key) {
