@@ -16,6 +16,8 @@ package mvcc
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 )
 
 const (
@@ -55,7 +57,8 @@ func RevToBytes(rev Revision, bytes []byte) []byte {
 }
 
 func BytesToRev(bytes []byte) Revision {
-	return BytesToBucketKey(bytes).Revision
+	rev, _ := BytesToBucketKey(bytes)
+	return rev.Revision
 }
 
 // BucketKey indicates modification of the key-value space.
@@ -94,14 +97,25 @@ func BucketKeyToBytes(rev BucketKey, bytes []byte) []byte {
 	return bytes
 }
 
-func BytesToBucketKey(bytes []byte) BucketKey {
+func BytesToBucketKey(bytes []byte) (BucketKey, error) {
+	if (len(bytes) != revBytesLen) && (len(bytes) != markedRevBytesLen) {
+		return BucketKey{}, fmt.Errorf("invalid revision length: %d", len(bytes))
+	}
+	if bytes[8] != '_' {
+		return BucketKey{}, fmt.Errorf("invalid separator in bucket key: %q", bytes[8])
+	}
+	main := int64(binary.BigEndian.Uint64(bytes[0:8]))
+	sub := int64(binary.BigEndian.Uint64(bytes[9:]))
+	if main < -1 || sub < 0 { // finishedCompactRev can be -1
+		return BucketKey{}, errors.New("negative revision")
+	}
 	return BucketKey{
 		Revision: Revision{
-			Main: int64(binary.BigEndian.Uint64(bytes[0:8])),
-			Sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
+			Main: main,
+			Sub:  sub,
 		},
 		tombstone: isTombstone(bytes),
-	}
+	}, nil
 }
 
 // isTombstone checks whether the revision bytes is a tombstone.

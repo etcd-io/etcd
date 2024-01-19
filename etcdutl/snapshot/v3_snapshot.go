@@ -30,6 +30,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -138,6 +139,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		if v != nil {
 			ds.Version = v.String()
 		}
+		var kv mvccpb.KeyValue
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
@@ -156,8 +158,17 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
 				if iskeyb {
-					rev := mvcc.BytesToRev(k)
+					var rev mvcc.BucketKey
+					rev, err = mvcc.BytesToBucketKey(k)
+					if err != nil {
+						return fmt.Errorf("cannot parse revision key : %s", err.Error())
+					}
 					ds.Revision = rev.Main
+
+					err = kv.Unmarshal(v)
+					if err != nil {
+						return fmt.Errorf("cannot unmarshal value : %s", err.Error())
+					}
 				}
 				ds.TotalKey++
 				return nil

@@ -538,7 +538,8 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 				}
 				return
 			}
-			t.Errorf("key for rev %+v still exists, want deleted", BytesToBucketKey(revbytes))
+			key, _ := BytesToBucketKey(revbytes)
+			t.Errorf("key for rev %+v still exists, want deleted", key)
 		})
 	}
 }

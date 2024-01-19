@@ -43,7 +43,7 @@ func TestScheduledCompact(t *testing.T) {
 			value: math.MaxInt64,
 		},
 		{
-			value: math.MinInt64,
+			value: -1,
 		},
 	}
 	for _, tc := range tcs {
@@ -85,7 +85,7 @@ func TestFinishedCompact(t *testing.T) {
 			value: math.MaxInt64,
 		},
 		{
-			value: math.MinInt64,
+			value: -1,
 		},
 	}
 	for _, tc := range tcs {
