@@ -457,6 +457,8 @@ func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Ba
 func (a *quotaApplierV3) Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	ok := a.q.Available(p)
 	resp, trace, err := a.applierV3.Put(ctx, p)
+	// gofail: var putReturnErrNoSpace struct{}
+	// return resp, trace, errors.ErrNoSpace
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
