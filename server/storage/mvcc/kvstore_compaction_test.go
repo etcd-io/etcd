@@ -76,8 +76,8 @@ func TestScheduleCompaction(t *testing.T) {
 		tx := s.b.BatchTx()
 
 		tx.Lock()
-		ibytes := NewRevBytes()
 		for _, rev := range revs {
+			ibytes := NewRevBytes()
 			ibytes = RevToBytes(rev, ibytes)
 			tx.UnsafePut(schema.Key, ibytes, []byte("bar"))
 		}
@@ -90,6 +90,7 @@ func TestScheduleCompaction(t *testing.T) {
 
 		tx.Lock()
 		for _, rev := range tt.wrevs {
+			ibytes := NewRevBytes()
 			ibytes = RevToBytes(rev, ibytes)
 			keys, _ := tx.UnsafeRange(schema.Key, ibytes, nil, 0)
 			if len(keys) != 1 {
