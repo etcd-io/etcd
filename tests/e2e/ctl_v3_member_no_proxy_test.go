@@ -97,3 +97,80 @@ func TestMemberReplace(t *testing.T) {
 		}
 	})
 }
+
+func TestMemberReplaceWithLearner(t *testing.T) {
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t)
+	require.NoError(t, err)
+	defer epc.Close()
+
+	memberIdx := rand.Int() % len(epc.Procs)
+	member := epc.Procs[memberIdx]
+	memberName := member.Config().Name
+	var endpoints []string
+	for i := 1; i < len(epc.Procs); i++ {
+		endpoints = append(endpoints, epc.Procs[(memberIdx+i)%len(epc.Procs)].EndpointsGRPC()...)
+	}
+	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, endpoints)
+	require.NoError(t, err)
+
+	memberID, found, err := getMemberIdByName(ctx, cc, memberName)
+	require.NoError(t, err)
+	require.Equal(t, true, found, "Member not found")
+
+	// Need to wait health interval for cluster to accept member changes
+	time.Sleep(etcdserver.HealthInterval)
+
+	t.Logf("Removing member %s", memberName)
+	_, err = cc.MemberRemove(ctx, memberID)
+	require.NoError(t, err)
+	_, found, err = getMemberIdByName(ctx, cc, memberName)
+	require.NoError(t, err)
+	require.Equal(t, false, found, "Expected member to be removed")
+	for member.IsRunning() {
+		err = member.Wait(ctx)
+		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+			t.Fatalf("member didn't exit as expected: %v", err)
+		}
+	}
+
+	t.Logf("Removing member %s data", memberName)
+	err = os.RemoveAll(member.Config().DataDirPath)
+	require.NoError(t, err)
+
+	t.Logf("Adding member %s back as Learner", memberName)
+	removedMemberPeerUrl := member.Config().PeerURL.String()
+	_, err = cc.MemberAddAsLearner(ctx, memberName, []string{removedMemberPeerUrl})
+	require.NoError(t, err)
+
+	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
+	require.NoError(t, err)
+
+	// Sleep 100ms to bypass the known issue https://github.com/etcd-io/etcd/issues/16687.
+	time.Sleep(100 * time.Millisecond)
+
+	t.Logf("Starting member %s", memberName)
+	err = member.Start(ctx)
+	require.NoError(t, err)
+	var learnMemberID uint64
+	testutils.ExecuteUntil(ctx, t, func() {
+		for {
+			learnMemberID, found, err = getMemberIdByName(ctx, cc, memberName)
+			if err != nil || !found {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			break
+		}
+	})
+
+	learnMemberID, found, err = getMemberIdByName(ctx, cc, memberName)
+	require.NoError(t, err)
+	require.Equal(t, true, found, "Member not found")
+
+	_, err = cc.MemberPromote(ctx, learnMemberID)
+	require.NoError(t, err)
+}
