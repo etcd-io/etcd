@@ -37,7 +37,7 @@ require (
 	github.com/RageCage64/multilinediff v0.2.0 // indirect
 	github.com/a8m/envsubst v1.4.2 // indirect
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
-	github.com/alecthomas/go-check-sumtype v0.1.3 // indirect
+	github.com/alecthomas/go-check-sumtype v0.1.4 // indirect
 	github.com/alecthomas/participle/v2 v2.1.1 // indirect
 	github.com/alexkohler/nakedret/v2 v2.0.2 // indirect
 	github.com/alexkohler/prealloc v1.0.0 // indirect
