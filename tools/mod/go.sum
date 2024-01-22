@@ -60,8 +60,8 @@ github.com/GaijinEntertainment/go-exhaustruct/v3 v3.1.0 h1:3ZBs7LAezy8gh0uECsA6C
 github.com/GaijinEntertainment/go-exhaustruct/v3 v3.1.0/go.mod h1:rZLTje5A9kFBe0pzhpe2TdhRniBF++PRHQuRpR8esVc=
 github.com/Masterminds/semver v1.5.0 h1:H65muMkzWKEuNDnfl9d70GUjFniHKHRbFPGBuZ3QEww=
 github.com/Masterminds/semver v1.5.0/go.mod h1:MB6lktGJrhw8PrUyiEoblNEGEQ+RzHPF078ddwwvV3Y=
-github.com/OpenPeeDeeP/depguard/v2 v2.1.0 h1:aQl70G173h/GZYhWf36aE5H0KaujXfVMnn/f1kSDVYY=
-github.com/OpenPeeDeeP/depguard/v2 v2.1.0/go.mod h1:PUBgk35fX4i7JDmwzlJwJ+GMe6NfO1723wmJMgPThNQ=
+github.com/OpenPeeDeeP/depguard/v2 v2.2.0 h1:vDfG60vDtIuf0MEOhmLlLLSzqaRM8EMcgJPdp74zmpA=
+github.com/OpenPeeDeeP/depguard/v2 v2.2.0/go.mod h1:CIzddKRvLBC4Au5aYP/i3nyaWQ+ClszLIuVocRiCYFQ=
 github.com/RageCage64/multilinediff v0.2.0 h1:yNSpSF5NXIrmo6bRIgO4Q0g7SXqFD4j/WEcBE+BdCFY=
 github.com/RageCage64/multilinediff v0.2.0/go.mod h1:pKr+KLgP0gvRzA+yv0/IUaYQuBYN1ucWysvsL58aMP0=
 github.com/a8m/envsubst v1.4.2 h1:4yWIHXOLEJHQEFd4UjrWDrYeYlV7ncFWJOCBRLOZHQg=
