@@ -16,6 +16,8 @@ package backend
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 	"sort"
 
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -52,7 +54,6 @@ func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
 }
 
 func (txw *txWriteBuffer) putSeq(bucket Bucket, k, v []byte) {
-	// TODO: Add (in tests?) verification whether k>b[len(b)]
 	txw.putInternal(bucket, k, v)
 }
 
@@ -83,13 +84,31 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 		if !ok {
 			delete(txw.buckets, k)
 			txr.buckets[k] = wb
-			continue
+			rb = wb
+		} else {
+			rb.merge(wb)
 		}
-		if seq, ok := txw.bucket2seq[k]; ok && !seq && wb.used > 1 {
-			// assume no duplicate keys
-			sort.Sort(wb)
+
+		// Only verify the Key bucket. Reasons:
+		//   1. The keys in the Key bucket are monotonically increasing
+		//      revisions, so there will never have duplicated keys, and
+		//      all the keys should be already sorted. So no need to sort
+		//      them again, also no need to perform the operation of removing
+		//      duplicated keys from the buffer. The Key bucket is the most
+		//      performance sensitive bucket, so it can also increase the
+		//      performance (Need to run benchmark the double confirm this).
+		//   2. Currently, Meta bucket is the only case which might have
+		//      duplicated keys. In case we add other buckets in the future,
+		//      which may break the invariant property. Other buckets are
+		//      also not performance sensitive, so we just keep them as they
+		//      are for simplicity.
+		//
+		if k == BucketIdKey {
+			verifyMonotonicallyIncreasing(rb)
+		} else {
+			rb.dedupe()
 		}
-		rb.merge(wb)
+
 	}
 	txw.reset()
 	// increase the buffer version
@@ -197,16 +216,13 @@ func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 	for i := 0; i < bbsrc.used; i++ {
 		bb.add(bbsrc.buf[i].key, bbsrc.buf[i].val)
 	}
-	if bb.used == bbsrc.used {
-		return
-	}
-	if bytes.Compare(bb.buf[(bb.used-bbsrc.used)-1].key, bbsrc.buf[0].key) < 0 {
-		return
-	}
+}
 
+func (bb *bucketBuffer) dedupe() {
+	if bb.used <= 1 {
+		return
+	}
 	sort.Stable(bb)
-
-	// remove duplicates, using only newest update
 	widx := 0
 	for ridx := 1; ridx < bb.used; ridx++ {
 		if !bytes.Equal(bb.buf[ridx].key, bb.buf[widx].key) {
@@ -215,6 +231,19 @@ func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 		bb.buf[widx] = bb.buf[ridx]
 	}
 	bb.used = widx + 1
+}
+
+func verifyMonotonicallyIncreasing(bb *bucketBuffer) {
+	verify.Verify(func() {
+		for i := 1; i < bb.used; i++ {
+			prev := bb.buf[i-1]
+			cur := bb.buf[i]
+			if bytes.Compare(prev.key, cur.key) >= 0 {
+				panic(fmt.Sprintf("Broke the rule of monotonically increasing, key[%d]: %s, key[%d]: %s",
+					i-1, hex.EncodeToString(prev.key), i, hex.EncodeToString(cur.key)))
+			}
+		}
+	})
 }
 
 func (bb *bucketBuffer) Len() int { return bb.used }
