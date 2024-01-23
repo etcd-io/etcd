@@ -143,37 +143,29 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		c := tx.Cursor()
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
-			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", string(next))
-			}
-			if _, err = h.Write(next); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
-			}
+			_, _ = h.Write(next)
+
 			iskeyb := (string(next) == "key")
 			if err = b.ForEach(func(k, v []byte) error {
-				if _, herr := h.Write(k); herr != nil {
-					return fmt.Errorf("cannot write to bucket %s", herr.Error())
-				}
-				if _, herr := h.Write(v); herr != nil {
-					return fmt.Errorf("cannot write to bucket %s", herr.Error())
-				}
+				_, _ = h.Write(k)
+				_, _ = h.Write(v)
 				if iskeyb {
 					var rev mvcc.BucketKey
 					rev, err = mvcc.BytesToBucketKey(k)
 					if err != nil {
-						return fmt.Errorf("cannot parse revision key : %s", err.Error())
+						return fmt.Errorf("cannot parse revision key: key=%q err=%w", k, err)
 					}
 					ds.Revision = rev.Main
 
 					err = kv.Unmarshal(v)
 					if err != nil {
-						return fmt.Errorf("cannot unmarshal value : %s", err.Error())
+						return fmt.Errorf("cannot unmarshal value: key=%q err=%w", k, err)
 					}
 				}
 				ds.TotalKey++
 				return nil
 			}); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
+				return fmt.Errorf("error during key iteration: %w", err)
 			}
 		}
 		return nil
