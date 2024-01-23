@@ -66,7 +66,7 @@ func TestSnapshotStatusCorruptRevision(t *testing.T) {
 	db.Close()
 
 	_, err = NewV3(zap.NewNop()).Status(dbpath)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "invalid revision length")
 }
 
 // TestSnapshotStatusNegativeRevisionMain tests if snapshot status command fails when main revision number is negative.
@@ -90,7 +90,7 @@ func TestSnapshotStatusNegativeRevisionMain(t *testing.T) {
 	db.Close()
 
 	_, err = NewV3(zap.NewNop()).Status(dbpath)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "negative revision")
 }
 
 // TestSnapshotStatusNegativeRevisionSub tests if snapshot status command fails when sub revision number is negative.
@@ -114,7 +114,7 @@ func TestSnapshotStatusNegativeRevisionSub(t *testing.T) {
 	db.Close()
 
 	_, err = NewV3(zap.NewNop()).Status(dbpath)
-	require.Error(t, err)
+	require.ErrorContains(t, err, "negative revision")
 }
 
 // insertKeys insert `numKeys` number of keys of `valueSize` size into a running etcd server.
