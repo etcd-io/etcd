@@ -25,7 +25,7 @@ import (
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
-func mockSTM_apply() {
+func mockSTMApply() {
 	fmt.Println("account sum is 500")
 }
 
@@ -33,7 +33,7 @@ func mockSTM_apply() {
 // transfer between balances.
 func ExampleSTM_apply() {
 	forUnitTestsRunInMockedContext(
-		mockSTM_apply,
+		mockSTMApply,
 		func() {
 			cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
 			if err != nil {

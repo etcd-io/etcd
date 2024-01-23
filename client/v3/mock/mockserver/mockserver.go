@@ -63,7 +63,7 @@ func StartMockServers(count int) (ms *MockServers, err error) {
 func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err error) {
 	switch network {
 	case "tcp":
-		return startMockServersTcp(count)
+		return startMockServersTCP(count)
 	case "unix":
 		return startMockServersUnix(count)
 	default:
@@ -71,7 +71,7 @@ func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err 
 	}
 }
 
-func startMockServersTcp(count int) (ms *MockServers, err error) {
+func startMockServersTCP(count int) (ms *MockServers, err error) {
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		addrs = append(addrs, "localhost:0")

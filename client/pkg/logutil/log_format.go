@@ -17,19 +17,19 @@ package logutil
 import "fmt"
 
 const (
-	JsonLogFormat    = "json"
+	JSONLogFormat    = "json"
 	ConsoleLogFormat = "console"
 )
 
-var DefaultLogFormat = JsonLogFormat
+var DefaultLogFormat = JSONLogFormat
 
 // ConvertToZapFormat converts and validated log format string.
 func ConvertToZapFormat(format string) (string, error) {
 	switch format {
 	case ConsoleLogFormat:
 		return ConsoleLogFormat, nil
-	case JsonLogFormat:
-		return JsonLogFormat, nil
+	case JSONLogFormat:
+		return JSONLogFormat, nil
 	case "":
 		return DefaultLogFormat, nil
 	default:

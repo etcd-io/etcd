@@ -20,54 +20,54 @@ import (
 	"strings"
 )
 
-const ENV_VERIFY = "ETCD_VERIFY"
+const EnvVerify = "ETCD_VERIFY"
 
 type VerificationType string
 
 const (
-	ENV_VERIFY_VALUE_ALL    VerificationType = "all"
-	ENV_VERIFY_VALUE_ASSERT VerificationType = "assert"
+	EnvVerifyValueAll    VerificationType = "all"
+	EnvVerifyValueAssert VerificationType = "assert"
 )
 
 func getEnvVerify() string {
-	return strings.ToLower(os.Getenv(ENV_VERIFY))
+	return strings.ToLower(os.Getenv(EnvVerify))
 }
 
 func IsVerificationEnabled(verification VerificationType) bool {
 	env := getEnvVerify()
-	return env == string(ENV_VERIFY_VALUE_ALL) || env == strings.ToLower(string(verification))
+	return env == string(EnvVerifyValueAll) || env == strings.ToLower(string(verification))
 }
 
 // EnableVerifications sets `ENV_VERIFY` and returns a function that
 // can be used to bring the original settings.
 func EnableVerifications(verification VerificationType) func() {
 	previousEnv := getEnvVerify()
-	os.Setenv(ENV_VERIFY, string(verification))
+	os.Setenv(EnvVerify, string(verification))
 	return func() {
-		os.Setenv(ENV_VERIFY, previousEnv)
+		os.Setenv(EnvVerify, previousEnv)
 	}
 }
 
 // EnableAllVerifications enables verification and returns a function
 // that can be used to bring the original settings.
 func EnableAllVerifications() func() {
-	return EnableVerifications(ENV_VERIFY_VALUE_ALL)
+	return EnableVerifications(EnvVerifyValueAll)
 }
 
 // DisableVerifications unsets `ENV_VERIFY` and returns a function that
 // can be used to bring the original settings.
 func DisableVerifications() func() {
 	previousEnv := getEnvVerify()
-	os.Unsetenv(ENV_VERIFY)
+	os.Unsetenv(EnvVerify)
 	return func() {
-		os.Setenv(ENV_VERIFY, previousEnv)
+		os.Setenv(EnvVerify, previousEnv)
 	}
 }
 
 // Verify performs verification if the assertions are enabled.
 // In the default setup running in tests and skipped in the production code.
 func Verify(f func()) {
-	if IsVerificationEnabled(ENV_VERIFY_VALUE_ASSERT) {
+	if IsVerificationEnabled(EnvVerifyValueAssert) {
 		f()
 	}
 }

@@ -779,8 +779,8 @@ func (w *watchGrpcStream) broadcastResponse(wr *WatchResponse) bool {
 }
 
 // unicastResponse sends a watch response to a specific watch substream.
-func (w *watchGrpcStream) unicastResponse(wr *WatchResponse, watchId int64) bool {
-	ws, ok := w.substreams[watchId]
+func (w *watchGrpcStream) unicastResponse(wr *WatchResponse, watchID int64) bool {
+	ws, ok := w.substreams[watchID]
 	if !ok {
 		return false
 	}

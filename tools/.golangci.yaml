@@ -88,7 +88,7 @@ linters-settings: # please keep this alphabetized
         disabled: false
       # TODO: enable the following rules
       - name: var-naming
-        disabled: true
+        disabled: false
       - name: exported
         disabled: true
       - name: unexported-return
