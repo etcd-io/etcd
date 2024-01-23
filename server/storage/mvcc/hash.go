@@ -111,7 +111,7 @@ type hashStorage struct {
 	lg     *zap.Logger
 }
 
-func newHashStorage(lg *zap.Logger, s *store) *hashStorage {
+func NewHashStorage(lg *zap.Logger, s *store) HashStorage {
 	return &hashStorage{
 		store: s,
 		lg:    lg,
