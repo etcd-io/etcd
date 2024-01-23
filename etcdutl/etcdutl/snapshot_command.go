@@ -40,6 +40,7 @@ var (
 	skipHashCheck       bool
 	markCompacted       bool
 	revisionBump        uint64
+	hashKVRevision      int64
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -50,6 +51,7 @@ func NewSnapshotCommand() *cobra.Command {
 	}
 	cmd.AddCommand(NewSnapshotRestoreCommand())
 	cmd.AddCommand(newSnapshotStatusCommand())
+	cmd.AddCommand(newSnapshotHashKVCommand())
 	return cmd
 }
 
@@ -62,6 +64,19 @@ The items in the lists are hash, revision, total keys, total size.
 `,
 		Run: SnapshotStatusCommandFunc,
 	}
+}
+
+func newSnapshotHashKVCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "hashkv <filename>",
+		Short: "Prints the KV history hash of a given file",
+		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
+The items in the lists are hash, hash revision, compact revision.
+`,
+		Run: SnapshotHashKVCommandFunc,
+	}
+	cmd.Flags().Int64Var(&hashKVRevision, "rev", 0, "maximum revision to hash (default: all revisions)")
+	return cmd
 }
 
 func NewSnapshotRestoreCommand() *cobra.Command {
@@ -100,6 +115,22 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	printer.DBStatus(ds)
+}
+
+func SnapshotHashKVCommandFunc(cmd *cobra.Command, args []string) {
+	if len(args) != 1 {
+		err := fmt.Errorf("snapshot hashkv requires exactly one argument")
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
+	printer := initPrinterFromCmd(cmd)
+
+	lg := GetLogger()
+	sp := snapshot.NewV3(lg)
+	ds, err := sp.HashKV(args[0], hashKVRevision)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+	printer.DBHashKV(ds)
 }
 
 func snapshotRestoreCommandFunc(_ *cobra.Command, args []string) {
