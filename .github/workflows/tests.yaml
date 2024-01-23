@@ -67,7 +67,7 @@ jobs:
             ;;
           linux-amd64-e2e)
             make install-gofail
-            GOARCH=amd64 FAILPOINTS='true' make test-e2e-release
+            GOARCH=amd64 FAILPOINTS='true' CPU='4' make test-e2e-release
             ;;
           linux-386-unit)
             GOARCH=386 make test-unit
