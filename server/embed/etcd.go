@@ -533,6 +533,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
 		)
 		if err != nil {
+			cfg.logger.Error("creating peer listener failed", zap.Error(err))
 			return nil, err
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
