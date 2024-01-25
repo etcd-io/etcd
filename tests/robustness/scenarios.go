@@ -59,7 +59,7 @@ type testScenario struct {
 	watch     watchConfig
 }
 
-func scenarios(t *testing.T) []testScenario {
+func exploratoryScenarios(t *testing.T) []testScenario {
 	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
 	if err != nil {
 		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
@@ -112,13 +112,22 @@ func scenarios(t *testing.T) []testScenario {
 			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
+	return scenarios
+}
+
+func regressionScenarios(t *testing.T) []testScenario {
+	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	if err != nil {
+		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
+	}
+
+	scenarios := []testScenario{}
 	scenarios = append(scenarios, testScenario{
 		name:      "Issue14370",
 		failpoint: failpoint.RaftBeforeSavePanic,
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
-			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
@@ -129,7 +138,6 @@ func scenarios(t *testing.T) []testScenario {
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
-			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
@@ -151,7 +159,6 @@ func scenarios(t *testing.T) []testScenario {
 		profile: traffic.LowTraffic,
 		traffic: traffic.EtcdPutDeleteLease,
 		cluster: *e2e.NewConfig(
-			options.WithSubsetOptions(randomizableOptions...),
 			e2e.WithClusterSize(1),
 		),
 	})
@@ -163,7 +170,6 @@ func scenarios(t *testing.T) []testScenario {
 			profile:   traffic.HighTrafficProfile,
 			traffic:   traffic.EtcdPut,
 			cluster: *e2e.NewConfig(
-				options.WithSubsetOptions(randomizableOptions...),
 				e2e.WithSnapshotCatchUpEntries(100),
 				e2e.WithSnapshotCount(100),
 				e2e.WithPeerProxy(true),
