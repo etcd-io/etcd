@@ -28,6 +28,23 @@ import (
 
 type BucketID int
 
+const (
+	BucketIdKey     BucketID = 1
+	BucketIdMeta    BucketID = 2
+	BucketIdLease   BucketID = 3
+	BucketIdAlarm   BucketID = 4
+	BucketIdCluster BucketID = 5
+
+	BucketIdMembers        BucketID = 10
+	BucketIdMembersRemoved BucketID = 11
+
+	BucketIdAuth      BucketID = 20
+	BucketIdAuthUsers BucketID = 21
+	BucketIdAuthRoles BucketID = 22
+
+	BucketIdTest BucketID = 100
+)
+
 type Bucket interface {
 	// ID returns a unique identifier of a bucket.
 	// The id must NOT be persisted and can be used as lightweight identificator
