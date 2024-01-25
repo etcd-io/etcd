@@ -551,6 +551,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	hashCompactc := make(chan hashKVResult, 1)
 	var wg sync.WaitGroup
 	donec := make(chan struct{})
+	stopc := make(chan struct{})
 
 	// Call HashByRev(10000) in multiple goroutines until donec is closed
 	for i := 0; i < 10; i++ {
@@ -563,6 +564,8 @@ func TestHashKVWhenCompacting(t *testing.T) {
 					t.Error(err)
 				}
 				select {
+				case <-stopc:
+					return
 				case <-donec:
 					return
 				case hashCompactc <- hashKVResult{hash.Hash, hash.CompactRevision}:
@@ -586,6 +589,8 @@ func TestHashKVWhenCompacting(t *testing.T) {
 			}
 
 			select {
+			case <-stopc:
+				return
 			case <-donec:
 				return
 			default:
@@ -594,9 +599,20 @@ func TestHashKVWhenCompacting(t *testing.T) {
 	}()
 
 	// Compact the store in a goroutine, using revision 9900 to 10000 and close donec when finished
+	wg.Add(1)
 	go func() {
-		defer close(donec)
+		defer func() {
+			close(donec)
+			wg.Done()
+		}()
+
 		for i := 100; i >= 0; i-- {
+			select {
+			case <-stopc:
+				return
+			default:
+			}
+
 			_, err := s.Compact(traceutil.TODO(), int64(rev-i))
 			if err != nil {
 				t.Error(err)
@@ -610,10 +626,14 @@ func TestHashKVWhenCompacting(t *testing.T) {
 
 	select {
 	case <-donec:
-		wg.Wait()
 	case <-time.After(10 * time.Second):
+		close(stopc)
+		wg.Wait()
 		testutil.FatalStack(t, "timeout")
 	}
+
+	close(stopc)
+	wg.Wait()
 }
 
 // TestHashKVWithCompactedAndFutureRevisions ensures that HashKV returns a correct hash when called
