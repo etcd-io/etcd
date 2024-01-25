@@ -533,6 +533,11 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
 		peers[i].Listener, err = rafthttp.NewListener(u, &cfg.PeerTLSInfo)
 		if err != nil {
+			if cfg.logger != nil {
+				cfg.logger.Error("creating peer listener failed", zap.Error(err))
+			} else {
+				plog.Errorf("creating peer listener failed: %v", err)
+			}
 			return nil, err
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
