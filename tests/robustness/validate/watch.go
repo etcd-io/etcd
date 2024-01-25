@@ -31,8 +31,10 @@ func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.Cl
 		validateUnique(t, cfg.ExpectRevisionUnique, r)
 		validateAtomic(t, r)
 		validateBookmarkable(t, r)
-		validateReliable(t, eventHistory, r)
-		validateResumable(t, eventHistory, r)
+		if eventHistory != nil {
+			validateReliable(t, eventHistory, r)
+			validateResumable(t, eventHistory, r)
+		}
 	}
 }
 
