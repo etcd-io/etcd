@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [nil pointer panicking due to using the wrong log library](https://github.com/etcd-io/etcd/pull/17270)
 
+### Dependencies
+- Compile binaries using go [1.20.13](https://github.com/etcd-io/etcd/pull/17276).
+
 <hr>
 
 ## v3.4.29 (2024-01-09)

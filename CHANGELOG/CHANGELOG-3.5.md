@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 - [Add livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17039)
 
+### Dependencies
+- Compile binaries using [go 1.20.13](https://github.com/etcd-io/etcd/pull/17275)
+
 ## v3.5.11 (2023-12-07)
 
 ### etcd server
