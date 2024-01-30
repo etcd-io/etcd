@@ -102,7 +102,9 @@ const (
 
 	recommendedMaxRequestBytes = 10 * 1024 * 1024
 
-	readyPercent = 0.9
+	// readyPercentThreshold is a threshold used to determine
+	// whether a learner is ready for a transition into a full voting member or not.
+	readyPercentThreshold = 0.9
 
 	DowngradeEnabledPath = "/downgrade/enabled"
 )
@@ -1491,8 +1493,7 @@ func (s *EtcdServer) promoteMember(ctx context.Context, id uint64) ([]*membershi
 
 func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 	lg := s.Logger()
-	err := s.isLearnerReady(uint64(id))
-	if err != nil {
+	if err := s.isLearnerReady(lg, uint64(id)); err != nil {
 		return err
 	}
 
@@ -1515,7 +1516,7 @@ func (s *EtcdServer) mayPromoteMember(id types.ID) error {
 // check whether the learner catches up with leader or not.
 // Note: it will return nil if member is not found in cluster or if member is not learner.
 // These two conditions will be checked before toApply phase later.
-func (s *EtcdServer) isLearnerReady(id uint64) error {
+func (s *EtcdServer) isLearnerReady(lg *zap.Logger, id uint64) error {
 	if err := s.waitAppliedIndex(); err != nil {
 		return err
 	}
@@ -1546,8 +1547,16 @@ func (s *EtcdServer) isLearnerReady(id uint64) error {
 	}
 
 	leaderMatch := rs.Progress[leaderID].Match
+
+	learnerReadyPercent := float64(learnerMatch) / float64(leaderMatch)
+
 	// the learner's Match not caught up with leader yet
-	if float64(learnerMatch) < float64(leaderMatch)*readyPercent {
+	if learnerReadyPercent < readyPercentThreshold {
+		lg.Error(
+			"rejecting promote learner: learner is not ready",
+			zap.Float64("learner-ready-percent", learnerReadyPercent),
+			zap.Float64("ready-percent-threshold", readyPercentThreshold),
+		)
 		return errors.ErrLearnerNotReady
 	}
 
