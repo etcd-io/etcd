@@ -5,8 +5,8 @@ go 1.20
 require (
 	github.com/json-iterator/go v1.1.11
 	github.com/modern-go/reflect2 v1.0.1
-	go.etcd.io/etcd/api/v3 v3.5.11
-	go.etcd.io/etcd/client/pkg/v3 v3.5.11
+	go.etcd.io/etcd/api/v3 v3.5.12
+	go.etcd.io/etcd/client/pkg/v3 v3.5.12
 )
 
 require (
