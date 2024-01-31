@@ -2,7 +2,6 @@
 
 approvers:
   - ahrtr           # Benjamin Wang <benjamin.ahrtr@gmail.com> <benjamin.wang@broadcom.com>
-  - mitake          # Hitoshi Mitake <h.mitake@gmail.com>
   - serathius       # Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com>
   - spzala          # Sahdev Zala <spzala@us.ibm.com>
   - wenjiaswe       # Wenjia Zhang <wenjiazhang@google.com> <wenjia.swe@gmail.com>
