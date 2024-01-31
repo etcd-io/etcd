@@ -4,13 +4,14 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.30 (tbd)
+## v3.4.30 (2024-01-31)
 
 ### etcd server
 - Fix [nil pointer panicking due to using the wrong log library](https://github.com/etcd-io/etcd/pull/17270)
 
 ### Dependencies
 - Compile binaries using go [1.20.13](https://github.com/etcd-io/etcd/pull/17276).
+- Upgrade [golang.org/x/crypto to v0.17+ to address CVE-2023-48795](https://github.com/etcd-io/etcd/pull/17347).
 
 <hr>
 
