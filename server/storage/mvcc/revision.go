@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"encoding/binary"
+	"fmt"
 )
 
 const (
@@ -95,10 +96,21 @@ func BucketKeyToBytes(rev BucketKey, bytes []byte) []byte {
 }
 
 func BytesToBucketKey(bytes []byte) BucketKey {
+	if (len(bytes) != revBytesLen) && (len(bytes) != markedRevBytesLen) {
+		panic(fmt.Sprintf("invalid revision length: %d", len(bytes)))
+	}
+	if bytes[8] != '_' {
+		panic(fmt.Sprintf("invalid separator in bucket key: %q", bytes[8]))
+	}
+	main := int64(binary.BigEndian.Uint64(bytes[0:8]))
+	sub := int64(binary.BigEndian.Uint64(bytes[9:]))
+	if main < 0 || sub < 0 {
+		panic(fmt.Sprintf("negative revision: main=%d sub=%d", main, sub))
+	}
 	return BucketKey{
 		Revision: Revision{
-			Main: int64(binary.BigEndian.Uint64(bytes[0:8])),
-			Sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
+			Main: main,
+			Sub:  sub,
 		},
 		tombstone: isTombstone(bytes),
 	}
