@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
-	github.com/cheggaaa/pb/v3 v3.1.4
+	github.com/cheggaaa/pb/v3 v3.1.5
 	github.com/dustin/go-humanize v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
@@ -15,7 +15,7 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/time v0.5.0
-	google.golang.org/grpc v1.60.1
+	google.golang.org/grpc v1.61.0
 )
 
 require (
