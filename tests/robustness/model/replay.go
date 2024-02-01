@@ -73,7 +73,7 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 	revision = r.eventHistory[r.eventHistoryIndex].Revision
 	index = r.eventHistoryIndex
 	operations := []EtcdOperation{}
-	for r.eventHistory[index].Revision == revision {
+	for index < len(r.eventHistory) && r.eventHistory[index].Revision == revision {
 		event := r.eventHistory[index]
 		switch event.Type {
 		case PutOperation:
