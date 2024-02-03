@@ -77,6 +77,7 @@ func TestApplyRepeat(t *testing.T) {
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -201,6 +202,7 @@ func TestV2SetClusterVersion(t *testing.T) {
 func TestApplyConfStateWithRestart(t *testing.T) {
 	n := newNodeRecorder()
 	srv := newServer(t, n)
+	defer srv.Cleanup()
 
 	assert.Equal(t, srv.consistIndex.ConsistentIndex(), uint64(0))
 
@@ -476,6 +478,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
+	defer srv.r.raftNodeConfig.Stop()
 
 	// create EntryConfChange entry
 	now := time.Now()
@@ -547,6 +550,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	cl := membership.NewCluster(lg)
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	for i := 1; i <= 5; i++ {
@@ -596,6 +600,7 @@ func TestSnapshot(t *testing.T) {
 	defer revertFunc()
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -615,6 +620,9 @@ func TestSnapshot(t *testing.T) {
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
 	srv.be = be
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
@@ -921,6 +929,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 			},
 		},
 	})
+	defer r.raftNodeConfig.Stop()
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
@@ -961,6 +970,7 @@ func TestRemoveMember(t *testing.T) {
 	st := v2store.New()
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: 1234}, true)
@@ -1060,6 +1070,7 @@ func TestPublishV3(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1130,6 +1141,7 @@ func TestPublishV3Retry(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1181,6 +1193,7 @@ func TestUpdateVersionV3(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.TODO())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zaptest.NewLogger(t),

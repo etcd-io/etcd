@@ -198,6 +198,9 @@ func TestBootstrapBackend(t *testing.T) {
 			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 			ss := snap.New(cfg.Logger, cfg.SnapDir())
 			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			defer t.Cleanup(func() {
+				backend.Close()
+			})
 
 			hasError := err != nil
 			expectedHasError := tt.expectedError != nil
