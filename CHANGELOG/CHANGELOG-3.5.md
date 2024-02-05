@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
 
+### Dependencies
+- Compile binaries using [go 1.21.6](https://github.com/etcd-io/etcd/pull/17362)
+
 <hr>
 
 ## v3.5.12 (2024-01-31)
