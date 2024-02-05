@@ -71,7 +71,7 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, 
 						if prev, found := revisionToEvents[lastRevision]; found {
 							// This assumes that there are txn that would be observed differently by two watches.
 							// TODO: Implement merging events from multiple watches about single revision based on operations.
-							if diff := cmp.Diff(prev.events, events); diff != "" {
+							if diff := cmp.Diff(prev.events, events, cmp.Comparer(compareWatchEvents)); diff != "" {
 								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
 							}
 						} else {
@@ -86,7 +86,7 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, 
 		}
 	}
 	if prev, found := revisionToEvents[lastRevision]; found {
-		if diff := cmp.Diff(prev.events, events); diff != "" {
+		if diff := cmp.Diff(prev.events, events, cmp.Comparer(compareWatchEvents)); diff != "" {
 			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
 		}
 	} else {
@@ -105,4 +105,18 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, 
 		eventHistory = append(eventHistory, revEvents.events...)
 	}
 	return eventHistory, nil
+}
+
+func compareWatchEvents(x, y []model.WatchEvent) bool {
+	if len(x) != len(y) {
+		return false
+	}
+
+	for i := 0; i < len(x); i++ {
+		if x[i].PersistedEvent != y[i].PersistedEvent {
+			return false
+		}
+	}
+
+	return true
 }
