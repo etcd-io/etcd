@@ -20,7 +20,7 @@ jobs:
           version: ${{ steps.golangci_lint_version.outputs.golangci_lint_version }}
           args: --config tools/.golangci.yaml
       - name: protoc
-        uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
+        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
         with:
           version: '3.20.3'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
