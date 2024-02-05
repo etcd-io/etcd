@@ -1,7 +1,7 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 approvers:
-  - ahrtr           # Benjamin Wang <wachao@vmware.com> <benjamin.ahrtr@gmail.com>
+  - ahrtr           # Benjamin Wang <benjamin.ahrtr@gmail.com> <benjamin.wang@broadcom.com>
   - mitake          # Hitoshi Mitake <h.mitake@gmail.com>
   - serathius       # Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com>
   - spzala          # Sahdev Zala <spzala@us.ibm.com>
