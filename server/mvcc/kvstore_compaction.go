@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	humanize "github.com/dustin/go-humanize"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
 )
 

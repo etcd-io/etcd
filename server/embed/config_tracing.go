@@ -73,7 +73,7 @@ func newTracingExporter(ctx context.Context, cfg *Config) (*tracingExporter, err
 		}
 	}
 
-		traceProvider := tracesdk.NewTracerProvider(
+	traceProvider := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exporter),
 		tracesdk.WithResource(res),
 		tracesdk.WithSampler(
