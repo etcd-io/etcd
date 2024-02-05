@@ -4,6 +4,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
+## v3.5.13 (TBD)
+
+### Package `clientv3`
+- Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
+
+<hr>
+
 ## v3.5.12 (2024-01-31)
 
 ### etcd server
