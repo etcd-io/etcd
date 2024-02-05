@@ -128,7 +128,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
 	t.Log("putting 10 keys...")
 
-	oldCc := NewEtcdctl(epcOld.EndpointsV3(), e2e.ClientNonTLS, false, false)
+	oldCc := e2e.NewEtcdctl(epcOld.EndpointsV3(), e2e.ClientNonTLS, false, false)
 	for i := 0; i < 10; i++ {
 		err := oldCc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
@@ -154,7 +154,7 @@ func TestInPlaceRecovery(t *testing.T) {
 		}
 	})
 
-	newCc := NewEtcdctl(epcNew.EndpointsV3(), e2e.ClientNonTLS, false, false)
+	newCc := e2e.NewEtcdctl(epcNew.EndpointsV3(), e2e.ClientNonTLS, false, false)
 	assert.NoError(t, err)
 
 	wg := sync.WaitGroup{}
@@ -211,7 +211,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -252,7 +252,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -302,7 +302,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	// Put 200 identical keys to the cluster, so that the compaction will drop some stale values.
 	// We need a relatively big number here to make the compaction takes a non-trivial time, and we can interrupt it.
 	t.Log("putting 200 values to the identical key...")
-	cc := NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 200; i++ {
 		err = cc.Put("key", fmt.Sprint(i))
