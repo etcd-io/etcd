@@ -243,7 +243,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			lineFunc   = func(txt string) bool { return true }
 		)
 
-		cmdArgs = cURLPrefixArgs(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
+		cmdArgs = cURLPrefixArgsCluster(cx.epc, "POST", cURLReq{endpoint: path.Join(p, "/auth/authenticate"), value: string(authreq)})
 		proc, err := spawnCmd(cmdArgs, cx.envMap)
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
@@ -282,7 +282,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatal(err)
 	}
-	cargs := cURLPrefixArgs(cx.epc, "POST", cURLReq{
+	cargs := cURLPrefixArgsCluster(cx.epc, "POST", cURLReq{
 		endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		value:    string(cdata),
 	})
@@ -378,6 +378,34 @@ func testV3CurlMaintenanceAlarmMissiongAlarm(cx ctlCtx) {
 		value:    `{"action": "ACTIVATE"}`,
 	}); err != nil {
 		cx.t.Fatalf("failed post maintenance alarm (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlMaintenanceHash(t *testing.T) {
+	testCtl(t, testV3CurlMaintenanceHash, withCfg(*newConfigNoTLS()))
+}
+
+func testV3CurlMaintenanceHash(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: "/v3/maintenance/hash",
+		value:    "{}",
+		expected: `,"revision":"1","raft_term":"2"},"hash":`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance hash request (%s) (%v)", cx.apiPrefix, err)
+	}
+}
+
+func TestV3CurlMaintenanceHashKV(t *testing.T) {
+	testCtl(t, testV3CurlMaintenanceHashKV, withCfg(*newConfigNoTLS()))
+}
+
+func testV3CurlMaintenanceHashKV(cx ctlCtx) {
+	if err := cURLPost(cx.epc, cURLReq{
+		endpoint: "/v3/maintenance/hashkv",
+		value:    `{"revision": 1}`,
+		expected: `,"compact_revision":`,
+	}); err != nil {
+		cx.t.Fatalf("failed post maintenance hashKV request (%s) (%v)", cx.apiPrefix, err)
 	}
 }
 

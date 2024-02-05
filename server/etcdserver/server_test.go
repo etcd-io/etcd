@@ -663,6 +663,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      &backendHooks{lg: lg, indexer: ci},
 	}
+	defer srv.r.Stop()
 
 	// create EntryConfChange entry
 	now := time.Now()
@@ -686,9 +687,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 
 	_, appliedi, _ := srv.apply(ents, &raftpb.ConfState{})
 	consistIndex := srv.consistIndex.ConsistentIndex()
-	if consistIndex != appliedi {
-		t.Fatalf("consistIndex = %v, want %v", consistIndex, appliedi)
-	}
+	assert.Equal(t, uint64(2), appliedi)
 
 	t.Run("verify-backend", func(t *testing.T) {
 		tx := be.BatchTx()
@@ -697,9 +696,8 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		srv.beHooks.OnPreCommitUnsafe(tx)
 		assert.Equal(t, raftpb.ConfState{Voters: []uint64{2}}, *membership.UnsafeConfStateFromBackend(lg, tx))
 	})
-	rindex, rterm := cindex.ReadConsistentIndex(be.BatchTx())
+	rindex, _ := cindex.ReadConsistentIndex(be.ReadTx())
 	assert.Equal(t, consistIndex, rindex)
-	assert.Equal(t, uint64(4), rterm)
 }
 
 func realisticRaftNode(lg *zap.Logger) *raftNode {
@@ -1013,9 +1011,10 @@ func TestSyncTrigger(t *testing.T) {
 	<-n.Chan()
 }
 
-// snapshot should snapshot the store and cut the persistent
+// TestSnapshot as snapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -1035,6 +1034,11 @@ func TestSnapshot(t *testing.T) {
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
+
 	srv.be = be
 
 	ch := make(chan struct{}, 2)
@@ -1168,7 +1172,7 @@ func TestSnapshotOrdering(t *testing.T) {
 	}
 }
 
-// Applied > SnapshotCount should trigger a SaveSnap event
+// TestTriggerSnap as Applied > SnapshotCount should trigger a SaveSnap event
 func TestTriggerSnap(t *testing.T) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(t)
 	defer func() {
@@ -1605,6 +1609,7 @@ func TestPublishV3(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -1640,7 +1645,7 @@ func TestPublishV3(t *testing.T) {
 		Name: "node1", ClientUrls: []string{"http://a", "http://b"}}}, r.ClusterMemberAttrSet)
 }
 
-// TestPublishStopped tests that publish will be stopped if server is stopped.
+// TestPublishV3Stopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	r := newRaftNode(raftNodeConfig{
@@ -1668,13 +1673,14 @@ func TestPublishV3Stopped(t *testing.T) {
 	srv.publishV3(time.Hour)
 }
 
-// TestPublishRetry tests that publish will keep retry until success.
+// TestPublishV3Retry tests that publish will keep retry until success.
 func TestPublishV3Retry(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
@@ -2038,4 +2044,60 @@ func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
 		}
 	}
 	s.sendC <- send
+}
+
+func TestWaitAppliedIndex(t *testing.T) {
+	cases := []struct {
+		name           string
+		appliedIndex   uint64
+		committedIndex uint64
+		action         func(s *EtcdServer)
+		ExpectedError  error
+	}{
+		{
+			name:           "The applied Id is already equal to the commitId",
+			appliedIndex:   10,
+			committedIndex: 10,
+			action: func(s *EtcdServer) {
+				s.applyWait.Trigger(10)
+			},
+			ExpectedError: nil,
+		},
+		{
+			name:           "The etcd server has already stopped",
+			appliedIndex:   10,
+			committedIndex: 12,
+			action: func(s *EtcdServer) {
+				s.stopping <- struct{}{}
+			},
+			ExpectedError: ErrStopped,
+		},
+		{
+			name:           "Timed out waiting for the applied index",
+			appliedIndex:   10,
+			committedIndex: 12,
+			action:         nil,
+			ExpectedError:  ErrTimeoutWaitAppliedIndex,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &EtcdServer{
+				appliedIndex:   tc.appliedIndex,
+				committedIndex: tc.committedIndex,
+				stopping:       make(chan struct{}, 1),
+				applyWait:      wait.NewTimeList(),
+			}
+
+			if tc.action != nil {
+				go tc.action(s)
+			}
+
+			err := s.waitAppliedIndex()
+
+			if err != tc.ExpectedError {
+				t.Errorf("Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
+			}
+		})
+	}
 }

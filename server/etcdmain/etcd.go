@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	pkgioutil "go.etcd.io/etcd/pkg/v3/ioutil"
@@ -63,7 +64,7 @@ func startEtcdOrProxyV2(args []string) {
 	if lg == nil {
 		var zapError error
 		// use this logger
-		lg, zapError = zap.NewProduction()
+		lg, zapError = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 		if zapError != nil {
 			fmt.Printf("error creating zap logger %v", zapError)
 			os.Exit(1)
@@ -192,7 +193,7 @@ func startEtcdOrProxyV2(args []string) {
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) {
 				lg.Warn("forgot to set --initial-cluster?")
 			}
-			if types.URLs(cfg.ec.APUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
+			if types.URLs(cfg.ec.AdvertisePeerUrls).String() == embed.DefaultInitialAdvertisePeerURLs {
 				lg.Warn("forgot to set --initial-advertise-peer-urls?")
 			}
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.Durl) == 0 {
@@ -275,7 +276,7 @@ func startProxy(cfg *config) error {
 	}
 
 	cfg.ec.Dir = filepath.Join(cfg.ec.Dir, "proxy")
-	err = fileutil.TouchDirAll(cfg.ec.Dir)
+	err = fileutil.TouchDirAll(lg, cfg.ec.Dir)
 	if err != nil {
 		return err
 	}
@@ -388,11 +389,11 @@ func startProxy(cfg *config) error {
 
 	// setup self signed certs when serving https
 	cHosts, cTLS := []string{}, false
-	for _, u := range cfg.ec.LCUrls {
+	for _, u := range cfg.ec.ListenClientUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
-	for _, u := range cfg.ec.ACUrls {
+	for _, u := range cfg.ec.AdvertiseClientUrls {
 		cHosts = append(cHosts, u.Host)
 		cTLS = cTLS || u.Scheme == "https"
 	}
@@ -405,7 +406,7 @@ func startProxy(cfg *config) error {
 	}
 
 	// Start a proxy server goroutine for each listen address
-	for _, u := range cfg.ec.LCUrls {
+	for _, u := range cfg.ec.ListenClientUrls {
 		l, err := transport.NewListener(u.Host, u.Scheme, &listenerTLS)
 		if err != nil {
 			return err
@@ -415,7 +416,7 @@ func startProxy(cfg *config) error {
 		go func() {
 			lg.Info("v2 proxy started listening on client requests", zap.String("host", host))
 			mux := http.NewServeMux()
-			etcdhttp.HandlePrometheus(mux) // v2 proxy just uses the same port
+			etcdhttp.HandleMetrics(mux) // v2 proxy just uses the same port
 			mux.Handle("/", ph)
 			lg.Fatal("done serving", zap.Error(http.Serve(l, mux)))
 		}()
@@ -463,6 +464,10 @@ func identifyDataDirOrDie(lg *zap.Logger, dir string) dirType {
 }
 
 func checkSupportArch() {
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	if err != nil {
+		panic(err)
+	}
 	// to add a new platform, check https://github.com/etcd-io/website/blob/main/content/en/docs/next/op-guide/supported-platform.md
 	if runtime.GOARCH == "amd64" ||
 		runtime.GOARCH == "arm64" ||
@@ -474,10 +479,10 @@ func checkSupportArch() {
 	// so unset here to not parse through flag
 	defer os.Unsetenv("ETCD_UNSUPPORTED_ARCH")
 	if env, ok := os.LookupEnv("ETCD_UNSUPPORTED_ARCH"); ok && env == runtime.GOARCH {
-		fmt.Printf("running etcd on unsupported architecture %q since ETCD_UNSUPPORTED_ARCH is set\n", env)
+		lg.Info("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", env))
 		return
 	}
 
-	fmt.Printf("etcd on unsupported platform without ETCD_UNSUPPORTED_ARCH=%s set\n", runtime.GOARCH)
+	lg.Error("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", runtime.GOARCH))
 	os.Exit(1)
 }

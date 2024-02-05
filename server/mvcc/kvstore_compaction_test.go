@@ -26,6 +26,7 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestScheduleCompaction(t *testing.T) {
@@ -68,7 +69,11 @@ func TestScheduleCompaction(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, tmpPath := betesting.NewDefaultTmpBackend(t)
-		s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		fi := newFakeIndex()
+		fi.indexCompactRespc <- tt.keep
+		s.kvindex = fi
+
 		tx := s.b.BatchTx()
 
 		tx.Lock()
@@ -79,7 +84,10 @@ func TestScheduleCompaction(t *testing.T) {
 		}
 		tx.Unlock()
 
-		s.scheduleCompaction(tt.rev, tt.keep)
+		_, err := s.scheduleCompaction(tt.rev, 0)
+		if err != nil {
+			t.Error(err)
+		}
 
 		tx.Lock()
 		for _, rev := range tt.wrevs {

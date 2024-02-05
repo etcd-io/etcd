@@ -86,7 +86,7 @@ func TestV3PutOverwrite(t *testing.T) {
 	}
 }
 
-// TestPutRestart checks if a put after an unrelated member restart succeeds
+// TestV3PutRestart checks if a put after an unrelated member restart succeeds
 func TestV3PutRestart(t *testing.T) {
 	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 3, UseBridge: true})
@@ -394,7 +394,7 @@ func TestV3TxnDuplicateKeys(t *testing.T) {
 	}
 }
 
-// Testv3TxnRevision tests that the transaction header revision is set as expected.
+// TestV3TxnRevision tests that the transaction header revision is set as expected.
 func TestV3TxnRevision(t *testing.T) {
 	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
@@ -444,7 +444,7 @@ func TestV3TxnRevision(t *testing.T) {
 	}
 }
 
-// Testv3TxnCmpHeaderRev tests that the txn header revision is set as expected
+// TestV3TxnCmpHeaderRev tests that the txn header revision is set as expected
 // when compared to the Succeeded field in the txn response.
 func TestV3TxnCmpHeaderRev(t *testing.T) {
 	BeforeTest(t)
@@ -612,7 +612,7 @@ func TestV3TxnRangeCompare(t *testing.T) {
 	}
 }
 
-// TestV3TxnNested tests nested txns follow paths as expected.
+// TestV3TxnNestedPath tests nested txns follow paths as expected.
 func TestV3TxnNestedPath(t *testing.T) {
 	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
@@ -1554,7 +1554,7 @@ func newClusterV3NoClients(t *testing.T, cfg *ClusterConfig) *ClusterV3 {
 func TestTLSGRPCRejectInsecureClient(t *testing.T) {
 	BeforeTest(t)
 
-	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	cfg := ClusterConfig{Size: 3, ClientTLS: &TestTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
@@ -1593,7 +1593,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
-	clus.Members[0].ClientTLSInfo = &testTLSInfo
+	clus.Members[0].ClientTLSInfo = &TestTLSInfo
 	clus.Members[0].DialOptions = []grpc.DialOption{grpc.WithBlock()}
 	clus.Members[0].grpcURL = strings.Replace(clus.Members[0].grpcURL, "http://", "https://", 1)
 	client, err := NewClientV3(clus.Members[0])
@@ -1609,7 +1609,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 func TestTLSGRPCAcceptSecureAll(t *testing.T) {
 	BeforeTest(t)
 
-	cfg := ClusterConfig{Size: 3, ClientTLS: &testTLSInfo}
+	cfg := ClusterConfig{Size: 3, ClientTLS: &TestTLSInfo}
 	clus := newClusterV3NoClients(t, &cfg)
 	defer clus.Terminate(t)
 
@@ -1649,7 +1649,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 	defer os.RemoveAll(certsDirExp)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -1695,7 +1695,7 @@ func TestTLSReloadCopy(t *testing.T) {
 	defer os.RemoveAll(certsDir)
 
 	cloneFunc := func() transport.TLSInfo {
-		tlsInfo, terr := copyTLSFiles(testTLSInfo, certsDir)
+		tlsInfo, terr := copyTLSFiles(TestTLSInfo, certsDir)
 		if terr != nil {
 			t.Fatal(terr)
 		}
@@ -1707,7 +1707,7 @@ func TestTLSReloadCopy(t *testing.T) {
 		}
 	}
 	revertFunc := func() {
-		if _, err = copyTLSFiles(testTLSInfo, certsDir); err != nil {
+		if _, err = copyTLSFiles(TestTLSInfo, certsDir); err != nil {
 			t.Fatal(err)
 		}
 	}

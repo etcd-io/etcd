@@ -41,7 +41,8 @@ x and y of GCD 1 are coprime to each other
 x1 = ( coprime of n * idx1 + offset ) % n
 x2 = ( coprime of n * idx2 + offset ) % n
 (x2 - x1) = coprime of n * (idx2 - idx1) % n
-          = (idx2 - idx1) = 1
+
+	= (idx2 - idx1) = 1
 
 Consecutive x's are guaranteed to be distinct
 */

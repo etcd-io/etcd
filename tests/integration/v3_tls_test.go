@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
 )
@@ -40,12 +41,18 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 		tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
 	}
-	srvTLS, cliTLS := testTLSInfo, testTLSInfo
+	srvTLS, cliTLS := TestTLSInfo, TestTLSInfo
 	if valid {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites, cipherSuites
 	} else {
 		srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 	}
+
+	// go1.13 enables TLS 1.3 by default
+	// and in TLS 1.3, cipher suites are not configurable,
+	// so setting Max TLS version to TLS 1.2 to test cipher config.
+	srvTLS.MaxVersion = tls.VersionTLS12
+	cliTLS.MaxVersion = tls.VersionTLS12
 
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1, ClientTLS: &srvTLS})
 	defer clus.Terminate(t)
@@ -68,5 +75,69 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	}
 	if valid && cerr != nil {
 		t.Fatalf("expected TLS handshake success, got %v", cerr)
+	}
+}
+
+func TestTLSMinMaxVersion(t *testing.T) {
+
+	BeforeTest(t)
+
+	tests := []struct {
+		name        string
+		minVersion  uint16
+		maxVersion  uint16
+		expectError bool
+	}{
+		{
+			name:       "Connect with default TLS version should succeed",
+			minVersion: 0,
+			maxVersion: 0,
+		},
+		{
+			name:        "Connect with TLS 1.2 only should fail",
+			minVersion:  tls.VersionTLS12,
+			maxVersion:  tls.VersionTLS12,
+			expectError: true,
+		},
+		{
+			name:       "Connect with TLS 1.2 and 1.3 should succeed",
+			minVersion: tls.VersionTLS12,
+			maxVersion: tls.VersionTLS13,
+		},
+		{
+			name:       "Connect with TLS 1.3 only should succeed",
+			minVersion: tls.VersionTLS13,
+			maxVersion: tls.VersionTLS13,
+		},
+	}
+
+	// Configure server to support TLS 1.3 only.
+	srvTLS := TestTLSInfo
+	srvTLS.MinVersion = tls.VersionTLS13
+	srvTLS.MaxVersion = tls.VersionTLS13
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1, ClientTLS: &srvTLS})
+	defer clus.Terminate(t)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cc, err := TestTLSInfo.ClientConfig()
+			assert.NoError(t, err)
+
+			cc.MinVersion = tt.minVersion
+			cc.MaxVersion = tt.maxVersion
+			cli, cerr := NewClient(t, clientv3.Config{
+				Endpoints:   []string{clus.Members[0].GRPCURL()},
+				DialTimeout: time.Second,
+				DialOptions: []grpc.DialOption{grpc.WithBlock()},
+				TLS:         cc,
+			})
+			if cerr != nil {
+				assert.True(t, tt.expectError, "got TLS handshake error while expecting success: %v", cerr)
+				assert.Equal(t, context.DeadlineExceeded, cerr, "expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, cerr)
+				return
+			}
+
+			cli.Close()
+		})
 	}
 }

@@ -94,7 +94,7 @@ func BenchmarkConsistentIndex(b *testing.B) {
 	}
 }
 
-// BenchmarkStoreTxnPutUpdate is same as above, but instead updates single key
+// BenchmarkStorePutUpdate is same as above, but instead updates single key
 func BenchmarkStorePutUpdate(b *testing.B) {
 	be, tmpPath := betesting.NewDefaultTmpBackend(b)
 	s := NewStore(zap.NewExample(), be, &lease.FakeLessor{}, StoreConfig{})

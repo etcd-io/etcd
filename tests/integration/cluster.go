@@ -84,7 +84,7 @@ var (
 	// member, ensuring restarted members can listen on the same port again.
 	localListenCount = int64(0)
 
-	testTLSInfo = transport.TLSInfo{
+	TestTLSInfo = transport.TLSInfo{
 		KeyFile:        MustAbsPath("../fixtures/server.key.insecure"),
 		CertFile:       MustAbsPath("../fixtures/server.crt"),
 		TrustedCAFile:  MustAbsPath("../fixtures/ca.crt"),
@@ -136,7 +136,8 @@ type ClusterConfig struct {
 
 	DiscoveryURL string
 
-	AuthToken string
+	AuthToken    string
+	AuthTokenTTL uint
 
 	UseGRPC bool
 
@@ -167,8 +168,10 @@ type ClusterConfig struct {
 
 	EnableLeaseCheckpoint   bool
 	LeaseCheckpointInterval time.Duration
+	LeaseCheckpointPersist  bool
 
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 type cluster struct {
@@ -312,6 +315,7 @@ func (c *cluster) mustNewMember(t testutil.TB, memberNumber int64) *member {
 			name:                        c.generateMemberName(),
 			memberNumber:                memberNumber,
 			authToken:                   c.cfg.AuthToken,
+			authTokenTTL:                c.cfg.AuthTokenTTL,
 			peerTLS:                     c.cfg.PeerTLS,
 			clientTLS:                   c.cfg.ClientTLS,
 			quotaBackendBytes:           c.cfg.QuotaBackendBytes,
@@ -328,8 +332,10 @@ func (c *cluster) mustNewMember(t testutil.TB, memberNumber int64) *member {
 			useBridge:                   c.cfg.UseBridge,
 			useTCP:                      c.cfg.UseTCP,
 			enableLeaseCheckpoint:       c.cfg.EnableLeaseCheckpoint,
+			leaseCheckpointPersist:      c.cfg.LeaseCheckpointPersist,
 			leaseCheckpointInterval:     c.cfg.LeaseCheckpointInterval,
 			WatchProgressNotifyInterval: c.cfg.WatchProgressNotifyInterval,
+			CorruptCheckTime:            c.cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.cfg.DiscoveryURL
 	if c.cfg.UseGRPC {
@@ -609,6 +615,10 @@ type member struct {
 
 func (m *member) GRPCURL() string { return m.grpcURL }
 
+func (m *member) CorruptionChecker() etcdserver.CorruptionChecker {
+	return m.s.CorruptionChecker()
+}
+
 type memberConfig struct {
 	name                        string
 	uniqNumber                  int64
@@ -616,6 +626,7 @@ type memberConfig struct {
 	peerTLS                     *transport.TLSInfo
 	clientTLS                   *transport.TLSInfo
 	authToken                   string
+	authTokenTTL                uint
 	quotaBackendBytes           int64
 	maxTxnOps                   uint
 	maxRequestBytes             uint
@@ -631,7 +642,9 @@ type memberConfig struct {
 	useTCP                      bool
 	enableLeaseCheckpoint       bool
 	leaseCheckpointInterval     time.Duration
+	leaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
+	CorruptCheckTime            time.Duration
 }
 
 // mustNewMember return an inited member with the given name. If peerTLS is
@@ -705,6 +718,9 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	if mcfg.authToken != "" {
 		m.AuthToken = mcfg.authToken
 	}
+	if mcfg.authTokenTTL != 0 {
+		m.TokenTTL = mcfg.authTokenTTL
+	}
 
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
@@ -729,10 +745,14 @@ func mustNewMember(t testutil.TB, mcfg memberConfig) *member {
 	m.useTCP = mcfg.useTCP
 	m.EnableLeaseCheckpoint = mcfg.enableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.leaseCheckpointInterval
+	m.LeaseCheckpointPersist = mcfg.leaseCheckpointPersist
 
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
 	m.InitialCorruptCheck = true
+	if mcfg.CorruptCheckTime > time.Duration(0) {
+		m.CorruptCheckTime = mcfg.CorruptCheckTime
+	}
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
@@ -1444,7 +1464,7 @@ func (c *ClusterV3) Client(i int) *clientv3.Client {
 
 func (c *ClusterV3) ClusterClient() (client *clientv3.Client, err error) {
 	if c.clusterClient == nil {
-		endpoints := []string{}
+		var endpoints []string
 		for _, m := range c.Members {
 			endpoints = append(endpoints, m.grpcURL)
 		}

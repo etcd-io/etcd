@@ -30,7 +30,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -40,7 +40,9 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
+	"go.etcd.io/etcd/server/v3/mvcc"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/server/v3/wal"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
@@ -69,9 +71,6 @@ type Manager interface {
 
 // NewV3 returns a new snapshot Manager for v3.x snapshot.
 func NewV3(lg *zap.Logger) Manager {
-	if lg == nil {
-		lg = zap.NewExample()
-	}
 	return &v3Manager{lg: lg}
 }
 
@@ -197,6 +196,16 @@ type RestoreConfig struct {
 	// SkipHashCheck is "true" to ignore snapshot integrity hash value
 	// (required if copied from data directory).
 	SkipHashCheck bool
+
+	// RevisionBump is the amount to increase the latest revision after restore,
+	// to allow administrators to trick clients into thinking that revision never decreased.
+	// If 0, revision bumping is skipped.
+	// (required if MarkCompacted == true)
+	RevisionBump uint64
+
+	// MarkCompacted is "true" to mark the latest revision as compacted.
+	// (required if RevisionBump > 0)
+	MarkCompacted bool
 }
 
 // Restore restores a new etcd data directory from given snapshot file.
@@ -254,12 +263,18 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
-		zap.Stack("stack"),
 	)
 
 	if err = s.saveDB(); err != nil {
 		return err
 	}
+
+	if cfg.MarkCompacted && cfg.RevisionBump > 0 {
+		if err = s.modifyLatestRevision(cfg.RevisionBump); err != nil {
+			return err
+		}
+	}
+
 	hardstate, err := s.saveWALAndSnap()
 	if err != nil {
 		return err
@@ -306,6 +321,70 @@ func (s *v3Manager) saveDB() error {
 	return nil
 }
 
+// modifyLatestRevision can increase the latest revision by the given amount and sets the scheduled compaction
+// to that revision so that the server will consider this revision compacted.
+func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
+	be := backend.NewDefaultBackend(s.outDbPath())
+	defer func() {
+		be.ForceCommit()
+		be.Close()
+	}()
+
+	tx := be.BatchTx()
+	tx.LockOutsideApply()
+	defer tx.Unlock()
+
+	latest, err := s.unsafeGetLatestRevision(tx)
+	if err != nil {
+		return err
+	}
+
+	latest = s.unsafeBumpRevision(tx, latest, int64(bumpAmount))
+	s.unsafeMarkRevisionCompacted(tx, latest)
+
+	return nil
+}
+
+func (s *v3Manager) unsafeBumpRevision(tx backend.BatchTx, latest revision, amount int64) revision {
+	s.lg.Info(
+		"bumping latest revision",
+		zap.Int64("latest-revision", latest.main),
+		zap.Int64("bump-amount", amount),
+		zap.Int64("new-latest-revision", latest.main+amount),
+	)
+
+	latest.main += amount
+	latest.sub = 0
+	k := make([]byte, 17)
+	revToBytes(k, latest)
+	tx.UnsafePut(buckets.Key, k, []byte{})
+
+	return latest
+}
+
+func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.BatchTx, latest revision) {
+	s.lg.Info(
+		"marking revision compacted",
+		zap.Int64("revision", latest.main),
+	)
+
+	mvcc.UnsafeSetScheduledCompact(tx, latest.main)
+}
+
+func (s *v3Manager) unsafeGetLatestRevision(tx backend.BatchTx) (revision, error) {
+	var latest revision
+	err := tx.UnsafeForEach(buckets.Key, func(k, _ []byte) (err error) {
+		rev := bytesToRev(k)
+
+		if rev.GreaterThan(latest) {
+			latest = rev
+		}
+
+		return nil
+	})
+	return latest, err
+}
+
 func (s *v3Manager) copyAndVerifyDB() error {
 	srcf, ferr := os.Open(s.srcDbPath)
 	if ferr != nil {
@@ -325,7 +404,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 		return err
 	}
 
-	if err := fileutil.CreateDirAll(s.snapDir); err != nil {
+	if err := fileutil.CreateDirAll(s.lg, s.snapDir); err != nil {
 		return err
 	}
 
@@ -335,13 +414,8 @@ func (s *v3Manager) copyAndVerifyDB() error {
 	if dberr != nil {
 		return dberr
 	}
-	dbClosed := false
-	defer func() {
-		if !dbClosed {
-			db.Close()
-			dbClosed = true
-		}
-	}()
+	defer db.Close()
+
 	if _, err := io.Copy(db, srcf); err != nil {
 		return err
 	}
@@ -378,7 +452,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 	}
 
 	// db hash is OK, can now modify DB so it can be part of a new cluster
-	db.Close()
+
 	return nil
 }
 
@@ -386,7 +460,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 //
 // TODO: This code ignores learners !!!
 func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
-	if err := fileutil.CreateDirAll(s.walDir); err != nil {
+	if err := fileutil.CreateDirAll(s.lg, s.walDir); err != nil {
 		return nil, err
 	}
 
@@ -479,6 +553,6 @@ func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
 	be := backend.NewDefaultBackend(s.outDbPath())
 	defer be.Close()
 
-	cindex.UpdateConsistentIndex(be.BatchTx(), commit, term, false)
+	cindex.UpdateConsistentIndex(be.BatchTx(), commit, term)
 	return nil
 }

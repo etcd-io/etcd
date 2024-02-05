@@ -1,0 +1,70 @@
+---
+name: Reusable Tests Workflow
+on:
+  workflow_call:
+    inputs:
+      arch:
+        required: true
+        type: string
+      runs-on:
+        required: true
+        type: string
+      targets:
+        required: false
+        type: string
+
+jobs:
+  test:
+    runs-on: ${{ inputs.runs-on }}
+    # this is to prevent arm64 jobs from running at forked projects
+    if: inputs.arch == 'amd64' || github.repository == 'etcd-io/etcd'
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.targets) }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@v2
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - run: date
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+
+          echo "${TARGET}"
+          case "${TARGET}" in
+            linux-integration-1-cpu)
+              GOARCH=${{ inputs.arch }} CPU=1 RACE='false' make test-integration
+              ;;
+            linux-integration-2-cpu)
+              GOARCH=${{ inputs.arch }} CPU=2 RACE='false' make test-integration
+              ;;
+            linux-integration-4-cpu)
+              GOARCH=${{ inputs.arch }} CPU=4 RACE='false' make test-integration
+              ;;
+            linux-unit-4-cpu-race)
+              GOARCH=${{ inputs.arch }} RACE='true' CPU='4' GO_TEST_FLAGS='-p=2' make test-unit
+              ;;
+            linux-386-unit-1-cpu)
+              GOOS=linux GOARCH=386 CPU=1 GO_TEST_FLAGS='-p=4' make test-unit
+              ;;
+            all-build)
+              GOARCH=amd64 PASSES='build' ./test.sh
+              GOARCH=386 PASSES='build' ./test.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOOS=darwin GOARCH=amd64 ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOOS=darwin GOARCH=arm64 ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOOS=windows GOARCH=amd64 ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=arm64 ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=ppc64le ./build.sh
+              GO_BUILD_FLAGS='-v -mod=readonly' GOARCH=s390x ./build.sh
+              ;;
+            *)
+              echo "Failed to find target"
+              exit 1
+              ;;
+          esac

@@ -18,7 +18,7 @@ package mirror
 import (
 	"context"
 
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -52,7 +52,13 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 	// if rev is not specified, we will choose the most recent revision.
 	if s.rev == 0 {
-		resp, err := s.c.Get(ctx, "foo")
+		// If len(s.prefix) == 0, we will check a random key to fetch the most recent
+		// revision (foo), otherwise we use the provided prefix.
+		checkPath := "foo"
+		if len(s.prefix) != 0 {
+			checkPath = s.prefix
+		}
+		resp, err := s.c.Get(ctx, checkPath)
 		if err != nil {
 			errchan <- err
 			close(respchan)

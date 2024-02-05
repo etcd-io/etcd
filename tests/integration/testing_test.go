@@ -15,14 +15,14 @@
 package integration_test
 
 import (
-	"testing"
-	"time"
-
 	"go.etcd.io/etcd/tests/v3/integration"
+	"testing"
 )
 
 func TestBeforeTestWithoutLeakDetection(t *testing.T) {
 	integration.BeforeTest(t, integration.WithoutGoLeakDetection(), integration.WithoutSkipInShort())
 	// Intentional leak that should get ignored
-	go time.Sleep(2 * time.Second)
+	go func() {
+
+	}()
 }

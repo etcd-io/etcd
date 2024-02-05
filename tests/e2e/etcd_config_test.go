@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
@@ -320,6 +321,46 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 	}
 }
 
+func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
+	skipInShortMode(t)
+
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{
+			name: "ArgsWithCipherSuites",
+			args: []string{
+				binDir + "/etcd",
+				"grpc-proxy",
+				"start",
+				"--listen-cipher-suites", "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+			},
+		},
+		{
+			name: "ArgsWithoutCipherSuites",
+			args: []string{
+				binDir + "/etcd",
+				"grpc-proxy",
+				"start",
+				"--listen-cipher-suites", "",
+			},
+		},
+	}
+
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			pw, err := spawnCmd(test.args, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = pw.Stop(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestBootstrapDefragFlag(t *testing.T) {
 	skipInShortMode(t)
 
@@ -333,4 +374,33 @@ func TestBootstrapDefragFlag(t *testing.T) {
 	if err = proc.Stop(); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestEtcdTLSVersion(t *testing.T) {
+	skipInShortMode(t)
+
+	d := t.TempDir()
+	proc, err := spawnCmd(
+		[]string{
+			binDir + "/etcd",
+			"--data-dir", d,
+			"--name", "e1",
+			"--listen-client-urls", "https://0.0.0.0:0",
+			"--advertise-client-urls", "https://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", etcdProcessBasePort),
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", etcdProcessBasePort),
+			"--initial-cluster", fmt.Sprintf("e1=https://127.0.0.1:%d", etcdProcessBasePort),
+			"--peer-cert-file", certPath,
+			"--peer-key-file", privateKeyPath,
+			"--cert-file", certPath2,
+			"--key-file", privateKeyPath2,
+
+			"--tls-min-version", "TLS1.2",
+			"--tls-max-version", "TLS1.3",
+		}, nil,
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, waitReadyExpectProc(proc, etcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoError(t, proc.Stop())
+
 }

@@ -360,7 +360,7 @@ func testKVDeleteMultipleTimes(t *testing.T, f deleteRangeFunc) {
 	}
 }
 
-// test that range, put, delete on single key in sequence repeatedly works correctly.
+// TestKVOperationInSequence to test that range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
@@ -462,7 +462,7 @@ func TestKVTxnNonBlockRange(t *testing.T) {
 	}
 }
 
-// test that txn range, put, delete on single key in sequence repeatedly works correctly.
+// TestKVTxnOperationInSequence to test that txn range, put, delete on single key in sequence repeatedly works correctly.
 func TestKVTxnOperationInSequence(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
 	s := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
@@ -605,7 +605,7 @@ func TestKVHash(t *testing.T) {
 		kv := NewStore(zap.NewExample(), b, &lease.FakeLessor{}, StoreConfig{})
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
-		hashes[i], _, err = kv.Hash()
+		hashes[i], _, err = kv.hash()
 		if err != nil {
 			t.Fatalf("failed to get hash: %v", err)
 		}

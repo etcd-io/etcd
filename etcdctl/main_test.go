@@ -36,7 +36,7 @@ func SplitTestArgs(args []string) (testArgs, appArgs []string) {
 	return
 }
 
-// Empty test to avoid no-tests warning.
+// TestEmpty to avoid no-tests warning.
 func TestEmpty(t *testing.T) {}
 
 /**

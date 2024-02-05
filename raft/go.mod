@@ -1,14 +1,18 @@
 module go.etcd.io/etcd/raft/v3
 
-go 1.16
+go 1.21
 
 require (
-	github.com/certifi/gocertifi v0.0.0-20200922220541-2c3bb06c6054 // indirect
-	github.com/cockroachdb/datadriven v0.0.0-20200714090401-bf6692d28da5
+	github.com/cockroachdb/datadriven v1.0.2
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.2
-	github.com/pkg/errors v0.9.1 // indirect
-	go.etcd.io/etcd/client/pkg/v3 v3.5.1
+	github.com/golang/protobuf v1.5.3
+	go.etcd.io/etcd/client/pkg/v3 v3.5.12
+)
+
+require (
+	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	google.golang.org/protobuf v1.31.0 // indirect
 )
 
 // Bad imports are sometimes causing attempts to pull that code.

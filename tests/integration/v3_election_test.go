@@ -173,7 +173,7 @@ func TestElectionFailover(t *testing.T) {
 	}
 }
 
-// TestElectionSessionRelock ensures that campaigning twice on the same election
+// TestElectionSessionRecampaign ensures that campaigning twice on the same election
 // with the same lock will Proclaim instead of deadlocking.
 func TestElectionSessionRecampaign(t *testing.T) {
 	BeforeTest(t)
@@ -207,7 +207,6 @@ func TestElectionSessionRecampaign(t *testing.T) {
 // candidate can be elected on a new key that is a prefix
 // of an existing key. To wit, check for regression
 // of bug #6278. https://github.com/etcd-io/etcd/issues/6278
-//
 func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	BeforeTest(t)
 	clus := NewClusterV3(t, &ClusterConfig{Size: 1})

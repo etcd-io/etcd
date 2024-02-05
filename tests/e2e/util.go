@@ -60,21 +60,15 @@ func spawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 	// process until either stdout or stderr contains
 	// the expected string
 	var (
-		lines    []string
-		lineFunc = func(txt string) bool { return true }
+		lines []string
 	)
 	for _, txt := range xs {
-		for {
-			l, lerr := proc.ExpectFunc(lineFunc)
-			if lerr != nil {
-				proc.Close()
-				return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
-			}
-			lines = append(lines, l)
-			if strings.Contains(l, txt) {
-				break
-			}
+		l, lerr := proc.Expect(txt)
+		if lerr != nil {
+			proc.Close()
+			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
 		}
+		lines = append(lines, l)
 	}
 	perr := proc.Close()
 	l := proc.LineCount()
@@ -82,6 +76,21 @@ func spawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 		return nil, fmt.Errorf("unexpected output from %v (got lines %q, line count %d) %v. Try EXPECT_DEBUG=TRUE", args, lines, l, l != noOutputLineCount)
 	}
 	return lines, perr
+}
+
+func runUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
+	proc, err := spawnCmd(args, envVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn command %v with error: %w", args, err)
+	}
+
+	proc.Wait()
+	err = proc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close command %v with error: %w", args, err)
+	}
+
+	return proc.Lines(), nil
 }
 
 func randomLeaseID() int64 {

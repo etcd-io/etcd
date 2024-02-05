@@ -40,8 +40,6 @@ func TestBackendPreCommitHook(t *testing.T) {
 	// Empty commit.
 	tx.Commit()
 
-	write(tx, []byte("foo"), []byte("bar"))
-
 	assert.Equal(t, ">cc", getCommitsKey(t, be), "expected 2 explict commits")
 	tx.Commit()
 	assert.Equal(t, ">ccc", getCommitsKey(t, be), "expected 3 explict commits")

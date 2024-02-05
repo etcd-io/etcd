@@ -1,11 +1,11 @@
-# TODO: move to k8s.gcr.io/build-image/debian-base-ppc64le:bullseye-1.y.z when patched
-FROM ppc64le/debian:bullseye-20210927
+FROM --platform=linux/ppc64le gcr.io/distroless/static-debian11@sha256:9be3fcc6abeaf985b5ecce59451acbcbb15e7be39472320c538d0d55a0834edc
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
 ADD etcdutl /usr/local/bin/
-ADD var/etcd /var/etcd
-ADD var/lib/etcd /var/lib/etcd
+
+WORKDIR /var/etcd/
+WORKDIR /var/lib/etcd/
 
 EXPOSE 2379 2380
 

@@ -52,14 +52,14 @@ func testCluster(t *testing.T, size int) {
 
 func TestTLSClusterOf3(t *testing.T) {
 	BeforeTest(t)
-	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
+	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &TestTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
 	clusterMustProgress(t, c.Members)
 }
 
-// Test that a cluster can progress when using separate client and server certs when peering. This supports certificate
-// authorities that don't issue dual-usage certificates.
+// TestTLSClusterOf3WithSpecificUsage to test that a cluster can progress when using separate client and server certs when peering.
+// This supports certificate authorities that don't issue dual-usage certificates.
 func TestTLSClusterOf3WithSpecificUsage(t *testing.T) {
 	BeforeTest(t)
 	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfoWithSpecificUsage})
@@ -111,7 +111,7 @@ func TestTLSClusterOf3UsingDiscovery(t *testing.T) {
 	c := NewClusterByConfig(t,
 		&ClusterConfig{
 			Size:         3,
-			PeerTLS:      &testTLSInfo,
+			PeerTLS:      &TestTLSInfo,
 			DiscoveryURL: dc.URL(0) + "/v2/keys"},
 	)
 	c.Launch(t)
@@ -136,7 +136,7 @@ func testDoubleClusterSize(t *testing.T, size int) {
 
 func TestDoubleTLSClusterSizeOf3(t *testing.T) {
 	BeforeTest(t)
-	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &testTLSInfo})
+	c := NewClusterByConfig(t, &ClusterConfig{Size: 3, PeerTLS: &TestTLSInfo})
 	c.Launch(t)
 	defer c.Terminate(t)
 
@@ -234,7 +234,7 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure we can remove a member then add a new one back immediately.
+// TestIssue2681 to ensure we can remove a member then add a new one back immediately.
 func TestIssue2681(t *testing.T) {
 	BeforeTest(t)
 	c := NewCluster(t, 5)
@@ -249,10 +249,10 @@ func TestIssue2681(t *testing.T) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure we can remove a member after a snapshot then add a new one back.
+// TestIssue2746 to ensure we can remove a member after a snapshot then add a new one back.
 func TestIssue2746(t *testing.T) { testIssue2746(t, 5) }
 
-// With 3 nodes TestIssue2476 sometimes had a shutdown with an inflight snapshot.
+// TestIssue2746WithThree as we sometimes had a shutdown with an inflight snapshot.
 func TestIssue2746WithThree(t *testing.T) { testIssue2746(t, 3) }
 
 func testIssue2746(t *testing.T, members int) {
@@ -279,7 +279,7 @@ func testIssue2746(t *testing.T, members int) {
 	clusterMustProgress(t, c.Members)
 }
 
-// Ensure etcd will not panic when removing a just started member.
+// TestIssue2904 to ensure etcd will not panic when removing a just started member.
 func TestIssue2904(t *testing.T) {
 	BeforeTest(t)
 	// start 1-member cluster to ensure member 0 is the leader of the cluster.

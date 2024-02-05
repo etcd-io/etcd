@@ -307,32 +307,22 @@ func TestWatchRestore(t *testing.T) {
 
 			testKey := []byte("foo")
 			testValue := []byte("bar")
-			rev := s.Put(testKey, testValue, lease.NoLease)
-
-			newBackend, newPath := betesting.NewDefaultTmpBackend(t)
-			newStore := newWatchableStore(zap.NewExample(), newBackend, &lease.FakeLessor{}, StoreConfig{})
-			defer cleanup(newStore, newBackend, newPath)
-
-			w := newStore.NewWatchStream()
-			w.Watch(0, testKey, nil, rev-1)
+			w := s.NewWatchStream()
+			defer w.Close()
+			w.Watch(0, testKey, nil, 1)
 
 			time.Sleep(delay)
+			wantRev := s.Put(testKey, testValue, lease.NoLease)
 
-			newStore.Restore(b)
-			select {
-			case resp := <-w.Chan():
-				if resp.Revision != rev {
-					t.Fatalf("rev = %d, want %d", resp.Revision, rev)
-				}
-				if len(resp.Events) != 1 {
-					t.Fatalf("failed to get events from the response")
-				}
-				if resp.Events[0].Kv.ModRevision != rev {
-					t.Fatalf("kv.rev = %d, want %d", resp.Events[0].Kv.ModRevision, rev)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("failed to receive event in 1 second.")
+			s.Restore(b)
+			events := readEventsForSecond(w.Chan())
+			if len(events) != 1 {
+				t.Errorf("Expected only one event, got %d", len(events))
 			}
+			if events[0].Kv.ModRevision != wantRev {
+				t.Errorf("Expected revision to match, got %d, want %d", events[0].Kv.ModRevision, wantRev)
+			}
+
 		}
 	}
 
@@ -340,12 +330,23 @@ func TestWatchRestore(t *testing.T) {
 	t.Run("RunSyncWatchLoopBeforeRestore", test(time.Millisecond*120)) // longer than default waitDuration
 }
 
+func readEventsForSecond(ws <-chan WatchResponse) (events []mvccpb.Event) {
+	for {
+		select {
+		case resp := <-ws:
+			events = append(events, resp.Events...)
+		case <-time.After(time.Second):
+			return events
+		}
+	}
+}
+
 // TestWatchRestoreSyncedWatcher tests such a case that:
-//   1. watcher is created with a future revision "math.MaxInt64 - 2"
-//   2. watcher with a future revision is added to "synced" watcher group
-//   3. restore/overwrite storage with snapshot of a higher lasat revision
-//   4. restore operation moves "synced" to "unsynced" watcher group
-//   5. choose the watcher from step 1, without panic
+//  1. watcher is created with a future revision "math.MaxInt64 - 2"
+//  2. watcher with a future revision is added to "synced" watcher group
+//  3. restore/overwrite storage with snapshot of a higher lasat revision
+//  4. restore operation moves "synced" to "unsynced" watcher group
+//  5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	b1, b1Path := betesting.NewDefaultTmpBackend(t)
 	s1 := newWatchableStore(zap.NewExample(), b1, &lease.FakeLessor{}, StoreConfig{})

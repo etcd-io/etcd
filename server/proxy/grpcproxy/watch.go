@@ -238,7 +238,7 @@ func (wps *watchProxyStream) recvLoop() error {
 			if err := wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
 				wps.watchCh <- &pb.WatchResponse{
 					Header:       &pb.ResponseHeader{},
-					WatchId:      -1,
+					WatchId:      clientv3.InvalidWatchID,
 					Created:      true,
 					Canceled:     true,
 					CancelReason: err.Error(),
@@ -258,7 +258,7 @@ func (wps *watchProxyStream) recvLoop() error {
 				filters:  v3rpc.FiltersFromRequest(cr),
 			}
 			if !w.wr.valid() {
-				w.post(&pb.WatchResponse{WatchId: -1, Created: true, Canceled: true})
+				w.post(&pb.WatchResponse{WatchId: clientv3.InvalidWatchID, Created: true, Canceled: true})
 				wps.mu.Unlock()
 				continue
 			}
