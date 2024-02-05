@@ -120,8 +120,8 @@ github.com/butuzov/ireturn v0.2.2 h1:jWI36dxXwVrI+RnXDwux2IZOewpmfv930OuIRfaBUJ0
 github.com/butuzov/ireturn v0.2.2/go.mod h1:RfGHUvvAuFFxoHKf4Z8Yxuh6OjlCw1KvR2zM1NFHeBk=
 github.com/butuzov/mirror v1.1.0 h1:ZqX54gBVMXu78QLoiqdwpl2mgmoOJTk7s4p4o+0avZI=
 github.com/butuzov/mirror v1.1.0/go.mod h1:8Q0BdQU6rC6WILDiBM60DBfvV78OLJmMmixe7GF45AE=
-github.com/catenacyber/perfsprint v0.2.0 h1:azOocHLscPjqXVJ7Mf14Zjlkn4uNua0+Hcg1wTR6vUo=
-github.com/catenacyber/perfsprint v0.2.0/go.mod h1:/wclWYompEyjUD2FuIIDVKNkqz7IgBIWXIH3V0Zol50=
+github.com/catenacyber/perfsprint v0.6.0 h1:VSv95RRkk5+BxrU/YTPcnxuMEWar1iMK5Vyh3fWcBfs=
+github.com/catenacyber/perfsprint v0.6.0/go.mod h1:/wclWYompEyjUD2FuIIDVKNkqz7IgBIWXIH3V0Zol50=
 github.com/ccojocar/zxcvbn-go v1.0.1 h1:+sxrANSCj6CdadkcMnvde/GWU1vZiiXRbqYSCalV4/4=
 github.com/ccojocar/zxcvbn-go v1.0.1/go.mod h1:g1qkXtUSvHP8lhHp5GrSmTz6uWALGRMQdw6Qnz/hi60=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
