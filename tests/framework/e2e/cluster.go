@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -575,4 +576,72 @@ func (epc *EtcdProcessCluster) WithStopSignal(sig os.Signal) (ret os.Signal) {
 		ret = p.WithStopSignal(sig)
 	}
 	return ret
+}
+
+// WaitLeader returns index of the member in c.Members() that is leader
+// or fails the test (if not established in 30s).
+func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
+}
+
+// WaitMembersForLeader waits until given members agree on the same leader,
+// and returns its 'index' in the 'membs' list
+func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
+	cc := NewEtcdctl(epc.EndpointsV3(), epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, epc.Cfg.EnableV2)
+
+	// ensure leader is up via linearizable get
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("WaitMembersForLeader timeout")
+		default:
+		}
+		_, err := cc.Get("0")
+		if err == nil || strings.Contains(err.Error(), "Key not found") {
+			break
+		}
+		t.Logf("WaitMembersForLeader Get err: %v", err)
+	}
+
+	leaders := make(map[uint64]struct{})
+	members := make(map[uint64]int)
+	for {
+		select {
+		case <-ctx.Done():
+			t.Fatal("WaitMembersForLeader timeout")
+		default:
+		}
+		for i := range membs {
+			resp, err := membs[i].Etcdctl(epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, epc.Cfg.EnableV2).Status()
+			if err != nil {
+				if strings.Contains(err.Error(), "connection refused") {
+					// if member[i] has stopped
+					continue
+				} else {
+					t.Fatal(err)
+				}
+			}
+			members[resp[0].Header.MemberId] = i
+			leaders[resp[0].Leader] = struct{}{}
+		}
+		// members agree on the same leader
+		if len(leaders) == 1 {
+			break
+		}
+		leaders = make(map[uint64]struct{})
+		members = make(map[uint64]int)
+		// From main branch 10 * config.TickDuration (10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
+	}
+	for l := range leaders {
+		if index, ok := members[l]; ok {
+			t.Logf("members agree on a leader, members:%v , leader:%v", members, l)
+			return index
+		}
+		t.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
+	}
+	t.Fatal("impossible path of execution")
+	return -1
 }
