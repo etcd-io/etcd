@@ -50,6 +50,7 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 
 	tp, _ := auth.NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	as := auth.NewAuthStore(lg, b, tp, bcrypt.MinCost)
+	defer as.AuthDisable()
 
 	aa := authApplierV3{as: as}
 	assert.NoError(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
