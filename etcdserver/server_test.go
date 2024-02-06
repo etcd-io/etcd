@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/etcdserver/api/membership"
 	"go.etcd.io/etcd/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/etcdserver/api/snap"
@@ -967,6 +968,9 @@ func TestSnapshot(t *testing.T) {
 	defer func() {
 		os.RemoveAll(tmpPath)
 	}()
+	defer func() {
+		assert.NoError(t, be.Close())
+	}()
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -985,6 +989,9 @@ func TestSnapshot(t *testing.T) {
 		v2store: st,
 	}
 	srv.kv = mvcc.New(zap.NewExample(), be, &lease.FakeLessor{}, nil, &srv.consistIndex, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
 	srv.be = be
 
 	ch := make(chan struct{}, 2)
