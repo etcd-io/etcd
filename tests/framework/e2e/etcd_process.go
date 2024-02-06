@@ -58,6 +58,8 @@ type EtcdProcess interface {
 	PeerProxy() proxy.Server
 	Failpoints() *BinaryFailpoints
 	IsRunning() bool
+
+	Etcdctl(connType ClientConnType, isAutoTLS bool, v2 bool) *Etcdctl
 }
 
 type LogsExpect interface {
@@ -247,6 +249,10 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 		zap.String("name", ep.cfg.Name))
 	ep.proc = nil
 	return false
+}
+
+func (ep *EtcdServerProcess) Etcdctl(connType ClientConnType, isAutoTLS, v2 bool) *Etcdctl {
+	return NewEtcdctl(ep.EndpointsV3(), connType, isAutoTLS, v2)
 }
 
 type BinaryFailpoints struct {
