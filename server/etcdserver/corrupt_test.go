@@ -421,6 +421,9 @@ func TestHashKVHandler(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	etcdSrv.kv = mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, etcdSrv.kv.Close())
+	}()
 	ph := &hashKVHandler{
 		lg:     zap.NewNop(),
 		server: etcdSrv,
