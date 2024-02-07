@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
+- [Ignore SetKeepAlivePeriod errors on OpenBSD](https://github.com/etcd-io/etcd/pull/17387).
 
 <hr>
 
