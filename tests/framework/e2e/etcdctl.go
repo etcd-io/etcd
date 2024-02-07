@@ -39,6 +39,22 @@ func NewEtcdctl(endpoints []string, connType ClientConnType, isAutoTLS bool, v2 
 	}
 }
 
+func (ctl *Etcdctl) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
+	var epHashKVs []*struct {
+		Endpoint string
+		HashKV   *clientv3.HashKVResponse
+	}
+	err := ctl.spawnJsonCmd(&epHashKVs, "endpoint", "hashkv", "--rev", fmt.Sprint(rev))
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*clientv3.HashKVResponse, len(epHashKVs))
+	for i, e := range epHashKVs {
+		resp[i] = e.HashKV
+	}
+	return resp, err
+}
+
 func (ctl *Etcdctl) Get(key string) (*clientv3.GetResponse, error) {
 	var resp clientv3.GetResponse
 	err := ctl.spawnJsonCmd(&resp, "get", key)
