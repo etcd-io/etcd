@@ -50,13 +50,11 @@ func TestClusterVersion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			binary := e2e.BinDir + "/etcd"
-			if !fileutil.Exist(binary) {
-				t.Skipf("%q does not exist", binary)
+			if !fileutil.Exist(e2e.BinPath) {
+				t.Skipf("%q does not exist", e2e.BinPath)
 			}
 			e2e.BeforeTest(t)
 			cfg := e2e.NewConfigNoTLS()
-			cfg.ExecPath = binary
 			cfg.SnapshotCount = 3
 			cfg.BasePeerScheme = "unix" // to avoid port conflict
 			cfg.RollingStart = tt.rollingStart
