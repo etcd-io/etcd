@@ -362,7 +362,7 @@ func doHealthCheckAndVerify(t *testing.T, client *http.Client, url string, expec
 
 func triggerNoSpaceAlarm(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
 	buf := strings.Repeat("b", os.Getpagesize())
-	etcdctl := NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
+	etcdctl := e2e.NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
 	for {
 		if err := etcdctl.Put("foo", buf); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
@@ -377,7 +377,7 @@ func triggerSlowApply(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 	// the following proposal will be blocked at applying stage
 	// because when apply index < committed index, linearizable read would time out.
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "beforeApplyOneEntryNormal", fmt.Sprintf(`sleep("%s")`, duration)))
-	etcdctl := NewEtcdctl(clus.Procs[1].EndpointsV3(), e2e.ClientNonTLS, false, false)
+	etcdctl := e2e.NewEtcdctl(clus.Procs[1].EndpointsV3(), e2e.ClientNonTLS, false, false)
 	etcdctl.Put("foo", "bar")
 }
 
@@ -391,12 +391,12 @@ func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ 
 
 func triggerRaftLoopDeadLock(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "raftBeforeSaveWaitWalSync", fmt.Sprintf(`sleep("%s")`, duration)))
-	etcdctl := NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
+	etcdctl := e2e.NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
 	etcdctl.Put("foo", "bar")
 }
 
 func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {
-	etcdctl := NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
+	etcdctl := e2e.NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	_, err := etcdctl.UserAdd("root", "root")
 	require.NoError(t, err)
@@ -409,7 +409,7 @@ func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus 
 }
 
 func triggerCorrupt(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
-	etcdctl := NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
+	etcdctl := e2e.NewEtcdctl(clus.Procs[0].EndpointsV3(), e2e.ClientNonTLS, false, false)
 	for i := 0; i < 10; i++ {
 		require.NoError(t, etcdctl.Put("foo", "bar"))
 	}

@@ -110,12 +110,12 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, member e2e.Et
 	}
 	t.Run("etcdctl", func(t *testing.T) {
 		t.Run("v2", func(t *testing.T) {
-			etcdctl := NewEtcdctl([]string{httpEndpoint}, connType, false, true)
+			etcdctl := e2e.NewEtcdctl([]string{httpEndpoint}, connType, false, true)
 			err := etcdctl.Set("a", "1")
 			assert.NoError(t, err)
 		})
 		t.Run("v3", func(t *testing.T) {
-			etcdctl := NewEtcdctl([]string{grpcEndpoint}, connType, false, false)
+			etcdctl := e2e.NewEtcdctl([]string{grpcEndpoint}, connType, false, false)
 			err := etcdctl.Put("a", "1")
 			assert.NoError(t, err)
 		})

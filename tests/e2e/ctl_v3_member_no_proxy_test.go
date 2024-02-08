@@ -49,7 +49,7 @@ func TestMemberReplace(t *testing.T) {
 	for i := 1; i < len(epc.Procs); i++ {
 		endpoints = append(endpoints, epc.Procs[(memberIdx+i)%len(epc.Procs)].EndpointsGRPC()...)
 	}
-	cc := NewEtcdctl(endpoints, e2e.ClientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(endpoints, e2e.ClientNonTLS, false, false)
 
 	memberID, found, err := getMemberIdByName(ctx, cc, memberName)
 	require.NoError(t, err)

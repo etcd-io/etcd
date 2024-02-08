@@ -116,7 +116,7 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 	return g.Wait()
 }
 
-func getMemberIdByName(ctx context.Context, c *Etcdctl, name string) (id uint64, found bool, err error) {
+func getMemberIdByName(ctx context.Context, c *e2e.Etcdctl, name string) (id uint64, found bool, err error) {
 	resp, err := c.MemberList()
 	if err != nil {
 		return 0, false, err
