@@ -79,6 +79,7 @@ It has these top-level messages:
 	StatusResponse
 	AuthEnableRequest
 	AuthDisableRequest
+	AuthStatusRequest
 	AuthenticateRequest
 	AuthUserAddRequest
 	AuthUserGetRequest
@@ -95,6 +96,7 @@ It has these top-level messages:
 	AuthRoleRevokePermissionRequest
 	AuthEnableResponse
 	AuthDisableResponse
+	AuthStatusResponse
 	AuthenticateResponse
 	AuthUserAddResponse
 	AuthUserGetResponse
