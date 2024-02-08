@@ -141,6 +141,22 @@ func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	return nil, spawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
 }
 
+func (ctl *Etcdctl) Status() ([]*clientv3.StatusResponse, error) {
+	var epStatus []*struct {
+		Endpoint string
+		Status   *clientv3.StatusResponse
+	}
+	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status")
+	if err != nil {
+		return nil, err
+	}
+	resp := make([]*clientv3.StatusResponse, len(epStatus))
+	for i, e := range epStatus {
+		resp[i] = e.Status
+	}
+	return resp, err
+}
+
 func (ctl *Etcdctl) spawnJsonCmd(output interface{}, expectedOutput string, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := spawnCmd(append(ctl.cmdArgs(), args...))
