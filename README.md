@@ -192,6 +192,7 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Ben Darnell
 * Sam Batschelet
 * Piotr Tabor
+* Hitoshi Mitake
 
 ### License
 
