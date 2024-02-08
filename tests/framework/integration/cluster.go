@@ -139,8 +139,7 @@ type ClusterConfig struct {
 
 	DiscoveryURL string
 
-	AuthToken    string
-	AuthTokenTTL uint
+	AuthToken string
 
 	QuotaBackendBytes    int64
 	BackendBatchInterval time.Duration
@@ -268,7 +267,6 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			Name:                                fmt.Sprintf("m%v", memberNumber),
 			MemberNumber:                        memberNumber,
 			AuthToken:                           c.Cfg.AuthToken,
-			AuthTokenTTL:                        c.Cfg.AuthTokenTTL,
 			PeerTLS:                             c.Cfg.PeerTLS,
 			ClientTLS:                           c.Cfg.ClientTLS,
 			QuotaBackendBytes:                   c.Cfg.QuotaBackendBytes,
@@ -598,7 +596,6 @@ type MemberConfig struct {
 	PeerTLS                     *transport.TLSInfo
 	ClientTLS                   *transport.TLSInfo
 	AuthToken                   string
-	AuthTokenTTL                uint
 	QuotaBackendBytes           int64
 	BackendBatchInterval        time.Duration
 	MaxTxnOps                   uint
@@ -696,9 +693,6 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.AuthToken = "simple"
 	if mcfg.AuthToken != "" {
 		m.AuthToken = mcfg.AuthToken
-	}
-	if mcfg.AuthTokenTTL != 0 {
-		m.TokenTTL = mcfg.AuthTokenTTL
 	}
 
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
