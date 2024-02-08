@@ -46,11 +46,6 @@ const (
 	InvalidWatchID = -1
 )
 
-var (
-	errMsgGRPCInvalidAuthToken = v3rpc.ErrGRPCInvalidAuthToken.Error()
-	errMsgGRPCAuthOldRevision  = v3rpc.ErrGRPCAuthOldRevision.Error()
-)
-
 type Event mvccpb.Event
 
 type WatchChan <-chan WatchResponse
@@ -593,25 +588,6 @@ func (w *watchGrpcStream) run() {
 
 			switch {
 			case pbresp.Created:
-				if pbresp.Canceled && shouldRetryWatch(pbresp.CancelReason) {
-					var newErr error
-					if wc, newErr = w.newWatchClient(); newErr != nil {
-						w.lg.Error("failed to create a new watch client", zap.Error(newErr))
-						return
-					}
-
-					if len(w.resuming) != 0 {
-						if ws := w.resuming[0]; ws != nil {
-							if err := wc.Send(ws.initReq.toPB()); err != nil {
-								w.lg.Debug("error when sending request", zap.Error(err))
-							}
-						}
-					}
-
-					cur = nil
-					continue
-				}
-
 				// response to head of queue creation
 				if len(w.resuming) != 0 {
 					if ws := w.resuming[0]; ws != nil {
@@ -719,14 +695,6 @@ func (w *watchGrpcStream) run() {
 			}
 		}
 	}
-}
-
-func shouldRetryWatch(cancelReason string) bool {
-	if cancelReason == "" {
-		return false
-	}
-	return (cancelReason == errMsgGRPCInvalidAuthToken) ||
-		(cancelReason == errMsgGRPCAuthOldRevision)
 }
 
 // nextResume chooses the next resuming to register with the grpc stream. Abandoned
