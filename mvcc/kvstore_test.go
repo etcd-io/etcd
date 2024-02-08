@@ -382,6 +382,11 @@ func TestStoreRestore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	b.tx.rangeRespc <- rangeResp{nil, nil}
+	b.tx.rangeRespc <- rangeResp{nil, nil}
+	b.tx.rangeRespc <- rangeResp{nil, nil}
+
 	b.tx.rangeRespc <- rangeResp{[][]byte{finishedCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
 	b.tx.rangeRespc <- rangeResp{[][]byte{scheduledCompactKeyName}, [][]byte{newTestRevBytes(revision{3, 0})}}
 
@@ -397,6 +402,9 @@ func TestStoreRestore(t *testing.T) {
 		t.Errorf("current rev = %v, want 5", s.currentRev)
 	}
 	wact := []testutil.Action{
+		{Name: "range", Params: []interface{}{metaBucketName, storageVersionKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{metaBucketName, confStateKeyName, []byte(nil), int64(0)}},
+		{Name: "range", Params: []interface{}{metaBucketName, termKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []interface{}{metaBucketName, finishedCompactKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []interface{}{metaBucketName, scheduledCompactKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []interface{}{keyBucketName, newTestRevBytes(revision{1, 0}), newTestRevBytes(revision{math.MaxInt64, math.MaxInt64}), int64(restoreChunkKeys)}},
@@ -903,7 +911,7 @@ func newTestKeyBytes(rev revision, tombstone bool) []byte {
 func newFakeStore() *store {
 	b := &fakeBackend{&fakeBatchTx{
 		Recorder:   &testutil.RecorderBuffered{},
-		rangeRespc: make(chan rangeResp, 5)}}
+		rangeRespc: make(chan rangeResp, 8)}}
 	fi := &fakeIndex{
 		Recorder:              &testutil.RecorderBuffered{},
 		indexGetRespc:         make(chan indexGetResp, 1),
