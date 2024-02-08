@@ -47,6 +47,7 @@ import (
 	lockpb "go.etcd.io/etcd/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
+	"go.etcd.io/etcd/etcdserver/verify"
 	"go.etcd.io/etcd/pkg/logutil"
 	"go.etcd.io/etcd/pkg/testutil"
 	"go.etcd.io/etcd/pkg/tlsutil"
@@ -570,6 +571,7 @@ type member struct {
 	useIP                    bool
 
 	isLearner bool
+	closed    bool
 }
 
 func (m *member) GRPCAddr() string { return m.grpcAddr }
@@ -1045,6 +1047,15 @@ func (m *member) Close() {
 	for _, f := range m.serverClosers {
 		f()
 	}
+	if !m.closed {
+		// Avoid verification of the same file multiple times
+		// (that might not exist any longer)
+		verify.MustVerifyIfEnabled(verify.Config{
+			Logger:  m.Logger,
+			DataDir: m.DataDir,
+		})
+	}
+	m.closed = true
 }
 
 // Stop stops the member, but the data dir of the member is preserved.

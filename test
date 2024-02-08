@@ -33,6 +33,8 @@
 # $ COVERDIR=coverage PASSES="build_cov cov" ./test
 set -euo pipefail
 
+export ETCD_VERIFY=all
+
 source ./build
 
 PASSES=${PASSES:-}

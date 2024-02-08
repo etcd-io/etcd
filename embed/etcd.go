@@ -38,6 +38,7 @@ import (
 	"go.etcd.io/etcd/etcdserver/api/v2v3"
 	"go.etcd.io/etcd/etcdserver/api/v3client"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/etcdserver/verify"
 	"go.etcd.io/etcd/pkg/debugutil"
 	runtimeutil "go.etcd.io/etcd/pkg/runtime"
 	"go.etcd.io/etcd/pkg/transport"
@@ -376,6 +377,10 @@ func (e *Etcd) Close() {
 	defer func() {
 		if lg != nil {
 			lg.Info("closed etcd server", fields...)
+			verify.MustVerifyIfEnabled(verify.Config{
+				Logger:  lg,
+				DataDir: e.cfg.Dir,
+			})
 			lg.Sync()
 		}
 	}()
