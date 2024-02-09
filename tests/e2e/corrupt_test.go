@@ -320,8 +320,10 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	_, err = epc.Procs[slowCompactionNodeIndex].Logs().Expect("finished scheduled compaction")
 	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
 
-	// Wait for compaction hash check
-	time.Sleep(checkTime * 5)
+	// Wait until the leader finished compaction hash check.
+	leaderIndex := epc.WaitLeader(t)
+	_, err = epc.Procs[leaderIndex].Logs().Expect("finished compaction hash check")
+	require.NoError(t, err, "can't get log indicating finished compaction hash check")
 
 	alarmResponse, err := cc.AlarmList()
 	require.NoError(t, err, "error on alarm list")
