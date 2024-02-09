@@ -18,12 +18,6 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Compile binaries using [go 1.20.13](https://github.com/etcd-io/etcd/pull/17275)
 - Upgrade [golang.org/x/crypto to v0.17+ to address CVE-2023-48795](https://github.com/etcd-io/etcd/pull/17346)
 
-### etcd grpc-proxy
-
-- Add [`etcd grpc-proxy start --dial-keepalive-time`](https://github.com/etcd-io/etcd/pull/17366) flag to keepalive time for client(grpc-proxy) connections.
-- Add [`etcd grpc-proxy start --dial-keepalive-timeout`](https://github.com/etcd-io/etcd/pull/17366) flag to keepalive timeout for client(grpc-proxy) connections.
-- Add [`etcd grpc-proxy start --permit-without-stream`](https://github.com/etcd-io/etcd/pull/17366) flag to enable client(grpc-proxy) to send keepalive pings even with no active RPCs.
-
 ## v3.5.11 (2023-12-07)
 
 ### etcd server
