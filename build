@@ -11,6 +11,8 @@ if [[ -n "${FAILPOINTS:-}" ]]; then
 	GIT_SHA="$GIT_SHA"-FAILPOINTS
 fi
 
+CGO_ENABLED="${CGO_ENABLED:-0}"
+
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 GO_LDFLAGS="${GO_LDFLAGS:-} -X ${REPO_PATH}/version.GitSHA=${GIT_SHA}"
 
@@ -70,12 +72,12 @@ etcd_build() {
 
 	# Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
+	CGO_ENABLED=${CGO_ENABLED} go build ${GO_BUILD_FLAGS:-} \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcd" ${REPO_PATH} || return
 	# shellcheck disable=SC2086
-	CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
+	CGO_ENABLED=${CGO_ENABLED} go build ${GO_BUILD_FLAGS:-} \
 		-installsuffix cgo \
 		-ldflags "$GO_LDFLAGS" \
 		-o "${out}/etcdctl" ${REPO_PATH}/etcdctl || return
@@ -96,7 +98,7 @@ tools_build() {
 	do
 		echo "Building" "'${tool}'"...
 		# shellcheck disable=SC2086
-		CGO_ENABLED=0 go build ${GO_BUILD_FLAGS} \
+		CGO_ENABLED=${CGO_ENABLED} go build ${GO_BUILD_FLAGS} \
 		  -installsuffix cgo \
 		  -ldflags "${GO_LDFLAGS}" \
 		  -o "${out}/${tool}" "${REPO_PATH}/${tool}" || return
