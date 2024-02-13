@@ -15,10 +15,12 @@ VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
 GOOS=${GOOS:-$(go env GOOS)}
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
+CGO_ENABLED="${CGO_ENABLED:-0}"
+
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206
 GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
-GO_BUILD_ENV=("CGO_ENABLED=0" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS:-}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
+GO_BUILD_ENV=("CGO_ENABLED=${CGO_ENABLED}" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS:-}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
 GOFAIL_VERSION=$(cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
 # enable/disable failpoints
@@ -116,7 +118,7 @@ tools_build() {
     echo "Building" "'${tool}'"...
     run rm -f "${out}/${tool}"
     # shellcheck disable=SC2086
-    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" CGO_ENABLED=0 go build ${GO_BUILD_FLAGS:-} \
+    run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" CGO_ENABLED=${CGO_ENABLED} go build ${GO_BUILD_FLAGS:-} \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
@@ -140,7 +142,7 @@ tests_build() {
       run rm -f "../${out}/${tool}"
 
       # shellcheck disable=SC2086
-      run env CGO_ENABLED=0 GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" go build ${GO_BUILD_FLAGS:-} \
+      run env CGO_ENABLED=${CGO_ENABLED} GO_BUILD_FLAGS="${GO_BUILD_FLAGS:-}" go build ${GO_BUILD_FLAGS:-} \
         -installsuffix=cgo \
         "-ldflags=${GO_LDFLAGS[*]}" \
         -o="../${out}/${tool}" "./${tool}" || return 2
