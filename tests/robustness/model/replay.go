@@ -98,8 +98,14 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 }
 
 type WatchEvent struct {
+	PersistedEvent
+	PrevValue *ValueRevision
+}
+
+type PersistedEvent struct {
 	Event
 	Revision int64
+	IsCreate bool
 }
 
 type Event struct {
@@ -120,4 +126,5 @@ type WatchRequest struct {
 	Revision           int64
 	WithPrefix         bool
 	WithProgressNotify bool
+	WithPrevKV         bool
 }

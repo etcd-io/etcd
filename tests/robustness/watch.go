@@ -70,7 +70,7 @@ func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingC
 	var lastRevision int64
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	watch := c.Watch(ctx, "", 1, true, true)
+	watch := c.Watch(ctx, "", 1, true, true, false)
 	for {
 		select {
 		case <-ctx.Done():

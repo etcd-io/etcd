@@ -34,6 +34,7 @@ func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.Cl
 		if eventHistory != nil {
 			validateReliable(t, eventHistory, r)
 			validateResumable(t, eventHistory, r)
+			validatePrevKV(t, r, eventHistory)
 		}
 	}
 }
@@ -117,8 +118,8 @@ func validateReliable(t *testing.T, events []model.WatchEvent, report report.Cli
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				if events[index].Match(op.Request) && events[index] != event {
-					t.Errorf("Broke watch guarantee: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, event missing: %+v", events[index])
+				if events[index].Match(op.Request) && events[index].PersistedEvent != event.PersistedEvent {
+					t.Errorf("Broke watch guarantee: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, event missing: %+v, got: %+v", events[index], event)
 				}
 				index++
 			}
@@ -138,8 +139,49 @@ func validateResumable(t *testing.T, events []model.WatchEvent, report report.Cl
 		}
 		firstEvent := firstWatchEvent(op)
 		// If watch is resumable, first event it gets should the first event that happened after the requested revision.
-		if firstEvent != nil && events[index] != *firstEvent {
-			t.Errorf("Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window, watch request: %+v, event missing: %+v", op.Request, events[index])
+		if firstEvent != nil && events[index].PersistedEvent != firstEvent.PersistedEvent {
+			t.Errorf("Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window, watch request: %+v, event missing: %+v, got: %+v", op.Request, events[index], *firstEvent)
+		}
+	}
+}
+
+// validatePrevKV ensures that a watch response (if configured with WithPrevKV()) returns
+// the appropriate response.
+func validatePrevKV(t *testing.T, report report.ClientReport, history []model.WatchEvent) {
+	replay := model.NewReplay(history)
+	for _, op := range report.Watch {
+		if !op.Request.WithPrevKV {
+			continue
+		}
+		for _, resp := range op.Responses {
+			for _, event := range resp.Events {
+				// Get state state just before the current event.
+				state, err := replay.StateForRevision(event.Revision - 1)
+				if err != nil {
+					t.Error(err)
+				}
+				// TODO(MadhavJivrajani): check if compaction has been run as part
+				// of failpoint injection. If compaction has run, prevKV can be nil
+				// even if it is not a create event.
+				//
+				// Considering that Kubernetes opens watches to etcd using WithPrevKV()
+				// option, ideally we would want to explicitly check the condition that
+				// Kubernetes does while parsing events received from etcd:
+				// https://github.com/kubernetes/kubernetes/blob/a9e4f5b7862e84c4152eabe2e960f3f6fb9a4867/staging/src/k8s.io/apiserver/pkg/storage/etcd3/event.go#L59
+				// i.e. prevKV is nil iff the event is a create event, we cannot reliably
+				// check that without knowing if compaction has run.
+
+				// A create event will not have an entry in our history and a non-create
+				// event *should* have an entry in our history.
+				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
+					t.Errorf("PrevKV - unexpected event ecountered, create event should not be in event history and update/delete event should be, event already exists: %t, is create event: %t, event: %+v", prevKeyExists, event.IsCreate, event)
+				}
+				// We allow PrevValue to be nil since in the face of compaction, etcd does not
+				// guarantee its presence.
+				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
+					t.Errorf("PrevKV - PrevValue doesn't match previous value under the key %s, got: %+v, want: %+v", event.Key, *event.PrevValue, state.KeyValues[event.Key])
+				}
+			}
 		}
 	}
 }
