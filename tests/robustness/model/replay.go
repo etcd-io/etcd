@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
+func NewReplay(eventHistory []PersistedEvent) *EtcdReplay {
 	var lastEventRevision int64 = 1
 	for _, event := range eventHistory {
 		if event.Revision > lastEventRevision && event.Revision != lastEventRevision+1 {
@@ -33,7 +33,7 @@ func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
 }
 
 type EtcdReplay struct {
-	eventHistory []WatchEvent
+	eventHistory []PersistedEvent
 
 	// Cached state and event index used for it's calculation
 	cachedState       *EtcdState

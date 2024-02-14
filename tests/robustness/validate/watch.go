@@ -23,7 +23,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.WatchEvent) {
+func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.PersistedEvent) {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
@@ -106,7 +106,7 @@ func validateAtomic(t *testing.T, report report.ClientReport) {
 	}
 }
 
-func validateReliable(t *testing.T, events []model.WatchEvent, report report.ClientReport) {
+func validateReliable(t *testing.T, events []model.PersistedEvent, report report.ClientReport) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := firstRevision(op)
@@ -118,7 +118,7 @@ func validateReliable(t *testing.T, events []model.WatchEvent, report report.Cli
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				if events[index].Match(op.Request) && events[index].PersistedEvent != event.PersistedEvent {
+				if events[index].Match(op.Request) && events[index] != event.PersistedEvent {
 					t.Errorf("Broke watch guarantee: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, event missing: %+v, got: %+v", events[index], event)
 				}
 				index++
@@ -127,7 +127,7 @@ func validateReliable(t *testing.T, events []model.WatchEvent, report report.Cli
 	}
 }
 
-func validateResumable(t *testing.T, events []model.WatchEvent, report report.ClientReport) {
+func validateResumable(t *testing.T, events []model.PersistedEvent, report report.ClientReport) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := op.Request.Revision
@@ -139,7 +139,7 @@ func validateResumable(t *testing.T, events []model.WatchEvent, report report.Cl
 		}
 		firstEvent := firstWatchEvent(op)
 		// If watch is resumable, first event it gets should the first event that happened after the requested revision.
-		if firstEvent != nil && events[index].PersistedEvent != firstEvent.PersistedEvent {
+		if firstEvent != nil && events[index] != firstEvent.PersistedEvent {
 			t.Errorf("Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window, watch request: %+v, event missing: %+v, got: %+v", op.Request, events[index], *firstEvent)
 		}
 	}
@@ -147,7 +147,7 @@ func validateResumable(t *testing.T, events []model.WatchEvent, report report.Cl
 
 // validatePrevKV ensures that a watch response (if configured with WithPrevKV()) returns
 // the appropriate response.
-func validatePrevKV(t *testing.T, report report.ClientReport, history []model.WatchEvent) {
+func validatePrevKV(t *testing.T, report report.ClientReport, history []model.PersistedEvent) {
 	replay := model.NewReplay(history)
 	for _, op := range report.Watch {
 		if !op.Request.WithPrevKV {

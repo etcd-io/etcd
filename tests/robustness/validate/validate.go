@@ -51,27 +51,27 @@ type Config struct {
 	ExpectRevisionUnique bool
 }
 
-func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, error) {
+func mergeWatchEventHistory(reports []report.ClientReport) ([]model.PersistedEvent, error) {
 	type revisionEvents struct {
-		events   []model.WatchEvent
+		events   []model.PersistedEvent
 		revision int64
 		clientId int
 	}
 	revisionToEvents := map[int64]revisionEvents{}
 	var lastClientId = 0
 	var lastRevision int64
-	events := []model.WatchEvent{}
+	events := []model.PersistedEvent{}
 	for _, r := range reports {
 		for _, op := range r.Watch {
 			for _, resp := range op.Responses {
 				for _, event := range resp.Events {
 					if event.Revision == lastRevision && lastClientId == r.ClientId {
-						events = append(events, event)
+						events = append(events, event.PersistedEvent)
 					} else {
 						if prev, found := revisionToEvents[lastRevision]; found {
 							// This assumes that there are txn that would be observed differently by two watches.
 							// TODO: Implement merging events from multiple watches about single revision based on operations.
-							if diff := cmp.Diff(prev.events, events, cmp.Comparer(compareWatchEvents)); diff != "" {
+							if diff := cmp.Diff(prev.events, events); diff != "" {
 								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
 							}
 						} else {
@@ -79,14 +79,14 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, 
 						}
 						lastClientId = r.ClientId
 						lastRevision = event.Revision
-						events = []model.WatchEvent{event}
+						events = []model.PersistedEvent{event.PersistedEvent}
 					}
 				}
 			}
 		}
 	}
 	if prev, found := revisionToEvents[lastRevision]; found {
-		if diff := cmp.Diff(prev.events, events, cmp.Comparer(compareWatchEvents)); diff != "" {
+		if diff := cmp.Diff(prev.events, events); diff != "" {
 			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
 		}
 	} else {
@@ -100,23 +100,9 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, 
 	sort.Slice(allRevisionEvents, func(i, j int) bool {
 		return allRevisionEvents[i].revision < allRevisionEvents[j].revision
 	})
-	var eventHistory []model.WatchEvent
+	var eventHistory []model.PersistedEvent
 	for _, revEvents := range allRevisionEvents {
 		eventHistory = append(eventHistory, revEvents.events...)
 	}
 	return eventHistory, nil
-}
-
-func compareWatchEvents(x, y []model.WatchEvent) bool {
-	if len(x) != len(y) {
-		return false
-	}
-
-	for i := 0; i < len(x); i++ {
-		if x[i].PersistedEvent != y[i].PersistedEvent {
-			return false
-		}
-	}
-
-	return true
 }
