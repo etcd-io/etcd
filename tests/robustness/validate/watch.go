@@ -35,6 +35,7 @@ func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.Cl
 			validateReliable(t, eventHistory, r)
 			validateResumable(t, eventHistory, r)
 			validatePrevKV(t, r, eventHistory)
+			validateCreateEvent(t, r, eventHistory)
 		}
 	}
 }
@@ -171,15 +172,30 @@ func validatePrevKV(t *testing.T, report report.ClientReport, history []model.Pe
 				// i.e. prevKV is nil iff the event is a create event, we cannot reliably
 				// check that without knowing if compaction has run.
 
-				// A create event will not have an entry in our history and a non-create
-				// event *should* have an entry in our history.
-				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
-					t.Errorf("PrevKV - unexpected event ecountered, create event should not be in event history and update/delete event should be, event already exists: %t, is create event: %t, event: %+v", prevKeyExists, event.IsCreate, event)
-				}
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
 				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
 					t.Errorf("PrevKV - PrevValue doesn't match previous value under the key %s, got: %+v, want: %+v", event.Key, *event.PrevValue, state.KeyValues[event.Key])
+				}
+			}
+		}
+	}
+}
+
+func validateCreateEvent(t *testing.T, report report.ClientReport, history []model.PersistedEvent) {
+	replay := model.NewReplay(history)
+	for _, op := range report.Watch {
+		for _, resp := range op.Responses {
+			for _, event := range resp.Events {
+				// Get state state just before the current event.
+				state, err := replay.StateForRevision(event.Revision - 1)
+				if err != nil {
+					t.Error(err)
+				}
+				// A create event will not have an entry in our history and a non-create
+				// event *should* have an entry in our history.
+				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
+					t.Errorf("CreateEvent - unexpected event ecountered, create event should not be in event history and update/delete event should be, event already exists: %t, is create event: %t, event: %+v", prevKeyExists, event.IsCreate, event)
 				}
 			}
 		}
