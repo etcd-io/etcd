@@ -52,7 +52,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	}
 }
 
-func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, totalEventHistory []model.WatchEvent) {
+func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, totalEventHistory []model.PersistedEvent) {
 	lg.Info("Validating serializable operations")
 	staleReads := filterSerializableReads(operations)
 	if len(staleReads) == 0 {
