@@ -138,12 +138,13 @@ type EtcdProcessCluster struct {
 }
 
 type EtcdProcessClusterConfig struct {
-	ExecPath      string
-	DataDirPath   string
-	KeepDataDir   bool
-	GoFailEnabled bool
-	PeerProxy     bool
-	EnvVars       map[string]string
+	ExecPath            string
+	DataDirPath         string
+	KeepDataDir         bool
+	GoFailEnabled       bool
+	GoFailClientTimeout time.Duration
+	PeerProxy           bool
+	EnvVars             map[string]string
 
 	ClusterSize int
 
@@ -400,21 +401,22 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 
 		etcdCfgs[i] = &EtcdServerProcessConfig{
-			lg:            lg,
-			ExecPath:      cfg.ExecPath,
-			Args:          args,
-			EnvVars:       envVars,
-			TlsArgs:       cfg.TlsArgs(),
-			DataDirPath:   dataDirPath,
-			KeepDataDir:   cfg.KeepDataDir,
-			Name:          name,
-			Purl:          peerAdvertiseUrl,
-			Acurl:         curl,
-			Murl:          murl,
-			InitialToken:  cfg.InitialToken,
-			ClientHttpUrl: clientHttpUrl,
-			GoFailPort:    gofailPort,
-			Proxy:         proxyCfg,
+			lg:                  lg,
+			ExecPath:            cfg.ExecPath,
+			Args:                args,
+			EnvVars:             envVars,
+			TlsArgs:             cfg.TlsArgs(),
+			DataDirPath:         dataDirPath,
+			KeepDataDir:         cfg.KeepDataDir,
+			Name:                name,
+			Purl:                peerAdvertiseUrl,
+			Acurl:               curl,
+			Murl:                murl,
+			InitialToken:        cfg.InitialToken,
+			ClientHttpUrl:       clientHttpUrl,
+			GoFailPort:          gofailPort,
+			GoFailClientTimeout: cfg.GoFailClientTimeout,
+			Proxy:               proxyCfg,
 		}
 	}
 
