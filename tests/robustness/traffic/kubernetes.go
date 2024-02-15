@@ -190,7 +190,7 @@ func filterOutNonUniqueKubernetesWrites(choices []choiceWeight[KubernetesRequest
 func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
 	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 	defer cancel()
-	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true) {
+	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true, true) {
 		s.Update(e)
 	}
 	limiter.Wait(ctx)

@@ -31,6 +31,7 @@ Upon failure tests generate a report that can be used to attribute whether failu
       It is recommended to run tests multiple times with failfast enabled. this can be done by setting `GO_TEST_FLAGS='--count=100 --failfast'`.
     * `EXPECT_DEBUG=true` - to get logs from the cluster.
     * `RESULTS_DIR` - to change location where results report will be saved.
+    * `PERSIST_RESULTS` - to persist the results report of the test. By default this will not be persisted in the case of a successful run.
 
 ## Analysing failure
 

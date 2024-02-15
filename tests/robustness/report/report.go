@@ -59,7 +59,8 @@ func testResultsDirectory(t *testing.T) string {
 
 func (r *TestReport) Report(t *testing.T, force bool) {
 	path := testResultsDirectory(t)
-	if t.Failed() || force {
+	_, ok := os.LookupEnv("PERSIST_RESULTS")
+	if t.Failed() || force || ok {
 		for _, member := range r.Cluster.Procs {
 			memberDataDir := filepath.Join(path, fmt.Sprintf("server-%s", member.Config().Name))
 			persistMemberDataDir(t, r.Logger, member, memberDataDir)

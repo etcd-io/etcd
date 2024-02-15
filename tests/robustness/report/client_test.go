@@ -95,19 +95,23 @@ func TestPersistLoadClientReports(t *testing.T) {
 			{
 				Events: []model.WatchEvent{
 					{
-						Event: model.Event{
-							Type:  model.PutOperation,
-							Key:   "key1",
-							Value: model.ToValueOrHash("1"),
+						PersistedEvent: model.PersistedEvent{
+							Event: model.Event{
+								Type:  model.PutOperation,
+								Key:   "key1",
+								Value: model.ToValueOrHash("1"),
+							},
+							Revision: 2,
 						},
-						Revision: 2,
 					},
 					{
-						Event: model.Event{
-							Type: model.DeleteOperation,
-							Key:  "key2",
+						PersistedEvent: model.PersistedEvent{
+							Event: model.Event{
+								Type: model.DeleteOperation,
+								Key:  "key2",
+							},
+							Revision: 3,
 						},
-						Revision: 3,
 					},
 				},
 				IsProgressNotify: false,

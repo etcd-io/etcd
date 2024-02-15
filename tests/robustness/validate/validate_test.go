@@ -62,35 +62,38 @@ func TestValidateWatch(t *testing.T) {
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 100,
+								Revision: 2,
 							},
 							Responses: []model.WatchResponse{
 								{
 									IsProgressNotify: true,
-									Revision:         100,
+									Revision:         3,
 								},
 							},
 						},
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 99,
+								Revision: 2,
 							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
 										{
-											Event: model.Event{
-												Type: model.PutOperation,
-												Key:  "a",
-												Value: model.ValueOrHash{
-													Value: "99",
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "99",
+													},
 												},
+												Revision: 2,
+												IsCreate: true,
 											},
-											Revision: 99,
 										},
 									},
-									Revision: 100,
+									Revision: 3,
 								},
 							},
 						},
@@ -106,46 +109,51 @@ func TestValidateWatch(t *testing.T) {
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 100,
+								Revision: 3,
 							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
 										{
-											Event: model.Event{
-												Type: model.PutOperation,
-												Key:  "a",
-												Value: model.ValueOrHash{
-													Value: "100",
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "100",
+													},
 												},
+												Revision: 3,
 											},
-											Revision: 100,
 										},
 									},
-									Revision: 100,
+									Revision: 3,
 								},
 							},
 						},
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 99,
+								Revision: 2,
 							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
 										{
-											Event: model.Event{
-												Type: model.PutOperation,
-												Key:  "a",
-												Value: model.ValueOrHash{
-													Value: "99",
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "99",
+													},
 												},
+												Revision: 2,
+												IsCreate: true,
 											},
-											Revision: 99,
 										},
 									},
-									Revision: 100,
+									Revision: 3,
 								},
 							},
 						},
@@ -161,46 +169,117 @@ func TestValidateWatch(t *testing.T) {
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 100,
+								Revision: 2,
 							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
 										{
-											Event: model.Event{
-												Type: model.PutOperation,
-												Key:  "a",
-												Value: model.ValueOrHash{
-													Value: "100",
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "100",
+													},
 												},
+												Revision: 2,
+												IsCreate: true,
 											},
-											Revision: 100,
 										},
 									},
-									Revision: 100,
+									Revision: 2,
 								},
 							},
 						},
 						{
 							Request: model.WatchRequest{
 								Key:      "a",
-								Revision: 100,
+								Revision: 2,
 							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
 										{
-											Event: model.Event{
-												Type: model.PutOperation,
-												Key:  "a",
-												Value: model.ValueOrHash{
-													Value: "100",
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "100",
+													},
 												},
+												Revision: 2,
+												IsCreate: true,
 											},
-											Revision: 100,
 										},
 									},
-									Revision: 100,
+									Revision: 2,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "create event and update event in seperate requests both with PrevKV()",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:        "a",
+								Revision:   2,
+								WithPrevKV: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "100",
+													},
+												},
+												Revision: 2,
+												IsCreate: true,
+											},
+										},
+									},
+									Revision: 2,
+								},
+							},
+						},
+						{
+							Request: model.WatchRequest{
+								Key:      "a",
+								Revision: 3,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										{
+											PersistedEvent: model.PersistedEvent{
+												Event: model.Event{
+													Type: model.PutOperation,
+													Key:  "a",
+													Value: model.ValueOrHash{
+														Value: "101",
+													},
+												},
+												Revision: 3,
+											},
+											PrevValue: &model.ValueRevision{
+												Value:       model.ToValueOrHash("100"),
+												ModRevision: 2,
+											},
+										},
+									},
+									Revision: 3,
 								},
 							},
 						},
