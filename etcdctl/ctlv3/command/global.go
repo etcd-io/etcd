@@ -26,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapgrpc"
 	"google.golang.org/grpc/grpclog"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -107,7 +108,6 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if debug {
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
 		fs.VisitAll(func(f *pflag.Flag) {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
@@ -116,8 +116,9 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 		// too many routine connection disconnects to turn on by default.
 		//
 		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
+		lg = lg.WithOptions(zap.IncreaseLevel(zap.ErrorLevel))
 	}
+	grpclog.SetLoggerV2(zapgrpc.NewLogger(lg.Named("grpc")))
 
 	cfg := &clientv3.ConfigSpec{}
 	cfg.Endpoints, err = endpointsFromCmd(cmd)

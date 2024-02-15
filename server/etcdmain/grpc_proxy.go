@@ -190,7 +190,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	}
 	defer lg.Sync()
 
-	grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
+	grpclog.SetLoggerV2(zapgrpc.NewLogger(lg.Named("grpc")))
 
 	// The proxy itself (ListenCert) can have not-empty CN.
 	// The empty CN is required for grpcProxyCert.
