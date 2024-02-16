@@ -155,7 +155,8 @@ test:
 
 test-smoke:
 	$(info log-file: test-$(TEST_SUFFIX).log)
-	PASSES="fmt build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+	PASSES="fmt bom dep build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+	! grep "FAIL:" test-$(TEST_SUFFIX).log
 
 test-full:
 	$(info log-file: test-$(TEST_SUFFIX).log)

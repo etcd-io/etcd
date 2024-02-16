@@ -6,7 +6,8 @@ jobs:
     with:
       arch: amd64
       runs-on: ubuntu-latest
-      targets: "['linux-integration-1-cpu',
+      targets: "['linux-test-smoke',
+        'linux-integration-1-cpu',
         'linux-integration-2-cpu',
         'linux-integration-4-cpu',
         'linux-unit-4-cpu-race',
@@ -17,7 +18,8 @@ jobs:
     with:
       arch: arm64
       runs-on: actuated-arm64-8cpu-32gb
-      targets: "['linux-integration-1-cpu',
+      targets: "['linux-test-smoke',
+        'linux-integration-1-cpu',
         'linux-integration-2-cpu',
         'linux-integration-4-cpu',
         'linux-unit-4-cpu-race']"
