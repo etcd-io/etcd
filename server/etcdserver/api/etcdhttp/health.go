@@ -60,7 +60,7 @@ type serverHealthV2V3 interface {
 	Leader() types.ID
 }
 
-// HandleHealth registers metrics and health handlers for v2.
+// HandleHealthForV2 registers metrics and health handlers for v2.
 func HandleHealthForV2(lg *zap.Logger, mux *http.ServeMux, srv etcdserver.ServerV2) {
 	mux.Handle(PathHealth, NewHealthHandler(lg, func(ctx context.Context, excludedAlarms StringSet, serializable bool) Health {
 		if h := checkAlarms(lg, srv, excludedAlarms); h.Health != "true" {
