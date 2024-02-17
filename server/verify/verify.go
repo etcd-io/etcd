@@ -48,7 +48,7 @@ type Config struct {
 // the function can also panic.
 // The function is expected to work on not-in-use data model, i.e.
 // no file-locks should be taken. Verify does not modified the data.
-func Verify(cfg Config) error {
+func Verify(cfg Config) (retErr error) {
 	lg := cfg.Logger
 	if lg == nil {
 		lg = zap.NewNop()
@@ -59,13 +59,12 @@ func Verify(cfg Config) error {
 		return nil
 	}
 
-	var err error
 	lg.Info("verification of persisted state", zap.String("data-dir", cfg.DataDir))
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			lg.Error("verification of persisted state failed",
 				zap.String("data-dir", cfg.DataDir),
-				zap.Error(err))
+				zap.Error(retErr))
 		} else if r := recover(); r != nil {
 			lg.Error("verification of persisted state failed",
 				zap.String("data-dir", cfg.DataDir))
