@@ -38,12 +38,12 @@ contributors to the community.
     - Filing or commenting on issues on GitHub
     - Contributing to community discussions (e.g. meetings, Slack, email discussion
       forums, Stack Overflow)
-- Subscribed to etcd-dev@googlegroups.com
+- Subscribed to [etcd-dev@googlegroups.com](https://groups.google.com/g/etcd-dev)
 - Have read the [contributor guide]
-- Sponsored by one active maintainer or two reviewers.
+- Sponsored by two active maintainers or reviewers.
     - Sponsors must be from multiple member companies to demonstrate integration across community.
     - With no objections from other maintainers
-- Open a [membership nomination] issue against the etcd-io/etcd repo
+- Open a [membership nomination] issue against the `kubernetes/org` repo
     - Ensure your sponsors are @mentioned on the issue
     - Make sure that the list of contributions included is representative of your work on the project.
 - Members can be removed by a supermajority of the maintainers or can resign by notifying
@@ -161,7 +161,7 @@ Contributor roles and responsibilities were written based on [Kubernetes communi
 
 [OWNERS]: /OWNERS
 [contributor guide]: /CONTRIBUTING.md
-[membership nomination]:https://github.com/etcd-io/etcd/issues/new?assignees=&labels=area%2Fcommunity&template=membership-request.yml 
+[membership nomination]: https://github.com/kubernetes/org/issues/new?assignees=&labels=area%2Fgithub-membership&projects=&template=membership.yml&title=REQUEST%3A+New+membership+for+%3Cyour-GH-handle%3E
 [Kubernetes community membership]: https://github.com/kubernetes/community/blob/master/community-membership.md
 [emeritus maintainers]: /README.md#etcd-emeritus-maintainers
 [security disclosure and release process]: /security/README.md
