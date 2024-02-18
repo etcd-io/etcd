@@ -58,7 +58,7 @@ var (
 	grpcProxyListenAddr                string
 	grpcProxyMetricsListenAddr         string
 	grpcProxyEndpoints                 []string
-  grpcProxyEndpointsAutoSyncInterval time.Duration
+	grpcProxyEndpointsAutoSyncInterval time.Duration
 	grpcProxyDialKeepAliveTime         time.Duration
 	grpcProxyDialKeepAliveTimeout      time.Duration
 	grpcProxyPermitWithoutStream       bool
