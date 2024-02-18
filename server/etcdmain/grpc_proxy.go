@@ -59,6 +59,9 @@ var (
 	grpcProxyMetricsListenAddr         string
 	grpcProxyEndpoints                 []string
 	grpcProxyEndpointsAutoSyncInterval time.Duration
+	grpcProxyDialKeepAliveTime         time.Duration
+	grpcProxyDialKeepAliveTimeout      time.Duration
+	grpcProxyPermitWithoutStream       bool
 	grpcProxyDNSCluster                string
 	grpcProxyDNSClusterServiceName     string
 	grpcProxyInsecureDiscovery         bool
@@ -134,6 +137,9 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().DurationVar(&grpcProxyEndpointsAutoSyncInterval, "endpoints-auto-sync-interval", 0, "etcd endpoints auto sync interval (disabled by default)")
+	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTime, "dial-keepalive-time", 0, "keepalive time for client(grpc-proxy) connections (default 0, disable).")
+	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTimeout, "dial-keepalive-timeout", embed.DefaultGRPCKeepAliveTimeout, "keepalive timeout for client(grpc-proxy) connections (default 20s).")
+	cmd.Flags().BoolVar(&grpcProxyPermitWithoutStream, "permit-without-stream", false, "Enable client(grpc-proxy) to send keepalive pings even with no active RPCs.")
 	cmd.Flags().StringVar(&grpcProxyAdvertiseClientURL, "advertise-client-url", "127.0.0.1:23790", "advertise address to register (must be reachable by client)")
 	cmd.Flags().StringVar(&grpcProxyResolverPrefix, "resolver-prefix", "", "prefix to use for registering proxy (must be shared with other grpc-proxy members)")
 	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
@@ -356,6 +362,13 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	if grpcMaxCallRecvMsgSize > 0 {
 		cfg.MaxCallRecvMsgSize = grpcMaxCallRecvMsgSize
 	}
+	if grpcProxyDialKeepAliveTime > 0 {
+		cfg.DialKeepAliveTime = grpcProxyDialKeepAliveTime
+	}
+	if grpcProxyDialKeepAliveTimeout > 0 {
+		cfg.DialKeepAliveTimeout = grpcProxyDialKeepAliveTimeout
+	}
+	cfg.PermitWithoutStream = grpcProxyPermitWithoutStream
 
 	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey, true)
 	if tls == nil && grpcProxyInsecureSkipTLSVerify {
