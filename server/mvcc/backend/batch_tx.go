@@ -308,6 +308,7 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
+		// gofail: var beforeWritebackBuf struct{}
 		t.buf.writeback(&t.backend.readTx.buf)
 		t.backend.readTx.Unlock()
 		// We commit the transaction when the number of pending operations

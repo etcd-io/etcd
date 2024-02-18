@@ -55,18 +55,19 @@ import (
 )
 
 var (
-	grpcProxyListenAddr            string
-	grpcProxyMetricsListenAddr     string
-	grpcProxyEndpoints             []string
-	grpcProxyDialKeepAliveTime     time.Duration
-	grpcProxyDialKeepAliveTimeout  time.Duration
-	grpcProxyPermitWithoutStream   bool
-	grpcProxyDNSCluster            string
-	grpcProxyDNSClusterServiceName string
-	grpcProxyInsecureDiscovery     bool
-	grpcProxyDataDir               string
-	grpcMaxCallSendMsgSize         int
-	grpcMaxCallRecvMsgSize         int
+	grpcProxyListenAddr                string
+	grpcProxyMetricsListenAddr         string
+	grpcProxyEndpoints                 []string
+	grpcProxyEndpointsAutoSyncInterval time.Duration
+	grpcProxyDialKeepAliveTime         time.Duration
+	grpcProxyDialKeepAliveTimeout      time.Duration
+	grpcProxyPermitWithoutStream       bool
+	grpcProxyDNSCluster                string
+	grpcProxyDNSClusterServiceName     string
+	grpcProxyInsecureDiscovery         bool
+	grpcProxyDataDir                   string
+	grpcMaxCallSendMsgSize             int
+	grpcMaxCallRecvMsgSize             int
 
 	// tls for connecting to etcd
 
@@ -135,6 +136,7 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().StringVar(&grpcProxyMetricsListenAddr, "metrics-addr", "", "listen for endpoint /metrics requests on an additional interface")
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
+	cmd.Flags().DurationVar(&grpcProxyEndpointsAutoSyncInterval, "endpoints-auto-sync-interval", 0, "etcd endpoints auto sync interval (disabled by default)")
 	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTime, "dial-keepalive-time", 0, "keepalive time for client(grpc-proxy) connections (default 0, disable).")
 	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTimeout, "dial-keepalive-timeout", embed.DefaultGRPCKeepAliveTimeout, "keepalive timeout for client(grpc-proxy) connections (default 20s).")
 	cmd.Flags().BoolVar(&grpcProxyPermitWithoutStream, "permit-without-stream", false, "Enable client(grpc-proxy) to send keepalive pings even with no active RPCs.")
@@ -349,8 +351,9 @@ func newProxyClientCfg(lg *zap.Logger, eps []string, tls *transport.TLSInfo) (*c
 func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	// set tls if any one tls option set
 	cfg := clientv3.Config{
-		Endpoints:   eps,
-		DialTimeout: 5 * time.Second,
+		Endpoints:        eps,
+		AutoSyncInterval: grpcProxyEndpointsAutoSyncInterval,
+		DialTimeout:      5 * time.Second,
 	}
 
 	if grpcMaxCallSendMsgSize > 0 {

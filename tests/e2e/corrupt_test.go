@@ -27,9 +27,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestEtcdCorruptHash(t *testing.T) {
@@ -37,10 +38,10 @@ func TestEtcdCorruptHash(t *testing.T) {
 	// defer os.Setenv("EXPECT_DEBUG", oldenv)
 	// os.Setenv("EXPECT_DEBUG", "1")
 
-	cfg := newConfigNoTLS()
+	cfg := e2e.NewConfigNoTLS()
 
 	// trigger snapshot so that restart member can load peers from disk
-	cfg.snapshotCount = 3
+	cfg.SnapshotCount = 3
 
 	testCtl(t, corruptTest, withQuorum(),
 		withCfg(*cfg),
@@ -78,18 +79,18 @@ func corruptTest(cx ctlCtx) {
 	id0 := sresp.Header.GetMemberId()
 
 	cx.t.Log("stopping etcd[0]...")
-	cx.epc.procs[0].Stop()
+	cx.epc.Procs[0].Stop()
 
 	// corrupting first member by modifying backend offline.
-	fp := datadir.ToBackendFileName(cx.epc.procs[0].Config().dataDirPath)
+	fp := datadir.ToBackendFileName(cx.epc.Procs[0].Config().DataDirPath)
 	cx.t.Logf("corrupting backend: %v", fp)
 	if err = cx.corruptFunc(fp); err != nil {
 		cx.t.Fatal(err)
 	}
 
 	cx.t.Log("restarting etcd[0]")
-	ep := cx.epc.procs[0]
-	proc, err := spawnCmd(append([]string{ep.Config().execPath}, ep.Config().args...), cx.envMap)
+	ep := cx.epc.Procs[0]
+	proc, err := e2e.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
 	if err != nil {
 		cx.t.Fatal(err)
 	}
@@ -97,21 +98,21 @@ func corruptTest(cx ctlCtx) {
 
 	cx.t.Log("waiting for etcd[0] failure...")
 	// restarting corrupted member should fail
-	waitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
+	e2e.WaitReadyExpectProc(proc, []string{fmt.Sprintf("etcdmain: %016x found data inconsistency with peers", id0)})
 }
 
 func TestInPlaceRecovery(t *testing.T) {
 	basePort := 20000
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
 	// Initialize the cluster.
-	epcOld, err := newEtcdProcessCluster(t,
-		&etcdProcessClusterConfig{
-			clusterSize:      3,
-			initialToken:     "old",
-			keepDataDir:      false,
+	epcOld, err := e2e.NewEtcdProcessCluster(t,
+		&e2e.EtcdProcessClusterConfig{
+			ClusterSize:      3,
+			InitialToken:     "old",
+			KeepDataDir:      false,
 			CorruptCheckTime: time.Second,
-			basePort:         basePort,
+			BasePort:         basePort,
 		},
 	)
 	if err != nil {
@@ -127,7 +128,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
 	t.Log("putting 10 keys...")
 
-	oldCc := NewEtcdctl(epcOld.EndpointsV3(), clientNonTLS, false, false)
+	oldCc := e2e.NewEtcdctl(epcOld.EndpointsV3(), e2e.ClientNonTLS, false, false)
 	for i := 0; i < 10; i++ {
 		err := oldCc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
@@ -135,15 +136,15 @@ func TestInPlaceRecovery(t *testing.T) {
 
 	// Create a new cluster config, but with the same port numbers. In this way the new servers can stay in
 	// contact with the old ones.
-	epcNewConfig := &etcdProcessClusterConfig{
-		clusterSize:         3,
-		initialToken:        "new",
-		keepDataDir:         false,
+	epcNewConfig := &e2e.EtcdProcessClusterConfig{
+		ClusterSize:         3,
+		InitialToken:        "new",
+		KeepDataDir:         false,
 		CorruptCheckTime:    time.Second,
-		basePort:            basePort,
-		initialCorruptCheck: true,
+		BasePort:            basePort,
+		InitialCorruptCheck: true,
 	}
-	epcNew, err := initEtcdProcessCluster(t, epcNewConfig)
+	epcNew, err := e2e.InitEtcdProcessCluster(t, epcNewConfig)
 	if err != nil {
 		t.Fatalf("could not init etcd process cluster (%v)", err)
 	}
@@ -153,30 +154,30 @@ func TestInPlaceRecovery(t *testing.T) {
 		}
 	})
 
-	newCc := NewEtcdctl(epcNew.EndpointsV3(), clientNonTLS, false, false)
+	newCc := e2e.NewEtcdctl(epcNew.EndpointsV3(), e2e.ClientNonTLS, false, false)
 	assert.NoError(t, err)
 
 	wg := sync.WaitGroup{}
 	// Rolling recovery of the servers.
 	t.Log("rolling updating servers in place...")
-	for i := range epcNew.procs {
-		oldProc := epcOld.procs[i]
+	for i := range epcNew.Procs {
+		oldProc := epcOld.Procs[i]
 		err = oldProc.Close()
 		if err != nil {
 			t.Fatalf("could not stop etcd process (%v)", err)
 		}
-		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().name)
+		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().Name)
 		wg.Add(1)
 		// Start servers in background to avoid blocking on server start.
 		// EtcdProcess.Start waits until etcd becomes healthy, which will not happen here until we restart at least 2 members.
-		go func(proc etcdProcess) {
+		go func(proc e2e.EtcdProcess) {
 			defer wg.Done()
 			err = proc.Start()
 			if err != nil {
 				t.Errorf("could not start etcd process (%v)", err)
 			}
-			t.Logf("new cluster server: %s started in-place with blank db.", proc.Config().name)
-		}(epcNew.procs[i])
+			t.Logf("new cluster server: %s started in-place with blank db.", proc.Config().Name)
+		}(epcNew.Procs[i])
 		t.Log("sleeping 5 sec to let nodes do periodical check...")
 		time.Sleep(5 * time.Second)
 	}
@@ -195,10 +196,10 @@ func TestInPlaceRecovery(t *testing.T) {
 
 func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	checkTime := time.Second
-	BeforeTest(t)
-	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize:      3,
-		keepDataDir:      true,
+	e2e.BeforeTest(t)
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:      3,
+		KeepDataDir:      true,
 		CorruptCheckTime: time.Second,
 	})
 	if err != nil {
@@ -210,27 +211,22 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
 	}
 
-	members, err := cc.MemberList()
+	_, found, err := getMemberIdByName(context.Background(), cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
-	var memberID uint64
-	for _, m := range members.Members {
-		if m.Name == epc.procs[0].Config().name {
-			memberID = m.ID
-		}
-	}
-	assert.NotZero(t, memberID, "member not found")
-	epc.procs[0].Stop()
-	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.procs[0].Config().dataDirPath))
+	assert.Equal(t, found, true, "member not found")
+
+	epc.Procs[0].Stop()
+	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
 	assert.NoError(t, err)
 
-	err = epc.procs[0].Restart()
+	err = epc.Procs[0].Restart()
 	assert.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList()
@@ -240,10 +236,10 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 
 func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	checkTime := time.Second
-	BeforeTest(t)
-	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize:             3,
-		keepDataDir:             true,
+	e2e.BeforeTest(t)
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:             3,
+		KeepDataDir:             true,
 		CompactHashCheckEnabled: true,
 		CompactHashCheckTime:    checkTime,
 	})
@@ -256,7 +252,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		}
 	})
 
-	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 10; i++ {
 		err := cc.Put(testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -265,11 +261,11 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	_, err = cc.MemberList()
 	assert.NoError(t, err, "error on member list")
 
-	epc.procs[0].Stop()
-	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.procs[0].Config().dataDirPath))
+	epc.Procs[0].Stop()
+	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
 	assert.NoError(t, err)
 
-	err = epc.procs[0].Restart()
+	err = epc.Procs[0].Restart()
 	assert.NoError(t, err)
 	_, err = cc.Compact(5)
 	assert.NoError(t, err)
@@ -281,19 +277,19 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 
 func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	checkTime := time.Second
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
 	slowCompactionNodeIndex := 1
 
 	// Start a new cluster, with compact hash check enabled.
 	t.Log("creating a new cluster with 3 nodes...")
 
-	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize:             3,
-		keepDataDir:             true,
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:             3,
+		KeepDataDir:             true,
 		CompactHashCheckEnabled: true,
 		CompactHashCheckTime:    checkTime,
-		logLevel:                "info",
+		LogLevel:                "info",
 		CompactionBatchLimit:    1,
 	})
 	require.NoError(t, err)
@@ -306,7 +302,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	// Put 200 identical keys to the cluster, so that the compaction will drop some stale values.
 	// We need a relatively big number here to make the compaction takes a non-trivial time, and we can interrupt it.
 	t.Log("putting 200 values to the identical key...")
-	cc := NewEtcdctl(epc.EndpointsV3(), clientNonTLS, false, false)
+	cc := e2e.NewEtcdctl(epc.EndpointsV3(), e2e.ClientNonTLS, false, false)
 
 	for i := 0; i < 200; i++ {
 		err = cc.Put("key", fmt.Sprint(i))
@@ -317,11 +313,11 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	_, err = cc.Compact(200)
 
 	t.Logf("restart proc %d to interrupt its compaction...", slowCompactionNodeIndex)
-	err = epc.procs[slowCompactionNodeIndex].Restart()
+	err = epc.Procs[slowCompactionNodeIndex].Restart()
 	require.NoError(t, err)
 
 	// Wait until the node finished compaction.
-	_, err = epc.procs[slowCompactionNodeIndex].Logs().Expect("finished scheduled compaction")
+	_, err = epc.Procs[slowCompactionNodeIndex].Logs().Expect("finished scheduled compaction")
 	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
 
 	// Wait until the leader finished compaction hash check.

@@ -24,20 +24,22 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3AuthCertCN(t *testing.T) {
-	testCtl(t, authTestCertCN, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCN, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
 func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsername, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCNAndUsername, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
 func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
-	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*newConfigClientTLSCertAuth()))
+	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
 
 func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 
 	// apply the certificate which has `root` CommonName,
 	// and reset the setting when the test case finishes.
@@ -49,19 +51,19 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 
 	t.Log("Create an etcd cluster")
 	cx := getDefaultCtlCtx(t)
-	cx.cfg = etcdProcessClusterConfig{
-		clusterSize:           1,
-		clientTLS:             clientTLS,
-		clientCertAuthEnabled: true,
-		initialToken:          "new",
+	cx.cfg = e2e.EtcdProcessClusterConfig{
+		ClusterSize:           1,
+		ClientTLS:             e2e.ClientTLS,
+		ClientCertAuthEnabled: true,
+		InitialToken:          "new",
 	}
 
-	epc, err := newEtcdProcessCluster(t, &cx.cfg)
+	epc, err := e2e.NewEtcdProcessCluster(t, &cx.cfg)
 	if err != nil {
 		t.Fatalf("Failed to start etcd cluster: %v", err)
 	}
 	cx.epc = epc
-	cx.dataDir = epc.procs[0].Config().dataDirPath
+	cx.dataDir = epc.Procs[0].Config().DataDirPath
 
 	defer func() {
 		if err := epc.Close(); err != nil {

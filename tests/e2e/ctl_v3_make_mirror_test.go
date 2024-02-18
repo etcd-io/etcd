@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3MakeMirror(t *testing.T)                 { testCtl(t, makeMirrorTest) }
@@ -59,16 +61,16 @@ func makeMirrorNoDestPrefixTest(cx ctlCtx) {
 
 func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvExec, srcprefix, destprefix string) {
 	// set up another cluster to mirror with
-	mirrorcfg := newConfigAutoTLS()
-	mirrorcfg.clusterSize = 1
-	mirrorcfg.basePort = 10000
+	mirrorcfg := e2e.NewConfigAutoTLS()
+	mirrorcfg.ClusterSize = 1
+	mirrorcfg.BasePort = 10000
 	mirrorctx := ctlCtx{
 		t:           cx.t,
 		cfg:         *mirrorcfg,
 		dialTimeout: 7 * time.Second,
 	}
 
-	mirrorepc, err := newEtcdProcessCluster(cx.t, &mirrorctx.cfg)
+	mirrorepc, err := e2e.NewEtcdProcessCluster(cx.t, &mirrorctx.cfg)
 	if err != nil {
 		cx.t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -82,8 +84,8 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 
 	cmdArgs := append(cx.PrefixArgs(), "make-mirror")
 	cmdArgs = append(cmdArgs, flags...)
-	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.basePort))
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.BasePort))
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatal(err)
 	}

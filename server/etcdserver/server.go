@@ -2154,6 +2154,7 @@ func (s *EtcdServer) apply(
 			zap.Stringer("type", e.Type))
 		switch e.Type {
 		case raftpb.EntryNormal:
+			// gofail: var beforeApplyOneEntryNormal struct{}
 			s.applyEntryNormal(&e)
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)

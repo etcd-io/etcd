@@ -1,4 +1,4 @@
-// Copyright 2021 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,27 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package e2e
+package testutils
 
 import (
-	"os"
+	"context"
+	"fmt"
 	"testing"
+	"time"
 
-	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	"go.etcd.io/etcd/server/v3/verify"
 )
 
-func BeforeTest(t testing.TB) {
-	skipInShortMode(t)
-	testutil.RegisterLeakDetection(t)
-	os.Setenv(verify.ENV_VERIFY, verify.ENV_VERIFY_ALL_VALUE)
+func ExecuteUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
 
-	path, err := os.Getwd()
-	assert.NoError(t, err)
-	tempDir := t.TempDir()
-	assert.NoError(t, os.Chdir(tempDir))
-	t.Logf("Changing working directory to: %s", tempDir)
-
-	t.Cleanup(func() { assert.NoError(t, os.Chdir(path)) })
+	select {
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
+	case <-donec:
+	}
 }

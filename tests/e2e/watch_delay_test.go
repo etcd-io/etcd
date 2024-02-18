@@ -27,6 +27,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -38,7 +39,7 @@ const (
 
 type testCase struct {
 	name          string
-	config        etcdProcessClusterConfig
+	config        e2e.EtcdProcessClusterConfig
 	maxWatchDelay time.Duration
 	dbSizeBytes   int
 }
@@ -54,40 +55,40 @@ const (
 var tcs = []testCase{
 	{
 		name:          "NoTLS",
-		config:        etcdProcessClusterConfig{clusterSize: 1},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "TLS",
-		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, IsClientAutoTLS: true, ClientTLS: e2e.ClientTLS},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpNoTLS",
-		config:        etcdProcessClusterConfig{clusterSize: 1, clientHttpSeparate: true},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, ClientHttpSeparate: true},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 	{
 		name:          "SeparateHttpTLS",
-		config:        etcdProcessClusterConfig{clusterSize: 1, isClientAutoTLS: true, clientTLS: clientTLS, clientHttpSeparate: true},
+		config:        e2e.EtcdProcessClusterConfig{ClusterSize: 1, IsClientAutoTLS: true, ClientTLS: e2e.ClientTLS, ClientHttpSeparate: true},
 		maxWatchDelay: 150 * time.Millisecond,
 		dbSizeBytes:   5 * Mega,
 	},
 }
 
 func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		tc := tc
 		tc.config.WatchProcessNotifyInterval = watchResponsePeriod
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(t, &tc.config)
+			clus, err := e2e.NewEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
+			c := newClient(t, clus.EndpointsV3(), tc.config.ClientTLS, tc.config.IsClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -101,13 +102,13 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 }
 
 func TestWatchDelayForManualProgressNotification(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(t, &tc.config)
+			clus, err := e2e.NewEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
+			c := newClient(t, clus.EndpointsV3(), tc.config.ClientTLS, tc.config.IsClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
@@ -133,13 +134,13 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 }
 
 func TestWatchDelayForEvent(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := newEtcdProcessCluster(t, &tc.config)
+			clus, err := e2e.NewEtcdProcessCluster(t, &tc.config)
 			require.NoError(t, err)
 			defer clus.Close()
-			c := newClient(t, clus.EndpointsV3(), tc.config.clientTLS, tc.config.isClientAutoTLS)
+			c := newClient(t, clus.EndpointsV3(), tc.config.ClientTLS, tc.config.IsClientAutoTLS)
 			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
 
 			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !cluster_proxy
-// +build !cluster_proxy
+//go:build v2v3
+// +build v2v3
 
 package e2e
 
-func newEtcdProcess(cfg *etcdServerProcessConfig) (etcdProcess, error) {
-	return newEtcdServerProcess(cfg)
+func AddV2Args(args []string) []string {
+	return append(args, "--experimental-enable-v2v3", "v2/")
 }

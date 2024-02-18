@@ -36,11 +36,11 @@ var (
 	coverDir = integration.MustAbsPath(os.Getenv("COVERDIR"))
 )
 
-func spawnCmd(args []string) (*expect.ExpectProcess, error) {
-	return spawnCmdWithLogger(zap.NewNop(), args)
+func SpawnCmd(args []string) (*expect.ExpectProcess, error) {
+	return SpawnCmdWithLogger(zap.NewNop(), args)
 }
 
-func spawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, error) {
+func SpawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, error) {
 	cmd := args[0]
 	env := make([]string, 0)
 	switch {
@@ -51,7 +51,7 @@ func spawnCmdWithLogger(lg *zap.Logger, args []string) (*expect.ExpectProcess, e
 	case strings.HasSuffix(cmd, "/etcdutl"):
 		cmd = cmd + "_test"
 	case strings.HasSuffix(cmd, "/etcdctl3"):
-		cmd = ctlBinPath + "_test"
+		cmd = CtlBinPath + "_test"
 		env = append(env, "ETCDCTL_API=3")
 	}
 
