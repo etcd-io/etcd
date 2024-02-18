@@ -32,7 +32,7 @@ func BenchmarkLessorRevoke100000(b *testing.B) { benchmarkLessorRevoke(100000, b
 func BenchmarkLessorRenew1000(b *testing.B)   { benchmarkLessorRenew(1000, b) }
 func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) }
 
-// Use findExpired10000 replace findExpired1000, which takes too long.
+// BenchmarkLessorFindExpired10000 use findExpired10000 replace findExpired1000, which takes too long.
 func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
 
@@ -68,7 +68,7 @@ func setUp(t testing.TB) (le *lessor, tearDown func()) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
 	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
-	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
+	le = newLessor(lg, be, nil, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
 	le.SetRangeDeleter(func() TxnDelete {
 		ftd := &FakeTxnDelete{be.BatchTx()}
 		ftd.Lock()

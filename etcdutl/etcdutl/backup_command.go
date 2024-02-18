@@ -114,7 +114,7 @@ func HandleBackup(withV3 bool, srcDir string, destDir string, srcWAL string, des
 		destWAL = datadir.ToWalDir(destDir)
 	}
 
-	if err := fileutil.CreateDirAll(destSnap); err != nil {
+	if err := fileutil.CreateDirAll(lg, destSnap); err != nil {
 		lg.Fatal("failed creating backup snapshot dir", zap.String("dest-snap", destSnap), zap.Error(err))
 	}
 
@@ -319,10 +319,10 @@ func saveDB(lg *zap.Logger, destDB, srcDB string, idx uint64, term uint64, desir
 
 	if !v3 {
 		tx := be.BatchTx()
-		tx.Lock()
+		tx.LockOutsideApply()
 		defer tx.Unlock()
 		cindex.UnsafeCreateMetaBucket(tx)
-		cindex.UnsafeUpdateConsistentIndex(tx, idx, term, false)
+		cindex.UnsafeUpdateConsistentIndex(tx, idx, term)
 	} else {
 		// Thanks to translateWAL not moving entries, but just replacing them with
 		// 'empty', there is no need to update the consistency index.

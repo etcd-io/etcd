@@ -20,6 +20,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
@@ -39,6 +40,8 @@ var (
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
+	markCompacted       bool
+	revisionBump        uint64
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -88,6 +91,8 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.Flags().Uint64Var(&revisionBump, "bump-revision", 0, "How much to increase the latest revision after restore")
+	cmd.Flags().BoolVar(&markCompacted, "mark-compacted", false, "Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)")
 
 	return cmd
 }
@@ -98,7 +103,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	lg, err := zap.NewProduction()
+	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -126,7 +131,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Fprintf(os.Stderr, "Deprecated: Use `etcdutl snapshot restore` instead.\n\n")
 	etcdutl.SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, args)
+		restorePeerURLs, restoreName, skipHashCheck, revisionBump, markCompacted, args)
 }
 
 func initialClusterFromName(name string) string {

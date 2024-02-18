@@ -1,0 +1,32 @@
+name: Release
+on: [push, pull_request]
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - id: goversion
+      run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+    - uses: actions/setup-go@v2
+      with:
+        go-version: ${{ steps.goversion.outputs.goversion }}
+    - name: release
+      run: |
+        set -euo pipefail
+
+        git config --global user.email "github-action@etcd.io"
+        git config --global user.name "Github Action"
+        gpg --batch --gen-key <<EOF
+        %no-protection
+        Key-Type: 1
+        Key-Length: 2048
+        Subkey-Type: 1
+        Subkey-Length: 2048
+        Name-Real: Github Action
+        Name-Email: github-action@etcd.io
+        Expire-Date: 0
+        EOF
+        DRY_RUN=true ./scripts/release --no-upload --no-docker-push --in-place 3.5.99
+    - name: test-image
+      run: |
+        VERSION=3.5.99 ./scripts/test_images.sh

@@ -1083,14 +1083,14 @@ type testHttpClient struct {
 	*http.Client
 }
 
-// Creates a new HTTP client with KeepAlive disabled.
+// NewTestClient creates a new HTTP client with KeepAlive disabled.
 func NewTestClient() *testHttpClient {
 	tr, _ := transport.NewTransport(transport.TLSInfo{}, time.Second)
 	tr.DisableKeepAlives = true
 	return &testHttpClient{&http.Client{Transport: tr}}
 }
 
-// Reads the body from the response and closes it.
+// ReadBody reads the body from the response and closes it.
 func (t *testHttpClient) ReadBody(resp *http.Response) []byte {
 	if resp == nil {
 		return []byte{}
@@ -1100,7 +1100,7 @@ func (t *testHttpClient) ReadBody(resp *http.Response) []byte {
 	return body
 }
 
-// Reads the body from the response and parses it as JSON.
+// ReadBodyJSON reads the body from the response and parses it as JSON.
 func (t *testHttpClient) ReadBodyJSON(resp *http.Response) map[string]interface{} {
 	m := make(map[string]interface{})
 	b := t.ReadBody(resp)

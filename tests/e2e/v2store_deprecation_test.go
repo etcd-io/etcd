@@ -19,24 +19,25 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func createV2store(t testing.TB, dataDirPath string) {
 	t.Log("Creating not-yet v2-deprecated etcd")
 
-	cfg := configStandalone(etcdProcessClusterConfig{enableV2: true, dataDirPath: dataDirPath, snapshotCount: 5})
-	epc, err := newEtcdProcessCluster(t, cfg)
+	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{EnableV2: true, DataDirPath: dataDirPath, SnapshotCount: 5})
+	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
 	assert.NoError(t, err)
 
 	defer func() {
 		assert.NoError(t, epc.Stop())
 	}()
 
-	// We need to exceed 'snapshotCount' such that v2 snapshot is dumped.
+	// We need to exceed 'SnapshotCount' such that v2 snapshot is dumped.
 	for i := 0; i < 10; i++ {
-		if err := cURLPut(epc, cURLReq{
-			endpoint: "/v2/keys/foo", value: "bar" + fmt.Sprint(i),
-			expected: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}); err != nil {
+		if err := e2e.CURLPut(epc, e2e.CURLReq{
+			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
+			Expected: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}); err != nil {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}
@@ -45,17 +46,17 @@ func createV2store(t testing.TB, dataDirPath string) {
 func assertVerifyCanStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 	t.Log("verify: possible to start etcd with --v2-deprecation=not-yet mode")
 
-	cfg := configStandalone(etcdProcessClusterConfig{enableV2: true, dataDirPath: dataDirPath, v2deprecation: "not-yet", keepDataDir: true})
-	epc, err := newEtcdProcessCluster(t, cfg)
+	cfg := e2e.ConfigStandalone(e2e.EtcdProcessClusterConfig{EnableV2: true, DataDirPath: dataDirPath, V2deprecation: "not-yet", KeepDataDir: true})
+	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
 	assert.NoError(t, err)
 
 	defer func() {
 		assert.NoError(t, epc.Stop())
 	}()
 
-	if err := cURLGet(epc, cURLReq{
-		endpoint: "/v2/keys/foo",
-		expected: `{"action":"get","node":{"key":"/foo","value":"bar9","modifiedIndex":13,"createdIndex":13}}`}); err != nil {
+	if err := e2e.CURLGet(epc, e2e.CURLReq{
+		Endpoint: "/v2/keys/foo",
+		Expected: `{"action":"get","node":{"key":"/foo","value":"bar9","modifiedIndex":13,"createdIndex":13}}`}); err != nil {
 		t.Fatalf("failed get with curl (%v)", err)
 	}
 
@@ -63,7 +64,7 @@ func assertVerifyCanStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
 
 func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -71,7 +72,7 @@ func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath str
 }
 
 func TestV2Deprecation(t *testing.T) {
-	BeforeTest(t)
+	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
 
 	t.Run("create-storev2-data", func(t *testing.T) {
@@ -89,8 +90,8 @@ func TestV2Deprecation(t *testing.T) {
 }
 
 func TestV2DeprecationWriteOnlyNoV2Api(t *testing.T) {
-	BeforeTest(t)
-	proc, err := spawnCmd([]string{binDir + "/etcd", "--v2-deprecation=write-only", "--enable-v2"}, nil)
+	e2e.BeforeTest(t)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "--v2-deprecation=write-only", "--enable-v2"}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect("--enable-v2 and --v2-deprecation=write-only are mutually exclusive")

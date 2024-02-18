@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 source ./scripts/test_lib.sh
 
-VER=$1
+VER=${1:-}
 REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
-
-if [ -z "$1" ]; then
+if [ -z "${VER}" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
   exit 255
 fi
 
-set -u
 
 function setup_env {
   local ver=${1}
@@ -25,9 +23,7 @@ function setup_env {
 
   pushd "${proj}" >/dev/null
     run git fetch --all
-    git_assert_branch_in_sync || exit 2
     run git checkout "${ver}"
-    git_assert_branch_in_sync || exit 2
   popd >/dev/null
 }
 
@@ -41,7 +37,7 @@ function package {
     srcdir="${ccdir}"
   fi
   local ext=""
-  if [ "${GOOS}" == "windows" ]; then
+  if [ "${GOOS:-}" == "windows" ]; then
     ext=".exe"
   fi
   for bin in etcd etcdctl etcdutl; do
@@ -63,7 +59,7 @@ function main {
   cd release
   setup_env "${VER}" "${proj}"
 
-  tarcmd=tar
+  local tarcmd=tar
   if [[ $(go env GOOS) == "darwin" ]]; then
       echo "Please use linux machine for release builds."
     exit 1
@@ -79,11 +75,15 @@ function main {
       TARGET_ARCHS+=("s390x")
     fi
 
+    if [ ${GOOS} == "darwin" ]; then
+      TARGET_ARCHS+=("arm64")
+    fi
+
     for TARGET_ARCH in "${TARGET_ARCHS[@]}"; do
       export GOARCH=${TARGET_ARCH}
 
       pushd etcd >/dev/null
-      GO_LDFLAGS="-s" ./build.sh
+      GO_LDFLAGS="-s -w" ./build.sh
       popd >/dev/null
 
       TARGET="etcd-${VER}-${GOOS}-${GOARCH}"

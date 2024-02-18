@@ -36,3 +36,27 @@ func TestOpWithSort(t *testing.T) {
 		t.Fatalf("expected %+v, got %+v", wreq, req)
 	}
 }
+
+func TestIsOptsWithPrefix(t *testing.T) {
+	optswithprefix := []OpOption{WithPrefix()}
+	if !IsOptsWithPrefix(optswithprefix) {
+		t.Errorf("IsOptsWithPrefix = false, expected true")
+	}
+
+	optswithfromkey := []OpOption{WithFromKey()}
+	if IsOptsWithPrefix(optswithfromkey) {
+		t.Errorf("IsOptsWithPrefix = true, expected false")
+	}
+}
+
+func TestIsOptsWithFromKey(t *testing.T) {
+	optswithfromkey := []OpOption{WithFromKey()}
+	if !IsOptsWithFromKey(optswithfromkey) {
+		t.Errorf("IsOptsWithFromKey = false, expected true")
+	}
+
+	optswithprefix := []OpOption{WithPrefix()}
+	if IsOptsWithFromKey(optswithprefix) {
+		t.Errorf("IsOptsWithFromKey = true, expected false")
+	}
+}

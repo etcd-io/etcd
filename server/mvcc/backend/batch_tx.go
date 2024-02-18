@@ -53,6 +53,8 @@ type BatchTx interface {
 	Commit()
 	// CommitAndStop commits the previous tx and does not create a new one.
 	CommitAndStop()
+	LockInsideApply()
+	LockOutsideApply()
 }
 
 type batchTx struct {
@@ -63,8 +65,32 @@ type batchTx struct {
 	pending int
 }
 
+// Lock is supposed to be called only by the unit test.
 func (t *batchTx) Lock() {
+	ValidateCalledInsideUnittest(t.backend.lg)
+	t.lock()
+}
+
+func (t *batchTx) lock() {
 	t.Mutex.Lock()
+}
+
+func (t *batchTx) LockInsideApply() {
+	t.lock()
+	if t.backend.txPostLockInsideApplyHook != nil {
+		// The callers of some methods (i.e., (*RaftCluster).AddMember)
+		// can be coming from both InsideApply and OutsideApply, but the
+		// callers from OutsideApply will have a nil txPostLockInsideApplyHook.
+		// So we should check the txPostLockInsideApplyHook before validating
+		// the callstack.
+		ValidateCalledInsideApply(t.backend.lg)
+		t.backend.txPostLockInsideApplyHook()
+	}
+}
+
+func (t *batchTx) LockOutsideApply() {
+	ValidateCalledOutSideApply(t.backend.lg)
+	t.lock()
 }
 
 func (t *batchTx) Unlock() {
@@ -214,14 +240,14 @@ func unsafeForEach(tx *bolt.Tx, bucket Bucket, visitor func(k, v []byte) error) 
 
 // Commit commits a previous tx and begins a new writable one.
 func (t *batchTx) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 // CommitAndStop commits the previous tx and does not create a new one.
 func (t *batchTx) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }
@@ -263,7 +289,8 @@ func (t *batchTx) commit(stop bool) {
 
 type batchTxBuffered struct {
 	batchTx
-	buf txWriteBuffer
+	buf                     txWriteBuffer
+	pendingDeleteOperations int
 }
 
 func newBatchTxBuffered(backend *backend) *batchTxBuffered {
@@ -281,9 +308,30 @@ func newBatchTxBuffered(backend *backend) *batchTxBuffered {
 func (t *batchTxBuffered) Unlock() {
 	if t.pending != 0 {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
+		// gofail: var beforeWritebackBuf struct{}
 		t.buf.writeback(&t.backend.readTx.buf)
 		t.backend.readTx.Unlock()
-		if t.pending >= t.backend.batchLimit {
+		// We commit the transaction when the number of pending operations
+		// reaches the configured limit(batchLimit) to prevent it from
+		// becoming excessively large.
+		//
+		// But we also need to commit the transaction immediately if there
+		// is any pending deleting operation, otherwise etcd might run into
+		// a situation that it haven't finished committing the data into backend
+		// storage (note: etcd periodically commits the bbolt transactions
+		// instead of on each request) when it applies next request. Accordingly,
+		// etcd may still read the stale data from bbolt when processing next
+		// request. So it breaks the linearizability.
+		//
+		// Note we don't need to commit the transaction for put requests if
+		// it doesn't exceed the batch limit, because there is a buffer on top
+		// of the bbolt. Each time when etcd reads data from backend storage,
+		// it will read data from both bbolt and the buffer. But there is no
+		// such a buffer for delete requests.
+		//
+		// Please also refer to
+		// https://github.com/etcd-io/etcd/pull/17119#issuecomment-1857547158
+		if t.pending >= t.backend.batchLimit || t.pendingDeleteOperations > 0 {
 			t.commit(false)
 		}
 	}
@@ -291,22 +339,18 @@ func (t *batchTxBuffered) Unlock() {
 }
 
 func (t *batchTxBuffered) Commit() {
-	t.Lock()
+	t.lock()
 	t.commit(false)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) CommitAndStop() {
-	t.Lock()
+	t.lock()
 	t.commit(true)
 	t.Unlock()
 }
 
 func (t *batchTxBuffered) commit(stop bool) {
-	if t.backend.hooks != nil {
-		t.backend.hooks.OnPreCommitUnsafe(t)
-	}
-
 	// all read txs must be closed to acquire boltdb commit rwlock
 	t.backend.readTx.Lock()
 	t.unsafeCommit(stop)
@@ -314,6 +358,9 @@ func (t *batchTxBuffered) commit(stop bool) {
 }
 
 func (t *batchTxBuffered) unsafeCommit(stop bool) {
+	if t.backend.hooks != nil {
+		t.backend.hooks.OnPreCommitUnsafe(t)
+	}
 	if t.backend.readTx.tx != nil {
 		// wait all store read transactions using the current boltdb tx to finish,
 		// then close the boltdb tx
@@ -327,6 +374,7 @@ func (t *batchTxBuffered) unsafeCommit(stop bool) {
 	}
 
 	t.batchTx.commit(stop)
+	t.pendingDeleteOperations = 0
 
 	if !stop {
 		t.backend.readTx.tx = t.backend.begin(false)
@@ -341,4 +389,14 @@ func (t *batchTxBuffered) UnsafePut(bucket Bucket, key []byte, value []byte) {
 func (t *batchTxBuffered) UnsafeSeqPut(bucket Bucket, key []byte, value []byte) {
 	t.batchTx.UnsafeSeqPut(bucket, key, value)
 	t.buf.putSeq(bucket, key, value)
+}
+
+func (t *batchTxBuffered) UnsafeDelete(bucketType Bucket, key []byte) {
+	t.batchTx.UnsafeDelete(bucketType, key)
+	t.pendingDeleteOperations++
+}
+
+func (t *batchTxBuffered) UnsafeDeleteBucket(bucket Bucket) {
+	t.batchTx.UnsafeDeleteBucket(bucket)
+	t.pendingDeleteOperations++
 }

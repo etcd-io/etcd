@@ -39,7 +39,7 @@ func TestNewStoreWithNamespaces(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-// Ensure that the store can retrieve an existing value.
+// TestStoreGetValue to ensure that the store can retrieve an existing value.
 func TestStoreGetValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -54,7 +54,7 @@ func TestStoreGetValue(t *testing.T) {
 	testutil.AssertEqual(t, *e.Node.Value, "bar")
 }
 
-// Ensure that the store can retrieve a directory in sorted order.
+// TestStoreGetSorted to ensure that the store can retrieve a directory in sorted order.
 func TestStoreGetSorted(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -174,7 +174,7 @@ func TestSet(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.ModifiedIndex, uint64(5))
 }
 
-// Ensure that the store can create a new key if it doesn't already exist.
+// TestStoreCreateValue to ensure that the store can create a new key if it doesn't already exist.
 func TestStoreCreateValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -209,7 +209,7 @@ func TestStoreCreateValue(t *testing.T) {
 
 }
 
-// Ensure that the store can create a new directory if it doesn't already exist.
+// TestStoreCreateDirectory to ensure that the store can create a new directory if it doesn't already exist.
 func TestStoreCreateDirectory(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -223,7 +223,7 @@ func TestStoreCreateDirectory(t *testing.T) {
 	testutil.AssertTrue(t, e.Node.Dir)
 }
 
-// Ensure that the store fails to create a key if it already exists.
+// TestStoreCreateFailsIfExists to ensure that the store fails to create a key if it already exists.
 func TestStoreCreateFailsIfExists(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -241,7 +241,7 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store can update a key if it already exists.
+// TestStoreUpdateValue to ensure that the store can update a key if it already exists.
 func TestStoreUpdateValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -291,7 +291,7 @@ func TestStoreUpdateValue(t *testing.T) {
 	testutil.AssertEqual(t, *e.Node.Value, "")
 }
 
-// Ensure that the store cannot update a directory.
+// TestStoreUpdateFailsIfDirectory to ensure that the store cannot update a directory.
 func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -305,7 +305,7 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store can delete a value.
+// TestStoreDeleteValue to ensure that the store can delete a value.
 func TestStoreDeleteValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -322,7 +322,7 @@ func TestStoreDeleteValue(t *testing.T) {
 	testutil.AssertEqual(t, *e.PrevNode.Value, "bar")
 }
 
-// Ensure that the store can delete a directory if recursive is specified.
+// TestStoreDeleteDirectory to ensure that the store can delete a directory if recursive is specified.
 func TestStoreDeleteDirectory(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -359,8 +359,8 @@ func TestStoreDeleteDirectory(t *testing.T) {
 
 }
 
-// Ensure that the store cannot delete a directory if both of recursive
-// and dir are not specified.
+// TestStoreDeleteDirectoryFailsIfNonRecursiveAndDir to ensure that the store cannot delete
+// a directory if both of recursive and dir are not specified.
 func TestStoreDeleteDirectoryFailsIfNonRecursiveAndDir(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -466,7 +466,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	testutil.AssertEqual(t, *e.Node.Value, "bar")
 }
 
-// Ensure that the store cannot delete a directory.
+// TestStoreCompareAndDeleteDirectoryFail to ensure that the store cannot delete a directory.
 func TestStoreCompareAndDeleteDirectoryFail(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -478,7 +478,7 @@ func TestStoreCompareAndDeleteDirectoryFail(t *testing.T) {
 	testutil.AssertEqual(t, err.ErrorCode, v2error.EcodeNotFile)
 }
 
-// Ensure that the store can conditionally update a key if it has a previous value.
+// TestStoreCompareAndSwapPrevValue to ensure that the store can conditionally update a key if it has a previous value.
 func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -501,7 +501,7 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	testutil.AssertEqual(t, *e.Node.Value, "baz")
 }
 
-// Ensure that the store cannot conditionally update a key if it has the wrong previous value.
+// TestStoreCompareAndSwapPrevValueFailsIfNotMatch to ensure that the store cannot conditionally update a key if it has the wrong previous value.
 func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -517,7 +517,7 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 }
 
-// Ensure that the store can conditionally update a key if it has a previous index.
+// TestStoreCompareAndSwapPrevIndex to ensure that the store can conditionally update a key if it has a previous index.
 func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -540,7 +540,7 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	testutil.AssertEqual(t, e.EtcdIndex, eidx)
 }
 
-// Ensure that the store cannot conditionally update a key if it has the wrong previous index.
+// TestStoreCompareAndSwapPrevIndexFailsIfNotMatch to ensure that the store cannot conditionally update a key if it has the wrong previous index.
 func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -556,7 +556,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	testutil.AssertEqual(t, *e.Node.Value, "bar")
 }
 
-// Ensure that the store can watch for key creation.
+// TestStoreWatchCreate to ensure that the store can watch for key creation.
 func TestStoreWatchCreate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -577,7 +577,7 @@ func TestStoreWatchCreate(t *testing.T) {
 	}
 }
 
-// Ensure that the store can watch for recursive key creation.
+// TestStoreWatchRecursiveCreate to ensure that the store can watch for recursive key creation.
 func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -593,7 +593,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
 }
 
-// Ensure that the store can watch for key updates.
+// TestStoreWatchUpdate to ensure that the store can watch for key updates.
 func TestStoreWatchUpdate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -609,7 +609,7 @@ func TestStoreWatchUpdate(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
 }
 
-// Ensure that the store can watch for recursive key updates.
+// TestStoreWatchRecursiveUpdate to ensure that the store can watch for recursive key updates.
 func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -626,7 +626,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
 }
 
-// Ensure that the store can watch for key deletions.
+// TestStoreWatchDelete to ensure that the store can watch for key deletions.
 func TestStoreWatchDelete(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -642,7 +642,7 @@ func TestStoreWatchDelete(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
 }
 
-// Ensure that the store can watch for recursive key deletions.
+// TestStoreWatchRecursiveDelete to ensure that the store can watch for recursive key deletions.
 func TestStoreWatchRecursiveDelete(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -659,7 +659,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
 }
 
-// Ensure that the store can watch for CAS updates.
+// TestStoreWatchCompareAndSwap to ensure that the store can watch for CAS updates.
 func TestStoreWatchCompareAndSwap(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -675,7 +675,7 @@ func TestStoreWatchCompareAndSwap(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo")
 }
 
-// Ensure that the store can watch for recursive CAS updates.
+// TestStoreWatchRecursiveCompareAndSwap to ensure that the store can watch for recursive CAS updates.
 func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -691,7 +691,7 @@ func TestStoreWatchRecursiveCompareAndSwap(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foo/bar")
 }
 
-// Ensure that the store can watch in streaming mode.
+// TestStoreWatchStream to ensure that the store can watch in streaming mode.
 func TestStoreWatchStream(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -724,7 +724,7 @@ func TestStoreWatchStream(t *testing.T) {
 	}
 }
 
-// Ensure that the store can watch for hidden keys as long as it's an exact path match.
+// TestStoreWatchCreateWithHiddenKey to ensure that the store can watch for hidden keys as long as it's an exact path match.
 func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -742,7 +742,7 @@ func TestStoreWatchCreateWithHiddenKey(t *testing.T) {
 	}
 }
 
-// Ensure that the store doesn't see hidden key creates without an exact path match in recursive mode.
+// TestStoreWatchRecursiveCreateWithHiddenKey to ensure that the store doesn't see hidden key creates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -765,7 +765,7 @@ func TestStoreWatchRecursiveCreateWithHiddenKey(t *testing.T) {
 	}
 }
 
-// Ensure that the store doesn't see hidden key updates.
+// TestStoreWatchUpdateWithHiddenKey to ensure that the store doesn't see hidden key updates.
 func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -779,7 +779,7 @@ func TestStoreWatchUpdateWithHiddenKey(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store doesn't see hidden key updates without an exact path match in recursive mode.
+// TestStoreWatchRecursiveUpdateWithHiddenKey to ensure that the store doesn't see hidden key updates without an exact path match in recursive mode.
 func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -790,7 +790,7 @@ func TestStoreWatchRecursiveUpdateWithHiddenKey(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store can watch for key deletions.
+// TestStoreWatchDeleteWithHiddenKey to ensure that the store can watch for key deletions.
 func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -806,7 +806,7 @@ func TestStoreWatchDeleteWithHiddenKey(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store doesn't see hidden key deletes without an exact path match in recursive mode.
+// TestStoreWatchRecursiveDeleteWithHiddenKey to ensure that the store doesn't see hidden key deletes without an exact path match in recursive mode.
 func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -817,7 +817,7 @@ func TestStoreWatchRecursiveDeleteWithHiddenKey(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store does see hidden key creates if watching deeper than a hidden key in recursive mode.
+// TestStoreWatchRecursiveCreateDeeperThanHiddenKey to ensure that the store does see hidden key creates if watching deeper than a hidden key in recursive mode.
 func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
@@ -832,7 +832,7 @@ func TestStoreWatchRecursiveCreateDeeperThanHiddenKey(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/_foo/bar/baz")
 }
 
-// Ensure that slow consumers are handled properly.
+// TestStoreWatchSlowConsumer to ensure that slow consumers are handled properly.
 //
 // Since Watcher.EventChan() has a buffer of size 100 we can only queue 100
 // event per watcher. If the consumer cannot consume the event on time and

@@ -1,4 +1,4 @@
-// Copyright 2017 The etcd Authors
+// Copyright 2022 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,11 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !cluster_proxy
-// +build !cluster_proxy
+package testutils
 
-package e2e
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
 
-func newEtcdProcess(cfg *etcdServerProcessConfig) (etcdProcess, error) {
-	return newEtcdServerProcess(cfg)
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
+)
+
+func ExecuteUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
+
+	select {
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
+	case <-donec:
+	}
 }

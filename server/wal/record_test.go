@@ -19,10 +19,11 @@ import (
 	"errors"
 	"hash/crc32"
 	"io"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/wal/walpb"
 )
 
@@ -43,8 +44,7 @@ func TestReadRecord(t *testing.T) {
 	}{
 		{infoRecord, &walpb.Record{Type: 1, Crc: crc32.Checksum(infoData, crcTable), Data: infoData}, nil},
 		{[]byte(""), &walpb.Record{}, io.EOF},
-		{infoRecord[:8], &walpb.Record{}, io.ErrUnexpectedEOF},
-		{infoRecord[:len(infoRecord)-len(infoData)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
+		{infoRecord[:14], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-len(infoData)], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{infoRecord[:len(infoRecord)-8], &walpb.Record{}, io.ErrUnexpectedEOF},
 		{badInfoRecord, &walpb.Record{}, walpb.ErrCRCMismatch},
@@ -53,7 +53,11 @@ func TestReadRecord(t *testing.T) {
 	rec := &walpb.Record{}
 	for i, tt := range tests {
 		buf := bytes.NewBuffer(tt.data)
-		decoder := newDecoder(ioutil.NopCloser(buf))
+		f, err := createFileWithData(t, buf)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		decoder := newDecoder(fileutil.NewFileReader(f))
 		e := decoder.decode(rec)
 		if !reflect.DeepEqual(rec, tt.wr) {
 			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
@@ -73,8 +77,12 @@ func TestWriteRecord(t *testing.T) {
 	e := newEncoder(buf, 0, 0)
 	e.encode(&walpb.Record{Type: typ, Data: d})
 	e.flush()
-	decoder := newDecoder(ioutil.NopCloser(buf))
-	err := decoder.decode(b)
+	f, err := createFileWithData(t, buf)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	decoder := newDecoder(fileutil.NewFileReader(f))
+	err = decoder.decode(b)
 	if err != nil {
 		t.Errorf("err = %v, want nil", err)
 	}
@@ -84,4 +92,16 @@ func TestWriteRecord(t *testing.T) {
 	if !reflect.DeepEqual(b.Data, d) {
 		t.Errorf("data = %v, want %v", b.Data, d)
 	}
+}
+
+func createFileWithData(t *testing.T, bf *bytes.Buffer) (*os.File, error) {
+	f, err := os.CreateTemp(t.TempDir(), "wal")
+	if err != nil {
+		return nil, err
+	}
+	if _, err := f.Write(bf.Bytes()); err != nil {
+		return nil, err
+	}
+	f.Seek(0, 0)
+	return f, nil
 }

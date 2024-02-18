@@ -19,26 +19,27 @@ import (
 	"testing"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestV3CurlLeaseGrantNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseGrant, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+		testCtl(t, testV3CurlLeaseGrant, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseRevokeNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseRevoke, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+		testCtl(t, testV3CurlLeaseRevoke, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseLeasesNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseLeases, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+		testCtl(t, testV3CurlLeaseLeases, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 func TestV3CurlLeaseKeepAliveNoTLS(t *testing.T) {
 	for _, p := range apiPrefix {
-		testCtl(t, testV3CurlLeaseKeepAlive, withApiPrefix(p), withCfg(*newConfigNoTLS()))
+		testCtl(t, testV3CurlLeaseKeepAlive, withApiPrefix(p), withCfg(*e2e.NewConfigNoTLS()))
 	}
 }
 
@@ -51,7 +52,7 @@ type v3cURLTest struct {
 // TODO remove /kv/lease/timetolive, /kv/lease/revoke, /kv/lease/leases tests in 3.5 release
 
 func testV3CurlLeaseGrant(cx ctlCtx) {
-	leaseID := randomLeaseID()
+	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
 		{
@@ -80,13 +81,13 @@ func testV3CurlLeaseGrant(cx ctlCtx) {
 			expected: `"grantedTTL"`,
 		},
 	}
-	if err := cURLWithExpected(cx, tests); err != nil {
+	if err := CURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
 	}
 }
 
 func testV3CurlLeaseRevoke(cx ctlCtx) {
-	leaseID := randomLeaseID()
+	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
 		{
@@ -105,13 +106,13 @@ func testV3CurlLeaseRevoke(cx ctlCtx) {
 			expected: `etcdserver: requested lease not found`,
 		},
 	}
-	if err := cURLWithExpected(cx, tests); err != nil {
+	if err := CURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseRevoke: %v", err)
 	}
 }
 
 func testV3CurlLeaseLeases(cx ctlCtx) {
-	leaseID := randomLeaseID()
+	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
 		{
@@ -130,13 +131,13 @@ func testV3CurlLeaseLeases(cx ctlCtx) {
 			expected: gwLeaseIDExpected(leaseID),
 		},
 	}
-	if err := cURLWithExpected(cx, tests); err != nil {
+	if err := CURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
 	}
 }
 
 func testV3CurlLeaseKeepAlive(cx ctlCtx) {
-	leaseID := randomLeaseID()
+	leaseID := e2e.RandomLeaseID()
 
 	tests := []v3cURLTest{
 		{
@@ -150,7 +151,7 @@ func testV3CurlLeaseKeepAlive(cx ctlCtx) {
 			expected: gwLeaseIDExpected(leaseID),
 		},
 	}
-	if err := cURLWithExpected(cx, tests); err != nil {
+	if err := CURLWithExpected(cx, tests); err != nil {
 		cx.t.Fatalf("testV3CurlLeaseGrant: %v", err)
 	}
 }
@@ -161,7 +162,7 @@ func gwLeaseIDExpected(leaseID int64) string {
 
 func gwLeaseTTLWithKeys(cx ctlCtx, leaseID int64) string {
 	d := &pb.LeaseTimeToLiveRequest{ID: leaseID, Keys: true}
-	s, err := dataMarshal(d)
+	s, err := e2e.DataMarshal(d)
 	if err != nil {
 		cx.t.Fatalf("gwLeaseTTLWithKeys: error (%v)", err)
 	}
@@ -170,7 +171,7 @@ func gwLeaseTTLWithKeys(cx ctlCtx, leaseID int64) string {
 
 func gwLeaseKeepAlive(cx ctlCtx, leaseID int64) string {
 	d := &pb.LeaseKeepAliveRequest{ID: leaseID}
-	s, err := dataMarshal(d)
+	s, err := e2e.DataMarshal(d)
 	if err != nil {
 		cx.t.Fatalf("gwLeaseKeepAlive: Marshal error (%v)", err)
 	}
@@ -179,7 +180,7 @@ func gwLeaseKeepAlive(cx ctlCtx, leaseID int64) string {
 
 func gwLeaseGrant(cx ctlCtx, leaseID int64, ttl int64) string {
 	d := &pb.LeaseGrantRequest{ID: leaseID, TTL: ttl}
-	s, err := dataMarshal(d)
+	s, err := e2e.DataMarshal(d)
 	if err != nil {
 		cx.t.Fatalf("gwLeaseGrant: Marshal error (%v)", err)
 	}
@@ -188,7 +189,7 @@ func gwLeaseGrant(cx ctlCtx, leaseID int64, ttl int64) string {
 
 func gwLeaseRevoke(cx ctlCtx, leaseID int64) string {
 	d := &pb.LeaseRevokeRequest{ID: leaseID}
-	s, err := dataMarshal(d)
+	s, err := e2e.DataMarshal(d)
 	if err != nil {
 		cx.t.Fatalf("gwLeaseRevoke: Marshal error (%v)", err)
 	}
@@ -197,7 +198,7 @@ func gwLeaseRevoke(cx ctlCtx, leaseID int64) string {
 
 func gwKVPutLease(cx ctlCtx, k string, v string, leaseID int64) string {
 	d := pb.PutRequest{Key: []byte(k), Value: []byte(v), Lease: leaseID}
-	s, err := dataMarshal(d)
+	s, err := e2e.DataMarshal(d)
 	if err != nil {
 		cx.t.Fatalf("gwKVPutLease: Marshal error (%v)", err)
 	}

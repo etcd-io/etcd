@@ -17,4 +17,4 @@
 
 package e2e
 
-func addV2Args(args []string) []string { return args }
+func AddV2Args(args []string) []string { return args }

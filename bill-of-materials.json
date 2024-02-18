@@ -18,10 +18,10 @@
 		]
 	},
 	{
-		"project": "github.com/certifi/gocertifi",
+		"project": "github.com/cenkalti/backoff/v4",
 		"licenses": [
 			{
-				"type": "Mozilla Public License 2.0",
+				"type": "MIT License",
 				"confidence": 1
 			}
 		]
@@ -37,24 +37,6 @@
 	},
 	{
 		"project": "github.com/cockroachdb/datadriven",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/cockroachdb/errors",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/cockroachdb/logtags",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -126,20 +108,20 @@
 		]
 	},
 	{
-		"project": "github.com/form3tech-oss/jwt-go",
+		"project": "github.com/go-logr/logr",
 		"licenses": [
 			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
 	{
-		"project": "github.com/getsentry/raven-go",
+		"project": "github.com/go-logr/stdr",
 		"licenses": [
 			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -149,6 +131,15 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9163346613545816
+			}
+		]
+	},
+	{
+		"project": "github.com/golang-jwt/jwt/v4",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
@@ -208,6 +199,15 @@
 	},
 	{
 		"project": "github.com/grpc-ecosystem/grpc-gateway",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.979253112033195
+			}
+		]
+	},
+	{
+		"project": "github.com/grpc-ecosystem/grpc-gateway/v2",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -284,15 +284,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
-			}
-		]
-	},
-	{
-		"project": "github.com/pkg/errors",
-		"licenses": [
-			{
-				"type": "BSD 2-clause \"Simplified\" License",
-				"confidence": 1
 			}
 		]
 	},
@@ -540,15 +531,6 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/contrib",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
 		"licenses": [
 			{
@@ -567,7 +549,16 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp",
+		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -586,24 +577,6 @@
 	},
 	{
 		"project": "go.opentelemetry.io/otel/sdk",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/otel/sdk/export/metric",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/otel/sdk/metric",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -675,7 +648,16 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sys",
+		"project": "golang.org/x/sync/errgroup",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "golang.org/x/sys/unix",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -702,7 +684,25 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto",
+		"project": "google.golang.org/genproto/googleapis/api",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "google.golang.org/genproto/googleapis/rpc",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "google.golang.org/genproto/protobuf/field_mask",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",

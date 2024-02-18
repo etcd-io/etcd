@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3Compact(t *testing.T)         { testCtl(t, compactTest) }
@@ -71,5 +73,5 @@ func ctlV3Compact(cx ctlCtx, rev int64, physical bool) error {
 	if physical {
 		cmdArgs = append(cmdArgs, "--physical")
 	}
-	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, "compacted revision "+rs)
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, "compacted revision "+rs)
 }

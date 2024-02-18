@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -26,7 +27,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
-func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
+func WaitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error {
 	matchSet := func(l string) bool {
 		for _, s := range readyStrs {
 			if strings.Contains(l, s) {
@@ -39,42 +40,36 @@ func waitReadyExpectProc(exproc *expect.ExpectProcess, readyStrs []string) error
 	return err
 }
 
-func spawnWithExpect(args []string, expected string) error {
-	return spawnWithExpects(args, nil, []string{expected}...)
+func SpawnWithExpect(args []string, expected string) error {
+	return SpawnWithExpects(args, nil, []string{expected}...)
 }
 
-func spawnWithExpectWithEnv(args []string, envVars map[string]string, expected string) error {
-	return spawnWithExpects(args, envVars, []string{expected}...)
+func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected string) error {
+	return SpawnWithExpects(args, envVars, []string{expected}...)
 }
 
-func spawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
-	_, err := spawnWithExpectLines(args, envVars, xs...)
+func SpawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
+	_, err := SpawnWithExpectLines(args, envVars, xs...)
 	return err
 }
 
-func spawnWithExpectLines(args []string, envVars map[string]string, xs ...string) ([]string, error) {
-	proc, err := spawnCmd(args, envVars)
+func SpawnWithExpectLines(args []string, envVars map[string]string, xs ...string) ([]string, error) {
+	proc, err := SpawnCmd(args, envVars)
 	if err != nil {
 		return nil, err
 	}
 	// process until either stdout or stderr contains
 	// the expected string
 	var (
-		lines    []string
-		lineFunc = func(txt string) bool { return true }
+		lines []string
 	)
 	for _, txt := range xs {
-		for {
-			l, lerr := proc.ExpectFunc(lineFunc)
-			if lerr != nil {
-				proc.Close()
-				return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
-			}
-			lines = append(lines, l)
-			if strings.Contains(l, txt) {
-				break
-			}
+		l, lerr := proc.Expect(txt)
+		if lerr != nil {
+			proc.Close()
+			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
 		}
+		lines = append(lines, l)
 	}
 	perr := proc.Close()
 	l := proc.LineCount()
@@ -84,11 +79,26 @@ func spawnWithExpectLines(args []string, envVars map[string]string, xs ...string
 	return lines, perr
 }
 
-func randomLeaseID() int64 {
+func RunUtilCompletion(args []string, envVars map[string]string) ([]string, error) {
+	proc, err := SpawnCmd(args, envVars)
+	if err != nil {
+		return nil, fmt.Errorf("failed to spawn command %v with error: %w", args, err)
+	}
+
+	proc.Wait()
+	err = proc.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to close command %v with error: %w", args, err)
+	}
+
+	return proc.Lines(), nil
+}
+
+func RandomLeaseID() int64 {
 	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
 }
 
-func dataMarshal(data interface{}) (d string, e error) {
+func DataMarshal(data interface{}) (d string, e error) {
 	m, err := json.Marshal(data)
 	if err != nil {
 		return "", err
@@ -96,7 +106,7 @@ func dataMarshal(data interface{}) (d string, e error) {
 	return string(m), nil
 }
 
-func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
+func CloseWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 	errc := make(chan error, 1)
 	go func() { errc <- p.Close() }()
 	select {
@@ -105,15 +115,35 @@ func closeWithTimeout(p *expect.ExpectProcess, d time.Duration) error {
 	case <-time.After(d):
 		p.Stop()
 		// retry close after stopping to collect SIGQUIT data, if any
-		closeWithTimeout(p, time.Second)
+		CloseWithTimeout(p, time.Second)
 	}
 	return fmt.Errorf("took longer than %v to Close process %+v", d, p)
 }
 
-func toTLS(s string) string {
+func ToTLS(s string) string {
 	return strings.Replace(s, "http://", "https://", 1)
 }
 
-func skipInShortMode(t testing.TB) {
+func SkipInShortMode(t testing.TB) {
 	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
+}
+
+func ExecuteUntil(ctx context.Context, t *testing.T, f func()) {
+	deadline, deadlineSet := ctx.Deadline()
+	timeout := time.Until(deadline)
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		f()
+	}()
+
+	select {
+	case <-ctx.Done():
+		msg := ctx.Err().Error()
+		if deadlineSet {
+			msg = fmt.Sprintf("test timed out after %v, err: %v", timeout, msg)
+		}
+		testutil.FatalStack(t, msg)
+	case <-donec:
+	}
 }

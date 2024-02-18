@@ -17,6 +17,7 @@ package auth
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -27,6 +28,7 @@ import (
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/pkg/v3/adt"
 	"go.etcd.io/etcd/server/v3/mvcc/backend"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 
@@ -73,7 +75,7 @@ func TestNewAuthStoreRevision(t *testing.T) {
 	}
 }
 
-// TestNewAuthStoreBryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
+// TestNewAuthStoreBcryptCost ensures that NewAuthStore uses default when given bcrypt-cost is invalid
 func TestNewAuthStoreBcryptCost(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)
@@ -123,11 +125,26 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 		t.Fatal(err)
 	}
 
+	// The UserAdd function cannot generate old etcd version user data (user's option is nil)
+	// add special users through the underlying interface
+	err = addUserWithNoOption(as)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tearDown := func(_ *testing.T) {
 		b.Close()
 		as.Close()
 	}
 	return as, tearDown
+}
+
+func addUserWithNoOption(as *authStore) error {
+	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "foo-no-user-options", Password: "bar"})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func enableAuthAndCreateRoot(as *authStore) error {
@@ -153,7 +170,8 @@ func TestUserAdd(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ua := &pb.AuthUserAddRequest{Name: "foo", Options: &authpb.UserAddOptions{NoPassword: false}}
+	const userName = "foo"
+	ua := &pb.AuthUserAddRequest{Name: userName, Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err := as.UserAdd(ua) // add an existing user
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
@@ -167,6 +185,11 @@ func TestUserAdd(t *testing.T) {
 	if err != ErrUserEmpty {
 		t.Fatal(err)
 	}
+
+	if _, ok := as.rangePermCache[userName]; !ok {
+		t.Fatalf("user %s should be added but it doesn't exist in rangePermCache", userName)
+
+	}
 }
 
 func TestRecover(t *testing.T) {
@@ -179,6 +202,30 @@ func TestRecover(t *testing.T) {
 
 	if !as.IsAuthEnabled() {
 		t.Fatalf("expected auth enabled got disabled")
+	}
+}
+
+func TestRecoverWithEmptyRangePermCache(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer as.Close()
+	defer tearDown(t)
+
+	as.enabled = false
+	as.rangePermCache = map[string]*unifiedRangePermissions{}
+	as.Recover(as.be)
+
+	if !as.IsAuthEnabled() {
+		t.Fatalf("expected auth enabled got disabled")
+	}
+
+	if len(as.rangePermCache) != 3 {
+		t.Fatalf("rangePermCache should have permission information for 3 users (\"root\" and \"foo\",\"foo-no-user-options\"), but has %d information", len(as.rangePermCache))
+	}
+	if _, ok := as.rangePermCache["root"]; !ok {
+		t.Fatal("user \"root\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
+	}
+	if _, ok := as.rangePermCache["foo"]; !ok {
+		t.Fatal("user \"foo\" should be created by setupAuthStore() but doesn't exist in rangePermCache")
 	}
 }
 
@@ -216,7 +263,8 @@ func TestUserDelete(t *testing.T) {
 	defer tearDown(t)
 
 	// delete an existing user
-	ud := &pb.AuthUserDeleteRequest{Name: "foo"}
+	const userName = "foo"
+	ud := &pb.AuthUserDeleteRequest{Name: userName}
 	_, err := as.UserDelete(ud)
 	if err != nil {
 		t.Fatal(err)
@@ -229,6 +277,47 @@ func TestUserDelete(t *testing.T) {
 	}
 	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	if _, ok := as.rangePermCache[userName]; ok {
+		t.Fatalf("user %s should be deleted but it exists in rangePermCache", userName)
+
+	}
+}
+
+func TestUserDeleteAndPermCache(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	// delete an existing user
+	const deletedUserName = "foo"
+	ud := &pb.AuthUserDeleteRequest{Name: deletedUserName}
+	_, err := as.UserDelete(ud)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// delete a non-existing user
+	_, err = as.UserDelete(ud)
+	if err != ErrUserNotFound {
+		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	if _, ok := as.rangePermCache[deletedUserName]; ok {
+		t.Fatalf("user %s should be deleted but it exists in rangePermCache", deletedUserName)
+	}
+
+	// add a new user
+	const newUser = "bar"
+	ua := &pb.AuthUserAddRequest{Name: newUser, HashedPassword: encodePassword("pwd1"), Options: &authpb.UserAddOptions{NoPassword: false}}
+	_, err = as.UserAdd(ua)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := as.rangePermCache[newUser]; !ok {
+		t.Fatalf("user %s should exist but it doesn't exist in rangePermCache", deletedUserName)
+
 	}
 }
 
@@ -260,6 +349,12 @@ func TestUserChangePassword(t *testing.T) {
 	}
 	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
+	}
+
+	// change a user（user option is nil) password
+	_, err = as.UserChangePassword(&pb.AuthUserChangePasswordRequest{Name: "foo-no-user-options", HashedPassword: encodePassword("bar")})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -468,6 +563,144 @@ func TestRoleGrantPermission(t *testing.T) {
 	}
 }
 
+func TestRoleGrantInvalidPermission(t *testing.T) {
+	as, tearDown := setupAuthStore(t)
+	defer tearDown(t)
+
+	_, err := as.RoleAdd(&pb.AuthRoleAddRequest{Name: "role-test-1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name string
+		perm *authpb.Permission
+		want error
+	}{
+		{
+			name: "valid range",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: nil key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      nil,
+				RangeEnd: []byte("RangeEnd"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: nil,
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: single key",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("Keys"),
+				RangeEnd: []byte{},
+			},
+			want: nil,
+		},
+		{
+			name: "invalid range: empty (Key == RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: empty (Key > RangeEnd)",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("b"),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte("a"),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte(""),
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "invalid range: length of key is 0",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte(""),
+				RangeEnd: []byte{0x00},
+			},
+			want: ErrInvalidAuthMgmt,
+		},
+		{
+			name: "valid range: single key permission for []byte{0x00}",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte(""),
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: \"a\" or larger keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte("a"),
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+		{
+			name: "valid range: the entire keys",
+			perm: &authpb.Permission{
+				PermType: authpb.WRITE,
+				Key:      []byte{0x00},
+				RangeEnd: []byte{0x00},
+			},
+			want: nil,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+				Name: "role-test-1",
+				Perm: tt.perm,
+			})
+
+			if !errors.Is(err, tt.want) {
+				t.Errorf("#%d: result=%t, want=%t", i, err, tt.want)
+			}
+		})
+	}
+}
+
 func TestRoleRevokePermission(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
@@ -524,17 +757,44 @@ func TestUserRevokePermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test"})
+	const userName = "foo"
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userName, Role: "role-test"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: "foo", Role: "role-test-1"})
+	_, err = as.UserGrantRole(&pb.AuthUserGrantRoleRequest{User: userName, Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err := as.UserGet(&pb.AuthUserGetRequest{Name: "foo"})
+	perm := &authpb.Permission{
+		PermType: authpb.WRITE,
+		Key:      []byte("WriteKeyBegin"),
+		RangeEnd: []byte("WriteKeyEnd"),
+	}
+	_, err = as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
+		Name: "role-test-1",
+		Perm: perm,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := as.rangePermCache[userName]; !ok {
+		t.Fatalf("User %s should have its entry in rangePermCache", userName)
+	}
+	unifiedPerm := as.rangePermCache[userName]
+	pt1 := adt.NewBytesAffinePoint([]byte("WriteKeyBegin"))
+	if !unifiedPerm.writePerms.Contains(pt1) {
+		t.Fatal("rangePermCache should contain WriteKeyBegin")
+	}
+	pt2 := adt.NewBytesAffinePoint([]byte("OutOfRange"))
+	if unifiedPerm.writePerms.Contains(pt2) {
+		t.Fatal("rangePermCache should not contain OutOfRange")
+	}
+
+	u, err := as.UserGet(&pb.AuthUserGetRequest{Name: userName})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -544,12 +804,12 @@ func TestUserRevokePermission(t *testing.T) {
 		t.Fatalf("expected %v, got %v", expected, u.Roles)
 	}
 
-	_, err = as.UserRevokeRole(&pb.AuthUserRevokeRoleRequest{Name: "foo", Role: "role-test-1"})
+	_, err = as.UserRevokeRole(&pb.AuthUserRevokeRoleRequest{Name: userName, Role: "role-test-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	u, err = as.UserGet(&pb.AuthUserGetRequest{Name: "foo"})
+	u, err = as.UserGet(&pb.AuthUserGetRequest{Name: userName})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -666,7 +926,7 @@ func TestIsAuthEnabled(t *testing.T) {
 	}
 }
 
-// TestAuthRevisionRace ensures that access to authStore.revision is thread-safe.
+// TestAuthInfoFromCtxRace ensures that access to authStore.revision is thread-safe.
 func TestAuthInfoFromCtxRace(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)

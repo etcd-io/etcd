@@ -304,7 +304,7 @@ IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke, IRRLeaseCheckpoint`, et)
 	return filters
 }
 
-//  listEntriesType filters and prints entries based on the entry-type flag,
+// listEntriesType filters and prints entries based on the entry-type flag,
 func listEntriesType(entrytype string, streamdecoder string, ents []raftpb.Entry) {
 	entryFilters := evaluateEntrytypeFlag(entrytype)
 	printerMap := map[string]EntryPrinter{"InternalRaftRequest": printInternalRaftRequest,

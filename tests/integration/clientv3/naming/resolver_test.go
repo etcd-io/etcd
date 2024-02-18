@@ -20,13 +20,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
+
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/tests/v3/integration"
-
-	"google.golang.org/grpc"
-	testpb "google.golang.org/grpc/test/grpc_testing"
 )
 
 // This test mimics scenario described in grpc_naming.md doc.
@@ -111,4 +112,42 @@ func TestEtcdGrpcResolver(t *testing.T) {
 		}
 		break
 	}
+}
+
+func TestEtcdEndpointManager(t *testing.T) {
+	integration.BeforeTest(t)
+
+	s1PayloadBody := []byte{'1'}
+	s1 := grpc_testing.NewDummyStubServer(s1PayloadBody)
+	err := s1.Start(nil)
+	assert.NoError(t, err)
+	defer s1.Stop()
+
+	s2PayloadBody := []byte{'2'}
+	s2 := grpc_testing.NewDummyStubServer(s2PayloadBody)
+	err = s2.Start(nil)
+	assert.NoError(t, err)
+	defer s2.Stop()
+
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	// Check if any endpoint with the same prefix "foo" will not break the logic with multiple endpoints
+	em, err := endpoints.NewManager(clus.Client(0), "foo")
+	assert.NoError(t, err)
+	emOther, err := endpoints.NewManager(clus.Client(1), "foo_other")
+	assert.NoError(t, err)
+
+	e1 := endpoints.Endpoint{Addr: s1.Addr()}
+	e2 := endpoints.Endpoint{Addr: s2.Addr()}
+
+	em.AddEndpoint(context.Background(), "foo/e1", e1)
+	emOther.AddEndpoint(context.Background(), "foo_other/e2", e2)
+
+	epts, err := em.List(context.Background())
+	assert.NoError(t, err)
+	eptsOther, err := emOther.List(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, len(epts), 1)
+	assert.Equal(t, len(eptsOther), 1)
 }

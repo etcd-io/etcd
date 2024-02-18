@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3Lock(t *testing.T) {
@@ -77,7 +78,7 @@ func testLock(cx ctlCtx) {
 	if err = blocked.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err = closeWithTimeout(blocked, time.Second); err != nil {
+	if err = e2e.CloseWithTimeout(blocked, time.Second); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -85,7 +86,7 @@ func testLock(cx ctlCtx) {
 	if err = holder.Signal(os.Interrupt); err != nil {
 		cx.t.Fatal(err)
 	}
-	if err = closeWithTimeout(holder, 200*time.Millisecond+time.Second); err != nil {
+	if err = e2e.CloseWithTimeout(holder, 200*time.Millisecond+time.Second); err != nil {
 		cx.t.Fatal(err)
 	}
 
@@ -119,7 +120,7 @@ func testLockWithCmd(cx ctlCtx) {
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
 func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lock", name)
-	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)
@@ -140,5 +141,5 @@ func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...string) error {
 	// use command as lock name
 	cmdArgs := append(cx.PrefixArgs(), "lock", execCmd[0])
 	cmdArgs = append(cmdArgs, execCmd...)
-	return spawnWithExpects(cmdArgs, cx.envMap, as...)
+	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, as...)
 }

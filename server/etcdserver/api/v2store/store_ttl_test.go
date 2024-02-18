@@ -24,7 +24,7 @@ import (
 	"github.com/jonboulle/clockwork"
 )
 
-// Ensure that any TTL <= minExpireTime becomes Permanent
+// TestMinExpireTime to ensure that any TTL <= minExpireTime becomes Permanent
 func TestMinExpireTime(t *testing.T) {
 	s := newStore()
 	fc := clockwork.NewFakeClock()
@@ -44,7 +44,7 @@ func TestMinExpireTime(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.TTL, int64(0))
 }
 
-// Ensure that the store can recursively retrieve a directory listing.
+// TestStoreGetDirectory to ensure that the store can recursively retrieve a directory listing.
 // Note that hidden files should not be returned.
 func TestStoreGetDirectory(t *testing.T) {
 	s := newStore()
@@ -93,7 +93,7 @@ func TestStoreGetDirectory(t *testing.T) {
 	}
 }
 
-// Ensure that the store can update the TTL on a value.
+// TestStoreUpdateValueTTL to ensure that the store can update the TTL on a value.
 func TestStoreUpdateValueTTL(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -113,7 +113,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	testutil.AssertEqual(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
-// Ensure that the store can update the TTL on a directory.
+// TestStoreUpdateDirTTL to ensure that the store can update the TTL on a directory.
 func TestStoreUpdateDirTTL(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -139,7 +139,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	testutil.AssertEqual(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
-// Ensure that the store can watch for key expiration.
+// TestStoreWatchExpire to ensure that the store can watch for key expiration.
 func TestStoreWatchExpire(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -177,7 +177,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Dir, true)
 }
 
-// Ensure that the store can watch for key expiration when refreshing.
+// TestStoreWatchExpireRefresh to ensure that the store can watch for key expiration when refreshing.
 func TestStoreWatchExpireRefresh(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -213,7 +213,7 @@ func TestStoreWatchExpireRefresh(t *testing.T) {
 	testutil.AssertEqual(t, e.Node.Key, "/foofoo")
 }
 
-// Ensure that the store can watch for key expiration when refreshing with an empty value.
+// TestStoreWatchExpireEmptyRefresh to ensure that the store can watch for key expiration when refreshing with an empty value.
 func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -238,7 +238,7 @@ func TestStoreWatchExpireEmptyRefresh(t *testing.T) {
 	testutil.AssertEqual(t, *e.PrevNode.Value, "bar")
 }
 
-// Update TTL of a key (set TTLOptionSet.Refresh to false) and send notification
+// TestStoreWatchNoRefresh to update TTL of a key (set TTLOptionSet.Refresh to false) and send notification
 func TestStoreWatchNoRefresh(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -264,7 +264,7 @@ func TestStoreWatchNoRefresh(t *testing.T) {
 	testutil.AssertEqual(t, *e.PrevNode.Value, "bar")
 }
 
-// Ensure that the store can update the TTL on a value with refresh.
+// TestStoreRefresh to ensure that the store can update the TTL on a value with refresh.
 func TestStoreRefresh(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()
@@ -286,7 +286,7 @@ func TestStoreRefresh(t *testing.T) {
 	testutil.AssertNil(t, err)
 }
 
-// Ensure that the store can recover from a previously saved state that includes an expiring key.
+// TestStoreRecoverWithExpiration to ensure that the store can recover from a previously saved state that includes an expiring key.
 func TestStoreRecoverWithExpiration(t *testing.T) {
 	s := newStore()
 	s.clock = newFakeClock()
@@ -320,7 +320,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	testutil.AssertNil(t, e)
 }
 
-// Ensure that the store doesn't see expirations of hidden keys.
+// TestStoreWatchExpireWithHiddenKey to ensure that the store doesn't see expirations of hidden keys.
 func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	s := newStore()
 	fc := newFakeClock()

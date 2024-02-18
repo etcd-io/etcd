@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 
 	"go.uber.org/zap"
@@ -76,7 +77,11 @@ $ ./bin/etcdctl --endpoints localhost:23790 put foo bar`)
 		To:   url.URL{Scheme: "tcp", Host: to},
 	}
 	if verbose {
-		cfg.Logger = zap.NewExample()
+		var err error
+		cfg.Logger, err = logutil.CreateDefaultZapLogger(zap.InfoLevel)
+		if err != nil {
+			panic(err)
+		}
 	}
 	p := proxy.NewServer(cfg)
 	<-p.Ready()
