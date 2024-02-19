@@ -12,6 +12,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.21.6](https://github.com/etcd-io/etcd/pull/17368)
 
+### Others
+- [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17422).
+
 <hr>
 
 ## v3.4.30 (2024-01-31)
