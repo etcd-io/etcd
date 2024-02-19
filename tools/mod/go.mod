@@ -1,7 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.21
-
 require (
 	github.com/alexfalkowski/gocovmerge v1.2.6
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
@@ -194,7 +193,7 @@ require (
 	github.com/tetafro/godot v1.4.15 // indirect
 	github.com/timakin/bodyclose v0.0.0-20230421092635-574207250966 // indirect
 	github.com/timonwong/loggercheck v0.9.4 // indirect
-	github.com/tomarrell/wrapcheck/v2 v2.8.1 // indirect
+	github.com/tomarrell/wrapcheck/v2 v2.8.2 // indirect
 	github.com/tommy-muehle/go-mnd/v2 v2.5.1 // indirect
 	github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f // indirect
 	github.com/ultraware/funlen v0.1.0 // indirect
@@ -216,13 +215,13 @@ require (
 	golang.org/x/crypto v0.19.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230307190834-24139beb5833 // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.15.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
+	golang.org/x/tools v0.18.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
