@@ -10,14 +10,14 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
 - [Ignore SetKeepAlivePeriod errors on OpenBSD](https://github.com/etcd-io/etcd/pull/17387).
 
+### gRPC Proxy
+- Add [three flags (see below) for grpc-proxy](https://github.com/etcd-io/etcd/pull/17447)
+  - `--dial-keepalive-time`
+  - `--dial-keepalive-timeout`
+  - `--permit-without-stream`
+
 ### Dependencies
 - Compile binaries using [go 1.21.6](https://github.com/etcd-io/etcd/pull/17362)
-
-### etcd grpc-proxy
-
-- Add [`etcd grpc-proxy start --dial-keepalive-time`](https://github.com/etcd-io/etcd/pull/17447) flag to keepalive time for client(grpc-proxy) connections.
-- Add [`etcd grpc-proxy start --dial-keepalive-timeout`](https://github.com/etcd-io/etcd/pull/17447) flag to keepalive timeout for client(grpc-proxy) connections.
-- Add [`etcd grpc-proxy start --permit-without-stream`](https://github.com/etcd-io/etcd/pull/17447) flag to enable client(grpc-proxy) to send keepalive pings even with no active RPCs.
 
 <hr>
 
