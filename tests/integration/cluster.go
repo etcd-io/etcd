@@ -38,7 +38,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/grpc_testing"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/config"
@@ -192,6 +192,7 @@ func schemeFromTLSInfo(tls *transport.TLSInfo) string {
 	return URLSchemeTLS
 }
 
+// fillClusterForMembers fills up Member.InitialPeerURLsMap from each member's [name, scheme and PeerListeners address]
 func (c *cluster) fillClusterForMembers() error {
 	if c.cfg.DiscoveryURL != "" {
 		// cluster will be discovered

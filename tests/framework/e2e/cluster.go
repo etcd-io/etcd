@@ -148,8 +148,11 @@ type EtcdProcessClusterConfig struct {
 
 	ClusterSize int
 
-	BaseScheme string
-	BasePort   int
+	// BasePeerScheme specifies scheme of --listen-peer-urls and --initial-advertise-peer-urls
+	BasePeerScheme string
+	BasePort       int
+	// BaseClientScheme specifies scheme of --listen-client-urls, --listen-client-http-urls and --initial-advertise-client-urls
+	BaseClientScheme string
 
 	MetricsURLScheme string
 
@@ -243,21 +246,11 @@ func StartEtcdProcessCluster(t testing.TB, epc *EtcdProcessCluster, cfg *EtcdPro
 }
 
 func (cfg *EtcdProcessClusterConfig) ClientScheme() string {
-	if cfg.ClientTLS == ClientTLS {
-		return "https"
-	}
-	return "http"
+	return setupScheme(cfg.BaseClientScheme, cfg.ClientTLS == ClientTLS)
 }
 
 func (cfg *EtcdProcessClusterConfig) PeerScheme() string {
-	peerScheme := cfg.BaseScheme
-	if peerScheme == "" {
-		peerScheme = "http"
-	}
-	if cfg.IsPeerTLS {
-		peerScheme += "s"
-	}
-	return peerScheme
+	return setupScheme(cfg.BasePeerScheme, cfg.IsPeerTLS)
 }
 
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*EtcdServerProcessConfig {
@@ -285,10 +278,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		clientHttpPort := port + 4
 
 		if cfg.ClientTLS == ClientTLSAndNonTLS {
-			curl = clientURL(clientPort, ClientNonTLS)
-			curls = []string{curl, clientURL(clientPort, ClientTLS)}
+			curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
+			curls = []string{curl, clientURL(cfg.ClientScheme(), clientPort, ClientTLS)}
 		} else {
-			curl = clientURL(clientPort, cfg.ClientTLS)
+			curl = clientURL(cfg.ClientScheme(), clientPort, cfg.ClientTLS)
 			curls = []string{curl}
 		}
 
@@ -326,7 +319,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 		var clientHttpUrl string
 		if cfg.ClientHttpSeparate {
-			clientHttpUrl = clientURL(clientHttpPort, cfg.ClientTLS)
+			clientHttpUrl = clientURL(cfg.ClientScheme(), clientHttpPort, cfg.ClientTLS)
 			args = append(args, "--listen-client-http-urls", clientHttpUrl)
 		}
 		args = AddV2Args(args)
@@ -429,13 +422,13 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 	return etcdCfgs
 }
 
-func clientURL(port int, connType ClientConnType) string {
+func clientURL(scheme string, port int, connType ClientConnType) string {
 	curlHost := fmt.Sprintf("localhost:%d", port)
 	switch connType {
 	case ClientNonTLS:
-		return (&url.URL{Scheme: "http", Host: curlHost}).String()
+		return (&url.URL{Scheme: scheme, Host: curlHost}).String()
 	case ClientTLS:
-		return (&url.URL{Scheme: "https", Host: curlHost}).String()
+		return (&url.URL{Scheme: ToTLS(scheme), Host: curlHost}).String()
 	default:
 		panic(fmt.Sprintf("Unsupported connection type %v", connType))
 	}

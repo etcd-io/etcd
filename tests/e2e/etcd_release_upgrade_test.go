@@ -39,7 +39,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	copiedCfg := e2e.NewConfigNoTLS()
 	copiedCfg.ExecPath = lastReleaseBinary
 	copiedCfg.SnapshotCount = 3
-	copiedCfg.BaseScheme = "unix" // to avoid port conflict
+	copiedCfg.BasePeerScheme = "unix" // to avoid port conflict
 
 	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
 	if err != nil {
@@ -125,7 +125,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	copiedCfg := e2e.NewConfigNoTLS()
 	copiedCfg.ExecPath = lastReleaseBinary
 	copiedCfg.SnapshotCount = 10
-	copiedCfg.BaseScheme = "unix"
+	copiedCfg.BasePeerScheme = "unix"
 
 	epc, err := e2e.NewEtcdProcessCluster(t, copiedCfg)
 	if err != nil {

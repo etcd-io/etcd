@@ -33,6 +33,7 @@ import (
 func TestAuthority(t *testing.T) {
 	tcs := []struct {
 		name           string
+		useUnix        bool
 		useTLS         bool
 		useInsecureTLS bool
 		// Pattern used to generate endpoints for client. Fields filled
@@ -43,6 +44,33 @@ func TestAuthority(t *testing.T) {
 		// ${MEMBER_PORT} - will be filled with member grpc port
 		expectAuthorityPattern string
 	}{
+		{
+			name:                   "unix:path",
+			useUnix:                true,
+			clientURLPattern:       "unix:localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+		},
+		{
+			name:                   "unix://absolute_path",
+			useUnix:                true,
+			clientURLPattern:       "unix://localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+		},
+		// "unixs" is not standard schema supported by etcd
+		{
+			name:                   "unixs:absolute_path",
+			useUnix:                true,
+			useTLS:                 true,
+			clientURLPattern:       "unixs:localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+		},
+		{
+			name:                   "unixs://absolute_path",
+			useUnix:                true,
+			useTLS:                 true,
+			clientURLPattern:       "unixs://localhost:%d",
+			expectAuthorityPattern: "localhost:${MEMBER_PORT}",
+		},
 		{
 			name:                   "http://domain[:port]",
 			clientURLPattern:       "http://localhost:%d",
@@ -93,6 +121,9 @@ func TestAuthority(t *testing.T) {
 				cfg.IsClientAutoTLS = tc.useInsecureTLS
 				// Enable debug mode to get logs with http2 headers (including authority)
 				cfg.EnvVars = map[string]string{"GODEBUG": "http2debug=2"}
+				if tc.useUnix {
+					cfg.BaseClientScheme = "unix"
+				}
 
 				epc, err := e2e.NewEtcdProcessCluster(t, cfg)
 				if err != nil {
