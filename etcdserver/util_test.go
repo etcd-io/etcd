@@ -35,7 +35,7 @@ func TestLongestConnected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	clus, err := membership.NewClusterFromURLsMap(zap.NewExample(), "test", umap)
+	clus, err := membership.NewClusterFromURLsMap(zap.NewExample(), "test", umap, false)
 	if err != nil {
 		t.Fatal(err)
 	}

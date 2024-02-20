@@ -1000,6 +1000,9 @@ message AuthEnableRequest {
 message AuthDisableRequest {
 }
 
+message AuthStatusRequest {
+}
+
 message AuthenticateRequest {
   string name = 1;
   string password = 2;
@@ -1077,6 +1080,13 @@ message AuthEnableResponse {
 
 message AuthDisableResponse {
   ResponseHeader header = 1;
+}
+
+message AuthStatusResponse {
+  ResponseHeader header = 1;
+  bool enabled = 2;
+  // authRevision is the current revision of auth store
+  uint64 authRevision = 3;
 }
 
 message AuthenticateResponse {

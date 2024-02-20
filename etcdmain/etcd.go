@@ -435,7 +435,7 @@ func startProxy(cfg *config) error {
 
 	clientURLs := []string{}
 	uf := func() []string {
-		gcls, gerr := etcdserver.GetClusterFromRemotePeers(lg, peerURLs, tr)
+		gcls, gerr := etcdserver.GetClusterFromRemotePeers(lg, peerURLs, tr, cfg.ec.NextClusterVersionCompatible)
 		if gerr != nil {
 			if lg != nil {
 				lg.Warn(

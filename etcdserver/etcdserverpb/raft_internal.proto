@@ -41,6 +41,7 @@ message InternalRaftRequest {
 
   AuthEnableRequest auth_enable = 1000;
   AuthDisableRequest auth_disable = 1011;
+  AuthStatusRequest auth_status = 1013;
 
   InternalAuthenticateRequest authenticate = 1012;
 

@@ -172,6 +172,8 @@ type ServerConfig struct {
 	// UnsafeNoFsync disables all uses of fsync.
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
+	// NextClusterVersionCompatible enables 3.4 to be compatible with next version 3.5, to allow 3.4 server to join 3.5 cluster and start on 3.5 schema.
+	NextClusterVersionCompatible bool `json:"next-cluster-version-compatible"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

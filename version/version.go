@@ -31,6 +31,9 @@ var (
 
 	// Git SHA Value will be set during build
 	GitSHA = "Not provided (use ./build instead of go build)"
+
+	V3_4 = semver.Version{Major: 3, Minor: 4}
+	V3_5 = semver.Version{Major: 3, Minor: 5}
 )
 
 func init() {
