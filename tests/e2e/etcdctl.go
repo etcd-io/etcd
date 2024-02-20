@@ -146,7 +146,7 @@ func (ctl *Etcdctl) Status() ([]*clientv3.StatusResponse, error) {
 		Endpoint string
 		Status   *clientv3.StatusResponse
 	}
-	err := ctl.spawnJsonCmd(&epStatus, "endpoint", "status")
+	err := ctl.spawnJsonCmd(&epStatus, "", "endpoint", "status")
 	if err != nil {
 		return nil, err
 	}
