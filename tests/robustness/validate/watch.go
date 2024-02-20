@@ -34,7 +34,7 @@ func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.Cl
 		if eventHistory != nil {
 			validateReliable(t, eventHistory, r)
 			validateResumable(t, eventHistory, r)
-			validatePrevKV(t, r, eventHistory)
+			validatePrevKV(t, r, eventHistory, cfg.AssumeCompaction)
 			validateCreateEvent(t, r, eventHistory)
 		}
 	}
@@ -148,7 +148,7 @@ func validateResumable(t *testing.T, events []model.PersistedEvent, report repor
 
 // validatePrevKV ensures that a watch response (if configured with WithPrevKV()) returns
 // the appropriate response.
-func validatePrevKV(t *testing.T, report report.ClientReport, history []model.PersistedEvent) {
+func validatePrevKV(t *testing.T, report report.ClientReport, history []model.PersistedEvent, compactionOccured bool) {
 	replay := model.NewReplay(history)
 	for _, op := range report.Watch {
 		if !op.Request.WithPrevKV {
@@ -161,16 +161,16 @@ func validatePrevKV(t *testing.T, report report.ClientReport, history []model.Pe
 				if err != nil {
 					t.Error(err)
 				}
-				// TODO(MadhavJivrajani): check if compaction has been run as part
-				// of failpoint injection. If compaction has run, prevKV can be nil
-				// even if it is not a create event.
-				//
+
 				// Considering that Kubernetes opens watches to etcd using WithPrevKV()
-				// option, ideally we would want to explicitly check the condition that
+				// option, we would want to explicitly check the condition that
 				// Kubernetes does while parsing events received from etcd:
 				// https://github.com/kubernetes/kubernetes/blob/a9e4f5b7862e84c4152eabe2e960f3f6fb9a4867/staging/src/k8s.io/apiserver/pkg/storage/etcd3/event.go#L59
-				// i.e. prevKV is nil iff the event is a create event, we cannot reliably
-				// check that without knowing if compaction has run.
+				// i.e. prevKV is nil iff the event is a create event, we can reliably
+				// check that only if compaction has not occured.
+				if !compactionOccured && event.PrevValue == nil && !event.IsCreate {
+					t.Errorf("PrevKV - without compaction, PrevValue cannot be nil if the event is not a create event, event: %+v", event)
+				}
 
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
