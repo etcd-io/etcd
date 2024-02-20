@@ -622,8 +622,19 @@ func NewServer(cfg ServerConfig) (srv *EtcdServer, err error) {
 
 	if srv.Cfg.EnableLeaseCheckpoint {
 		// setting checkpointer enables lease checkpoint feature.
-		srv.lessor.SetCheckpointer(func(ctx context.Context, cp *pb.LeaseCheckpointRequest) {
+		srv.lessor.SetCheckpointer(func(ctx context.Context, cp *pb.LeaseCheckpointRequest) error {
+			if !srv.ensureLeadership() {
+				if lg := srv.getLogger(); lg != nil {
+					lg.Warn("Ignore the checkpoint request because current member isn't a leader",
+						zap.Uint64("local-member-id", uint64(srv.ID())))
+				} else {
+					plog.Warningf("Ignore the checkpoint request because current member %d isn't a leader", uint64(srv.ID()))
+				}
+				return lease.ErrNotPrimary
+			}
+
 			srv.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseCheckpoint: cp})
+			return nil
 		})
 	}
 
@@ -1098,7 +1109,23 @@ func (s *EtcdServer) run() {
 
 func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 	s.goAttach(func() {
+		// We shouldn't revoke any leases if current member isn't a leader,
+		// because the operation should only be performed by the leader. When
+		// the leader gets blocked on the raft loop, such as writing WAL entries,
+		// it can't process any events or messages from raft. It may think it
+		// is still the leader even the leader has already changed.
+		// Refer to https://github.com/etcd-io/etcd/issues/15247
 		lg := s.Logger()
+		if !s.ensureLeadership() {
+			if lg != nil {
+				lg.Warn("Ignore the lease revoking request because current member isn't a leader",
+					zap.Uint64("local-member-id", uint64(s.ID())))
+			} else {
+				plog.Warningf("Ignore the lease revoking request because current member %d isn't a leader", uint64(s.ID()))
+			}
+			return
+		}
+
 		// Increases throughput of expired leases deletion process through parallelization
 		c := make(chan struct{}, maxPendingRevokes)
 		for _, curLease := range leases {
@@ -1133,6 +1160,38 @@ func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 			f(int64(curLease.ID))
 		}
 	})
+}
+
+// ensureLeadership checks whether current member is still the leader.
+func (s *EtcdServer) ensureLeadership() bool {
+	lg := s.Logger()
+
+	ctx, cancel := context.WithTimeout(s.ctx, s.Cfg.ReqTimeout())
+	defer cancel()
+	if err := s.linearizableReadNotify(ctx); err != nil {
+		if lg != nil {
+			lg.Warn("Failed to check current member's leadership", zap.Error(err))
+		} else {
+			plog.Warningf("Failed to check current member's leadership: %s", err)
+		}
+
+		return false
+	}
+
+	newLeaderId := s.raftStatus().Lead
+	if newLeaderId != uint64(s.ID()) {
+		if lg != nil {
+			lg.Warn("Current member isn't a leader",
+				zap.Uint64("local-member-id", uint64(s.ID())),
+				zap.Uint64("new-lead", newLeaderId))
+		} else {
+			plog.Warningf("Current member %d isn't a leader (new-lead=%d)", uint64(s.ID()), newLeaderId)
+		}
+
+		return false
+	}
+
+	return true
 }
 
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *apply) {
