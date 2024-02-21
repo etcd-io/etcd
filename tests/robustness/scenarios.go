@@ -79,6 +79,11 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
+	if v.LessThan(version.V3_5) {
+		// The default pre-vote configuration prior to version 3.5 is set to false.
+		// We need to explicitly enable prevote to improve availability in robustness test.
+		baseOptions = append(baseOptions, e2e.WithPreVote(true), e2e.WithExplicitFlag("pre-vote"))
+	}
 	scenarios := []testScenario{}
 	for _, tp := range trafficProfiles {
 		name := filepath.Join(tp.Traffic.Name(), tp.Profile.Name, "ClusterOfSize1")
