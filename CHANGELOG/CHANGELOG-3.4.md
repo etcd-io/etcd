@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.31 (TBD)
 
+### etcd server
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17436)
+
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17369).
 
