@@ -16,7 +16,6 @@ package robustness
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -24,7 +23,6 @@ import (
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
 
-	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
@@ -91,18 +89,11 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 		report.Report(t, panicked)
 	}()
 	report.Client = s.run(ctx, t, lg, report.Cluster)
-	compaction, err := checkForCompaction(report.Cluster)
-	if err != nil {
-		t.Fatalf("failed checking for compaction: %v", err)
-	}
 	forcestopCluster(report.Cluster)
 
 	watchProgressNotifyEnabled := report.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
-	validateConfig := validate.Config{
-		ExpectRevisionUnique: s.traffic.ExpectUniqueRevision(),
-		AssumeCompaction:     compaction,
-	}
+	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
 	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
 
 	panicked = false
@@ -166,31 +157,4 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
-}
-
-func checkForCompaction(clus *e2e.EtcdProcessCluster) (bool, error) {
-	req := e2e.CURLReq{
-		Endpoint: "/metrics",
-		Expected: expect.ExpectedResponse{
-			// Filter out the etcd_debugging_mvcc_db_compaction_keys_total
-			// metric if it has a value greater than 0 from the response returned
-			// by the /metrics endpoint.
-			Value:         `etcd_debugging_mvcc_db_compaction_keys_total\s+[1-9][0-9]*`,
-			IsRegularExpr: true,
-		},
-	}
-
-	err := e2e.CURLGet(clus, req)
-	if err == nil {
-		return true, nil
-	}
-
-	// If no match was found, compaction did not take place.
-	noCompaction := strings.Contains(err.Error(), "match not found.") ||
-		strings.Contains(err.Error(), "context deadline exceeded")
-	if noCompaction {
-		return false, nil
-	}
-
-	return false, err
 }

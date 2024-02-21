@@ -49,7 +49,6 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 
 type Config struct {
 	ExpectRevisionUnique bool
-	AssumeCompaction     bool
 }
 
 func mergeWatchEventHistory(reports []report.ClientReport) ([]model.PersistedEvent, error) {
