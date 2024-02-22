@@ -8,7 +8,7 @@ body:
   - type: textarea
     id: workflows
     attributes:
-      label: Which github workflows are flaking?
+      label: Which Github Action / Prow Jobs are flaking?
     validations:
       required: true
 
@@ -22,7 +22,7 @@ body:
   - type: input
     id: link
     attributes:
-      label: Github Action link
+      label: Github Action / Prow Job link
 
   - type: textarea
     id: reason
