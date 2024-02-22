@@ -438,6 +438,14 @@ func (epc *etcdProcessCluster) EndpointsV3() []string {
 	return epc.endpoints(func(ep etcdProcess) []string { return ep.EndpointsV3() })
 }
 
+func (epc *etcdProcessCluster) EndpointsGRPC() []string {
+	return epc.endpoints(func(ep etcdProcess) []string { return ep.EndpointsGRPC() })
+}
+
+func (epc *etcdProcessCluster) EndpointsHTTP() []string {
+	return epc.endpoints(func(ep etcdProcess) []string { return ep.EndpointsHTTP() })
+}
+
 func (epc *etcdProcessCluster) endpoints(f func(ep etcdProcess) []string) (ret []string) {
 	for _, p := range epc.procs {
 		ret = append(ret, f(p)...)
