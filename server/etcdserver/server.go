@@ -946,6 +946,7 @@ func (s *EtcdServer) Cleanup() {
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
+	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
 
 	proposalsApplied.Set(float64(ep.appliedi))
 	s.applyWait.Trigger(ep.appliedi)
@@ -2272,6 +2273,7 @@ func (s *EtcdServer) monitorKVHash() {
 			return
 		case <-checkTicker.C:
 		}
+		backend.VerifyBackendConsistency(s.be, lg, false, schema.AllBuckets...)
 		if !s.isLeader() {
 			continue
 		}
