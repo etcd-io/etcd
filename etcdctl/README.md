@@ -1580,7 +1580,7 @@ Notice that different workload models use different configurations in terms of n
 
 The test checks for the following conditions:
 
-- The throughput should be at least 90% of the issued requets
+- The throughput should be at least 90% of the issued request
 - All the requests should be done in less than 500 ms
 - The standard deviation of the requests should be less than 100 ms
 
