@@ -190,6 +190,11 @@ func filterOutNonUniqueKubernetesWrites(choices []choiceWeight[KubernetesRequest
 func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
 	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 	defer cancel()
+
+	// Kubernetes issues Watch requests by requiring a leader to exist
+	// in the cluster:
+	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L872
+	watchCtx = clientv3.WithRequireLeader(watchCtx)
 	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true, true) {
 		s.Update(e)
 	}
@@ -235,6 +240,13 @@ func (k kubernetesClient) OptimisticUpdate(ctx context.Context, key, value strin
 func (k kubernetesClient) OptimisticCreate(ctx context.Context, key, value string) error {
 	_, err := k.client.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", 0)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	return err
+}
+
+func (k kubernetesClient) RequestProgress(ctx context.Context) error {
+	// Kubernetes makes RequestProgress calls by requiring a leader to be
+	// present in the cluster:
+	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L87
+	return k.client.RequestProgress(clientv3.WithRequireLeader(ctx))
 }
 
 // Kubernetes optimistically assumes that key didn't change since it was last observed, so it executes operations within a transaction conditioned on key not changing.
