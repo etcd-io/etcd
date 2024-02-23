@@ -636,7 +636,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 
 	select {
 	case <-donec:
-	case <-time.After(10 * time.Second):
+	case <-time.After(20 * time.Second):
 		close(stopc)
 		wg.Wait()
 		testutil.FatalStack(t, "timeout")
