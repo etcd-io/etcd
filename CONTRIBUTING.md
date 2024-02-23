@@ -5,6 +5,7 @@ This document outlines basics of contributing to etcd.
 
 This is a rough outline of what a contributor's workflow looks like:
 * [Find something to work on](#Find-something-to-work-on)
+  * [Check for flaky tests](#Check-for-flaky-tests)
 * [Setup development environment](#Setup-development-environment)
 * [Implement your change](#Implement-your-change)
 * [Commit your change](#Commit-your-change)
@@ -42,6 +43,35 @@ If any of aforementioned labels don't have unassigned issues, please [contact] o
 [help wanted]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22help+wanted%22
 [maintainers]: https://github.com/etcd-io/etcd/blob/main/OWNERS
 [priority/important]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22priority%2Fimportant%22
+
+### Check for flaky tests
+
+The project could always use some help to deflake tests. [These](https://github.com/etcd-io/etcd/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fflake) are the currently open flaky test issues.
+
+For more, because etcd uses Kubernetes' prow infrastructure to run CI jobs, the past test results can be viewed at [testgrid](https://testgrid.k8s.io/sig-etcd).
+
+| Tests  | Status  |
+| -----  | ------  |
+| periodics e2e-amd64  | [![sig-etcd-periodics/ci-etcd-e2e-amd64](https://testgrid.k8s.io/q/summary/sig-etcd-periodics/ci-etcd-e2e-amd64/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-periodics/ci-etcd-e2e-amd64)  |
+| presubmit build      | [![sig-etcd-presubmits/pull-etcd-build](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-build/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-build)  |
+| presubmit e2e-amd64  | [![sig-etcd-presubmits/pull-etcd-e2e-amd64](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-e2e-amd64/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-e2e-amd64)  |
+| presubmit unit-test  | [![sig-etcd-presubmits/pull-etcd-unit-test](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-unit-test/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-unit-test)  |
+| presubmit verify     | [![sig-etcd-presubmits/pull-etcd-verify](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-verify/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-verify)  |
+| postsubmit build     | [![sig-etcd-postsubmits/post-etcd-build](https://testgrid.k8s.io/q/summary/sig-etcd-postsubmits/post-etcd-build/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-postsubmits/post-etcd-build)  |
+
+If you find any flaky tests on testgrid, please
+
+1. Check [existing issues](https://github.com/etcd-io/etcd/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fflake) to see if an issue has already been opened for this test. If not, open an issue with the `type/flake` label.
+2. Try to reproduce the flaky test on your machine via `stress`, for example to reproduce the failure of `TestPeriodicSkipRevNotChange`:
+
+```bash
+cd server/etcdserver/api/v3compactor
+# compile the test
+go test -v -c -count 1 -run "^TestPeriodicSkipRevNotChange$"
+# run the compiled test file using stress
+stress -p=8 ./v3compactor.test
+```
+3. Fix it.
 
 ## Setup development environment
 
