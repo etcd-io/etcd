@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.13 (TBD)
 
+### etcd server
+- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17425)
+
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
 - [Ignore SetKeepAlivePeriod errors on OpenBSD](https://github.com/etcd-io/etcd/pull/17387).
@@ -28,6 +31,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [needlessly flocking snapshot files when deleting](https://github.com/etcd-io/etcd/pull/17206)
 - Add [digest for etcd base image](https://github.com/etcd-io/etcd/pull/17205)
 - Fix [delete inconsistencies in read buffer](https://github.com/etcd-io/etcd/pull/17230)
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17291)
 
 ### Dependencies
 - Compile binaries using [go 1.20.13](https://github.com/etcd-io/etcd/pull/17275)
