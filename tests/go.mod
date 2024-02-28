@@ -36,9 +36,9 @@ require (
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/raft/v3 v3.6.0-alpha.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0
-	go.opentelemetry.io/otel v1.23.1
+	go.opentelemetry.io/otel v1.24.0
 	go.opentelemetry.io/otel/sdk v1.23.1
-	go.opentelemetry.io/otel/trace v1.23.1
+	go.opentelemetry.io/otel/trace v1.24.0
 	go.opentelemetry.io/proto/otlp v1.1.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.19.0
@@ -85,7 +85,7 @@ require (
 	go.etcd.io/bbolt v1.4.0-alpha.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.23.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.23.1 // indirect
-	go.opentelemetry.io/otel/metric v1.23.1 // indirect
+	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/sys v0.17.0 // indirect
