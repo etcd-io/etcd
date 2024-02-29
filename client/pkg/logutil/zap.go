@@ -15,6 +15,7 @@
 package logutil
 
 import (
+	"os"
 	"sort"
 	"time"
 
@@ -31,6 +32,32 @@ func CreateDefaultZapLogger(level zapcore.Level) (*zap.Logger, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+// CreateDefaultZapLogger creates a logger with default zap configuration can redirect log to /dev/null
+func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
+	infoLevel := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+		return level == zapcore.InfoLevel
+	})
+	errorFatalLevel := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+		return level == zapcore.ErrorLevel || level == zapcore.FatalLevel
+	})
+	stdoutSyncer := zapcore.Lock(os.Stdout)
+	stderrSyncer := zapcore.Lock(os.Stderr)
+	core := zapcore.NewTee(
+		zapcore.NewCore(
+			zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
+			stdoutSyncer,
+			infoLevel,
+		),
+		zapcore.NewCore(
+			zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
+			stderrSyncer,
+			errorFatalLevel,
+		),
+	)
+	logger := zap.New(core)
+	return logger
 }
 
 // DefaultZapLoggerConfig defines default zap logger configuration.
