@@ -36,6 +36,8 @@ func CreateDefaultZapLogger(level zapcore.Level) (*zap.Logger, error) {
 
 // CreateUtilZapLogger creates a logger with default zap configuration can redirect log to /dev/null
 func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
+	lcfg := DefaultZapLoggerConfig
+	lcfg.Level = zap.NewAtomicLevelAt(level)
 	infoLevel := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 		return level == zapcore.InfoLevel
 	})
@@ -46,12 +48,12 @@ func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
 	stderrSyncer := zapcore.Lock(os.Stderr)
 	core := zapcore.NewTee(
 		zapcore.NewCore(
-			zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
+			zapcore.NewJSONEncoder(lcfg.EncoderConfig),
 			stdoutSyncer,
 			infoLevel,
 		),
 		zapcore.NewCore(
-			zapcore.NewJSONEncoder(DefaultZapLoggerConfig.EncoderConfig),
+			zapcore.NewJSONEncoder(lcfg.EncoderConfig),
 			stderrSyncer,
 			errorFatalLevel,
 		),
