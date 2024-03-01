@@ -34,7 +34,7 @@ func CreateDefaultZapLogger(level zapcore.Level) (*zap.Logger, error) {
 	return c, nil
 }
 
-// CreateDefaultZapLogger creates a logger with default zap configuration can redirect log to /dev/null
+// CreateUtilZapLogger creates a logger with default zap configuration can redirect log to /dev/null
 func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
 	infoLevel := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 		return level == zapcore.InfoLevel
