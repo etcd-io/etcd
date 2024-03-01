@@ -38,6 +38,12 @@ func CreateDefaultZapLogger(level zapcore.Level) (*zap.Logger, error) {
 func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
 	lcfg := DefaultZapLoggerConfig
 	lcfg.Level = zap.NewAtomicLevelAt(level)
+	lcfg.Development = false
+	lcfg.Encoding = DefaultLogFormat
+	lcfg.Sampling = &zap.SamplingConfig{
+		Initial:    100,
+		Thereafter: 100,
+	}
 	infoLevel := zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 		return level == zapcore.InfoLevel
 	})
@@ -58,8 +64,7 @@ func CreateUtilZapLogger(level zapcore.Level) *zap.Logger {
 			errorFatalLevel,
 		),
 	)
-	logger := zap.New(core)
-	return logger
+	return zap.New(core, zap.AddCaller())
 }
 
 // DefaultZapLoggerConfig defines default zap logger configuration.
