@@ -406,7 +406,7 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
 	}
-	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
+	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 || cfg.FailFast {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
 			return nil, fmt.Errorf("gRPC message recv limit (%d bytes) must be greater than send limit (%d bytes)", cfg.MaxCallRecvMsgSize, cfg.MaxCallSendMsgSize)
 		}
@@ -414,6 +414,9 @@ func newClient(cfg *Config) (*Client, error) {
 			defaultWaitForReady,
 			defaultMaxCallSendMsgSize,
 			defaultMaxCallRecvMsgSize,
+		}
+		if cfg.FailFast {
+			callOpts[0] = grpc.WaitForReady(!cfg.FailFast)
 		}
 		if cfg.MaxCallSendMsgSize > 0 {
 			callOpts[1] = grpc.MaxCallSendMsgSize(cfg.MaxCallSendMsgSize)

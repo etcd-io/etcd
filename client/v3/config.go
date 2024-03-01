@@ -57,6 +57,11 @@ type Config struct {
 	// ("--max-recv-bytes" flag to etcd).
 	MaxCallRecvMsgSize int
 
+	// client-side handling retrying of request failures where data was not written to the wire or
+	// where server indicates it did not process the data. default is "false"
+	// but if you want the request to fail fast in case of network errors, please set it to "true"
+	FailFast bool
+
 	// TLS holds the client secure credentials, if any.
 	TLS *tls.Config
 
