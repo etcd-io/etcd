@@ -10,7 +10,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.55.2
 	github.com/google/addlicense v1.1.1
-	github.com/google/yamlfmt v0.10.0
+	github.com/google/yamlfmt v0.11.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
 	github.com/mikefarah/yq/v4 v4.40.7
 	go.etcd.io/gofail v0.1.0
@@ -167,6 +167,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/ryancurrah/gomodguard v1.3.0 // indirect
 	github.com/ryanrolds/sqlclosecheck v0.5.1 // indirect
+	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/sanposhiho/wastedassign/v2 v2.0.7 // indirect
 	github.com/sashamelentyev/interfacebloat v1.1.0 // indirect
 	github.com/sashamelentyev/usestdlibvars v1.24.0 // indirect
