@@ -20,12 +20,13 @@ import (
 	"testing"
 	"time"
 
-	clientv2 "go.etcd.io/etcd/client/v2"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/integration"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+
+	clientv2 "go.etcd.io/etcd/client/v2"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/integration"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -41,6 +42,7 @@ func newClient(t *testing.T, entpoints []string, connType e2e.ClientConnType, is
 		Endpoints:   entpoints,
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		Logger:      zap.NewNop(),
 	}
 	if tlscfg != nil {
 		tls, err := tlscfg.ClientConfig()
