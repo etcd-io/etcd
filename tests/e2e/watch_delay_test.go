@@ -174,264 +174,6 @@ func TestWatchDelayForEvent(t *testing.T) {
 	}
 }
 
-var watchKeyPrefix = "/registry/pods/"
-
-type randomStringAlphabet string
-
-func (a randomStringAlphabet) makeString(minLen, maxLen int) string {
-	n := minLen
-	if minLen < maxLen {
-		n += rand.Intn(maxLen - minLen)
-	}
-	var s string
-	for i := 0; i < n; i++ {
-		s += string(a[rand.Intn(len(a))])
-	}
-	return s
-}
-
-var randomStringMaker = randomStringAlphabet("abcdefghijklmnopqrstuvwxyz0123456789")
-
-func TestWatchDelayOnStreamMultiplex(t *testing.T) {
-	e2e.BeforeTest(t)
-	clus, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{ClusterSize: 1, LogLevel: "info"})
-	require.NoError(t, err)
-	defer clus.Close()
-	endpoints := clus.EndpointsV3()
-	c := newClient(t, endpoints, e2e.ClientNonTLS, false)
-	rootCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	g := errgroup.Group{}
-
-	commonWatchOpts := []clientv3.OpOption{
-		clientv3.WithPrefix(),
-		clientv3.WithPrevKV(),
-	}
-
-	watchCacheEventsReceived := atomic.Int64{}
-	watchCacheWatchInitialized := make(chan struct{})
-	watchCacheWatcherErrCompacted := atomic.Bool{}
-	watchCacheWatcherErrCompacted.Store(false)
-	g.Go(func() error {
-		// simulate watch cache
-		lg := zaptest.NewLogger(t).Named("watch-cache")
-		defer func() { lg.Debug("watcher exited") }()
-		gresp, err := c.Get(rootCtx, "foo")
-		if err != nil {
-			panic(err)
-		}
-		rev := gresp.Header.Revision
-		watchCacheWatchOpts := append([]clientv3.OpOption{clientv3.WithCreatedNotify(), clientv3.WithRev(rev), clientv3.WithProgressNotify()}, commonWatchOpts...)
-		//lastTimeGotResponse := time.Now()
-		for wres := range c.Watch(rootCtx, watchKeyPrefix, watchCacheWatchOpts...) {
-			if wres.Err() != nil {
-				lg.Warn("got watch response error", zap.String("error", wres.Err().Error()), zap.Int64("compact-revision", wres.CompactRevision))
-				watchCacheWatcherErrCompacted.Store(true)
-				return nil
-			}
-			if wres.Created {
-				close(watchCacheWatchInitialized)
-			}
-			watchCacheEventsReceived.Add(int64(len(wres.Events)))
-			//elapsed := time.Since(lastTimeGotResponse)
-			//if elapsed > 10*time.Second {
-			//	handleWatchResponse(lg, &wres, false)
-			//}
-			handleWatchResponse(lg, &wres, false)
-			//lastTimeGotResponse = time.Now()
-		}
-		return nil
-	})
-	<-watchCacheWatchInitialized
-
-	var wg sync.WaitGroup
-	numOfDirectWatches := 800
-	for i := 0; i < numOfDirectWatches; i++ {
-		wg.Add(1)
-		lg := zaptest.NewLogger(t).Named(fmt.Sprintf("direct-watch-%d", i))
-		g.Go(func() error {
-			perDirectWatchContext, perDirectWatchCancelFn := context.WithCancel(rootCtx)
-			retry := 0
-			for {
-				var watchOpts = append([]clientv3.OpOption{}, commonWatchOpts...)
-				if retry == 0 {
-					watchOpts = append(watchOpts, clientv3.WithCreatedNotify())
-				}
-				err := directWatch(perDirectWatchContext, lg, &wg, c, watchKeyPrefix, watchOpts)
-				if errors.Is(err, v3rpc.ErrCompacted) {
-					retry++
-					continue
-				}
-				// if watch is cancelled by client or closed by server, we should exit
-				perDirectWatchCancelFn()
-				return nil
-			}
-		})
-	}
-	wg.Wait()
-
-	eventsTriggered := atomic.Int64{}
-	loadCtx, loadCtxCancel := context.WithTimeout(rootCtx, time.Minute)
-	defer loadCtxCancel()
-
-	var clients []*clientv3.Client
-	for ci := 0; ci < 1; ci++ {
-		clients = append(clients, newClient(t, endpoints, e2e.ClientNonTLS, false))
-	}
-	generateLoad(loadCtx, clients, &g, &eventsTriggered)
-	compaction(t, loadCtx, &g, c)
-	compareEventsReceivedAndTriggered(t, cancel, loadCtx, &g, &watchCacheEventsReceived, &eventsTriggered, &watchCacheWatcherErrCompacted)
-	require.NoError(t, g.Wait())
-}
-
-func directWatch(ctx context.Context, lg *zap.Logger, wg *sync.WaitGroup, c *clientv3.Client, keyPrefix string, watchOpts []clientv3.OpOption) error {
-	wch := c.Watch(ctx, keyPrefix, watchOpts...)
-	for wres := range wch {
-		if wres.Err() != nil {
-			return wres.Err()
-		}
-		if wres.Created {
-			wg.Done()
-		}
-		handleWatchResponse(lg, &wres, true)
-	}
-	return nil
-}
-
-func handleWatchResponse(lg *zap.Logger, wres *clientv3.WatchResponse, suppressLogging bool) {
-	if !suppressLogging {
-		switch {
-		case wres.Created:
-			lg.Info("got watch created notification", zap.Int64("revision", wres.Header.Revision))
-		case len(wres.Events) == 0:
-			lg.Info("got progress notify watch response", zap.Int64("revision", wres.Header.Revision))
-		case wres.Canceled:
-			lg.Warn("got watch cancelled")
-		default:
-			for _, ev := range wres.Events {
-				lg.Info("got watch response", zap.String("event-type", ev.Type.String()), zap.ByteString("key", ev.Kv.Key), zap.Int64("rev", ev.Kv.ModRevision))
-			}
-		}
-	}
-}
-
-func generateLoad(ctx context.Context, clients []*clientv3.Client, group *errgroup.Group, counter *atomic.Int64) {
-	numOfUpdater := 200
-	keyValueSize := 1000
-	keyValueSizeUpperLimit := 1200
-	for _, c := range clients {
-		for i := 0; i < numOfUpdater; i++ {
-			writeKeyPrefix := path.Join(watchKeyPrefix, fmt.Sprintf("%d", i))
-			group.Go(func() error {
-				count := 0
-				keyValuePayload := randomStringMaker.makeString(keyValueSize, keyValueSizeUpperLimit)
-				for {
-					select {
-					case <-ctx.Done():
-						return nil
-					default:
-					}
-					count++
-					key := path.Join(writeKeyPrefix, fmt.Sprintf("%d", count))
-					if _, err := c.Put(ctx, key, keyValuePayload); err == nil {
-						counter.Add(1)
-					}
-					if _, err := c.Delete(ctx, key); err == nil {
-						counter.Add(1)
-					}
-					time.Sleep(10 * time.Millisecond)
-				}
-			})
-		}
-	}
-}
-
-func compaction(t *testing.T, ctx context.Context, group *errgroup.Group, c *clientv3.Client) {
-	group.Go(func() error {
-		lg := zaptest.NewLogger(t).Named("compaction")
-		lastCompactRev := int64(-1)
-		ticker := time.NewTicker(20 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				lg.Warn("context deadline exceeded, exit compaction routine")
-				return nil
-			case <-ticker.C:
-			}
-			if lastCompactRev < 0 {
-				gresp, err := c.Get(ctx, "foo")
-				if err != nil {
-					panic(err)
-				}
-				lastCompactRev = gresp.Header.Revision
-				continue
-			}
-			cres, err := c.Compact(ctx, lastCompactRev, clientv3.WithCompactPhysical())
-			if err != nil {
-				panic(err)
-			}
-			lg.Debug("compacted rev", zap.Int64("compact-revision", lastCompactRev))
-			lastCompactRev = cres.Header.Revision
-		}
-	})
-}
-
-func compareEventsReceivedAndTriggered(
-	t *testing.T,
-	rootCtxCancel context.CancelFunc,
-	loadCtx context.Context,
-	group *errgroup.Group,
-	watchCacheEventsReceived *atomic.Int64,
-	eventsTriggered *atomic.Int64,
-	watchCacheWatcherErrCompacted *atomic.Bool,
-) {
-	group.Go(func() error {
-		// cancel all the watchers.
-		defer rootCtxCancel()
-		lg := zaptest.NewLogger(t).Named("compareEvents")
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-
-		var once sync.Once
-		timer := time.NewTimer(2 * time.Hour)
-		defer timer.Stop()
-		for {
-			// block until traffic is done.
-			select {
-			case <-loadCtx.Done():
-				once.Do(func() { lg.Info("load generator context is done") })
-			}
-
-			// in case watch cache watcher channel is closed, reproduce the lost events with another retry
-			if watchCacheWatcherErrCompacted.Load() {
-				lg.Debug("watch cache watcher got compacted error, please retry the reproduce")
-				return fmt.Errorf("watch cache watcher got compacted error, please retry the reproduce")
-			}
-
-			select {
-			case <-ticker.C:
-			case <-timer.C:
-				triggered := eventsTriggered.Load()
-				received := watchCacheEventsReceived.Load()
-				return fmt.Errorf("2 hours passed since load generation is done, watch cache lost event detected; "+
-					"watch evetns received %d, received %d", received, triggered)
-			}
-			triggered := eventsTriggered.Load()
-			received := watchCacheEventsReceived.Load()
-			if received >= triggered {
-				lg.Info("The number of events watch cache received is high than or equal to events triggered on client side",
-					zap.Int64("watch-cache-received", received),
-					zap.Int64("traffic-triggered", triggered))
-				return nil
-			}
-			lg.Warn("watch events received is lagging behind",
-				zap.Int64("watch-events-received", received),
-				zap.Int64("events-triggered", triggered))
-		}
-	})
-}
-
 func validateWatchDelay(t *testing.T, watch clientv3.WatchChan, maxWatchDelay time.Duration) {
 	start := time.Now()
 	var maxDelay time.Duration
@@ -494,5 +236,243 @@ func continuouslyExecuteGetAll(ctx context.Context, t *testing.T, g *errgroup.Gr
 			mux.RUnlock()
 		}
 		return nil
+	})
+}
+
+// TestWatchOnStreamMultiplex ensures slow etcd watchers throws terminal ErrCompacted error if its
+// next batch of events to be sent are compacted.
+func TestWatchOnStreamMultiplex(t *testing.T) {
+	e2e.BeforeTest(t)
+	clus, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{ClusterSize: 1, LogLevel: "info", EnablePprof: true})
+	require.NoError(t, err)
+	defer clus.Close()
+	endpoints := clus.EndpointsV3()
+	c := newClient(t, endpoints, e2e.ClientNonTLS, false)
+	rootCtx, rootCtxCancel := context.WithCancel(context.Background())
+	defer rootCtxCancel()
+
+	g := errgroup.Group{}
+	watchKeyPrefix := "/registry/pods/"
+	commonWatchOpts := []clientv3.OpOption{
+		clientv3.WithPrefix(),
+		clientv3.WithPrevKV(),
+	}
+
+	watchCacheEventsReceived := atomic.Int64{}
+	watchCacheWatchInitialized := make(chan struct{})
+	watchCacheWatcherExited := make(chan struct{})
+	g.Go(func() error {
+		// simulate watch cache
+		lg := zaptest.NewLogger(t).Named("watch-cache")
+		defer func() { lg.Debug("watcher exited") }()
+		gresp, err := c.Get(rootCtx, "foo")
+		if err != nil {
+			panic(err)
+		}
+		rev := gresp.Header.Revision
+
+		lastEventModifiedRevision := rev
+		watchCacheWatchOpts := append([]clientv3.OpOption{clientv3.WithCreatedNotify(), clientv3.WithRev(rev), clientv3.WithProgressNotify()}, commonWatchOpts...)
+		for wres := range c.Watch(rootCtx, watchKeyPrefix, watchCacheWatchOpts...) {
+			if wres.Err() != nil {
+				lg.Warn("got watch response error",
+					zap.Int64("last-received-events-kv-mod-revision", lastEventModifiedRevision),
+					zap.Int64("compact-revision", wres.CompactRevision),
+					zap.String("error", wres.Err().Error()))
+				close(watchCacheWatcherExited)
+				return nil
+			}
+			if wres.Created {
+				close(watchCacheWatchInitialized)
+			}
+			watchCacheEventsReceived.Add(int64(len(wres.Events)))
+			for _, ev := range wres.Events {
+				if ev.Kv.ModRevision != lastEventModifiedRevision+1 {
+					close(watchCacheWatcherExited)
+					return fmt.Errorf("event loss detected; want rev %d but got rev %d", lastEventModifiedRevision+1, ev.Kv.ModRevision)
+				}
+				lastEventModifiedRevision = ev.Kv.ModRevision
+			}
+		}
+		return nil
+	})
+	<-watchCacheWatchInitialized
+
+	var wg sync.WaitGroup
+	numOfDirectWatches := 800
+	for i := 0; i < numOfDirectWatches; i++ {
+		wg.Add(1)
+		g.Go(func() error {
+			perDirectWatchContext, perDirectWatchCancelFn := context.WithCancel(rootCtx)
+			retry := 0
+			for {
+				watchOpts := append([]clientv3.OpOption{}, commonWatchOpts...)
+				if retry == 0 {
+					watchOpts = append(watchOpts, clientv3.WithCreatedNotify())
+				}
+				err := directWatch(perDirectWatchContext, &wg, c, watchKeyPrefix, watchOpts)
+				if errors.Is(err, v3rpc.ErrCompacted) {
+					retry++
+					continue
+				}
+				// if watch is cancelled by client or closed by server, we should exit
+				perDirectWatchCancelFn()
+				return nil
+			}
+		})
+	}
+	wg.Wait()
+
+	eventsTriggered := atomic.Int64{}
+	loadCtx, loadCtxCancel := context.WithTimeout(rootCtx, time.Minute)
+	defer loadCtxCancel()
+	generateLoad(loadCtx, c, watchKeyPrefix, &g, &eventsTriggered)
+	compaction(t, loadCtx, &g, c)
+
+	// validate whether watch cache watcher is compacted or get all the events.
+	compareEventsReceivedAndTriggered(t, rootCtxCancel, loadCtx, &g, &watchCacheEventsReceived, &eventsTriggered, watchCacheWatcherExited)
+	require.NoError(t, g.Wait())
+}
+
+func directWatch(ctx context.Context, wg *sync.WaitGroup, c *clientv3.Client, keyPrefix string, watchOpts []clientv3.OpOption) error {
+	wch := c.Watch(ctx, keyPrefix, watchOpts...)
+	for wres := range wch {
+		if wres.Err() != nil {
+			return wres.Err()
+		}
+		if wres.Created {
+			wg.Done()
+		}
+	}
+	return nil
+}
+
+func generateLoad(ctx context.Context, c *clientv3.Client, watchKeyPrefix string, group *errgroup.Group, counter *atomic.Int64) {
+	numOfUpdater := 200
+	keyValueSize := 1000
+	keyValueSizeUpperLimit := 1200
+	for i := 0; i < numOfUpdater; i++ {
+		writeKeyPrefix := path.Join(watchKeyPrefix, fmt.Sprintf("%d", i))
+		group.Go(func() error {
+			count := 0
+			keyValuePayload := randomStringMaker.makeString(keyValueSize, keyValueSizeUpperLimit)
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				default:
+				}
+				count++
+				key := path.Join(writeKeyPrefix, fmt.Sprintf("%d", count))
+				if _, err := c.Put(ctx, key, keyValuePayload); err == nil {
+					counter.Add(1)
+				}
+				if _, err := c.Delete(ctx, key); err == nil {
+					counter.Add(1)
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		})
+	}
+}
+
+type randomStringAlphabet string
+
+func (a randomStringAlphabet) makeString(minLen, maxLen int) string {
+	n := minLen
+	if minLen < maxLen {
+		n += rand.Intn(maxLen - minLen)
+	}
+	var s string
+	for i := 0; i < n; i++ {
+		s += string(a[rand.Intn(len(a))])
+	}
+	return s
+}
+
+var randomStringMaker = randomStringAlphabet("abcdefghijklmnopqrstuvwxyz0123456789")
+
+func compaction(t *testing.T, ctx context.Context, group *errgroup.Group, c *clientv3.Client) {
+	group.Go(func() error {
+		lg := zaptest.NewLogger(t).Named("compaction")
+		lastCompactRev := int64(-1)
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				lg.Warn("context deadline exceeded, exit compaction routine")
+				return nil
+			case <-ticker.C:
+			}
+			if lastCompactRev < 0 {
+				gresp, err := c.Get(ctx, "foo")
+				if err != nil {
+					panic(err)
+				}
+				lastCompactRev = gresp.Header.Revision
+				continue
+			}
+			cres, err := c.Compact(ctx, lastCompactRev, clientv3.WithCompactPhysical())
+			if err != nil {
+				lg.Warn("failed to compact", zap.Error(err))
+				continue
+			}
+			lg.Debug("compacted rev", zap.Int64("compact-revision", lastCompactRev))
+			lastCompactRev = cres.Header.Revision
+		}
+	})
+}
+
+func compareEventsReceivedAndTriggered(
+	t *testing.T,
+	rootCtxCancel context.CancelFunc,
+	loadCtx context.Context,
+	group *errgroup.Group,
+	watchCacheEventsReceived *atomic.Int64,
+	eventsTriggered *atomic.Int64,
+	watchCacheWatcherExited <-chan struct{},
+) {
+	group.Go(func() error {
+		defer rootCtxCancel() // cancel all the watchers and load.
+
+		lg := zaptest.NewLogger(t).Named("compareEvents")
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		timer := time.NewTimer(2 * time.Minute)
+		defer timer.Stop()
+
+		var once sync.Once
+		for {
+			// block until traffic is done.
+			select {
+			case <-loadCtx.Done():
+				once.Do(func() { lg.Info("load generator context is done") })
+			case <-watchCacheWatcherExited:
+				// watch cache watcher channel is expected to be closed with compacted error
+				// then there is no need to wait for load to verify watch cache receives all the events.
+				return nil
+			}
+
+			select {
+			case <-ticker.C:
+			case <-timer.C:
+				triggered := eventsTriggered.Load()
+				received := watchCacheEventsReceived.Load()
+				return fmt.Errorf("5 minutes passed since load generation is done, watch cache lost event detected; "+
+					"watch evetns received %d, received %d", received, triggered)
+			}
+			triggered := eventsTriggered.Load()
+			received := watchCacheEventsReceived.Load()
+			if received >= triggered {
+				lg.Info("The number of events watch cache received is high than or equal to events triggered on client side",
+					zap.Int64("watch-cache-received", received),
+					zap.Int64("traffic-triggered", triggered))
+				return nil
+			}
+			lg.Warn("watch events received is lagging behind",
+				zap.Int64("watch-events-received", received),
+				zap.Int64("events-triggered", triggered))
+		}
 	})
 }

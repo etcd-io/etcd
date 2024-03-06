@@ -366,6 +366,14 @@ func (s *watchableStore) syncWatchers() int {
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
+		if string(w.key) == "/registry/pod" {
+			if _, ok := wb[w]; ok && w.minRev < wb[w].evs[0].Kv.ModRevision {
+				s.lg.Info("watcher has skipped events",
+					zap.Int64("watcher-next-rev-to-accept", w.minRev),
+					zap.Int64("watcher-min-rev-of-next-events-batch-to-sent", wb[w].evs[0].Kv.ModRevision),
+					zap.Int64("watch-id", int64(w.id)))
+			}
+		}
 		w.minRev = curRev + 1
 
 		eb, ok := wb[w]

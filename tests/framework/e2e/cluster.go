@@ -23,10 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/pkg/v3/proxy"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+
+	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 const EtcdProcessBasePort = 20000
@@ -182,6 +183,8 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckTime       time.Duration
 	WatchProcessNotifyInterval time.Duration
 	CompactionBatchLimit       int
+
+	EnablePprof bool
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -386,6 +389,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfigs(tb testing.TB) []*
 		}
 		if cfg.CompactionBatchLimit != 0 {
 			args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
+		}
+		if cfg.EnablePprof {
+			args = append(args, "--enable-pprof")
 		}
 
 		envVars := map[string]string{}
