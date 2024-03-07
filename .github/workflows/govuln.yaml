@@ -1,6 +1,16 @@
 ---
 name: Go Vulnerability Checker
-on: [push, pull_request]
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - '**.svg'
+      - '**.png'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - '**.svg'
+      - '**.png'
 permissions: read-all
 jobs:
   test:
