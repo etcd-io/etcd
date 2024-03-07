@@ -24,9 +24,9 @@ func TestLogFormat(t *testing.T) {
 		want        string
 		errExpected bool
 	}{
-		{"json", JsonLogFormat, false},
+		{"json", JSONLogFormat, false},
 		{"console", ConsoleLogFormat, false},
-		{"", JsonLogFormat, false},
+		{"", JSONLogFormat, false},
 		{"konsole", "", true},
 	}
 
