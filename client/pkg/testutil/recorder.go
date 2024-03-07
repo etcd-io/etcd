@@ -115,7 +115,10 @@ func (r *recorderStream) Chan() <-chan Action {
 
 func (r *recorderStream) Wait(n int) ([]Action, error) {
 	acts := make([]Action, n)
-	timeoutC := time.After(r.waitTimeout)
+	var timeoutC <-chan time.Time
+	if r.waitTimeout != 0 {
+		timeoutC = time.After(r.waitTimeout)
+	}
 	for i := 0; i < n; i++ {
 		select {
 		case acts[i] = <-r.ch:
