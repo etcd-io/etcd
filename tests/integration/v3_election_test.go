@@ -17,8 +17,11 @@ package integration
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
@@ -314,5 +317,114 @@ func TestElectionObserveCompacted(t *testing.T) {
 	}
 	if string(v.Kvs[0].Value) != "abc" {
 		t.Fatalf(`expected leader value "abc", got %q`, string(v.Kvs[0].Value))
+	}
+}
+
+// TestElectionWithAuthEnabled verifies the election interface when auth is enabled.
+// Refer to the discussion in https://github.com/etcd-io/etcd/issues/17502
+func TestElectionWithAuthEnabled(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	users := []user{
+		{
+			name:     "user1",
+			password: "123",
+			role:     "role1",
+			key:      "/foo1", // prefix /foo1
+			end:      "/foo2",
+		},
+		{
+			name:     "user2",
+			password: "456",
+			role:     "role2",
+			key:      "/bar1", // prefix /bar1
+			end:      "/bar2",
+		},
+	}
+
+	t.Log("Setting rbac info and enable auth.")
+	authSetupUsers(t, integration.ToGRPC(clus.Client(0)).Auth, users)
+	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
+
+	c1, c1err := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "123"})
+	require.NoError(t, c1err)
+	defer c1.Close()
+
+	c2, c2err := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user2", Password: "456"})
+	require.NoError(t, c2err)
+	defer c2.Close()
+
+	campaigns := []struct {
+		name      string
+		c         *clientv3.Client
+		pfx       string
+		sleepTime time.Duration // time to sleep before campaigning
+	}{
+		{
+			name: "client1 first campaign",
+			c:    c1,
+			pfx:  "/foo1/a",
+		},
+		{
+			name: "client1 second campaign",
+			c:    c1,
+			pfx:  "/foo1/a",
+		},
+		{
+			name:      "client2 first campaign",
+			c:         c2,
+			pfx:       "/bar1/b",
+			sleepTime: 5 * time.Second,
+		},
+		{
+			name:      "client2 second campaign",
+			c:         c2,
+			pfx:       "/bar1/b",
+			sleepTime: 6 * time.Second,
+		},
+	}
+
+	t.Log("Starting to campaign with multiple users.")
+	var wg sync.WaitGroup
+	errC := make(chan error, 8)
+	doneC := make(chan error)
+	for _, campaign := range campaigns {
+		campaign := campaign
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if campaign.sleepTime > 0 {
+				time.Sleep(campaign.sleepTime)
+			}
+
+			s, serr := concurrency.NewSession(campaign.c, concurrency.WithTTL(10))
+			if serr != nil {
+				errC <- fmt.Errorf("[NewSession] %s: %w", campaign.name, serr)
+			}
+			s.Orphan()
+
+			e := concurrency.NewElection(s, campaign.pfx)
+			eerr := e.Campaign(context.Background(), "whatever")
+			if eerr != nil {
+				errC <- fmt.Errorf("[Campaign] %s: %w", campaign.name, eerr)
+			}
+		}()
+	}
+
+	go func() {
+		t.Log("Waiting for all goroutines to finish.")
+		defer close(doneC)
+		wg.Wait()
+	}()
+
+	select {
+	case err := <-errC:
+		t.Fatalf("Error: %v", err)
+	case <-doneC:
+		t.Log("All goroutine done!")
+	case <-time.After(30 * time.Second):
+		t.Fatal("Timed out")
 	}
 }
