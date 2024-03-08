@@ -16,6 +16,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.21.6](https://github.com/etcd-io/etcd/pull/17368).
 - Upgrade [bbolt to 1.3.9](https://github.com/etcd-io/etcd/pull/17484).
+- Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17538).
 
 ### Others
 - [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17422).
