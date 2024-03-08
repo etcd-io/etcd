@@ -120,7 +120,7 @@ Suggested steps for performing a minor version upgrade for the etcd development 
 4. Run performance benchmarks locally to compare before and after.
 5. Raise a pull request for the changes, example <https://github.com/etcd-io/etcd/pull/16394>.
 
-Stable etcd release branches will be maintained to stay on the latest patch release of a supported Go version, however upgrading minor versions will be avoided unless the minor version in use is now out of support. Refer to the [Go release policy](https://go.dev/doc/devel/release).
+Stable etcd release branches will be maintained to stay on the latest patch release of a supported Go version. Upgrading minor versions will be completed before the minor version in use currently is no longer supported. Refer to the [Go release policy](https://go.dev/doc/devel/release).
 
 For an example of how to update etcd to a new patch release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16343> and the linked pull requests.
 
