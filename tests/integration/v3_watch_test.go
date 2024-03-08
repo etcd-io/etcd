@@ -1438,8 +1438,8 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 	wch := client.Watch(ctx, "foo", clientv3.WithRev(1))
 
 	// Immediately request a progress notification. As the client
-	// is unsynchronised, the server will have to defer the
-	// notification internally.
+	// is unsynchronised, the server will not sent any notification,
+	//as client can infer progress from events.
 	err := client.RequestProgress(ctx)
 	require.NoError(t, err)
 
@@ -1459,8 +1459,9 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 		}
 		event_count += len(wr.Events)
 	}
-
-	// ... followed by the requested progress notification
+	// client needs to request progress notification again
+	err = client.RequestProgress(ctx)
+	require.NoError(t, err)
 	wr2 := <-wch
 	if wr2.Err() != nil {
 		t.Fatal(fmt.Errorf("watch error: %w", wr2.Err()))
@@ -1471,4 +1472,48 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 	if wr2.Header.Revision != int64(count+1) {
 		t.Fatal("Wrong revision in progress notification!")
 	}
+}
+
+func TestV3WatchProgressWaitsForSyncNoEvents(t *testing.T) {
+	if ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+	BeforeTest(t)
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.Put(ctx, "bar", "1")
+	require.NoError(t, err)
+
+	wch := client.Watch(ctx, "foo", clientv3.WithRev(resp.Header.Revision))
+	// Request the progress notification on newly created watch that was not yet synced.
+	err = client.RequestProgress(ctx)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	require.NoError(t, err)
+	gotProgressNotification := false
+	for {
+		select {
+		case <-ticker.C:
+			err := client.RequestProgress(ctx)
+			require.NoError(t, err)
+		case resp := <-wch:
+			if resp.Err() != nil {
+				t.Fatal(fmt.Errorf("watch error: %w", resp.Err()))
+			}
+			if resp.IsProgressNotify() {
+				gotProgressNotification = true
+			}
+		}
+		if gotProgressNotification {
+			break
+		}
+	}
+	require.True(t, gotProgressNotification, "Expected to get progress notification")
 }
