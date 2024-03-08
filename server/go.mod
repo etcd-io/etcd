@@ -9,7 +9,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
-	github.com/golang/protobuf v1.5.3
+	github.com/golang/protobuf v1.5.4
 	github.com/google/btree v1.0.1
 	github.com/google/go-cmp v0.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
@@ -73,7 +73,7 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d // indirect
-	google.golang.org/protobuf v1.31.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

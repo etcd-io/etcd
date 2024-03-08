@@ -40,7 +40,7 @@ require (
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/goccy/go-yaml v1.8.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
-	github.com/golang/protobuf v1.4.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.1 // indirect
@@ -63,7 +63,7 @@ require (
 	golang.org/x/tools v0.0.0-20210106214847-113979e3529a // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20201008135153-289734e2e40c // indirect
-	google.golang.org/protobuf v1.24.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/op/go-logging.v1 v1.0.0-20160211212156-b2cb9fa56473 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
