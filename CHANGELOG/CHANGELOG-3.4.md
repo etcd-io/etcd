@@ -16,6 +16,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 - Upgrade [bbolt to 1.3.9](https://github.com/etcd-io/etcd/pull/17484).
 - Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17538).
+- Upgrade [google.golang.org/protobuf to v1.33.0 to address CVE-2024-24786](https://github.com/etcd-io/etcd/pull/17554).
 
 ### Others
 - [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17422).
