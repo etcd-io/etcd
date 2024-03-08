@@ -347,6 +347,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	for i := len(ms) - 1; i >= 0; i-- {
 		if r.isIDRemoved(ms[i].To) {
 			ms[i].To = 0
+			continue
 		}
 
 		if ms[i].Type == raftpb.MsgAppResp {

@@ -12,6 +12,7 @@
   - [Rotation worksheet](#rotation-worksheet)
 - **[Stable branches](#stable-branches)**
 - **[Golang versions](#golang-versions)**
+- **[Core dependencies mappings](#core-dependencies-mappings)**
 
 ## Main branch
 
@@ -119,10 +120,28 @@ Suggested steps for performing a minor version upgrade for the etcd development 
 4. Run performance benchmarks locally to compare before and after.
 5. Raise a pull request for the changes, example <https://github.com/etcd-io/etcd/pull/16394>.
 
-Stable etcd release branches will be maintained to stay on the latest patch release of a supported Go version, however upgrading minor versions will be avoided unless the minor version in use is now out of support. Refer to the [Go release policy](https://go.dev/doc/devel/release).
+Stable etcd release branches will be maintained to stay on the latest patch release of a supported Go version. Upgrading minor versions will be completed before the minor version in use currently is no longer supported. Refer to the [Go release policy](https://go.dev/doc/devel/release).
 
 For an example of how to update etcd to a new patch release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16343> and the linked pull requests.
 
 References:
 
 - <https://github.com/kubernetes/sig-release/blob/master/release-engineering/handbooks/go.md>
+
+## Core dependencies mappings
+
+[bbolt](https://github.com/etcd-io/bbolt) and [raft](https://github.com/etcd-io/raft) are two core dependencies of etcd.
+
+Both etcd 3.4.x and 3.5.x depend on bbolt 1.3.x, and etcd 3.6.x (`main` branch) depends on bbolt 1.4.x.
+
+raft is included in the etcd repository for release-3.4 and release-3.5 branches, so etcd 3.4.x and 3.5.x do not depend on any
+external raft module. We moved raft into [a separate repository](https://github.com/etcd-io/raft) starting from 3.6 (`main` branch), and the first raft
+release will be v3.6.0, so etcd 3.6.x will depend on raft 3.6.x.
+
+Please see the table below:
+
+| etcd versions | bbolt versions | raft versions |
+|---------------|----------------|---------------|
+| 3.4.x         | v1.3.x         | N/A           |
+| 3.5.x         | v1.3.x         | N/A           |
+| 3.6.x         | v1.4.x         | v3.6.x        |
