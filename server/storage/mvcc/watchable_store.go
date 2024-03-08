@@ -39,6 +39,8 @@ var (
 	maxWatchersPerSync = 512
 )
 
+func ChanBufLen() int { return chanBufLen }
+
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
@@ -370,6 +372,11 @@ func (s *watchableStore) syncWatchers() int {
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
+		if w.minRev < compactionRev {
+			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
+			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
+			continue
+		}
 		w.minRev = curRev + 1
 
 		eb, ok := wb[w]

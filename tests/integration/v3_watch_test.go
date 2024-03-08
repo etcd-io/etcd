@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -24,13 +25,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
@@ -1511,4 +1516,57 @@ func TestV3WatchProgressWaitsForSyncNoEvents(t *testing.T) {
 		}
 	}
 	require.True(t, gotProgressNotification, "Expected to get progress notification")
+}
+
+// TestV3NoEventsLostOnCompact verifies that slow watchers exit with compacted watch response
+// if its next revision of events are compacted and no lost events sent to client.
+func TestV3NoEventsLostOnCompact(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+	integration.BeforeTest(t)
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// sendLoop throughput is rate-limited to 1 event per second
+	require.NoError(t, gofail.Enable("beforeSendWatchResponse", `sleep("1s")`))
+	wch := client.Watch(ctx, "foo")
+
+	var rev int64
+	writeCount := mvcc.ChanBufLen() * 11 / 10
+	for i := 0; i < writeCount; i++ {
+		resp, err := client.Put(ctx, "foo", "bar")
+		require.NoError(t, err)
+		rev = resp.Header.Revision
+	}
+	_, err := client.Compact(ctx, rev)
+	require.NoError(t, err)
+
+	time.Sleep(time.Second)
+	require.NoError(t, gofail.Disable("beforeSendWatchResponse"))
+
+	eventCount := 0
+	compacted := false
+	for resp := range wch {
+		err = resp.Err()
+		if err != nil {
+			if !errors.Is(err, rpctypes.ErrCompacted) {
+				t.Fatalf("want watch response err %v but got %v", rpctypes.ErrCompacted, err)
+			}
+			compacted = true
+			break
+		}
+		eventCount += len(resp.Events)
+		if eventCount == writeCount {
+			break
+		}
+	}
+	assert.Truef(t, compacted, "Expected stream to get compacted, instead we got %d events out of %d events", eventCount, writeCount)
 }
