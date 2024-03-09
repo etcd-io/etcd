@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -267,6 +269,117 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 			expect = e2e.EtcdServerReadyLines
 		} else {
 			expect = []string{"client certificate authentication failed"}
+		}
+		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestEtcdPeerLocalAddr checks that the inter peer auth works with when
+// the member LocalAddr is set.
+func TestEtcdPeerLocalAddr(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	nodeIP, err := netutil.GetDefaultHost()
+	fmt.Println("Got node IP:", nodeIP)
+	if err != nil {
+		t.Fatal("Could not get IP address of system")
+		return
+	}
+
+	peers, tmpdirs := make([]string, 3), make([]string, 3)
+
+	for i := range peers {
+		peerIP := nodeIP
+		if i == 0 {
+			peerIP = "127.0.0.1"
+		}
+		peers[i] = fmt.Sprintf("e%d=https://%s:%d", i, peerIP, e2e.EtcdProcessBasePort+i)
+		tmpdirs[i] = t.TempDir()
+	}
+	procs := make([]*expect.ExpectProcess, len(peers))
+	defer func() {
+		for i := range procs {
+			if procs[i] != nil {
+				procs[i].Stop()
+				procs[i].Close()
+			}
+			os.RemoveAll(tmpdirs[i])
+		}
+	}()
+
+	caFile, certFiles, keyFiles, err := generateCertsForIPs([]net.IP{net.ParseIP("127.0.0.1"), net.ParseIP(nodeIP)})
+	if err != nil {
+		t.Fatal("Could not generate certificates for system IPs")
+		return
+	}
+	defer func() {
+		os.Remove(caFile)
+		for _, certFile := range certFiles {
+			os.Remove(certFile)
+		}
+		for _, keyFile := range keyFiles {
+			os.Remove(keyFile)
+		}
+	}()
+
+	// node 0 (127.0.0.1) does not set localaddr, while nodes 1 and nodes 2 (both use host's IP) do.
+	// The other two nodes will reject connections from node 0 warning that node 0's certificate is valid only for
+	// 127.0.0.1, not the host IP, since node 0 will try to connect to the other peers with the host IP
+	// as the client address.
+	// Node 0 will not reject connections from the other nodes since they will
+	// use the host's IP to connect (due to --set-member-localaddr)
+	for i := range procs {
+		peerIP := nodeIP
+		if i == 0 {
+			peerIP = "127.0.0.1"
+		}
+		ic := strings.Join(peers, ",")
+		commonArgs := []string{
+			e2e.BinPath.Etcd,
+			"--name", fmt.Sprintf("e%d", i),
+			"--listen-client-urls", "http://0.0.0.0:0",
+			"--data-dir", tmpdirs[i],
+			"--advertise-client-urls", "http://0.0.0.0:0",
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://%s:%d", peerIP, e2e.EtcdProcessBasePort+i),
+			"--listen-peer-urls", fmt.Sprintf("https://%s:%d,https://%s:%d", peerIP, e2e.EtcdProcessBasePort+i, peerIP, e2e.EtcdProcessBasePort+len(peers)+i),
+			"--initial-cluster", ic,
+		}
+
+		var args []string
+		if i == 0 {
+			args = []string{
+				"--peer-cert-file", certFiles[0],
+				"--peer-key-file", keyFiles[0],
+				"--peer-trusted-ca-file", caFile,
+				"--peer-client-cert-auth",
+			}
+		} else {
+			args = []string{
+				"--peer-cert-file", certFiles[1],
+				"--peer-key-file", keyFiles[1],
+				"--peer-trusted-ca-file", caFile,
+				"--peer-client-cert-auth",
+				"--set-member-localaddr",
+			}
+		}
+
+		commonArgs = append(commonArgs, args...)
+
+		p, err := e2e.SpawnCmd(commonArgs, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		procs[i] = p
+	}
+
+	for i, p := range procs {
+		var expect []string
+		if i == 0 {
+			expect = e2e.EtcdServerReadyLines
+		} else {
+			expect = []string{"x509: certificate is valid for 127.0.0.1, not "}
 		}
 		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
 			t.Fatal(err)
