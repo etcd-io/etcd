@@ -107,10 +107,12 @@ Member:
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'
     List of this member's peer URLs to advertise to the rest of the cluster.
+  --set-member-localaddr 'false'
+    Enable to have etcd use the host from initial-advertise-peer-urls as the local address when communicating with a peer.
   --initial-cluster 'default=http://localhost:2380'
     Initial cluster configuration for bootstrapping.
   --initial-cluster-state 'new'
-    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster). 
+    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster).
     After successful initialization (bootstrapping or adding), flag is ignored on restarts
   --initial-cluster-token 'etcd-cluster'
     Initial cluster token for the etcd cluster during bootstrap.
@@ -221,9 +223,6 @@ Security:
     Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.
   --tls-max-version ''
     Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty will be auto-populated by Go).
-  --peer-local-addr ''
-    LocalAddr is the local IP address to use when communicating peer.
-
 
 Auth:
   --auth-token 'simple'

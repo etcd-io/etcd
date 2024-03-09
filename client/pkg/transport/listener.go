@@ -194,7 +194,7 @@ type TLSInfo struct {
 	// If true, ClientConfig() will return an error for a cert with non empty CN.
 	EmptyCN bool
 
-	// LocalAddr is the local IP address to use when communicating peer.
+	// LocalAddr is the local IP address to use when communicating with a peer.
 	LocalAddr string
 }
 
