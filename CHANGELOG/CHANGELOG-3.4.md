@@ -43,6 +43,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [Add missing experimental-enable-lease-checkpoint-persist flag in etcd help](https://github.com/etcd-io/etcd/pull/17189)
 - Fix [Don't flock snapshot files](https://github.com/etcd-io/etcd/pull/17208)
 
+### etcd server
+- [Disable following HTTP redirects in peer communication](https://github.com/etcd-io/etcd/pull/17112)
+
 ### Dependencies
 - Compile binaries using go [1.20.12](https://github.com/etcd-io/etcd/pull/17076).
 
