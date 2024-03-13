@@ -74,7 +74,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 	}
 
 	select {
-	case <-time.After(200 * time.Millisecond):
+	case <-time.After(time.Second):
 		t.Fatalf("campaigner unelected after resign")
 	case <-campaignc:
 	}

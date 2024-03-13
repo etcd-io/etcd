@@ -79,7 +79,7 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 		t.Fatalf("could not release barrier (%v)", err)
 	}
 
-	timerC := time.After(time.Duration(waiters*100) * time.Millisecond)
+	timerC := time.After(time.Second)
 	for i := 0; i < waiters; i++ {
 		select {
 		case <-timerC:
