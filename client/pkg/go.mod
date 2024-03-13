@@ -4,9 +4,9 @@ go 1.22
 
 require (
 	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/sys v0.17.0
+	golang.org/x/sys v0.18.0
 )
 
 require (
