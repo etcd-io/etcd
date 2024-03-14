@@ -22,6 +22,9 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/tests/v3/framework/config"
+
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -57,6 +60,7 @@ var (
 	BeforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
 	RaftBeforeSaveSleep                      Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
 	RaftAfterSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
+	PutReturnErrNoSpace                      Failpoint = noSpaceFailpoint{alarmDuration: time.Second * 5}
 )
 
 type goPanicFailpoint struct {
@@ -232,4 +236,79 @@ func (f gofailSleepAndDeactivate) Available(config e2e.EtcdProcessClusterConfig,
 		return false
 	}
 	return memberFailpoints.Available(f.failpoint)
+}
+
+type noSpaceFailpoint struct {
+	alarmDuration time.Duration
+}
+
+func (f noSpaceFailpoint) Name() string {
+	return "putReturnErrNoSpace"
+}
+
+func (f noSpaceFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
+	if config.ClusterSize == 1 {
+		return false
+	}
+	memberFailpoints := clus.Failpoints()
+	if memberFailpoints == nil {
+		return false
+	}
+	return memberFailpoints.Available(f.Name())
+}
+
+func (f noSpaceFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+	memberIdx := rand.Int() % len(clus.Procs)
+	member := clus.Procs[memberIdx]
+	if !member.IsRunning() {
+		return fmt.Errorf("member at index %d is not running", memberIdx)
+	}
+
+	lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()), zap.String("target", member.Config().Name))
+	err := member.Failpoints().SetupHTTP(ctx, f.Name(), "return")
+	if err != nil {
+		lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
+		return err
+	}
+
+	numRetries := 0
+	maxRetries := 10
+	for {
+		if numRetries > maxRetries {
+			lg.Info(fmt.Sprintf("goFailpoint giving up after %d retries", maxRetries), zap.String("failpoint", f.Name()), zap.Error(err), zap.String("target", member.Config().Name))
+			return err
+		}
+
+		err = member.Etcdctl().Put(context.Background(), "failpoint_"+member.Config().Name, "", config.PutOptions{})
+		if err != nil {
+			if strings.Contains(err.Error(), rpctypes.ErrGRPCNoSpace.Error()) {
+				lg.Info("goFailpoint triggered successfully", zap.String("failpoint", f.Name()), zap.String("target", member.Config().Name))
+				break
+			}
+
+			lg.Info("goFailpoint received unrelated error, retrying", zap.String("failpoint", f.Name()), zap.Error(err), zap.String("target", member.Config().Name))
+			time.Sleep(1 * time.Second)
+			numRetries++
+			continue
+		}
+	}
+
+	time.Sleep(f.alarmDuration)
+
+	lg.Info("goFailpoint starting to disable", zap.String("failpoint", f.Name()), zap.String("target", member.Config().Name))
+	err = member.Failpoints().DeactivateHTTP(ctx, f.Name())
+	if err != nil {
+		lg.Info("goFailpoint disable failed", zap.String("failpoint", f.Name()), zap.Error(err), zap.String("target", member.Config().Name))
+		return err
+	}
+
+	lg.Info("goFailpoint disabled successfully", zap.String("failpoint", f.Name()), zap.String("target", member.Config().Name))
+
+	_, err = member.Etcdctl().AlarmDisarm(ctx, nil)
+	if err != nil {
+		lg.Info("goFailpoint alarm disarm failed", zap.String("failpoint", f.Name()), zap.Error(err), zap.String("target", member.Config().Name))
+		return err
+	}
+
+	return nil
 }

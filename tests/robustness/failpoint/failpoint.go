@@ -51,6 +51,7 @@ var (
 		RaftBeforeSaveSleep,
 		RaftAfterSaveSleep,
 		ApplyBeforeOpenSnapshot,
+		PutReturnErrNoSpace,
 	}
 )
 
