@@ -137,3 +137,38 @@ func newLenErr(expected int, actual int) error {
 	s := fmt.Sprintf("len(actions) = %d, expected >= %d", actual, expected)
 	return errors.New(s)
 }
+
+type recorderSync struct {
+	ch chan Action
+}
+
+func NewRecorderSync() Recorder {
+	return &recorderSync{ch: make(chan Action)}
+}
+
+func (r *recorderSync) Record(a Action) {
+	r.ch <- a
+}
+
+func (r *recorderSync) Action() (acts []Action) {
+	for {
+		select {
+		case act := <-r.ch:
+			acts = append(acts, act)
+		default:
+			return acts
+		}
+	}
+}
+
+func (r *recorderSync) Chan() <-chan Action {
+	return r.ch
+}
+
+func (r *recorderSync) Wait(n int) ([]Action, error) {
+	acts := make([]Action, 0, n)
+	for i := 0; i < n; i++ {
+		acts = append(acts, <-r.ch)
+	}
+	return acts, nil
+}
