@@ -52,28 +52,12 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 		zap.Uint("max", max),
 		zap.Duration("interval", interval))
 
-	readDirWithSuffix := func(dirname string) ([]string, error) {
-		fnames, err := ReadDir(dirname)
-		if err != nil {
-			return nil, err
-		}
-		// filter in place (ref. https://go.dev/wiki/SliceTricks#filtering-without-allocating)
-		fnamesWithSuffix := fnames[:0]
-		for _, fname := range fnames {
-			if strings.HasSuffix(fname, suffix) {
-				fnamesWithSuffix = append(fnamesWithSuffix, fname)
-			}
-		}
-
-		return fnamesWithSuffix, nil
-	}
-
 	go func() {
 		if donec != nil {
 			defer close(donec)
 		}
 		for {
-			fnamesWithSuffix, err := readDirWithSuffix(dirname)
+			fnamesWithSuffix, err := readDirWithSuffix(dirname, suffix)
 			if err != nil {
 				errC <- err
 				return
@@ -118,4 +102,19 @@ func purgeFile(lg *zap.Logger, dirname string, suffix string, max uint, interval
 		}
 	}()
 	return errC
+}
+
+func readDirWithSuffix(dirname string, suffix string) ([]string, error) {
+	fnames, err := ReadDir(dirname)
+	if err != nil {
+		return nil, err
+	}
+	// filter in place (ref. https://go.dev/wiki/SliceTricks#filtering-without-allocating)
+	fnamesWithSuffix := fnames[:0]
+	for _, fname := range fnames {
+		if strings.HasSuffix(fname, suffix) {
+			fnamesWithSuffix = append(fnamesWithSuffix, fname)
+		}
+	}
+	return fnamesWithSuffix, nil
 }
