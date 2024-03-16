@@ -10,7 +10,7 @@ body:
       label: Bug report criteria
       description: Please confirm this bug report meets the following criteria.
       options:
-        - label: This bug report is not security related, security issues should be disclosed privately via security@etcd.io.
+        - label: This bug report is not security related, security issues should be disclosed privately via [etcd maintainers](mailto:etcd-maintainers@googlegroups.com).
         - label: This is not a support request or question, support requests or questions should be raised in the etcd [discussion forums](https://github.com/etcd-io/etcd/discussions).
         - label: You have read the etcd [bug reporting guidelines](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md).
         - label: Existing open issues along with etcd [frequently asked questions](https://etcd.io/docs/latest/faq) have been checked and this is not a duplicate.
