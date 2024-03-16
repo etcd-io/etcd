@@ -115,7 +115,7 @@ func NewConfigJWT() *EtcdProcessClusterConfig {
 	return NewConfig(
 		WithClusterSize(1),
 		WithAuthTokenOpts("jwt,pub-key="+path.Join(FixturesDir, "server.crt")+
-			",priv-key="+path.Join(FixturesDir, "server.key.insecure")+",sign-method=RS256,ttl=1s"),
+			",priv-key="+path.Join(FixturesDir, "server.key.insecure")+",sign-method=RS256,ttl=5s"),
 	)
 }
 
