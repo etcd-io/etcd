@@ -6,7 +6,7 @@ Join the [etcd-dev](https://groups.google.com/g/etcd-dev) group for emails about
 
 We’re extremely grateful for security researchers and users that report vulnerabilities to the etcd Open Source Community. All reports are thoroughly investigated by a dedicated committee of community volunteers called [Product Security Committee](security-release-process.md#product-security-committee).
 
-To make a report, please email the private [security@etcd.io](mailto:security@etcd.io) list with the security details and the details expected for [all etcd bug reports](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md).
+To make a report, please email the private [etcd maintainers](mailto:etcd-maintainers@googlegroups.com) list with the security details and the details expected for [all etcd bug reports](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/reporting_bugs.md).
 
 ### When Should I Report a Vulnerability?
 
@@ -43,6 +43,6 @@ This list provides actionable information regarding etcd security to multiple di
 
 ### Request to Join
 
-New membership requests are sent to security@etcd.io.
+New membership requests are sent to [etcd maintainers](mailto:etcd-maintainers@googlegroups.com).
 
 File an issue [here](https://github.com/etcd-io/etcd/issues/new?template=distributors-application.md), filling in the criteria template.
