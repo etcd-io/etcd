@@ -13,8 +13,8 @@ for ensuring the stability of the release branch.
 - Benjamin Wang [@ahrtr](https://github.com/ahrtr)
 - James Blair [@jmhbnz](https://github.com/jmhbnz)
 - Marek Siarkowicz [@serathius](https://github.com/serathius)
-- Sahdev Zala (@spzala)(https://github.com/spzala)
-- Wenjia Zhang (@wenjiaswe)(https://github.com/wenjiaswe)
+- Sahdev Zala [@spzala](https://github.com/spzala)
+- Wenjia Zhang [@wenjiaswe](https://github.com/wenjiaswe)
 
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
