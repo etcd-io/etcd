@@ -34,7 +34,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
-const memberId = 111195
+const memberID = 111195
 
 func defaultUberApplier(t *testing.T) UberApplier {
 	lg := zaptest.NewLogger(t)
@@ -44,7 +44,7 @@ func defaultUberApplier(t *testing.T) UberApplier {
 	})
 
 	cluster := membership.NewCluster(lg)
-	cluster.AddMember(&membership.Member{ID: memberId}, true)
+	cluster.AddMember(&membership.Member{ID: memberID}, true)
 	lessor := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
 	kv := mvcc.NewStore(lg, be, lessor, mvcc.StoreConfig{})
 	alarmStore, err := v3alarm.NewAlarmStore(lg, schema.NewAlarmBackend(lg, be))
@@ -125,7 +125,7 @@ func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_CORRUPT,
 		},
 	})
@@ -224,7 +224,7 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
 	})
@@ -247,7 +247,7 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
 	})
@@ -262,7 +262,7 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_DEACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
 	})

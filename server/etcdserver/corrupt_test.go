@@ -501,8 +501,8 @@ func (f *fakeHasher) LinearizableReadNotify(ctx context.Context) error {
 	return f.linearizableReadNotify
 }
 
-func (f *fakeHasher) TriggerCorruptAlarm(memberId types.ID) {
-	f.actions = append(f.actions, fmt.Sprintf("TriggerCorruptAlarm(%d)", memberId))
+func (f *fakeHasher) TriggerCorruptAlarm(memberID types.ID) {
+	f.actions = append(f.actions, fmt.Sprintf("TriggerCorruptAlarm(%d)", memberID))
 	f.alarmTriggered = true
 }
 

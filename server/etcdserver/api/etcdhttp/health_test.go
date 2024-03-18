@@ -160,12 +160,12 @@ func TestHealthHandler(t *testing.T) {
 			})
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
-			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, nil, nil)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, nil, nil)
 		})
 	}
 }
 
-func TestHttpSubPath(t *testing.T) {
+func TestHTTPSubPath(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	tests := []healthTestCase{
@@ -198,7 +198,7 @@ func TestHttpSubPath(t *testing.T) {
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
-			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
 			checkMetrics(t, tt.healthCheckURL, "", tt.expectStatusCode)
 		})
 	}
@@ -253,10 +253,10 @@ func TestDataCorruptionCheck(t *testing.T) {
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
 			// OK before alarms are activated.
-			checkHttpResponse(t, ts, tt.healthCheckURL, http.StatusOK, nil, nil)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, http.StatusOK, nil, nil)
 			// Activate the alarms.
 			s.alarms = tt.alarms
-			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
 		})
 	}
 }
@@ -297,7 +297,7 @@ func TestSerializableReadCheck(t *testing.T) {
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
-			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
 			checkMetrics(t, tt.healthCheckURL, "serializable_read", tt.expectStatusCode)
 		})
 	}
@@ -338,13 +338,13 @@ func TestLinearizableReadCheck(t *testing.T) {
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
-			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkHTTPResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
 			checkMetrics(t, tt.healthCheckURL, "linearizable_read", tt.expectStatusCode)
 		})
 	}
 }
 
-func checkHttpResponse(t *testing.T, ts *httptest.Server, url string, expectStatusCode int, inResult []string, notInResult []string) {
+func checkHTTPResponse(t *testing.T, ts *httptest.Server, url string, expectStatusCode int, inResult []string, notInResult []string) {
 	res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+url)})
 
 	if err != nil {

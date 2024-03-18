@@ -240,7 +240,7 @@ type EtcdServer struct {
 	leaderChanged *notify.Notifier
 
 	errorc     chan error
-	memberId   types.ID
+	memberID   types.ID
 	attributes membership.Attributes
 
 	cluster *membership.RaftCluster
@@ -324,7 +324,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
-		memberId:              b.cluster.nodeID,
+		memberID:              b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.cluster.cl,
 		stats:                 sstats,
@@ -910,11 +910,11 @@ func (s *EtcdServer) ensureLeadership() bool {
 		return false
 	}
 
-	newLeaderId := s.raftStatus().Lead
-	if newLeaderId != uint64(s.MemberId()) {
+	newLeaderID := s.raftStatus().Lead
+	if newLeaderID != uint64(s.MemberId()) {
 		lg.Warn("Current member isn't a leader",
 			zap.Uint64("local-member-id", uint64(s.MemberId())),
-			zap.Uint64("new-lead", newLeaderId))
+			zap.Uint64("new-lead", newLeaderID))
 		return false
 	}
 
@@ -1669,7 +1669,7 @@ func (s *EtcdServer) FirstCommitInTermNotify() <-chan struct{} {
 	return s.firstCommitInTerm.Receive()
 }
 
-func (s *EtcdServer) MemberId() types.ID { return s.memberId }
+func (s *EtcdServer) MemberId() types.ID { return s.memberID }
 
 func (s *EtcdServer) Leader() types.ID { return types.ID(s.getLead()) }
 

@@ -62,14 +62,14 @@ func NewUberApplier(
 	warningApplyDuration time.Duration,
 	txnModeWriteWithSharedBuffer bool,
 	quotaBackendBytesCfg int64) UberApplier {
-	applyV3base_ := newApplierV3(lg, be, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer, quotaBackendBytesCfg)
+	applyV3base := newApplierV3(lg, be, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer, quotaBackendBytesCfg)
 
 	ua := &uberApplier{
 		lg:                   lg,
 		alarmStore:           alarmStore,
 		warningApplyDuration: warningApplyDuration,
-		applyV3:              applyV3base_,
-		applyV3base:          applyV3base_,
+		applyV3:              applyV3base,
+		applyV3base:          applyV3base,
 	}
 	ua.restoreAlarms()
 	return ua

@@ -49,18 +49,18 @@ type Member struct {
 // NewMember creates a Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	memberId := computeMemberId(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberId, false)
+	memberID := computeMemberID(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberID, false)
 }
 
 // NewMemberAsLearner creates a learner Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for adding new learner member.
 func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	memberId := computeMemberId(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberId, true)
+	memberID := computeMemberID(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberID, true)
 }
 
-func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
+func computeMemberID(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
 	peerURLstrs := peerURLs.StringSlice()
 	sort.Strings(peerURLstrs)
 	joinedPeerUrls := strings.Join(peerURLstrs, "")
@@ -75,14 +75,14 @@ func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) ty
 	return types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bool) *Member {
+func newMember(name string, peerURLs types.URLs, memberID types.ID, isLearner bool) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{
 			PeerURLs:  peerURLs.StringSlice(),
 			IsLearner: isLearner,
 		},
 		Attributes: Attributes{Name: name},
-		ID:         memberId,
+		ID:         memberID,
 	}
 	return m
 }

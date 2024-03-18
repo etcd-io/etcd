@@ -300,8 +300,8 @@ func (cm *corruptionChecker) CompactHashCheck() {
 //	true: successfully checked hash on whole cluster or raised alarms, so no need to check next hash
 //	false: skipped some members, so need to check next hash
 func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers []*peerHashKVResp) bool {
-	leaderId := cm.hasher.MemberId()
-	hash2members := map[uint32]types.IDSlice{leaderHash.Hash: {leaderId}}
+	leaderID := cm.hasher.MemberId()
+	hash2members := map[uint32]types.IDSlice{leaderHash.Hash: {leaderID}}
 
 	peersChecked := 0
 	// group all peers by hash
@@ -319,7 +319,7 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 		}
 		if skipped {
 			cm.lg.Warn("Skipped peer's hash", zap.Int("number-of-peers", len(peers)),
-				zap.String("leader-id", leaderId.String()),
+				zap.String("leader-id", leaderID.String()),
 				zap.String("peer-id", peer.id.String()),
 				zap.String("reason", reason))
 			continue
@@ -358,7 +358,7 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 		// corrupted. In such situation, we intentionally set the memberID
 		// as 0, it means it affects the whole cluster.
 		cm.lg.Error("Detected compaction hash mismatch but cannot identify the corrupted members, so intentionally set the memberID as 0",
-			zap.String("leader-id", leaderId.String()),
+			zap.String("leader-id", leaderID.String()),
 			zap.Int64("leader-revision", leaderHash.Revision),
 			zap.Int64("leader-compact-revision", leaderHash.CompactRevision),
 			zap.Uint32("leader-hash", leaderHash.Hash),
@@ -376,7 +376,7 @@ func (cm *corruptionChecker) checkPeerHashes(leaderHash mvcc.KeyValueHash, peers
 		}
 
 		cm.lg.Error("Detected compaction hash mismatch",
-			zap.String("leader-id", leaderId.String()),
+			zap.String("leader-id", leaderID.String()),
 			zap.Int64("leader-revision", leaderHash.Revision),
 			zap.Int64("leader-compact-revision", leaderHash.CompactRevision),
 			zap.Uint32("leader-hash", leaderHash.Hash),
@@ -582,8 +582,8 @@ func HashByRev(ctx context.Context, cid types.ID, cc *http.Client, url string, r
 	if err != nil {
 		return nil, err
 	}
-	requestUrl := url + PeerHashKVPath
-	req, err := http.NewRequest(http.MethodGet, requestUrl, bytes.NewReader(hashReqBytes))
+	requestURL := url + PeerHashKVPath
+	req, err := http.NewRequest(http.MethodGet, requestURL, bytes.NewReader(hashReqBytes))
 	if err != nil {
 		return nil, err
 	}
