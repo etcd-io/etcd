@@ -29,7 +29,7 @@ jobs:
       count: 150
       testTimeout: 200m
       artifactName: main-arm64
-      runs-on: "['actuated-arm64-8cpu-8gb']"
+      runs-on: "['actuated-arm64-12cpu-8gb']"
       scenario: TestRobustnessExploratory
       lazyfsEnabled: false
   release-35:
@@ -49,7 +49,7 @@ jobs:
       count: 150
       testTimeout: 200m
       artifactName: release-35-arm64
-      runs-on: "['actuated-arm64-8cpu-8gb']"
+      runs-on: "['actuated-arm64-12cpu-8gb']"
       scenario: TestRobustnessExploratory
       lazyfsEnabled: false
   release-34:
