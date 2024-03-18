@@ -55,7 +55,7 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		lg: s.Cfg.Logger,
 
 		clusterID: int64(s.Cluster().ID()),
-		memberID:  int64(s.MemberId()),
+		memberID:  int64(s.MemberID()),
 
 		maxRequestBytes: int(s.Cfg.MaxRequestBytes + grpcOverheadBytes),
 

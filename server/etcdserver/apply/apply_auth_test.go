@@ -50,7 +50,7 @@ func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest) *Result {
 
 type fakeRaftStatusGetter struct{}
 
-func (*fakeRaftStatusGetter) MemberId() types.ID {
+func (*fakeRaftStatusGetter) MemberID() types.ID {
 	return 0
 }
 func (*fakeRaftStatusGetter) Leader() types.ID {

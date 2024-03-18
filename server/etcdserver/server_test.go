@@ -945,13 +945,13 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	// Mock a mad switch dispatching messages to wrong node.
 	m := raftpb.Message{
 		Type:   raftpb.MsgHeartbeat,
-		To:     2, // Wrong ID, s.MemberId() is 1.
+		To:     2, // Wrong ID, s.MemberID() is 1.
 		From:   3,
 		Term:   11,
 		Commit: 42, // Commit is larger than the last index 11.
 	}
-	if types.ID(m.To) == s.MemberId() {
-		t.Fatalf("m.To (%d) is expected to mismatch s.MemberId (%d)", m.To, s.MemberId())
+	if types.ID(m.To) == s.MemberID() {
+		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	}
 	err := s.Process(context.Background(), m)
 	if err == nil {

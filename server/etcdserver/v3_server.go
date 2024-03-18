@@ -429,7 +429,7 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 func (s *EtcdServer) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(s.cluster.ID()),
-		MemberId:  uint64(s.MemberId()),
+		MemberId:  uint64(s.MemberID()),
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
 	}

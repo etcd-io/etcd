@@ -45,7 +45,7 @@ const (
 
 // RaftStatusGetter represents etcd server and Raft progress.
 type RaftStatusGetter interface {
-	MemberId() types.ID
+	MemberID() types.ID
 	Leader() types.ID
 	CommittedIndex() uint64
 	AppliedIndex() uint64
@@ -484,7 +484,7 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(a.cluster.ID()),
-		MemberId:  uint64(a.raftStatus.MemberId()),
+		MemberId:  uint64(a.raftStatus.MemberID()),
 		Revision:  a.kv.Rev(),
 		RaftTerm:  a.raftStatus.Term(),
 	}
