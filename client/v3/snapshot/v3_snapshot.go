@@ -38,14 +38,14 @@ func hasChecksum(n int64) bool {
 	return (n % 512) == sha256.Size
 }
 
-// GetSnapshotWithVersion fetches snapshot from remote etcd server, saves data
+// WriteSnapshotWithVersion fetches snapshot from remote etcd server, saves data
 // to target path and returns server version. If the context "ctx" is canceled or timed out,
 // snapshot save stream will error out (e.g. context.Canceled,
 // context.DeadlineExceeded). Make sure to specify only one endpoint
 // in client configuration. Snapshot API must be requested to a
 // selected node, and saved snapshot is the point-in-time state of
 // the selected node. Etcd < v3.6 will return "" as version.
-func GetSnapshotWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, f *os.File) (string, error) {
+func WriteSnapshotWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, f *os.File) (string, error) {
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
 		return "", fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
@@ -107,9 +107,9 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	defer os.RemoveAll(partPath)
 	defer f.Close()
 
-	return GetSnapshotWithVersion(ctx, lg, cfg, f)
+	return WriteSnapshotWithVersion(ctx, lg, cfg, f)
 }
 
 func PipeWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config) (string, error) {
-	return GetSnapshotWithVersion(ctx, lg, cfg, os.Stdout)
+	return WriteSnapshotWithVersion(ctx, lg, cfg, os.Stdout)
 }
