@@ -1,9 +1,10 @@
+---
 name: Trivy Nightly Scan
-on:
-  schedule:
-    - cron: '0 2 * * *' # run at 2 AM UTC
+on: [push, pull_request]
+  #schedule:
+  #  - cron: '0 2 * * *' # run at 2 AM UTC
 
-permissions: read-all 
+permissions: read-all
 jobs:
   nightly-scan:
     name: Trivy Scan nightly
@@ -12,7 +13,7 @@ jobs:
       matrix:
         # maintain the versions of etcd that need to be actively
         # security scanned
-        versions: [v3.5.6]
+        versions: [v3.5.12]
     permissions:
       security-events: write  # for github/codeql-action/upload-sarif to upload SARIF results
 
