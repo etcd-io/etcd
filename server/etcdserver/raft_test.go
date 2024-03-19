@@ -69,7 +69,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(lg, &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(lg, tt.confState, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
@@ -163,7 +163,7 @@ func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
 		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		transport:   newNopTransporter(),
 	})
 	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
@@ -197,7 +197,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		transport:   newNopTransporter(),
 	})
 	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
@@ -247,7 +247,7 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	n := newNopReadyNode()
 	cl := membership.NewCluster(zaptest.NewLogger(t))
 
-	rs := raft.NewMemoryStorage()
+	rs := NewMemoryStorage()
 	p := mockstorage.NewStorageRecorder("")
 	tr, sendc := newSendMsgAppRespTransporter()
 	r := newRaftNode(raftNodeConfig{
@@ -303,7 +303,7 @@ func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 		lg:          zaptest.NewLogger(t),
 		Node:        n,
 		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
+		raftStorage: NewMemoryStorage(),
 		transport:   newNopTransporter(),
 	})
 	r.start(&raftReadyHandler{})
