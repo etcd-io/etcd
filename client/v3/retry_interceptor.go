@@ -311,7 +311,7 @@ func waitRetryBackoff(ctx context.Context, attempt uint, callOpts *options) erro
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return contextErrToGrpcErr(ctx.Err())
+			return contextErrToGRPCErr(ctx.Err())
 		case <-timer.C:
 		}
 	}
@@ -349,7 +349,7 @@ func isContextError(err error) bool {
 	return status.Code(err) == codes.DeadlineExceeded || status.Code(err) == codes.Canceled
 }
 
-func contextErrToGrpcErr(err error) error {
+func contextErrToGRPCErr(err error) error {
 	switch err {
 	case context.DeadlineExceeded:
 		return status.Errorf(codes.DeadlineExceeded, err.Error())

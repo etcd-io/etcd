@@ -6,14 +6,15 @@ The procedure includes some manual steps for sanity checking, but it can probabl
 
 ## Release management
 
-etcd community members are assigned to manage the release each etcd major/minor version as well as manage patches
-and to each stable release branch. The managers are responsible for communicating the timelines and status of each
-release and for ensuring the stability of the release branch.
+The following pool of release candidates manage the release each etcd major/minor version as well as manage patches
+to each stable release branch. They are responsible for communicating the timelines and status of each release and
+for ensuring the stability of the release branch.
 
-| Releases               | Manager                                                     |
-|------------------------|-------------------------------------------------------------|
-| 3.4 patch (post 3.4.0) | Benjamin Wang [@ahrtr](https://github.com/ahrtr)            |
-| 3.5 patch (post 3.5.0) | Marek Siarkowicz [@serathius](https://github.com/serathius) |
+- Benjamin Wang [@ahrtr](https://github.com/ahrtr)
+- James Blair [@jmhbnz](https://github.com/jmhbnz)
+- Marek Siarkowicz [@serathius](https://github.com/serathius)
+- Sahdev Zala [@spzala](https://github.com/spzala)
+- Wenjia Zhang [@wenjiaswe](https://github.com/wenjiaswe)
 
 All releases version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
@@ -37,39 +38,65 @@ All releases version numbers follow the format of [semantic versioning 2.0.0](ht
 - Put `[GH XXXX]` at the head of change line to reference Pull Request that introduces the change. Moreover, add a link on it to jump to the Pull Request.
 - Find PRs with `release-note` label and explain them in `NEWS` file, as a straightforward summary of changes for end-users.
 
-## Build and push the release artifacts
+## Patch release criteria
 
-- Ensure `docker` is available.
+The etcd project aims to release a new patch version if any of the following conditions are met:
 
-Run release script in root directory:
+- Fixed one or more major CVEs (>=7.5).
+- Fixed one or more critical bugs.
+- Fixed three or more major bugs.
+- Fixed five or more minor bugs.
 
+## Release guide
+
+### Prerequisites
+
+There are some prerequisites, which should be done before the release process. These are one time operations,
+which don't need to be executed before releasing each version.
+1. Generate a GPG key and add it to your github account. Refer to the links on [settings](https://github.com/settings/keys).
+2. Ensure you have a Linux machine, on which the git, golang and docker have been installed.
+    - Ensure the golang version matches the version defined in `.go-version` file.
+    - Ensure non-privileged users can run docker commands, refer to the [Linux postinstall](https://docs.docker.com/engine/install/linux-postinstall/).
+    - Ensure there is at least 500MB free space on your Linux machine.
+3. Install gsutil, refer to [gsutil_install](https://cloud.google.com/storage/docs/gsutil_install).
+4. Authenticate the image registry, refer to [Authentication methods](https://cloud.google.com/container-registry/docs/advanced-authentication).
+   - `gcloud auth login`
+   - `gcloud auth configure-docker`
+
+### Release steps
+
+1. Raise an issue to public the release plan, e.g. [issues/17350](https://github.com/etcd-io/etcd/issues/17350).
+2. Verify you can pass the authentication to the image registries,
+   - `docker login gcr.io`
+   - `docker login quay.io`
+3. Clone the etcd repository and checkout the target branch,
+   - `git clone git@github.com:etcd-io/etcd.git`
+   - `git checkout release-3.X`
+4. Run the release script under the repository's root directory,
+   - `DRY_RUN=false ./scripts/release.sh ${VERSION}`
+
+   It generates all release binaries under directory ./release and images. Binaries are pushed to the google cloud bucket
+   under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
+5. Publish release page in Github
+   - Set release title as the version name
+   - Follow the format of previous release pages
+   - Attach the generated binaries and signature file
+   - Select whether it's a pre-release
+   - Publish the release
+6. Announce to the etcd-dev googlegroup
+
+   Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below,
 ```
-DRY_RUN=false ./scripts/release.sh ${VERSION}
+Hello,
+
+etcd v3.4.30 is now public!
+
+https://github.com/etcd-io/etcd/releases/tag/v3.4.30
+
+Thanks to everyone who contributed to the release!
+
+etcd team
 ```
-
-It generates all release binaries and images under directory ./release.
-Binaries are pushed to gcr.io and images are pushed to quay.io and gcr.io.
-
-## Publish release page in GitHub
-
-- Set release title as the version name.
-- Follow the format of previous release pages.
-- Attach the generated binaries and signatures.
-- Select whether it is a pre-release.
-- Publish the release!
-
-## Announce to the etcd-dev Googlegroup
-
-- Follow the format of [previous release emails](https://groups.google.com/g/etcd-dev).
-- Make sure to include a list of authors that contributed since the previous release - something like the following might be handy:
-
-```
-git log ...${PREV_VERSION} --pretty=format:"%an" | sort | uniq | tr '\n' ',' | sed -e 's#,#, #g' -e 's#, $##'
-```
-
-- Send email to etcd-dev@googlegroups.com
-
-## Post release
-
-- Create new stable branch through `git push origin ${VERSION_MAJOR}.${VERSION_MINOR}` if this is a major stable release. This assumes `origin` corresponds to "https://github.com/etcd-io/etcd".
-- Bump [hardcoded Version in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L30) to the version `${VERSION}+git`.
+7. Update the changelog to reflect the correct release date.
+8. Paste the release link to the issue raised at step 1 and close the issue.
+9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.

@@ -99,7 +99,7 @@ func TestInitialCheck(t *testing.T) {
 		{
 			name: "Cluster ID Mismatch does not fail CorruptionChecker.InitialCheck()",
 			hasher: fakeHasher{
-				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIDMismatch}},
 			},
 			expectActions: []string{"MemberId()", "ReqTimeout()", "HashByRev(0)", "PeerHashByRev(0)", "MemberId()", "MemberId()"},
 		},
@@ -223,7 +223,7 @@ func TestPeriodicCheck(t *testing.T) {
 		{
 			name: "Cluster ID Mismatch does not fail CorruptionChecker.PeriodicCheck()",
 			hasher: fakeHasher{
-				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIDMismatch}},
 			},
 			expectActions: []string{"HashByRev(0)", "PeerHashByRev(0)", "ReqTimeout()", "LinearizableReadNotify()", "HashByRev(0)"},
 		},
@@ -416,7 +416,7 @@ func TestCompactHashCheck(t *testing.T) {
 			name: "Cluster ID Mismatch does not fail CorruptionChecker.CompactHashCheck()",
 			hasher: fakeHasher{
 				hashes:     []mvcc.KeyValueHash{{Revision: 1, CompactRevision: 1, Hash: 1}},
-				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIdMismatch}},
+				peerHashes: []*peerHashKVResp{{err: rpctypes.ErrClusterIDMismatch}},
 			},
 			expectActions: []string{"MemberId()", "ReqTimeout()", "Hashes()", "PeerHashByRev(1)", "MemberId()"},
 		},

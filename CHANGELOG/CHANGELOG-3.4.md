@@ -7,16 +7,17 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ## v3.4.31 (TBD)
 
 ### etcd server
-- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17436)
-- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17465)
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17436).
+- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17465).
+- Fix [no progress notification being sent for watch that doesn't get any events](https://github.com/etcd-io/etcd/pull/17567).
 
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17369).
 
 ### Dependencies
-- Compile binaries using [go 1.21.6](https://github.com/etcd-io/etcd/pull/17368).
 - Upgrade [bbolt to 1.3.9](https://github.com/etcd-io/etcd/pull/17484).
 - Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17538).
+- Upgrade [google.golang.org/protobuf to v1.33.0 to address CVE-2024-24786](https://github.com/etcd-io/etcd/pull/17554).
 
 ### Others
 - [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17422).

@@ -345,11 +345,11 @@ func authority(endpoint string) string {
 func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCredentials {
 	r := endpoint.RequiresCredentials(ep)
 	switch r {
-	case endpoint.CREDS_DROP:
+	case endpoint.CredsDrop:
 		return nil
-	case endpoint.CREDS_OPTIONAL:
+	case endpoint.CredsOptional:
 		return c.creds
-	case endpoint.CREDS_REQUIRE:
+	case endpoint.CredsRequire:
 		if c.creds != nil {
 			return c.creds
 		}

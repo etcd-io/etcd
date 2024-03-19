@@ -150,7 +150,7 @@ func (cm *corruptionChecker) InitialCheck() error {
 					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(err),
 				)
-			case rpctypes.ErrClusterIdMismatch:
+			case rpctypes.ErrClusterIDMismatch:
 				cm.lg.Warn(
 					"cluster ID mismatch",
 					zap.String("local-member-id", cm.hasher.MemberId().String()),
@@ -611,7 +611,7 @@ func HashByRev(ctx context.Context, cid types.ID, cc *http.Client, url string, r
 		}
 	} else if resp.StatusCode == http.StatusPreconditionFailed {
 		if strings.Contains(string(b), rafthttp.ErrClusterIDMismatch.Error()) {
-			return nil, rpctypes.ErrClusterIdMismatch
+			return nil, rpctypes.ErrClusterIDMismatch
 		}
 	}
 	if resp.StatusCode != http.StatusOK {
