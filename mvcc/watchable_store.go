@@ -15,16 +15,17 @@
 package mvcc
 
 import (
-	"go.etcd.io/etcd/auth"
-	"go.etcd.io/etcd/clientv3"
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/auth"
+	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/lease"
 	"go.etcd.io/etcd/mvcc/backend"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/traceutil"
-	"go.uber.org/zap"
 )
 
 // non-const so modifiable by tests
@@ -370,6 +371,11 @@ func (s *watchableStore) syncWatchers() int {
 	var victims watcherBatch
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
+		if w.minRev < compactionRev {
+			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
+			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
+			continue
+		}
 		w.minRev = curRev + 1
 
 		eb, ok := wb[w]
