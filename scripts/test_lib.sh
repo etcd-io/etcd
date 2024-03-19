@@ -453,3 +453,36 @@ function git_assert_branch_in_sync {
     log_warning "Cannot verify consistency with the origin, as git is on detached branch."
   fi
 }
+
+# Generic function to execute specific test functions
+function test_executor {
+  local test_function="${1}"
+  shift 1
+  log_callout -e "\\n'${test_function}' started at $(date)"
+  if "${test_function}" "$@" ; then
+    log_success "'${test_function}' PASSED and completed at $(date)"
+    return 0
+  else
+    log_error "FAIL: '${test_function}' FAILED at $(date)"
+    if [ "$KEEP_GOING_SUITE" = true ]; then
+      return 2
+    else
+      exit 255
+    fi
+  fi
+}
+
+# execute integration test and e2e tests
+function integration_e2e_pass {
+  run_pass "integration" "${@}"
+  test_executor "e2e_test" "${@}"
+}
+
+################Run e2e tests###############################################
+function e2e_test {
+  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+}
