@@ -24,15 +24,17 @@ import (
 )
 
 type RangeOptions struct {
-	Limit int64
-	Rev   int64
-	Count bool
+	Limit    int64
+	MaxBytes int64
+	Rev      int64
+	Count    bool
 }
 
 type RangeResult struct {
 	KVs   []mvccpb.KeyValue
 	Rev   int64
 	Count int
+	More  bool
 }
 
 type ReadView interface {

@@ -92,12 +92,13 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 	}
 
 	limit := int(ro.Limit)
-	if limit <= 0 || limit > len(revpairs) {
+	if limit <= 0 || limit >= len(revpairs) {
 		limit = len(revpairs)
 	}
 
 	kvs := make([]mvccpb.KeyValue, limit)
 	revBytes := NewRevBytes()
+	var totalBytes int64
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
 		case <-ctx.Done():
@@ -120,6 +121,11 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				zap.Int("len-values", len(vs)),
 			)
 		}
+		totalBytes += int64(len(vs[0]))
+		if ro.MaxBytes > 0 && totalBytes > ro.MaxBytes {
+			kvs = kvs[:i]
+			break
+		}
 		if err := kvs[i].Unmarshal(vs[0]); err != nil {
 			tr.s.lg.Fatal(
 				"failed to unmarshal mvccpb.KeyValue",
@@ -128,7 +134,7 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		}
 	}
 	tr.trace.Step("range keys from bolt db")
-	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+	return &RangeResult{KVs: kvs, Count: total, Rev: curRev, More: total > len(kvs)}, nil
 }
 
 func (tr *storeTxnRead) End() {

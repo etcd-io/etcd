@@ -156,6 +156,9 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	if o.Limit != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLimit(int64(o.Limit)))
 	}
+	if o.MaxBytes != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMaxBytes(int64(o.MaxBytes)))
+	}
 	if o.FromKey {
 		clientOpts = append(clientOpts, clientv3.WithFromKey())
 	}

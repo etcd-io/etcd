@@ -35,6 +35,7 @@ type GetOptions struct {
 	Prefix       bool
 	FromKey      bool
 	Limit        int
+	MaxBytes     int
 	Order        clientv3.SortOrder
 	SortBy       clientv3.SortTarget
 	Timeout      time.Duration
