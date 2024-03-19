@@ -23,11 +23,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
-	"go.uber.org/zap"
 )
 
 func TestWatch(t *testing.T) {
@@ -256,6 +259,62 @@ func TestWatchCompacted(t *testing.T) {
 		}
 	case <-time.After(1 * time.Second):
 		t.Fatalf("failed to receive response (timeout)")
+	}
+}
+
+func TestWatchNoEventLossOnCompact(t *testing.T) {
+	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
+	b, tmpPath := betesting.NewDefaultTmpBackend(t)
+	lg := zaptest.NewLogger(t)
+	s := newWatchableStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+
+	defer func() {
+		cleanup(s, b, tmpPath)
+		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
+	}()
+
+	chanBufLen, maxWatchersPerSync = 1, 4
+	testKey, testValue := []byte("foo"), []byte("bar")
+
+	maxRev := 10
+	compactRev := int64(5)
+	for i := 0; i < maxRev; i++ {
+		s.Put(testKey, testValue, lease.NoLease)
+	}
+	_, err := s.Compact(traceutil.TODO(), compactRev)
+	require.NoErrorf(t, err, "failed to compact kv (%v)", err)
+
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	watchers := map[WatchID]int64{
+		0: 1,
+		1: 1, // create unsyncd watchers with startRev < compactRev
+		2: 6, // create unsyncd watchers with compactRev < startRev < currentRev
+	}
+	for id, startRev := range watchers {
+		_, err := w.Watch(id, testKey, nil, startRev)
+		require.NoError(t, err)
+	}
+	// fill up w.Chan() with 1 buf via 2 compacted watch response
+	s.syncWatchers()
+
+	for len(watchers) > 0 {
+		resp := <-w.Chan()
+		if resp.CompactRevision != 0 {
+			require.Equal(t, resp.CompactRevision, compactRev)
+			require.Contains(t, watchers, resp.WatchID)
+			delete(watchers, resp.WatchID)
+			continue
+		}
+		nextRev := watchers[resp.WatchID]
+		for _, ev := range resp.Events {
+			require.Equalf(t, nextRev, ev.Kv.ModRevision, "got event revision %d but want %d for watcher with watch ID %d", ev.Kv.ModRevision, nextRev, resp.WatchID)
+			nextRev++
+		}
+		if nextRev == s.rev()+1 {
+			delete(watchers, resp.WatchID)
+		}
 	}
 }
 
