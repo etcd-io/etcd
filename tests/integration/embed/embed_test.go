@@ -25,14 +25,18 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -187,6 +191,118 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	}
 }
 
+//func TestEmbedEtcdClusterGracefulStopSecure(t *testing.T) {
+//	testEmbedEtcdClusterGracefulStop(t, true)
+//}
+
+func TestEmbedEtcdClusterGracefulStopInsecure(t *testing.T) {
+	testEmbedEtcdClusterGracefulStop(t, false)
+}
+
+func testEmbedEtcdClusterGracefulStop(t *testing.T, secure bool) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
+	nodes := 3 // need to be an odd number larger than 1
+
+	urls := newEmbedURLs(secure, nodes*2)
+
+	// start a cluster
+	var err error
+	cfg := make([]*embed.Config, nodes)
+	e := make([]*embed.Etcd, nodes)
+	for i := 0; i < nodes; i++ {
+		cfg[i] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], i)
+		e[i], err = embed.StartEtcd(cfg[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// wait for all nodes to be ready
+	for i := 0; i < nodes; i++ {
+		select {
+		case <-e[i].Server.ReadyNotify(): // wait for e.Server to join the cluster
+		case <-time.After(10 * time.Second):
+			t.Fatalf("node %d did not join the cluster in time", i)
+		}
+	}
+
+	// make sure all nodes joined the cluster and are not learners
+	requireHealthClusterEventually(t, e, 50*time.Millisecond, time.Second, secure)
+
+	// stop one node
+	e[nodes-1].Close()
+
+	// remove the stopped node from the cluster
+	removeMember(t, e[0], e[nodes-1].Server.MemberId(), secure)
+
+	// start the node again -> fails as it was removed from the cluster
+	cfg[nodes-1] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], nodes-1)
+	e[nodes-1], err = embed.StartEtcd(cfg[nodes-1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-e[nodes-1].Server.ReadyNotify():
+		t.Fatal("the start should have failed")
+	case <-e[nodes-1].Server.StopNotify():
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		for i := 0; i < nodes; i++ {
+			e[i].Close()
+		}
+	}()
+	select {
+	case <-donec:
+	case <-time.After(2*time.Second + e[0].Server.Cfg.ReqTimeout()):
+		t.Fatalf("took too long to close servers")
+	}
+}
+
+func TestEmbedEtcdClusterStartPartialInsecure(t *testing.T) {
+	testEmbedEtcdClusterStartPartial(t, false)
+}
+
+func testEmbedEtcdClusterStartPartial(t *testing.T, secure bool) {
+	testutil.SkipTestIfShortMode(t, "Cannot start embedded cluster in --short tests")
+
+	nodes := 3 // need to be an odd number larger than 1
+
+	urls := newEmbedURLs(secure, nodes*2)
+
+	// set up a cluster but only start the first node
+	cfg := make([]*embed.Config, nodes)
+	for i := 0; i < nodes; i++ {
+		cfg[i] = setupEmbedClusterCfg(t, secure, urls[0:nodes], urls[nodes:], i)
+	}
+	e, err := embed.StartEtcd(cfg[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-e.Server.ReadyNotify():
+		t.Fatal("server should not have been ready")
+	case <-e.Server.StopNotify():
+		t.Fatal("server should not have been stopped")
+	case <-time.After(time.Second):
+	}
+
+	donec := make(chan struct{})
+	go func() {
+		defer close(donec)
+		e.Close()
+	}()
+	select {
+	case <-donec:
+	case <-time.After(2*time.Second + e.Server.Cfg.ReqTimeout()):
+		printCallstacks()
+		t.Fatalf("took too long to close servers")
+	}
+}
+
 func newEmbedURLs(secure bool, n int) (urls []url.URL) {
 	scheme := "unix"
 	if secure {
@@ -213,6 +329,105 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 	cfg.InitialCluster = cfg.InitialCluster[1:]
 }
 
+func setupEmbedClusterCfg(t *testing.T, secure bool, curls []url.URL, purls []url.URL, n int) *embed.Config {
+	cfg := embed.NewConfig()
+	if secure {
+		cfg.ClientTLSInfo = testTLSInfo
+		cfg.PeerTLSInfo = testTLSInfo
+	}
+
+	cfg.Logger = "zap"
+	cfg.LogOutputs = []string{"/dev/null"}
+
+	cfg.Name = fmt.Sprintf("node-%d", n)
+	cfg.ClusterState = "new"
+	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = []url.URL{curls[n]}, []url.URL{curls[n]}
+	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = []url.URL{purls[n]}, []url.URL{purls[n]}
+	cfg.InitialCluster = ""
+	for i := range purls {
+		cfg.InitialCluster += fmt.Sprintf(",node-%d=%s", i, purls[i].String())
+	}
+	cfg.InitialCluster = cfg.InitialCluster[1:]
+	cfg.Dir = filepath.Join(t.TempDir(), fmt.Sprintf("embed-etcd-%d", n))
+
+	return cfg
+}
+
+func requireHealthClusterEventually(t *testing.T, instances []*embed.Etcd, checkPeriod time.Duration, timeout time.Duration, secure bool) {
+	var clients []*clientv3.Client
+	defer func() {
+		for _, client := range clients {
+			assert.NoError(t, client.Close())
+		}
+	}()
+
+	for _, instance := range instances {
+		clientCfg := clientv3.Config{
+			Endpoints: []string{instance.Config().AdvertiseClientUrls[0].String()},
+		}
+		if secure {
+			var err error
+			clientCfg.TLS, err = testTLSInfo.ClientConfig()
+			require.NoError(t, err)
+		}
+		cli, err := integration2.NewClient(t, clientCfg)
+		require.NoError(t, err)
+		clients = append(clients, cli)
+	}
+
+	timeoutCtx, timeoutCtxCancel := context.WithTimeout(context.Background(), timeout)
+	defer timeoutCtxCancel()
+
+	for {
+		select {
+		case <-time.After(checkPeriod):
+			allPassed := true
+			for _, client := range clients {
+				if !isHealthy(client) {
+					allPassed = false
+					break
+				}
+			}
+			if allPassed {
+				return
+			}
+		case <-timeoutCtx.Done():
+			t.Fatal("nodes did not become members in time")
+		}
+	}
+}
+
+// perform a similar test as what "etcdctl endpoint health" does
+func isHealthy(cli *clientv3.Client) bool {
+	ctx, ctxCanel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer ctxCanel()
+
+	// get a random key. As long as we can get the response without an error, the endpoint is health.
+	_, err := cli.Get(ctx, "health")
+	// permission denied is OK since proposal goes through consensus to get it
+	return err == nil || err == rpctypes.ErrPermissionDenied
+}
+
+func removeMember(t *testing.T, instance *embed.Etcd, memberID types.ID, secure bool) {
+	ctx, ctxCanel := context.WithTimeout(context.Background(), time.Second)
+	defer ctxCanel()
+
+	clientCfg := clientv3.Config{
+		Endpoints: []string{instance.Config().AdvertiseClientUrls[0].String()},
+	}
+	if secure {
+		var err error
+		clientCfg.TLS, err = testTLSInfo.ClientConfig()
+		require.NoError(t, err)
+	}
+	cli, err := integration2.NewClient(t, clientCfg)
+	require.NoError(t, err)
+	defer cli.Close()
+
+	_, err = cli.MemberRemove(ctx, uint64(memberID))
+	require.NoError(t, err)
+}
+
 func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	cfg := embed.NewConfig()
 	urls := newEmbedURLs(false, 2)
@@ -227,4 +442,11 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	duration_to_compare, _ := time.ParseDuration("2h0m0s")
 	assert.Equal(t, duration_to_compare, autoCompactionRetention)
 	e.Close()
+}
+
+func printCallstacks() {
+	buf := make([]byte, 64*1024)
+	bytes := runtime.Stack(buf, true)
+
+	println(string(buf[0:bytes]))
 }
