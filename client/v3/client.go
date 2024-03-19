@@ -68,7 +68,10 @@ type Client struct {
 	// Username is a user name for authentication.
 	Username string
 	// Password is a password for authentication.
-	Password        string
+	Password string
+	// Token is a JWT used for authentication instead of a password.
+	Token string
+
 	authTokenBundle credentials.PerRPCCredentialsBundle
 
 	callOpts []grpc.CallOption
@@ -277,8 +280,20 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 	return c.dial(creds, grpc.WithResolvers(resolver.New(ep)))
 }
 
+// UpdateAuthToken allows updating the JWT auth token held by the
+// client. It is safe to call this function concurrently with other
+// operations.
+func (c *Client) UpdateAuthToken(token string) {
+	c.authTokenBundle.UpdateAuthToken(token)
+}
+
 func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
+
+	if c.Token != "" {
+		c.UpdateAuthToken(c.Token)
+		return nil
+	}
 
 	if c.Username == "" || c.Password == "" {
 		return nil
@@ -287,12 +302,12 @@ func (c *Client) getToken(ctx context.Context) error {
 	resp, err := c.Auth.Authenticate(ctx, c.Username, c.Password)
 	if err != nil {
 		if err == rpctypes.ErrAuthNotEnabled {
-			c.authTokenBundle.UpdateAuthToken("")
+			c.UpdateAuthToken("")
 			return nil
 		}
 		return err
 	}
-	c.authTokenBundle.UpdateAuthToken(resp.Token)
+	c.UpdateAuthToken(resp.Token)
 	return nil
 }
 
@@ -406,6 +421,12 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
 	}
+
+	if cfg.Token != "" {
+		client.Token = cfg.Token
+		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
+	}
+
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
 			return nil, fmt.Errorf("gRPC message recv limit (%d bytes) must be greater than send limit (%d bytes)", cfg.MaxCallRecvMsgSize, cfg.MaxCallSendMsgSize)
