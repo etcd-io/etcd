@@ -18,32 +18,43 @@ import (
 	"encoding/json"
 	"path"
 
-	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 )
 
-func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) {
-	if r.Method != "PUT" || (!storeMemberAttributeRegexp.MatchString(r.Path) && r.Path != membership.StoreClusterVersionKey()) {
-		s.lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", r.Method))
-	}
-	if storeMemberAttributeRegexp.MatchString(r.Path) {
-		id := membership.MustParseMemberIDFromKey(s.lg, path.Dir(r.Path))
+func v2ToV3Request(lg *zap.Logger, r *RequestV2) pb.InternalRaftRequest {
+	if r.Method == "PUT" && storeMemberAttributeRegexp.MatchString(r.Path) {
+		id := membership.MustParseMemberIDFromKey(lg, path.Dir(r.Path))
 		var attr membership.Attributes
 		if err := json.Unmarshal([]byte(r.Val), &attr); err != nil {
-			s.lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
+			lg.Panic("failed to unmarshal", zap.String("value", r.Val), zap.Error(err))
 		}
-		if s.cluster != nil {
-			s.cluster.UpdateAttributes(id, attr, shouldApplyV3)
+		return pb.InternalRaftRequest{
+			Header: &pb.RequestHeader{
+				ID: r.ID,
+			},
+			ClusterMemberAttrSet: &membershippb.ClusterMemberAttrSetRequest{
+				Member_ID: uint64(id),
+				MemberAttributes: &membershippb.Attributes{
+					Name:       attr.Name,
+					ClientUrls: attr.ClientURLs,
+				},
+			},
 		}
 	}
-	// TODO remove v2 version set to avoid the conflict between v2 and v3 in etcd 3.6
-	if r.Path == membership.StoreClusterVersionKey() {
-		if s.cluster != nil {
-			// persist to backend given v2store can be very stale
-			s.cluster.SetVersion(semver.Must(semver.NewVersion(r.Val)), api.UpdateCapability, shouldApplyV3)
+	if r.Method == "PUT" && r.Path == membership.StoreClusterVersionKey() {
+		return pb.InternalRaftRequest{
+			Header: &pb.RequestHeader{
+				ID: r.ID,
+			},
+			ClusterVersionSet: &membershippb.ClusterVersionSetRequest{
+				Ver: r.Val,
+			},
 		}
 	}
+	lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", r.Method))
+	return pb.InternalRaftRequest{}
 }
