@@ -423,7 +423,7 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       lg,
-		memberId: 1,
+		memberID: 1,
 		r:        *r,
 		cluster:  cl,
 		beHooks:  serverstorage.NewBackendHooks(lg, nil),
@@ -471,7 +471,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		memberId:     1,
+		memberID:     1,
 		r:            *realisticRaftNode(lg, 1, nil),
 		cluster:      cl,
 		w:            wait.New(),
@@ -565,7 +565,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		memberId:     2,
+		memberID:     2,
 		r:            *r,
 		cluster:      cl,
 		w:            wait.New(),
@@ -933,7 +933,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		memberId:     1,
+		memberID:     1,
 		r:            *r,
 		v2store:      st,
 		cluster:      cl,
@@ -945,13 +945,13 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	// Mock a mad switch dispatching messages to wrong node.
 	m := raftpb.Message{
 		Type:   raftpb.MsgHeartbeat,
-		To:     2, // Wrong ID, s.MemberId() is 1.
+		To:     2, // Wrong ID, s.MemberID() is 1.
 		From:   3,
 		Term:   11,
 		Commit: 42, // Commit is larger than the last index 11.
 	}
-	if types.ID(m.To) == s.MemberId() {
-		t.Fatalf("m.To (%d) is expected to mismatch s.MemberId (%d)", m.To, s.MemberId())
+	if types.ID(m.To) == s.MemberID() {
+		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	}
 	err := s.Process(context.Background(), m)
 	if err == nil {
@@ -1076,7 +1076,7 @@ func TestPublishV3(t *testing.T) {
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		memberId:   1,
+		memberID:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
@@ -1147,7 +1147,7 @@ func TestPublishV3Retry(t *testing.T) {
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		memberId:   1,
+		memberID:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),
@@ -1197,7 +1197,7 @@ func TestUpdateVersionV3(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zaptest.NewLogger(t),
-		memberId:   1,
+		memberID:   1,
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
 		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},

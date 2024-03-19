@@ -50,7 +50,7 @@ func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest) *Result {
 
 type fakeRaftStatusGetter struct{}
 
-func (*fakeRaftStatusGetter) MemberId() types.ID {
+func (*fakeRaftStatusGetter) MemberID() types.ID {
 	return 0
 }
 func (*fakeRaftStatusGetter) Leader() types.ID {
@@ -121,7 +121,7 @@ const (
 	rangeEnd        = "rangeEnd"
 	keyOutsideRange = "rangeEnd_outside"
 
-	LeaseId = 1
+	leaseID = 1
 )
 
 func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
@@ -460,7 +460,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 
 	_, err := authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
@@ -469,7 +469,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
@@ -478,7 +478,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
@@ -487,7 +487,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.Equal(t, err, auth.ErrPermissionDenied)
 }
@@ -684,20 +684,20 @@ func TestAuthApplierV3_LeaseRevoke(t *testing.T) {
 
 	_, err := authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should be able to revoke the lease
 	setAuthInfo(authApplier, userWriteOnly)
 	_, err = authApplier.LeaseRevoke(&pb.LeaseRevokeRequest{
-		ID: LeaseId,
+		ID: leaseID,
 	})
 	require.NoError(t, err)
 
 	_, err = authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
@@ -706,14 +706,14 @@ func TestAuthApplierV3_LeaseRevoke(t *testing.T) {
 	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should not be able to revoke the lease anymore
 	setAuthInfo(authApplier, userWriteOnly)
 	_, err = authApplier.LeaseRevoke(&pb.LeaseRevokeRequest{
-		ID: LeaseId,
+		ID: leaseID,
 	})
 	require.Equal(t, err, auth.ErrPermissionDenied)
 }

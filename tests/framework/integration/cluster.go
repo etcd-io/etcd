@@ -359,7 +359,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 	}
 	newMembers := make([]*Member, 0)
 	for _, m := range c.Members {
-		if uint64(m.Server.MemberId()) != id {
+		if uint64(m.Server.MemberID()) != id {
 			newMembers = append(newMembers, m)
 		} else {
 			m.Client.Close()
@@ -370,7 +370,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 			// TODO: remove connection write timeout by selecting on http response closeNotifier
 			// blocking on https://github.com/golang/go/issues/9524
 			case <-time.After(time.Second + time.Duration(ElectionTicks)*framecfg.TickDuration + time.Second + rafthttp.ConnWriteTimeout):
-				t.Fatalf("failed to remove member %s in time", m.Server.MemberId())
+				t.Fatalf("failed to remove member %s in time", m.Server.MemberID())
 			}
 		}
 	}
@@ -444,7 +444,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
-		possibleLead[uint64(m.Server.MemberId())] = true
+		possibleLead[uint64(m.Server.MemberID())] = true
 	}
 	cc, err := c.ClusterClient(t)
 	if err != nil {
@@ -478,7 +478,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	}
 
 	for i, m := range membs {
-		if uint64(m.Server.MemberId()) == lead {
+		if uint64(m.Server.MemberID()) == lead {
 			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
@@ -888,7 +888,7 @@ func (m *Member) ElectionTimeout() time.Duration {
 	return time.Duration(m.Server.Cfg.ElectionTicks*int(m.Server.Cfg.TickMs)) * time.Millisecond
 }
 
-func (m *Member) ID() types.ID { return m.Server.MemberId() }
+func (m *Member) ID() types.ID { return m.Server.MemberID() }
 
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *Member) (*clientv3.Client, error) {
@@ -1358,18 +1358,18 @@ func (m *Member) Metric(metricName string, expectLabels ...string) (string, erro
 // InjectPartition drops connections from m to others, vice versa.
 func (m *Member) InjectPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.CutPeer(other.Server.MemberId())
-		other.Server.CutPeer(m.Server.MemberId())
-		t.Logf("network partition injected between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
+		m.Server.CutPeer(other.Server.MemberID())
+		other.Server.CutPeer(m.Server.MemberID())
+		t.Logf("network partition injected between: %v <-> %v", m.Server.MemberID(), other.Server.MemberID())
 	}
 }
 
 // RecoverPartition recovers connections from m to others, vice versa.
 func (m *Member) RecoverPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.MendPeer(other.Server.MemberId())
-		other.Server.MendPeer(m.Server.MemberId())
-		t.Logf("network partition between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
+		m.Server.MendPeer(other.Server.MemberID())
+		other.Server.MendPeer(m.Server.MemberID())
+		t.Logf("network partition between: %v <-> %v", m.Server.MemberID(), other.Server.MemberID())
 	}
 }
 

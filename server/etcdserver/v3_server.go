@@ -429,7 +429,7 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 func (s *EtcdServer) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(s.cluster.ID()),
-		MemberId:  uint64(s.MemberId()),
+		MemberId:  uint64(s.MemberID()),
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
 	}
@@ -790,7 +790,7 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
 func (s *EtcdServer) linearizableReadLoop() {
 	for {
-		requestId := s.reqIDGen.Next()
+		requestID := s.reqIDGen.Next()
 		leaderChangedNotifier := s.leaderChanged.Receive()
 		select {
 		case <-leaderChangedNotifier:
@@ -810,7 +810,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestId)
+		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
 		if isStopped(err) {
 			return
 		}
@@ -845,8 +845,8 @@ func isStopped(err error) bool {
 	return err == raft.ErrStopped || err == errors.ErrStopped
 }
 
-func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestId uint64) (uint64, error) {
-	err := s.sendReadIndex(requestId)
+func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestID uint64) (uint64, error) {
+	err := s.sendReadIndex(requestID)
 	if err != nil {
 		return 0, err
 	}
@@ -862,19 +862,19 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	for {
 		select {
 		case rs := <-s.r.readStateC:
-			requestIdBytes := uint64ToBigEndianBytes(requestId)
-			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIdBytes)
+			requestIDBytes := uint64ToBigEndianBytes(requestID)
+			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIDBytes)
 			if !gotOwnResponse {
 				// a previous request might time out. now we should ignore the response of it and
 				// continue waiting for the response of the current requests.
-				responseId := uint64(0)
+				responseID := uint64(0)
 				if len(rs.RequestCtx) == 8 {
-					responseId = binary.BigEndian.Uint64(rs.RequestCtx)
+					responseID = binary.BigEndian.Uint64(rs.RequestCtx)
 				}
 				lg.Warn(
 					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("sent-request-id", requestId),
-					zap.Uint64("received-request-id", responseId),
+					zap.Uint64("sent-request-id", requestID),
+					zap.Uint64("received-request-id", responseID),
 				)
 				slowReadIndex.Inc()
 				continue
@@ -887,7 +887,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-firstCommitInTermNotifier:
 			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
 			lg.Info("first commit in current term: resending ReadIndex request")
-			err := s.sendReadIndex(requestId)
+			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
 			}
@@ -896,10 +896,10 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-retryTimer.C:
 			lg.Warn(
 				"waiting for ReadIndex response took too long, retrying",
-				zap.Uint64("sent-request-id", requestId),
+				zap.Uint64("sent-request-id", requestID),
 				zap.Duration("retry-timeout", readIndexRetryTime),
 			)
-			err := s.sendReadIndex(requestId)
+			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
 			}

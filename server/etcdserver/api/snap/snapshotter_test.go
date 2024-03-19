@@ -170,7 +170,7 @@ func TestLoadNewestSnap(t *testing.T) {
 
 	cases := []struct {
 		name              string
-		availableWalSnaps []walpb.Snapshot
+		availableWALSnaps []walpb.Snapshot
 		expected          *raftpb.Snapshot
 	}{
 		{
@@ -179,17 +179,17 @@ func TestLoadNewestSnap(t *testing.T) {
 		},
 		{
 			name:              "loadnewestavailable-newest",
-			availableWalSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}, {Index: 5, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}, {Index: 5, Term: 1}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-newest-unsorted",
-			availableWalSnaps: []walpb.Snapshot{{Index: 5, Term: 1}, {Index: 1, Term: 1}, {Index: 0, Term: 0}},
+			availableWALSnaps: []walpb.Snapshot{{Index: 5, Term: 1}, {Index: 1, Term: 1}, {Index: 0, Term: 0}},
 			expected:          &newSnap,
 		},
 		{
 			name:              "loadnewestavailable-previous",
-			availableWalSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}},
+			availableWALSnaps: []walpb.Snapshot{{Index: 0, Term: 0}, {Index: 1, Term: 1}},
 			expected:          testSnap,
 		},
 	}
@@ -197,8 +197,8 @@ func TestLoadNewestSnap(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var err error
 			var g *raftpb.Snapshot
-			if tc.availableWalSnaps != nil {
-				g, err = ss.LoadNewestAvailable(tc.availableWalSnaps)
+			if tc.availableWALSnaps != nil {
+				g, err = ss.LoadNewestAvailable(tc.availableWALSnaps)
 			} else {
 				g, err = ss.Load()
 			}
