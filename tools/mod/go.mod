@@ -68,7 +68,7 @@ require (
 	github.com/dnephin/pflag v1.0.7 // indirect
 	github.com/elliotchance/orderedmap v1.5.1 // indirect
 	github.com/esimonov/ifshort v1.0.4 // indirect
-	github.com/ettle/strcase v0.1.1 // indirect
+	github.com/ettle/strcase v0.2.0 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/firefart/nonamedreturns v1.0.4 // indirect
@@ -210,20 +210,20 @@ require (
 	github.com/zmap/zcrypto v0.0.0-20220402174210-599ec18ecbac // indirect
 	github.com/zmap/zlint/v3 v3.4.1 // indirect
 	gitlab.com/bosi/decorder v0.4.1 // indirect
-	go-simpler.org/sloglint v0.1.2 // indirect
+	go-simpler.org/sloglint v0.5.0 // indirect
 	go.tmz.dev/musttag v0.7.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230307190834-24139beb5833 // indirect
-	golang.org/x/mod v0.14.0 // indirect
+	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/net v0.22.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/tools v0.17.0 // indirect
+	golang.org/x/tools v0.19.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
