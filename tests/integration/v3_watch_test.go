@@ -243,7 +243,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				t.Fatalf("#%d: canceled watcher on create %+v", i, cresp)
 			}
 
-			createdWatchId := cresp.WatchId
+			createdWatchID := cresp.WatchId
 			if cresp.Header == nil || cresp.Header.Revision != 1 {
 				t.Fatalf("#%d: header revision got +%v, wanted revison 1", i, cresp)
 			}
@@ -278,8 +278,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				if wresp.Created != resp.Created {
 					t.Errorf("#%d.%d: resp.Created got = %v, want = %v", i, j, resp.Created, wresp.Created)
 				}
-				if resp.WatchId != createdWatchId {
-					t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchId)
+				if resp.WatchId != createdWatchID {
+					t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchID)
 				}
 
 				if !reflect.DeepEqual(resp.Events, wresp.Events) {
@@ -1445,8 +1445,8 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 
 	// Verify that we get the watch responses first. Note that
 	// events might be spread across multiple packets.
-	var event_count = 0
-	for event_count < count {
+	eventCount := 0
+	for eventCount < count {
 		wr := <-wch
 		if wr.Err() != nil {
 			t.Fatal(fmt.Errorf("watch error: %w", wr.Err()))
@@ -1457,7 +1457,7 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 		if wr.Header.Revision != int64(count+1) {
 			t.Fatal("Incomplete watch response!")
 		}
-		event_count += len(wr.Events)
+		eventCount += len(wr.Events)
 	}
 	// client needs to request progress notification again
 	err = client.RequestProgress(ctx)

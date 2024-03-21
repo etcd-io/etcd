@@ -195,14 +195,14 @@ func TestFirstCommitNotification(t *testing.T) {
 	oldLeaderClient := cluster.Client(oldLeaderIdx)
 
 	newLeaderIdx := (oldLeaderIdx + 1) % clusterSize
-	newLeaderId := uint64(cluster.Members[newLeaderIdx].ID())
+	newLeaderID := uint64(cluster.Members[newLeaderIdx].ID())
 
 	notifiers := make(map[int]<-chan struct{}, clusterSize)
 	for i, clusterMember := range cluster.Members {
 		notifiers[i] = clusterMember.Server.FirstCommitInTermNotify()
 	}
 
-	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderId)
+	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderID)
 
 	if err != nil {
 		t.Errorf("got error during leadership transfer: %v", err)

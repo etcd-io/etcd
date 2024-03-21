@@ -389,15 +389,15 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				time.Sleep(tc.checkpointingInterval + 1*time.Second)
 
 				// Force a leader election
-				leaderId := clus.WaitLeader(t)
-				leader := clus.Members[leaderId]
+				leaderID := clus.WaitLeader(t)
+				leader := clus.Members[leaderID]
 				leader.Stop(t)
 				time.Sleep(time.Duration(3*integration.ElectionTicks) * framecfg.TickDuration)
 				leader.Restart(t)
 			}
 
-			newLeaderId := clus.WaitLeader(t)
-			c2 := integration.ToGRPC(clus.Client(newLeaderId))
+			newLeaderID := clus.WaitLeader(t)
+			c2 := integration.ToGRPC(clus.Client(newLeaderID))
 
 			time.Sleep(250 * time.Millisecond)
 
