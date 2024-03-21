@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.31 (TBD)
+## v3.4.32 (TBD)
+
+<hr>
+
+## v3.4.31 (2024-03-21)
 
 ### etcd server
 - Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17436).
