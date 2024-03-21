@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	ENV_VERIFY_VALUE_LOCK verify.VerificationType = "lock"
+	EnvVerifyValueLock verify.VerificationType = "lock"
 )
 
 func ValidateCalledInsideApply(lg *zap.Logger) {
@@ -57,7 +57,7 @@ func ValidateCalledInsideUnittest(lg *zap.Logger) {
 }
 
 func verifyLockEnabled() bool {
-	return verify.IsVerificationEnabled(ENV_VERIFY_VALUE_LOCK)
+	return verify.IsVerificationEnabled(EnvVerifyValueLock)
 }
 
 func insideApply() bool {

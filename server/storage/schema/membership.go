@@ -93,12 +93,12 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	tx.RLock()
 	defer tx.RUnlock()
 	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
-		memberId := mustParseMemberIDFromBytes(s.lg, k)
-		m := &membership.Member{ID: memberId}
+		memberID := mustParseMemberIDFromBytes(s.lg, k)
+		m := &membership.Member{ID: memberID}
 		if err := json.Unmarshal(v, &m); err != nil {
 			return err
 		}
-		members[memberId] = m
+		members[memberID] = m
 		return nil
 	})
 	if err != nil {
@@ -106,8 +106,8 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	}
 
 	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
-		memberId := mustParseMemberIDFromBytes(s.lg, k)
-		removed[memberId] = true
+		memberID := mustParseMemberIDFromBytes(s.lg, k)
+		removed[memberID] = true
 		return nil
 	})
 	if err != nil {
