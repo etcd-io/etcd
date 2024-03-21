@@ -408,11 +408,11 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < 10; i++ {
-		clientId := i
+		clientID := i
 		g.Go(func() error {
 			cc := epc.Etcdctl()
 			for j := 0; j < 100; j++ {
-				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientId), config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
 					return err
 				}
 			}

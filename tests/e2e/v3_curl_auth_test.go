@@ -237,7 +237,7 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 		Endpoint: "/v3/auth/user/list",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	users, ok := resp["users"]
@@ -366,7 +366,7 @@ func testCurlV3AuthRoleBasicOperations(cx ctlCtx) {
 		Endpoint: "/v3/auth/role/list",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	roles, ok := resp["roles"]

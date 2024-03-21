@@ -116,7 +116,7 @@ func mustListMembers(cx ctlCtx) []any {
 		Endpoint: "/v3/cluster/member/list",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	members, ok := resp["members"]

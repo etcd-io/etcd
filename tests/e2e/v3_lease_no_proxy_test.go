@@ -82,7 +82,7 @@ func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
 
 	resp, err := client.Status(ctx, epsForNormalOperations[0])
 	require.NoError(t, err)
-	oldLeaderId := resp.Leader
+	oldLeaderID := resp.Leader
 
 	t.Log("Creating a new lease")
 	leaseRsp, err := client.Grant(ctx, 20)
@@ -118,11 +118,11 @@ func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
 	require.NoError(t, err)
 
 	cctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	t.Logf("Waiting for a new leader to be elected, old leader index: %d, old leader ID: %d", leaderIdx, oldLeaderId)
+	t.Logf("Waiting for a new leader to be elected, old leader index: %d, old leader ID: %d", leaderIdx, oldLeaderID)
 	testutils.ExecuteUntil(cctx, t, func() {
 		for {
 			resp, err = client.Status(ctx, epsForNormalOperations[0])
-			if err == nil && resp.Leader != oldLeaderId {
+			if err == nil && resp.Leader != oldLeaderID {
 				t.Logf("A new leader has already been elected, new leader index: %d", resp.Leader)
 				return
 			}

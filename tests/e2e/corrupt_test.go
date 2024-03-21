@@ -218,7 +218,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 		assert.NoError(t, err, "error on put")
 	}
 
-	memberID, found, err := getMemberIdByName(ctx, cc, epc.Procs[0].Config().Name)
+	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
 	assert.Equal(t, found, true, "member not found")
 
@@ -258,7 +258,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		assert.NoError(t, err, "error on put")
 	}
-	memberID, found, err := getMemberIdByName(ctx, cc, epc.Procs[0].Config().Name)
+	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
 	assert.Equal(t, found, true, "member not found")
 

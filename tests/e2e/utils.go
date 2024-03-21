@@ -108,7 +108,7 @@ func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.Clie
 	return strings.Join(lines, "\n"), nil
 }
 
-func runCommandAndReadJsonOutput(args []string) (map[string]any, error) {
+func runCommandAndReadJSONOutput(args []string) (map[string]any, error) {
 	lines, err := e2e.RunUtilCompletion(args, nil)
 	if err != nil {
 		return nil, err
@@ -123,7 +123,7 @@ func runCommandAndReadJsonOutput(args []string) (map[string]any, error) {
 	return resp, nil
 }
 
-func getMemberIdByName(ctx context.Context, c *e2e.EtcdctlV3, name string) (id uint64, found bool, err error) {
+func getMemberIDByName(ctx context.Context, c *e2e.EtcdctlV3, name string) (id uint64, found bool, err error) {
 	resp, err := c.MemberList(ctx, false)
 	if err != nil {
 		return 0, false, err

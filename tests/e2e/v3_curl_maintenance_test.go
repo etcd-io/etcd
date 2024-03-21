@@ -48,7 +48,7 @@ func testCurlV3MaintenanceStatus(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/status",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	requiredFields := []string{"version", "dbSize", "leader", "raftIndex", "raftTerm", "raftAppliedIndex", "dbSizeInUse", "storageVersion"}
@@ -88,7 +88,7 @@ func testCurlV3MaintenanceHash(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/hash",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	requiredFields := []string{"header", "hash"}
@@ -109,7 +109,7 @@ func testCurlV3MaintenanceHashKV(cx ctlCtx) {
 		Endpoint: "/v3/maintenance/hashkv",
 		Value:    "{}",
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	requiredFields := []string{"header", "hash", "compact_revision", "hash_revision"}
