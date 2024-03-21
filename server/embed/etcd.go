@@ -639,7 +639,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	for _, u := range cfg.ListenClientUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
@@ -652,7 +652,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.network = network
 	}
 	for _, u := range cfg.ListenClientHttpUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
 		if sctx == nil {
@@ -715,7 +715,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	return sctxs, nil
 }
 
-func resolveUrl(u url.URL) (addr string, secure bool, network string) {
+func resolveURL(u url.URL) (addr string, secure bool, network string) {
 	addr = u.Host
 	network = "tcp"
 	if u.Scheme == "unix" || u.Scheme == "unixs" {
@@ -757,26 +757,26 @@ func (e *Etcd) serveClients() {
 		}))
 	}
 
-	splitHttp := false
+	splitHTTP := false
 	for _, sctx := range e.sctxs {
 		if sctx.httpOnly {
-			splitHttp = true
+			splitHTTP = true
 		}
 	}
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
 }
 
-func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
+func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
 	if !e.cfg.EnableGRPCGateway {
 		return nil
 	}
-	sctx := e.pickGrpcGatewayServeContext(splitHttp)
+	sctx := e.pickGRPCGatewayServeContext(splitHTTP)
 	addr := sctx.addr
 	if network := sctx.network; network == "unix" {
 		// explicitly define unix network for gRPC socket support
@@ -808,9 +808,9 @@ func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Contex
 	}
 }
 
-func (e *Etcd) pickGrpcGatewayServeContext(splitHttp bool) *serveCtx {
+func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 	for _, sctx := range e.sctxs {
-		if !splitHttp || !sctx.httpOnly {
+		if !splitHTTP || !sctx.httpOnly {
 			return sctx
 		}
 	}

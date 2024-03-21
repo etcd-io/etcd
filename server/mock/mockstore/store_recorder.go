@@ -119,7 +119,11 @@ func (s *storeRecorder) Clone() v2store.Store {
 	return s
 }
 
+//revive:disable:var-naming
 func (s *storeRecorder) JsonStats() []byte { return nil }
+
+//revive:enable:var-naming
+
 func (s *storeRecorder) DeleteExpiredKeys(cutoff time.Time) {
 	s.Record(testutil.Action{
 		Name:   "DeleteExpiredKeys",

@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-const ENV_VERIFY_VALUE_STORAGE_WAL verify.VerificationType = "storage_wal"
+const envVerifyValueStorageWAL verify.VerificationType = "storage_wal"
 
 type Config struct {
 	// DataDir is a root directory where the data being verified are stored.
@@ -77,7 +77,7 @@ func Verify(cfg Config) (retErr error) {
 	be := backend.NewDefaultBackend(lg, datadir.ToBackendFileName(cfg.DataDir))
 	defer be.Close()
 
-	snapshot, hardstate, err := validateWal(cfg)
+	snapshot, hardstate, err := validateWAL(cfg)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func Verify(cfg Config) (retErr error) {
 // VerifyIfEnabled performs verification according to ETCD_VERIFY env settings.
 // See Verify for more information.
 func VerifyIfEnabled(cfg Config) error {
-	if verify.IsVerificationEnabled(ENV_VERIFY_VALUE_STORAGE_WAL) {
+	if verify.IsVerificationEnabled(envVerifyValueStorageWAL) {
 		return Verify(cfg)
 	}
 	return nil
@@ -131,7 +131,7 @@ func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *
 	return nil
 }
 
-func validateWal(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
+func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
 	walDir := datadir.ToWalDir(cfg.DataDir)
 
 	walSnaps, err := wal2.ValidSnapshotEntries(cfg.Logger, walDir)
