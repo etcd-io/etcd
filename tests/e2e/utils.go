@@ -129,15 +129,12 @@ func getMemberIdByName(ctx context.Context, c *e2e.Etcdctl, name string) (id uin
 	return 0, false, nil
 }
 
-// Different implementations here since 3.5 e2e test framework does not have "initial-cluster-state" as a default argument
-// Append new flag if not exist, otherwise replace the value
-func patchArgs(args []string, flag, newValue string) []string {
+func patchArgs(args []string, flag, newValue string) error {
 	for i, arg := range args {
 		if strings.Contains(arg, flag) {
 			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
-			return args
+			return nil
 		}
 	}
-	args = append(args, fmt.Sprintf("--%s=%s", flag, newValue))
-	return args
+	return fmt.Errorf("--%s flag not found", flag)
 }
