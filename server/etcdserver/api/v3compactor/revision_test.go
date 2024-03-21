@@ -72,7 +72,7 @@ func TestRevision(t *testing.T) {
 func TestRevisionPause(t *testing.T) {
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStream(), 99} // will be 100
-	compactable := &fakeCompactable{testutil.NewRecorderStream()}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Second)}
 	tb := newRevision(zaptest.NewLogger(t), fc, 10, rg, compactable)
 
 	tb.Run()
