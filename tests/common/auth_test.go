@@ -600,25 +600,25 @@ func TestAuthMemberRemove(t *testing.T) {
 		require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
 
-		memberId, clusterId := memberToRemove(ctx, t, rootAuthClient, clusterSize)
-		delete(memberIDToEndpoints, memberId)
+		memberID, clusterID := memberToRemove(ctx, t, rootAuthClient, clusterSize)
+		delete(memberIDToEndpoints, memberID)
 		endpoints := make([]string, 0, len(memberIDToEndpoints))
 		for _, ep := range memberIDToEndpoints {
 			endpoints = append(endpoints, ep)
 		}
 		testUserAuthClient := testutils.MustClient(clus.Client(WithAuth(testUserName, testPassword)))
 		// ordinary user cannot remove a member
-		_, err := testUserAuthClient.MemberRemove(ctx, memberId)
+		_, err := testUserAuthClient.MemberRemove(ctx, memberID)
 		require.ErrorContains(t, err, PermissionDenied)
 
 		// root can remove a member, building a client excluding removed member endpoint
 		rootAuthClient2 := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword), WithEndpoints(endpoints)))
-		resp, err := rootAuthClient2.MemberRemove(ctx, memberId)
+		resp, err := rootAuthClient2.MemberRemove(ctx, memberID)
 		require.NoError(t, err)
-		require.Equal(t, resp.Header.ClusterId, clusterId)
+		require.Equal(t, resp.Header.ClusterId, clusterID)
 		found := false
 		for _, member := range resp.Members {
-			if member.ID == memberId {
+			if member.ID == memberID {
 				found = true
 				break
 			}
