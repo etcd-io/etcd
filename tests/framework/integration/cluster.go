@@ -275,9 +275,9 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
 			SnapshotCount:                       c.Cfg.SnapshotCount,
 			SnapshotCatchUpEntries:              c.Cfg.SnapshotCatchUpEntries,
-			GrpcKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
-			GrpcKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
-			GrpcKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
+			GRPCKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
+			GRPCKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
+			GRPCKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
 			ClientMaxCallSendMsgSize:            c.Cfg.ClientMaxCallSendMsgSize,
 			ClientMaxCallRecvMsgSize:            c.Cfg.ClientMaxCallRecvMsgSize,
 			UseIP:                               c.Cfg.UseIP,
@@ -551,7 +551,7 @@ type Member struct {
 	MemberNumber                   int
 	Port                           string
 	PeerListeners, ClientListeners []net.Listener
-	GrpcListener                   net.Listener
+	GRPCListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
 	PeerTLSInfo *transport.TLSInfo
 	// ClientTLSInfo enables client TLS when set
@@ -562,10 +562,11 @@ type Member struct {
 	Server        *etcdserver.EtcdServer
 	ServerClosers []func()
 
-	GrpcServerOpts []grpc.ServerOption
-	GrpcServer     *grpc.Server
-	GrpcURL        string
-	GrpcBridge     *bridge
+	GRPCServerOpts []grpc.ServerOption
+	GRPCServer     *grpc.Server
+	//revive:disable-next-line:var-naming
+	GrpcURL    string
+	GRPCBridge *bridge
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
@@ -582,7 +583,7 @@ type Member struct {
 	IsLearner bool
 	Closed    bool
 
-	GrpcServerRecorder *grpctesting.GRPCRecorder
+	GRPCServerRecorder *grpctesting.GRPCRecorder
 
 	LogObserver *testutils.LogObserver
 }
@@ -602,9 +603,9 @@ type MemberConfig struct {
 	MaxRequestBytes             uint
 	SnapshotCount               uint64
 	SnapshotCatchUpEntries      uint64
-	GrpcKeepAliveMinTime        time.Duration
-	GrpcKeepAliveInterval       time.Duration
-	GrpcKeepAliveTimeout        time.Duration
+	GRPCKeepAliveMinTime        time.Duration
+	GRPCKeepAliveInterval       time.Duration
+	GRPCKeepAliveTimeout        time.Duration
 	ClientMaxCallSendMsgSize    int
 	ClientMaxCallRecvMsgSize    int
 	UseIP                       bool
@@ -697,18 +698,18 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
-	m.GrpcServerOpts = []grpc.ServerOption{}
-	if mcfg.GrpcKeepAliveMinTime > time.Duration(0) {
-		m.GrpcServerOpts = append(m.GrpcServerOpts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-			MinTime:             mcfg.GrpcKeepAliveMinTime,
+	m.GRPCServerOpts = []grpc.ServerOption{}
+	if mcfg.GRPCKeepAliveMinTime > time.Duration(0) {
+		m.GRPCServerOpts = append(m.GRPCServerOpts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             mcfg.GRPCKeepAliveMinTime,
 			PermitWithoutStream: false,
 		}))
 	}
-	if mcfg.GrpcKeepAliveInterval > time.Duration(0) &&
-		mcfg.GrpcKeepAliveTimeout > time.Duration(0) {
-		m.GrpcServerOpts = append(m.GrpcServerOpts, grpc.KeepaliveParams(keepalive.ServerParameters{
-			Time:    mcfg.GrpcKeepAliveInterval,
-			Timeout: mcfg.GrpcKeepAliveTimeout,
+	if mcfg.GRPCKeepAliveInterval > time.Duration(0) &&
+		mcfg.GRPCKeepAliveTimeout > time.Duration(0) {
+		m.GRPCServerOpts = append(m.GRPCServerOpts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    mcfg.GRPCKeepAliveInterval,
+			Timeout: mcfg.GRPCKeepAliveTimeout,
 		}))
 	}
 	m.ClientMaxCallSendMsgSize = mcfg.ClientMaxCallSendMsgSize
@@ -734,7 +735,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.ExperimentalMaxLearners = mcfg.ExperimentalMaxLearners
 	}
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
-	m.GrpcServerRecorder = &grpctesting.GRPCRecorder{}
+	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 
@@ -801,7 +802,7 @@ func (m *Member) listenGRPC() error {
 			return err
 		}
 	}
-	m.GrpcListener = grpcListener
+	m.GRPCListener = grpcListener
 	return nil
 }
 
@@ -833,19 +834,19 @@ func (m *Member) addBridge() (*bridge, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", bridgeAddr, err)
 	}
-	m.GrpcBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
+	m.GRPCBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
 
 	addr := bridgeListener.Addr().String()
 	m.Logger.Info("LISTEN BRIDGE SUCCESS", zap.String("grpc-address", addr), zap.String("member", m.Name))
 	m.GrpcURL = m.clientScheme() + "://" + addr
-	return m.GrpcBridge, nil
+	return m.GRPCBridge, nil
 }
 
 func (m *Member) Bridge() *bridge {
 	if !m.UseBridge {
 		m.Logger.Panic("Bridge not available. Please configure using bridge before creating Cluster.")
 	}
-	return m.GrpcBridge
+	return m.GRPCBridge
 }
 
 func (m *Member) grpcAddr() (network, host, port string) {
@@ -871,7 +872,7 @@ func (m *Member) grpcAddr() (network, host, port string) {
 	return network, host, port
 }
 
-func (m *Member) GrpcPortNumber() string {
+func (m *Member) GRPCPortNumber() string {
 	return m.Port
 }
 
@@ -975,7 +976,7 @@ func (m *Member) Launch() error {
 		}
 	}
 
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		var (
 			tlscfg *tls.Config
 		)
@@ -985,17 +986,17 @@ func (m *Member) Launch() error {
 				return err
 			}
 		}
-		m.GrpcServer = v3rpc.Server(m.Server, tlscfg, m.GrpcServerRecorder.UnaryInterceptor(), m.GrpcServerOpts...)
+		m.GRPCServer = v3rpc.Server(m.Server, tlscfg, m.GRPCServerRecorder.UnaryInterceptor(), m.GRPCServerOpts...)
 		m.ServerClient = v3client.New(m.Server)
-		lockpb.RegisterLockServer(m.GrpcServer, v3lock.NewLockServer(m.ServerClient))
-		epb.RegisterElectionServer(m.GrpcServer, v3election.NewElectionServer(m.ServerClient))
-		go m.GrpcServer.Serve(m.GrpcListener)
+		lockpb.RegisterLockServer(m.GRPCServer, v3lock.NewLockServer(m.ServerClient))
+		epb.RegisterElectionServer(m.GRPCServer, v3election.NewElectionServer(m.ServerClient))
+		go m.GRPCServer.Serve(m.GRPCListener)
 	}
 
 	m.RaftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.Logger, m.Server)}
 
 	h := (http.Handler)(m.RaftHandler)
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			m.RaftHandler.ServeHTTP(w, r)
 		})
@@ -1119,7 +1120,7 @@ func (m *Member) Launch() error {
 }
 
 func (m *Member) RecordedRequests() []grpctesting.RequestInfo {
-	return m.GrpcServerRecorder.RecordedRequests()
+	return m.GRPCServerRecorder.RecordedRequests()
 }
 
 func (m *Member) WaitOK(t testutil.TB) {
@@ -1177,21 +1178,21 @@ func (m *Member) Resume() {
 
 // Close stops the member'Server etcdserver and closes its connections
 func (m *Member) Close() {
-	if m.GrpcBridge != nil {
-		m.GrpcBridge.Close()
-		m.GrpcBridge = nil
+	if m.GRPCBridge != nil {
+		m.GRPCBridge.Close()
+		m.GRPCBridge = nil
 	}
 	if m.ServerClient != nil {
 		m.ServerClient.Close()
 		m.ServerClient = nil
 	}
-	if m.GrpcServer != nil {
+	if m.GRPCServer != nil {
 		ch := make(chan struct{})
 		go func() {
 			defer close(ch)
 			// close listeners to stop accepting new connections,
 			// will block on any existing transports
-			m.GrpcServer.GracefulStop()
+			m.GRPCServer.GracefulStop()
 		}()
 		// wait until all pending RPCs are finished
 		select {
@@ -1199,10 +1200,10 @@ func (m *Member) Close() {
 		case <-time.After(2 * time.Second):
 			// took too long, manually close open transports
 			// e.g. watch streams
-			m.GrpcServer.Stop()
+			m.GRPCServer.Stop()
 			<-ch
 		}
-		m.GrpcServer = nil
+		m.GRPCServer = nil
 	}
 	if m.Server != nil {
 		m.Server.HardStop()
@@ -1276,7 +1277,7 @@ func (m *Member) Restart(t testutil.TB) error {
 	}
 	m.ClientListeners = newClientListeners
 
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		if err := m.listenGRPC(); err != nil {
 			t.Fatal(err)
 		}
@@ -1545,7 +1546,7 @@ func CloseClients(t testutil.TB, clients []*clientv3.Client) {
 	}
 }
 
-type GrpcAPI struct {
+type GRPCAPI struct {
 	// Cluster is the Cluster API for the client'Server connection.
 	Cluster pb.ClusterClient
 	// KV is the keyvalue API for the client'Server connection.

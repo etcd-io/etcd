@@ -38,13 +38,13 @@ const proxyNamespace = "proxy-namespace"
 type grpcClientProxy struct {
 	ctx       context.Context
 	ctxCancel func()
-	grpc      GrpcAPI
+	grpc      GRPCAPI
 	wdonec    <-chan struct{}
 	kvdonec   <-chan struct{}
 	lpdonec   <-chan struct{}
 }
 
-func ToGRPC(c *clientv3.Client) GrpcAPI {
+func ToGRPC(c *clientv3.Client) GRPCAPI {
 	pmu.Lock()
 	defer pmu.Unlock()
 
@@ -73,7 +73,7 @@ func ToGRPC(c *clientv3.Client) GrpcAPI {
 	lockp := grpcproxy.NewLockProxy(c)
 	electp := grpcproxy.NewElectionProxy(c)
 
-	grpc := GrpcAPI{
+	grpc := GRPCAPI{
 		adapter.ClusterServerToClusterClient(clp),
 		adapter.KvServerToKvClient(kvp),
 		adapter.LeaseServerToLeaseClient(lp),

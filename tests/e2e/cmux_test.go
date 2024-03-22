@@ -72,7 +72,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 			ctx := context.Background()
 			cfg := e2e.NewConfig(e2e.WithClusterSize(1))
 			cfg.Client.ConnectionType = tc.serverTLS
-			cfg.ClientHttpSeparate = tc.separateHTTPPort
+			cfg.ClientHTTPSeparate = tc.separateHTTPPort
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
@@ -146,7 +146,7 @@ func fetchGRPCGateway(endpoint string, httpVersion string, connType e2e.ClientCo
 	if err != nil {
 		return err
 	}
-	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "POST", req, connType)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func fetchMetrics(t *testing.T, endpoint string, httpVersion string, connType e2
 	tmpDir := t.TempDir()
 	metricFile := filepath.Join(tmpDir, "metrics")
 
-	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HttpVersion: httpVersion, OutputFile: metricFile}
+	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HTTPVersion: httpVersion, OutputFile: metricFile}
 	if _, err := curl(endpoint, "GET", req, connType); err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func fetchMetrics(t *testing.T, endpoint string, httpVersion string, connType e2
 }
 
 func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnTy
 }
 
 func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err
@@ -215,7 +215,7 @@ func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnTyp
 }
 
 func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err

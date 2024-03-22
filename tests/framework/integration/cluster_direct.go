@@ -25,8 +25,8 @@ import (
 
 const ThroughProxy = false
 
-func ToGRPC(c *clientv3.Client) GrpcAPI {
-	return GrpcAPI{
+func ToGRPC(c *clientv3.Client) GRPCAPI {
+	return GRPCAPI{
 		pb.NewClusterClient(c.ActiveConnection()),
 		pb.NewKVClient(c.ActiveConnection()),
 		pb.NewLeaseClient(c.ActiveConnection()),
