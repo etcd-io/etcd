@@ -54,7 +54,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
-	lm := identity.NewLeaseIdStorage()
+	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
 
@@ -116,7 +116,7 @@ type Profile struct {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
 	Name() string
 }

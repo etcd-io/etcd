@@ -18,36 +18,36 @@ import (
 	"sync"
 )
 
-type LeaseIdStorage interface {
-	LeaseId(int) int64
-	AddLeaseId(int, int64)
-	RemoveLeaseId(int)
+type LeaseIDStorage interface {
+	LeaseID(int) int64
+	AddLeaseID(int, int64)
+	RemoveLeaseID(int)
 }
 
-func NewLeaseIdStorage() LeaseIdStorage {
-	return &atomicClientId2LeaseIdMapper{m: map[int]int64{}}
+func NewLeaseIDStorage() LeaseIDStorage {
+	return &atomicClientID2LeaseIDMapper{m: map[int]int64{}}
 }
 
-type atomicClientId2LeaseIdMapper struct {
+type atomicClientID2LeaseIDMapper struct {
 	sync.RWMutex
 	// m is used to store clientId to leaseId mapping.
 	m map[int]int64
 }
 
-func (lm *atomicClientId2LeaseIdMapper) LeaseId(clientId int) int64 {
+func (lm *atomicClientID2LeaseIDMapper) LeaseID(clientID int) int64 {
 	lm.RLock()
 	defer lm.RUnlock()
-	return lm.m[clientId]
+	return lm.m[clientID]
 }
 
-func (lm *atomicClientId2LeaseIdMapper) AddLeaseId(clientId int, leaseId int64) {
+func (lm *atomicClientID2LeaseIDMapper) AddLeaseID(clientID int, leaseID int64) {
 	lm.Lock()
 	defer lm.Unlock()
-	lm.m[clientId] = leaseId
+	lm.m[clientID] = leaseID
 }
 
-func (lm *atomicClientId2LeaseIdMapper) RemoveLeaseId(clientId int) {
+func (lm *atomicClientID2LeaseIDMapper) RemoveLeaseID(clientID int) {
 	lm.Lock()
 	defer lm.Unlock()
-	delete(lm.m, clientId)
+	delete(lm.m, clientID)
 }

@@ -306,7 +306,7 @@ func TestPatchHistory(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			baseTime := time.Now()
-			history := model.NewAppendableHistory(identity.NewIdProvider())
+			history := model.NewAppendableHistory(identity.NewIDProvider())
 			tc.historyFunc(baseTime, history)
 			time.Sleep(time.Nanosecond)
 			start := time.Since(baseTime)
@@ -342,7 +342,7 @@ func TestPatchHistory(t *testing.T) {
 			}
 			operations := patchedOperationHistory([]report.ClientReport{
 				{
-					ClientId: 0,
+					ClientID: 0,
 					KeyValue: history.History.Operations(),
 					Watch:    []model.WatchOperation{{Responses: watch}},
 				},

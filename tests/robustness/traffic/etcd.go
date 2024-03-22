@@ -94,7 +94,7 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -154,7 +154,7 @@ type etcdTrafficClient struct {
 	client       *RecordingClient
 	limiter      *rate.Limiter
 	idProvider   identity.Provider
-	leaseStorage identity.LeaseIdStorage
+	leaseStorage identity.LeaseIDStorage
 }
 
 func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType, lastRev int64) (rev int64, err error) {
@@ -181,7 +181,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case Put:
 		var resp *clientv3.PutResponse
-		resp, err = c.client.Put(opCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestId()))
+		resp, err = c.client.Put(opCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()))
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
@@ -215,43 +215,43 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.TxnResponse
-			resp, err = c.client.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestId()))}, nil)
+			resp, err = c.client.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID()))}, nil)
 			txnCancel()
 			if resp != nil {
 				rev = resp.Header.Revision
 			}
 		}
 	case PutWithLease:
-		leaseId := c.leaseStorage.LeaseId(c.client.id)
-		if leaseId == 0 {
+		leaseID := c.leaseStorage.LeaseID(c.client.id)
+		if leaseID == 0 {
 			var resp *clientv3.LeaseGrantResponse
 			resp, err = c.client.LeaseGrant(opCtx, c.leaseTTL)
 			if resp != nil {
-				leaseId = int64(resp.ID)
+				leaseID = int64(resp.ID)
 				rev = resp.ResponseHeader.Revision
 			}
 			if err == nil {
-				c.leaseStorage.AddLeaseId(c.client.id, leaseId)
+				c.leaseStorage.AddLeaseID(c.client.id, leaseID)
 				c.limiter.Wait(ctx)
 			}
 		}
-		if leaseId != 0 {
+		if leaseID != 0 {
 			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.PutResponse
-			resp, err = c.client.PutWithLease(putCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestId()), leaseId)
+			resp, err = c.client.PutWithLease(putCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()), leaseID)
 			putCancel()
 			if resp != nil {
 				rev = resp.Header.Revision
 			}
 		}
 	case LeaseRevoke:
-		leaseId := c.leaseStorage.LeaseId(c.client.id)
-		if leaseId != 0 {
+		leaseID := c.leaseStorage.LeaseID(c.client.id)
+		if leaseID != 0 {
 			var resp *clientv3.LeaseRevokeResponse
-			resp, err = c.client.LeaseRevoke(opCtx, leaseId)
+			resp, err = c.client.LeaseRevoke(opCtx, leaseID)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				c.leaseStorage.RemoveLeaseId(c.client.id)
+				c.leaseStorage.RemoveLeaseID(c.client.id)
 			}
 			if resp != nil {
 				rev = resp.Header.Revision
@@ -291,7 +291,7 @@ func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
 		case model.RangeOperation:
 			ops = append(ops, clientv3.OpGet(key))
 		case model.PutOperation:
-			value := fmt.Sprintf("%d", c.idProvider.NewRequestId())
+			value := fmt.Sprintf("%d", c.idProvider.NewRequestID())
 			ops = append(ops, clientv3.OpPut(key, value))
 		case model.DeleteOperation:
 			ops = append(ops, clientv3.OpDelete(key))

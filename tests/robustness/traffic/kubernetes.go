@@ -58,7 +58,7 @@ func (t kubernetesTraffic) Name() string {
 	return "Kubernetes"
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -143,7 +143,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	defer cancel()
 	count := s.Count()
 	if count < t.averageKeyCount/2 {
-		err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+		err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestID()))
 	} else {
 		key, rev := s.PickRandom()
 		if rev == 0 {
@@ -163,9 +163,9 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 				_, err = kc.OptimisticDelete(writeCtx, key, rev)
 				nonUniqueWriteLimiter.Return()
 			case KubernetesUpdate:
-				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestId()), rev)
+				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestID()), rev)
 			case KubernetesCreate:
-				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestId()))
+				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestID()))
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
