@@ -103,7 +103,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 		return "", fmt.Errorf("could not open %s (%v)", partPath, err)
 	}
 	lg.Info("created temporary db file", zap.String("path", partPath))
-	
+
 	defer os.RemoveAll(partPath)
 	defer f.Close()
 
