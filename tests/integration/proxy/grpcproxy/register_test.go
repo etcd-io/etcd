@@ -32,7 +32,7 @@ func TestRegister(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
-	paddr := clus.Members[0].GRPCURL()
+	paddr := clus.Members[0].GRPCURL
 
 	testPrefix := "test-name"
 	wa := mustCreateWatcher(t, cli, testPrefix)

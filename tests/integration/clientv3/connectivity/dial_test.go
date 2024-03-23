@@ -59,7 +59,7 @@ func TestDialTLSExpired(t *testing.T) {
 	}
 	// expect remote errors "tls: bad certificate"
 	_, err = integration2.NewClient(t, clientv3.Config{
-		Endpoints:   []string{clus.Members[0].GRPCURL()},
+		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
@@ -77,7 +77,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 	defer clus.Terminate(t)
 	// expect "signed by unknown authority"
 	c, err := integration2.NewClient(t, clientv3.Config{
-		Endpoints:   []string{clus.Members[0].GRPCURL()},
+		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
@@ -110,7 +110,7 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	// get endpoint list
 	eps := make([]string, 3)
 	for i := range eps {
-		eps[i] = clus.Members[i].GRPCURL()
+		eps[i] = clus.Members[i].GRPCURL
 	}
 	toKill := rand.Intn(len(eps))
 
@@ -151,7 +151,7 @@ func TestSwitchSetEndpoints(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// get non partitioned members endpoints
-	eps := []string{clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
+	eps := []string{clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
 
 	cli := clus.Client(0)
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
@@ -172,7 +172,7 @@ func TestRejectOldCluster(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
-		Endpoints:        []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()},
+		Endpoints:        []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL},
 		DialTimeout:      5 * time.Second,
 		DialOptions:      []grpc.DialOption{grpc.WithBlock()},
 		RejectOldCluster: true,
@@ -214,7 +214,7 @@ func TestSetEndpointAndPut(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
-	clus.Client(1).SetEndpoints(clus.Members[0].GRPCURL())
+	clus.Client(1).SetEndpoints(clus.Members[0].GRPCURL)
 	_, err := clus.Client(1).Put(context.TODO(), "foo", "bar")
 	if err != nil && !strings.Contains(err.Error(), "closing") {
 		t.Fatal(err)

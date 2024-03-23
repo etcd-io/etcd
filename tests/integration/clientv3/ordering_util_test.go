@@ -32,11 +32,11 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	eps := []string{
-		clus.Members[0].GRPCURL(),
-		clus.Members[1].GRPCURL(),
-		clus.Members[2].GRPCURL(),
+		clus.Members[0].GRPCURL,
+		clus.Members[1].GRPCURL,
+		clus.Members[2].GRPCURL,
 	}
-	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCURL()}}
+	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCURL}}
 	cli, err := integration2.NewClient(t, cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	}
 
 	t.Logf("Reconfigure client to speak only to the 'partitioned' member")
-	cli.SetEndpoints(clus.Members[2].GRPCURL())
+	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(1 * time.Second) // give enough time for the operation
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != ordering.ErrNoGreaterRev {
@@ -97,11 +97,11 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	defer clus.Terminate(t)
 	cfg := clientv3.Config{
 		Endpoints: []string{
-			clus.Members[0].GRPCURL(),
-			clus.Members[1].GRPCURL(),
-			clus.Members[2].GRPCURL(),
-			clus.Members[3].GRPCURL(),
-			clus.Members[4].GRPCURL(),
+			clus.Members[0].GRPCURL,
+			clus.Members[1].GRPCURL,
+			clus.Members[2].GRPCURL,
+			clus.Members[3].GRPCURL,
+			clus.Members[4].GRPCURL,
 		},
 	}
 	cli, err := integration2.NewClient(t, cfg)
@@ -112,7 +112,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	eps := cli.Endpoints()
 	ctx := context.TODO()
 
-	cli.SetEndpoints(clus.Members[0].GRPCURL())
+	cli.SetEndpoints(clus.Members[0].GRPCURL)
 	time.Sleep(1 * time.Second)
 	_, err = cli.Put(ctx, "foo", "bar")
 	if err != nil {
@@ -152,7 +152,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 		t.Fatal(err)
 	}
 	clus.Members[3].WaitStarted(t)
-	cli.SetEndpoints(clus.Members[3].GRPCURL())
+	cli.SetEndpoints(clus.Members[3].GRPCURL)
 	time.Sleep(1 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())

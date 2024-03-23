@@ -40,7 +40,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lg := zaptest.NewLogger(t)
-	serverEps := []string{clus.Members[0].GRPCURL()}
+	serverEps := []string{clus.Members[0].GRPCURL}
 	prefix := "test-prefix"
 	hostname, _ := os.Hostname()
 	cts := newClusterProxyServer(lg, serverEps, prefix, t)

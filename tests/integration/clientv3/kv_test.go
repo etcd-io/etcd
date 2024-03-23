@@ -797,7 +797,7 @@ func TestKVForLearner(t *testing.T) {
 	// 1. clus.Members[3] is the newly added learner member, which was appended to clus.Members
 	// 2. we are using member's grpcAddr instead of clientURLs as the endpoint for clientv3.Config,
 	// because the implementation of integration test has diverged from embed/etcd.go.
-	learnerEp := clus.Members[3].GRPCURL()
+	learnerEp := clus.Members[3].GRPCURL
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
@@ -870,7 +870,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 	}
 
 	// clus.Members[3] is the newly added learner member, which was appended to clus.Members
-	learnerEp := clus.Members[3].GRPCURL()
+	learnerEp := clus.Members[3].GRPCURL
 	cfg := clientv3.Config{
 		Endpoints:   []string{learnerEp},
 		DialTimeout: 5 * time.Second,
@@ -890,7 +890,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 	}
 	t.Logf("Expected: Read from learner error: %v", err)
 
-	eps := []string{learnerEp, clus.Members[0].GRPCURL()}
+	eps := []string{learnerEp, clus.Members[0].GRPCURL}
 	cli.SetEndpoints(eps...)
 	if _, err := cli.Get(context.Background(), "foo"); err != nil {
 		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)

@@ -236,7 +236,7 @@ func (c *Cluster) Launch(t testutil.TB) {
 	c.WaitMembersMatch(t, c.ProtoMembers())
 	c.waitVersion()
 	for _, m := range c.Members {
-		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL())
+		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL)
 	}
 }
 
@@ -564,9 +564,8 @@ type Member struct {
 
 	GRPCServerOpts []grpc.ServerOption
 	GRPCServer     *grpc.Server
-	//revive:disable-next-line:var-naming
-	GrpcURL    string
-	GRPCBridge *bridge
+	GRPCURL        string
+	GRPCBridge     *bridge
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
@@ -587,8 +586,6 @@ type Member struct {
 
 	LogObserver *testutils.LogObserver
 }
-
-func (m *Member) GRPCURL() string { return m.GrpcURL }
 
 type MemberConfig struct {
 	Name                        string
@@ -791,8 +788,8 @@ func (m *Member) listenGRPC() error {
 		return fmt.Errorf("failed to parse grpc listen port from address %s (%v)", addr, err)
 	}
 	m.Port = port
-	m.GrpcURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
-	m.Logger.Info("LISTEN GRPC SUCCESS", zap.String("grpcAddr", m.GrpcURL), zap.String("m.Name", m.Name),
+	m.GRPCURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
+	m.Logger.Info("LISTEN GRPC SUCCESS", zap.String("grpcAddr", m.GRPCURL), zap.String("m.Name", m.Name),
 		zap.String("workdir", wd), zap.String("port", m.Port))
 
 	if m.UseBridge {
@@ -838,7 +835,7 @@ func (m *Member) addBridge() (*bridge, error) {
 
 	addr := bridgeListener.Addr().String()
 	m.Logger.Info("LISTEN BRIDGE SUCCESS", zap.String("grpc-address", addr), zap.String("member", m.Name))
-	m.GrpcURL = m.clientScheme() + "://" + addr
+	m.GRPCURL = m.clientScheme() + "://" + addr
 	return m.GRPCBridge, nil
 }
 
@@ -893,12 +890,12 @@ func (m *Member) ID() types.ID { return m.Server.MemberID() }
 
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *Member) (*clientv3.Client, error) {
-	if m.GrpcURL == "" {
+	if m.GRPCURL == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:          []string{m.GrpcURL},
+		Endpoints:          []string{m.GRPCURL},
 		DialTimeout:        5 * time.Second,
 		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: m.ClientMaxCallSendMsgSize,
@@ -960,7 +957,7 @@ func (m *Member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	var err error
 	if m.Server, err = etcdserver.NewServer(m.ServerConfig); err != nil {
@@ -1102,7 +1099,7 @@ func (m *Member) Launch() error {
 		}
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
-	if m.GrpcURL != "" && m.Client == nil {
+	if m.GRPCURL != "" && m.Client == nil {
 		m.Client, err = NewClientV3(m)
 		if err != nil {
 			return err
@@ -1114,7 +1111,7 @@ func (m *Member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	return nil
 }
@@ -1230,7 +1227,7 @@ func (m *Member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	m.Close()
 	m.ServerClosers = nil
@@ -1239,7 +1236,7 @@ func (m *Member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 }
 
@@ -1264,7 +1261,7 @@ func (m *Member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
@@ -1289,7 +1286,7 @@ func (m *Member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 		zap.Error(err),
 	)
 	return err
@@ -1302,7 +1299,7 @@ func (m *Member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	m.Close()
 	if !m.KeepDataDirTerminate {
@@ -1315,7 +1312,7 @@ func (m *Member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 }
 
@@ -1449,7 +1446,7 @@ func (c *Cluster) Client(i int) *clientv3.Client {
 func (c *Cluster) Endpoints() []string {
 	var endpoints []string
 	for _, m := range c.Members {
-		endpoints = append(endpoints, m.GrpcURL)
+		endpoints = append(endpoints, m.GRPCURL)
 	}
 	return endpoints
 }
