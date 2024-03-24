@@ -32,7 +32,7 @@ import (
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
+func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 
 	// Setup two new dummy stub servers
 	payloadBody := []byte{'1'}
@@ -137,7 +137,7 @@ func TestEtcdGrpcResolverPickFirst(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Pick first is the default load balancer policy for grpc-go
-	testEtcdGrpcResolver(t, "pick_first")
+	testEtcdGRPCResolver(t, "pick_first")
 }
 
 // TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
@@ -146,7 +146,7 @@ func TestEtcdGrpcResolverRoundRobin(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Round robin is a common alternative for more production oriented scenarios
-	testEtcdGrpcResolver(t, "round_robin")
+	testEtcdGRPCResolver(t, "round_robin")
 }
 
 func TestEtcdEndpointManager(t *testing.T) {
