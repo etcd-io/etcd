@@ -39,6 +39,15 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
+
+      # Temporary monitoring to compare amd64 and arm64 runner performance
+      # Refer: https://actuated.dev/blog/right-sizing-vms-github-actions
+      - uses: alexellis/setup-arkade@master
+      - name: Install vmmeter
+        run: |
+          sudo -E arkade oci install ghcr.io/openfaasltd/vmmeter:latest --path /usr/local/bin/
+      - uses: self-actuated/vmmeter-action@master
+
       - name: install-lazyfs
         if: ${{ inputs.lazyfsEnabled }}
         run: |
