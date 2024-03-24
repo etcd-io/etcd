@@ -50,7 +50,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/grpc_testing"
+	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -582,7 +582,7 @@ type Member struct {
 	IsLearner bool
 	Closed    bool
 
-	GrpcServerRecorder *grpc_testing.GrpcRecorder
+	GrpcServerRecorder *grpctesting.GRPCRecorder
 
 	LogObserver *testutils.LogObserver
 }
@@ -734,7 +734,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.ExperimentalMaxLearners = mcfg.ExperimentalMaxLearners
 	}
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
-	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
+	m.GrpcServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 
@@ -1118,7 +1118,7 @@ func (m *Member) Launch() error {
 	return nil
 }
 
-func (m *Member) RecordedRequests() []grpc_testing.RequestInfo {
+func (m *Member) RecordedRequests() []grpctesting.RequestInfo {
 	return m.GrpcServerRecorder.RecordedRequests()
 }
 

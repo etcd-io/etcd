@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc_testing
+package grpctesting
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-type GrpcRecorder struct {
+type GRPCRecorder struct {
 	mux      sync.RWMutex
 	requests []RequestInfo
 }
@@ -32,7 +32,7 @@ type RequestInfo struct {
 	Authority  string
 }
 
-func (ri *GrpcRecorder) UnaryInterceptor() grpc.UnaryServerInterceptor {
+func (ri *GRPCRecorder) UnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		ri.record(toRequestInfo(ctx, info))
 		resp, err := handler(ctx, req)
@@ -40,7 +40,7 @@ func (ri *GrpcRecorder) UnaryInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func (ri *GrpcRecorder) RecordedRequests() []RequestInfo {
+func (ri *GRPCRecorder) RecordedRequests() []RequestInfo {
 	ri.mux.RLock()
 	defer ri.mux.RUnlock()
 	reqs := make([]RequestInfo, len(ri.requests))
@@ -62,7 +62,7 @@ func toRequestInfo(ctx context.Context, info *grpc.UnaryServerInfo) RequestInfo 
 	return req
 }
 
-func (ri *GrpcRecorder) record(r RequestInfo) {
+func (ri *GRPCRecorder) record(r RequestInfo) {
 	ri.mux.Lock()
 	defer ri.mux.Unlock()
 	ri.requests = append(ri.requests, r)
