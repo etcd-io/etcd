@@ -27,10 +27,10 @@ import (
 
 // TestAuth_CVE_2021_28235 verifies https://nvd.nist.gov/vuln/detail/CVE-2021-28235
 func TestAuth_CVE_2021_28235(t *testing.T) {
-	testCtl(t, authTest_CVE_2021_28235, withCfg(*e2e.NewConfigNoTLS()), withLogLevel("debug"))
+	testCtl(t, authTestCVE2021_28235, withCfg(*e2e.NewConfigNoTLS()), withLogLevel("debug"))
 }
 
-func authTest_CVE_2021_28235(cx ctlCtx) {
+func authTestCVE2021_28235(cx ctlCtx) {
 	// create root user with root role
 	rootPass := "changeme123"
 	err := ctlV3User(cx, []string{"add", "root", "--interactive=false"}, "User root created", []string{rootPass})

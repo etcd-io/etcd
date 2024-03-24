@@ -40,7 +40,7 @@ func testCurlV3LockOperations(cx ctlCtx) {
 		Endpoint: "/v3/lock/lock",
 		Value:    string(lockReq),
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 	key, ok := resp["key"]
 	require.True(cx.t, ok)

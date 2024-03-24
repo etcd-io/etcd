@@ -43,7 +43,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		serverTLS        e2e.ClientConnType
-		separateHttpPort bool
+		separateHTTPPort bool
 	}{
 		{
 			name:      "ServerTLS",
@@ -60,19 +60,19 @@ func TestConnectionMultiplexing(t *testing.T) {
 		{
 			name:             "SeparateHTTP/ServerTLS",
 			serverTLS:        e2e.ClientTLS,
-			separateHttpPort: true,
+			separateHTTPPort: true,
 		},
 		{
 			name:             "SeparateHTTP/ServerNonTLS",
 			serverTLS:        e2e.ClientNonTLS,
-			separateHttpPort: true,
+			separateHTTPPort: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			cfg := e2e.NewConfig(e2e.WithClusterSize(1))
 			cfg.Client.ConnectionType = tc.serverTLS
-			cfg.ClientHttpSeparate = tc.separateHttpPort
+			cfg.ClientHttpSeparate = tc.separateHTTPPort
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
@@ -129,7 +129,7 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, member e2e.Et
 				tname = "default"
 			}
 			t.Run(tname, func(t *testing.T) {
-				assert.NoError(t, fetchGrpcGateway(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchGRPCGateway(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchMetrics(t, httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchVersion(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchHealth(httpEndpoint, httpVersion, connType))
@@ -139,7 +139,7 @@ func testConnectionMultiplexing(ctx context.Context, t *testing.T, member e2e.Et
 	})
 }
 
-func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchGRPCGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: []byte("a"),
 	})
@@ -157,10 +157,12 @@ func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientCo
 func validateGrpcgatewayRangeReponse(respData []byte) error {
 	// Modified json annotation so ResponseHeader fields are stored in string.
 	type responseHeader struct {
+		//revive:disable:var-naming
 		ClusterId uint64 `json:"cluster_id,string,omitempty"`
 		MemberId  uint64 `json:"member_id,string,omitempty"`
-		Revision  int64  `json:"revision,string,omitempty"`
-		RaftTerm  uint64 `json:"raft_term,string,omitempty"`
+		//revive:enable:var-naming
+		Revision int64  `json:"revision,string,omitempty"`
+		RaftTerm uint64 `json:"raft_term,string,omitempty"`
 	}
 	type rangeResponse struct {
 		Header *responseHeader    `json:"header,omitempty"`

@@ -39,11 +39,11 @@ const (
 )
 
 type testCase struct {
-	name                string
-	client              e2e.ClientConfig
-	clientHttpSerparate bool
-	maxWatchDelay       time.Duration
-	dbSizeBytes         int
+	name               string
+	client             e2e.ClientConfig
+	clientHTTPSeparate bool
+	maxWatchDelay      time.Duration
+	dbSizeBytes        int
 }
 
 const (
@@ -67,17 +67,17 @@ var tcs = []testCase{
 		dbSizeBytes:   5 * Mega,
 	},
 	{
-		name:                "SeparateHttpNoTLS",
-		clientHttpSerparate: true,
-		maxWatchDelay:       150 * time.Millisecond,
-		dbSizeBytes:         5 * Mega,
+		name:               "SeparateHTTPNoTLS",
+		clientHTTPSeparate: true,
+		maxWatchDelay:      150 * time.Millisecond,
+		dbSizeBytes:        5 * Mega,
 	},
 	{
-		name:                "SeparateHttpTLS",
-		client:              e2e.ClientConfig{ConnectionType: e2e.ClientTLS},
-		clientHttpSerparate: true,
-		maxWatchDelay:       150 * time.Millisecond,
-		dbSizeBytes:         5 * Mega,
+		name:               "SeparateHTTPTLS",
+		client:             e2e.ClientConfig{ConnectionType: e2e.ClientTLS},
+		clientHTTPSeparate: true,
+		maxWatchDelay:      150 * time.Millisecond,
+		dbSizeBytes:        5 * Mega,
 	},
 }
 
@@ -89,7 +89,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		cfg.ClusterSize = 1
 		cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHttpSerparate
+		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHttpSerparate
+		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHttpSerparate
+		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)

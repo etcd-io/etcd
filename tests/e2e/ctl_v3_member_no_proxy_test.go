@@ -50,7 +50,7 @@ func TestMemberReplace(t *testing.T) {
 	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, endpoints)
 	require.NoError(t, err)
 
-	memberID, found, err := getMemberIdByName(ctx, cc, memberName)
+	memberID, found, err := getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, found, true, "Member not found")
 
@@ -60,7 +60,7 @@ func TestMemberReplace(t *testing.T) {
 	t.Logf("Removing member %s", memberName)
 	_, err = cc.MemberRemove(ctx, memberID)
 	require.NoError(t, err)
-	_, found, err = getMemberIdByName(ctx, cc, memberName)
+	_, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, found, false, "Expected member to be removed")
 	for member.IsRunning() {
@@ -75,8 +75,8 @@ func TestMemberReplace(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("Adding member %s back", memberName)
-	removedMemberPeerUrl := member.Config().PeerURL.String()
-	_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerUrl})
+	removedMemberPeerURL := member.Config().PeerURL.String()
+	_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerURL})
 	require.NoError(t, err)
 	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
@@ -88,7 +88,7 @@ func TestMemberReplace(t *testing.T) {
 	require.NoError(t, err)
 	testutils.ExecuteUntil(ctx, t, func() {
 		for {
-			_, found, err := getMemberIdByName(ctx, cc, memberName)
+			_, found, err := getMemberIDByName(ctx, cc, memberName)
 			if err != nil || !found {
 				time.Sleep(10 * time.Millisecond)
 				continue
@@ -117,7 +117,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, endpoints)
 	require.NoError(t, err)
 
-	memberID, found, err := getMemberIdByName(ctx, cc, memberName)
+	memberID, found, err := getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, true, found, "Member not found")
 
@@ -127,7 +127,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	t.Logf("Removing member %s", memberName)
 	_, err = cc.MemberRemove(ctx, memberID)
 	require.NoError(t, err)
-	_, found, err = getMemberIdByName(ctx, cc, memberName)
+	_, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, false, found, "Expected member to be removed")
 	for member.IsRunning() {
@@ -142,8 +142,8 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("Adding member %s back as Learner", memberName)
-	removedMemberPeerUrl := member.Config().PeerURL.String()
-	_, err = cc.MemberAddAsLearner(ctx, memberName, []string{removedMemberPeerUrl})
+	removedMemberPeerURL := member.Config().PeerURL.String()
+	_, err = cc.MemberAddAsLearner(ctx, memberName, []string{removedMemberPeerURL})
 	require.NoError(t, err)
 
 	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
@@ -158,7 +158,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	var learnMemberID uint64
 	testutils.ExecuteUntil(ctx, t, func() {
 		for {
-			learnMemberID, found, err = getMemberIdByName(ctx, cc, memberName)
+			learnMemberID, found, err = getMemberIDByName(ctx, cc, memberName)
 			if err != nil || !found {
 				time.Sleep(10 * time.Millisecond)
 				continue
@@ -167,7 +167,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 		}
 	})
 
-	learnMemberID, found, err = getMemberIdByName(ctx, cc, memberName)
+	learnMemberID, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
 	require.Equal(t, true, found, "Member not found")
 
