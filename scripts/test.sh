@@ -542,7 +542,7 @@ function dep_pass {
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
 
   for dup in ${duplicates}; do
-    log_error "FAIL: inconsistent versions for depencency: ${dup}"
+    log_error "FAIL: inconsistent versions for dependency: ${dup}"
     echo "${all_dependencies}" | grep "${dup}" | sed "s|\\([^,]*\\),\\([^,]*\\),\\([^,]*\\)|  - \\1@\\2 from: \\3|g"
   done
   if [[ -n "${duplicates}" ]]; then

@@ -81,7 +81,7 @@ if [ "${GET}" != "${VALUE}" ]; then
     exit 1
 fi
 
-echo "Succesfully tested etcd local image ${TAG}"
+echo "Successfully tested etcd local image ${TAG}"
 
 for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
     ARCH_TAG=v"${VERSION}"-"${TARGET_ARCH}"

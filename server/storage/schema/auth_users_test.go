@@ -75,7 +75,7 @@ func TestGetAllUsers(t *testing.T) {
 			want: []*authpb.User{{Name: []byte("bob")}},
 		},
 		{
-			name: "Returns data overriden by put",
+			name: "Returns data overridden by put",
 			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
@@ -163,7 +163,7 @@ func TestGetUser(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Returns data overriden by put",
+			name: "Returns data overridden by put",
 			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutUser(&authpb.User{
 					Name:     []byte("alice"),
