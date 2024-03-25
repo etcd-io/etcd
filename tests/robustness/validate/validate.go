@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
@@ -28,9 +29,9 @@ import (
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport) (visualize func(basepath string) error) {
-	patchedOperations := patchedOperationHistory(reports)
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations)
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
+	patchedOperations := removeFailedNotPersistedOperations(operations(reports), persistedRequests)
+	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return visualize
@@ -45,6 +46,14 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	validateWatch(t, lg, cfg, reports, eventHistory)
 	validateSerializableOperations(t, lg, patchedOperations, eventHistory)
 	return visualize
+}
+
+func operations(reports []report.ClientReport) []porcupine.Operation {
+	var ops []porcupine.Operation
+	for _, r := range reports {
+		ops = append(ops, r.KeyValue...)
+	}
+	return ops
 }
 
 type Config struct {

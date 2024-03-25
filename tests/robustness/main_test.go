@@ -64,18 +64,18 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
-	report := report.TestReport{Logger: lg}
+	r := report.TestReport{Logger: lg}
 	var err error
-	report.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+	r.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer report.Cluster.Close()
+	defer r.Cluster.Close()
 
 	if s.failpoint == nil {
-		s.failpoint = failpoint.PickRandom(t, report.Cluster)
+		s.failpoint = failpoint.PickRandom(t, r.Cluster)
 	} else {
-		err = failpoint.Validate(report.Cluster, s.failpoint)
+		err = failpoint.Validate(r.Cluster, s.failpoint)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,15 +86,19 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		report.Report(t, panicked)
+		r.Report(t, panicked)
 	}()
-	report.Client = s.run(ctx, t, lg, report.Cluster)
-	forcestopCluster(report.Cluster)
+	r.Client = s.run(ctx, t, lg, r.Cluster)
+	persistedRequests, err := report.PersistedRequestsCluster(lg, r.Cluster)
+	if err != nil {
+		t.Error(err)
+	}
+	forcestopCluster(r.Cluster)
 
-	watchProgressNotifyEnabled := report.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
-	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
+	watchProgressNotifyEnabled := r.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
+	validateGotAtLeastOneProgressNotify(t, r.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
-	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
+	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
 
 	panicked = false
 }
