@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"go.etcd.io/etcd/pkg/v3/crc"
 	"go.etcd.io/etcd/pkg/v3/ioutil"
@@ -92,7 +93,9 @@ func (e *encoder) encode(rec *walpb.Record) error {
 	if padBytes != 0 {
 		data = append(data, make([]byte, padBytes)...)
 	}
+	start := time.Now()
 	n, err = e.bw.Write(data)
+	walWriteSec.Observe(time.Since(start).Seconds())
 	walWriteBytes.Add(float64(n))
 	return err
 }
@@ -118,7 +121,9 @@ func (e *encoder) flush() error {
 func writeUint64(w io.Writer, n uint64, buf []byte) error {
 	// http://golang.org/src/encoding/binary/binary.go
 	binary.LittleEndian.PutUint64(buf, n)
+	start := time.Now()
 	nv, err := w.Write(buf)
+	walWriteSec.Observe(time.Since(start).Seconds())
 	walWriteBytes.Add(float64(nv))
 	return err
 }
