@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -84,6 +85,8 @@ func (f gracefulShutdownFailpoint) Inject(ctx context.Context, t *testing.T, lg 
 			return fmt.Errorf("failed to terminate the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
+	ctx, cancel := context.WithTimeout(ctx, time.Second*2)
+	defer cancel()
 	return member.Start(ctx)
 }
 

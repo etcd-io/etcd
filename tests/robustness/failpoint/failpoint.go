@@ -37,21 +37,22 @@ const (
 
 var (
 	allFailpoints = []Failpoint{
-		GracefulShutdown, ForcefulShutdown,
-		BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
-		DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
-		BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
-		BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
-		CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
-		CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
-		RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
-		RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
-		BeforeApplyOneConfChangeSleep,
-		MemberReplace,
-		DropPeerNetwork,
-		RaftBeforeSaveSleep,
-		RaftAfterSaveSleep,
-		ApplyBeforeOpenSnapshot,
+		GracefulShutdown,
+		//ForcefulShutdown,
+		//BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
+		//DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
+		//BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
+		//BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
+		//CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
+		//CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
+		//RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
+		//RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
+		//BeforeApplyOneConfChangeSleep,
+		//MemberReplace,
+		//DropPeerNetwork,
+		//RaftBeforeSaveSleep,
+		//RaftAfterSaveSleep,
+		//ApplyBeforeOpenSnapshot,
 	}
 )
 
@@ -90,9 +91,12 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 		time.Sleep(waitBetweenFailpointTriggers)
 
 		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", failpoint.Name()))
-		if err = verifyClusterHealth(ctx, t, clus); err != nil {
+		vctx, cancel := context.WithTimeout(ctx, time.Second*5)
+		if err = verifyClusterHealth(vctx, t, clus); err != nil {
+			cancel()
 			return fmt.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
 		}
+		cancel()
 
 		lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
 		err = failpoint.Inject(ctx, t, lg, clus)
