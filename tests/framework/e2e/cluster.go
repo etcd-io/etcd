@@ -172,6 +172,9 @@ type EtcdProcessClusterConfig struct {
 	IsPeerAutoTLS      bool
 	CN                 bool
 
+	// ExplicitFlags contains flags to be explicitly set even if their values are same as default ones
+	ExplicitFlags map[string]struct{}
+
 	// Removed in v3.6
 
 	Discovery string // v2 discovery
@@ -369,6 +372,19 @@ func WithEnvVars(ev map[string]string) EPClusterOption {
 
 func WithPeerProxy(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.PeerProxy = enabled }
+}
+
+func WithPreVote(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.PreVote = enabled }
+}
+
+func WithExplicitFlag(flag string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) {
+		if c.ExplicitFlags == nil {
+			c.ExplicitFlags = map[string]struct{}{}
+		}
+		c.ExplicitFlags[flag] = struct{}{}
+	}
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -574,7 +590,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	overrideValues := values(cfg.ServerConfig)
 	for flag, value := range overrideValues {
 		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
-			continue
+			if _, exist := cfg.ExplicitFlags[flag]; !exist {
+				continue
+			}
 		}
 		if flag == "experimental-snapshot-catchup-entries" && !(cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2)) {
 			continue
