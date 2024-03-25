@@ -36,7 +36,7 @@ func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.UnsafeWriter, c
 }
 
 // UnsafeConfStateFromBackend retrieves ConfState from the backend.
-// Returns nil if confState in backend is not persisted (e.g. backend writen by <v3.5).
+// Returns nil if confState in backend is not persisted (e.g. backend written by <v3.5).
 func UnsafeConfStateFromBackend(lg *zap.Logger, tx backend.UnsafeReader) *raftpb.ConfState {
 	keys, vals := tx.UnsafeRange(Meta, MetaConfStateName, nil, 0)
 	if len(keys) == 0 {

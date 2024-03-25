@@ -223,7 +223,7 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
-			name: "create event and update event in seperate requests both with PrevKV()",
+			name: "create event and update event in separate requests both with PrevKV()",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{

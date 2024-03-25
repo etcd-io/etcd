@@ -79,7 +79,7 @@ func TestGetAllRoles(t *testing.T) {
 			want: []*authpb.Role{{Name: []byte("role2")}},
 		},
 		{
-			name: "Returns data overriden by put",
+			name: "Returns data overridden by put",
 			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
@@ -179,7 +179,7 @@ func TestGetRole(t *testing.T) {
 			want: nil,
 		},
 		{
-			name: "Returns data overriden by put",
+			name: "Returns data overridden by put",
 			setup: func(tx auth.UnsafeAuthWriter) {
 				tx.UnsafePutRole(&authpb.Role{
 					Name: []byte("role1"),
