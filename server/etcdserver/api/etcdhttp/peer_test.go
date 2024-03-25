@@ -103,6 +103,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected io.ReadAll error: %v", err)
 		}
+		resp.Body.Close()
 		if w := "test data"; string(body) != w {
 			t.Errorf("#%d: body = %s, want %s", i, body, w)
 		}
