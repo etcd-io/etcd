@@ -15,6 +15,8 @@
 package backend_test
 
 import (
+	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -292,5 +294,89 @@ func checkUnsafeForEach(t *testing.T, tx backend.UnsafeReader, expectedKeys, exp
 	}
 	if diff := cmp.Diff(vs, expectedValues); diff != "" {
 		t.Errorf("values on transaction doesn't match expected, diff: %s", diff)
+	}
+}
+
+// runWriteback is used test the txWriteBuffer.writeback function, which is called inside tx.Unlock().
+// The parameters are chosen based on defaultBatchLimit = 10000
+func runWriteback(t testing.TB, kss, vss [][]string, isSeq bool) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.Unlock()
+
+	for i, ks := range kss {
+		vs := vss[i]
+		tx.Lock()
+		for j := 0; j < len(ks); j++ {
+			if isSeq {
+				tx.UnsafeSeqPut(schema.Key, []byte(ks[j]), []byte(vs[j]))
+			} else {
+				tx.UnsafePut(schema.Test, []byte(ks[j]), []byte(vs[j]))
+			}
+		}
+		tx.Unlock()
+	}
+}
+
+func BenchmarkWritebackSeqBatches1BatchSize10000(b *testing.B) { benchmarkWriteback(b, 1, 10000, true) }
+
+func BenchmarkWritebackSeqBatches10BatchSize1000(b *testing.B) { benchmarkWriteback(b, 10, 1000, true) }
+
+func BenchmarkWritebackSeqBatches100BatchSize100(b *testing.B) { benchmarkWriteback(b, 100, 100, true) }
+
+func BenchmarkWritebackSeqBatches1000BatchSize10(b *testing.B) { benchmarkWriteback(b, 1000, 10, true) }
+
+func BenchmarkWritebackNonSeqBatches1000BatchSize1(b *testing.B) {
+	// for non sequential writes, the batch size is usually small, 1 or the order of cluster size.
+	benchmarkWriteback(b, 1000, 1, false)
+}
+
+func BenchmarkWritebackNonSeqBatches10000BatchSize1(b *testing.B) {
+	benchmarkWriteback(b, 10000, 1, false)
+}
+
+func BenchmarkWritebackNonSeqBatches100BatchSize10(b *testing.B) {
+	benchmarkWriteback(b, 100, 10, false)
+}
+
+func BenchmarkWritebackNonSeqBatches1000BatchSize10(b *testing.B) {
+	benchmarkWriteback(b, 1000, 10, false)
+}
+
+func benchmarkWriteback(b *testing.B, batches, batchSize int, isSeq bool) {
+	// kss and vss are key and value arrays to write with size batches*batchSize
+	var kss, vss [][]string
+	for i := 0; i < batches; i++ {
+		var ks, vs []string
+		for j := i * batchSize; j < (i+1)*batchSize; j++ {
+			k := fmt.Sprintf("key%d", j)
+			v := fmt.Sprintf("val%d", j)
+			ks = append(ks, k)
+			vs = append(vs, v)
+		}
+		if !isSeq {
+			// make sure each batch is shuffled differently but the same for different test runs.
+			shuffleList(ks, i*batchSize)
+		}
+		kss = append(kss, ks)
+		vss = append(vss, vs)
+	}
+	b.ResetTimer()
+	for n := 1; n < b.N; n++ {
+		runWriteback(b, kss, vss, isSeq)
+	}
+}
+
+func shuffleList(l []string, seed int) {
+	r := rand.New(rand.NewSource(int64(seed)))
+	for i := 0; i < len(l); i++ {
+		j := r.Intn(i + 1)
+		l[i], l[j] = l[j], l[i]
 	}
 }
