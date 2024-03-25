@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -35,6 +36,7 @@ import (
 var (
 	EtcdServerReadyLines = []string{"ready to serve client requests"}
 	BinPath              string
+	BinPathLastRelease   string
 	CtlBinPath           string
 	UtlBinPath           string
 )
@@ -230,6 +232,14 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 		ep.cfg.lg.Panic("Please grap logs before process is stopped")
 	}
 	return ep.proc
+}
+
+func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
+	t.Helper()
+	_, err := ep.Logs().Expect(expectLog)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
