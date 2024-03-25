@@ -12,7 +12,7 @@ require (
 	github.com/google/addlicense v1.1.1
 	github.com/google/yamlfmt v0.11.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
-	github.com/mikefarah/yq/v4 v4.40.7
+	github.com/mikefarah/yq/v4 v4.43.1
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	go.etcd.io/raft/v3 v3.6.0-alpha.0
