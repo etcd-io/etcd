@@ -56,9 +56,10 @@ func addHexPrefix(s string) string {
 	return string(ns)
 }
 
+var argsRegexp = regexp.MustCompile(`"(?:[^"\\]|\\.)*"|'[^']*'|[^'"\s]\S*[^'"\s]?`)
+
 func Argify(s string) []string {
-	r := regexp.MustCompile(`"(?:[^"\\]|\\.)*"|'[^']*'|[^'"\s]\S*[^'"\s]?`)
-	args := r.FindAllString(s, -1)
+	args := argsRegexp.FindAllString(s, -1)
 	for i := range args {
 		if len(args[i]) == 0 {
 			continue
