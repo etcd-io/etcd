@@ -89,7 +89,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		cfg.ClusterSize = 1
 		cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
+		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
+		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestWatchDelayForEvent(t *testing.T) {
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
 		cfg.Client = tc.client
-		cfg.ClientHttpSeparate = tc.clientHTTPSeparate
+		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
 			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)

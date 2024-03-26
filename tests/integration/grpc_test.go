@@ -149,7 +149,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *integration.Cluster) 
 	var endpoints []string
 	for _, m := range clus.Members {
 		ent := pattern
-		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", m.GrpcPortNumber())
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", m.GRPCPortNumber())
 		ent = strings.ReplaceAll(ent, "${MEMBER_NAME}", m.Name)
 		endpoints = append(endpoints, ent)
 	}
@@ -159,7 +159,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *integration.Cluster) 
 func templateAuthority(t *testing.T, pattern string, m *integration.Member) string {
 	t.Helper()
 	authority := pattern
-	authority = strings.ReplaceAll(authority, "${MEMBER_PORT}", m.GrpcPortNumber())
+	authority = strings.ReplaceAll(authority, "${MEMBER_PORT}", m.GRPCPortNumber())
 	authority = strings.ReplaceAll(authority, "${MEMBER_NAME}", m.Name)
 	return authority
 }

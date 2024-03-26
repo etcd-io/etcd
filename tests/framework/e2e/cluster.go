@@ -167,7 +167,7 @@ type EtcdProcessClusterConfig struct {
 	BaseClientScheme   string
 	MetricsURLScheme   string
 	Client             ClientConfig
-	ClientHttpSeparate bool
+	ClientHTTPSeparate bool
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
 	CN                 bool
@@ -486,7 +486,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerPort := port + 1
 	metricsPort := port + 2
 	peer2Port := port + 3
-	clientHttpPort := port + 4
+	clientHTTPPort := port + 4
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -496,18 +496,18 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		curls = []string{curl}
 	}
 
-	peerListenUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
-	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
 		}
-		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
+		peerAdvertiseURL.Host = fmt.Sprintf("localhost:%d", peer2Port)
 		proxyCfg = &proxy.ServerConfig{
 			Logger: zap.NewNop(),
-			To:     peerListenUrl,
-			From:   peerAdvertiseUrl,
+			To:     peerListenURL,
+			From:   peerAdvertiseURL,
 		}
 	}
 
@@ -529,16 +529,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--name=" + name,
 		"--listen-client-urls=" + strings.Join(curls, ","),
 		"--advertise-client-urls=" + strings.Join(curls, ","),
-		"--listen-peer-urls=" + peerListenUrl.String(),
-		"--initial-advertise-peer-urls=" + peerAdvertiseUrl.String(),
+		"--listen-peer-urls=" + peerListenURL.String(),
+		"--initial-advertise-peer-urls=" + peerAdvertiseURL.String(),
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
-	var clientHttpUrl string
-	if cfg.ClientHttpSeparate {
-		clientHttpUrl = clientURL(cfg.ClientScheme(), clientHttpPort, cfg.Client.ConnectionType)
-		args = append(args, "--listen-client-http-urls="+clientHttpUrl)
+	var clientHTTPURL string
+	if cfg.ClientHTTPSeparate {
+		clientHTTPURL = clientURL(cfg.ClientScheme(), clientHTTPPort, cfg.Client.ConnectionType)
+		args = append(args, "--listen-client-http-urls="+clientHTTPURL)
 	}
 
 	if cfg.ServerConfig.ForceNewCluster {
@@ -564,7 +564,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--listen-metrics-urls="+murl)
 	}
 
-	args = append(args, cfg.TlsArgs()...)
+	args = append(args, cfg.TLSArgs()...)
 
 	if cfg.Discovery != "" {
 		args = append(args, "--discovery="+cfg.Discovery)
@@ -618,14 +618,14 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		ExecPath:            execPath,
 		Args:                args,
 		EnvVars:             envVars,
-		TlsArgs:             cfg.TlsArgs(),
+		TLSArgs:             cfg.TLSArgs(),
 		Client:              cfg.Client,
 		DataDirPath:         dataDirPath,
 		KeepDataDir:         cfg.KeepDataDir,
 		Name:                name,
-		PeerURL:             peerAdvertiseUrl,
+		PeerURL:             peerAdvertiseURL,
 		ClientURL:           curl,
-		ClientHTTPURL:       clientHttpUrl,
+		ClientHTTPURL:       clientHTTPURL,
 		MetricsURL:          murl,
 		InitialToken:        cfg.ServerConfig.InitialClusterToken,
 		GoFailPort:          gofailPort,
@@ -661,7 +661,7 @@ func clientURL(scheme string, port int, connType ClientConnType) string {
 	}
 }
 
-func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
+func (cfg *EtcdProcessClusterConfig) TLSArgs() (args []string) {
 	if cfg.Client.ConnectionType != ClientNonTLS {
 		if cfg.Client.AutoTLS {
 			args = append(args, "--auto-tls")

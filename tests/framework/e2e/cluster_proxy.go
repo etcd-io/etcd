@@ -196,7 +196,7 @@ func newProxyV2Proc(cfg *EtcdServerProcessConfig) *proxyV2Proc {
 			name:     cfg.Name,
 			lg:       cfg.lg,
 			execPath: cfg.ExecPath,
-			args:     append(args, cfg.TlsArgs...),
+			args:     append(args, cfg.TLSArgs...),
 			ep:       listenAddr,
 			donec:    make(chan struct{}),
 		},
@@ -225,16 +225,16 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 		args = append(args, "--metrics-addr", murl)
 	}
 	tlsArgs := []string{}
-	for i := 0; i < len(cfg.TlsArgs); i++ {
-		switch cfg.TlsArgs[i] {
+	for i := 0; i < len(cfg.TLSArgs); i++ {
+		switch cfg.TLSArgs[i] {
 		case "--cert-file":
-			tlsArgs = append(tlsArgs, "--cert-file", cfg.TlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--cert-file", cfg.TLSArgs[i+1])
 			i++
 		case "--key-file":
-			tlsArgs = append(tlsArgs, "--key-file", cfg.TlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--key-file", cfg.TLSArgs[i+1])
 			i++
 		case "--trusted-ca-file":
-			tlsArgs = append(tlsArgs, "--trusted-ca-file", cfg.TlsArgs[i+1])
+			tlsArgs = append(tlsArgs, "--trusted-ca-file", cfg.TLSArgs[i+1])
 			i++
 		case "--auto-tls":
 			tlsArgs = append(tlsArgs, "--auto-tls", "--insecure-skip-tls-verify")
@@ -242,10 +242,10 @@ func newProxyV3Proc(cfg *EtcdServerProcessConfig) *proxyV3Proc {
 			i++ // skip arg
 		case "--client-cert-auth", "--peer-auto-tls":
 		default:
-			tlsArgs = append(tlsArgs, cfg.TlsArgs[i])
+			tlsArgs = append(tlsArgs, cfg.TLSArgs[i])
 		}
 	}
-	if len(cfg.TlsArgs) > 0 {
+	if len(cfg.TLSArgs) > 0 {
 		// Configure certificates for connection proxy ---> server.
 		// This certificate must NOT have CN set.
 		tlsArgs = append(tlsArgs,

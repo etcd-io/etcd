@@ -81,7 +81,7 @@ type EtcdServerProcessConfig struct {
 	lg       *zap.Logger
 	ExecPath string
 	Args     []string
-	TlsArgs  []string
+	TLSArgs  []string
 	EnvVars  map[string]string
 
 	Client      ClientConfig
@@ -354,12 +354,12 @@ func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
 
 func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointURL.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
 	}
@@ -382,12 +382,12 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 
 func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointUrl.String(), nil)
+	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointURL.String(), nil)
 	if err != nil {
 		return err
 	}
@@ -439,11 +439,11 @@ func failpoints(member EtcdProcess) (map[string]string, error) {
 
 func fetchFailpointsBody(member EtcdProcess) (io.ReadCloser, error) {
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   address,
 	}
-	resp, err := http.Get(failpointUrl.String())
+	resp, err := http.Get(failpointURL.String())
 	if err != nil {
 		return nil, err
 	}
