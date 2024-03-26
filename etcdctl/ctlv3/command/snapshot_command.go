@@ -48,7 +48,7 @@ func NewSnapshotSaveCommand() *cobra.Command {
 func NewSnapshotPipeCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "pipe",
-		Short: "Streams an etcd node backend snapshot to STDOUT",
+		Short: "Streams an etcd node backend snapshot to stdout",
 		Run:   snapshotPipeCommandFunc,
 	}
 }
