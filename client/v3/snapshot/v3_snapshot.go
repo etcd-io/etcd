@@ -44,7 +44,7 @@ func hasChecksum(n int64) bool {
 // context.DeadlineExceeded). Make sure to specify only one endpoint
 // in client configuration. Snapshot API must be requested to a
 // selected node, and saved snapshot is the point-in-time state of
-// the selected node. Etcd < v3.6 will return "" as version.
+// the selected node. Nota bene: etcd < v3.6 will return "" as version.
 func WriteSnapshotWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, f *os.File) (string, error) {
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {

@@ -1024,7 +1024,7 @@ The backend snapshot is written to stdout.
 
 Write a snapshot to stdout:
 ```
-./etcdctl snapshot pipe
+./etcdctl snapshot pipe > snapshot.db
 ```
 
 ### SNAPSHOT SAVE \<filename\>
