@@ -12,22 +12,22 @@ test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin
 
 .PHONY: test-robustness-issue14370
 test-robustness-issue14370: /tmp/etcd-v3.5.4-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue13766
 test-robustness-issue13766: /tmp/etcd-v3.5.2-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue14685
 test-robustness-issue14685: /tmp/etcd-v3.5.5-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue15271
 test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustness/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 # Failpoints
@@ -36,7 +36,7 @@ GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/g
 
 .PHONY: gofail-enable
 gofail-enable: install-gofail
-	gofail enable server/etcdserver/ server/storage/backend/ server/storage/mvcc/ server/storage/wal/
+	gofail enable server/etcdserver/ server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
 	cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd ./etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd ./etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
@@ -44,7 +44,7 @@ gofail-enable: install-gofail
 
 .PHONY: gofail-disable
 gofail-disable: install-gofail
-	gofail disable server/etcdserver/ server/storage/backend/ server/storage/mvcc/ server/storage/wal/
+	gofail disable server/etcdserver/ server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
 	cd ./server && go mod tidy
 	cd ./etcdutl && go mod tidy
 	cd ./etcdctl && go mod tidy
@@ -52,7 +52,7 @@ gofail-disable: install-gofail
 
 .PHONY: install-gofail
 install-gofail:
-	cd tools/mod; go install go.etcd.io/gofail@${GOFAIL_VERSION}
+	go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
 # Build previous releases for robustness tests
 

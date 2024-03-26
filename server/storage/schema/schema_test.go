@@ -37,7 +37,7 @@ func TestValidate(t *testing.T) {
 		name    string
 		version semver.Version
 		// Overrides which keys should be set (default based on version)
-		overrideKeys   func(tx backend.BatchTx)
+		overrideKeys   func(tx backend.UnsafeReadWriter)
 		expectError    bool
 		expectErrorMsg string
 	}{
@@ -50,19 +50,19 @@ func TestValidate(t *testing.T) {
 		{
 			name:         `V3.5 schema without confstate and term fields is correct`,
 			version:      version.V3_5,
-			overrideKeys: func(tx backend.BatchTx) {},
+			overrideKeys: func(tx backend.UnsafeReadWriter) {},
 		},
 		{
 			name:    `V3.5 schema without term field is correct`,
 			version: version.V3_5,
-			overrideKeys: func(tx backend.BatchTx) {
+			overrideKeys: func(tx backend.UnsafeReadWriter) {
 				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
 			},
 		},
 		{
 			name:    `V3.5 schema with all fields is correct`,
 			version: version.V3_5,
-			overrideKeys: func(tx backend.BatchTx) {
+			overrideKeys: func(tx backend.UnsafeReadWriter) {
 				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
 				UnsafeUpdateConsistentIndex(tx, 1, 1)
 			},
@@ -101,7 +101,7 @@ func TestMigrate(t *testing.T) {
 		name    string
 		version semver.Version
 		// Overrides which keys should be set (default based on version)
-		overrideKeys  func(tx backend.BatchTx)
+		overrideKeys  func(tx backend.UnsafeReadWriter)
 		targetVersion semver.Version
 		walEntries    []etcdserverpb.InternalRaftRequest
 
@@ -114,7 +114,7 @@ func TestMigrate(t *testing.T) {
 		{
 			name:           `Upgrading v3.5 to v3.6 should be rejected if confstate is not set`,
 			version:        version.V3_5,
-			overrideKeys:   func(tx backend.BatchTx) {},
+			overrideKeys:   func(tx backend.UnsafeReadWriter) {},
 			targetVersion:  version.V3_6,
 			expectVersion:  nil,
 			expectError:    true,
@@ -123,7 +123,7 @@ func TestMigrate(t *testing.T) {
 		{
 			name:    `Upgrading v3.5 to v3.6 should be rejected if term is not set`,
 			version: version.V3_5,
-			overrideKeys: func(tx backend.BatchTx) {
+			overrideKeys: func(tx backend.UnsafeReadWriter) {
 				MustUnsafeSaveConfStateToBackend(zap.NewNop(), tx, &raftpb.ConfState{})
 			},
 			targetVersion:  version.V3_6,
@@ -294,7 +294,7 @@ func TestMigrateIsReversible(t *testing.T) {
 	}
 }
 
-func setupBackendData(t *testing.T, ver semver.Version, overrideKeys func(tx backend.BatchTx)) string {
+func setupBackendData(t *testing.T, ver semver.Version, overrideKeys func(tx backend.UnsafeReadWriter)) string {
 	t.Helper()
 	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 	tx := be.BatchTx()

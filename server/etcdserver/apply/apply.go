@@ -17,6 +17,8 @@ package apply
 import (
 	"context"
 
+	"github.com/coreos/go-semver/semver"
+	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -35,9 +37,6 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-
-	"github.com/coreos/go-semver/semver"
-	"github.com/gogo/protobuf/proto"
 )
 
 const (
@@ -46,7 +45,7 @@ const (
 
 // RaftStatusGetter represents etcd server and Raft progress.
 type RaftStatusGetter interface {
-	MemberId() types.ID
+	MemberID() types.ID
 	Leader() types.ID
 	CommittedIndex() uint64
 	AppliedIndex() uint64
@@ -63,17 +62,17 @@ type Result struct {
 	Trace *traceutil.Trace
 }
 
-type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
+type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest) *Result
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
 	// delegates the actual execution to the applyFunc method.
-	Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
+	Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result
 
-	Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
-	Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error)
-	DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
+	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
+	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
+	DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
 	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
@@ -103,12 +102,6 @@ type applierV3 interface {
 	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
 	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
-
-	// processing internal V3 raft request
-
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
 }
 
 type SnapshotServer interface {
@@ -153,20 +146,20 @@ func newApplierV3Backend(
 		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
-func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result {
-	return applyFunc(ctx, r, shouldApplyV3)
+func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
+	return applyFunc(ctx, r)
 }
 
-func (a *applierV3backend) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(ctx, a.lg, a.lessor, a.kv, txn, p)
+func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
+	return mvcctxn.Put(ctx, a.lg, a.lessor, a.kv, p)
 }
 
-func (a *applierV3backend) DeleteRange(txn mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return mvcctxn.DeleteRange(a.kv, txn, dr)
+func (a *applierV3backend) DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+	return mvcctxn.DeleteRange(ctx, a.lg, a.kv, dr)
 }
 
-func (a *applierV3backend) Range(ctx context.Context, txn mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return mvcctxn.Range(ctx, a.lg, a.kv, txn, r)
+func (a *applierV3backend) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
+	return mvcctxn.Range(ctx, a.lg, a.kv, r)
 }
 
 func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
@@ -255,7 +248,7 @@ type applierV3Capped struct {
 // with Puts so that the number of keys in the store is capped.
 func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
 
-func (a *applierV3Capped) Put(_ context.Context, _ mvcc.TxnWrite, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Put(_ context.Context, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	return nil, nil, errors.ErrNoSpace
 }
 
@@ -402,7 +395,21 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 	return resp, err
 }
 
-func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+type applierMembership struct {
+	lg             *zap.Logger
+	cluster        *membership.RaftCluster
+	snapshotServer SnapshotServer
+}
+
+func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) *applierMembership {
+	return &applierMembership{
+		lg:             lg,
+		cluster:        cluster,
+		snapshotServer: snapshotServer,
+	}
+}
+
+func (a *applierMembership) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	prevVersion := a.cluster.Version()
 	newVersion := semver.Must(semver.NewVersion(r.Ver))
 	a.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
@@ -419,7 +426,7 @@ func (a *applierV3backend) ClusterVersionSet(r *membershippb.ClusterVersionSetRe
 	}
 }
 
-func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *applierMembership) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	a.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
@@ -430,7 +437,7 @@ func (a *applierV3backend) ClusterMemberAttrSet(r *membershippb.ClusterMemberAtt
 	)
 }
 
-func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *applierMembership) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	d := version.DowngradeInfo{Enabled: false}
 	if r.Enabled {
 		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
@@ -447,9 +454,9 @@ func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Ba
 	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
 }
 
-func (a *quotaApplierV3) Put(ctx context.Context, txn mvcc.TxnWrite, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	ok := a.q.Available(p)
-	resp, trace, err := a.applierV3.Put(ctx, txn, p)
+	resp, trace, err := a.applierV3.Put(ctx, p)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
@@ -477,7 +484,7 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(a.cluster.ID()),
-		MemberId:  uint64(a.raftStatus.MemberId()),
+		MemberId:  uint64(a.raftStatus.MemberID()),
 		Revision:  a.kv.Rev(),
 		RaftTerm:  a.raftStatus.Term(),
 	}

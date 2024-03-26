@@ -24,10 +24,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/server/v3/embed"
-
-	"go.uber.org/zap"
 )
 
 var lg *zap.Logger

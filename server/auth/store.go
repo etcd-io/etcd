@@ -25,21 +25,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/authpb"
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
+
+	"go.etcd.io/etcd/api/v3/authpb"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 var (
-	authEnabled  = []byte{1}
-	authDisabled = []byte{0}
-
 	rootPerm = authpb.Permission{PermType: authpb.READWRITE, Key: []byte{}, RangeEnd: []byte{0}}
 
 	ErrRootUserNotExist     = errors.New("auth: root user does not exist")
@@ -205,25 +202,39 @@ type AuthBackend interface {
 	GetAllRoles() []*authpb.Role
 }
 
-type AuthBatchTx interface {
-	AuthReadTx
-	UnsafeSaveAuthEnabled(enabled bool)
-	UnsafeSaveAuthRevision(rev uint64)
-	UnsafePutUser(*authpb.User)
-	UnsafeDeleteUser(string)
-	UnsafePutRole(*authpb.Role)
-	UnsafeDeleteRole(string)
+type AuthReadTx interface {
+	RLock()
+	RUnlock()
+	UnsafeAuthReader
 }
 
-type AuthReadTx interface {
+type UnsafeAuthReader interface {
 	UnsafeReadAuthEnabled() bool
 	UnsafeReadAuthRevision() uint64
 	UnsafeGetUser(string) *authpb.User
 	UnsafeGetRole(string) *authpb.Role
 	UnsafeGetAllUsers() []*authpb.User
 	UnsafeGetAllRoles() []*authpb.Role
+}
+
+type AuthBatchTx interface {
 	Lock()
 	Unlock()
+	UnsafeAuthReadWriter
+}
+
+type UnsafeAuthReadWriter interface {
+	UnsafeAuthReader
+	UnsafeAuthWriter
+}
+
+type UnsafeAuthWriter interface {
+	UnsafeSaveAuthEnabled(enabled bool)
+	UnsafeSaveAuthRevision(rev uint64)
+	UnsafePutUser(*authpb.User)
+	UnsafeDeleteUser(string)
+	UnsafePutRole(*authpb.Role)
+	UnsafeDeleteRole(string)
 }
 
 type authStore struct {
@@ -354,8 +365,8 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 	// to avoid putting it in the critical section of the tx lock.
 	revision, err := func() (uint64, error) {
 		tx := as.be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
+		tx.RLock()
+		defer tx.RUnlock()
 
 		user = tx.UnsafeGetUser(username)
 		if user == nil {
@@ -382,13 +393,13 @@ func (as *authStore) CheckPassword(username, password string) (uint64, error) {
 func (as *authStore) Recover(be AuthBackend) {
 	as.be = be
 	tx := be.ReadTx()
-	tx.Lock()
+	tx.RLock()
 
 	enabled := tx.UnsafeReadAuthEnabled()
 	as.setRevision(tx.UnsafeReadAuthRevision())
 	as.refreshRangePermCache(tx)
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	as.enabledMu.Lock()
 	as.enabled = enabled
@@ -864,8 +875,8 @@ func (as *authStore) isOpPermitted(userName string, revision uint64, key, rangeE
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 
 	user := tx.UnsafeGetUser(userName)
 	if user == nil {
@@ -906,8 +917,8 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	}
 
 	tx := as.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	u := tx.UnsafeGetUser(authInfo.Username)
 
 	if u == nil {
@@ -984,7 +995,7 @@ func hasRootRole(u *authpb.User) bool {
 	return idx != len(u.Roles) && u.Roles[idx] == rootRole
 }
 
-func (as *authStore) commitRevision(tx AuthBatchTx) {
+func (as *authStore) commitRevision(tx UnsafeAuthWriter) {
 	atomic.AddUint64(&as.revision, 1)
 	tx.UnsafeSaveAuthRevision(as.Revision())
 }

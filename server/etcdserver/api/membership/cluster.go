@@ -25,6 +25,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
@@ -33,10 +37,6 @@ import (
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-
-	"github.com/coreos/go-semver/semver"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 // RaftCluster is a list of Members that belong to the same raft cluster
@@ -284,6 +284,10 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
+		if c.localID == m.ID {
+			setIsLearnerMetric(m)
+		}
+
 		c.lg.Info(
 			"recovered/added member from store",
 			zap.String("cluster-id", c.cid.String()),
@@ -393,21 +397,34 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	if c.v2store != nil {
 		mustSaveMemberToStore(c.lg, c.v2store, m)
 	}
-	if c.be != nil && shouldApplyV3 {
-		c.be.MustSaveMemberToBackend(m)
+
+	if m.ID == c.localID {
+		setIsLearnerMetric(m)
 	}
 
-	c.members[m.ID] = m
-	c.updateMembershipMetric(m.ID, true)
+	if c.be != nil && shouldApplyV3 {
+		c.be.MustSaveMemberToBackend(m)
 
-	c.lg.Info(
-		"added member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-		zap.String("added-peer-id", m.ID.String()),
-		zap.Strings("added-peer-peer-urls", m.PeerURLs),
-		zap.Bool("added-peer-is-learner", m.IsLearner),
-	)
+		c.members[m.ID] = m
+		c.updateMembershipMetric(m.ID, true)
+
+		c.lg.Info(
+			"added member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("added-peer-id", m.ID.String()),
+			zap.Strings("added-peer-peer-urls", m.PeerURLs),
+			zap.Bool("added-peer-is-learner", m.IsLearner),
+		)
+	} else {
+		c.lg.Info(
+			"ignore already added member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("added-peer-id", m.ID.String()),
+			zap.Strings("added-peer-peer-urls", m.PeerURLs),
+			zap.Bool("added-peer-is-learner", m.IsLearner))
+	}
 }
 
 // RemoveMember removes a member from the store.
@@ -420,25 +437,32 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
-	}
 
-	m, ok := c.members[id]
-	delete(c.members, id)
-	c.removed[id] = true
-	c.updateMembershipMetric(id, false)
+		m, ok := c.members[id]
+		delete(c.members, id)
+		c.removed[id] = true
+		c.updateMembershipMetric(id, false)
 
-	if ok {
-		c.lg.Info(
-			"removed member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("removed-remote-peer-id", id.String()),
-			zap.Strings("removed-remote-peer-urls", m.PeerURLs),
-			zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
-		)
+		if ok {
+			c.lg.Info(
+				"removed member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+				zap.Strings("removed-remote-peer-urls", m.PeerURLs),
+				zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
+			)
+		} else {
+			c.lg.Warn(
+				"skipped removing already removed member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("removed-remote-peer-id", id.String()),
+			)
+		}
 	} else {
-		c.lg.Warn(
-			"skipped removing already removed member",
+		c.lg.Info(
+			"ignore already removed member",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
 			zap.String("removed-remote-peer-id", id.String()),
@@ -484,42 +508,66 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members[id].RaftAttributes.IsLearner = false
-	c.updateMembershipMetric(id, true)
 	if c.v2store != nil {
-		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
-	}
-	if c.be != nil && shouldApplyV3 {
-		c.be.MustSaveMemberToBackend(c.members[id])
+		m := *(c.members[id])
+		m.RaftAttributes.IsLearner = false
+		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	}
 
-	c.lg.Info(
-		"promote member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-	)
+	if id == c.localID {
+		isLearner.Set(0)
+	}
+
+	if c.be != nil && shouldApplyV3 {
+		c.members[id].RaftAttributes.IsLearner = false
+		c.updateMembershipMetric(id, true)
+		c.be.MustSaveMemberToBackend(c.members[id])
+
+		c.lg.Info(
+			"promote member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	} else {
+		c.lg.Info(
+			"ignore already promoted member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+		)
+	}
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.members[id].RaftAttributes = raftAttr
 	if c.v2store != nil {
-		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
+		m := *(c.members[id])
+		m.RaftAttributes = raftAttr
+		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	}
 	if c.be != nil && shouldApplyV3 {
+		c.members[id].RaftAttributes = raftAttr
 		c.be.MustSaveMemberToBackend(c.members[id])
-	}
 
-	c.lg.Info(
-		"updated member",
-		zap.String("cluster-id", c.cid.String()),
-		zap.String("local-member-id", c.localID.String()),
-		zap.String("updated-remote-peer-id", id.String()),
-		zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
-		zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
-	)
+		c.lg.Info(
+			"updated member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+		)
+	} else {
+		c.lg.Info(
+			"ignored already updated member",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+		)
+	}
 }
 
 func (c *RaftCluster) Version() *semver.Version {
@@ -788,23 +836,6 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	return ids
 }
 
-// PushMembershipToStorage is overriding storage information about cluster's
-// members, such that they fully reflect internal RaftCluster's storage.
-func (c *RaftCluster) PushMembershipToStorage() {
-	if c.be != nil {
-		c.be.TrimMembershipFromBackend()
-		for _, m := range c.members {
-			c.be.MustSaveMemberToBackend(m)
-		}
-	}
-	if c.v2store != nil {
-		TrimMembershipFromV2Store(c.lg, c.v2store)
-		for _, m := range c.members {
-			mustSaveMemberToStore(c.lg, c.v2store, m)
-		}
-	}
-}
-
 // buildMembershipMetric sets the knownPeers metric based on the current
 // members of the cluster.
 func (c *RaftCluster) buildMembershipMetric() {
@@ -853,4 +884,31 @@ func ValidateMaxLearnerConfig(maxLearners int, members []*Member, scaleUpLearner
 	}
 
 	return nil
+}
+
+func (c *RaftCluster) Store(store v2store.Store) {
+	c.Lock()
+	defer c.Unlock()
+
+	verifyNoMembersInStore(c.lg, store)
+
+	for _, m := range c.members {
+		mustSaveMemberToStore(c.lg, store, m)
+		if m.ClientURLs != nil {
+			mustUpdateMemberAttrInStore(c.lg, store, m)
+		}
+		c.lg.Info(
+			"snapshot storing member",
+			zap.String("id", m.ID.String()),
+			zap.Strings("peer-urls", m.PeerURLs),
+			zap.Bool("is-learner", m.IsLearner),
+		)
+	}
+	for id := range c.removed {
+		//We do not need to delete the member since the store is empty.
+		mustAddToRemovedMembersInStore(c.lg, store, id)
+	}
+	if c.version != nil {
+		mustSaveClusterVersionToStore(c.lg, store, c.version)
+	}
 }

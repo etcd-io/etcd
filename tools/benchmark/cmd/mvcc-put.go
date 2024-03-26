@@ -70,7 +70,7 @@ func createBytesSlice(bytesN, sliceN int) [][]byte {
 	return rs
 }
 
-func mvccPutFunc(cmd *cobra.Command, args []string) {
+func mvccPutFunc(_ *cobra.Command, _ []string) {
 	if cpuProfPath != "" {
 		f, err := os.Create(cpuProfPath)
 		if err != nil {

@@ -28,8 +28,13 @@ import (
 )
 
 type storeTxnRead struct {
-	s  *store
+	storeTxnCommon
 	tx backend.ReadTx
+}
+
+type storeTxnCommon struct {
+	s  *store
+	tx backend.UnsafeReader
 
 	firstRev int64
 	rev      int64
@@ -54,17 +59,17 @@ func (s *store) Read(mode ReadTxMode, trace *traceutil.Trace) TxnRead {
 	tx.RLock() // RLock is no-op. concurrentReadTx does not need to be locked after it is created.
 	firstRev, rev := s.compactMainRev, s.currentRev
 	s.revMu.RUnlock()
-	return newMetricsTxnRead(&storeTxnRead{s, tx, firstRev, rev, trace})
+	return newMetricsTxnRead(&storeTxnRead{storeTxnCommon{s, tx, firstRev, rev, trace}, tx})
 }
 
-func (tr *storeTxnRead) FirstRev() int64 { return tr.firstRev }
-func (tr *storeTxnRead) Rev() int64      { return tr.rev }
+func (tr *storeTxnCommon) FirstRev() int64 { return tr.firstRev }
+func (tr *storeTxnCommon) Rev() int64      { return tr.rev }
 
-func (tr *storeTxnRead) Range(ctx context.Context, key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
+func (tr *storeTxnCommon) Range(ctx context.Context, key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
 	return tr.rangeKeys(ctx, key, end, tr.Rev(), ro)
 }
 
-func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
+func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
 	rev := ro.Rev
 	if rev > curRev {
 		return &RangeResult{KVs: nil, Count: -1, Rev: curRev}, ErrFutureRev
@@ -92,20 +97,20 @@ func (tr *storeTxnRead) rangeKeys(ctx context.Context, key, end []byte, curRev i
 	}
 
 	kvs := make([]mvccpb.KeyValue, limit)
-	revBytes := newRevBytes()
+	revBytes := NewRevBytes()
 	for i, revpair := range revpairs[:len(kvs)] {
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("rangeKeys: context cancelled: %w", ctx.Err())
 		default:
 		}
-		revToBytes(revpair, revBytes)
+		revBytes = RevToBytes(revpair, revBytes)
 		_, vs := tr.tx.UnsafeRange(schema.Key, revBytes, nil, 0)
 		if len(vs) != 1 {
 			tr.s.lg.Fatal(
 				"range failed to find revision pair",
-				zap.Int64("revision-main", revpair.main),
-				zap.Int64("revision-sub", revpair.sub),
+				zap.Int64("revision-main", revpair.Main),
+				zap.Int64("revision-sub", revpair.Sub),
 				zap.Int64("revision-current", curRev),
 				zap.Int64("range-option-rev", ro.Rev),
 				zap.Int64("range-option-limit", ro.Limit),
@@ -132,7 +137,7 @@ func (tr *storeTxnRead) End() {
 }
 
 type storeTxnWrite struct {
-	storeTxnRead
+	storeTxnCommon
 	tx backend.BatchTx
 	// beginRev is the revision where the txn begins; it will write to the next revision.
 	beginRev int64
@@ -144,10 +149,10 @@ func (s *store) Write(trace *traceutil.Trace) TxnWrite {
 	tx := s.b.BatchTx()
 	tx.LockInsideApply()
 	tw := &storeTxnWrite{
-		storeTxnRead: storeTxnRead{s, tx, 0, 0, trace},
-		tx:           tx,
-		beginRev:     s.currentRev,
-		changes:      make([]mvccpb.KeyValue, 0, 4),
+		storeTxnCommon: storeTxnCommon{s, tx, 0, 0, trace},
+		tx:             tx,
+		beginRev:       s.currentRev,
+		changes:        make([]mvccpb.KeyValue, 0, 4),
 	}
 	return newMetricsTxnWrite(tw)
 }
@@ -197,13 +202,13 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 	// get its previous leaseID
 	_, created, ver, err := tw.s.kvindex.Get(key, rev)
 	if err == nil {
-		c = created.main
+		c = created.Main
 		oldLease = tw.s.le.GetLease(lease.LeaseItem{Key: string(key)})
 		tw.trace.Step("get key's previous created_revision and leaseID")
 	}
-	ibytes := newRevBytes()
-	idxRev := revision{main: rev, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := Revision{Main: rev, Sub: int64(len(tw.changes))}
+	ibytes = RevToBytes(idxRev, ibytes)
 
 	ver = ver + 1
 	kv := mvccpb.KeyValue{
@@ -217,7 +222,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		tw.storeTxnRead.s.lg.Fatal(
+		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
 			zap.Error(err),
 		)
@@ -240,7 +245,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 		err = tw.s.le.Detach(oldLease, []lease.LeaseItem{{Key: string(key)}})
 		if err != nil {
-			tw.storeTxnRead.s.lg.Error(
+			tw.storeTxnCommon.s.lg.Error(
 				"failed to detach old lease from a key",
 				zap.Error(err),
 			)
@@ -274,26 +279,24 @@ func (tw *storeTxnWrite) deleteRange(key, end []byte) int64 {
 }
 
 func (tw *storeTxnWrite) delete(key []byte) {
-	ibytes := newRevBytes()
-	idxRev := revision{main: tw.beginRev + 1, sub: int64(len(tw.changes))}
-	revToBytes(idxRev, ibytes)
-
-	ibytes = appendMarkTombstone(tw.storeTxnRead.s.lg, ibytes)
+	ibytes := NewRevBytes()
+	idxRev := newBucketKey(tw.beginRev+1, int64(len(tw.changes)), true)
+	ibytes = BucketKeyToBytes(idxRev, ibytes)
 
 	kv := mvccpb.KeyValue{Key: key}
 
 	d, err := kv.Marshal()
 	if err != nil {
-		tw.storeTxnRead.s.lg.Fatal(
+		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
 			zap.Error(err),
 		)
 	}
 
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
-	err = tw.s.kvindex.Tombstone(key, idxRev)
+	err = tw.s.kvindex.Tombstone(key, idxRev.Revision)
 	if err != nil {
-		tw.storeTxnRead.s.lg.Fatal(
+		tw.storeTxnCommon.s.lg.Fatal(
 			"failed to tombstone an existing key",
 			zap.String("key", string(key)),
 			zap.Error(err),
@@ -307,7 +310,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	if leaseID != lease.NoLease {
 		err = tw.s.le.Detach(leaseID, []lease.LeaseItem{item})
 		if err != nil {
-			tw.storeTxnRead.s.lg.Error(
+			tw.storeTxnCommon.s.lg.Error(
 				"failed to detach old lease from a key",
 				zap.Error(err),
 			)

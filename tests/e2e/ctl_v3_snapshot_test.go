@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -94,7 +96,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 			"--data-dir", datadir,
 			fpath),
 		cx.envMap,
-		"expected sha256")
+		expect.ExpectedResponse{Value: "expected sha256"})
 	require.ErrorContains(cx.t, serr, "Error: expected sha256")
 }
 
@@ -125,7 +127,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 			"--data-dir", dataDir,
 			fpath),
 		cx.envMap,
-		"added member")
+		expect.ExpectedResponse{Value: "added member"})
 	if serr != nil {
 		cx.t.Fatal(serr)
 	}
@@ -133,7 +135,7 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 
 func ctlV3SnapshotSave(cx ctlCtx, fpath string) error {
 	cmdArgs := append(cx.PrefixArgs(), "snapshot", "save", fpath)
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("Snapshot saved at %s", fpath))
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)})
 }
 
 func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
@@ -194,7 +196,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("Writing some keys...")
 	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), "OK"); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), expect.ExpectedResponse{Value: "OK"}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -204,7 +206,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("etcdctl saving snapshot...")
 	if err = e2e.SpawnWithExpects(append(prefixArgs, "snapshot", "save", fpath),
 		nil,
-		fmt.Sprintf("Snapshot saved at %s", fpath),
+		expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)},
 	); err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +218,14 @@ func testIssue6361(t *testing.T) {
 
 	newDataDir := filepath.Join(t.TempDir(), "test.data")
 	t.Log("etcdctl restoring the snapshot...")
-	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdutl, "snapshot", "restore", fpath, "--name", epc.Procs[0].Config().Name, "--initial-cluster", epc.Procs[0].Config().InitialCluster, "--initial-cluster-token", epc.Procs[0].Config().InitialToken, "--initial-advertise-peer-urls", epc.Procs[0].Config().PeerURL.String(), "--data-dir", newDataDir}, "added member")
+	err = e2e.SpawnWithExpect([]string{
+		e2e.BinPath.Etcdutl, "snapshot", "restore", fpath,
+		"--name", epc.Procs[0].Config().Name,
+		"--initial-cluster", epc.Procs[0].Config().InitialCluster,
+		"--initial-cluster-token", epc.Procs[0].Config().InitialToken,
+		"--initial-advertise-peer-urls", epc.Procs[0].Config().PeerURL.String(),
+		"--data-dir", newDataDir},
+		expect.ExpectedResponse{Value: "added member"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +243,7 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring the restored member has the correct data...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -242,7 +251,7 @@ func testIssue6361(t *testing.T) {
 	t.Log("Adding new member into the cluster")
 	clientURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+30)
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+31)
-	err = e2e.SpawnWithExpect(append(prefixArgs, "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL)), " added to cluster ")
+	err = e2e.SpawnWithExpect(append(prefixArgs, "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL)), expect.ExpectedResponse{Value: " added to cluster "})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +280,7 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring added member has data from incoming snapshot...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), kvs[i].val); err != nil {
+		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -350,13 +359,16 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 
 	t.Log("etcdctl saving snapshot...")
 	cmdPrefix := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsGRPC(), ",")}
-	require.NoError(t, e2e.SpawnWithExpects(append(cmdPrefix, "snapshot", "save", fpath), nil, fmt.Sprintf("Snapshot saved at %s", fpath)))
+	require.NoError(t, e2e.SpawnWithExpects(append(cmdPrefix, "snapshot", "save", fpath), nil, expect.ExpectedResponse{Value: fmt.Sprintf("Snapshot saved at %s", fpath)}))
 
 	// add some more kvs that are not in the snapshot that will be lost after restore
 	unsnappedKVs := []testutils.KV{{Key: "unsnapped1", Val: "one"}, {Key: "unsnapped2", Val: "two"}, {Key: "unsnapped3", Val: "three"}}
 	for i := range unsnappedKVs {
 		require.NoError(t, ctl.Put(context.Background(), unsnappedKVs[i].Key, unsnappedKVs[i].Val, config.PutOptions{}))
 	}
+
+	membersBefore, err := ctl.MemberList(context.Background(), false)
+	require.NoError(t, err)
 
 	t.Log("Stopping the original server...")
 	require.NoError(t, epc.Stop())
@@ -375,24 +387,28 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 		"--bump-revision", fmt.Sprintf("%d", bumpAmount),
 		"--mark-compacted",
 		"--data-dir", newDataDir,
-	}, "added member")
+	}, expect.ExpectedResponse{Value: "added member"})
 	require.NoError(t, err)
 
 	t.Log("(Re)starting the etcd member using the restored snapshot...")
 	epc.Procs[0].Config().DataDirPath = newDataDir
+
 	for i := range epc.Procs[0].Config().Args {
 		if epc.Procs[0].Config().Args[i] == "--data-dir" {
 			epc.Procs[0].Config().Args[i+1] = newDataDir
 		}
 	}
 
+	// Verify that initial snapshot is created by the restore operation
+	verifySnapshotMembers(t, epc, membersBefore)
+
 	require.NoError(t, epc.Restart(context.Background()))
 
 	t.Log("Ensuring the restored member has the correct data...")
 	hasKVs(t, ctl, kvs, currentRev, baseRev)
 	for i := range unsnappedKVs {
-		v, err := ctl.Get(context.Background(), unsnappedKVs[i].Key, config.GetOptions{})
-		require.NoError(t, err)
+		v, gerr := ctl.Get(context.Background(), unsnappedKVs[i].Key, config.GetOptions{})
+		require.NoError(t, gerr)
 		require.Equal(t, int64(0), v.Count)
 	}
 
@@ -433,5 +449,66 @@ func hasKVs(t *testing.T, ctl *e2e.EtcdctlV3, kvs []testutils.KV, currentRev int
 		require.Equal(t, int64(baseRev+i), v.Kvs[0].CreateRevision)
 		require.Equal(t, int64(baseRev+i), v.Kvs[0].ModRevision)
 		require.Equal(t, int64(1), v.Kvs[0].Version)
+		require.True(t, int64(currentRev) >= v.Kvs[0].ModRevision)
 	}
+}
+
+func TestBreakConsistentIndexNewerThanSnapshot(t *testing.T) {
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var snapshotCount uint64 = 50
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+		e2e.WithClusterSize(1),
+		e2e.WithKeepDataDir(true),
+		e2e.WithSnapshotCount(snapshotCount),
+	)
+	require.NoError(t, err)
+	defer epc.Close()
+	member := epc.Procs[0]
+
+	t.Log("Stop member and copy out the db file to tmp directory")
+	err = member.Stop()
+	assert.NoError(t, err)
+	dbPath := path.Join(member.Config().DataDirPath, "member", "snap", "db")
+	tmpFile := path.Join(t.TempDir(), "db")
+	err = copyFile(dbPath, tmpFile)
+	assert.NoError(t, err)
+
+	t.Log("Ensure snapshot there is a newer snapshot")
+	err = member.Start(ctx)
+	assert.NoError(t, err)
+	generateSnapshot(t, snapshotCount, member.Etcdctl())
+	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "saved snapshot"})
+	assert.NoError(t, err)
+	err = member.Stop()
+	assert.NoError(t, err)
+
+	t.Log("Start etcd with older db file")
+	err = copyFile(tmpFile, dbPath)
+	assert.NoError(t, err)
+	err = member.Start(ctx)
+	assert.Error(t, err)
+	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failed to find database snapshot file (snap: snapshot file doesn't exist)"})
+	assert.NoError(t, err)
+}
+
+func copyFile(src, dst string) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if _, err = io.Copy(w, f); err != nil {
+		return err
+	}
+	return w.Sync()
 }

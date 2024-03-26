@@ -308,6 +308,7 @@ function go_test {
 
   if [ "${VERBOSE:-}" == "1" ]; then
     goTestFlags="-v "
+    goTestFlags+="-json "
   fi
 
   # Expanding patterns (like ./...) into list of packages
@@ -412,15 +413,15 @@ function run_go_tool {
   GOARCH="" run "${cmdbin}" "$@" || return 2
 }
 
-# assert_no_git_modifications fails if there are any uncommited changes.
+# assert_no_git_modifications fails if there are any uncommitted changes.
 function assert_no_git_modifications {
   log_callout "Making sure everything is committed."
   if ! git diff --cached --exit-code; then
-    log_error "Found staged by uncommited changes. Do commit/stash your changes first."
+    log_error "Found staged by uncommitted changes. Do commit/stash your changes first."
     return 2
   fi
   if ! git diff  --exit-code; then
-    log_error "Found unstaged and uncommited changes. Do commit/stash your changes first."
+    log_error "Found unstaged and uncommitted changes. Do commit/stash your changes first."
     return 2
   fi
 }

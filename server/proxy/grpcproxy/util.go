@@ -17,10 +17,10 @@ package grpcproxy
 import (
 	"context"
 
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 func getAuthTokenFromClient(ctx context.Context) string {
@@ -37,7 +37,7 @@ func getAuthTokenFromClient(ctx context.Context) string {
 func withClientAuthToken(ctx, ctxWithToken context.Context) context.Context {
 	token := getAuthTokenFromClient(ctxWithToken)
 	if token != "" {
-		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPC, token)
+		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPCKey{}, token)
 	}
 	return ctx
 }
@@ -56,7 +56,7 @@ func (cred *proxyTokenCredential) GetRequestMetadata(ctx context.Context, s ...s
 	}, nil
 }
 
-func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	token := getAuthTokenFromClient(ctx)
 	if token != "" {
 		tokenCred := &proxyTokenCredential{token}
@@ -66,7 +66,7 @@ func AuthUnaryClientInterceptor(ctx context.Context, method string, req, reply i
 }
 
 func AuthStreamClientInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-	tokenif := ctx.Value(rpctypes.TokenFieldNameGRPC)
+	tokenif := ctx.Value(rpctypes.TokenFieldNameGRPCKey{})
 	if tokenif != nil {
 		tokenCred := &proxyTokenCredential{tokenif.(string)}
 		opts = append(opts, grpc.PerRPCCredentials(tokenCred))

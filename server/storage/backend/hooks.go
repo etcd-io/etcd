@@ -14,20 +14,20 @@
 
 package backend
 
-type HookFunc func(tx BatchTx)
+type HookFunc func(tx UnsafeReadWriter)
 
 // Hooks allow to add additional logic executed during transaction lifetime.
 type Hooks interface {
 	// OnPreCommitUnsafe is executed before Commit of transactions.
 	// The given transaction is already locked.
-	OnPreCommitUnsafe(tx BatchTx)
+	OnPreCommitUnsafe(tx UnsafeReadWriter)
 }
 
 type hooks struct {
 	onPreCommitUnsafe HookFunc
 }
 
-func (h hooks) OnPreCommitUnsafe(tx BatchTx) {
+func (h hooks) OnPreCommitUnsafe(tx UnsafeReadWriter) {
 	h.onPreCommitUnsafe(tx)
 }
 

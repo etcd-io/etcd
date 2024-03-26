@@ -29,8 +29,12 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -88,12 +92,25 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 			Storage: currentVersionStr,
 		})
 	}
+	cc := epc.Etcdctl()
 	t.Logf("Cluster created")
+	if len(epc.Procs) > 1 {
+		t.Log("Waiting health interval to required to make membership changes")
+		time.Sleep(etcdserver.HealthInterval)
+	}
+
+	t.Log("Adding member to test membership, but a learner avoid breaking quorum")
+	resp, err := cc.MemberAddAsLearner(context.Background(), "fake1", []string{"http://127.0.0.1:1001"})
+	require.NoError(t, err)
 	if triggerSnapshot {
 		t.Logf("Generating snapshot")
-		generateSnapshot(t, snapshotCount, epc)
+		generateSnapshot(t, snapshotCount, cc)
+		verifySnapshot(t, epc)
 	}
-	bm, bkv := getMembersAndKeys(t, epc)
+	t.Log("Removing learner to test membership")
+	_, err = cc.MemberRemove(context.Background(), resp.Member.ID)
+	require.NoError(t, err)
+	beforeMembers, beforeKV := getMembersAndKeys(t, cc)
 
 	t.Logf("etcdctl downgrade enable %s", lastVersionStr)
 	downgradeEnable(t, epc, lastVersion)
@@ -126,9 +143,26 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 	}
 
 	t.Log("Downgrade complete")
-	am, akv := getMembersAndKeys(t, epc)
-	assert.Equal(t, bkv.Kvs, akv.Kvs)
-	assert.Equal(t, bm.Members, am.Members)
+	afterMembers, afterKV := getMembersAndKeys(t, cc)
+	assert.Equal(t, beforeKV.Kvs, afterKV.Kvs)
+	assert.Equal(t, beforeMembers.Members, afterMembers.Members)
+
+	if len(epc.Procs) > 1 {
+		t.Log("Waiting health interval to required to make membership changes")
+		time.Sleep(etcdserver.HealthInterval)
+	}
+	t.Log("Adding learner to test membership, but avoid breaking quorum")
+	resp, err = cc.MemberAddAsLearner(context.Background(), "fake2", []string{"http://127.0.0.1:1002"})
+	require.NoError(t, err)
+	if triggerSnapshot {
+		t.Logf("Generating snapshot")
+		generateSnapshot(t, snapshotCount, cc)
+		verifySnapshot(t, epc)
+	}
+	t.Log("Removing learner to test membership")
+	_, err = cc.MemberRemove(context.Background(), resp.Member.ID)
+	require.NoError(t, err)
+	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
 	for i := 0; i < len(epc.Procs); i++ {
@@ -149,6 +183,10 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 		})
 	}
 	t.Log("Upgrade complete")
+
+	afterMembers, afterKV = getMembersAndKeys(t, cc)
+	assert.Equal(t, beforeKV.Kvs, afterKV.Kvs)
+	assert.Equal(t, beforeMembers.Members, afterMembers.Members)
 }
 
 func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdProcessCluster {
@@ -197,16 +235,17 @@ func validateVersion(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, member e2e
 		for {
 			result, err := getMemberVersionByCurl(cfg, member)
 			if err != nil {
-				cfg.Logger.Warn("failed to get member version and retrying", zap.Error(err))
+				cfg.Logger.Warn("failed to get member version and retrying", zap.Error(err), zap.String("member", member.Config().Name))
 				time.Sleep(time.Second)
 				continue
 			}
-
+			cfg.Logger.Info("Comparing versions", zap.String("member", member.Config().Name), zap.Any("got", result), zap.Any("want", expect))
 			if err := compareMemberVersion(expect, result); err != nil {
-				cfg.Logger.Warn("failed to validate and retrying", zap.Error(err))
+				cfg.Logger.Warn("Versions didn't match retrying", zap.Error(err), zap.String("member", member.Config().Name))
 				time.Sleep(time.Second)
 				continue
 			}
+			cfg.Logger.Info("Versions match", zap.String("member", member.Config().Name))
 			break
 		}
 	})
@@ -267,12 +306,9 @@ func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdPr
 	return result, nil
 }
 
-func generateSnapshot(t *testing.T, snapshotCount uint64, epc *e2e.EtcdProcessCluster) {
+func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
 
 	var i uint64
 	t.Logf("Adding keys")
@@ -280,7 +316,6 @@ func generateSnapshot(t *testing.T, snapshotCount uint64, epc *e2e.EtcdProcessCl
 		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
 		assert.NoError(t, err)
 	}
-	verifySnapshot(t, epc)
 }
 
 func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
@@ -293,12 +328,27 @@ func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
 	t.Logf("All members have a valid snapshot")
 }
 
-func getMembersAndKeys(t *testing.T, epc *e2e.EtcdProcessCluster) (*clientv3.MemberListResponse, *clientv3.GetResponse) {
+func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMembers *clientv3.MemberListResponse) {
+	for i := range epc.Procs {
+		t.Logf("Verifying snapshot for member %d", i)
+		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
+		snap, err := ss.Load()
+		require.NoError(t, err)
+		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+		err = st.Recovery(snap.Data)
+		assert.NoError(t, err)
+		for _, m := range expectedMembers.Members {
+			_, err := st.Get(membership.MemberStoreKey(types.ID(m.ID)), true, true)
+			assert.NoError(t, err)
+		}
+		t.Logf("Verifed snapshot for member %d", i)
+	}
+	t.Log("All members have a valid snapshot")
+}
+
+func getMembersAndKeys(t *testing.T, cc *e2e.EtcdctlV3) (*clientv3.MemberListResponse, *clientv3.GetResponse) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	cc, err := e2e.NewEtcdctl(epc.Cfg.Client, epc.EndpointsGRPC())
-	assert.NoError(t, err)
 
 	kvs, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
 	assert.NoError(t, err)

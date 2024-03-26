@@ -26,13 +26,13 @@ import (
 	"sync"
 	"time"
 
-	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/pkg/v3/report"
-
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
+
+	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/pkg/v3/report"
 )
 
 var (
@@ -126,7 +126,7 @@ func NewCheckPerfCommand() *cobra.Command {
 	}
 
 	// TODO: support customized configuration
-	cmd.Flags().StringVar(&checkPerfLoad, "load", "s", "The performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge). Different workload models use different configurations in terms of number of clients and expected throughtput.")
+	cmd.Flags().StringVar(&checkPerfLoad, "load", "s", "The performance check's workload model. Accepted workloads: s(small), m(medium), l(large), xl(xLarge). Different workload models use different configurations in terms of number of clients and expected throughput.")
 	cmd.Flags().StringVar(&checkPerfPrefix, "prefix", "/etcdctl-check-perf/", "The prefix for writing the performance check's keys.")
 	cmd.Flags().BoolVar(&autoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
 	cmd.Flags().BoolVar(&autoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
@@ -365,7 +365,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		os.Exit(cobrautl.ExitError)
 	}
 
-	fmt.Println(fmt.Sprintf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].", cfg.limit, cfg.kvSize, cfg.clients))
+	fmt.Printf("Start data scale check for work load [%v key-value pairs, %v bytes per key-value, %v concurrent clients].\n", cfg.limit, cfg.kvSize, cfg.clients)
 	bar := pb.New(cfg.limit)
 	bar.Start()
 
@@ -435,6 +435,6 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 		}
 		os.Exit(cobrautl.ExitError)
 	} else {
-		fmt.Println(fmt.Sprintf("PASS: Approximate system memory used : %v MB.", strconv.FormatFloat(mbUsed, 'f', 2, 64)))
+		fmt.Printf("PASS: Approximate system memory used : %v MB.\n", strconv.FormatFloat(mbUsed, 'f', 2, 64))
 	}
 }

@@ -16,11 +16,11 @@ package wal
 
 import (
 	"bytes"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"os"
 	"path"
 	"path/filepath"

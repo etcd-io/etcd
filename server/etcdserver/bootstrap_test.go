@@ -30,11 +30,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/server/v3/storage/datadir"
-	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -43,6 +38,10 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -190,7 +189,7 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			if tt.prepareData != nil {
-				if err := tt.prepareData(cfg); err != nil {
+				if err = tt.prepareData(cfg); err != nil {
 					t.Fatalf("failed to prepare data, unexpected error: %v", err)
 				}
 			}
@@ -199,6 +198,9 @@ func TestBootstrapBackend(t *testing.T) {
 			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 			ss := snap.New(cfg.Logger, cfg.SnapDir())
 			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			defer t.Cleanup(func() {
+				backend.Close()
+			})
 
 			hasError := err != nil
 			expectedHasError := tt.expectedError != nil
@@ -216,27 +218,32 @@ func TestBootstrapBackend(t *testing.T) {
 	}
 }
 
-func createDataDir(t *testing.T) (dataDir string, err error) {
+func createDataDir(t *testing.T) (string, error) {
+	var err error
+
 	// create the temporary data dir
-	dataDir = t.TempDir()
+	dataDir := t.TempDir()
 
 	// create ${dataDir}/member/snap
 	if err = os.MkdirAll(datadir.ToSnapDir(dataDir), 0700); err != nil {
-		return
+		return "", err
 	}
 
 	// create ${dataDir}/member/wal
 	err = os.MkdirAll(datadir.ToWalDir(dataDir), 0700)
+	if err != nil {
+		return "", err
+	}
 
-	return
+	return dataDir, nil
 }
 
 // prepare data for the test case
-func prepareData(cfg config.ServerConfig) (err error) {
+func prepareData(cfg config.ServerConfig) error {
 	var snapshotTerm, snapshotIndex uint64 = 2, 5
 
-	if err = createWALFileWithSnapshotRecord(cfg, snapshotTerm, snapshotIndex); err != nil {
-		return
+	if err := createWALFileWithSnapshotRecord(cfg, snapshotTerm, snapshotIndex); err != nil {
+		return err
 	}
 
 	return createSnapshotAndBackendDB(cfg, snapshotTerm, snapshotIndex)
@@ -245,7 +252,7 @@ func prepareData(cfg config.ServerConfig) (err error) {
 func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) (err error) {
 	var w *wal.WAL
 	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), []byte("somedata")); err != nil {
-		return
+		return err
 	}
 
 	defer func() {
@@ -262,13 +269,15 @@ func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snap
 	}
 
 	if err = w.SaveSnapshot(walSnap); err != nil {
-		return
+		return err
 	}
 
 	return w.Save(raftpb.HardState{Term: snapshotTerm, Vote: 3, Commit: snapshotIndex}, nil)
 }
 
-func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) (err error) {
+func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) error {
+	var err error
+
 	confState := raftpb.ConfState{
 		Voters: []uint64{1, 2, 3},
 	}
@@ -283,7 +292,7 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 			Term:      snapshotTerm,
 		},
 	}); err != nil {
-		return
+		return err
 	}
 
 	// create snapshot db file: "%016x.snap.db"
@@ -292,11 +301,11 @@ func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotI
 	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
 	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
 	if err = be.Close(); err != nil {
-		return
+		return err
 	}
 	sdb := filepath.Join(cfg.SnapDir(), fmt.Sprintf("%016x.snap.db", snapshotIndex))
 	if err = os.Rename(cfg.BackendPath(), sdb); err != nil {
-		return
+		return err
 	}
 
 	// create backend db file

@@ -21,10 +21,10 @@ import (
 	"os"
 	"sync"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
 // MockServer provides a mocked out grpc server of the etcdserver interface.
@@ -32,7 +32,7 @@ type MockServer struct {
 	ln         net.Listener
 	Network    string
 	Address    string
-	GrpcServer *grpc.Server
+	GRPCServer *grpc.Server
 }
 
 func (ms *MockServer) ResolverAddress() resolver.Address {
@@ -63,7 +63,7 @@ func StartMockServers(count int) (ms *MockServers, err error) {
 func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err error) {
 	switch network {
 	case "tcp":
-		return startMockServersTcp(count)
+		return startMockServersTCP(count)
 	case "unix":
 		return startMockServersUnix(count)
 	default:
@@ -71,7 +71,7 @@ func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err 
 	}
 }
 
-func startMockServersTcp(count int) (ms *MockServers, err error) {
+func startMockServersTCP(count int) (ms *MockServers, err error) {
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		addrs = append(addrs, "localhost:0")
@@ -133,12 +133,12 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	svr := grpc.NewServer()
 	pb.RegisterKVServer(svr, &mockKVServer{})
 	pb.RegisterLeaseServer(svr, &mockLeaseServer{})
-	ms.Servers[idx].GrpcServer = svr
+	ms.Servers[idx].GRPCServer = svr
 
 	ms.wg.Add(1)
 	go func(svr *grpc.Server, l net.Listener) {
 		svr.Serve(l)
-	}(ms.Servers[idx].GrpcServer, ms.Servers[idx].ln)
+	}(ms.Servers[idx].GRPCServer, ms.Servers[idx].ln)
 	return nil
 }
 
@@ -151,8 +151,8 @@ func (ms *MockServers) StopAt(idx int) {
 		return
 	}
 
-	ms.Servers[idx].GrpcServer.Stop()
-	ms.Servers[idx].GrpcServer = nil
+	ms.Servers[idx].GRPCServer.Stop()
+	ms.Servers[idx].GRPCServer = nil
 	ms.Servers[idx].ln = nil
 	ms.wg.Done()
 }

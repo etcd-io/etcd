@@ -38,7 +38,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
@@ -84,7 +83,8 @@ type v3Manager struct {
 	snapDir   string
 	cl        *membership.RaftCluster
 
-	skipHashCheck bool
+	skipHashCheck   bool
+	initialMmapSize uint64
 }
 
 // hasChecksum returns "true" if the file size "n"
@@ -145,20 +145,20 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 			if b == nil {
 				return fmt.Errorf("cannot get hash of bucket %s", string(next))
 			}
-			if _, err := h.Write(next); err != nil {
+			if _, err = h.Write(next); err != nil {
 				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
 			}
 			iskeyb := (string(next) == "key")
-			if err := b.ForEach(func(k, v []byte) error {
-				if _, err := h.Write(k); err != nil {
-					return fmt.Errorf("cannot write to bucket %s", err.Error())
+			if err = b.ForEach(func(k, v []byte) error {
+				if _, herr := h.Write(k); herr != nil {
+					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
-				if _, err := h.Write(v); err != nil {
-					return fmt.Errorf("cannot write to bucket %s", err.Error())
+				if _, herr := h.Write(v); herr != nil {
+					return fmt.Errorf("cannot write to bucket %s", herr.Error())
 				}
 				if iskeyb {
-					rev := bytesToRev(k)
-					ds.Revision = rev.main
+					rev := mvcc.BytesToRev(k)
+					ds.Revision = rev.Main
 				}
 				ds.TotalKey++
 				return nil
@@ -204,6 +204,9 @@ type RestoreConfig struct {
 	// SkipHashCheck is "true" to ignore snapshot integrity hash value
 	// (required if copied from data directory).
 	SkipHashCheck bool
+
+	// InitialMmapSize is the database initial memory map size.
+	InitialMmapSize uint64
 
 	// RevisionBump is the amount to increase the latest revision after restore,
 	// to allow administrators to trick clients into thinking that revision never decreased.
@@ -264,6 +267,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	s.walDir = walDir
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
+	s.initialMmapSize = cfg.InitialMmapSize
 
 	s.lg.Info(
 		"restoring snapshot",
@@ -271,6 +275,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	if err = s.saveDB(); err != nil {
@@ -298,6 +303,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	return verify.VerifyIfEnabled(verify.Config{
@@ -318,7 +324,7 @@ func (s *v3Manager) saveDB() error {
 		return err
 	}
 
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 
 	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
@@ -347,42 +353,42 @@ func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
 		return err
 	}
 
-	latest = s.unsafeBumpRevision(tx, latest, int64(bumpAmount))
+	latest = s.unsafeBumpBucketsRevision(tx, latest, int64(bumpAmount))
 	s.unsafeMarkRevisionCompacted(tx, latest)
 
 	return nil
 }
 
-func (s *v3Manager) unsafeBumpRevision(tx backend.BatchTx, latest revision, amount int64) revision {
+func (s *v3Manager) unsafeBumpBucketsRevision(tx backend.UnsafeWriter, latest mvcc.Revision, amount int64) mvcc.Revision {
 	s.lg.Info(
 		"bumping latest revision",
-		zap.Int64("latest-revision", latest.main),
+		zap.Int64("latest-revision", latest.Main),
 		zap.Int64("bump-amount", amount),
-		zap.Int64("new-latest-revision", latest.main+amount),
+		zap.Int64("new-latest-revision", latest.Main+amount),
 	)
 
-	latest.main += amount
-	latest.sub = 0
-	k := make([]byte, 17)
-	revToBytes(k, latest)
+	latest.Main += amount
+	latest.Sub = 0
+	k := mvcc.NewRevBytes()
+	k = mvcc.RevToBytes(latest, k)
 	tx.UnsafePut(schema.Key, k, []byte{})
 
 	return latest
 }
 
-func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.BatchTx, latest revision) {
+func (s *v3Manager) unsafeMarkRevisionCompacted(tx backend.UnsafeWriter, latest mvcc.Revision) {
 	s.lg.Info(
 		"marking revision compacted",
-		zap.Int64("revision", latest.main),
+		zap.Int64("revision", latest.Main),
 	)
 
-	mvcc.UnsafeSetScheduledCompact(tx, latest.main)
+	mvcc.UnsafeSetScheduledCompact(tx, latest.Main)
 }
 
-func (s *v3Manager) unsafeGetLatestRevision(tx backend.BatchTx) (revision, error) {
-	var latest revision
+func (s *v3Manager) unsafeGetLatestRevision(tx backend.UnsafeReader) (mvcc.Revision, error) {
+	var latest mvcc.Revision
 	err := tx.UnsafeForEach(schema.Key, func(k, _ []byte) (err error) {
-		rev := bytesToRev(k)
+		rev := mvcc.BytesToRev(k)
 
 		if rev.GreaterThan(latest) {
 			latest = rev
@@ -472,10 +478,8 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		return nil, err
 	}
 
-	// add members again to persist them to the store we create.
-	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-	s.cl.SetStore(st)
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	// add members again to persist them to the backend we create.
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
 	for _, m := range s.cl.Members() {
@@ -534,15 +538,11 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 		return nil, err
 	}
 
-	b, berr := st.Save()
-	if berr != nil {
-		return nil, berr
-	}
 	confState := raftpb.ConfState{
 		Voters: nodeIDs,
 	}
 	raftSnap := raftpb.Snapshot{
-		Data: b,
+		Data: etcdserver.GetMembershipInfoInV2Format(s.lg, s.cl),
 		Metadata: raftpb.SnapshotMetadata{
 			Index:     commit,
 			Term:      term,
@@ -558,7 +558,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 }
 
 func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 
 	cindex.UpdateConsistentIndexForce(be.BatchTx(), commit, term)

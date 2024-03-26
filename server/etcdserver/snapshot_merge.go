@@ -17,12 +17,12 @@ package etcdserver
 import (
 	"io"
 
+	humanize "github.com/dustin/go-humanize"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/raft/v3/raftpb"
-
-	humanize "github.com/dustin/go-humanize"
-	"go.uber.org/zap"
 )
 
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),
@@ -31,11 +31,7 @@ import (
 func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) snap.Message {
 	lg := s.Logger()
 	// get a snapshot of v2 store as []byte
-	clone := s.v2store.Clone()
-	d, err := clone.SaveNoCopy()
-	if err != nil {
-		lg.Panic("failed to save v2 store data", zap.Error(err))
-	}
+	d := GetMembershipInfoInV2Format(lg, s.cluster)
 
 	// commit kv to write metadata(for example: consistent index).
 	s.KV().Commit()

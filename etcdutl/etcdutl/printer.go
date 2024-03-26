@@ -18,12 +18,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-
-	"github.com/dustin/go-humanize"
 )
 
 var (
@@ -52,13 +51,13 @@ func NewPrinter(printerType string) printer {
 
 type printerRPC struct {
 	printer
-	p func(interface{})
+	p func(any)
 }
 
 type printerUnsupported struct{ printerRPC }
 
 func newPrinterUnsupported(n string) printer {
-	f := func(interface{}) {
+	f := func(any) {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New(n+" not supported as output format"))
 	}
 	return &printerUnsupported{printerRPC{nil, f}}

@@ -1,0 +1,37 @@
+---
+name: E2E-Arm64
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  test:
+    # this is to prevent the job to run at forked projects
+    if: github.repository == 'etcd-io/etcd'
+    runs-on: actuated-arm64-8cpu-8gb
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - linux-arm64-e2e
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          go clean -testcache
+
+          echo "${TARGET}"
+          case "${TARGET}" in
+            linux-arm64-e2e)
+              GOOS=linux GOARCH=arm64 CPU=4 EXPECT_DEBUG=true make test-e2e-release
+              ;;
+            *)
+              echo "Failed to find target"
+              exit 1
+              ;;
+          esac

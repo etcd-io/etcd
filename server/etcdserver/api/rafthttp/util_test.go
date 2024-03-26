@@ -22,10 +22,10 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/raft/v3/raftpb"
-
-	"github.com/coreos/go-semver/semver"
 )
 
 func TestEntry(t *testing.T) {

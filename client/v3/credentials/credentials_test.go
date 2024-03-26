@@ -24,7 +24,7 @@ import (
 )
 
 func TestUpdateAuthToken(t *testing.T) {
-	bundle := NewBundle(Config{})
+	bundle := NewPerRPCCredentialBundle()
 	ctx := context.TODO()
 
 	metadataBeforeUpdate, _ := bundle.PerRPCCredentials().GetRequestMetadata(ctx)

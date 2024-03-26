@@ -31,21 +31,14 @@ import (
 )
 
 var (
-	KubernetesTraffic = Config{
-		Name:                           "Kubernetes",
-		minimalQPS:                     200,
-		maximalQPS:                     1000,
-		clientCount:                    12,
-		maxNonUniqueRequestConcurrency: 3,
-		Traffic: kubernetesTraffic{
-			averageKeyCount: 10,
-			resource:        "pods",
-			namespace:       "default",
-			writeChoices: []choiceWeight[KubernetesRequestType]{
-				{choice: KubernetesUpdate, weight: 90},
-				{choice: KubernetesDelete, weight: 5},
-				{choice: KubernetesCreate, weight: 5},
-			},
+	Kubernetes = kubernetesTraffic{
+		averageKeyCount: 10,
+		resource:        "pods",
+		namespace:       "default",
+		writeChoices: []choiceWeight[KubernetesRequestType]{
+			{choice: KubernetesUpdate, weight: 90},
+			{choice: KubernetesDelete, weight: 5},
+			{choice: KubernetesCreate, weight: 5},
 		},
 	}
 )
@@ -59,6 +52,10 @@ type kubernetesTraffic struct {
 
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
+}
+
+func (t kubernetesTraffic) Name() string {
+	return "Kubernetes"
 }
 
 func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
@@ -117,7 +114,7 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *st
 	hasMore := true
 	rangeStart := keyPrefix
 	var kvs []*mvccpb.KeyValue
-	var revision int64 = 0
+	var revision int64
 
 	for hasMore {
 		readCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
@@ -158,7 +155,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 		} else {
 			choices := t.writeChoices
 			if !nonUniqueWriteLimiter.Take() {
-				choices = filterOutNonUniqueKuberntesWrites(t.writeChoices)
+				choices = filterOutNonUniqueKubernetesWrites(t.writeChoices)
 			}
 			op := pickRandom(choices)
 			switch op {
@@ -181,7 +178,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	return nil
 }
 
-func filterOutNonUniqueKuberntesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
+func filterOutNonUniqueKubernetesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
 	for _, choice := range choices {
 		if choice.choice != KubernetesDelete {
 			resp = append(resp, choice)
@@ -193,7 +190,12 @@ func filterOutNonUniqueKuberntesWrites(choices []choiceWeight[KubernetesRequestT
 func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, revision int64) {
 	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 	defer cancel()
-	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true) {
+
+	// Kubernetes issues Watch requests by requiring a leader to exist
+	// in the cluster:
+	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L872
+	watchCtx = clientv3.WithRequireLeader(watchCtx)
+	for e := range kc.client.Watch(watchCtx, keyPrefix, revision, true, true, true) {
 		s.Update(e)
 	}
 	limiter.Wait(ctx)
@@ -238,6 +240,13 @@ func (k kubernetesClient) OptimisticUpdate(ctx context.Context, key, value strin
 func (k kubernetesClient) OptimisticCreate(ctx context.Context, key, value string) error {
 	_, err := k.client.Txn(ctx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", 0)}, []clientv3.Op{clientv3.OpPut(key, value)}, nil)
 	return err
+}
+
+func (k kubernetesClient) RequestProgress(ctx context.Context) error {
+	// Kubernetes makes RequestProgress calls by requiring a leader to be
+	// present in the cluster:
+	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L87
+	return k.client.RequestProgress(clientv3.WithRequireLeader(ctx))
 }
 
 // Kubernetes optimistically assumes that key didn't change since it was last observed, so it executes operations within a transaction conditioned on key not changing.

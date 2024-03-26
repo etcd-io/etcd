@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -57,16 +58,16 @@ func TestSessionTTLOptions(t *testing.T) {
 	}
 	defer cli.Close()
 
-	var setTTL int = 90
+	var setTTL = 90
 	s, err := concurrency.NewSession(cli, concurrency.WithTTL(setTTL))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer s.Close()
 
-	leaseId := s.Lease()
+	leaseID := s.Lease()
 	// TTL retrieved should be less than the set TTL, but not equal to default:60 or exprired:-1
-	resp, err := cli.Lease.TimeToLive(context.Background(), leaseId)
+	resp, err := cli.Lease.TimeToLive(context.Background(), leaseID)
 	if err != nil {
 		t.Log(err)
 	}
@@ -81,4 +82,33 @@ func TestSessionTTLOptions(t *testing.T) {
 		t.Errorf("Session TTL from lease should be less, but close to set TTL %d, have: %d", setTTL, resp.TTL)
 	}
 
+}
+
+func TestSessionCtx(t *testing.T) {
+	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+	lease, err := cli.Grant(context.Background(), 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s, err := concurrency.NewSession(cli, concurrency.WithLease(lease.ID))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	assert.Equal(t, s.Lease(), lease.ID)
+
+	childCtx, cancel := context.WithCancel(s.Ctx())
+	defer cancel()
+
+	go s.Orphan()
+	select {
+	case <-childCtx.Done():
+	case <-time.After(time.Millisecond * 100):
+		t.Fatal("child context of session context is not canceled")
+	}
+	assert.Equal(t, childCtx.Err(), context.Canceled)
 }

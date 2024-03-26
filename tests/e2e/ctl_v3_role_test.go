@@ -18,12 +18,13 @@ import (
 	"fmt"
 	"testing"
 
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 // TestCtlV3RoleAddTimeout tests add role with 0 grpc dial timeout while it tolerates dial timeout error.
 // This is unique in e2e test
-func TestCtlV3RoleAddTimeout(t *testing.T) { testCtl(t, roleAddTest, withDialTimeout(0)) }
+func TestCtlV3RoleAddTimeout(t *testing.T) { testCtl(t, roleAddTest, withDefaultDialTimeout()) }
 
 func roleAddTest(cx ctlCtx) {
 	cmdSet := []struct {
@@ -55,7 +56,7 @@ func ctlV3Role(cx ctlCtx, args []string, expStr string) error {
 	cmdArgs := append(cx.PrefixArgs(), "role")
 	cmdArgs = append(cmdArgs, args...)
 
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expStr)
+	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: expStr})
 }
 
 func ctlV3RoleGrantPermission(cx ctlCtx, rolename string, perm grantingPerm) error {

@@ -18,25 +18,24 @@ import (
 	"os"
 	"testing"
 
-	grpc_logsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
+	grpclogsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
 
-	gofail "go.etcd.io/gofail/runtime"
-
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
-var grpc_logger grpc_logsettable.SettableLoggerV2
+var grpcLogger grpclogsettable.SettableLoggerV2
 var insideTestContext bool
 
 func init() {
-	grpc_logger = grpc_logsettable.ReplaceGrpcLoggerV2()
+	grpcLogger = grpclogsettable.ReplaceGrpcLoggerV2()
 }
 
 type testOptions struct {
@@ -119,13 +118,13 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 
 	// Registering cleanup early, such it will get executed even if the helper fails.
 	t.Cleanup(func() {
-		grpc_logger.Reset()
+		grpcLogger.Reset()
 		insideTestContext = previousInsideTestContext
 		os.Chdir(previousWD)
 		revertFunc()
 	})
 
-	grpc_logger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
+	grpcLogger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())

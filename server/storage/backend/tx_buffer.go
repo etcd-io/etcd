@@ -16,7 +16,11 @@ package backend
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 	"sort"
+
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 const bucketBufferInitialSize = 512
@@ -50,7 +54,20 @@ func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
 }
 
 func (txw *txWriteBuffer) putSeq(bucket Bucket, k, v []byte) {
-	// TODO: Add (in tests?) verification whether k>b[len(b)]
+	// putSeq is only be called for the data in the Key bucket. The keys
+	// in the Key bucket should be monotonically increasing revisions.
+	verify.Verify(func() {
+		b, ok := txw.buckets[bucket.ID()]
+		if !ok || b.used == 0 {
+			return
+		}
+
+		existingMaxKey := b.buf[b.used-1].key
+		if bytes.Compare(k, existingMaxKey) <= 0 {
+			panic(fmt.Sprintf("Broke the rule of monotonically increasing, existingMaxKey: %s, currentKey: %s",
+				hex.EncodeToString(existingMaxKey), hex.EncodeToString(k)))
+		}
+	})
 	txw.putInternal(bucket, k, v)
 }
 
@@ -124,7 +141,7 @@ func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 		bufVersion: 0,
 	}
 	for bucketName, bucket := range txr.txBuffer.buckets {
-		txrCopy.txBuffer.buckets[bucketName] = bucket.Copy()
+		txrCopy.txBuffer.buckets[bucketName] = bucket.CopyUsed()
 	}
 	return txrCopy
 }
@@ -221,11 +238,13 @@ func (bb *bucketBuffer) Less(i, j int) bool {
 }
 func (bb *bucketBuffer) Swap(i, j int) { bb.buf[i], bb.buf[j] = bb.buf[j], bb.buf[i] }
 
-func (bb *bucketBuffer) Copy() *bucketBuffer {
+func (bb *bucketBuffer) CopyUsed() *bucketBuffer {
+	verify.Assert(bb.used <= len(bb.buf),
+		"used (%d) should never be bigger than the length of buf (%d)", bb.used, len(bb.buf))
 	bbCopy := bucketBuffer{
-		buf:  make([]kv, len(bb.buf)),
+		buf:  make([]kv, bb.used),
 		used: bb.used,
 	}
-	copy(bbCopy.buf, bb.buf)
+	copy(bbCopy.buf, bb.buf[:bb.used])
 	return &bbCopy
 }

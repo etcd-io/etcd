@@ -17,10 +17,7 @@ package clientv3
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 func TestEvent(t *testing.T) {
@@ -54,41 +51,5 @@ func TestEvent(t *testing.T) {
 		if tt.isModify && !tt.ev.IsModify() {
 			t.Errorf("#%d: event should be Modify event", i)
 		}
-	}
-}
-
-func TestShouldRetryWatch(t *testing.T) {
-	testCases := []struct {
-		name          string
-		msg           string
-		expectedRetry bool
-	}{
-		{
-			name:          "equal to ErrGRPCInvalidAuthToken",
-			msg:           rpctypes.ErrGRPCInvalidAuthToken.Error(),
-			expectedRetry: true,
-		},
-		{
-			name:          "equal to ErrGRPCAuthOldRevision",
-			msg:           rpctypes.ErrGRPCAuthOldRevision.Error(),
-			expectedRetry: true,
-		},
-		{
-			name:          "valid grpc error but not equal to ErrGRPCInvalidAuthToken or ErrGRPCAuthOldRevision",
-			msg:           rpctypes.ErrGRPCUserEmpty.Error(),
-			expectedRetry: false,
-		},
-		{
-			name:          "invalid grpc error and not equal to ErrGRPCInvalidAuthToken or ErrGRPCAuthOldRevision",
-			msg:           "whatever error message",
-			expectedRetry: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.expectedRetry, shouldRetryWatch(tc.msg))
-		})
 	}
 }

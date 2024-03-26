@@ -37,7 +37,7 @@ type quotaAlarmer struct {
 
 // check whether request satisfies the quota. If there is not enough space,
 // ignore request and raise the free space alarm.
-func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
+func (qa *quotaAlarmer) check(ctx context.Context, r any) error {
 	if qa.q.Available(r) {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 	return &quotaKVServer{
 		NewKVServer(s),
-		quotaAlarmer{newBackendQuota(s, "kv"), s, s.MemberId()},
+		quotaAlarmer{newBackendQuota(s, "kv"), s, s.MemberID()},
 	}
 }
 
@@ -86,7 +86,7 @@ func (s *quotaLeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequ
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 	return &quotaLeaseServer{
 		NewLeaseServer(s),
-		quotaAlarmer{newBackendQuota(s, "lease"), s, s.MemberId()},
+		quotaAlarmer{newBackendQuota(s, "lease"), s, s.MemberID()},
 	}
 }
 

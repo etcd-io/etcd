@@ -26,13 +26,13 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-
-	"go.uber.org/zap"
 )
 
 const (
@@ -438,7 +438,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 // exists in the log). Such a situation can happen in cases described in figure 7. of the
 // RAFT paper (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14.pdf).
 //
-// ReadAll may return uncommitted yet entries, that are subject to be overriden.
+// ReadAll may return uncommitted yet entries, that are subject to be overridden.
 // Do not apply entries that have index > state.commit, as they are subject to change.
 func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	w.mu.Lock()
@@ -553,7 +553,7 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 		// create encoder (chain crc with the decoder), enable appending
 		w.encoder, err = newFileEncoder(w.tail().File, w.decoder.LastCRC())
 		if err != nil {
-			return
+			return nil, state, nil, err
 		}
 	}
 	w.decoder = nil

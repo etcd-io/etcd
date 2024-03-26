@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
@@ -542,7 +543,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 // TestStoreWatchCreate ensures that the store can watch for key creation.
 func TestStoreWatchCreate(t *testing.T) {
 	s := v2store.New()
-	var eidx uint64 = 0
+	var eidx uint64
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
 	assert.Equal(t, w.StartIndex(), eidx)
@@ -563,7 +564,7 @@ func TestStoreWatchCreate(t *testing.T) {
 // can watch for recursive key creation.
 func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := v2store.New()
-	var eidx uint64 = 0
+	var eidx uint64
 	w, err := s.Watch("/foo", true, false, 0)
 	testutil.AssertNil(t, err)
 	assert.Equal(t, w.StartIndex(), eidx)

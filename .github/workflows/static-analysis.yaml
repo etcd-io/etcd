@@ -6,22 +6,31 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
+      - id: golangci_lint_version
+        run: echo "golangci_lint_version=$(cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)" >> "$GITHUB_OUTPUT"
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@639cd343e1d3b897ff35927a75193d57cfcba299 # v3.6.0
+        uses: golangci/golangci-lint-action@3cfe3a4abbb849e10058ce4af15d205b6da42804 # v4.0.0
         with:
-          version: v1.49.0
+          version: ${{ steps.golangci_lint_version.outputs.golangci_lint_version }}
           args: --config tools/.golangci.yaml
       - name: protoc
         uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
         with:
-          version: '3.14.0'
+          version: '3.20.3'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: |
+          set -euo pipefail
+
+          cargo install marker --version 0.9.0
       - run: |
           set -euo pipefail
 
@@ -30,3 +39,13 @@ jobs:
           set -euo pipefail
 
           make fix
+
+          DIFF=$(git status --porcelain)
+
+          if [ -n "$DIFF" ]; then
+            echo "These files were modified:"
+            echo
+            echo "$DIFF"
+            echo
+            exit 1
+          fi

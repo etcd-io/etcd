@@ -23,12 +23,13 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"google.golang.org/grpc/status"
+
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestRevisionMonotonicWithLeaderPartitions(t *testing.T) {
-	testRevisionMonotonicWithFailures(t, 11*time.Second, func(clus *integration.Cluster) {
+	testRevisionMonotonicWithFailures(t, 12*time.Second, func(clus *integration.Cluster) {
 		for i := 0; i < 5; i++ {
 			leader := clus.WaitLeader(t)
 			time.Sleep(time.Second)
@@ -86,7 +87,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			putWorker(t, ctx, clus)
+			putWorker(ctx, t, clus)
 		}()
 	}
 
@@ -94,7 +95,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			getWorker(t, ctx, clus)
+			getWorker(ctx, t, clus)
 		}()
 	}
 
@@ -108,7 +109,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	t.Logf("Revision %d", resp.Header.Revision)
 }
 
-func putWorker(t *testing.T, ctx context.Context, clus *integration.Cluster) {
+func putWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 	for i := 0; ; i++ {
 		kv := clus.Client(i % 3)
 		_, err := kv.Put(ctx, "foo", fmt.Sprintf("%d", i))
@@ -121,7 +122,7 @@ func putWorker(t *testing.T, ctx context.Context, clus *integration.Cluster) {
 	}
 }
 
-func getWorker(t *testing.T, ctx context.Context, clus *integration.Cluster) {
+func getWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 	var prevRev int64
 	for i := 0; ; i++ {
 		kv := clus.Client(i % 3)

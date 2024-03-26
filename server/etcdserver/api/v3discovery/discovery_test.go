@@ -248,8 +248,8 @@ func (fkv *fakeKVForCheckCluster) Get(ctx context.Context, key string, opts ...c
 				},
 			},
 		}, nil
-
-	} else if key == clusterMembersKey {
+	}
+	if key == clusterMembersKey {
 		if fkv.getMembersRetries > 0 {
 			fkv.getMembersRetries--
 			// discovery client should retry on error.
@@ -263,10 +263,9 @@ func (fkv *fakeKVForCheckCluster) Get(ctx context.Context, key string, opts ...c
 			},
 			Kvs: kvs,
 		}, nil
-	} else {
-		fkv.t.Errorf("unexpected key: %s", key)
-		return nil, fmt.Errorf("unexpected key: %s", key)
 	}
+	fkv.t.Errorf("unexpected key: %s", key)
+	return nil, fmt.Errorf("unexpected key: %s", key)
 }
 
 func TestCheckCluster(t *testing.T) {
@@ -327,35 +326,35 @@ func TestCheckCluster(t *testing.T) {
 
 	cases := []struct {
 		name              string
-		memberId          types.ID
+		memberID          types.ID
 		getSizeRetries    int
 		getMembersRetries int
 		expectedError     error
 	}{
 		{
 			name:              "no retries",
-			memberId:          101,
+			memberID:          101,
 			getSizeRetries:    0,
 			getMembersRetries: 0,
 			expectedError:     nil,
 		},
 		{
 			name:              "2 retries for getClusterSize",
-			memberId:          102,
+			memberID:          102,
 			getSizeRetries:    2,
 			getMembersRetries: 0,
 			expectedError:     nil,
 		},
 		{
 			name:              "2 retries for getClusterMembers",
-			memberId:          103,
+			memberID:          103,
 			getSizeRetries:    0,
 			getMembersRetries: 2,
 			expectedError:     nil,
 		},
 		{
 			name:              "error due to cluster full",
-			memberId:          104,
+			memberID:          104,
 			getSizeRetries:    0,
 			getMembersRetries: 0,
 			expectedError:     ErrFullCluster,
@@ -383,7 +382,7 @@ func TestCheckCluster(t *testing.T) {
 				},
 				cfg:          &DiscoveryConfig{},
 				clusterToken: "fakeToken",
-				memberId:     tc.memberId,
+				memberID:     tc.memberID,
 				clock:        clockwork.NewRealClock(),
 			}
 
@@ -443,7 +442,7 @@ func TestRegisterSelf(t *testing.T) {
 	cases := []struct {
 		name             string
 		token            string
-		memberId         types.ID
+		memberID         types.ID
 		expectedRegKey   string
 		expectedRegValue string
 		retries          int // when retries > 0, then return an error on Put request.
@@ -451,7 +450,7 @@ func TestRegisterSelf(t *testing.T) {
 		{
 			name:             "no retry with token1",
 			token:            "token1",
-			memberId:         101,
+			memberID:         101,
 			expectedRegKey:   "/_etcd/registry/token1/members/" + types.ID(101).String(),
 			expectedRegValue: "infra=http://127.0.0.1:2380",
 			retries:          0,
@@ -459,7 +458,7 @@ func TestRegisterSelf(t *testing.T) {
 		{
 			name:             "no retry with token2",
 			token:            "token2",
-			memberId:         102,
+			memberID:         102,
 			expectedRegKey:   "/_etcd/registry/token2/members/" + types.ID(102).String(),
 			expectedRegValue: "infra=http://127.0.0.1:2380",
 			retries:          0,
@@ -467,7 +466,7 @@ func TestRegisterSelf(t *testing.T) {
 		{
 			name:             "2 retries",
 			token:            "token3",
-			memberId:         103,
+			memberID:         103,
 			expectedRegKey:   "/_etcd/registry/token3/members/" + types.ID(103).String(),
 			expectedRegValue: "infra=http://127.0.0.1:2380",
 			retries:          2,
@@ -488,7 +487,7 @@ func TestRegisterSelf(t *testing.T) {
 			d := &discovery{
 				lg:           lg,
 				clusterToken: tc.token,
-				memberId:     tc.memberId,
+				memberID:     tc.memberID,
 				cfg:          &DiscoveryConfig{},
 				c: &clientv3.Client{
 					KV: fkv,

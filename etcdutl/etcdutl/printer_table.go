@@ -17,9 +17,9 @@ package etcdutl
 import (
 	"os"
 
-	"go.etcd.io/etcd/etcdutl/v3/snapshot"
-
 	"github.com/olekukonko/tablewriter"
+
+	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 )
 
 type tablePrinter struct{ printer }

@@ -24,16 +24,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
-
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-
-	"google.golang.org/grpc"
 )
 
 func NewClient(t *testing.T, cfg Config) (*Client, error) {
@@ -153,6 +154,48 @@ func TestDialNoTimeout(t *testing.T) {
 		t.Fatalf("new client with DialNoWait should succeed, got %v", err)
 	}
 	c.Close()
+}
+
+func TestMaxUnaryRetries(t *testing.T) {
+	maxUnaryRetries := uint(10)
+	cfg := Config{
+		Endpoints:       []string{"127.0.0.1:12345"},
+		MaxUnaryRetries: maxUnaryRetries,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, maxUnaryRetries, c.cfg.MaxUnaryRetries)
+}
+
+func TestBackoff(t *testing.T) {
+	backoffWaitBetween := 100 * time.Millisecond
+	cfg := Config{
+		Endpoints:          []string{"127.0.0.1:12345"},
+		BackoffWaitBetween: backoffWaitBetween,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, backoffWaitBetween, c.cfg.BackoffWaitBetween)
+}
+
+func TestBackoffJitterFraction(t *testing.T) {
+	backoffJitterFraction := float64(0.9)
+	cfg := Config{
+		Endpoints:             []string{"127.0.0.1:12345"},
+		BackoffJitterFraction: backoffJitterFraction,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, backoffJitterFraction, c.cfg.BackoffJitterFraction)
 }
 
 func TestIsHaltErr(t *testing.T) {
@@ -312,6 +355,47 @@ func TestSyncFiltersMembers(t *testing.T) {
 	}
 }
 
+func TestMinSupportedVersion(t *testing.T) {
+	testutil.BeforeTest(t)
+	var tests = []struct {
+		name                string
+		currentVersion      semver.Version
+		minSupportedVersion semver.Version
+	}{
+		{
+			name:                "v3.6 client should accept v3.5",
+			currentVersion:      version.V3_6,
+			minSupportedVersion: version.V3_5,
+		},
+		{
+			name:                "v3.7 client should accept v3.6",
+			currentVersion:      version.V3_7,
+			minSupportedVersion: version.V3_6,
+		},
+		{
+			name:                "first minor version should accept its previous version",
+			currentVersion:      version.V4_0,
+			minSupportedVersion: version.V3_7,
+		},
+		{
+			name:                "first version in list should not accept previous versions",
+			currentVersion:      version.V3_0,
+			minSupportedVersion: version.V3_0,
+		},
+	}
+
+	versionBackup := version.Version
+	t.Cleanup(func() {
+		version.Version = versionBackup
+	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version.Version = tt.currentVersion.String()
+			require.True(t, minSupportedVersion().Equal(tt.minSupportedVersion))
+		})
+	}
+}
+
 func TestClientRejectOldCluster(t *testing.T) {
 	testutil.BeforeTest(t)
 	var tests = []struct {
@@ -323,13 +407,13 @@ func TestClientRejectOldCluster(t *testing.T) {
 		{
 			name:          "all new versions with the same value",
 			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
-			versions:      []string{"3.5.4", "3.5.4", "3.5.4"},
+			versions:      []string{version.Version, version.Version, version.Version},
 			expectedError: nil,
 		},
 		{
 			name:          "all new versions with different values",
 			endpoints:     []string{"192.168.3.41:22379", "192.168.3.41:22479", "192.168.3.41:22579"},
-			versions:      []string{"3.5.4", "3.5.4", "3.4.0"},
+			versions:      []string{version.Version, minSupportedVersion().String(), minSupportedVersion().String()},
 			expectedError: nil,
 		},
 		{

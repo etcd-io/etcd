@@ -20,6 +20,8 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+
+	"go.etcd.io/etcd/pkg/v3/expect"
 )
 
 type CURLReq struct {
@@ -32,11 +34,13 @@ type CURLReq struct {
 	Endpoint string
 
 	Value    string
-	Expected string
+	Expected expect.ExpectedResponse
 	Header   string
 
 	Ciphers     string
-	HttpVersion string
+	HTTPVersion string
+
+	OutputFile string
 }
 
 func (r CURLReq) timeoutDuration() time.Duration {
@@ -58,8 +62,8 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 	var (
 		cmdArgs = []string{"curl"}
 	)
-	if req.HttpVersion != "" {
-		cmdArgs = append(cmdArgs, "--http"+req.HttpVersion)
+	if req.HTTPVersion != "" {
+		cmdArgs = append(cmdArgs, "--http"+req.HTTPVersion)
 	}
 	if req.IsTLS {
 		if cfg.ConnectionType != ClientTLSAndNonTLS {
@@ -91,6 +95,10 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 
 	if req.Ciphers != "" {
 		cmdArgs = append(cmdArgs, "--ciphers", req.Ciphers)
+	}
+
+	if req.OutputFile != "" {
+		cmdArgs = append(cmdArgs, "--output", req.OutputFile)
 	}
 
 	switch method {

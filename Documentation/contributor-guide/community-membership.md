@@ -2,11 +2,11 @@
 
 This doc outlines the various responsibilities of contributor roles in etcd. 
 
-| Role       | Responsibilities                             | Requirements                                                  | Defined by                           |
-|------------|----------------------------------------------|---------------------------------------------------------------|--------------------------------------|
-| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member               |
-| Reviewer   | Review contributions from other members      | History of review and authorship                              | [MAINTAINERS] file reviewer entry    |
-| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [MAINTAINERS] file maintainers entry |
+| Role       | Responsibilities                             | Requirements                                                  | Defined by                    |
+|------------|----------------------------------------------|---------------------------------------------------------------|-------------------------------|
+| Member     | Active contributor in the community          | Sponsored by 2 reviewers and multiple contributions           | etcd GitHub org member        |
+| Reviewer   | Review contributions from other members      | History of review and authorship                              | [OWNERS] file reviewer entry  |
+| Maintainer | Set direction and priorities for the project | Demonstrated responsibility and excellent technical judgement | [OWNERS] file approver entry  |
 
 ## New contributors
 
@@ -38,12 +38,12 @@ contributors to the community.
     - Filing or commenting on issues on GitHub
     - Contributing to community discussions (e.g. meetings, Slack, email discussion
       forums, Stack Overflow)
-- Subscribed to [etcd-dev@googlegroups.com]
+- Subscribed to [etcd-dev@googlegroups.com](https://groups.google.com/g/etcd-dev)
 - Have read the [contributor guide]
-- Sponsored by one active maintainer or two reviewers.
+- Sponsored by two active maintainers or reviewers.
     - Sponsors must be from multiple member companies to demonstrate integration across community.
     - With no objections from other maintainers
-- Open a [membership nomination] issue against the etcd-io/etcd repo
+- Open a [membership nomination] issue against the `kubernetes/org` repo
     - Ensure your sponsors are @mentioned on the issue
     - Make sure that the list of contributions included is representative of your work on the project.
 - Members can be removed by a supermajority of the maintainers or can resign by notifying
@@ -69,7 +69,7 @@ the codebase and software engineering principles. Their LGTM counts towards
 merging a code change into the project. A reviewer is generally on the ladder towards
 maintainership. 
 
-**Defined by:** *reviewers* entry in the [MAINTAINERS] file.
+**Defined by:** *reviewers* entry in the [OWNERS] file.
 
 ### Requirements
 
@@ -101,7 +101,7 @@ are committed to the long term success of a project. Maintainership is about bui
 trust with the current maintainers and being a person that they can
 depend on to make decisions in the best interest of the project in a consistent manner.
 
-**Defined by:** *maintainers* entry in the [MAINTAINERS] file.
+**Defined by:** *approvers* entry in the [OWNERS] file.
 
 ### Requirements
 
@@ -114,13 +114,13 @@ depend on to make decisions in the best interest of the project in a consistent 
 - Directly contributed to the project through implementation and / or review
 - Sponsored by two active maintainers and elected by supermajority
     - Sponsors must be from multiple member companies to demonstrate integration across community.
-- To become a maintainer send an email with your candidacy to [etcd-maintainers-private@googlegroups.com]
+- To become a maintainer send an email with your candidacy to etcd-maintainers-private@googlegroups.com
     - Ensure your sponsors are @mentioned on the email
     - Include a list of contributions representative of your work on the project.
     - Existing maintainers vote will privately and respond to the email with either acceptance or with feedback for suggested improvement.
 - With your membership approved you are expected to:
-  - Open a PR and add an entry to the [MAINTAINERS] file
-  - Subscribe to [etcd-maintainers@googlegroups.com] and [etcd-maintainers-private@googlegroups.com]
+  - Open a PR and add an entry to the [OWNERS] file
+  - Subscribe to etcd-maintainers@googlegroups.com and etcd-maintainers-private@googlegroups.com
   - Request to join to [etcd-maintainer teams of etcd organization of GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
   - Request to join to the private slack channel for etcd maintainers on [kubernetes slack](http://slack.kubernetes.io/)
   - Request access to etcd-development GCP project where we publish releases
@@ -159,9 +159,9 @@ of at least two active maintainers.
 
 Contributor roles and responsibilities were written based on [Kubernetes community membership]
 
-[MAINTAINERS]: /MAINTAINERS
+[OWNERS]: /OWNERS
 [contributor guide]: /CONTRIBUTING.md
-[membership nomination]:https://github.com/etcd-io/etcd/issues/new?assignees=&labels=area%2Fcommunity&template=membership-request.yml 
+[membership nomination]: https://github.com/kubernetes/org/issues/new?assignees=&labels=area%2Fgithub-membership&projects=&template=membership.yml&title=REQUEST%3A+New+membership+for+%3Cyour-GH-handle%3E
 [Kubernetes community membership]: https://github.com/kubernetes/community/blob/master/community-membership.md
 [emeritus maintainers]: /README.md#etcd-emeritus-maintainers
 [security disclosure and release process]: /security/README.md

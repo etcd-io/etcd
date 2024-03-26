@@ -9,6 +9,7 @@
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd)
+<a href="https://actuated.dev/"><img alt="Arm CI sponsored by Actuated" src="https://docs.actuated.dev/images/actuated-badge.png" width="120px"></img></a>
 
 **Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
 
@@ -40,7 +41,7 @@ See [etcdctl][etcdctl] for a simple command line client.
 
 ## Maintainers
 
-[MAINTAINERS](MAINTAINERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. MAINTAINERS maintain productive relationships across different companies and disciplines. Read more about [MAINTAINERS role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
+[Maintainers](OWNERS) strive to shape an inclusive open source project culture where users are heard and contributors feel respected and empowered. Maintainers aim to build productive relationships across different companies and disciplines. Read more about [Maintainers role and responsibilities](Documentation/contributor-guide/community-membership.md#maintainers).
 
 ## Getting started
 
@@ -134,32 +135,35 @@ Now it's time to dig into the full etcd API and other guides.
 
 ## Contact
 
-* Email: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-* Slack: [#etcd](https://kubernetes.slack.com/messages/C3HD8ARJ5/details/) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
+* Email: [etcd-dev](https://groups.google.com/g/etcd-dev)
+* Slack: [#sig-etcd](https://kubernetes.slack.com/archives/C3HD8ARJ5) channel on Kubernetes ([get an invite](http://slack.kubernetes.io/))
 * [Community meetings](#community-meetings)
 
 ### Community meetings
 
-etcd contributors and maintainers meet every two weeks at 11:00 AM (USA Pacific) on Thursday.
+etcd contributors and maintainers meet every week at `11:00` AM (USA Pacific) on Thursday and meetings alternate between community meetings and issue triage meetings. Meeting agendas are recorded in a [shared Google doc][shared-meeting-notes] and everyone is welcome to suggest additional topics or other agendas.
 
-An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
+Issue triage meetings are aimed at getting through our backlog of PRs and Issues. Triage meetings are open to any contributor; you don't have to be a reviewer or approver to help out! They can also be a good way to get started contributing.
 
-Meeting recordings are uploaded to official etcd [YouTube channel].
+The meeting lead role is rotated for each meeting between etcd maintainers or sig-etcd leads and is recorded in a [shared Google sheet][shared-rotation-sheet].
 
-Get calendar invitation by joining [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev) mailing group.
+Meeting recordings are uploaded to the official etcd [YouTube channel].
 
-Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
+Get calendar invitations by joining [etcd-dev](https://groups.google.com/g/etcd-dev) mailing group.
 
-Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
+Join the CNCF-funded Zoom channel: [zoom.us/my/cncfetcdproject](https://zoom.us/my/cncfetcdproject)
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
-[YouTube channel]: https://www.youtube.com/channel/UC7tUWR24I5AR9NMsG-NYBlg
+[shared-rotation-sheet]: https://docs.google.com/spreadsheets/d/1jodHIO7Dk2VWTs1IRnfMFaRktS9IH8XRyifOnPdSY8I/edit
+[YouTube channel]: https://www.youtube.com/@etcdio
 
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on setting up your development environment, submitting patches and the contribution workflow.
 
 Please refer to [community-membership.md](Documentation/contributor-guide/community-membership.md#member) for information on becoming an etcd project member.  We welcome and look forward to your contributions to the project!
+
+Please also refer to [roadmap](Documentation/contributor-guide/roadmap.md) to get more details on the priorities for the next few major or minor releases.
 
 ## Reporting bugs
 
@@ -190,6 +194,8 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Xiang Li
 * Ben Darnell
 * Sam Batschelet
+* Piotr Tabor
+* Hitoshi Mitake
 
 ### License
 

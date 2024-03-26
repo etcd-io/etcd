@@ -20,15 +20,13 @@ import (
 	"strings"
 	"testing"
 
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-
 	"go.uber.org/zap"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
@@ -55,7 +53,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		QuotaBackendBytes:          cfg.QuotaBackendBytes,
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
-		SnapshotCount:              uint64(cfg.SnapshotCount),
+		SnapshotCount:              cfg.SnapshotCount,
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
 	if err != nil {
@@ -171,6 +169,11 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 }
 
 func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
+	if opts.Timeout != 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
+		defer cancel()
+	}
 	var clientOpts []clientv3.OpOption
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
@@ -359,14 +362,11 @@ func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail [
 		}
 		cmps = append(cmps, *cmp)
 	}
-	succOps, err := getOps(ifSucess)
-	if err != nil {
-		return nil, err
-	}
-	failOps, err := getOps(ifFail)
-	if err != nil {
-		return nil, err
-	}
+
+	succOps := getOps(ifSucess)
+
+	failOps := getOps(ifFail)
+
 	txnrsp, err := txn.
 		If(cmps...).
 		Then(succOps...).
@@ -375,7 +375,7 @@ func (c integrationClient) Txn(ctx context.Context, compares, ifSucess, ifFail [
 	return txnrsp, err
 }
 
-func getOps(ss []string) ([]clientv3.Op, error) {
+func getOps(ss []string) []clientv3.Op {
 	var ops []clientv3.Op
 	for _, s := range ss {
 		s = strings.TrimSpace(s)
@@ -389,7 +389,7 @@ func getOps(ss []string) ([]clientv3.Op, error) {
 			ops = append(ops, clientv3.OpDelete(args[1]))
 		}
 	}
-	return ops, nil
+	return ops
 }
 
 func (c integrationClient) Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan {

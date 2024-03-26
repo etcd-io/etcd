@@ -23,15 +23,13 @@ import (
 	"time"
 
 	"github.com/bgentry/speakeasy"
-
-	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"github.com/spf13/cobra"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/mirror"
-
-	"github.com/spf13/cobra"
+	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
 const (

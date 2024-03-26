@@ -16,6 +16,8 @@
 
 package e2e
 
-func NewEtcdProcess(cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
-	return NewEtcdServerProcess(cfg)
+import "testing"
+
+func NewEtcdProcess(t testing.TB, cfg *EtcdServerProcessConfig) (EtcdProcess, error) {
+	return NewEtcdServerProcess(t, cfg)
 }

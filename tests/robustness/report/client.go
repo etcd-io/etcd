@@ -169,7 +169,6 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses []model.WatchOperation) {
 	lg.Info("Saving watch operations", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	defer file.Close()
 	if err != nil {
 		t.Errorf("Failed to save watch operations: %v", err)
 		return

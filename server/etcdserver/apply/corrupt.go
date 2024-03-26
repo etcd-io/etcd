@@ -20,7 +20,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 type applierV3Corrupt struct {
@@ -29,16 +28,16 @@ type applierV3Corrupt struct {
 
 func newApplierV3Corrupt(a applierV3) *applierV3Corrupt { return &applierV3Corrupt{a} }
 
-func (a *applierV3Corrupt) Put(_ context.Context, _ mvcc.TxnWrite, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *applierV3Corrupt) Put(_ context.Context, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) Range(_ context.Context, _ mvcc.TxnRead, _ *pb.RangeRequest) (*pb.RangeResponse, error) {
-	return nil, errors.ErrCorrupt
+func (a *applierV3Corrupt) Range(_ context.Context, _ *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
+	return nil, nil, errors.ErrCorrupt
 }
 
-func (a *applierV3Corrupt) DeleteRange(_ mvcc.TxnWrite, _ *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
-	return nil, errors.ErrCorrupt
+func (a *applierV3Corrupt) DeleteRange(_ context.Context, _ *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+	return nil, nil, errors.ErrCorrupt
 }
 
 func (a *applierV3Corrupt) Txn(_ context.Context, _ *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {

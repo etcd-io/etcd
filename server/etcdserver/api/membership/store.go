@@ -17,11 +17,11 @@ package membership
 import (
 	"path"
 
-	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/server/v3/etcdserver/version"
-
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/etcdserver/version"
 )
 
 type MembershipBackend interface {

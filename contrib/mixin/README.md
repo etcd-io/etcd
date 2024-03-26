@@ -2,9 +2,19 @@
 
 > NOTE: This project is *alpha* stage. Flags, configuration, behaviour and design may change significantly in following releases.
 
-A set of customisable Prometheus alerts for etcd.
+A customisable set of Grafana dashboard and Prometheus alerts for etcd.
 
 Instructions for use are the same as the [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin).
+
+## Grafana 7.x support
+
+By default, this mixin generates the dashboard compatible with Grafana 8.x or newer.
+To generate dashboard for Grafana 7.x, set in the config.libsonnet:
+
+```
+// set to true if dashboards should be compatible with Grafana 7x or earlier
+grafana7x: true,
+```
 
 ## Background
 

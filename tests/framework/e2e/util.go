@@ -41,24 +41,24 @@ func WaitReadyExpectProc(ctx context.Context, exproc *expect.ExpectProcess, read
 	return err
 }
 
-func SpawnWithExpect(args []string, expected string) error {
-	return SpawnWithExpects(args, nil, []string{expected}...)
+func SpawnWithExpect(args []string, expected expect.ExpectedResponse) error {
+	return SpawnWithExpects(args, nil, []expect.ExpectedResponse{expected}...)
 }
 
-func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected string) error {
-	return SpawnWithExpects(args, envVars, []string{expected}...)
+func SpawnWithExpectWithEnv(args []string, envVars map[string]string, expected expect.ExpectedResponse) error {
+	return SpawnWithExpects(args, envVars, []expect.ExpectedResponse{expected}...)
 }
 
-func SpawnWithExpects(args []string, envVars map[string]string, xs ...string) error {
+func SpawnWithExpects(args []string, envVars map[string]string, xs ...expect.ExpectedResponse) error {
 	return SpawnWithExpectsContext(context.TODO(), args, envVars, xs...)
 }
 
-func SpawnWithExpectsContext(ctx context.Context, args []string, envVars map[string]string, xs ...string) error {
+func SpawnWithExpectsContext(ctx context.Context, args []string, envVars map[string]string, xs ...expect.ExpectedResponse) error {
 	_, err := SpawnWithExpectLines(ctx, args, envVars, xs...)
 	return err
 }
 
-func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string]string, xs ...string) ([]string, error) {
+func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string]string, xs ...expect.ExpectedResponse) ([]string, error) {
 	proc, err := SpawnCmd(args, envVars)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 		l, lerr := proc.ExpectWithContext(ctx, txt)
 		if lerr != nil {
 			proc.Close()
-			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt, lines)
+			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt.Value, lines)
 		}
 		lines = append(lines, l)
 	}
@@ -108,7 +108,7 @@ func RandomLeaseID() int64 {
 	return rand.New(rand.NewSource(time.Now().UnixNano())).Int63()
 }
 
-func DataMarshal(data interface{}) (d string, e error) {
+func DataMarshal(data any) (d string, e error) {
 	m, err := json.Marshal(data)
 	if err != nil {
 		return "", err

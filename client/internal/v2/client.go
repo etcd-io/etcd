@@ -41,7 +41,7 @@ var (
 
 	// oneShotCtxValue is set on a context using WithValue(&oneShotValue) so
 	// that Do() will not retry a request
-	oneShotCtxValue interface{}
+	oneShotCtxValue any
 )
 
 var DefaultRequestTimeout = 5 * time.Second
@@ -556,7 +556,7 @@ func (c *simpleHTTPClient) Do(ctx context.Context, act httpAction) (*http.Respon
 	}
 	defer hcancel()
 
-	reqcancel := requestCanceler(c.transport, req)
+	reqcancel := requestCanceler(req)
 
 	rtchan := make(chan roundTripResponse, 1)
 	go func() {

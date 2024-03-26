@@ -21,20 +21,19 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func UnsafeCreateAuthRolesBucket(tx backend.BatchTx) {
+func UnsafeCreateAuthRolesBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(AuthRoles)
 }
 
 func (abe *authBackend) GetRole(roleName string) *authpb.Role {
-	tx := abe.BatchTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx := abe.ReadTx()
+	tx.RLock()
+	defer tx.RUnlock()
 	return tx.UnsafeGetRole(roleName)
 }
 
 func (atx *authBatchTx) UnsafeGetRole(roleName string) *authpb.Role {
-	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
-	return arx.UnsafeGetRole(roleName)
+	return unsafeGetRole(atx.lg, atx.tx, roleName)
 }
 
 func (abe *authBackend) GetAllRoles() []*authpb.Role {
@@ -45,8 +44,7 @@ func (abe *authBackend) GetAllRoles() []*authpb.Role {
 }
 
 func (atx *authBatchTx) UnsafeGetAllRoles() []*authpb.Role {
-	arx := &authReadTx{tx: atx.tx, lg: atx.lg}
-	return arx.UnsafeGetAllRoles()
+	return unsafeGetAllRoles(atx.lg, atx.tx)
 }
 
 func (atx *authBatchTx) UnsafePutRole(role *authpb.Role) {
@@ -67,7 +65,11 @@ func (atx *authBatchTx) UnsafeDeleteRole(rolename string) {
 }
 
 func (atx *authReadTx) UnsafeGetRole(roleName string) *authpb.Role {
-	_, vs := atx.tx.UnsafeRange(AuthRoles, []byte(roleName), nil, 0)
+	return unsafeGetRole(atx.lg, atx.tx, roleName)
+}
+
+func unsafeGetRole(lg *zap.Logger, tx backend.UnsafeReader, roleName string) *authpb.Role {
+	_, vs := tx.UnsafeRange(AuthRoles, []byte(roleName), nil, 0)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -75,13 +77,17 @@ func (atx *authReadTx) UnsafeGetRole(roleName string) *authpb.Role {
 	role := &authpb.Role{}
 	err := role.Unmarshal(vs[0])
 	if err != nil {
-		atx.lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
+		lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 	}
 	return role
 }
 
 func (atx *authReadTx) UnsafeGetAllRoles() []*authpb.Role {
-	_, vs := atx.tx.UnsafeRange(AuthRoles, []byte{0}, []byte{0xff}, -1)
+	return unsafeGetAllRoles(atx.lg, atx.tx)
+}
+
+func unsafeGetAllRoles(lg *zap.Logger, tx backend.UnsafeReader) []*authpb.Role {
+	_, vs := tx.UnsafeRange(AuthRoles, []byte{0}, []byte{0xff}, -1)
 	if len(vs) == 0 {
 		return nil
 	}
@@ -91,7 +97,7 @@ func (atx *authReadTx) UnsafeGetAllRoles() []*authpb.Role {
 		role := &authpb.Role{}
 		err := role.Unmarshal(vs[i])
 		if err != nil {
-			atx.lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
+			lg.Panic("failed to unmarshal 'authpb.Role'", zap.Error(err))
 		}
 		roles[i] = role
 	}

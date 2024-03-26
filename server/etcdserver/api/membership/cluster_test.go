@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -275,8 +276,10 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 	}
 }
 
-func TestClusterValidateConfigurationChange(t *testing.T) {
+func TestClusterValidateConfigurationChangeV2(t *testing.T) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
+	be := newMembershipBackend()
+	cl.SetBackend(be)
 	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
@@ -467,6 +470,9 @@ func TestClusterGenID(t *testing.T) {
 		newTestMember(2, nil, "", nil),
 	})
 
+	be := newMembershipBackend()
+	cs.SetBackend(be)
+
 	cs.genID()
 	if cs.ID() == 0 {
 		t.Fatalf("cluster.ID = %v, want not 0", cs.ID())
@@ -522,7 +528,7 @@ func TestClusterAddMember(t *testing.T) {
 	wactions := []testutil.Action{
 		{
 			Name: "Create",
-			Params: []interface{}{
+			Params: []any{
 				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
 				`{"peerURLs":null}`,
@@ -540,15 +546,15 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
 	c.SetStore(st)
-	c.AddMember(newTestMemberAsLearner(1, nil, "node1", nil), true)
+	c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
 
 	wactions := []testutil.Action{
 		{
 			Name: "Create",
-			Params: []interface{}{
+			Params: []any{
 				path.Join(StoreMembersPrefix, "1", "raftAttributes"),
 				false,
-				`{"peerURLs":null,"isLearner":true}`,
+				`{"peerURLs":[],"isLearner":true}`,
 				false,
 				v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
 			},
@@ -586,8 +592,8 @@ func TestClusterRemoveMember(t *testing.T) {
 	c.RemoveMember(1, true)
 
 	wactions := []testutil.Action{
-		{Name: "Delete", Params: []interface{}{MemberStoreKey(1), true, true}},
-		{Name: "Create", Params: []interface{}{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
+		{Name: "Delete", Params: []any{MemberStoreKey(1), true, true}},
+		{Name: "Create", Params: []any{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
 	}
 	if !reflect.DeepEqual(st.Action(), wactions) {
 		t.Errorf("actions = %v, want %v", st.Action(), wactions)
@@ -973,5 +979,71 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
+	}
+}
+
+func TestClusterStore(t *testing.T) {
+	name := "etcd"
+	clientURLs := []string{"http://127.0.0.1:4001"}
+
+	tests := []struct {
+		name    string
+		mems    []*Member
+		removed map[types.ID]bool
+	}{
+		{
+			name: "Single member, no removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{},
+		},
+		{
+			name: "Multiple members, no removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+				newTestMember(2, nil, name, clientURLs),
+				newTestMember(3, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{},
+		},
+		{
+			name: "Single member, one removed member",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{types.ID(2): true},
+		},
+		{
+			name: "Multiple members, some removed members",
+			mems: []*Member{
+				newTestMember(1, nil, name, clientURLs),
+				newTestMember(2, nil, name, clientURLs),
+				newTestMember(3, nil, name, clientURLs),
+			},
+			removed: map[types.ID]bool{
+				types.ID(4): true,
+				types.ID(5): true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := newTestCluster(t, tt.mems)
+			c.removed = tt.removed
+
+			st := v2store.New("/0", "/1")
+			c.Store(st)
+
+			// Verify that the members are properly stored
+			mst, rst := membersFromStore(c.lg, st)
+			for _, mem := range tt.mems {
+				assert.Equal(t, mem, mst[mem.ID])
+			}
+
+			// Verify that removed members are correctly stored
+			assert.Equal(t, tt.removed, rst)
+		})
 	}
 }

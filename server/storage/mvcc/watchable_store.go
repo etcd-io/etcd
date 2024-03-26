@@ -18,14 +18,14 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-
-	"go.uber.org/zap"
 )
 
 // non-const so modifiable by tests
@@ -38,6 +38,8 @@ var (
 	// maxWatchersPerSync is the number of watchers to sync in a single batch
 	maxWatchersPerSync = 512
 )
+
+func ChanBufLen() int { return chanBufLen }
 
 type watchable interface {
 	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
@@ -352,9 +354,9 @@ func (s *watchableStore) syncWatchers() int {
 	compactionRev := s.store.compactMainRev
 
 	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
-	minBytes, maxBytes := newRevBytes(), newRevBytes()
-	revToBytes(revision{main: minRev}, minBytes)
-	revToBytes(revision{main: curRev + 1}, maxBytes)
+	minBytes, maxBytes := NewRevBytes(), NewRevBytes()
+	minBytes = RevToBytes(Revision{Main: minRev}, minBytes)
+	maxBytes = RevToBytes(Revision{Main: curRev + 1}, maxBytes)
 
 	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
 	// values are actual key-value pairs in backend.
@@ -370,6 +372,11 @@ func (s *watchableStore) syncWatchers() int {
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
 	for w := range wg.watchers {
+		if w.minRev < compactionRev {
+			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
+			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
+			continue
+		}
 		w.minRev = curRev + 1
 
 		eb, ok := wb[w]
@@ -428,7 +435,7 @@ func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []m
 		if isTombstone(revs[i]) {
 			ty = mvccpb.DELETE
 			// patch in mod revision so watchers won't skip
-			kv.ModRevision = bytesToRev(revs[i]).main
+			kv.ModRevision = BytesToRev(revs[i]).Main
 		}
 		evs = append(evs, mvccpb.Event{Kv: &kv, Type: ty})
 	}

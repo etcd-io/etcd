@@ -18,11 +18,11 @@ import (
 	goruntime "runtime"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/runtime"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/runtime"
 )
 
 var (
@@ -43,12 +43,6 @@ var (
 		Subsystem: "server",
 		Name:      "leader_changes_seen_total",
 		Help:      "The number of leader changes seen.",
-	})
-	isLearner = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "is_learner",
-		Help:      "Whether or not this member is a learner. 1 if is, 0 otherwise.",
 	})
 	learnerPromoteFailed = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Namespace: "etcd",
@@ -171,7 +165,6 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
-	prometheus.MustRegister(isLearner)
 	prometheus.MustRegister(learnerPromoteSucceed)
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)

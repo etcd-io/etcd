@@ -23,12 +23,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/report"
-
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/report"
 )
 
 // watchCmd represents the watch command
@@ -88,7 +88,7 @@ func init() {
 	watchCmd.Flags().BoolVar(&watchSeqKeys, "sequential-keys", false, "Use sequential keys")
 }
 
-func watchFunc(cmd *cobra.Command, args []string) {
+func watchFunc(_ *cobra.Command, _ []string) {
 	if watchKeySpaceSize <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --key-space-size, got (%v)", watchKeySpaceSize)
 		os.Exit(1)

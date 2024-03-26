@@ -104,11 +104,7 @@ func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
 	}
 
 	// enable auth
-	if err := c.AuthEnable(context.TODO()); err != nil {
-		return err
-	}
-
-	return nil
+	return c.AuthEnable(context.TODO())
 }
 
 func requireRolePermissionEqual(t *testing.T, expectRole authRole, actual []*authpb.Permission) {

@@ -21,11 +21,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
-	"google.golang.org/grpc"
 )
 
 // TestBalancerUnderBlackholeKeepAliveWatch tests when watch discovers it cannot talk to

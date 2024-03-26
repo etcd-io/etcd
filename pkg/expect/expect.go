@@ -23,6 +23,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"syscall"
@@ -31,11 +32,16 @@ import (
 	"github.com/creack/pty"
 )
 
-const DEBUG_LINES_TAIL = 40
+const debugLinesTail = 40
 
 var (
 	ErrProcessRunning = fmt.Errorf("process is still running")
 )
+
+type ExpectedResponse struct {
+	Value         string
+	IsRegularExpr bool
+}
 
 type ExpectProcess struct {
 	cfg expectConfig
@@ -212,7 +218,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 		}
 	}
 
-	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
+	lastLinesIndex := len(ep.lines) - debugLinesTail
 	if lastLinesIndex < 0 {
 		lastLinesIndex = 0
 	}
@@ -223,14 +229,29 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 }
 
 // ExpectWithContext returns the first line containing the given string.
-func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s string) (string, error) {
-	return ep.ExpectFunc(ctx, func(txt string) bool { return strings.Contains(txt, s) })
+func (ep *ExpectProcess) ExpectWithContext(ctx context.Context, s ExpectedResponse) (string, error) {
+	var (
+		expr *regexp.Regexp
+		err  error
+	)
+	if s.IsRegularExpr {
+		expr, err = regexp.Compile(s.Value)
+		if err != nil {
+			return "", err
+		}
+	}
+	return ep.ExpectFunc(ctx, func(txt string) bool {
+		if expr != nil {
+			return expr.MatchString(txt)
+		}
+		return strings.Contains(txt, s.Value)
+	})
 }
 
 // Expect returns the first line containing the given string.
 // Deprecated: please use ExpectWithContext instead.
 func (ep *ExpectProcess) Expect(s string) (string, error) {
-	return ep.ExpectWithContext(context.Background(), s)
+	return ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: s})
 }
 
 // LineCount returns the number of recorded lines since
@@ -286,7 +307,7 @@ func (ep *ExpectProcess) ExitError() error {
 // Stop signals the process to terminate via SIGTERM
 func (ep *ExpectProcess) Stop() error {
 	err := ep.Signal(syscall.SIGTERM)
-	if err != nil && strings.Contains(err.Error(), "os: process already finished") {
+	if err != nil && errors.Is(err, os.ErrProcessDone) {
 		return nil
 	}
 	return err

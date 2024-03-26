@@ -26,6 +26,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -34,10 +39,6 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
-	"google.golang.org/grpc"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
@@ -175,6 +176,12 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer rc1.Close()
+
+	// read 16 bytes to ensure that server opens snapshot
+	buf := make([]byte, 16)
+	n, err := rc1.Read(buf)
+	assert.NoError(t, err)
+	assert.Equal(t, 16, n)
 
 	cancel()
 	_, err = io.Copy(io.Discard, rc1)

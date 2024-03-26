@@ -77,7 +77,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		_, err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
+		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
 	}
 
@@ -152,7 +152,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		_, err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
+		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
 	}
 
@@ -189,7 +189,7 @@ func TestCompactHashCheckDetectMultipleCorruption(t *testing.T) {
 	ctx := context.Background()
 
 	for i := 0; i < 10; i++ {
-		_, err := cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
+		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
 		assert.NoError(t, err, "error on put")
 	}
 

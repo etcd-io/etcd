@@ -24,13 +24,14 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap/zaptest"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/snapshot"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"go.uber.org/zap/zaptest"
 )
 
 // TestSaveSnapshotFilePermissions ensures that the snapshot is saved with
@@ -130,7 +131,6 @@ func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version stri
 func newEmbedURLs(n int) (urls []url.URL) {
 	urls = make([]url.URL, n)
 	for i := 0; i < n; i++ {
-		rand.Seed(int64(time.Now().Nanosecond()))
 		u, _ := url.Parse(fmt.Sprintf("unix://localhost:%d", rand.Intn(45000)))
 		urls[i] = *u
 	}

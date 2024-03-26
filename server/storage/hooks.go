@@ -41,7 +41,7 @@ func NewBackendHooks(lg *zap.Logger, indexer cindex.ConsistentIndexer) *BackendH
 	return &BackendHooks{lg: lg, indexer: indexer}
 }
 
-func (bh *BackendHooks) OnPreCommitUnsafe(tx backend.BatchTx) {
+func (bh *BackendHooks) OnPreCommitUnsafe(tx backend.UnsafeReadWriter) {
 	bh.indexer.UnsafeSave(tx)
 	bh.confStateLock.Lock()
 	defer bh.confStateLock.Unlock()

@@ -23,13 +23,12 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
-
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/contention"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 const (
@@ -53,7 +52,7 @@ var (
 )
 
 func init() {
-	expvar.Publish("raft.status", expvar.Func(func() interface{} {
+	expvar.Publish("raft.status", expvar.Func(func() any {
 		raftStatusMu.Lock()
 		defer raftStatusMu.Unlock()
 		if raftStatus == nil {
@@ -223,7 +222,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					return
 				}
 
-				// the leader can write to its disk in parallel with replicating to the followers and them
+				// the leader can write to its disk in parallel with replicating to the followers and then
 				// writing to their disks.
 				// For more details, check raft thesis 10.2.1
 				if islead {
@@ -348,6 +347,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	for i := len(ms) - 1; i >= 0; i-- {
 		if r.isIDRemoved(ms[i].To) {
 			ms[i].To = 0
+			continue
 		}
 
 		if ms[i].Type == raftpb.MsgAppResp {

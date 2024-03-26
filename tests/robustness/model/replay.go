@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
+func NewReplay(eventHistory []PersistedEvent) *EtcdReplay {
 	var lastEventRevision int64 = 1
 	for _, event := range eventHistory {
 		if event.Revision > lastEventRevision && event.Revision != lastEventRevision+1 {
@@ -33,7 +33,7 @@ func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
 }
 
 type EtcdReplay struct {
-	eventHistory []WatchEvent
+	eventHistory []PersistedEvent
 
 	// Cached state and event index used for it's calculation
 	cachedState       *EtcdState
@@ -73,7 +73,7 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 	revision = r.eventHistory[r.eventHistoryIndex].Revision
 	index = r.eventHistoryIndex
 	operations := []EtcdOperation{}
-	for r.eventHistory[index].Revision == revision {
+	for index < len(r.eventHistory) && r.eventHistory[index].Revision == revision {
 		event := r.eventHistory[index]
 		switch event.Type {
 		case PutOperation:
@@ -98,8 +98,14 @@ func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
 }
 
 type WatchEvent struct {
+	PersistedEvent
+	PrevValue *ValueRevision
+}
+
+type PersistedEvent struct {
 	Event
 	Revision int64
+	IsCreate bool
 }
 
 type Event struct {
@@ -111,9 +117,8 @@ type Event struct {
 func (e Event) Match(request WatchRequest) bool {
 	if request.WithPrefix {
 		return strings.HasPrefix(e.Key, request.Key)
-	} else {
-		return e.Key == request.Key
 	}
+	return e.Key == request.Key
 }
 
 type WatchRequest struct {
@@ -121,4 +126,5 @@ type WatchRequest struct {
 	Revision           int64
 	WithPrefix         bool
 	WithProgressNotify bool
+	WithPrevKV         bool
 }

@@ -18,15 +18,6 @@
 		]
 	},
 	{
-		"project": "github.com/benbjohnson/clock",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/beorn7/perks/quantile",
 		"licenses": [
 			{
@@ -225,15 +216,6 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/grpc-gateway",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.979253112033195
-			}
-		]
-	},
-	{
 		"project": "github.com/grpc-ecosystem/grpc-gateway/v2",
 		"licenses": [
 			{
@@ -283,15 +265,6 @@
 		"licenses": [
 			{
 				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
@@ -558,15 +531,6 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp/internal/retry",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
 		"licenses": [
 			{
@@ -617,15 +581,6 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.uber.org/atomic",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
 			}
 		]
 	},
@@ -702,7 +657,16 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto",
+		"project": "google.golang.org/genproto/googleapis/api",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "google.golang.org/genproto/googleapis/rpc",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -738,19 +702,6 @@
 		]
 	},
 	{
-		"project": "gopkg.in/yaml.v2",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			},
-			{
-				"type": "MIT License",
-				"confidence": 0.8975609756097561
-			}
-		]
-	},
-	{
 		"project": "gopkg.in/yaml.v3",
 		"licenses": [
 			{
@@ -774,6 +725,19 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "sigs.k8s.io/yaml/goyaml.v2",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			},
+			{
+				"type": "MIT License",
+				"confidence": 0.8975609756097561
 			}
 		]
 	}

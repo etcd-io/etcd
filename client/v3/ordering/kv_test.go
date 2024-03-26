@@ -16,7 +16,6 @@ package ordering
 
 import (
 	"context"
-	gContext "context"
 	"sync"
 	"testing"
 
@@ -29,7 +28,7 @@ type mockKV struct {
 	response clientv3.OpResponse
 }
 
-func (kv *mockKV) Do(ctx gContext.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+func (kv *mockKV) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
 	return kv.response, nil
 }
 

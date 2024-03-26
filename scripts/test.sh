@@ -68,7 +68,7 @@ fi
 
 # determine whether target supports race detection
 if [ -z "${RACE:-}" ] ; then
-  if [ "$GOARCH" == "amd64" ]; then
+  if [ "$GOARCH" == "amd64" ] || [ "$GOARCH" == "arm64" ]; then
     RACE="--race"
   else
     RACE="--race=false"
@@ -103,8 +103,8 @@ function build_pass {
 function run_unit_tests {
   local pkgs="${1:-./...}"
   shift 1
-  # shellcheck disable=SC2086
-  GOLANG_TEST_SHORT=true go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" "$@"
+  # shellcheck disable=SC2068 #For context see - https://github.com/etcd-io/etcd/pull/16433#issuecomment-1684312755
+  GOLANG_TEST_SHORT=true go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@"
 }
 
 function unit_pass {
@@ -113,27 +113,33 @@ function unit_pass {
 
 function integration_extra {
   if [ -z "${PKG}" ] ; then
-    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" "${RUN_ARG[@]}" "${COMMON_TEST_FLAGS[@]}" "$@" || return $?
+    # shellcheck disable=SC2068
+    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@" || return $?
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
 }
 
 function integration_pass {
-  run_for_module "tests" go_test "./integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" "${COMMON_TEST_FLAGS[@]}" "${RUN_ARG[@]}" -p=2 "$@" || return $?
-  run_for_module "tests" go_test "./common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" "${COMMON_TEST_FLAGS[@]}" -p=2 "${RUN_ARG[@]}" "$@" || return $?
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
   integration_extra "$@"
 }
 
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@" || return $?
-  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
 }
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" "${RUN_ARG[@]}" "$@"
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
 }
 
 function integration_e2e_pass {
@@ -164,13 +170,13 @@ function grpcproxy_pass {
 }
 
 function grpcproxy_integration_pass {
-  run_for_module "tests" go_test "./integration/..." "fail_fast" : \
-      -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
 }
 
 function grpcproxy_e2e_pass {
-  run_for_module "tests" go_test "./e2e" "fail_fast" : \
-      -timeout=30m -tags cluster_proxy "${COMMON_TEST_FLAGS[@]}" "$@"
+  # shellcheck disable=SC2068
+  run_for_module "tests" go_test "./e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
 }
 
 ################# COVERAGE #####################################################
@@ -234,7 +240,7 @@ function merge_cov_files {
     if ! (( "${i}" % 20 )); then
       log_callout "${i} of ${count}: Merging file: ${f}"
     fi
-    run_go_tool "github.com/gyuho/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" 2>/dev/null
+    run_go_tool "github.com/alexfalkowski/gocovmerge" "${f}" "${cover_out_file}"  > "${coverdir}/cover.tmp" 2>/dev/null
     if [ -s "${coverdir}"/cover.tmp ]; then
       mv "${coverdir}/cover.tmp" "${cover_out_file}"
     fi
@@ -352,20 +358,10 @@ function shellws_pass {
   fi
 }
 
-function markdown_you_find_eschew_you {
-  local find_you_cmd="find . -name \\*.md ! -path '*/vendor/*' ! -path './Documentation/*' ! -path './gopath.proto/*' ! -path './release/*' -exec grep -E --color '[Yy]ou[r]?[ '\\''.,;]' {} + || true"
-  run eval "${find_you_cmd}"
-}
-
-function markdown_you_pass {
-  # TODO: ./CONTRIBUTING.md:## Get your pull request reviewed
-  generic_checker markdown_you_find_eschew_you
-}
-
 function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if tool_exists "marker" "https://crates.io/crates/marker"; then
-    generic_checker run marker --skip-http --root ./Documentation 2>&1
+    generic_checker run marker --skip-http --allow-absolute-paths --root "${ETCD_ROOT_DIR}" -e ./CHANGELOG -e ./etcdctl -e etcdutl -e ./tools 2>&1
   fi
 }
 
@@ -373,53 +369,53 @@ function govet_pass {
   run_for_modules generic_checker run go vet
 }
 
-function govet_shadow_pass {
-  # TODO: we should ignore the generated packages?
+function govet_shadow_per_package {
+  local shadow
+  shadow=$1
+
+  # skip grpc_gateway packages because
   #
   # stderr: etcdserverpb/gw/rpc.pb.gw.go:2100:3: declaration of "ctx" shadows declaration at line 2005
+  local skip_pkgs=(
+    "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
+    "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
+    "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb/gw"
+  )
+
+  local pkgs=()
+  while IFS= read -r line; do
+    local in_skip_pkgs="false"
+
+    for pkg in "${skip_pkgs[@]}"; do
+      if [ "${pkg}" == "${line}" ]; then
+        in_skip_pkgs="true"
+        break
+      fi
+    done
+
+    if [ "${in_skip_pkgs}" == "true" ]; then
+      continue
+    fi
+
+    pkgs+=("${line}")
+  done < <(go list ./...)
+
+  run go vet -all -vettool="${shadow}" "${pkgs[@]}"
+}
+
+function govet_shadow_pass {
   local shadow
   shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
-  run_for_modules generic_checker run go vet -all -vettool="${shadow}"
+
+  run_for_modules generic_checker govet_shadow_per_package "${shadow}"
 }
 
-function unparam_pass {
-  # TODO: transport/listener.go:129:60: newListenConfig - result 1 (error) is always nil
-  run_for_modules generic_checker run_go_tool "mvdan.cc/unparam"
+function lint_pass {
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
-function staticcheck_pass {
-  # TODO: we should upgrade pb or ignore the pb package
-  #
-  # versionpb/version.pb.go:69:15: proto.RegisterFile is deprecated: Use protoregistry.GlobalFiles.RegisterFile instead.  (SA1019)
-  run_for_modules generic_checker run_go_tool "honnef.co/go/tools/cmd/staticcheck"
-}
-
-function revive_pass {
-  # TODO: etcdserverpb/raft_internal_stringer.go:15:1: should have a package comment
-  run_for_modules generic_checker run_go_tool "github.com/mgechev/revive" -config "${ETCD_ROOT_DIR}/tests/revive.toml" -exclude "vendor/..." -exclude "out/..."
-}
-
-function unconvert_pass {
-  # TODO: pb package should be filtered out.
-  run_for_modules generic_checker run_go_tool "github.com/mdempsky/unconvert" unconvert -v
-}
-
-function ineffassign_per_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-
-  # TODO: ineffassign should work with package instead of files
-  run_go_tool github.com/gordonklaus/ineffassign "${gofiles[@]}"
-}
-
-function ineffassign_pass {
-  run_for_modules generic_checker ineffassign_per_package
-}
-
-function nakedret_pass {
-  # TODO: nakedret should work with -set_exit_status
-  run_for_modules generic_checker run_go_tool "github.com/alexkohler/nakedret"
+function lint_fix_pass {
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
 function license_header_per_module {
@@ -506,7 +502,7 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/coreos/license-bill-of-materials \
+  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -546,7 +542,7 @@ function dep_pass {
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
 
   for dup in ${duplicates}; do
-    log_error "FAIL: inconsistent versions for depencency: ${dup}"
+    log_error "FAIL: inconsistent versions for dependency: ${dup}"
     echo "${all_dependencies}" | grep "${dup}" | sed "s|\\([^,]*\\),\\([^,]*\\),\\([^,]*\\)|  - \\1@\\2 from: \\3|g"
   done
   if [[ -n "${duplicates}" ]]; then
@@ -559,8 +555,30 @@ function dep_pass {
 
 function release_pass {
   rm -f ./bin/etcd-last-release
-  # to grab latest patch release; bump this up for every minor release
-  UPGRADE_VER=$(git tag -l --sort=-version:refname "v3.5.*" | head -1 | cut -d- -f1)
+
+  # Work out the previous release based on the version reported by etcd binary
+  binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
+  binary_major=$(echo "${binary_version}" | cut -d '.' -f 1)
+  binary_minor=$(echo "${binary_version}" | cut -d '.' -f 2)
+  previous_minor=$((binary_minor - 1))
+
+  # Handle the edge case where we go to a new major version
+  # When this happens we obtain latest minor release of previous major
+  if [ "${binary_minor}" -eq 0 ]; then
+    binary_major=$((binary_major - 1))
+    previous_minor=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.\d.[\d]+?(?=[\^])" \
+    | sort --numeric-sort --key 1.3 | tail -1 | cut -d '.' -f 2)
+  fi
+  
+  # This gets a list of all remote tags for the release branch in regex
+  # Sort key is used to sort numerically by patch version
+  # Latest version is then stored for use below
+  UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
+    | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
+    | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
+  log_callout "Found latest release: ${UPGRADE_VER}."
+
   if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
     UPGRADE_VER=$MANUAL_VER
@@ -628,21 +646,6 @@ function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
 }
 
-function goimport_for_module {
-  GOFILES=$(run go list  --f "{{with \$d:=.}}{{range .GoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
-  TESTGOFILES=$(run go list  --f "{{with \$d:=.}}{{range .TestGoFiles}}{{\$d.Dir}}/{{.}}{{\"\n\"}}{{end}}{{end}}" ./...) || return 2
-  cd "${ETCD_ROOT_DIR}/tools/mod"
-  FILESNEEDSFIX=$(echo "${GOFILES}" "${TESTGOFILES}" | grep -v '.gw.go' | grep -v '.pb.go' | xargs -n 100 go run golang.org/x/tools/cmd/goimports -l -local go.etcd.io)
-  if [ -n "$FILESNEEDSFIX" ]; then
-    log_error -e "the following files are not sync with 'goimports'. run 'make fix'\\n$FILESNEEDSFIX"
-    return 255
-  fi
-}
-
-function goimport_pass {
-  run_for_modules goimport_for_module
-}
-
 ########### MAIN ###############################################################
 
 function run_pass {
@@ -665,7 +668,7 @@ function run_pass {
 log_callout "Starting at: $(date)"
 fail_flag=false
 for pass in $PASSES; do
-  if run_pass "${pass}" "${@}"; then
+  if run_pass "${pass}" "$@"; then
     continue
   else
     fail_flag=true

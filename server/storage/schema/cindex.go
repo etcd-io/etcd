@@ -23,7 +23,7 @@ import (
 )
 
 // UnsafeCreateMetaBucket creates the `meta` bucket (if it does not exist yet).
-func UnsafeCreateMetaBucket(tx backend.BatchTx) {
+func UnsafeCreateMetaBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Meta)
 }
 
@@ -37,7 +37,7 @@ func CreateMetaBucket(tx backend.BatchTx) {
 // UnsafeReadConsistentIndex loads consistent index & term from given transaction.
 // returns 0,0 if the data are not found.
 // Term is persisted since v3.5.
-func UnsafeReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
+func UnsafeReadConsistentIndex(tx backend.UnsafeReader) (uint64, uint64) {
 	_, vs := tx.UnsafeRange(Meta, MetaConsistentIndexKeyName, nil, 0)
 	if len(vs) == 0 {
 		return 0, 0
@@ -59,15 +59,15 @@ func ReadConsistentIndex(tx backend.ReadTx) (uint64, uint64) {
 	return UnsafeReadConsistentIndex(tx)
 }
 
-func UnsafeUpdateConsistentIndexForce(tx backend.BatchTx, index uint64, term uint64) {
+func UnsafeUpdateConsistentIndexForce(tx backend.UnsafeReadWriter, index uint64, term uint64) {
 	unsafeUpdateConsistentIndex(tx, index, term, true)
 }
 
-func UnsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64) {
+func UnsafeUpdateConsistentIndex(tx backend.UnsafeReadWriter, index uint64, term uint64) {
 	unsafeUpdateConsistentIndex(tx, index, term, false)
 }
 
-func unsafeUpdateConsistentIndex(tx backend.BatchTx, index uint64, term uint64, allowDecreasing bool) {
+func unsafeUpdateConsistentIndex(tx backend.UnsafeReadWriter, index uint64, term uint64, allowDecreasing bool) {
 	if index == 0 {
 		// Never save 0 as it means that we didn't load the real index yet.
 		return

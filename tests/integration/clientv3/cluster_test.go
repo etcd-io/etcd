@@ -266,7 +266,7 @@ func TestMemberPromote(t *testing.T) {
 	// (the response has information on peer urls of the existing members in cluster)
 	learnerMember := clus.MustNewMember(t, memberAddResp)
 
-	if err := learnerMember.Launch(); err != nil {
+	if err = learnerMember.Launch(); err != nil {
 		t.Fatal(err)
 	}
 

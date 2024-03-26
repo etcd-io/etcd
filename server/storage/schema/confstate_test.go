@@ -54,8 +54,8 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 
 	t.Run("missing", func(t *testing.T) {
 		tx := be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
+		tx.RLock()
+		defer tx.RUnlock()
 		assert.Nil(t, UnsafeConfStateFromBackend(lg, tx))
 	})
 
@@ -71,8 +71,8 @@ func TestMustUnsafeSaveConfStateToBackend(t *testing.T) {
 
 	t.Run("read", func(t *testing.T) {
 		tx := be.ReadTx()
-		tx.Lock()
-		defer tx.Unlock()
+		tx.RLock()
+		defer tx.RUnlock()
 		assert.Equal(t, confState, *UnsafeConfStateFromBackend(lg, tx))
 	})
 }

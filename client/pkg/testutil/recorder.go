@@ -23,7 +23,7 @@ import (
 
 type Action struct {
 	Name   string
-	Params []interface{}
+	Params []any
 }
 
 type Recorder interface {

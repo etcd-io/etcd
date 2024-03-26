@@ -22,14 +22,14 @@ import (
 )
 
 type index interface {
-	Get(key []byte, atRev int64) (rev, created revision, ver int64, err error)
-	Range(key, end []byte, atRev int64) ([][]byte, []revision)
-	Revisions(key, end []byte, atRev int64, limit int) ([]revision, int)
+	Get(key []byte, atRev int64) (rev, created Revision, ver int64, err error)
+	Range(key, end []byte, atRev int64) ([][]byte, []Revision)
+	Revisions(key, end []byte, atRev int64, limit int) ([]Revision, int)
 	CountRevisions(key, end []byte, atRev int64) int
-	Put(key []byte, rev revision)
-	Tombstone(key []byte, rev revision) error
-	Compact(rev int64) map[revision]struct{}
-	Keep(rev int64) map[revision]struct{}
+	Put(key []byte, rev Revision)
+	Tombstone(key []byte, rev Revision) error
+	Compact(rev int64) map[Revision]struct{}
+	Keep(rev int64) map[Revision]struct{}
 	Equal(b index) bool
 
 	Insert(ki *keyIndex)
@@ -51,30 +51,30 @@ func newTreeIndex(lg *zap.Logger) index {
 	}
 }
 
-func (ti *treeIndex) Put(key []byte, rev revision) {
+func (ti *treeIndex) Put(key []byte, rev Revision) {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
 	defer ti.Unlock()
 	okeyi, ok := ti.tree.Get(keyi)
 	if !ok {
-		keyi.put(ti.lg, rev.main, rev.sub)
+		keyi.put(ti.lg, rev.Main, rev.Sub)
 		ti.tree.ReplaceOrInsert(keyi)
 		return
 	}
-	okeyi.put(ti.lg, rev.main, rev.sub)
+	okeyi.put(ti.lg, rev.Main, rev.Sub)
 }
 
-func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
+func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created Revision, ver int64, err error) {
 	ti.RLock()
 	defer ti.RUnlock()
 	return ti.unsafeGet(key, atRev)
 }
 
-func (ti *treeIndex) unsafeGet(key []byte, atRev int64) (modified, created revision, ver int64, err error) {
+func (ti *treeIndex) unsafeGet(key []byte, atRev int64) (modified, created Revision, ver int64, err error) {
 	keyi := &keyIndex{key: key}
 	if keyi = ti.keyIndex(keyi); keyi == nil {
-		return revision{}, revision{}, 0, ErrRevisionNotFound
+		return Revision{}, Revision{}, 0, ErrRevisionNotFound
 	}
 	return keyi.get(ti.lg, atRev)
 }
@@ -109,7 +109,7 @@ func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
 // Revisions returns limited number of revisions from key(included) to end(excluded)
 // at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
 // The second return parameter isn't capped by the limit and reflects the total number of revisions.
-func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []revision, total int) {
+func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []Revision, total int) {
 	ti.RLock()
 	defer ti.RUnlock()
 
@@ -118,7 +118,7 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 		if err != nil {
 			return nil, 0
 		}
-		return []revision{rev}, 1
+		return []Revision{rev}, 1
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
@@ -155,7 +155,7 @@ func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
 	return total
 }
 
-func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []revision) {
+func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []Revision) {
 	ti.RLock()
 	defer ti.RUnlock()
 
@@ -164,7 +164,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 		if err != nil {
 			return nil, nil
 		}
-		return [][]byte{key}, []revision{rev}
+		return [][]byte{key}, []Revision{rev}
 	}
 	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
 		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
@@ -176,7 +176,7 @@ func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []
 	return keys, revs
 }
 
-func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
+func (ti *treeIndex) Tombstone(key []byte, rev Revision) error {
 	keyi := &keyIndex{key: key}
 
 	ti.Lock()
@@ -186,11 +186,11 @@ func (ti *treeIndex) Tombstone(key []byte, rev revision) error {
 		return ErrRevisionNotFound
 	}
 
-	return ki.tombstone(ti.lg, rev.main, rev.sub)
+	return ki.tombstone(ti.lg, rev.Main, rev.Sub)
 }
 
-func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
-	available := make(map[revision]struct{})
+func (ti *treeIndex) Compact(rev int64) map[Revision]struct{} {
+	available := make(map[Revision]struct{})
 	ti.lg.Info("compact tree index", zap.Int64("revision", rev))
 	ti.Lock()
 	clone := ti.tree.Clone()
@@ -214,8 +214,8 @@ func (ti *treeIndex) Compact(rev int64) map[revision]struct{} {
 }
 
 // Keep finds all revisions to be kept for a Compaction at the given rev.
-func (ti *treeIndex) Keep(rev int64) map[revision]struct{} {
-	available := make(map[revision]struct{})
+func (ti *treeIndex) Keep(rev int64) map[Revision]struct{} {
+	available := make(map[Revision]struct{})
 	ti.RLock()
 	defer ti.RUnlock()
 	ti.tree.Ascend(func(keyi *keyIndex) bool {

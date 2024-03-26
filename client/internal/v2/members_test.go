@@ -371,7 +371,7 @@ func TestHTTPMembersAPIAddError(t *testing.T) {
 		// generic httpClient failure
 		{
 			peerURL: okPeer,
-			client:  &staticHTTPClient{err: errors.New("fail!")},
+			client:  &staticHTTPClient{err: errors.New("fail")},
 		},
 
 		// unrecognized HTTP status code
@@ -456,7 +456,7 @@ func TestHTTPMembersAPIRemoveFail(t *testing.T) {
 	tests := []httpClient{
 		// generic error
 		&staticHTTPClient{
-			err: errors.New("fail!"),
+			err: errors.New("fail"),
 		},
 
 		// unexpected HTTP status code
@@ -509,7 +509,7 @@ func TestHTTPMembersAPIListSuccess(t *testing.T) {
 func TestHTTPMembersAPIListError(t *testing.T) {
 	tests := []httpClient{
 		// generic httpClient failure
-		&staticHTTPClient{err: errors.New("fail!")},
+		&staticHTTPClient{err: errors.New("fail")},
 
 		// unrecognized HTTP status code
 		&staticHTTPClient{
@@ -569,7 +569,7 @@ func TestHTTPMembersAPILeaderSuccess(t *testing.T) {
 func TestHTTPMembersAPILeaderError(t *testing.T) {
 	tests := []httpClient{
 		// generic httpClient failure
-		&staticHTTPClient{err: errors.New("fail!")},
+		&staticHTTPClient{err: errors.New("fail")},
 
 		// unrecognized HTTP status code
 		&staticHTTPClient{

@@ -123,9 +123,10 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 		case nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
-			confStateJSON, err := json.Marshal(snapshot.Metadata.ConfState)
-			if err != nil {
-				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", err))
+
+			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
+			if merr != nil {
+				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", merr))
 			}
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
 				walsnap.Term, walsnap.Index, nodes, confStateJSON)

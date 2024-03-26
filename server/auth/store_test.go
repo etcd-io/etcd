@@ -26,7 +26,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
-
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/metadata"
 
@@ -1173,10 +1172,10 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 
 	ai, aerr := as.AuthInfoFromCtx(ctx)
 	if aerr != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if ai == nil {
-		t.Error("expected non-nil *AuthInfo")
+		t.Fatal("expected non-nil *AuthInfo")
 	}
 	if ai.Username != "root" {
 		t.Errorf("expected user name 'root', got %+v", ai)

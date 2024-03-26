@@ -61,7 +61,7 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// check that Put is rejected when alarm is on
-		if err := cc.Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
+		if err = cc.Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
 				t.Fatal(err)
 			}

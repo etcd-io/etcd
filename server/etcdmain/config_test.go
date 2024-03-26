@@ -15,6 +15,7 @@
 package etcdmain
 
 import (
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -24,6 +25,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
+	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/server/v3/embed"
 )
 
@@ -376,6 +378,21 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 			t.Errorf("%d: Wrong err = %v", i, err)
 		}
 	}
+}
+
+func TestFlagsPresentInHelp(t *testing.T) {
+	cfg := newConfig()
+	cfg.cf.flagSet.VisitAll(func(f *flag.Flag) {
+		if _, ok := f.Value.(*flags.IgnoredFlag); ok {
+			// Ignored flags do not need to be in the help
+			return
+		}
+
+		flagText := fmt.Sprintf("--%s", f.Name)
+		if !strings.Contains(flagsline, flagText) && !strings.Contains(usageline, flagText) {
+			t.Errorf("Neither flagsline nor usageline in help.go contains flag named %s", flagText)
+		}
+	})
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {

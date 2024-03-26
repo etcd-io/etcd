@@ -22,7 +22,7 @@ The PSC members will share various tasks as listed below:
 
 ### Contacting the Product Security Committee
 
-Contact the team by sending email to [security@etcd.io](mailto:security@etcd.io)
+Contact the team by sending email to [etcd maintainers](mailto:etcd-maintainers@googlegroups.com).
 
 ### Product Security Committee Membership
 
@@ -55,7 +55,7 @@ The etcd Community asks that all suspected vulnerabilities be privately and resp
 
 ### Public Disclosure Processes
 
-If anyone knows of a publicly disclosed security vulnerability please IMMEDIATELY email [security@etcd.io](mailto:security@etcd.io) to inform the PSC about the vulnerability so they may start the patch, release, and communication process.
+If anyone knows of a publicly disclosed security vulnerability please IMMEDIATELY email [etcd maintainers](mailto:etcd-maintainers@googlegroups.com) to inform the PSC about the vulnerability so they may start the patch, release, and communication process.
 
 If possible the PSC will ask the person making the public report if the issue can be handled via a private disclosure process. If the reporter denies the PSC will move swiftly with the fix and release process. In extreme cases GitHub can be asked to delete the issue but this generally isn't necessary and is unlikely to make a public disclosure less damaging.
 
@@ -90,7 +90,7 @@ If the CVSS score is under ~4.0
 
 Note: CVSS is convenient but imperfect. Ultimately, the PSC has discretion on classifying the severity of a vulnerability.
 
-The severity of the bug and related handling decisions must be discussed on the security@etcd.io mailing list.
+The severity of the bug and related handling decisions must be discussed on the [etcd maintainers](mailto:etcd-maintainers@googlegroups.com) mailing list.
 
 ### Fix Disclosure Process
 
@@ -104,7 +104,7 @@ With the Fix Development underway, the PSC needs to come up with an overall comm
 - The PSC will announce the new releases, the CVE number, severity, and impact, and the location of the binaries to get wide distribution and user action. As much as possible this announcement should be actionable, and include any mitigating steps users can take prior to upgrading to a fixed version. The recommended target time is 4pm UTC on a non-Friday weekday. This means the announcement will be seen morning Pacific, early evening Europe, and late evening Asia. The announcement will be sent via the following channels:
   - etcd-dev@googlegroups.com
   - [Kubernetes announcement slack channel](https://kubernetes.slack.com/messages/C9T0QMNG4)
-  - [etcd slack channel](https://kubernetes.slack.com/messages/C3HD8ARJ5)
+  - [sig-etcd slack channel](https://kubernetes.slack.com/archives/C3HD8ARJ5)
 
 ## Retrospective
 

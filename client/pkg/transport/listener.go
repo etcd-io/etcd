@@ -32,11 +32,11 @@ import (
 	"strings"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
-
-	"go.uber.org/zap"
 )
 
 // NewListener creates a new listner.
@@ -60,11 +60,7 @@ func newListener(addr, scheme string, opts ...ListenerOption) (net.Listener, err
 	switch {
 	case lnOpts.IsSocketOpts():
 		// new ListenConfig with socket options.
-		config, err := newListenConfig(lnOpts.socketOpts)
-		if err != nil {
-			return nil, err
-		}
-		lnOpts.ListenConfig = config
+		lnOpts.ListenConfig = newListenConfig(lnOpts.socketOpts)
 		// check for timeout
 		fallthrough
 	case lnOpts.IsTimeout(), lnOpts.IsSocketOpts():
@@ -103,14 +99,17 @@ func newListener(addr, scheme string, opts ...ListenerOption) (net.Listener, err
 	return wrapTLS(scheme, lnOpts.tlsInfo, lnOpts.Listener)
 }
 
-func newKeepAliveListener(cfg *net.ListenConfig, addr string) (ln net.Listener, err error) {
+func newKeepAliveListener(cfg *net.ListenConfig, addr string) (net.Listener, error) {
+	var ln net.Listener
+	var err error
+
 	if cfg != nil {
 		ln, err = cfg.Listen(context.TODO(), "tcp", addr)
 	} else {
 		ln, err = net.Listen("tcp", addr)
 	}
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return NewKeepAliveListener(ln, "tcp", nil)
@@ -126,7 +125,7 @@ func wrapTLS(scheme string, tlsinfo *TLSInfo, l net.Listener) (net.Listener, err
 	return newTLSListener(l, tlsinfo, checkSAN)
 }
 
-func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
+func newListenConfig(sopts *SocketOpts) net.ListenConfig {
 	lc := net.ListenConfig{}
 	if sopts != nil {
 		ctls := getControls(sopts)
@@ -134,7 +133,7 @@ func newListenConfig(sopts *SocketOpts) (net.ListenConfig, error) {
 			lc.Control = ctls.Control
 		}
 	}
-	return lc, nil
+	return lc
 }
 
 type TLSInfo struct {
@@ -204,16 +203,18 @@ func (info TLSInfo) Empty() bool {
 	return info.CertFile == "" && info.KeyFile == ""
 }
 
-func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (info TLSInfo, err error) {
+func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertValidity uint, additionalUsages ...x509.ExtKeyUsage) (TLSInfo, error) {
 	verify.Assert(lg != nil, "nil log isn't allowed")
-	info.Logger = lg
+
+	var err error
+	info := TLSInfo{Logger: lg}
 	if selfSignedCertValidity == 0 {
 		err = errors.New("selfSignedCertValidity is invalid,it should be greater than 0")
 		info.Logger.Warn(
 			"cannot generate cert",
 			zap.Error(err),
 		)
-		return
+		return info, err
 	}
 	err = fileutil.TouchDirAll(lg, dirpath)
 	if err != nil {
@@ -223,16 +224,16 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 				zap.Error(err),
 			)
 		}
-		return
+		return info, err
 	}
 
 	certPath, err := filepath.Abs(filepath.Join(dirpath, "cert.pem"))
 	if err != nil {
-		return
+		return info, err
 	}
 	keyPath, err := filepath.Abs(filepath.Join(dirpath, "key.pem"))
 	if err != nil {
-		return
+		return info, err
 	}
 	_, errcert := os.Stat(certPath)
 	_, errkey := os.Stat(keyPath)
@@ -242,7 +243,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		info.ClientCertFile = certPath
 		info.ClientKeyFile = keyPath
 		info.selfCert = true
-		return
+		return info, err
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -254,7 +255,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 				zap.Error(err),
 			)
 		}
-		return
+		return info, err
 	}
 
 	tmpl := x509.Certificate{
@@ -263,9 +264,10 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(time.Duration(selfSignedCertValidity) * 365 * (24 * time.Hour)),
 
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCRLSign,
 		ExtKeyUsage:           append([]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, additionalUsages...),
 		BasicConstraintsValid: true,
+		IsCA:                  true,
 	}
 
 	if info.Logger != nil {
@@ -292,7 +294,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 				zap.Error(err),
 			)
 		}
-		return
+		return info, err
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
@@ -303,7 +305,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 				zap.Error(err),
 			)
 		}
-		return
+		return info, err
 	}
 
 	certOut, err := os.Create(certPath)
@@ -313,7 +315,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 			zap.String("path", certPath),
 			zap.Error(err),
 		)
-		return
+		return info, err
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
@@ -323,7 +325,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 
 	b, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
-		return
+		return info, err
 	}
 	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
@@ -334,7 +336,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 				zap.Error(err),
 			)
 		}
-		return
+		return info, err
 	}
 	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
 	keyOut.Close()

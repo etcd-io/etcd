@@ -22,11 +22,11 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func UnsafeCreateLeaseBucket(tx backend.BatchTx) {
+func UnsafeCreateLeaseBucket(tx backend.UnsafeWriter) {
 	tx.UnsafeCreateBucket(Lease)
 }
 
-func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
+func MustUnsafeGetAllLeases(tx backend.UnsafeReader) []*leasepb.Lease {
 	ls := make([]*leasepb.Lease, 0)
 	err := tx.UnsafeForEach(Lease, func(k, v []byte) error {
 		var lpb leasepb.Lease
@@ -43,8 +43,8 @@ func MustUnsafeGetAllLeases(tx backend.ReadTx) []*leasepb.Lease {
 	return ls
 }
 
-func MustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
-	key := leaseIdToBytes(lpb.ID)
+func MustUnsafePutLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
+	key := leaseIDToBytes(lpb.ID)
 
 	val, err := lpb.Marshal()
 	if err != nil {
@@ -53,12 +53,12 @@ func MustUnsafePutLease(tx backend.BatchTx, lpb *leasepb.Lease) {
 	tx.UnsafePut(Lease, key, val)
 }
 
-func UnsafeDeleteLease(tx backend.BatchTx, lpb *leasepb.Lease) {
-	tx.UnsafeDelete(Lease, leaseIdToBytes(lpb.ID))
+func UnsafeDeleteLease(tx backend.UnsafeWriter, lpb *leasepb.Lease) {
+	tx.UnsafeDelete(Lease, leaseIDToBytes(lpb.ID))
 }
 
-func MustUnsafeGetLease(tx backend.BatchTx, leaseID int64) *leasepb.Lease {
-	_, vs := tx.UnsafeRange(Lease, leaseIdToBytes(leaseID), nil, 0)
+func MustUnsafeGetLease(tx backend.UnsafeReader, leaseID int64) *leasepb.Lease {
+	_, vs := tx.UnsafeRange(Lease, leaseIDToBytes(leaseID), nil, 0)
 	if len(vs) != 1 {
 		return nil
 	}
@@ -70,7 +70,7 @@ func MustUnsafeGetLease(tx backend.BatchTx, leaseID int64) *leasepb.Lease {
 	return &lpb
 }
 
-func leaseIdToBytes(n int64) []byte {
+func leaseIDToBytes(n int64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, uint64(n))
 	return bytes

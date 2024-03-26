@@ -18,9 +18,9 @@ import (
 	"context"
 	"sync"
 
-	"go.etcd.io/etcd/client/pkg/v3/verify"
-
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 type Job interface {

@@ -19,12 +19,10 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
-
-	"go.uber.org/zap"
 )
 
 func TestAddRemoveMember(t *testing.T) {
@@ -57,7 +55,7 @@ type backendMock struct {
 	members       map[types.ID]*Member
 	removed       map[types.ID]bool
 	version       *semver.Version
-	downgradeInfo *version.DowngradeInfo
+	downgradeInfo *serverversion.DowngradeInfo
 }
 
 var _ MembershipBackend = (*backendMock)(nil)
@@ -93,7 +91,7 @@ func (b *backendMock) MustDeleteMemberFromBackend(id types.ID) {
 	b.removed[id] = true
 }
 
-func (b *backendMock) MustSaveDowngradeToBackend(downgradeInfo *version.DowngradeInfo) {
+func (b *backendMock) MustSaveDowngradeToBackend(downgradeInfo *serverversion.DowngradeInfo) {
 	b.downgradeInfo = downgradeInfo
 }
-func (b *backendMock) DowngradeInfoFromBackend() *version.DowngradeInfo { return b.downgradeInfo }
+func (b *backendMock) DowngradeInfoFromBackend() *serverversion.DowngradeInfo { return b.downgradeInfo }

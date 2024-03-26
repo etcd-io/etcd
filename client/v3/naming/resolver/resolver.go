@@ -19,12 +19,12 @@ import (
 	"strings"
 	"sync"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/endpoints"
-
 	"google.golang.org/grpc/codes"
 	gresolver "google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/endpoints"
 )
 
 type builder struct {

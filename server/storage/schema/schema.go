@@ -21,18 +21,17 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
 // Validate checks provided backend to confirm that schema used is supported.
 func Validate(lg *zap.Logger, tx backend.ReadTx) error {
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	return unsafeValidate(lg, tx)
 }
 
-func unsafeValidate(lg *zap.Logger, tx backend.ReadTx) error {
+func unsafeValidate(lg *zap.Logger, tx backend.UnsafeReader) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		// v3.5 requires a wal snapshot to persist its fields, so we can assign it a schema version.
@@ -62,7 +61,7 @@ func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Ver
 }
 
 // UnsafeMigrate is non thread-safe version of Migrate.
-func UnsafeMigrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
+func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot detect storage schema version: %v", err)
@@ -91,7 +90,7 @@ func DetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, e
 }
 
 // UnsafeDetectSchemaVersion non-threadsafe version of DetectSchemaVersion.
-func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.ReadTx) (v semver.Version, err error) {
+func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.UnsafeReader) (v semver.Version, err error) {
 	vp := UnsafeReadStorageVersion(tx)
 	if vp != nil {
 		return *vp, nil

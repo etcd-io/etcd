@@ -17,9 +17,8 @@ package validate
 import (
 	"github.com/anishathalye/porcupine"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
@@ -43,7 +42,11 @@ func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]traffic.Ti
 		for _, op := range r.Watch {
 			for _, resp := range op.Responses {
 				for _, event := range resp.Events {
-					persisted[event.Event] = traffic.TimedWatchEvent{Time: resp.Time, WatchEvent: event}
+					responseTime := resp.Time
+					if prev, found := persisted[event.Event]; found && prev.Time < responseTime {
+						responseTime = prev.Time
+					}
+					persisted[event.Event] = traffic.TimedWatchEvent{Time: responseTime, WatchEvent: event}
 				}
 			}
 		}

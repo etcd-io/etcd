@@ -54,6 +54,8 @@ var (
 	AuthRoles = backend.Bucket(bucket{id: 22, name: authRolesBucketName, safeRangeBucket: false})
 
 	Test = backend.Bucket(bucket{id: 100, name: testBucketName, safeRangeBucket: false})
+
+	AllBuckets = []backend.Bucket{Key, Meta, Lease, Alarm, Cluster, Members, MembersRemoved, Auth, AuthUsers, AuthRoles}
 )
 
 type bucket struct {

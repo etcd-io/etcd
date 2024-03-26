@@ -18,11 +18,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -32,6 +32,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/client/v3/internal/endpoint"
@@ -68,7 +69,7 @@ type Client struct {
 	Username string
 	// Password is a password for authentication.
 	Password        string
-	authTokenBundle credentials.Bundle
+	authTokenBundle credentials.PerRPCCredentialsBundle
 
 	callOpts []grpc.CallOption
 
@@ -90,7 +91,7 @@ func New(cfg Config) (*Client, error) {
 // service interface implementations and do not need connection management.
 func NewCtxClient(ctx context.Context, opts ...Option) *Client {
 	cctx, cancel := context.WithCancel(ctx)
-	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex)}
+	c := &Client{ctx: cctx, cancel: cancel, lgMu: new(sync.RWMutex), epMu: new(sync.RWMutex)}
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -219,7 +220,9 @@ func (c *Client) autoSync() {
 }
 
 // dialSetupOpts gives the dial opts prior to any authentication.
-func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (opts []grpc.DialOption, err error) {
+func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) []grpc.DialOption {
+	var opts []grpc.DialOption
+
 	if c.cfg.DialKeepAliveTime > 0 {
 		params := keepalive.ClientParameters{
 			Time:                c.cfg.DialKeepAliveTime,
@@ -236,18 +239,33 @@ func (c *Client) dialSetupOpts(creds grpccredentials.TransportCredentials, dopts
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
+	unaryMaxRetries := defaultUnaryMaxRetries
+	if c.cfg.MaxUnaryRetries > 0 {
+		unaryMaxRetries = c.cfg.MaxUnaryRetries
+	}
+
+	backoffWaitBetween := defaultBackoffWaitBetween
+	if c.cfg.BackoffWaitBetween > 0 {
+		backoffWaitBetween = c.cfg.BackoffWaitBetween
+	}
+
+	backoffJitterFraction := defaultBackoffJitterFraction
+	if c.cfg.BackoffJitterFraction > 0 {
+		backoffJitterFraction = c.cfg.BackoffJitterFraction
+	}
+
 	// Interceptor retry and backoff.
 	// TODO: Replace all of clientv3/retry.go with RetryPolicy:
 	// https://github.com/grpc/grpc-proto/blob/cdd9ed5c3d3f87aef62f373b93361cf7bddc620d/grpc/service_config/service_config.proto#L130
-	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(defaultBackoffWaitBetween, defaultBackoffJitterFraction))
+	rrBackoff := withBackoff(c.roundRobinQuorumBackoff(backoffWaitBetween, backoffJitterFraction))
 	opts = append(opts,
 		// Disable stream retry by default since go-grpc-middleware/retry does not support client streams.
 		// Streams that are safe to retry are enabled individually.
 		grpc.WithStreamInterceptor(c.streamClientInterceptor(withMax(0), rrBackoff)),
-		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(defaultUnaryMaxRetries), rrBackoff)),
+		grpc.WithUnaryInterceptor(c.unaryClientInterceptor(withMax(unaryMaxRetries), rrBackoff)),
 	)
 
-	return opts, nil
+	return opts
 }
 
 // Dial connects to a single endpoint using the client's config.
@@ -288,10 +306,8 @@ func (c *Client) dialWithBalancer(dopts ...grpc.DialOption) (*grpc.ClientConn, e
 
 // dial configures and dials any grpc balancer target.
 func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.DialOption) (*grpc.ClientConn, error) {
-	opts, err := c.dialSetupOpts(creds, dopts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to configure dialer: %v", err)
-	}
+	opts := c.dialSetupOpts(creds, dopts...)
+
 	if c.authTokenBundle != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
@@ -329,15 +345,15 @@ func authority(endpoint string) string {
 func (c *Client) credentialsForEndpoint(ep string) grpccredentials.TransportCredentials {
 	r := endpoint.RequiresCredentials(ep)
 	switch r {
-	case endpoint.CREDS_DROP:
+	case endpoint.CredsDrop:
 		return nil
-	case endpoint.CREDS_OPTIONAL:
+	case endpoint.CredsOptional:
 		return c.creds
-	case endpoint.CREDS_REQUIRE:
+	case endpoint.CredsRequire:
 		if c.creds != nil {
 			return c.creds
 		}
-		return credentials.NewBundle(credentials.Config{}).TransportCredentials()
+		return credentials.NewTransportCredential(nil)
 	default:
 		panic(fmt.Errorf("unsupported CredsRequirement: %v", r))
 	}
@@ -349,7 +365,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 	var creds grpccredentials.TransportCredentials
 	if cfg.TLS != nil {
-		creds = credentials.NewBundle(credentials.Config{TLSConfig: cfg.TLS}).TransportCredentials()
+		creds = credentials.NewTransportCredential(cfg.TLS)
 	}
 
 	// use a temporary skeleton client to bootstrap first connection
@@ -388,7 +404,7 @@ func newClient(cfg *Config) (*Client, error) {
 	if cfg.Username != "" && cfg.Password != "" {
 		client.Username = cfg.Username
 		client.Password = cfg.Password
-		client.authTokenBundle = credentials.NewBundle(credentials.Config{})
+		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
 	}
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
@@ -475,6 +491,22 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 	}
 }
 
+// minSupportedVersion returns the minimum version supported, which is the previous minor release.
+func minSupportedVersion() *semver.Version {
+	ver := semver.Must(semver.NewVersion(version.Version))
+	// consider only major and minor version
+	ver = &semver.Version{Major: ver.Major, Minor: ver.Minor}
+	for i := range version.AllVersions {
+		if version.AllVersions[i].Equal(*ver) {
+			if i == 0 {
+				return ver
+			}
+			return &version.AllVersions[i-1]
+		}
+	}
+	panic("current version is not in the version list")
+}
+
 func (c *Client) checkVersion() (err error) {
 	var wg sync.WaitGroup
 
@@ -496,20 +528,13 @@ func (c *Client) checkVersion() (err error) {
 				errc <- rerr
 				return
 			}
-			vs := strings.Split(resp.Version, ".")
-			maj, min := 0, 0
-			if len(vs) >= 2 {
-				var serr error
-				if maj, serr = strconv.Atoi(vs[0]); serr != nil {
-					errc <- serr
-					return
-				}
-				if min, serr = strconv.Atoi(vs[1]); serr != nil {
-					errc <- serr
-					return
-				}
+			vs, serr := semver.NewVersion(resp.Version)
+			if serr != nil {
+				errc <- serr
+				return
 			}
-			if maj < 3 || (maj == 3 && min < 4) {
+
+			if vs.LessThan(*minSupportedVersion()) {
 				rerr = ErrOldCluster
 			}
 			errc <- rerr

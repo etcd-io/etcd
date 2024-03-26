@@ -23,10 +23,9 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
@@ -34,15 +33,30 @@ var (
 	RequestTimeout          = 40 * time.Millisecond
 	WatchTimeout            = 400 * time.Millisecond
 	MultiOpTxnOpCount       = 4
+
+	LowTraffic = Profile{
+		Name:                           "LowTraffic",
+		MinimalQPS:                     100,
+		MaximalQPS:                     200,
+		ClientCount:                    8,
+		MaxNonUniqueRequestConcurrency: 3,
+	}
+	HighTrafficProfile = Profile{
+		Name:                           "HighTraffic",
+		MinimalQPS:                     200,
+		MaximalQPS:                     1000,
+		ClientCount:                    12,
+		MaxNonUniqueRequestConcurrency: 3,
+	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, config Config, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIdStorage()
 	reports := []report.ClientReport{}
-	limiter := rate.NewLimiter(rate.Limit(config.maximalQPS), 200)
+	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
 
 	startTime := time.Now()
 	cc, err := NewClient(endpoints, ids, baseTime)
@@ -51,18 +65,18 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	defer cc.Close()
 	wg := sync.WaitGroup{}
-	nonUniqueWriteLimiter := NewConcurrencyLimiter(config.maxNonUniqueRequestConcurrency)
-	for i := 0; i < config.clientCount; i++ {
+	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
-		c, err := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
-		if err != nil {
-			t.Fatal(err)
+		c, nerr := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+		if nerr != nil {
+			t.Fatal(nerr)
 		}
 		go func(c *RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
-			config.Traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
+			traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -87,22 +101,22 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	qps := float64(operationCount) / float64(endTime.Sub(startTime)) * float64(time.Second)
 	lg.Info("Average traffic", zap.Float64("qps", qps))
-	if qps < config.minimalQPS {
-		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", config.minimalQPS, qps)
+	if qps < profile.MinimalQPS {
+		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", profile.MinimalQPS, qps)
 	}
 	return reports
 }
 
-type Config struct {
+type Profile struct {
 	Name                           string
-	minimalQPS                     float64
-	maximalQPS                     float64
-	maxNonUniqueRequestConcurrency int
-	clientCount                    int
-	Traffic                        Traffic
+	MinimalQPS                     float64
+	MaximalQPS                     float64
+	MaxNonUniqueRequestConcurrency int
+	ClientCount                    int
 }
 
 type Traffic interface {
 	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
+	Name() string
 }

@@ -25,13 +25,12 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 
+	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
-
-	bolt "go.etcd.io/bbolt"
 )
 
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
@@ -83,10 +82,6 @@ type ServerConfig struct {
 
 	TickMs        uint
 	ElectionTicks int
-
-	// WaitClusterReadyTimeout is the maximum time to wait for the
-	// cluster to be ready on startup before serving client requests.
-	WaitClusterReadyTimeout time.Duration
 
 	// InitialElectionTickAdvance is true, then local member fast-forwards
 	// election ticks to speed up "initial" leader election trigger. This
@@ -196,6 +191,9 @@ type ServerConfig struct {
 	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
 	// a shared buffer in its readonly check operations.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
+
+	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
+	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.

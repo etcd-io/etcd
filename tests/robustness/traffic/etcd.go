@@ -28,50 +28,36 @@ import (
 )
 
 var (
-	LowTraffic = Config{
-		Name:                           "LowTraffic",
-		minimalQPS:                     100,
-		maximalQPS:                     200,
-		clientCount:                    8,
-		maxNonUniqueRequestConcurrency: 3,
-		Traffic: etcdTraffic{
-			keyCount:     10,
-			leaseTTL:     DefaultLeaseTTL,
-			largePutSize: 32769,
-			requests: []choiceWeight[etcdRequestType]{
-				{choice: Get, weight: 15},
-				{choice: List, weight: 15},
-				{choice: StaleGet, weight: 10},
-				{choice: StaleList, weight: 10},
-				{choice: Put, weight: 23},
-				{choice: LargePut, weight: 2},
-				{choice: Delete, weight: 5},
-				{choice: MultiOpTxn, weight: 5},
-				{choice: PutWithLease, weight: 5},
-				{choice: LeaseRevoke, weight: 5},
-				{choice: CompareAndSet, weight: 5},
-			},
+	EtcdPutDeleteLease = etcdTraffic{
+		keyCount:     10,
+		leaseTTL:     DefaultLeaseTTL,
+		largePutSize: 32769,
+		requests: []choiceWeight[etcdRequestType]{
+			{choice: Get, weight: 15},
+			{choice: List, weight: 15},
+			{choice: StaleGet, weight: 10},
+			{choice: StaleList, weight: 10},
+			{choice: Put, weight: 23},
+			{choice: LargePut, weight: 2},
+			{choice: Delete, weight: 5},
+			{choice: MultiOpTxn, weight: 5},
+			{choice: PutWithLease, weight: 5},
+			{choice: LeaseRevoke, weight: 5},
+			{choice: CompareAndSet, weight: 5},
 		},
 	}
-	HighTraffic = Config{
-		Name:                           "HighTraffic",
-		minimalQPS:                     200,
-		maximalQPS:                     1000,
-		clientCount:                    12,
-		maxNonUniqueRequestConcurrency: 3,
-		Traffic: etcdTraffic{
-			keyCount:     10,
-			largePutSize: 32769,
-			leaseTTL:     DefaultLeaseTTL,
-			requests: []choiceWeight[etcdRequestType]{
-				{choice: Get, weight: 15},
-				{choice: List, weight: 15},
-				{choice: StaleGet, weight: 10},
-				{choice: StaleList, weight: 10},
-				{choice: Put, weight: 40},
-				{choice: MultiOpTxn, weight: 5},
-				{choice: LargePut, weight: 5},
-			},
+	EtcdPut = etcdTraffic{
+		keyCount:     10,
+		largePutSize: 32769,
+		leaseTTL:     DefaultLeaseTTL,
+		requests: []choiceWeight[etcdRequestType]{
+			{choice: Get, weight: 15},
+			{choice: List, weight: 15},
+			{choice: StaleGet, weight: 10},
+			{choice: StaleList, weight: 10},
+			{choice: Put, weight: 40},
+			{choice: MultiOpTxn, weight: 5},
+			{choice: LargePut, weight: 5},
 		},
 	}
 )
@@ -103,6 +89,10 @@ const (
 	CompareAndSet etcdRequestType = "compareAndSet"
 	Defragment    etcdRequestType = "defragment"
 )
+
+func (t etcdTraffic) Name() string {
+	return "Etcd"
+}
 
 func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
@@ -171,7 +161,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 
-	var limit int64 = 0
+	var limit int64
 	switch request {
 	case StaleGet:
 		_, rev, err = c.client.Get(opCtx, c.randomKey(), lastRev)

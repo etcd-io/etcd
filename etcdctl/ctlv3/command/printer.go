@@ -19,11 +19,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dustin/go-humanize"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-
-	"github.com/dustin/go-humanize"
 )
 
 type printer interface {
@@ -92,7 +92,7 @@ func NewPrinter(printerType string, isHex bool) printer {
 
 type printerRPC struct {
 	printer
-	p func(interface{})
+	p func(any)
 }
 
 func (p *printerRPC) Del(r v3.DeleteResponse)  { p.p((*pb.DeleteRangeResponse)(&r)) }
@@ -159,7 +159,7 @@ func (p *printerRPC) AuthStatus(r v3.AuthStatusResponse) {
 type printerUnsupported struct{ printerRPC }
 
 func newPrinterUnsupported(n string) printer {
-	f := func(interface{}) {
+	f := func(any) {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New(n+" not supported as output format"))
 	}
 	return &printerUnsupported{printerRPC{nil, f}}

@@ -23,18 +23,18 @@ import (
 // We cannot implement testing.TB due to protection, so we expose this simplified interface.
 type TB interface {
 	Cleanup(func())
-	Error(args ...interface{})
-	Errorf(format string, args ...interface{})
+	Error(args ...any)
+	Errorf(format string, args ...any)
 	Fail()
 	FailNow()
 	Failed() bool
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
-	Logf(format string, args ...interface{})
+	Fatal(args ...any)
+	Fatalf(format string, args ...any)
+	Logf(format string, args ...any)
 	Name() string
 	TempDir() string
 	Helper()
-	Skip(args ...interface{})
+	Skip(args ...any)
 }
 
 // NewTestingTBProthesis creates a fake variant of testing.TB implementation.
@@ -59,20 +59,20 @@ func (t *testingTBProthesis) Helper() {
 	// Ignored
 }
 
-func (t *testingTBProthesis) Skip(args ...interface{}) {
-	t.Log(append([]interface{}{"Skipping due to: "}, args...))
+func (t *testingTBProthesis) Skip(args ...any) {
+	t.Log(append([]any{"Skipping due to: "}, args...))
 }
 
 func (t *testingTBProthesis) Cleanup(f func()) {
 	t.cleanups = append(t.cleanups, f)
 }
 
-func (t *testingTBProthesis) Error(args ...interface{}) {
+func (t *testingTBProthesis) Error(args ...any) {
 	log.Println(args...)
 	t.Fail()
 }
 
-func (t *testingTBProthesis) Errorf(format string, args ...interface{}) {
+func (t *testingTBProthesis) Errorf(format string, args ...any) {
 	log.Printf(format, args...)
 	t.Fail()
 }
@@ -90,19 +90,19 @@ func (t *testingTBProthesis) Failed() bool {
 	return t.failed
 }
 
-func (t *testingTBProthesis) Fatal(args ...interface{}) {
+func (t *testingTBProthesis) Fatal(args ...any) {
 	log.Fatalln(args...)
 }
 
-func (t *testingTBProthesis) Fatalf(format string, args ...interface{}) {
+func (t *testingTBProthesis) Fatalf(format string, args ...any) {
 	log.Fatalf(format, args...)
 }
 
-func (t *testingTBProthesis) Logf(format string, args ...interface{}) {
+func (t *testingTBProthesis) Logf(format string, args ...any) {
 	log.Printf(format, args...)
 }
 
-func (t *testingTBProthesis) Log(args ...interface{}) {
+func (t *testingTBProthesis) Log(args ...any) {
 	log.Println(args...)
 }
 

@@ -318,7 +318,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 }
 
 func TestHTTPClusterClientDo(t *testing.T) {
-	fakeErr := errors.New("fake!")
+	fakeErr := errors.New("fake")
 	fakeURL := url.URL{}
 	tests := []struct {
 		client *httpClusterClient
@@ -496,10 +496,10 @@ func (f fakeCancelContext) Done() <-chan struct{} {
 	d <- struct{}{}
 	return d
 }
-func (f fakeCancelContext) Err() error                        { return errFakeCancelContext }
-func (f fakeCancelContext) Value(key interface{}) interface{} { return 1 }
+func (f fakeCancelContext) Err() error        { return errFakeCancelContext }
+func (f fakeCancelContext) Value(key any) any { return 1 }
 
-func withTimeout(parent context.Context, timeout time.Duration) (
+func withTimeout(parent context.Context, _timeout time.Duration) (
 	ctx context.Context,
 	cancel context.CancelFunc) {
 	ctx = parent
@@ -583,11 +583,11 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 			client: &multiStaticHTTPClient{
 				responses: []staticHTTPResponse{
 					{
-						err: errors.New("fail!"),
+						err: errors.New("fail"),
 					},
 				},
 			},
-			wantErr: errors.New("fail!"),
+			wantErr: errors.New("fail"),
 		},
 
 		// no need to follow redirect if none given
@@ -723,7 +723,9 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 					},
 				},
 			},
+			//revive:disable:error-strings
 			wantErr: errors.New("location header not valid URL: :"),
+			//revive:enable:error-strings
 		},
 
 		// fail if redirects checked way too many times
@@ -830,7 +832,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 
 func TestHTTPClusterClientSyncFail(t *testing.T) {
 	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
-		{err: errors.New("fail!")},
+		{err: errors.New("fail")},
 	})
 
 	hc := &httpClusterClient{
@@ -886,7 +888,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 
 func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 	cf := newStaticHTTPClientFactory([]staticHTTPResponse{
-		{err: errors.New("fail!")},
+		{err: errors.New("fail")},
 	})
 
 	hc := &httpClusterClient{

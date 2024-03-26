@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -44,7 +45,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 	h := newKVHasher(prevCompactRev, compactMainRev, keep)
 	last := make([]byte, 8+1+8)
 	for {
-		var rev revision
+		var rev Revision
 
 		start := time.Now()
 
@@ -52,7 +53,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 		tx.LockOutsideApply()
 		keys, values := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
 		for i := range keys {
-			rev = bytesToRev(keys[i])
+			rev = BytesToRev(keys[i])
 			if _, ok := keep[rev]; !ok {
 				tx.UnsafeDelete(schema.Key, keys[i])
 				keyCompactions++
@@ -66,18 +67,23 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 			tx.Unlock()
 			// gofail: var compactAfterSetFinishedCompact struct{}
 			hash := h.Hash()
+			size, sizeInUse := s.b.Size(), s.b.SizeInUse()
 			s.lg.Info(
 				"finished scheduled compaction",
 				zap.Int64("compact-revision", compactMainRev),
 				zap.Duration("took", time.Since(totalStart)),
 				zap.Uint32("hash", hash.Hash),
+				zap.Int64("current-db-size-bytes", size),
+				zap.String("current-db-size", humanize.Bytes(uint64(size))),
+				zap.Int64("current-db-size-in-use-bytes", sizeInUse),
+				zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
 			)
 			return hash, nil
 		}
 
 		tx.Unlock()
 		// update last
-		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
+		last = RevToBytes(Revision{Main: rev.Main, Sub: rev.Sub + 1}, last)
 		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
 		// gofail: var compactBeforeCommitBatch struct{}
 		s.b.ForceCommit()

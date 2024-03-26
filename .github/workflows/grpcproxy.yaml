@@ -6,16 +6,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         target:
           - linux-amd64-grpcproxy-integration
           - linux-amd64-grpcproxy-e2e
     steps:
-      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@fac708d6674e30b6ba41289acaab6d4b75aa0753 # v4.0.1
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
       - env:
@@ -26,10 +26,10 @@ jobs:
           echo "${TARGET}"
           case "${TARGET}" in
             linux-amd64-grpcproxy-integration)
-              GOOS=linux GOARCH=amd64 CPU=4 RACE=true make test-grpcproxy-integration
+              GOOS=linux GOARCH=amd64 CPU=4 make test-grpcproxy-integration
               ;;
             linux-amd64-grpcproxy-e2e)
-              GOOS=linux GOARCH=amd64 CPU=4 RACE=true make test-grpcproxy-e2e
+              GOOS=linux GOARCH=amd64 CPU=4 make test-grpcproxy-e2e
               ;;
             *)
               echo "Failed to find target"

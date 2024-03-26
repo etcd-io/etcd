@@ -28,30 +28,21 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func validateOperationsAndVisualize(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, eventHistory []model.WatchEvent) (visualize func(basepath string) error) {
+func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation) (result porcupine.CheckResult, visualize func(basepath string) error) {
 	const timeout = 5 * time.Minute
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
-	result, visualize := validateLinearizableOperationAndVisualize(lg, operations, timeout)
+	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
 	switch result {
 	case porcupine.Illegal:
-		t.Error("Linearization failed")
-		return
+		lg.Error("Linearization failed")
 	case porcupine.Unknown:
-		t.Error("Linearization has timed out")
-		return
+		lg.Error("Linearization has timed out")
 	case porcupine.Ok:
-		t.Log("Linearization success")
+		lg.Info("Linearization success")
 	default:
-		t.Fatalf("Unknown Linearization")
+		panic(fmt.Sprintf("Unknown Linearization result %s", result))
 	}
-	lg.Info("Validating serializable operations")
-	validateSerializableOperations(t, operations, eventHistory)
-	return visualize
-}
-
-func validateLinearizableOperationAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
-	linearizable, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
-	return linearizable, func(path string) error {
+	return result, func(path string) error {
 		lg.Info("Saving visualization", zap.String("path", path))
 		err := porcupine.VisualizePath(model.NonDeterministicModel, info, path)
 		if err != nil {
@@ -61,7 +52,8 @@ func validateLinearizableOperationAndVisualize(lg *zap.Logger, operations []porc
 	}
 }
 
-func validateSerializableOperations(t *testing.T, operations []porcupine.Operation, totalEventHistory []model.WatchEvent) {
+func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, totalEventHistory []model.PersistedEvent) {
+	lg.Info("Validating serializable operations")
 	staleReads := filterSerializableReads(operations)
 	if len(staleReads) == 0 {
 		return

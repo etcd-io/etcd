@@ -17,12 +17,11 @@ package api
 import (
 	"sync"
 
+	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
-
-	"github.com/coreos/go-semver/semver"
 )
 
 type Capability string

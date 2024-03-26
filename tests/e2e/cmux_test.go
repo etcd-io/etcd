@@ -21,6 +21,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -41,7 +43,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 	for _, tc := range []struct {
 		name             string
 		serverTLS        e2e.ClientConnType
-		separateHttpPort bool
+		separateHTTPPort bool
 	}{
 		{
 			name:      "ServerTLS",
@@ -58,18 +60,20 @@ func TestConnectionMultiplexing(t *testing.T) {
 		{
 			name:             "SeparateHTTP/ServerTLS",
 			serverTLS:        e2e.ClientTLS,
-			separateHttpPort: true,
+			separateHTTPPort: true,
 		},
 		{
 			name:             "SeparateHTTP/ServerNonTLS",
 			serverTLS:        e2e.ClientNonTLS,
-			separateHttpPort: true,
+			separateHTTPPort: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
-			cfg := e2e.EtcdProcessClusterConfig{ClusterSize: 1, Client: e2e.ClientConfig{ConnectionType: tc.serverTLS}, ClientHttpSeparate: tc.separateHttpPort}
-			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&cfg))
+			cfg := e2e.NewConfig(e2e.WithClusterSize(1))
+			cfg.Client.ConnectionType = tc.serverTLS
+			cfg.ClientHTTPSeparate = tc.separateHTTPPort
+			clus, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
 
@@ -89,14 +93,14 @@ func TestConnectionMultiplexing(t *testing.T) {
 					name = "ClientTLS"
 				}
 				t.Run(name, func(t *testing.T) {
-					testConnectionMultiplexing(t, ctx, clus.Procs[0], clientTLS)
+					testConnectionMultiplexing(ctx, t, clus.Procs[0], clientTLS)
 				})
 			}
 		})
 	}
 }
 
-func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.EtcdProcess, connType e2e.ClientConnType) {
+func testConnectionMultiplexing(ctx context.Context, t *testing.T, member e2e.EtcdProcess, connType e2e.ClientConnType) {
 	httpEndpoint := member.EndpointsHTTP()[0]
 	grpcEndpoint := member.EndpointsGRPC()[0]
 	switch connType {
@@ -119,14 +123,14 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.Et
 		assert.NoError(t, err)
 	})
 	t.Run("curl", func(t *testing.T) {
-		for _, httpVersion := range []string{"2", "1.1", "1.0", ""} {
+		for _, httpVersion := range []string{"2", "1.1", ""} {
 			tname := "http" + httpVersion
 			if httpVersion == "" {
 				tname = "default"
 			}
 			t.Run(tname, func(t *testing.T) {
-				assert.NoError(t, fetchGrpcGateway(httpEndpoint, httpVersion, connType))
-				assert.NoError(t, fetchMetrics(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchGRPCGateway(httpEndpoint, httpVersion, connType))
+				assert.NoError(t, fetchMetrics(t, httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchVersion(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchHealth(httpEndpoint, httpVersion, connType))
 				assert.NoError(t, fetchDebugVars(httpEndpoint, httpVersion, connType))
@@ -135,14 +139,14 @@ func testConnectionMultiplexing(t *testing.T, ctx context.Context, member e2e.Et
 	})
 }
 
-func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+func fetchGRPCGateway(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: []byte("a"),
 	})
 	if err != nil {
 		return err
 	}
-	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "POST", req, connType)
 	if err != nil {
 		return err
@@ -153,10 +157,12 @@ func fetchGrpcGateway(endpoint string, httpVersion string, connType e2e.ClientCo
 func validateGrpcgatewayRangeReponse(respData []byte) error {
 	// Modified json annotation so ResponseHeader fields are stored in string.
 	type responseHeader struct {
+		//revive:disable:var-naming
 		ClusterId uint64 `json:"cluster_id,string,omitempty"`
 		MemberId  uint64 `json:"member_id,string,omitempty"`
-		Revision  int64  `json:"revision,string,omitempty"`
-		RaftTerm  uint64 `json:"raft_term,string,omitempty"`
+		//revive:enable:var-naming
+		Revision int64  `json:"revision,string,omitempty"`
+		RaftTerm uint64 `json:"raft_term,string,omitempty"`
 	}
 	type rangeResponse struct {
 		Header *responseHeader    `json:"header,omitempty"`
@@ -168,19 +174,28 @@ func validateGrpcgatewayRangeReponse(respData []byte) error {
 	return json.Unmarshal(respData, &resp)
 }
 
-func fetchMetrics(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HttpVersion: httpVersion}
-	respData, err := curl(endpoint, "GET", req, connType)
-	if err != nil {
+func fetchMetrics(t *testing.T, endpoint string, httpVersion string, connType e2e.ClientConnType) error {
+	tmpDir := t.TempDir()
+	metricFile := filepath.Join(tmpDir, "metrics")
+
+	req := e2e.CURLReq{Endpoint: "/metrics", Timeout: 5, HTTPVersion: httpVersion, OutputFile: metricFile}
+	if _, err := curl(endpoint, "GET", req, connType); err != nil {
 		return err
 	}
+
+	rawData, err := os.ReadFile(metricFile)
+	if err != nil {
+		return fmt.Errorf("failed to read the metric: %w", err)
+	}
+	respData := string(rawData)
+
 	var parser expfmt.TextParser
 	_, err = parser.TextToMetricFamilies(strings.NewReader(strings.ReplaceAll(respData, "\r\n", "\n")))
 	return err
 }
 
 func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/version", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err
@@ -190,7 +205,7 @@ func fetchVersion(endpoint string, httpVersion string, connType e2e.ClientConnTy
 }
 
 func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/health", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err
@@ -200,11 +215,11 @@ func fetchHealth(endpoint string, httpVersion string, connType e2e.ClientConnTyp
 }
 
 func fetchDebugVars(endpoint string, httpVersion string, connType e2e.ClientConnType) error {
-	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HttpVersion: httpVersion}
+	req := e2e.CURLReq{Endpoint: "/debug/vars", Timeout: 5, HTTPVersion: httpVersion}
 	respData, err := curl(endpoint, "GET", req, connType)
 	if err != nil {
 		return err
 	}
-	var resp map[string]interface{}
+	var resp map[string]any
 	return json.Unmarshal([]byte(respData), &resp)
 }

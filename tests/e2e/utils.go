@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -43,11 +44,10 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	if tlscfg != nil {
-		tls, err := tlscfg.ClientConfig()
+		ccfg.TLS, err = tlscfg.ClientConfig()
 		if err != nil {
 			t.Fatal(err)
 		}
-		ccfg.TLS = tls
 	}
 	c, err := clientv3.New(ccfg)
 	if err != nil {
@@ -71,9 +71,8 @@ func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 				return nil, fmt.Errorf("failed to generate cert: %s", err)
 			}
 			return &tls, nil
-		} else {
-			return &integration.TestTLSInfo, nil
 		}
+		return &integration.TestTLSInfo, nil
 	default:
 		return nil, fmt.Errorf("config %v not supported", cfg)
 	}
@@ -107,4 +106,42 @@ func curl(endpoint string, method string, curlReq e2e.CURLReq, connType e2e.Clie
 		return "", err
 	}
 	return strings.Join(lines, "\n"), nil
+}
+
+func runCommandAndReadJSONOutput(args []string) (map[string]any, error) {
+	lines, err := e2e.RunUtilCompletion(args, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp map[string]any
+	err = json.Unmarshal([]byte(strings.Join(lines, "\n")), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
+func getMemberIDByName(ctx context.Context, c *e2e.EtcdctlV3, name string) (id uint64, found bool, err error) {
+	resp, err := c.MemberList(ctx, false)
+	if err != nil {
+		return 0, false, err
+	}
+	for _, member := range resp.Members {
+		if name == member.Name {
+			return member.ID, true, nil
+		}
+	}
+	return 0, false, nil
+}
+
+func patchArgs(args []string, flag, newValue string) error {
+	for i, arg := range args {
+		if strings.Contains(arg, flag) {
+			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
+			return nil
+		}
+	}
+	return fmt.Errorf("--%s flag not found", flag)
 }

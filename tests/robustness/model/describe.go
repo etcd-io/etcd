@@ -99,9 +99,8 @@ func describeTxnResponse(request *TxnRequest, response *TxnResponse) string {
 	}
 	if response.Failure {
 		return fmt.Sprintf("failure(%s)", description)
-	} else {
-		return fmt.Sprintf("success(%s)", description)
 	}
+	return fmt.Sprintf("success(%s)", description)
 }
 
 func describeEtcdOperation(op EtcdOperation) string {
@@ -162,13 +161,12 @@ func describeRangeResponse(request RangeOptions, response RangeResponse) string 
 			kvs[i] = describeValueOrHash(kv.Value)
 		}
 		return fmt.Sprintf("[%s], count: %d", strings.Join(kvs, ","), response.Count)
-	} else {
-		if len(response.KVs) == 0 {
-			return "nil"
-		} else {
-			return describeValueOrHash(response.KVs[0].Value)
-		}
 	}
+
+	if len(response.KVs) == 0 {
+		return "nil"
+	}
+	return describeValueOrHash(response.KVs[0].Value)
 }
 
 func describeValueOrHash(value ValueOrHash) string {

@@ -26,9 +26,8 @@ import (
 	"strings"
 	"testing"
 
-	"go.uber.org/zap/zaptest"
-
 	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -104,6 +103,7 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected io.ReadAll error: %v", err)
 		}
+		resp.Body.Close()
 		if w := "test data"; string(body) != w {
 			t.Errorf("#%d: body = %s, want %s", i, body, w)
 		}

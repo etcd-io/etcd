@@ -26,11 +26,12 @@ import (
 // is known to never overwrite any key so range is safe.
 
 type ReadTx interface {
-	Lock()
-	Unlock()
 	RLock()
 	RUnlock()
+	UnsafeReader
+}
 
+type UnsafeReader interface {
 	UnsafeRange(bucket Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte)
 	UnsafeForEach(bucket Bucket, visitor func(k, v []byte) error) error
 }

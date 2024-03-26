@@ -21,7 +21,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
-func getMergedPerms(tx AuthReadTx, userName string) *unifiedRangePermissions {
+func getMergedPerms(tx UnsafeAuthReader, userName string) *unifiedRangePermissions {
 	user := tx.UnsafeGetUser(userName)
 	if user == nil {
 		return nil
@@ -127,7 +127,7 @@ func (as *authStore) isRangeOpPermitted(userName string, key, rangeEnd []byte, p
 	return checkKeyInterval(as.lg, rangePerm, key, rangeEnd, permtyp)
 }
 
-func (as *authStore) refreshRangePermCache(tx AuthReadTx) {
+func (as *authStore) refreshRangePermCache(tx UnsafeAuthReader) {
 	// Note that every authentication configuration update calls this method and it invalidates the entire
 	// rangePermCache and reconstruct it based on information of users and roles stored in the backend.
 	// This can be a costly operation.

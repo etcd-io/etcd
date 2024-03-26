@@ -15,10 +15,9 @@
 package framework
 
 import (
-	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
-
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/unit"
 )
 

@@ -19,8 +19,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/raft/v3/raftpb"
-
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -28,9 +26,10 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	wal2 "go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
-const ENV_VERIFY_VALUE_STORAGE_WAL verify.VerificationType = "storage_wal"
+const envVerifyValueStorageWAL verify.VerificationType = "storage_wal"
 
 type Config struct {
 	// DataDir is a root directory where the data being verified are stored.
@@ -49,7 +48,7 @@ type Config struct {
 // the function can also panic.
 // The function is expected to work on not-in-use data model, i.e.
 // no file-locks should be taken. Verify does not modified the data.
-func Verify(cfg Config) error {
+func Verify(cfg Config) (retErr error) {
 	lg := cfg.Logger
 	if lg == nil {
 		lg = zap.NewNop()
@@ -60,13 +59,12 @@ func Verify(cfg Config) error {
 		return nil
 	}
 
-	var err error
 	lg.Info("verification of persisted state", zap.String("data-dir", cfg.DataDir))
 	defer func() {
-		if err != nil {
+		if retErr != nil {
 			lg.Error("verification of persisted state failed",
 				zap.String("data-dir", cfg.DataDir),
-				zap.Error(err))
+				zap.Error(retErr))
 		} else if r := recover(); r != nil {
 			lg.Error("verification of persisted state failed",
 				zap.String("data-dir", cfg.DataDir))
@@ -79,7 +77,7 @@ func Verify(cfg Config) error {
 	be := backend.NewDefaultBackend(lg, datadir.ToBackendFileName(cfg.DataDir))
 	defer be.Close()
 
-	snapshot, hardstate, err := validateWal(cfg)
+	snapshot, hardstate, err := validateWAL(cfg)
 	if err != nil {
 		return err
 	}
@@ -93,7 +91,7 @@ func Verify(cfg Config) error {
 // VerifyIfEnabled performs verification according to ETCD_VERIFY env settings.
 // See Verify for more information.
 func VerifyIfEnabled(cfg Config) error {
-	if verify.IsVerificationEnabled(ENV_VERIFY_VALUE_STORAGE_WAL) {
+	if verify.IsVerificationEnabled(envVerifyValueStorageWAL) {
 		return Verify(cfg)
 	}
 	return nil
@@ -133,7 +131,7 @@ func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *
 	return nil
 }
 
-func validateWal(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
+func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
 	walDir := datadir.ToWalDir(cfg.DataDir)
 
 	walSnaps, err := wal2.ValidSnapshotEntries(cfg.Logger, walDir)

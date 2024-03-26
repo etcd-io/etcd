@@ -8,7 +8,7 @@ package client
 
 import "net/http"
 
-func requestCanceler(tr CancelableTransport, req *http.Request) func() {
+func requestCanceler(req *http.Request) func() {
 	ch := make(chan struct{})
 	req.Cancel = ch
 

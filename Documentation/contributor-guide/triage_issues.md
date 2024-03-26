@@ -99,7 +99,7 @@ New feature requests should be created via the etcd feature request template and
 
 ### Test flakes
 
-Test flakes are a specific type of bug that the etcd project tracks seperately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however if this is missing for an issue you determine to be related to a flaking test please add the label manually.
+Test flakes are a specific type of bug that the etcd project tracks separately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however if this is missing for an issue you determine to be related to a flaking test please add the label manually.
 
 ## Step 4 - Define the areas impacted
 
@@ -129,7 +129,17 @@ Below is a brief summary of the area labels in active use by the etcd project al
 
 ## Step 5 - Prioritise the issue
 
-Placeholder.
+If an issue lacks a priority label it has not been formally prioritized yet.
+
+Adding a `priority` label helps the etcd project understand what is important and should be worked on now, and conversely what is not as important and is on the project backlog.
+
+|Priority label|What it means|Examples|
+|---|---|---|
+| `priority/critical-urgent` | Maintainers are responsible for making sure that these issues (in their area) are being actively worked on—i.e., drop what you're doing. Stuff is burning. These should be fixed before the next release. | user-visible critical bugs in core features <br> broken builds on tier1 supported platforms <br> tests and critical security issues |
+| `priority/important-soon` | Must be staffed and worked on either currently or very soon—ideally in time for the next release. | |
+| `priority/important-longterm` | Important over the long term, but may not be currently staffed and/or may require multiple releases to complete. | |
+| `priority/backlog`  | General agreement that this is a nice-to-have, but no one's available to work on it anytime soon. Community contributions would be most welcome in the meantime, though it might take a while to get them reviewed if reviewers are fully occupied with higher-priority issues—for example, immediately before a release.| |
+| `priority/awaiting-more-evidence` | Possibly useful, but not yet enough support to actually get it done. | Mostly placeholders for potentially good ideas, so that they don't get completely forgotten, and can be referenced or deduped every time they come up |
 
 ## Step 6 - Support new contributors
 

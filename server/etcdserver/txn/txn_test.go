@@ -20,20 +20,289 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
+
+type testCase struct {
+	name        string
+	setup       testSetup
+	op          *pb.RequestOp
+	expectError string
+}
+
+type testSetup struct {
+	compactRevision int64
+	lease           int64
+	key             []byte
+}
+
+var futureRev int64 = 1000
+
+var rangeTestCases = []testCase{
+	{
+		name: "Range with revision 0 should succeed",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestRange{
+				RequestRange: &pb.RangeRequest{
+					Revision: 0,
+				},
+			},
+		},
+	},
+	{
+		name: "Range on future rev should fail",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestRange{
+				RequestRange: &pb.RangeRequest{
+					Revision: futureRev,
+				},
+			},
+		},
+		expectError: "mvcc: required revision is a future revision",
+	},
+	{
+		name:  "Range on compacted rev should fail",
+		setup: testSetup{compactRevision: 10},
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestRange{
+				RequestRange: &pb.RangeRequest{
+					Revision: 9,
+				},
+			},
+		},
+		expectError: "mvcc: required revision has been compacted",
+	},
+}
+
+var putTestCases = []testCase{
+	{
+		name: "Put without lease should succeed",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{},
+			},
+		},
+	},
+	{
+		name: "Put with non-existing lease should fail",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					Lease: 123,
+				},
+			},
+		},
+		expectError: "lease not found",
+	},
+	{
+		name:  "Put with existing lease should succeed",
+		setup: testSetup{lease: 123},
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					Lease: 123,
+				},
+			},
+		},
+	},
+	{
+		name: "Put with ignore value without previous key should fail",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					IgnoreValue: true,
+				},
+			},
+		},
+		expectError: "etcdserver: key not found",
+	},
+	{
+		name: "Put with ignore lease without previous key should fail",
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					IgnoreLease: true,
+				},
+			},
+		},
+		expectError: "etcdserver: key not found",
+	},
+	{
+		name:  "Put with ignore value with previous key should succeeded",
+		setup: testSetup{key: []byte("ignore-value")},
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					IgnoreValue: true,
+					Key:         []byte("ignore-value"),
+				},
+			},
+		},
+	},
+	{
+		name:  "Put with ignore lease with previous key should succeed ",
+		setup: testSetup{key: []byte("ignore-lease")},
+		op: &pb.RequestOp{
+			Request: &pb.RequestOp_RequestPut{
+				RequestPut: &pb.PutRequest{
+					IgnoreLease: true,
+					Key:         []byte("ignore-lease"),
+				},
+			},
+		},
+	},
+}
+
+func TestCheckTxn(t *testing.T) {
+	type txnTestCase struct {
+		name        string
+		setup       testSetup
+		txn         *pb.TxnRequest
+		expectError string
+	}
+	testCases := []txnTestCase{}
+	for _, tc := range append(rangeTestCases, putTestCases...) {
+		testCases = append(testCases, txnTestCase{
+			name:  tc.name,
+			setup: tc.setup,
+			txn: &pb.TxnRequest{
+				Success: []*pb.RequestOp{
+					tc.op,
+				},
+			},
+			expectError: tc.expectError,
+		})
+	}
+	invalidOperation := &pb.RequestOp{
+		Request: &pb.RequestOp_RequestRange{
+			RequestRange: &pb.RangeRequest{
+				Revision: futureRev,
+			},
+		},
+	}
+	testCases = append(testCases, txnTestCase{
+		name: "Invalid operation on failed path should succeed",
+		txn: &pb.TxnRequest{
+			Failure: []*pb.RequestOp{
+				invalidOperation,
+			},
+		},
+	})
+
+	testCases = append(testCases, txnTestCase{
+		name: "Invalid operation on subtransaction should fail",
+		txn: &pb.TxnRequest{
+			Success: []*pb.RequestOp{
+				{
+					Request: &pb.RequestOp_RequestTxn{
+						RequestTxn: &pb.TxnRequest{
+							Success: []*pb.RequestOp{
+								invalidOperation,
+							},
+						},
+					},
+				},
+			},
+		},
+		expectError: "mvcc: required revision is a future revision",
+	})
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, lessor := setup(t, tc.setup)
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+
+			gotErr := ""
+			if err != nil {
+				gotErr = err.Error()
+			}
+			if gotErr != tc.expectError {
+				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
+			}
+		})
+	}
+}
+
+func TestCheckPut(t *testing.T) {
+	for _, tc := range putTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, lessor := setup(t, tc.setup)
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			_, _, err := Put(ctx, zaptest.NewLogger(t), lessor, s, tc.op.GetRequestPut())
+
+			gotErr := ""
+			if err != nil {
+				gotErr = err.Error()
+			}
+			if gotErr != tc.expectError {
+				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
+			}
+		})
+	}
+}
+
+func TestCheckRange(t *testing.T) {
+	for _, tc := range rangeTestCases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, _ := setup(t, tc.setup)
+
+			ctx, cancel := context.WithCancel(context.TODO())
+			defer cancel()
+			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+
+			gotErr := ""
+			if err != nil {
+				gotErr = err.Error()
+			}
+			if gotErr != tc.expectError {
+				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
+			}
+		})
+	}
+}
+
+func setup(t *testing.T, setup testSetup) (mvcc.KV, lease.Lessor) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	t.Cleanup(func() {
+		betesting.Close(t, b)
+	})
+	lessor := &lease.FakeLessor{LeaseSet: map[lease.LeaseID]struct{}{}}
+	s := mvcc.NewStore(zaptest.NewLogger(t), b, lessor, mvcc.StoreConfig{})
+	t.Cleanup(func() {
+		s.Close()
+	})
+
+	if setup.compactRevision != 0 {
+		for i := 0; int64(i) < setup.compactRevision; i++ {
+			s.Put([]byte("a"), []byte("b"), 0)
+		}
+		s.Compact(traceutil.TODO(), setup.compactRevision)
+	}
+	if setup.lease != 0 {
+		lessor.Grant(lease.LeaseID(setup.lease), 0)
+	}
+	if len(setup.key) != 0 {
+		s.Put(setup.key, []byte("b"), 0)
+	}
+	return s, lessor
+}
 
 func TestReadonlyTxnError(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)

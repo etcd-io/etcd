@@ -29,6 +29,19 @@ import (
 	"path/filepath"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/soheilhy/cmux"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapgrpc"
+	"golang.org/x/net/http2"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/keepalive"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
@@ -42,19 +55,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
-
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/soheilhy/cmux"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapgrpc"
-	"golang.org/x/net/http2"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/grpclog"
-	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -62,6 +62,9 @@ var (
 	grpcProxyMetricsListenAddr         string
 	grpcProxyEndpoints                 []string
 	grpcProxyEndpointsAutoSyncInterval time.Duration
+	grpcProxyDialKeepAliveTime         time.Duration
+	grpcProxyDialKeepAliveTimeout      time.Duration
+	grpcProxyPermitWithoutStream       bool
 	grpcProxyDNSCluster                string
 	grpcProxyDNSClusterServiceName     string
 	grpcProxyInsecureDiscovery         bool
@@ -138,6 +141,9 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&grpcProxyInsecureDiscovery, "insecure-discovery", false, "accept insecure SRV records")
 	cmd.Flags().StringSliceVar(&grpcProxyEndpoints, "endpoints", []string{"127.0.0.1:2379"}, "comma separated etcd cluster endpoints")
 	cmd.Flags().DurationVar(&grpcProxyEndpointsAutoSyncInterval, "endpoints-auto-sync-interval", 0, "etcd endpoints auto sync interval (disabled by default)")
+	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTime, "dial-keepalive-time", 0, "keepalive time for client(grpc-proxy) connections (default 0, disable).")
+	cmd.Flags().DurationVar(&grpcProxyDialKeepAliveTimeout, "dial-keepalive-timeout", embed.DefaultGRPCKeepAliveTimeout, "keepalive timeout for client(grpc-proxy) connections (default 20s).")
+	cmd.Flags().BoolVar(&grpcProxyPermitWithoutStream, "permit-without-stream", false, "Enable client(grpc-proxy) to send keepalive pings even with no active RPCs.")
 	cmd.Flags().StringVar(&grpcProxyAdvertiseClientURL, "advertise-client-url", "127.0.0.1:23790", "advertise address to register (must be reachable by client)")
 	cmd.Flags().StringVar(&grpcProxyResolverPrefix, "resolver-prefix", "", "prefix to use for registering proxy (must be shared with other grpc-proxy members)")
 	cmd.Flags().IntVar(&grpcProxyResolverTTL, "resolver-ttl", 0, "specify TTL, in seconds, when registering proxy endpoints")
@@ -231,7 +237,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	if grpcProxyAdvertiseClientURL != "" {
 		proxyClient = mustNewProxyClient(lg, tlsInfo)
 	}
-	httpClient := mustNewHTTPClient(lg)
+	httpClient := mustNewHTTPClient()
 
 	srvhttp, httpl := mustHTTPListener(lg, m, tlsInfo, client, proxyClient)
 
@@ -361,6 +367,13 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	if grpcMaxCallRecvMsgSize > 0 {
 		cfg.MaxCallRecvMsgSize = grpcMaxCallRecvMsgSize
 	}
+	if grpcProxyDialKeepAliveTime > 0 {
+		cfg.DialKeepAliveTime = grpcProxyDialKeepAliveTime
+	}
+	if grpcProxyDialKeepAliveTimeout > 0 {
+		cfg.DialKeepAliveTimeout = grpcProxyDialKeepAliveTimeout
+	}
+	cfg.PermitWithoutStream = grpcProxyPermitWithoutStream
 
 	tls := newTLS(grpcProxyCA, grpcProxyCert, grpcProxyKey, true)
 	if tls == nil && grpcProxyInsecureSkipTLSVerify {
@@ -448,7 +461,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
-	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject interface{}) bool { return true }
+	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject any) bool { return true }
 
 	grpcChainStreamList := []grpc.StreamServerInterceptor{
 		grpc_prometheus.StreamServerInterceptor,
@@ -505,7 +518,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 }
 
 func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c *clientv3.Client, proxy *clientv3.Client) (*http.Server, net.Listener) {
-	httpClient := mustNewHTTPClient(lg)
+	httpClient := mustNewHTTPClient()
 	httpmux := http.NewServeMux()
 	httpmux.HandleFunc("/", http.NotFound)
 	grpcproxy.HandleMetrics(httpmux, httpClient, c.Endpoints())
@@ -535,7 +548,7 @@ func mustHTTPListener(lg *zap.Logger, m cmux.CMux, tlsinfo *transport.TLSInfo, c
 	return srvhttp, m.Match(cmux.Any())
 }
 
-func mustNewHTTPClient(lg *zap.Logger) *http.Client {
+func mustNewHTTPClient() *http.Client {
 	transport, err := newHTTPTransport(grpcProxyCA, grpcProxyCert, grpcProxyKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

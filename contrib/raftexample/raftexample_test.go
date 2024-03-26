@@ -78,7 +78,7 @@ func newCluster(n int) *cluster {
 func (clus *cluster) Close() (err error) {
 	for i := range clus.peers {
 		go func(i int) {
-			for range clus.commitC[i] {
+			for range clus.commitC[i] { //revive:disable-line:empty-block
 				// drain pending commits
 			}
 		}(i)
@@ -125,7 +125,7 @@ func TestProposeOnCommit(t *testing.T) {
 				}
 			}
 			donec <- struct{}{}
-			for range cC {
+			for range cC { //revive:disable-line:empty-block
 				// acknowledge the commits from other nodes so
 				// raft continues to make progress
 			}

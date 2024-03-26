@@ -21,31 +21,31 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/idutil"
+	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -58,137 +58,28 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
-
-// TestDoLocalAction tests requests which do not need to go through raft to be applied,
-// and are served through local data.
-func TestDoLocalAction(t *testing.T) {
-	tests := []struct {
-		req pb.Request
-
-		wresp    Response
-		werr     error
-		wactions []testutil.Action
-	}{
-		{
-			pb.Request{Method: "GET", ID: 1, Wait: true},
-			Response{Watcher: v2store.NewNopWatcher()}, nil, []testutil.Action{{Name: "Watch"}},
-		},
-		{
-			pb.Request{Method: "GET", ID: 1},
-			Response{Event: &v2store.Event{}}, nil,
-			[]testutil.Action{
-				{
-					Name:   "Get",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-		{
-			pb.Request{Method: "HEAD", ID: 1},
-			Response{Event: &v2store.Event{}}, nil,
-			[]testutil.Action{
-				{
-					Name:   "Get",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-		{
-			pb.Request{Method: "BADMETHOD", ID: 1},
-			Response{}, errors.ErrUnknownMethod, []testutil.Action{},
-		},
-	}
-	for i, tt := range tests {
-		st := mockstore.NewRecorder()
-		srv := &EtcdServer{
-			lgMu:     new(sync.RWMutex),
-			lg:       zaptest.NewLogger(t),
-			v2store:  st,
-			reqIDGen: idutil.NewGenerator(0, time.Time{}),
-		}
-		resp, err := srv.Do(context.Background(), tt.req)
-
-		if err != tt.werr {
-			t.Fatalf("#%d: err = %+v, want %+v", i, err, tt.werr)
-		}
-		if !reflect.DeepEqual(resp, tt.wresp) {
-			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
-		}
-		gaction := st.Action()
-		if !reflect.DeepEqual(gaction, tt.wactions) {
-			t.Errorf("#%d: action = %+v, want %+v", i, gaction, tt.wactions)
-		}
-	}
-}
-
-// TestDoBadLocalAction tests server requests which do not need to go through consensus,
-// and return errors when they fetch from local data.
-func TestDoBadLocalAction(t *testing.T) {
-	storeErr := fmt.Errorf("bah")
-	tests := []struct {
-		req pb.Request
-
-		wactions []testutil.Action
-	}{
-		{
-			pb.Request{Method: "GET", ID: 1, Wait: true},
-			[]testutil.Action{{Name: "Watch"}},
-		},
-		{
-			pb.Request{Method: "GET", ID: 1},
-			[]testutil.Action{
-				{
-					Name:   "Get",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-		{
-			pb.Request{Method: "HEAD", ID: 1},
-			[]testutil.Action{
-				{
-					Name:   "Get",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-	}
-	for i, tt := range tests {
-		st := mockstore.NewErrRecorder(storeErr)
-		srv := &EtcdServer{
-			lgMu:     new(sync.RWMutex),
-			lg:       zaptest.NewLogger(t),
-			v2store:  st,
-			reqIDGen: idutil.NewGenerator(0, time.Time{}),
-		}
-		resp, err := srv.Do(context.Background(), tt.req)
-
-		if err != storeErr {
-			t.Fatalf("#%d: err = %+v, want %+v", i, err, storeErr)
-		}
-		if !reflect.DeepEqual(resp, Response{}) {
-			t.Errorf("#%d: resp = %+v, want %+v", i, resp, Response{})
-		}
-		gaction := st.Action()
-		if !reflect.DeepEqual(gaction, tt.wactions) {
-			t.Errorf("#%d: action = %+v, want %+v", i, gaction, tt.wactions)
-		}
-	}
-}
 
 // TestApplyRepeat tests that server handles repeat raft messages gracefully
 func TestApplyRepeat(t *testing.T) {
+	lg := zaptest.NewLogger(t)
 	n := newNodeConfChangeCommitterStream()
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          zaptest.NewLogger(t),
@@ -206,10 +97,13 @@ func TestApplyRepeat(t *testing.T) {
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
+		uberApply:    uberApplierMock{},
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 	s.start()
-	req := &pb.Request{Method: "QGET", ID: uint64(1)}
+	req := &pb.InternalRaftRequest{
+		Header: &pb.RequestHeader{ID: 1},
+		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+	}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
 	n.readyc <- raft.Ready{CommittedEntries: ents}
 	// dup msg
@@ -247,258 +141,24 @@ func TestApplyRepeat(t *testing.T) {
 	}
 }
 
-func TestApplyRequest(t *testing.T) {
-	tests := []struct {
-		req pb.Request
+type uberApplierMock struct{}
 
-		wresp    Response
-		wactions []testutil.Action
-	}{
-		// POST ==> Create
-		{
-			pb.Request{Method: "POST", ID: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Create",
-					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// POST ==> Create, with expiration
-		{
-			pb.Request{Method: "POST", ID: 1, Expiration: 1337},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Create",
-					Params: []interface{}{"", false, "", true, v2store.TTLOptionSet{ExpireTime: time.Unix(0, 1337)}},
-				},
-			},
-		},
-		// POST ==> Create, with dir
-		{
-			pb.Request{Method: "POST", ID: 1, Dir: true},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Create",
-					Params: []interface{}{"", true, "", true, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT ==> Set
-		{
-			pb.Request{Method: "PUT", ID: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Set",
-					Params: []interface{}{"", false, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT ==> Set, with dir
-		{
-			pb.Request{Method: "PUT", ID: 1, Dir: true},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Set",
-					Params: []interface{}{"", true, "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevExist=true ==> Update
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true)},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Update",
-					Params: []interface{}{"", "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevExist=false ==> Create
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false)},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Create",
-					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevExist=true *and* PrevIndex set ==> CompareAndSwap
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(true), PrevIndex: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevExist=false *and* PrevIndex set ==> Create
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevExist: pbutil.Boolp(false), PrevIndex: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Create",
-					Params: []interface{}{"", false, "", false, v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevIndex set ==> CompareAndSwap
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevValue set ==> CompareAndSwap
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevValue: "bar"},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(0), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// PUT with PrevIndex and PrevValue set ==> CompareAndSwap
-		{
-			pb.Request{Method: "PUT", ID: 1, PrevIndex: 1, PrevValue: "bar"},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndSwap",
-					Params: []interface{}{"", "bar", uint64(1), "", v2store.TTLOptionSet{ExpireTime: time.Time{}}},
-				},
-			},
-		},
-		// DELETE ==> Delete
-		{
-			pb.Request{Method: "DELETE", ID: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Delete",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-		// DELETE with PrevIndex set ==> CompareAndDelete
-		{
-			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "", uint64(1)},
-				},
-			},
-		},
-		// DELETE with PrevValue set ==> CompareAndDelete
-		{
-			pb.Request{Method: "DELETE", ID: 1, PrevValue: "bar"},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "bar", uint64(0)},
-				},
-			},
-		},
-		// DELETE with PrevIndex *and* PrevValue set ==> CompareAndDelete
-		{
-			pb.Request{Method: "DELETE", ID: 1, PrevIndex: 5, PrevValue: "bar"},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "CompareAndDelete",
-					Params: []interface{}{"", "bar", uint64(5)},
-				},
-			},
-		},
-		// QGET ==> Get
-		{
-			pb.Request{Method: "QGET", ID: 1},
-			Response{Event: &v2store.Event{}},
-			[]testutil.Action{
-				{
-					Name:   "Get",
-					Params: []interface{}{"", false, false},
-				},
-			},
-		},
-		// SYNC ==> DeleteExpiredKeys
-		{
-			pb.Request{Method: "SYNC", ID: 1},
-			Response{},
-			[]testutil.Action{
-				{
-					Name:   "DeleteExpiredKeys",
-					Params: []interface{}{time.Unix(0, 0)},
-				},
-			},
-		},
-		{
-			pb.Request{Method: "SYNC", ID: 1, Time: 12345},
-			Response{},
-			[]testutil.Action{
-				{
-					Name:   "DeleteExpiredKeys",
-					Params: []interface{}{time.Unix(0, 12345)},
-				},
-			},
-		},
-		// Unknown method - error
-		{
-			pb.Request{Method: "BADMETHOD", ID: 1},
-			Response{Err: errors.ErrUnknownMethod},
-			[]testutil.Action{},
-		},
-	}
-
-	for i, tt := range tests {
-		st := mockstore.NewRecorder()
-		srv := &EtcdServer{
-			lgMu:    new(sync.RWMutex),
-			lg:      zaptest.NewLogger(t),
-			v2store: st,
-		}
-		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-		resp := srv.applyV2Request((*RequestV2)(&tt.req), membership.ApplyBoth)
-
-		if !reflect.DeepEqual(resp, tt.wresp) {
-			t.Errorf("#%d: resp = %+v, want %+v", i, resp, tt.wresp)
-		}
-		gaction := st.Action()
-		if !reflect.DeepEqual(gaction, tt.wactions) {
-			t.Errorf("#%d: action = %#v, want %#v", i, gaction, tt.wactions)
-		}
-	}
+func (uberApplierMock) Apply(r *pb.InternalRaftRequest) *apply2.Result {
+	return &apply2.Result{}
 }
 
-func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
-	cl := newTestCluster(t, []*membership.Member{{ID: 1}})
+// TestV2SetMemberAttributes validates support of hybrid v3.5 cluster which still uses v2 request.
+// TODO: Remove in v3.7
+func TestV2SetMemberAttributes(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
 	srv := &EtcdServer{
 		lgMu:    new(sync.RWMutex),
 		lg:      zaptest.NewLogger(t),
 		v2store: mockstore.NewRecorder(),
 		cluster: cl,
 	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
 
 	req := pb.Request{
 		Method: "PUT",
@@ -513,9 +173,151 @@ func TestApplyRequestOnAdminMemberAttributes(t *testing.T) {
 	}
 }
 
+// TestV2SetClusterVersion validates support of hybrid v3.5 cluster which still uses v2 request.
+// TODO: Remove in v3.7
+func TestV2SetClusterVersion(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
+	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
+	srv := &EtcdServer{
+		lgMu:    new(sync.RWMutex),
+		lg:      zaptest.NewLogger(t),
+		v2store: mockstore.NewRecorder(),
+		cluster: cl,
+	}
+
+	req := pb.Request{
+		Method: "PUT",
+		ID:     1,
+		Path:   membership.StoreClusterVersionKey(),
+		Val:    "3.5.0",
+	}
+	srv.applyV2Request((*RequestV2)(&req), membership.ApplyBoth)
+	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
+		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
+	}
+}
+
+func TestApplyConfStateWithRestart(t *testing.T) {
+	n := newNodeRecorder()
+	srv := newServer(t, n)
+	defer srv.Cleanup()
+
+	assert.Equal(t, srv.consistIndex.ConsistentIndex(), uint64(0))
+
+	var nodeID uint64 = 1
+	memberData, err := json.Marshal(&membership.Member{ID: types.ID(nodeID), RaftAttributes: membership.RaftAttributes{PeerURLs: []string{""}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	entries := []raftpb.Entry{
+		{
+			Term:  1,
+			Index: 1,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}),
+		},
+		{
+			Term:  1,
+			Index: 2,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: nodeID,
+			}),
+		},
+		{
+			Term:  1,
+			Index: 3,
+			Type:  raftpb.EntryConfChange,
+			Data: pbutil.MustMarshal(&raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}),
+		},
+	}
+	want := []testutil.Action{
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:    raftpb.ConfChangeAddNode,
+				NodeID:  nodeID,
+				Context: memberData,
+			}},
+		},
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:   raftpb.ConfChangeRemoveNode,
+				NodeID: nodeID,
+			}},
+		},
+		// This action is expected to fail validation, thus NodeID is set to 0
+		{
+			Name: "ApplyConfChange",
+			Params: []any{raftpb.ConfChange{
+				Type:    raftpb.ConfChangeUpdateNode,
+				Context: memberData,
+				NodeID:  0,
+			}},
+		},
+	}
+
+	confState := raftpb.ConfState{}
+
+	t.Log("Applying entries for the first time")
+	srv.apply(entries, &confState, nil)
+	if got, _ := n.Wait(len(want)); !reflect.DeepEqual(got, want) {
+		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
+	}
+
+	t.Log("Simulating etcd restart by clearing v2 store")
+	srv.cluster.SetStore(v2store.New())
+
+	t.Log("Reapplying same entries after restart")
+	srv.apply(entries, &confState, nil)
+	if got, _ := n.Wait(2 * len(want)); !reflect.DeepEqual(got[len(want):], want) {
+		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
+	}
+}
+
+func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	t.Cleanup(func() {
+		betesting.Close(t, be)
+	})
+	srv := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		r:            *newRaftNode(raftNodeConfig{lg: lg, Node: recorder}),
+		cluster:      membership.NewCluster(lg),
+		consistIndex: cindex.NewConsistentIndex(be),
+	}
+	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
+	srv.cluster.SetStore(v2store.New())
+	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
+	srv.r.transport = newNopTransporter()
+	srv.w = mockwait.NewNop()
+	return srv
+}
+
 func TestApplyConfChangeError(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.SetStore(v2store.New())
+
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -592,7 +394,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		w := []testutil.Action{
 			{
 				Name:   "ApplyConfChange",
-				Params: []interface{}{cc},
+				Params: []any{cc},
 			},
 		}
 		if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
@@ -602,8 +404,14 @@ func TestApplyConfChangeError(t *testing.T) {
 }
 
 func TestApplyConfChangeShouldStop(t *testing.T) {
-	cl := membership.NewCluster(zaptest.NewLogger(t))
+	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	cl := membership.NewCluster(lg)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.SetStore(v2store.New())
+
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -612,11 +420,10 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
-	lg := zaptest.NewLogger(t)
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
 		lg:       lg,
-		memberId: 1,
+		memberID: 1,
 		r:        *r,
 		cluster:  cl,
 		beHooks:  serverstorage.NewBackendHooks(lg, nil),
@@ -649,26 +456,29 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 // where consistIndex equals to applied index.
 func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
 	cl.SetStore(v2store.New())
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
 
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
 	schema.CreateMetaBucket(be.BatchTx())
 
 	ci := cindex.NewConsistentIndex(be)
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		memberId:     1,
-		r:            *realisticRaftNode(lg),
+		memberID:     1,
+		r:            *realisticRaftNode(lg, 1, nil),
 		cluster:      cl,
 		w:            wait.New(),
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
+	defer srv.r.raftNodeConfig.Stop()
 
 	// create EntryConfChange entry
 	now := time.Now()
@@ -707,11 +517,17 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	assert.Equal(t, consistIndex, rindex)
 }
 
-func realisticRaftNode(lg *zap.Logger) *raftNode {
+func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *raftNode {
 	storage := raft.NewMemoryStorage()
 	storage.SetHardState(raftpb.HardState{Commit: 0, Term: 0})
+	if snap != nil {
+		err := storage.ApplySnapshot(*snap)
+		if err != nil {
+			panic(err)
+		}
+	}
 	c := &raft.Config{
-		ID:              1,
+		ID:              id,
 		ElectionTick:    10,
 		HeartbeatTick:   1,
 		Storage:         storage,
@@ -733,6 +549,10 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := membership.NewCluster(lg)
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
@@ -745,7 +565,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		memberId:     2,
+		memberID:     2,
 		r:            *r,
 		cluster:      cl,
 		w:            wait.New(),
@@ -774,258 +594,13 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	}
 }
 
-func TestDoProposal(t *testing.T) {
-	tests := []pb.Request{
-		{Method: "POST", ID: 1},
-		{Method: "PUT", ID: 1},
-		{Method: "DELETE", ID: 1},
-		{Method: "GET", ID: 1, Quorum: true},
-	}
-	for i, tt := range tests {
-		st := mockstore.NewRecorder()
-		r := newRaftNode(raftNodeConfig{
-			lg:          zaptest.NewLogger(t),
-			Node:        newNodeCommitter(),
-			storage:     mockstorage.NewStorageRecorder(""),
-			raftStorage: raft.NewMemoryStorage(),
-			transport:   newNopTransporter(),
-		})
-		srv := &EtcdServer{
-			lgMu:         new(sync.RWMutex),
-			lg:           zaptest.NewLogger(t),
-			Cfg:          config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-			r:            *r,
-			v2store:      st,
-			reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-			SyncTicker:   &time.Ticker{},
-			consistIndex: cindex.NewFakeConsistentIndex(0),
-		}
-		srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-		srv.start()
-		resp, err := srv.Do(context.Background(), tt)
-		srv.Stop()
-
-		action := st.Action()
-		if len(action) != 1 {
-			t.Errorf("#%d: len(action) = %d, want 1", i, len(action))
-		}
-		if err != nil {
-			t.Fatalf("#%d: err = %v, want nil", i, err)
-		}
-		// resp.Index is set in Do() based on the raft state; may either be 0 or 1
-		wresp := Response{Event: &v2store.Event{}, Index: resp.Index}
-		if !reflect.DeepEqual(resp, wresp) {
-			t.Errorf("#%d: resp = %v, want %v", i, resp, wresp)
-		}
-	}
-}
-
-func TestDoProposalCancelled(t *testing.T) {
-	wt := mockwait.NewRecorder()
-	srv := &EtcdServer{
-		lgMu:     new(sync.RWMutex),
-		lg:       zaptest.NewLogger(t),
-		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
-		w:        wt,
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
-
-	if err != errors.ErrCanceled {
-		t.Fatalf("err = %v, want %v", err, errors.ErrCanceled)
-	}
-	w := []testutil.Action{{Name: "Register"}, {Name: "Trigger"}}
-	if !reflect.DeepEqual(wt.Action(), w) {
-		t.Errorf("wt.action = %+v, want %+v", wt.Action(), w)
-	}
-}
-
-func TestDoProposalTimeout(t *testing.T) {
-	srv := &EtcdServer{
-		lgMu:     new(sync.RWMutex),
-		lg:       zaptest.NewLogger(t),
-		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:        *newRaftNode(raftNodeConfig{Node: newNodeNop()}),
-		w:        mockwait.NewNop(),
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 0)
-	_, err := srv.Do(ctx, pb.Request{Method: "PUT"})
-	cancel()
-	if err != errors.ErrTimeout {
-		t.Fatalf("err = %v, want %v", err, errors.ErrTimeout)
-	}
-}
-
-func TestDoProposalStopped(t *testing.T) {
-	srv := &EtcdServer{
-		lgMu:     new(sync.RWMutex),
-		lg:       zaptest.NewLogger(t),
-		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: newNodeNop()}),
-		w:        mockwait.NewNop(),
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	srv.stopping = make(chan struct{})
-	close(srv.stopping)
-	_, err := srv.Do(context.Background(), pb.Request{Method: "PUT", ID: 1})
-	if err != errors.ErrStopped {
-		t.Errorf("err = %v, want %v", err, errors.ErrStopped)
-	}
-}
-
-// TestSync tests sync 1. is nonblocking 2. proposes SYNC request.
-func TestSync(t *testing.T) {
-	n := newNodeRecorder()
-	ctx, cancel := context.WithCancel(context.Background())
-	srv := &EtcdServer{
-		lgMu:     new(sync.RWMutex),
-		lg:       zaptest.NewLogger(t),
-		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-		ctx:      ctx,
-		cancel:   cancel,
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	// check that sync is non-blocking
-	done := make(chan struct{}, 1)
-	go func() {
-		srv.sync(10 * time.Second)
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("sync should be non-blocking but did not return after 1s!")
-	}
-
-	action, _ := n.Wait(1)
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
-	data := action[0].Params[0].([]byte)
-	var r pb.Request
-	if err := r.Unmarshal(data); err != nil {
-		t.Fatalf("unmarshal request error: %v", err)
-	}
-	if r.Method != "SYNC" {
-		t.Errorf("method = %s, want SYNC", r.Method)
-	}
-}
-
-// TestSyncTimeout tests the case that sync 1. is non-blocking 2. cancel request
-// after timeout
-func TestSyncTimeout(t *testing.T) {
-	n := newProposalBlockerRecorder()
-	ctx, cancel := context.WithCancel(context.Background())
-	srv := &EtcdServer{
-		lgMu:     new(sync.RWMutex),
-		lg:       zaptest.NewLogger(t),
-		r:        *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
-		reqIDGen: idutil.NewGenerator(0, time.Time{}),
-		ctx:      ctx,
-		cancel:   cancel,
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	// check that sync is non-blocking
-	done := make(chan struct{}, 1)
-	go func() {
-		srv.sync(0)
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("sync should be non-blocking but did not return after 1s!")
-	}
-
-	w := []testutil.Action{{Name: "Propose blocked"}}
-	if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
-		t.Errorf("action = %v, want %v", g, w)
-	}
-}
-
-// TODO: TestNoSyncWhenNoLeader
-
-// TestSyncTrigger tests that the server proposes a SYNC request when its sync timer ticks
-func TestSyncTrigger(t *testing.T) {
-	n := newReadyNode()
-	st := make(chan time.Time, 1)
-	tk := &time.Ticker{C: st}
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
-		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		transport:   newNopTransporter(),
-		storage:     mockstorage.NewStorageRecorder(""),
-	})
-
-	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zaptest.NewLogger(t),
-		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *r,
-		v2store:    mockstore.NewNop(),
-		SyncTicker: tk,
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-	}
-
-	// trigger the server to become a leader and accept sync requests
-	go func() {
-		srv.start()
-		n.readyc <- raft.Ready{
-			SoftState: &raft.SoftState{
-				RaftState: raft.StateLeader,
-			},
-		}
-		// trigger a sync request
-		st <- time.Time{}
-	}()
-
-	action, _ := n.Wait(1)
-	go srv.Stop()
-
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
-	data := action[0].Params[0].([]byte)
-	var req pb.Request
-	if err := req.Unmarshal(data); err != nil {
-		t.Fatalf("error unmarshalling data: %v", err)
-	}
-	if req.Method != "SYNC" {
-		t.Fatalf("unexpected proposed request: %#v", req.Method)
-	}
-
-	// wait on stop message
-	<-n.Chan()
-}
-
 // TestSnapshot should snapshot the store and cut the persistent
 func TestSnapshot(t *testing.T) {
 	revertFunc := verify.DisableVerifications()
 	defer revertFunc()
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
@@ -1045,9 +620,15 @@ func TestSnapshot(t *testing.T) {
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
 	srv.be = be
 
-	ch := make(chan struct{}, 2)
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	srv.cluster = cl
+
+	ch := make(chan struct{}, 1)
 
 	go func() {
 		gaction, _ := p.Wait(2)
@@ -1066,24 +647,11 @@ func TestSnapshot(t *testing.T) {
 		}
 	}()
 
-	go func() {
-		gaction, _ := st.Wait(2)
-		defer func() { ch <- struct{}{} }()
-
-		if len(gaction) != 2 {
-			t.Errorf("len(action) = %d, want 2", len(gaction))
-		}
-		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "Clone"}) {
-			t.Errorf("action = %s, want Clone", gaction[0])
-		}
-		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "SaveNoCopy"}) {
-			t.Errorf("action = %s, want SaveNoCopy", gaction[1])
-		}
-	}()
-
 	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
 	<-ch
-	<-ch
+	if len(st.Action()) != 0 {
+		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
+	}
 }
 
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before
@@ -1098,7 +666,8 @@ func TestSnapshotOrdering(t *testing.T) {
 	n := newNopReadyNode()
 	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
 
@@ -1118,7 +687,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		storage:     p,
 		raftStorage: rs,
 	})
-	be, _ := betesting.NewDefaultTmpBackend(t)
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1132,7 +700,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
@@ -1179,70 +746,6 @@ func TestSnapshotOrdering(t *testing.T) {
 	}
 }
 
-// TestTriggerSnap for Applied > SnapshotCount should trigger a SaveSnap event
-func TestTriggerSnap(t *testing.T) {
-	be, tmpPath := betesting.NewDefaultTmpBackend(t)
-	defer func() {
-		os.RemoveAll(tmpPath)
-	}()
-
-	snapc := 10
-	st := mockstore.NewRecorder()
-	p := mockstorage.NewStorageRecorderStream("")
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
-		Node:        newNodeCommitter(),
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     p,
-		transport:   newNopTransporter(),
-	})
-	srv := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           zaptest.NewLogger(t),
-		Cfg:          config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCount: uint64(snapc), SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:            *r,
-		v2store:      st,
-		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
-		consistIndex: cindex.NewConsistentIndex(be),
-	}
-	srv.applyV2 = &applierV2store{store: srv.v2store, cluster: srv.cluster}
-
-	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
-	srv.be = be
-
-	srv.start()
-
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		wcnt := 3 + snapc
-		gaction, _ := p.Wait(wcnt)
-
-		// each operation is recorded as a Save
-		// (SnapshotCount+1) * Puts + SaveSnap = (SnapshotCount+1) * Save + SaveSnap + Release
-		if len(gaction) != wcnt {
-			t.Logf("gaction: %v", gaction)
-			t.Errorf("len(action) = %d, want %d", len(gaction), wcnt)
-			return
-		}
-		if !reflect.DeepEqual(gaction[wcnt-2], testutil.Action{Name: "SaveSnap"}) {
-			t.Errorf("action = %s, want SaveSnap", gaction[wcnt-2])
-		}
-
-		if !reflect.DeepEqual(gaction[wcnt-1], testutil.Action{Name: "Release"}) {
-			t.Errorf("action = %s, want Release", gaction[wcnt-1])
-		}
-	}()
-
-	for i := 0; i < snapc+1; i++ {
-		srv.Do(context.Background(), pb.Request{Method: "PUT"})
-	}
-
-	<-donec
-	srv.Stop()
-}
-
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with
 // proposals.
 func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
@@ -1256,6 +759,8 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	st := v2store.New()
 	cl := membership.NewCluster(lg)
 	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
 	if err := os.MkdirAll(testdir+"/member/snap", 0755); err != nil {
@@ -1272,21 +777,23 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		storage:     mockstorage.NewStorageRecorder(testdir),
 		raftStorage: rs,
 	})
-	be, _ := betesting.NewDefaultTmpBackend(t)
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           lg,
-		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:            *r,
-		v2store:      st,
-		snapshotter:  snap.New(lg, testdir),
-		cluster:      cl,
-		SyncTicker:   &time.Ticker{},
-		consistIndex: ci,
-		beHooks:      serverstorage.NewBackendHooks(lg, ci),
+		lgMu:              new(sync.RWMutex),
+		lg:                lg,
+		Cfg:               config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:                 *r,
+		v2store:           st,
+		snapshotter:       snap.New(lg, testdir),
+		cluster:           cl,
+		SyncTicker:        &time.Ticker{},
+		consistIndex:      ci,
+		beHooks:           serverstorage.NewBackendHooks(lg, ci),
+		firstCommitInTerm: notify.NewNotifier(),
+		lessor:            &lease.FakeLessor{},
+		uberApply:         uberApplierMock{},
+		authStore:         auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 1),
 	}
-	s.applyV2 = &applierV2store{store: s.v2store, cluster: s.cluster}
 
 	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	s.be = be
@@ -1301,7 +808,10 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	for k := 1; k <= 101; k++ {
 		idx++
 		ch := s.w.Register(idx)
-		req := &pb.Request{Method: "QGET", ID: idx}
+		req := &pb.InternalRaftRequest{
+			Header: &pb.RequestHeader{ID: idx},
+			Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+		}
 		ent := raftpb.Entry{Index: idx, Data: pbutil.MustMarshal(req)}
 		ready := raft.Ready{Entries: []raftpb.Entry{ent}}
 		n.readyc <- ready
@@ -1350,9 +860,13 @@ func TestAddMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
 		Node:        n,
@@ -1389,6 +903,62 @@ func TestAddMember(t *testing.T) {
 	}
 }
 
+// TestProcessIgnoreMismatchMessage tests Process must ignore messages to
+// mismatch member.
+func TestProcessIgnoreMismatchMessage(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	cl := newTestCluster(t)
+	st := v2store.New()
+	cl.SetStore(st)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
+	// Bootstrap a 3-node cluster, member IDs: 1 2 3.
+	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
+	cl.AddMember(&membership.Member{ID: types.ID(2)}, true)
+	cl.AddMember(&membership.Member{ID: types.ID(3)}, true)
+	// r is initialized with ID 1.
+	r := realisticRaftNode(lg, 1, &raftpb.Snapshot{
+		Metadata: raftpb.SnapshotMetadata{
+			Index: 11, // Magic number.
+			Term:  11, // Magic number.
+			ConfState: raftpb.ConfState{
+				// Member ID list.
+				Voters: []uint64{1, 2, 3},
+			},
+		},
+	})
+	defer r.raftNodeConfig.Stop()
+	s := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           lg,
+		memberID:     1,
+		r:            *r,
+		v2store:      st,
+		cluster:      cl,
+		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
+		SyncTicker:   &time.Ticker{},
+		consistIndex: cindex.NewFakeConsistentIndex(0),
+		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+	}
+	// Mock a mad switch dispatching messages to wrong node.
+	m := raftpb.Message{
+		Type:   raftpb.MsgHeartbeat,
+		To:     2, // Wrong ID, s.MemberID() is 1.
+		From:   3,
+		Term:   11,
+		Commit: 42, // Commit is larger than the last index 11.
+	}
+	if types.ID(m.To) == s.MemberID() {
+		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
+	}
+	err := s.Process(context.Background(), m)
+	if err == nil {
+		t.Fatalf("Must ignore the message and return an error")
+	}
+}
+
 // TestRemoveMember tests RemoveMember can propose and perform node removal.
 func TestRemoveMember(t *testing.T) {
 	lg := zaptest.NewLogger(t)
@@ -1396,9 +966,13 @@ func TestRemoveMember(t *testing.T) {
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1438,13 +1012,16 @@ func TestRemoveMember(t *testing.T) {
 // TestUpdateMember tests RemoveMember can propose and perform node update.
 func TestUpdateMember(t *testing.T) {
 	lg := zaptest.NewLogger(t)
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	n := newNodeConfChangeCommitterRecorder()
 	n.readyc <- raft.Ready{
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
-	cl := newTestCluster(t, nil)
+	cl := newTestCluster(t)
 	st := v2store.New()
 	cl.SetStore(st)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
 		lg:          lg,
@@ -1486,19 +1063,20 @@ func TestUpdateMember(t *testing.T) {
 
 func TestPublishV3(t *testing.T) {
 	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
+	ch := make(chan any, 1)
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.Background())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		memberId:   1,
+		memberID:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
@@ -1563,12 +1141,13 @@ func TestPublishV3Retry(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         lg,
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		memberId:   1,
+		memberID:   1,
 		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),
@@ -1605,66 +1184,20 @@ func TestPublishV3Retry(t *testing.T) {
 	<-ch
 }
 
-func TestUpdateVersion(t *testing.T) {
-	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
-	// simulate that request has gone through consensus
-	ch <- Response{}
-	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
-	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zaptest.NewLogger(t),
-		memberId:   1,
-		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
-		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
-		cluster:    &membership.RaftCluster{},
-		w:          w,
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
-
-		ctx:    ctx,
-		cancel: cancel,
-	}
-	srv.updateClusterVersionV2("2.0.0")
-
-	action := n.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
-	data := action[0].Params[0].([]byte)
-	var r pb.Request
-	if err := r.Unmarshal(data); err != nil {
-		t.Fatalf("unmarshal request error: %v", err)
-	}
-	if r.Method != "PUT" {
-		t.Errorf("method = %s, want PUT", r.Method)
-	}
-	if wpath := path.Join(StoreClusterPrefix, "version"); r.Path != wpath {
-		t.Errorf("path = %s, want %s", r.Path, wpath)
-	}
-	if r.Val != "2.0.0" {
-		t.Errorf("val = %s, want %s", r.Val, "2.0.0")
-	}
-}
-
 func TestUpdateVersionV3(t *testing.T) {
 	n := newNodeRecorder()
-	ch := make(chan interface{}, 1)
+	ch := make(chan any, 1)
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
 	ctx, cancel := context.WithCancel(context.TODO())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
 	srv := &EtcdServer{
 		lgMu:       new(sync.RWMutex),
 		lg:         zaptest.NewLogger(t),
-		memberId:   1,
+		memberID:   1,
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
 		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
@@ -1773,7 +1306,7 @@ func (n *nodeRecorder) Campaign(ctx context.Context) error {
 	return nil
 }
 func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
-	n.Record(testutil.Action{Name: "Propose", Params: []interface{}{data}})
+	n.Record(testutil.Action{Name: "Propose", Params: []any{data}})
 	return nil
 }
 func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChangeI) error {
@@ -1790,7 +1323,7 @@ func (n *nodeRecorder) TransferLeadership(ctx context.Context, lead, transferee 
 func (n *nodeRecorder) ReadIndex(ctx context.Context, rctx []byte) error                { return nil }
 func (n *nodeRecorder) Advance()                                                        {}
 func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChangeI) *raftpb.ConfState {
-	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []interface{}{conf}})
+	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []any{conf}})
 	return &raftpb.ConfState{}
 }
 
@@ -1806,17 +1339,7 @@ func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
 	n.Record(testutil.Action{Name: "Compact"})
 }
 
-type nodeProposalBlockerRecorder struct {
-	nodeRecorder
-}
-
-func newProposalBlockerRecorder() *nodeProposalBlockerRecorder {
-	return &nodeProposalBlockerRecorder{*newNodeRecorderStream()}
-}
-
-func (n *nodeProposalBlockerRecorder) Propose(ctx context.Context, data []byte) error {
-	<-ctx.Done()
-	n.Record(testutil.Action{Name: "Propose blocked"})
+func (n *nodeRecorder) ForgetLeader(ctx context.Context) error {
 	return nil
 }
 
@@ -1884,27 +1407,14 @@ func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange
 	return &raftpb.ConfState{}
 }
 
-// nodeCommitter commits proposed data immediately.
-type nodeCommitter struct {
-	readyNode
-	index uint64
+func newTestCluster(t testing.TB) *membership.RaftCluster {
+	return membership.NewCluster(zaptest.NewLogger(t))
 }
 
-func newNodeCommitter() raft.Node {
-	return &nodeCommitter{*newNopReadyNode(), 0}
-}
-func (n *nodeCommitter) Propose(ctx context.Context, data []byte) error {
-	n.index++
-	ents := []raftpb.Entry{{Index: n.index, Data: data}}
-	n.readyc <- raft.Ready{
-		Entries:          ents,
-		CommittedEntries: ents,
-	}
-	return nil
-}
-
-func newTestCluster(t testing.TB, membs []*membership.Member) *membership.RaftCluster {
-	c := membership.NewCluster(zaptest.NewLogger(t))
+func newTestClusterWithBackend(t testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
+	lg := zaptest.NewLogger(t)
+	c := membership.NewCluster(lg)
+	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
 		c.AddMember(m, true)
 	}

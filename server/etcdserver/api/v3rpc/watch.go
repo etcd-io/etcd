@@ -21,6 +21,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -30,8 +32,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
-
-	"go.uber.org/zap"
 )
 
 const minWatchProgressInterval = 100 * time.Millisecond
@@ -55,7 +55,7 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		lg: s.Cfg.Logger,
 
 		clusterID: int64(s.Cluster().ID()),
-		memberID:  int64(s.MemberId()),
+		memberID:  int64(s.MemberID()),
 
 		maxRequestBytes: int(s.Cfg.MaxRequestBytes + grpcOverheadBytes),
 
@@ -145,10 +145,6 @@ type serverWatchStream struct {
 	// records fragmented watch IDs
 	fragment map[mvcc.WatchID]bool
 
-	// indicates whether we have an outstanding global progress
-	// notification to send
-	deferredProgress bool
-
 	// closec indicates the stream is closed.
 	closec chan struct{}
 
@@ -177,8 +173,6 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 		progress: make(map[mvcc.WatchID]bool),
 		prevKV:   make(map[mvcc.WatchID]bool),
 		fragment: make(map[mvcc.WatchID]bool),
-
-		deferredProgress: false,
 
 		closec: make(chan struct{}),
 	}
@@ -367,14 +361,7 @@ func (sws *serverWatchStream) recvLoop() error {
 		case *pb.WatchRequest_ProgressRequest:
 			if uv.ProgressRequest != nil {
 				sws.mu.Lock()
-				// Ignore if deferred progress notification is already in progress
-				if !sws.deferredProgress {
-					// Request progress for all watchers,
-					// force generation of a response
-					if !sws.watchStream.RequestProgressAll() {
-						sws.deferredProgress = true
-					}
-				}
+				sws.watchStream.RequestProgressAll()
 				sws.mu.Unlock()
 			}
 		default:
@@ -462,6 +449,7 @@ func (sws *serverWatchStream) sendLoop() {
 			sws.mu.RUnlock()
 
 			var serr error
+			// gofail: var beforeSendWatchResponse struct{}
 			if !fragmented && !ok {
 				serr = sws.gRPCStream.Send(wr)
 			} else {
@@ -482,11 +470,6 @@ func (sws *serverWatchStream) sendLoop() {
 			if len(evs) > 0 && sws.progress[wresp.WatchID] {
 				// elide next progress update if sent a key update
 				sws.progress[wresp.WatchID] = false
-			}
-			if sws.deferredProgress {
-				if sws.watchStream.RequestProgressAll() {
-					sws.deferredProgress = false
-				}
 			}
 			sws.mu.Unlock()
 

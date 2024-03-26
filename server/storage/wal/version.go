@@ -23,9 +23,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	"go.etcd.io/etcd/api/v3/version"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -161,7 +160,7 @@ func visitMessageDescriptor(md protoreflect.MessageDescriptor, visitor Visitor) 
 
 	enums := md.Enums()
 	for i := 0; i < enums.Len(); i++ {
-		err := visitEnumDescriptor(enums.Get(i), visitor)
+		err = visitEnumDescriptor(enums.Get(i), visitor)
 		if err != nil {
 			return err
 		}

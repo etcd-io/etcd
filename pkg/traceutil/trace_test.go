@@ -40,7 +40,7 @@ func TestGet(t *testing.T) {
 		},
 		{
 			name:        "When the context has trace",
-			inputCtx:    context.WithValue(context.Background(), TraceKey, traceForTest),
+			inputCtx:    context.WithValue(context.Background(), TraceKey{}, traceForTest),
 			outputTrace: traceForTest,
 		},
 	}
@@ -51,7 +51,7 @@ func TestGet(t *testing.T) {
 			if trace == nil {
 				t.Errorf("Expected %v; Got nil", tt.outputTrace)
 			}
-			if trace.operation != tt.outputTrace.operation {
+			if tt.outputTrace == nil || trace.operation != tt.outputTrace.operation {
 				t.Errorf("Expected %v; Got %v", tt.outputTrace, trace)
 			}
 		})

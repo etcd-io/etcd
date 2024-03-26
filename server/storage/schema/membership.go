@@ -18,13 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
-
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
 )
 
 const (
@@ -93,12 +93,12 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	tx.RLock()
 	defer tx.RUnlock()
 	err := tx.UnsafeForEach(Members, func(k, v []byte) error {
-		memberId := mustParseMemberIDFromBytes(s.lg, k)
-		m := &membership.Member{ID: memberId}
+		memberID := mustParseMemberIDFromBytes(s.lg, k)
+		m := &membership.Member{ID: memberID}
 		if err := json.Unmarshal(v, &m); err != nil {
 			return err
 		}
-		members[memberId] = m
+		members[memberID] = m
 		return nil
 	})
 	if err != nil {
@@ -106,8 +106,8 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 	}
 
 	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
-		memberId := mustParseMemberIDFromBytes(s.lg, k)
-		removed[memberId] = true
+		memberID := mustParseMemberIDFromBytes(s.lg, k)
+		removed[memberID] = true
 		return nil
 	})
 	if err != nil {
@@ -207,8 +207,8 @@ func (s *membershipBackend) ClusterVersionFromBackend() *semver.Version {
 func (s *membershipBackend) DowngradeInfoFromBackend() *version.DowngradeInfo {
 	dkey := ClusterDowngradeKeyName
 	tx := s.be.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	keys, vals := tx.UnsafeRange(Cluster, dkey, nil, 0)
 	if len(keys) == 0 {
 		return nil

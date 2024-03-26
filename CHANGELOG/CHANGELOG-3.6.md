@@ -40,6 +40,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
 - Add [optional --bump-revision and --mark-compacted flag to etcdutl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16029).
+- Removed [legacy etcdutl backup](https://github.com/etcd-io/etcd/pull/16662)
 
 ### Package `clientv3`
 
@@ -54,8 +55,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `datadir` was moved to `storage/datadir`
 
 ### Package `raft`
-- Send empty `MsgApp` when entry in-flight limits are exceeded. See [pull/14633](https://github.com/etcd-io/etcd/pull/14633).
-- Add [MaxInflightBytes](https://github.com/etcd-io/etcd/pull/14624) setting in `raft.Config` for better flow control of entries.
 - [Decouple raft from etcd](https://github.com/etcd-io/etcd/issues/14713). Migrated raft to a separate [repository](https://github.com/etcd-io/raft), and renamed raft module to `go.etcd.io/raft/v3`.
 
 ### etcd server
@@ -64,7 +63,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcd --experimental-max-learners`](https://github.com/etcd-io/etcd/pull/13377) flag to allow configuration of learner max membership.
 - Add [`etcd --experimental-enable-lease-checkpoint-persist`](https://github.com/etcd-io/etcd/pull/13508) flag to handle upgrade from v3.5.2 clusters with this feature enabled.
 - Add [`etcdctl make-mirror --rev`](https://github.com/etcd-io/etcd/pull/13519) flag to support incremental mirror.
-- Add [`etcd --experimental-wait-cluster-ready-timeout`](https://github.com/etcd-io/etcd/pull/13525) flag to wait for cluster to be ready before serving client requests.
 - Add [v3 discovery](https://github.com/etcd-io/etcd/pull/13635) to bootstrap a new etcd cluster.
 - Add [field `storage`](https://github.com/etcd-io/etcd/pull/13772) into the response body of endpoint `/version`.
 - Add [`etcd --max-concurrent-streams`](https://github.com/etcd-io/etcd/pull/14169) flag to configure the max concurrent streams each client can open at a time, and defaults to math.MaxUint32.
@@ -76,6 +74,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcd --experimental-snapshot-catch-up-entries`](https://github.com/etcd-io/etcd/pull/15033) flag to configure number of entries for a slow follower to catch up after compacting the raft storage entries and defaults to 5k. 
 - Decreased [`--snapshot-count` default value from 100,000 to 10,000](https://github.com/etcd-io/etcd/pull/15408)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15156) to enable support for TLS 1.3.
+- Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/16278) to enable client failover on defrag.
 
 ### etcd grpc-proxy
 
@@ -94,11 +93,12 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
 
 ### Go
-- Require [Go 1.19+](https://github.com/etcd-io/etcd/pull/14463).
-- Compile with [Go 1.19+](https://golang.org/doc/devel/release.html#go1.19). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
+- Require [Go 1.21+](https://github.com/etcd-io/etcd/pull/16594).
+- Compile with [Go 1.21+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
 
 ### Other
 
 - Use Distroless as base image to make the image less vulnerable and reduce image size.
+- [Upgrade grpc-gateway from v1 to v2](https://github.com/etcd-io/etcd/pull/16595).
 
 <hr>

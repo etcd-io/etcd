@@ -32,7 +32,9 @@ func HandleHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(lg, func(excludedAlarms etcdhttp.AlarmSet, serializable bool) etcdhttp.Health { return checkHealth(c) }))
+	mux.Handle(etcdhttp.PathHealth, etcdhttp.NewHealthHandler(lg, func(ctx context.Context, excludedAlarms etcdhttp.StringSet, serializable bool) etcdhttp.Health {
+		return checkHealth(c)
+	}))
 }
 
 // HandleProxyHealth registers health handler on '/proxy/health'.
@@ -40,7 +42,9 @@ func HandleProxyHealth(lg *zap.Logger, mux *http.ServeMux, c *clientv3.Client) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	mux.Handle(etcdhttp.PathProxyHealth, etcdhttp.NewHealthHandler(lg, func(excludedAlarms etcdhttp.AlarmSet, serializable bool) etcdhttp.Health { return checkProxyHealth(c) }))
+	mux.Handle(etcdhttp.PathProxyHealth, etcdhttp.NewHealthHandler(lg, func(ctx context.Context, excludedAlarms etcdhttp.StringSet, serializable bool) etcdhttp.Health {
+		return checkProxyHealth(c)
+	}))
 }
 
 func checkHealth(c *clientv3.Client) etcdhttp.Health {

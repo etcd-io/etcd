@@ -5,6 +5,7 @@ This document outlines basics of contributing to etcd.
 
 This is a rough outline of what a contributor's workflow looks like:
 * [Find something to work on](#Find-something-to-work-on)
+  * [Check for flaky tests](#Check-for-flaky-tests)
 * [Setup development environment](#Setup-development-environment)
 * [Implement your change](#Implement-your-change)
 * [Commit your change](#Commit-your-change)
@@ -38,10 +39,39 @@ Depending on your interest and experience you should check different labels:
 If any of aforementioned labels don't have unassigned issues, please [contact] one of the [maintainers] asking to triage more issues.
 
 [github issue tracker]: https://github.com/etcd-io/etcd/issues
-[good first issue]: https://github.com/etcd-io/etcd/labels/good%20first%20issue
-[help wanted]: https://github.com/etcd-io/etcd/labels/help%20wanted
-[maintainers]: https://github.com/etcd-io/etcd/blob/main/MAINTAINERS
-[priority/important]: https://github.com/etcd-io/etcd/labels/priority%2Fimportant
+[good first issue]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22good+first+issue%22
+[help wanted]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22help+wanted%22
+[maintainers]: https://github.com/etcd-io/etcd/blob/main/OWNERS
+[priority/important]: https://github.com/search?type=issues&q=org%3Aetcd-io+state%3Aopen++label%3A%22priority%2Fimportant%22
+
+### Check for flaky tests
+
+The project could always use some help to deflake tests. [These](https://github.com/etcd-io/etcd/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fflake) are the currently open flaky test issues.
+
+For more, because etcd uses Kubernetes' prow infrastructure to run CI jobs, the past test results can be viewed at [testgrid](https://testgrid.k8s.io/sig-etcd).
+
+| Tests  | Status  |
+| -----  | ------  |
+| periodics e2e-amd64  | [![sig-etcd-periodics/ci-etcd-e2e-amd64](https://testgrid.k8s.io/q/summary/sig-etcd-periodics/ci-etcd-e2e-amd64/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-periodics/ci-etcd-e2e-amd64)  |
+| presubmit build      | [![sig-etcd-presubmits/pull-etcd-build](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-build/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-build)  |
+| presubmit e2e-amd64  | [![sig-etcd-presubmits/pull-etcd-e2e-amd64](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-e2e-amd64/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-e2e-amd64)  |
+| presubmit unit-test  | [![sig-etcd-presubmits/pull-etcd-unit-test](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-unit-test/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-unit-test)  |
+| presubmit verify     | [![sig-etcd-presubmits/pull-etcd-verify](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-verify/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-presubmits/pull-etcd-verify)  |
+| postsubmit build     | [![sig-etcd-postsubmits/post-etcd-build](https://testgrid.k8s.io/q/summary/sig-etcd-postsubmits/post-etcd-build/tests_status?style=svg)](https://testgrid.k8s.io/q/summary/sig-etcd-postsubmits/post-etcd-build)  |
+
+If you find any flaky tests on testgrid, please
+
+1. Check [existing issues](https://github.com/etcd-io/etcd/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fflake) to see if an issue has already been opened for this test. If not, open an issue with the `type/flake` label.
+2. Try to reproduce the flaky test on your machine via `stress`, for example to reproduce the failure of `TestPeriodicSkipRevNotChange`:
+
+```bash
+cd server/etcdserver/api/v3compactor
+# compile the test
+go test -v -c -count 1 -run "^TestPeriodicSkipRevNotChange$"
+# run the compiled test file using stress
+stress -p=8 ./v3compactor.test
+```
+3. Fix it.
 
 ## Setup development environment
 
@@ -50,7 +80,7 @@ The etcd project supports two options for development:
  1. Manually setup local environment.
  2. Automatically setup [devcontainer](https://containers.dev).
 
-For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and mainter support that is currently lacking in the etcd project.
+For both options the only supported architecture is `linux-amd64`. Bug reports for other environments will generally be ignored. Supporting new environments requires introduction of proper tests and maintainer support that is currently lacking in the etcd project.
 
 If you would like etcd to support your preferred environment you can [file an issue].
 
@@ -62,8 +92,10 @@ Follow the steps below to setup the environment:
 
 - [Clone the repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
 - Install Go by following [installation](https://go.dev/doc/install). Please check minimal go version in [go.mod file](./go.mod#L3).
-- Install build tools (`make`):
-  - For debian based distributions you can run `sudo apt-get install build-essential`
+- Install build tools:
+  - `make`: For debian based distributions you can run `sudo apt-get install build-essential`
+  - `protoc`: You can download for your os. Use version [`v3.20.3`](https://github.com/protocolbuffers/protobuf/releases/tag/v3.20.3).
+  - `yamllint`: For debian based distribution you can run `sudo apt-get install yamllint`
 - Verify that everything is installed by running `make build`
 
 Note: `make build` runs with `-v`. Other build flags can be added through env `GO_BUILD_FLAGS`, **if required**. Eg.,
@@ -135,6 +167,11 @@ Please follow [making a pull request](https://docs.github.com/en/get-started/qui
 If you are still working on the pull request, you can convert it to draft by clicking `Convert to draft` link just below list of reviewers.
 
 Multiple small PRs are preferred over single large ones (>500 lines of code).
+
+Please make sure there is an associated issue for each PR you submit. Create one if it doesn't exist yet, and close the issue
+once the PR gets merged and has been backported to previous stable releases, if necessary. If there are multiple PRs linked to
+the same issue, refrain from closing the issue until all PRs have been merged and, if needed, backported to previous stable
+releases.
 
 ## Get your pull request reviewed
 

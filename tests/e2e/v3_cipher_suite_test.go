@@ -23,15 +23,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestV3CurlCipherSuitesValid(t *testing.T)    { testV3CurlCipherSuites(t, true) }
-func TestV3CurlCipherSuitesMismatch(t *testing.T) { testV3CurlCipherSuites(t, false) }
-func testV3CurlCipherSuites(t *testing.T, valid bool) {
+func TestCurlV3CipherSuitesValid(t *testing.T)    { testCurlV3CipherSuites(t, true) }
+func TestCurlV3CipherSuitesMismatch(t *testing.T) { testCurlV3CipherSuites(t, false) }
+func testCurlV3CipherSuites(t *testing.T, valid bool) {
 	cc := e2e.NewConfigClientTLS()
 	cc.ClusterSize = 1
-	cc.CipherSuites = []string{
+	cc.ServerConfig.CipherSuites = []string{
 		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
@@ -49,7 +50,7 @@ func testV3CurlCipherSuites(t *testing.T, valid bool) {
 func cipherSuiteTestValid(cx ctlCtx) {
 	if err := e2e.CURLGet(cx.epc, e2e.CURLReq{
 		Endpoint: "/metrics",
-		Expected: fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version),
+		Expected: expect.ExpectedResponse{Value: fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
 		Ciphers:  "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 	}); err != nil {
 		require.ErrorContains(cx.t, err, fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version))
@@ -59,7 +60,7 @@ func cipherSuiteTestValid(cx ctlCtx) {
 func cipherSuiteTestMismatch(cx ctlCtx) {
 	err := e2e.CURLGet(cx.epc, e2e.CURLReq{
 		Endpoint: "/metrics",
-		Expected: "failed setting cipher list",
+		Expected: expect.ExpectedResponse{Value: "failed setting cipher list"},
 		Ciphers:  "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
 	})
 	require.ErrorContains(cx.t, err, "curl: (59) failed setting cipher list")

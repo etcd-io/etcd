@@ -68,7 +68,7 @@ func main() {
 	}
 }
 
-func listBucketCommandFunc(cmd *cobra.Command, args []string) {
+func listBucketCommandFunc(_ *cobra.Command, args []string) {
 	if len(args) < 1 {
 		log.Fatalf("Must provide at least 1 argument (got %v)", args)
 	}
@@ -89,7 +89,7 @@ func listBucketCommandFunc(cmd *cobra.Command, args []string) {
 	}
 }
 
-func iterateBucketCommandFunc(cmd *cobra.Command, args []string) {
+func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
 	if len(args) != 2 {
 		log.Fatalf("Must provide 2 arguments (got %v)", args)
 	}
@@ -107,7 +107,7 @@ func iterateBucketCommandFunc(cmd *cobra.Command, args []string) {
 	}
 }
 
-func getHashCommandFunc(cmd *cobra.Command, args []string) {
+func getHashCommandFunc(_ *cobra.Command, args []string) {
 	if len(args) < 1 {
 		log.Fatalf("Must provide at least 1 argument (got %v)", args)
 	}

@@ -49,7 +49,9 @@ func NewTmpWAL(t testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL,
 		if err != nil {
 			t.Fatalf("Failed to open WAL: %v", err)
 		}
-		_, state, _, err := w.ReadAll()
+
+		var state raftpb.HardState
+		_, state, _, err = w.ReadAll()
 		if err != nil {
 			t.Fatalf("Failed to read WAL: %v", err)
 		}

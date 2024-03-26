@@ -24,14 +24,13 @@ import (
 
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/raft/v3"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestGetIDs(t *testing.T) {
@@ -208,7 +207,7 @@ func TestConfigChangeBlocksApply(t *testing.T) {
 		updateLead:       func(uint64) {},
 		updateLeadership: func(bool) {},
 	})
-	defer srv.r.Stop()
+	defer srv.r.stop()
 
 	n.readyc <- raft.Ready{
 		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},

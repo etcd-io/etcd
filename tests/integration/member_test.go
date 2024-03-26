@@ -18,9 +18,13 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -113,5 +117,32 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {
 			t.Errorf("#%d: got = %v, want %v", i, resp.Kvs[0], "bar")
 		}
+	}
+}
+
+func TestRemoveMember(t *testing.T) {
+	integration.BeforeTest(t)
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true, BackendBatchInterval: 1000 * time.Second})
+	defer c.Terminate(t)
+	// membership changes additionally require cluster to be stable for etcdserver.HealthInterval
+	time.Sleep(etcdserver.HealthInterval)
+
+	err := c.RemoveMember(t, c.Client(2), uint64(c.Members[0].ID()))
+	require.NoError(t, err)
+
+	checkMemberCount(t, c.Members[0], 2)
+	checkMemberCount(t, c.Members[1], 2)
+}
+
+func checkMemberCount(t *testing.T, m *integration.Member, expectedMemberCount int) {
+	be := schema.NewMembershipBackend(m.Logger, m.Server.Backend())
+	membersFromBackend, _ := be.MustReadMembersFromBackend()
+	if len(membersFromBackend) != expectedMemberCount {
+		t.Errorf("Expect member count read from backend=%d, got %d", expectedMemberCount, len(membersFromBackend))
+	}
+	membersResp, err := m.Client.MemberList(context.Background())
+	require.NoError(t, err)
+	if len(membersResp.Members) != expectedMemberCount {
+		t.Errorf("Expect len(MemberList)=%d, got %d", expectedMemberCount, len(membersResp.Members))
 	}
 }

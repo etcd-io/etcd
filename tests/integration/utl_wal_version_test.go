@@ -50,7 +50,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	// with the cluster's minimum version. As it's updated asynchronously,
 	// it could not be updated in time before close. Wait for it to become
 	// ready.
-	if err := waitForClusterVersionReady(srv); err != nil {
+	if err = waitForClusterVersionReady(srv); err != nil {
 		srv.Close()
 		t.Fatalf("failed to wait for cluster version to become ready: %v", err)
 	}

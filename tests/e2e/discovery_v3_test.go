@@ -21,6 +21,7 @@ import (
 	"strings"
 	"testing"
 
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -44,15 +45,15 @@ func TestTLSClusterOf5UsingV3Discovery_3endpoints(t *testing.T) {
 	testClusterUsingV3Discovery(t, 3, 5, e2e.ClientTLS, false)
 }
 
-func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClusterSize int, clientTlsType e2e.ClientConnType, isClientAutoTls bool) {
+func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClusterSize int, clientTLSType e2e.ClientConnType, isClientAutoTLS bool) {
 	e2e.BeforeTest(t)
 
 	// step 1: start the discovery service
 	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithClusterSize(discoveryClusterSize),
-		e2e.WithClientConnType(clientTlsType),
-		e2e.WithClientAutoTLS(isClientAutoTls),
+		e2e.WithClientConnType(clientTLSType),
+		e2e.WithClientAutoTLS(isClientAutoTLS),
 	)
 	if err != nil {
 		t.Fatalf("could not start discovery etcd cluster (%v)", err)
@@ -63,12 +64,12 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	discoveryToken := "8A591FAB-1D72-41FA-BDF2-A27162FDA1E0"
 	configSizeKey := fmt.Sprintf("/_etcd/registry/%s/_config/size", discoveryToken)
 	configSizeValStr := strconv.Itoa(targetClusterSize)
-	if err := ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
+	if err = ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
 		t.Errorf("failed to configure cluster size to discovery serivce, error: %v", err)
 	}
 
 	// step 3: start the etcd cluster
-	epc, err := bootstrapEtcdClusterUsingV3Discovery(t, ds.EndpointsGRPC(), discoveryToken, targetClusterSize, clientTlsType, isClientAutoTls)
+	epc, err := bootstrapEtcdClusterUsingV3Discovery(t, ds.EndpointsGRPC(), discoveryToken, targetClusterSize, clientTLSType, isClientAutoTLS)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -76,15 +77,15 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 
 	// step 4: sanity test on the etcd cluster
 	etcdctl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(epc.EndpointsGRPC(), ",")}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "put", "key", "value"), "OK"); err != nil {
+	if err := e2e.SpawnWithExpect(append(etcdctl, "put", "key", "value"), expect.ExpectedResponse{Value: "OK"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := e2e.SpawnWithExpect(append(etcdctl, "get", "key"), "value"); err != nil {
+	if err := e2e.SpawnWithExpect(append(etcdctl, "get", "key"), expect.ExpectedResponse{Value: "value"}); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []string, discoveryToken string, clusterSize int, clientTlsType e2e.ClientConnType, isClientAutoTls bool) (*e2e.EtcdProcessCluster, error) {
+func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []string, discoveryToken string, clusterSize int, clientTLSType e2e.ClientConnType, isClientAutoTLS bool) (*e2e.EtcdProcessCluster, error) {
 	// cluster configuration
 	cfg := e2e.NewConfig(
 		e2e.WithBasePort(3000),
@@ -106,8 +107,8 @@ func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []str
 	for _, ep := range epc.Procs {
 		epCfg := ep.Config()
 
-		if clientTlsType == e2e.ClientTLS {
-			if isClientAutoTls {
+		if clientTLSType == e2e.ClientTLS {
+			if isClientAutoTLS {
 				epCfg.Args = append(epCfg.Args, "--discovery-insecure-transport=false")
 				epCfg.Args = append(epCfg.Args, "--discovery-insecure-skip-tls-verify=true")
 			} else {
@@ -119,5 +120,5 @@ func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []str
 	}
 
 	// start the cluster
-	return e2e.StartEtcdProcessCluster(context.TODO(), epc, cfg)
+	return e2e.StartEtcdProcessCluster(context.TODO(), t, epc, cfg)
 }

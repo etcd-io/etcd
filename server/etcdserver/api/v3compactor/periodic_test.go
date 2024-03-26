@@ -216,7 +216,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 			fc.Advance(tb.getRetryInterval())
 		}
 
-		_, err := compactable.Wait(1)
+		_, err = compactable.Wait(1)
 		if err == nil {
 			t.Fatal(errors.New("should not compact since the revision not change"))
 		}

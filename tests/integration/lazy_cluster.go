@@ -31,7 +31,7 @@ import (
 // See ./tests/integration/clientv3/examples/main_test.go for canonical usage.
 // Please notice that the shared (LazyCluster's) state is preserved between
 // testcases, so left-over state might has cross-testcase effects.
-// Prefer dedicated clusters for substancial test-cases.
+// Prefer dedicated clusters for substantial test-cases.
 
 type LazyCluster interface {
 	// EndpointsHTTP - exposes connection points for http endpoints.
@@ -89,7 +89,10 @@ func (lc *lazyCluster) mustLazyInit() {
 }
 
 func (lc *lazyCluster) Terminate() {
-	lc.tb.Logf("Terminating...")
+	if lc != nil && lc.tb != nil {
+		lc.tb.Logf("Terminating...")
+	}
+
 	if lc != nil && lc.cluster != nil {
 		lc.cluster.Terminate(nil)
 		lc.cluster = nil

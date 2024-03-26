@@ -29,12 +29,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jonboulle/clockwork"
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v2"
-
-	"github.com/jonboulle/clockwork"
-	"go.uber.org/zap"
 )
 
 var (

@@ -37,10 +37,6 @@ func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) 
 func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
 
-func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
-}
-
 const (
 	// minTTL keep lease will not auto expire in benchmark
 	minTTL = 1000
@@ -94,7 +90,6 @@ func benchmarkLessorGrant(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		b.StartTimer()
@@ -121,7 +116,6 @@ func benchmarkLessorRevoke(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -152,7 +146,6 @@ func benchmarkLessorRenew(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -185,7 +178,6 @@ func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
-			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {

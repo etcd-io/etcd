@@ -33,7 +33,7 @@ func newPBPrinter() printer {
 	}
 }
 
-func printPB(v interface{}) {
+func printPB(v any) {
 	m, ok := v.(pbMarshal)
 	if !ok {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("marshal unsupported for type %T (%v)", v, v))

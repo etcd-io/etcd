@@ -42,7 +42,7 @@ func TestGateway(t *testing.T) {
 		p.Close()
 	}()
 
-	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, "OK\r\n")
+	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, expect.ExpectedResponse{Value: "OK\r\n"})
 	if err != nil {
 		t.Errorf("failed to finish put request through gateway: %v", err)
 	}

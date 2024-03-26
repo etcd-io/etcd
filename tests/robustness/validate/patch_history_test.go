@@ -315,17 +315,26 @@ func TestPatchHistory(t *testing.T) {
 			history.AppendPut("tombstone", "true", start, stop, &clientv3.PutResponse{Header: &etcdserverpb.ResponseHeader{Revision: 3}}, nil)
 			watch := []model.WatchResponse{
 				{
-					Events:   []model.WatchEvent{{Event: tc.event, Revision: 2}},
+					Events: []model.WatchEvent{
+						{
+							PersistedEvent: model.PersistedEvent{
+								Event: tc.event, Revision: 2,
+							},
+						},
+					},
 					Revision: 2,
 					Time:     time.Since(baseTime),
 				},
 				{
 					Events: []model.WatchEvent{
-						{Event: model.Event{
-							Type:  model.PutOperation,
-							Key:   "tombstone",
-							Value: model.ToValueOrHash("true"),
-						}, Revision: 3},
+						{
+							PersistedEvent: model.PersistedEvent{
+								Event: model.Event{
+									Type:  model.PutOperation,
+									Key:   "tombstone",
+									Value: model.ToValueOrHash("true"),
+								}, Revision: 3},
+						},
 					},
 					Revision: 3,
 					Time:     time.Since(baseTime),

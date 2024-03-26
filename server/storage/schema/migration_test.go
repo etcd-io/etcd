@@ -221,7 +221,7 @@ type actionMock struct {
 	err      error
 }
 
-func (a actionMock) unsafeDo(tx backend.BatchTx) (action, error) {
+func (a actionMock) unsafeDo(tx backend.UnsafeReadWriter) (action, error) {
 	a.recorder.actions = append(a.recorder.actions, a.name)
 	return actionMock{
 		recorder: a.recorder,

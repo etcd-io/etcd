@@ -22,28 +22,19 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-
-	"go.uber.org/zap"
 )
 
 var (
 	ErrCompacted = errors.New("mvcc: required revision has been compacted")
 	ErrFutureRev = errors.New("mvcc: required revision is a future revision")
-)
-
-const (
-	// markedRevBytesLen is the byte length of marked revision.
-	// The first `revBytesLen` bytes represents a normal revision. The last
-	// one byte is the mark.
-	markedRevBytesLen      = revBytesLen + 1
-	markBytePosition       = markedRevBytesLen - 1
-	markTombstone     byte = 't'
 )
 
 var restoreChunkKeys = 10000 // non-const for testing
@@ -228,8 +219,8 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
 // checkPrevCompactionCompleted checks whether the previous scheduled compaction is completed.
 func (s *store) checkPrevCompactionCompleted() bool {
 	tx := s.b.ReadTx()
-	tx.Lock()
-	defer tx.Unlock()
+	tx.RLock()
+	defer tx.RUnlock()
 	scheduledCompact, scheduledCompactFound := UnsafeReadScheduledCompact(tx)
 	finishedCompact, finishedCompactFound := UnsafeReadFinishedCompact(tx)
 	return scheduledCompact == finishedCompact && scheduledCompactFound == finishedCompactFound
@@ -320,15 +311,15 @@ func (s *store) Restore(b backend.Backend) error {
 func (s *store) restore() error {
 	s.setupMetricsReporter()
 
-	min, max := newRevBytes(), newRevBytes()
-	revToBytes(revision{main: 1}, min)
-	revToBytes(revision{main: math.MaxInt64, sub: math.MaxInt64}, max)
+	min, max := NewRevBytes(), NewRevBytes()
+	min = RevToBytes(Revision{Main: 1}, min)
+	max = RevToBytes(Revision{Main: math.MaxInt64, Sub: math.MaxInt64}, max)
 
 	keyToLease := make(map[string]lease.LeaseID)
 
 	// restore index
 	tx := s.b.ReadTx()
-	tx.Lock()
+	tx.RLock()
 
 	finishedCompact, found := UnsafeReadFinishedCompact(tx)
 	if found {
@@ -359,9 +350,9 @@ func (s *store) restore() error {
 			break
 		}
 		// next set begins after where this one ended
-		newMin := bytesToRev(keys[len(keys)-1][:revBytesLen])
-		newMin.sub++
-		revToBytes(newMin, min)
+		newMin := BytesToRev(keys[len(keys)-1][:revBytesLen])
+		newMin.Sub++
+		min = RevToBytes(newMin, min)
 	}
 	close(rkvc)
 
@@ -384,7 +375,7 @@ func (s *store) restore() error {
 
 	for key, lid := range keyToLease {
 		if s.le == nil {
-			tx.Unlock()
+			tx.RUnlock()
 			panic("no lessor to attach lease")
 		}
 		err := s.le.Attach(lid, []lease.LeaseItem{{Key: key}})
@@ -397,7 +388,7 @@ func (s *store) restore() error {
 		}
 	}
 
-	tx.Unlock()
+	tx.RUnlock()
 
 	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
 
@@ -448,18 +439,18 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					ok = true
 				}
 			}
-			rev := bytesToRev(rkv.key)
-			currentRev = rev.main
+			rev := BytesToRev(rkv.key)
+			currentRev = rev.Main
 			if ok {
 				if isTombstone(rkv.key) {
-					if err := ki.tombstone(lg, rev.main, rev.sub); err != nil {
+					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {
 						lg.Warn("tombstone encountered error", zap.Error(err))
 					}
 					continue
 				}
-				ki.put(lg, rev.main, rev.sub)
+				ki.put(lg, rev.Main, rev.Sub)
 			} else if !isTombstone(rkv.key) {
-				ki.restore(lg, revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				ki.restore(lg, Revision{Main: rkv.kv.CreateRevision}, rev, rkv.kv.Version)
 				idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}
@@ -517,23 +508,6 @@ func (s *store) setupMetricsReporter() {
 		return float64(s.compactMainRev)
 	}
 	reportCompactRevMu.Unlock()
-}
-
-// appendMarkTombstone appends tombstone mark to normal revision bytes.
-func appendMarkTombstone(lg *zap.Logger, b []byte) []byte {
-	if len(b) != revBytesLen {
-		lg.Panic(
-			"cannot append tombstone mark to non-normal revision bytes",
-			zap.Int("expected-revision-bytes-size", revBytesLen),
-			zap.Int("given-revision-bytes-size", len(b)),
-		)
-	}
-	return append(b, markTombstone)
-}
-
-// isTombstone checks whether the revision bytes is a tombstone.
-func isTombstone(b []byte) bool {
-	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
 }
 
 func (s *store) HashStorage() HashStorage {

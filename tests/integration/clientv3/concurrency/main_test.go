@@ -26,7 +26,7 @@ var lazyCluster = integration.NewLazyCluster()
 
 func exampleEndpoints() []string { return lazyCluster.EndpointsGRPC() }
 
-func forUnitTestsRunInMockedContext(mocking func(), example func()) {
+func forUnitTestsRunInMockedContext(_mocking func(), example func()) {
 	// For integration tests runs in the provided environment
 	example()
 }

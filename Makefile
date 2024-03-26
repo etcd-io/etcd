@@ -63,9 +63,10 @@ fuzz:
 # Static analysis
 
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
-	verify-govet verify-license-header verify-receiver-name verify-mod-tidy verify-shellcheck \
-	verify-shellws verify-proto-annotations verify-genproto verify-goimport verify-yamllint
-fix: fix-goimports fix-bom fix-lint fix-yamllint
+	verify-govet verify-license-header verify-receiver-name verify-mod-tidy \
+	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
+	verify-govet-shadow verify-markdown-marker
+fix: fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -85,12 +86,12 @@ verify-dep:
 	PASSES="dep" ./scripts/test.sh
 
 .PHONY: verify-lint
-verify-lint:
-	golangci-lint run --config tools/.golangci.yaml
+verify-lint: install-golangci-lint
+	PASSES="lint" ./scripts/test.sh
 
 .PHONY: fix-lint
 fix-lint:
-	golangci-lint run --config tools/.golangci.yaml --fix
+	PASSES="lint_fix" ./scripts/test.sh
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
@@ -128,17 +129,25 @@ verify-proto-annotations:
 verify-genproto:
 	PASSES="genproto" ./scripts/test.sh
 
-.PHONY: verify-goimport
-verify-goimport:
-	PASSES="goimport" ./scripts/test.sh
-
-.PHONY: fix-goimports
-fix-goimports:
-	./scripts/fix-goimports.sh
-
 .PHONY: verify-yamllint
 verify-yamllint:
+ifeq (, $(shell which yamllint))
+	@echo "Installing yamllint..."
+	python3 -m venv bin/python
+	bin/python/bin/python3 -m pip install yamllint
+	./bin/python/bin/yamllint --config-file tools/.yamllint .
+else
+	@echo "yamllint already installed..."
 	yamllint --config-file tools/.yamllint .
+endif
+
+.PHONY: verify-govet-shadow
+verify-govet-shadow:
+	PASSES="govet_shadow" ./scripts/test.sh
+
+.PHONY: verify-markdown-marker
+verify-markdown-marker:
+	PASSES="markdown_marker" ./scripts/test.sh
 
 YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 
@@ -149,6 +158,25 @@ ifeq (, $(shell which yamlfmt))
 endif
 	yamlfmt -conf tools/.yamlfmt .
 
+# Tools
+
+GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
+.PHONY: install-golangci-lint
+install-golangci-lint:
+ifeq (, $(shell which golangci-lint))
+	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
+endif
+
+.PHONY: install-lazyfs
+install-lazyfs: bin/lazyfs
+bin/lazyfs:
+	rm /tmp/lazyfs -rf
+	git clone --depth 1 --branch 0.2.0 https://github.com/dsrhaslab/lazyfs /tmp/lazyfs
+	cd /tmp/lazyfs/libs/libpcache; ./build.sh
+	cd /tmp/lazyfs/lazyfs; ./build.sh
+	mkdir -p ./bin
+	cp /tmp/lazyfs/lazyfs/build/lazyfs ./bin/lazyfs
+
 # Cleanup
 
 clean:
@@ -156,6 +184,8 @@ clean:
 	rm -rf ./covdir
 	rm -f ./bin/Dockerfile-release
 	rm -rf ./bin/etcd*
+	rm -rf ./bin/lazyfs
+	rm -rf ./bin/python
 	rm -rf ./default.etcd
 	rm -rf ./tests/e2e/default.etcd
 	rm -rf ./release

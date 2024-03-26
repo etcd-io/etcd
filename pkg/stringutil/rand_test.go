@@ -15,16 +15,16 @@
 package stringutil
 
 import (
-	"fmt"
+	"sort"
 	"testing"
 )
 
 func TestUniqueStrings(t *testing.T) {
 	ss := UniqueStrings(10, 50)
+	sort.Strings(ss)
 	for i := 1; i < len(ss); i++ {
 		if ss[i-1] == ss[i] {
 			t.Fatalf("ss[i-1] %q == ss[i] %q", ss[i-1], ss[i])
 		}
 	}
-	fmt.Println(ss)
 }

@@ -29,12 +29,12 @@ import (
 )
 
 func TestScheduleCompaction(t *testing.T) {
-	revs := []revision{{1, 0}, {2, 0}, {3, 0}}
+	revs := []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}}
 
 	tests := []struct {
 		rev   int64
-		keep  map[revision]struct{}
-		wrevs []revision
+		keep  map[Revision]struct{}
+		wrevs []Revision
 	}{
 		// compact at 1 and discard all history
 		{
@@ -51,17 +51,17 @@ func TestScheduleCompaction(t *testing.T) {
 		// compact at 1 and keeps history one step earlier
 		{
 			1,
-			map[revision]struct{}{
-				{main: 1}: {},
+			map[Revision]struct{}{
+				{Main: 1}: {},
 			},
 			revs,
 		},
 		// compact at 1 and keeps history two steps earlier
 		{
 			3,
-			map[revision]struct{}{
-				{main: 2}: {},
-				{main: 3}: {},
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 3}: {},
 			},
 			revs[1:],
 		},
@@ -76,9 +76,9 @@ func TestScheduleCompaction(t *testing.T) {
 		tx := s.b.BatchTx()
 
 		tx.Lock()
-		ibytes := newRevBytes()
 		for _, rev := range revs {
-			revToBytes(rev, ibytes)
+			ibytes := NewRevBytes()
+			ibytes = RevToBytes(rev, ibytes)
 			tx.UnsafePut(schema.Key, ibytes, []byte("bar"))
 		}
 		tx.Unlock()
@@ -90,7 +90,8 @@ func TestScheduleCompaction(t *testing.T) {
 
 		tx.Lock()
 		for _, rev := range tt.wrevs {
-			revToBytes(rev, ibytes)
+			ibytes := NewRevBytes()
+			ibytes = RevToBytes(rev, ibytes)
 			keys, _ := tx.UnsafeRange(schema.Key, ibytes, nil, 0)
 			if len(keys) != 1 {
 				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))

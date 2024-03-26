@@ -20,11 +20,11 @@ import (
 	"sync"
 	"time"
 
-	v3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/report"
-
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
+
+	v3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/report"
 )
 
 // watchGetCmd represents the watch command
@@ -49,7 +49,7 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
 }
 
-func watchGetFunc(cmd *cobra.Command, args []string) {
+func watchGetFunc(_ *cobra.Command, _ []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 	getClient := mustCreateClients(1, 1)
 

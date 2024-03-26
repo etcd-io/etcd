@@ -4,11 +4,69 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.10 (tbd)
+## v3.5.13 (TBD)
 
 ### etcd server
+- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17425).
+- Fix [no progress notification being sent for watch that doesn't get any events](https://github.com/etcd-io/etcd/pull/17566).
+- Fix [watch event loss after compaction](https://github.com/etcd-io/etcd/pull/17612).
+
+### Package `clientv3`
+- Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
+- [Ignore SetKeepAlivePeriod errors on OpenBSD](https://github.com/etcd-io/etcd/pull/17387).
+- [Support unix/unixs socket in client or peer URLs](https://github.com/etcd-io/etcd/pull/15940)
+
+### gRPC Proxy
+- Add [three flags (see below) for grpc-proxy](https://github.com/etcd-io/etcd/pull/17447)
+  - `--dial-keepalive-time`
+  - `--dial-keepalive-timeout`
+  - `--permit-without-stream`
+
+### Dependencies
+- Upgrade [bbolt to v1.3.9](https://github.com/etcd-io/etcd/pull/17483).
+- Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17537).
+- Upgrade [google.golang.org/protobuf to v1.33.0 to address CVE-2024-24786](https://github.com/etcd-io/etcd/pull/17553).
+
+### Others
+- [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17421).
+
+<hr>
+
+## v3.5.12 (2024-01-31)
+
+### etcd server
+- Add [livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17039)
+- Fix [not validating database consistent index, and panicking on nil backend](https://github.com/etcd-io/etcd/pull/17151)
+- Document [`experimental-enable-lease-checkpoint-persist` flag in etcd help](https://github.com/etcd-io/etcd/pull/17190)
+- Fix [needlessly flocking snapshot files when deleting](https://github.com/etcd-io/etcd/pull/17206)
+- Add [digest for etcd base image](https://github.com/etcd-io/etcd/pull/17205)
+- Fix [delete inconsistencies in read buffer](https://github.com/etcd-io/etcd/pull/17230)
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17291)
+
+### Dependencies
+- Compile binaries using [go 1.20.13](https://github.com/etcd-io/etcd/pull/17275)
+- Upgrade [golang.org/x/crypto to v0.17+ to address CVE-2023-48795](https://github.com/etcd-io/etcd/pull/17346)
+
+## v3.5.11 (2023-12-07)
+
+### etcd server
+- Fix distributed tracing by ensuring `--experimental-distributed-tracing-sampling-rate` configuration option is available to [set tracing sample rate](https://github.com/etcd-io/etcd/pull/16951).
+- Fix [url redirects while checking peer urls during new member addition](https://github.com/etcd-io/etcd/pull/16986)
+
+### Dependencies
+- Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
+- Fix [CVE-2023-47108](https://github.com/advisories/GHSA-8pgv-569h-w5rw) by [bumping go.opentelemetry.io/otel to 1.20.0 and go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to 0.46.0](https://github.com/etcd-io/etcd/pull/16946).
+
+<hr>
+
+## v3.5.10 (2023-10-27)
+
+### etcd server
+- Fix [`--socket-reuse-port` and `--socket-reuse-address` not able to be set in configuration file](https://github.com/etcd-io/etcd/pull/16435).
 - Fix [corruption check may get a `ErrCompacted` error when server has just been compacted](https://github.com/etcd-io/etcd/pull/16048)
 - Improve [Lease put performance for the case that auth is disabled or the user is admin](https://github.com/etcd-io/etcd/pull/16019)
+- Improve [Skip getting authInfo from incoming context when auth is disabled](https://github.com/etcd-io/etcd/pull/16241)
+- Fix [Hash and HashKV have duplicated RESTful API](https://github.com/etcd-io/etcd/pull/16490)
 
 ### etcdutl v3
 - Add [optional --bump-revision and --mark-compacted flag to etcdutl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16165).
@@ -22,9 +80,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [Multiple endpoints with same prefix got mixed up](https://github.com/etcd-io/etcd/pull/15939)
 - Fix [Unexpected blocking when barrier waits on a nonexistent key](https://github.com/etcd-io/etcd/pull/16188)
+- Fix [Reset auth token when failing to authenticate due to auth being disabled](https://github.com/etcd-io/etcd/pull/16241)
+- Fix [panic in etcd validate secure endpoints](https://github.com/etcd-io/etcd/pull/16565)
 
 ### Dependencies
-- Compile binaries using [go 1.19.11](https://github.com/etcd-io/etcd/pull/16227).
+- Compile binaries using [go 1.20.10](https://github.com/etcd-io/etcd/pull/16745).
+- Upgrade gRPC to 1.58.3 in https://github.com/etcd-io/etcd/pull/16625, https://github.com/etcd-io/etcd/pull/16781 and https://github.com/etcd-io/etcd/pull/16790. Note that gRPC server will reject requests with connection header (refer to https://github.com/grpc/grpc-go/pull/4803).
+- Upgrade [bbolt to v1.3.8](https://github.com/etcd-io/etcd/pull/16833)
 
 <hr>
 

@@ -73,21 +73,21 @@ var (
 //	{empty} -> key SHOULD be removed.
 type keyIndex struct {
 	key         []byte
-	modified    revision // the main rev of the last modification
+	modified    Revision // the main rev of the last modification
 	generations []generation
 }
 
 // put puts a revision to the keyIndex.
 func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64) {
-	rev := revision{main: main, sub: sub}
+	rev := Revision{Main: main, Sub: sub}
 
 	if !rev.GreaterThan(ki.modified) {
 		lg.Panic(
 			"'put' with an unexpected smaller revision",
-			zap.Int64("given-revision-main", rev.main),
-			zap.Int64("given-revision-sub", rev.sub),
-			zap.Int64("modified-revision-main", ki.modified.main),
-			zap.Int64("modified-revision-sub", ki.modified.sub),
+			zap.Int64("given-revision-main", rev.Main),
+			zap.Int64("given-revision-sub", rev.Sub),
+			zap.Int64("modified-revision-main", ki.modified.Main),
+			zap.Int64("modified-revision-sub", ki.modified.Sub),
 		)
 	}
 	if len(ki.generations) == 0 {
@@ -103,7 +103,7 @@ func (ki *keyIndex) put(lg *zap.Logger, main int64, sub int64) {
 	ki.modified = rev
 }
 
-func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int64) {
+func (ki *keyIndex) restore(lg *zap.Logger, created, modified Revision, ver int64) {
 	if len(ki.generations) != 0 {
 		lg.Panic(
 			"'restore' got an unexpected non-empty generations",
@@ -112,7 +112,7 @@ func (ki *keyIndex) restore(lg *zap.Logger, created, modified revision, ver int6
 	}
 
 	ki.modified = modified
-	g := generation{created: created, ver: ver, revs: []revision{modified}}
+	g := generation{created: created, ver: ver, revs: []Revision{modified}}
 	ki.generations = append(ki.generations, g)
 	keysGauge.Inc()
 }
@@ -138,7 +138,7 @@ func (ki *keyIndex) tombstone(lg *zap.Logger, main int64, sub int64) error {
 
 // get gets the modified, created revision and version of the key that satisfies the given atRev.
 // Rev must be smaller than or equal to the given atRev.
-func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created revision, ver int64, err error) {
+func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created Revision, ver int64, err error) {
 	if ki.isEmpty() {
 		lg.Panic(
 			"'get' got an unexpected empty keyIndex",
@@ -147,28 +147,28 @@ func (ki *keyIndex) get(lg *zap.Logger, atRev int64) (modified, created revision
 	}
 	g := ki.findGeneration(atRev)
 	if g.isEmpty() {
-		return revision{}, revision{}, 0, ErrRevisionNotFound
+		return Revision{}, Revision{}, 0, ErrRevisionNotFound
 	}
 
-	n := g.walk(func(rev revision) bool { return rev.main > atRev })
+	n := g.walk(func(rev Revision) bool { return rev.Main > atRev })
 	if n != -1 {
 		return g.revs[n], g.created, g.ver - int64(len(g.revs)-n-1), nil
 	}
 
-	return revision{}, revision{}, 0, ErrRevisionNotFound
+	return Revision{}, Revision{}, 0, ErrRevisionNotFound
 }
 
 // since returns revisions since the given rev. Only the revision with the
 // largest sub revision will be returned if multiple revisions have the same
 // main revision.
-func (ki *keyIndex) since(lg *zap.Logger, rev int64) []revision {
+func (ki *keyIndex) since(lg *zap.Logger, rev int64) []Revision {
 	if ki.isEmpty() {
 		lg.Panic(
 			"'since' got an unexpected empty keyIndex",
 			zap.String("key", string(ki.key)),
 		)
 	}
-	since := revision{rev, 0}
+	since := Revision{Main: rev}
 	var gi int
 	// find the generations to start checking
 	for gi = len(ki.generations) - 1; gi > 0; gi-- {
@@ -181,21 +181,21 @@ func (ki *keyIndex) since(lg *zap.Logger, rev int64) []revision {
 		}
 	}
 
-	var revs []revision
+	var revs []Revision
 	var last int64
 	for ; gi < len(ki.generations); gi++ {
 		for _, r := range ki.generations[gi].revs {
 			if since.GreaterThan(r) {
 				continue
 			}
-			if r.main == last {
+			if r.Main == last {
 				// replace the revision with a new one that has higher sub value,
 				// because the original one should not be seen by external
 				revs[len(revs)-1] = r
 				continue
 			}
 			revs = append(revs, r)
-			last = r.main
+			last = r.Main
 		}
 	}
 	return revs
@@ -205,7 +205,7 @@ func (ki *keyIndex) since(lg *zap.Logger, rev int64) []revision {
 // revision than the given atRev except the largest one (If the largest one is
 // a tombstone, it will not be kept).
 // If a generation becomes empty during compaction, it will be removed.
-func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]struct{}) {
+func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[Revision]struct{}) {
 	if ki.isEmpty() {
 		lg.Panic(
 			"'compact' got an unexpected empty keyIndex",
@@ -233,7 +233,7 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[revision]
 }
 
 // keep finds the revision to be kept if compact is called at given atRev.
-func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
+func (ki *keyIndex) keep(atRev int64, available map[Revision]struct{}) {
 	if ki.isEmpty() {
 		return
 	}
@@ -248,11 +248,11 @@ func (ki *keyIndex) keep(atRev int64, available map[revision]struct{}) {
 	}
 }
 
-func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (genIdx int, revIndex int) {
+func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (genIdx int, revIndex int) {
 	// walk until reaching the first revision smaller or equal to "atRev",
 	// and add the revision to the available map
-	f := func(rev revision) bool {
-		if rev.main <= atRev {
+	f := func(rev Revision) bool {
+		if rev.Main <= atRev {
 			available[rev] = struct{}{}
 			return false
 		}
@@ -262,7 +262,7 @@ func (ki *keyIndex) doCompact(atRev int64, available map[revision]struct{}) (gen
 	genIdx, g := 0, &ki.generations[0]
 	// find first generation includes atRev or created after atRev
 	for genIdx < len(ki.generations)-1 {
-		if tomb := g.revs[len(g.revs)-1].main; tomb > atRev {
+		if tomb := g.revs[len(g.revs)-1].Main; tomb > atRev {
 			break
 		}
 		genIdx++
@@ -292,11 +292,11 @@ func (ki *keyIndex) findGeneration(rev int64) *generation {
 		}
 		g := ki.generations[cg]
 		if cg != lastg {
-			if tomb := g.revs[len(g.revs)-1].main; tomb <= rev {
+			if tomb := g.revs[len(g.revs)-1].Main; tomb <= rev {
 				return nil
 			}
 		}
-		if g.revs[0].main <= rev {
+		if g.revs[0].Main <= rev {
 			return &ki.generations[cg]
 		}
 		cg--
@@ -338,8 +338,8 @@ func (ki *keyIndex) String() string {
 // generation contains multiple revisions of a key.
 type generation struct {
 	ver     int64
-	created revision // when the generation is created (put in first revision).
-	revs    []revision
+	created Revision // when the generation is created (put in first revision).
+	revs    []Revision
 }
 
 func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
@@ -349,7 +349,7 @@ func (g *generation) isEmpty() bool { return g == nil || len(g.revs) == 0 }
 // walk returns until: 1. it finishes walking all pairs 2. the function returns false.
 // walk returns the position at where it stopped. If it stopped after
 // finishing walking, -1 will be returned.
-func (g *generation) walk(f func(rev revision) bool) int {
+func (g *generation) walk(f func(rev Revision) bool) int {
 	l := len(g.revs)
 	for i := range g.revs {
 		ok := f(g.revs[l-i-1])

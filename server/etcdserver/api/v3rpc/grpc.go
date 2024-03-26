@@ -18,16 +18,16 @@ import (
 	"crypto/tls"
 	"math"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/client/v3/credentials"
-	"go.etcd.io/etcd/server/v3/etcdserver"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/v3/credentials"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
 const (
@@ -39,8 +39,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
-		bundle := credentials.NewBundle(credentials.Config{TLSConfig: tls})
-		opts = append(opts, grpc.Creds(bundle.TransportCredentials()))
+		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
@@ -76,14 +75,11 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	pb.RegisterLeaseServer(grpcServer, NewQuotaLeaseServer(s))
 	pb.RegisterClusterServer(grpcServer, NewClusterServer(s))
 	pb.RegisterAuthServer(grpcServer, NewAuthServer(s))
-	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s))
 
-	// server should register all the services manually
-	// use empty service name for all etcd services' health status,
-	// see https://github.com/grpc/grpc/blob/master/doc/health-checking.md for more
 	hsrv := health.NewServer()
-	hsrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthNotifier := newHealthNotifier(hsrv, s)
 	healthpb.RegisterHealthServer(grpcServer, hsrv)
+	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s, healthNotifier))
 
 	// set zero values for metrics registered for this grpc server
 	grpc_prometheus.Register(grpcServer)

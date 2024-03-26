@@ -1,0 +1,18 @@
+---
+exclusions:
+  template-instance-rule:
+    reason: The mixin only uses `instance` for alerts, and `cluster` for dashboard queries
+  template-job-rule:
+    reason: The dashboards use 'cluster' label as selector, rather than 'job'
+  target-job-rule:
+    reason: The mixin uses 'cluster' instead of 'job'
+  target-instance-rule:
+    reason: The mixin only uses `instance` for alerts, and `cluster` for dashboard queries
+  alert-name-camelcase:
+    reason: etcd is spelled all lowercase, meaning all alert name start with a lowercase
+  alert-summary-style:
+    reason: etcd is spelled all lowercase, meaning summaries starting with 'etcd' are still valid
+  panel-units-rule:
+    reason: Stat panels have no unit, and some panels use custom unit or text
+  panel-title-description-rule:
+    reason: Suppress noisy linting rule until we can address minor tech debt like this

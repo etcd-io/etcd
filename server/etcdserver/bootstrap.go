@@ -90,22 +90,22 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		bwal = bootstrapWALFromSnapshot(cfg, backend.snapshot)
 	}
 
+	cfg.Logger.Info("bootstrapping cluster")
 	cluster, err := bootstrapCluster(cfg, bwal, prt)
 	if err != nil {
 		backend.Close()
 		return nil, err
 	}
 
-	s, err := bootstrapStorage(cfg, st, backend, bwal, cluster)
-	if err != nil {
-		backend.Close()
-		return nil, err
-	}
+	cfg.Logger.Info("bootstrapping storage")
+	s := bootstrapStorage(cfg, st, backend, bwal, cluster)
 
 	if err = cluster.Finalize(cfg, s); err != nil {
 		backend.Close()
 		return nil, err
 	}
+
+	cfg.Logger.Info("bootstrapping raft")
 	raft := bootstrapRaft(cfg, cluster, s.wal)
 	return &bootstrappedServer{
 		prt:     prt,
@@ -165,7 +165,7 @@ type bootstrappedRaft struct {
 	storage *raft.MemoryStorage
 }
 
-func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) (b *bootstrappedStorage, err error) {
+func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappedBackend, wal *bootstrappedWAL, cl *bootstrapedCluster) *bootstrappedStorage {
 	if wal == nil {
 		wal = bootstrapNewWAL(cfg, cl)
 	}
@@ -174,7 +174,7 @@ func bootstrapStorage(cfg config.ServerConfig, st v2store.Store, be *bootstrappe
 		backend: be,
 		st:      st,
 		wal:     wal,
-	}, nil
+	}
 }
 
 func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
@@ -227,6 +227,14 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, st v2store.Store, s
 		}
 	}
 	if beExist {
+		s1, s2 := be.Size(), be.SizeInUse()
+		cfg.Logger.Info(
+			"recovered v3 backend",
+			zap.Int64("backend-size-bytes", s1),
+			zap.String("backend-size", humanize.Bytes(uint64(s1))),
+			zap.Int64("backend-size-in-use-bytes", s2),
+			zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
+		)
 		if err = schema.Validate(cfg.Logger, be.ReadTx()); err != nil {
 			cfg.Logger.Error("Failed to validate schema", zap.Error(err))
 			return nil, err
@@ -414,14 +422,6 @@ func recoverSnapshot(cfg config.ServerConfig, st v2store.Store, be backend.Backe
 		// already been closed in this case, so we should set the backend again.
 		ci.SetBackend(be)
 
-		s1, s2 := be.Size(), be.SizeInUse()
-		cfg.Logger.Info(
-			"recovered v3 backend from snapshot",
-			zap.Int64("backend-size-bytes", s1),
-			zap.String("backend-size", humanize.Bytes(uint64(s1))),
-			zap.Int64("backend-size-in-use-bytes", s2),
-			zap.String("backend-size-in-use", humanize.Bytes(uint64(s2))),
-		)
 		if beExist {
 			// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
 			// etcd from pre-3.0 release.

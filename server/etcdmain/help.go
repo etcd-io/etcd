@@ -23,6 +23,7 @@ import (
 
 	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 )
 
 var (
@@ -95,7 +96,13 @@ Member:
   --socket-reuse-port 'false'
     Enable to set socket option SO_REUSEPORT on listeners allowing rebinding of a port already in use.
   --socket-reuse-address 'false'
-	Enable to set socket option SO_REUSEADDR on listeners allowing binding to an address in TIME_WAIT state.
+    Enable to set socket option SO_REUSEADDR on listeners allowing binding to an address in TIME_WAIT state.
+  --enable-grpc-gateway
+    Enable GRPC gateway.
+  --raft-read-timeout '` + rafthttp.DefaultConnReadTimeout.String() + `'
+    Read timeout set on each rafthttp connection
+  --raft-write-timeout '` + rafthttp.DefaultConnWriteTimeout.String() + `'
+    Write timeout set on each rafthttp connection
 
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'
@@ -170,6 +177,10 @@ Security:
     Path to the client server TLS key file.
   --client-cert-auth 'false'
     Enable client cert authentication.
+  --client-cert-file ''
+    Path to an explicit peer client TLS cert file otherwise cert file will be used when client auth is required.
+  --client-key-file ''
+    Path to an explicit peer client TLS key file otherwise key file will be used when client auth is required.
   --client-crl-file ''
     Path to the client certificate revocation list file.
   --client-cert-allowed-hostname ''
@@ -184,6 +195,10 @@ Security:
     Path to the peer server TLS key file.
   --peer-client-cert-auth 'false'
     Enable peer client cert authentication.
+  --peer-client-cert-file ''
+    Path to an explicit peer client TLS cert file otherwise peer cert file will be used when client auth is required.
+  --peer-client-key-file ''
+    Path to an explicit peer client TLS key file otherwise peer key file will be used when client auth is required.
   --peer-trusted-ca-file ''
     Path to the peer server TLS trusted CA file.
   --peer-cert-allowed-cn ''
@@ -278,10 +293,20 @@ Experimental feature:
     Set time duration after which a warning is generated if a unary request takes more than this duration. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.
   --experimental-max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
-  --experimental-wait-cluster-ready-timeout '5s'
-    Set the maximum time duration to wait for the cluster to be ready.
   --experimental-snapshot-catch-up-entries '5000'
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
+  --experimental-compaction-sleep-interval
+    Sets the sleep interval between each compaction batch.
+  --experimental-downgrade-check-time
+    Duration of time between two downgrade status checks.
+  --experimental-enable-lease-checkpoint-persist 'false'
+    Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.
+  --experimental-memory-mlock
+    Enable to enforce etcd pages (in particular bbolt) to stay in RAM.
+  --experimental-snapshot-catchup-entries
+    Number of entries for a slow follower to catch up after compacting the raft storage entries.
+  --experimental-stop-grpc-service-on-defrag
+    Enable etcd gRPC service to stop serving client requests on defragmentation.
 
 Unsafe feature:
   --force-new-cluster 'false'

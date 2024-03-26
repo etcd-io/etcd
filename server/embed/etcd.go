@@ -31,6 +31,13 @@ import (
 	"sync"
 	"time"
 
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/soheilhy/cmux"
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -43,13 +50,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
-
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/soheilhy/cmux"
-	"go.uber.org/zap"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -185,7 +185,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		PeerTLSInfo:                              cfg.PeerTLSInfo,
 		TickMs:                                   cfg.TickMs,
 		ElectionTicks:                            cfg.ElectionTicks(),
-		WaitClusterReadyTimeout:                  cfg.ExperimentalWaitClusterReadyTimeout,
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
@@ -224,6 +223,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		WarningUnaryRequestDuration:              cfg.WarningUnaryRequestDuration,
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
+		ExperimentalStopGRPCServiceOnDefrag:      cfg.ExperimentalStopGRPCServiceOnDefrag,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
 		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
 		V2Deprecation:                                 cfg.V2DeprecationEffective(),
@@ -231,9 +231,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
 		tctx := context.Background()
-		tracingExporter, err := newTracingExporter(tctx, cfg)
-		if err != nil {
-			return e, err
+		tracingExporter, terr := newTracingExporter(tctx, cfg)
+		if terr != nil {
+			return e, terr
 		}
 		e.tracingExporterShutdown = func() {
 			tracingExporter.Close(tctx)
@@ -269,19 +269,17 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	e.Server.Start()
 
-	if err = e.servePeers(); err != nil {
-		return e, err
-	}
-	if err = e.serveClients(); err != nil {
-		return e, err
-	}
+	e.servePeers()
+
+	e.serveClients()
+
 	if err = e.serveMetrics(); err != nil {
 		return e, err
 	}
 
 	e.cfg.logger.Info(
 		"now serving peer/client/metrics",
-		zap.String("local-member-id", e.Server.MemberId().String()),
+		zap.String("local-member-id", e.Server.MemberID().String()),
 		zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
 		zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
 		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
@@ -328,7 +326,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("force-new-cluster", sc.ForceNewCluster),
 		zap.String("heartbeat-interval", fmt.Sprintf("%v", time.Duration(sc.TickMs)*time.Millisecond)),
 		zap.String("election-timeout", fmt.Sprintf("%v", time.Duration(sc.ElectionTicks*int(sc.TickMs))*time.Millisecond)),
-		zap.String("wait-cluster-ready-timeout", sc.WaitClusterReadyTimeout.String()),
 		zap.Bool("initial-election-tick-advance", sc.InitialElectionTickAdvance),
 		zap.Uint64("snapshot-count", sc.SnapshotCount),
 		zap.Uint("max-wals", sc.MaxWALFiles),
@@ -552,6 +549,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
 		)
 		if err != nil {
+			cfg.logger.Error("creating peer listener failed", zap.Error(err))
 			return nil, err
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
@@ -563,7 +561,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 }
 
 // configure peer handlers after rafthttp.Transport started
-func (e *Etcd) servePeers() (err error) {
+func (e *Etcd) servePeers() {
 	ph := etcdhttp.NewPeerHandler(e.GetLogger(), e.Server)
 
 	for _, p := range e.Peers {
@@ -611,7 +609,6 @@ func (e *Etcd) servePeers() (err error) {
 			e.errHandler(l.serve())
 		}(pl)
 	}
-	return nil
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
@@ -642,7 +639,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	for _, u := range cfg.ListenClientUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
@@ -655,7 +652,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.network = network
 	}
 	for _, u := range cfg.ListenClientHttpUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
 		if sctx == nil {
@@ -718,7 +715,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	return sctxs, nil
 }
 
-func resolveUrl(u url.URL) (addr string, secure bool, network string) {
+func resolveURL(u url.URL) (addr string, secure bool, network string) {
 	addr = u.Host
 	network = "tcp"
 	if u.Scheme == "unix" || u.Scheme == "unixs" {
@@ -729,7 +726,7 @@ func resolveUrl(u url.URL) (addr string, secure bool, network string) {
 	return addr, secure, network
 }
 
-func (e *Etcd) serveClients() (err error) {
+func (e *Etcd) serveClients() {
 	if !e.cfg.ClientTLSInfo.Empty() {
 		e.cfg.logger.Info(
 			"starting with client TLS",
@@ -760,27 +757,26 @@ func (e *Etcd) serveClients() (err error) {
 		}))
 	}
 
-	splitHttp := false
+	splitHTTP := false
 	for _, sctx := range e.sctxs {
 		if sctx.httpOnly {
-			splitHttp = true
+			splitHTTP = true
 		}
 	}
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
-	return nil
 }
 
-func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
+func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
 	if !e.cfg.EnableGRPCGateway {
 		return nil
 	}
-	sctx := e.pickGrpcGatewayServeContext(splitHttp)
+	sctx := e.pickGRPCGatewayServeContext(splitHTTP)
 	addr := sctx.addr
 	if network := sctx.network; network == "unix" {
 		// explicitly define unix network for gRPC socket support
@@ -797,8 +793,7 @@ func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Contex
 		dtls := tlscfg.Clone()
 		// trust local server
 		dtls.InsecureSkipVerify = true
-		bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
-		opts = append(opts, grpc.WithTransportCredentials(bundle.TransportCredentials()))
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTransportCredential(dtls)))
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
@@ -813,9 +808,9 @@ func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Contex
 	}
 }
 
-func (e *Etcd) pickGrpcGatewayServeContext(splitHttp bool) *serveCtx {
+func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 	for _, sctx := range e.sctxs {
-		if !splitHttp || !sctx.httpOnly {
+		if !splitHTTP || !sctx.httpOnly {
 			return sctx
 		}
 	}

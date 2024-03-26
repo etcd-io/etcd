@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -223,7 +224,7 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	e, err := embed.StartEtcd(cfg)
 	assert.NoError(t, err)
 	autoCompactionRetention := e.Server.Cfg.AutoCompactionRetention
-	duration_to_compare, _ := time.ParseDuration("2h0m0s")
-	assert.Equal(t, duration_to_compare, autoCompactionRetention)
+	durationToCompare, _ := time.ParseDuration("2h0m0s")
+	assert.Equal(t, durationToCompare, autoCompactionRetention)
 	e.Close()
 }

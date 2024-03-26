@@ -24,7 +24,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -296,7 +295,7 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		"--cacert", e2e.CaPath,
 	}
 
-	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, "cert has non empty Common Name")
+	err := e2e.SpawnWithExpect(argsWithNonEmptyCN, expect.ExpectedResponse{Value: "cert has non empty Common Name"})
 	require.ErrorContains(t, err, "cert has non empty Common Name")
 
 	p, err := e2e.SpawnCmd(argsWithEmptyCN, nil)
@@ -409,11 +408,11 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < 10; i++ {
-		clientId := i
+		clientID := i
 		g.Go(func() error {
 			cc := epc.Etcdctl()
 			for j := 0; j < 100; j++ {
-				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientId), config.PutOptions{}); err != nil {
+				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
 					return err
 				}
 			}
@@ -450,4 +449,6 @@ func TestEtcdTLSVersion(t *testing.T) {
 	assert.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
 	assert.NoError(t, proc.Stop())
 
+	proc.Wait() // ensure the port has been released
+	proc.Close()
 }

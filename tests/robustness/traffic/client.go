@@ -22,12 +22,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 // RecordingClient provides a semi etcd client (different interface than
@@ -194,12 +193,13 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 	return resp, err
 }
 
-func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool) clientv3.WatchChan {
+func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool, withPrevKV bool) clientv3.WatchChan {
 	request := model.WatchRequest{
 		Key:                key,
 		Revision:           rev,
 		WithPrefix:         withPrefix,
 		WithProgressNotify: withProgressNotify,
+		WithPrevKV:         withPrevKV,
 	}
 	return c.watch(ctx, request)
 
@@ -215,6 +215,9 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 	}
 	if request.WithProgressNotify {
 		ops = append(ops, clientv3.WithProgressNotify())
+	}
+	if request.WithPrevKV {
+		ops = append(ops, clientv3.WithPrevKV())
 	}
 	respCh := make(chan clientv3.WatchResponse)
 
@@ -260,6 +263,14 @@ func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
 	watch.Revision = event.Kv.ModRevision
 	watch.Key = string(event.Kv.Key)
 	watch.Value = model.ToValueOrHash(string(event.Kv.Value))
+
+	if event.PrevKv != nil {
+		watch.PrevValue = &model.ValueRevision{
+			Value:       model.ToValueOrHash(string(event.PrevKv.Value)),
+			ModRevision: event.PrevKv.ModRevision,
+		}
+	}
+	watch.IsCreate = event.IsCreate()
 
 	switch event.Type {
 	case mvccpb.PUT:

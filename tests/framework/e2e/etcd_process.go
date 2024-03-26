@@ -17,6 +17,7 @@ package e2e
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -56,12 +57,13 @@ type EtcdProcess interface {
 	Config() *EtcdServerProcessConfig
 	PeerProxy() proxy.Server
 	Failpoints() *BinaryFailpoints
+	LazyFS() *LazyFS
 	Logs() LogsExpect
 	Kill() error
 }
 
 type LogsExpect interface {
-	ExpectWithContext(context.Context, string) (string, error)
+	ExpectWithContext(context.Context, expect.ExpectedResponse) (string, error)
 	Lines() []string
 	LineCount() int
 }
@@ -70,6 +72,7 @@ type EtcdServerProcess struct {
 	cfg        *EtcdServerProcessConfig
 	proc       *expect.ExpectProcess
 	proxy      proxy.Server
+	lazyfs     *LazyFS
 	failpoints *BinaryFailpoints
 	donec      chan struct{} // closed when Interact() terminates
 }
@@ -78,7 +81,7 @@ type EtcdServerProcessConfig struct {
 	lg       *zap.Logger
 	ExecPath string
 	Args     []string
-	TlsArgs  []string
+	TLSArgs  []string
 	EnvVars  map[string]string
 
 	Client      ClientConfig
@@ -92,14 +95,16 @@ type EtcdServerProcessConfig struct {
 	ClientHTTPURL string
 	MetricsURL    string
 
-	InitialToken   string
-	InitialCluster string
-	GoFailPort     int
+	InitialToken        string
+	InitialCluster      string
+	GoFailPort          int
+	GoFailClientTimeout time.Duration
 
-	Proxy *proxy.ServerConfig
+	LazyFSEnabled bool
+	Proxy         *proxy.ServerConfig
 }
 
-func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
+func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
 	if !fileutil.Exist(cfg.ExecPath) {
 		return nil, fmt.Errorf("could not find etcd binary: %s", cfg.ExecPath)
 	}
@@ -107,10 +112,19 @@ func NewEtcdServerProcess(cfg *EtcdServerProcessConfig) (*EtcdServerProcess, err
 		if err := os.RemoveAll(cfg.DataDirPath); err != nil {
 			return nil, err
 		}
+		if err := os.Mkdir(cfg.DataDirPath, 0700); err != nil {
+			return nil, err
+		}
 	}
 	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}
 	if cfg.GoFailPort != 0 {
-		ep.failpoints = &BinaryFailpoints{member: ep}
+		ep.failpoints = &BinaryFailpoints{
+			member:        ep,
+			clientTimeout: cfg.GoFailClientTimeout,
+		}
+	}
+	if cfg.LazyFSEnabled {
+		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, t)
 	}
 	return ep, nil
 }
@@ -124,8 +138,8 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 }
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.MetricsURL} }
 
-func (epc *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
-	etcdctl, err := NewEtcdctl(epc.Config().Client, epc.EndpointsGRPC(), opts...)
+func (ep *EtcdServerProcess) Etcdctl(opts ...config.ClientOption) *EtcdctlV3 {
+	etcdctl, err := NewEtcdctl(ep.Config().Client, ep.EndpointsGRPC(), opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -146,6 +160,14 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 			return err
 		}
 	}
+	if ep.lazyfs != nil {
+		ep.cfg.lg.Info("starting lazyfs...", zap.String("name", ep.cfg.Name))
+		err := ep.lazyfs.Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
 	ep.cfg.lg.Info("starting server...", zap.String("name", ep.cfg.Name))
 	proc, err := SpawnCmdWithLogger(ep.cfg.lg, append([]string{ep.cfg.ExecPath}, ep.cfg.Args...), ep.cfg.EnvVars, ep.cfg.Name)
 	if err != nil {
@@ -172,10 +194,12 @@ func (ep *EtcdServerProcess) Restart(ctx context.Context) error {
 }
 
 func (ep *EtcdServerProcess) Stop() (err error) {
-	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
 	if ep == nil || ep.proc == nil {
 		return nil
 	}
+
+	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
+
 	defer func() {
 		ep.proc = nil
 	}()
@@ -199,8 +223,16 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.Name))
 	if ep.proxy != nil {
 		ep.cfg.lg.Info("stopping proxy...", zap.String("name", ep.cfg.Name))
-		err := ep.proxy.Close()
+		err = ep.proxy.Close()
 		ep.proxy = nil
+		if err != nil {
+			return err
+		}
+	}
+	if ep.lazyfs != nil {
+		ep.cfg.lg.Info("stopping lazyfs...", zap.String("name", ep.cfg.Name))
+		err = ep.lazyfs.Stop()
+		ep.lazyfs = nil
 		if err != nil {
 			return err
 		}
@@ -288,7 +320,7 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	var err error
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	_, err = ep.Logs().ExpectWithContext(ctx, expectLog)
+	_, err = ep.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: expectLog})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,25 +330,44 @@ func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
 	return ep.proxy
 }
 
+func (ep *EtcdServerProcess) LazyFS() *LazyFS {
+	return ep.lazyfs
+}
+
 func (ep *EtcdServerProcess) Failpoints() *BinaryFailpoints {
 	return ep.failpoints
 }
 
 type BinaryFailpoints struct {
 	member         EtcdProcess
-	availableCache map[string]struct{}
+	availableCache map[string]string
+	clientTimeout  time.Duration
 }
 
-func (f *BinaryFailpoints) Setup(ctx context.Context, failpoint, payload string) error {
+func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
+	if f.member.IsRunning() {
+		return errors.New("cannot setup environment variable while process is running")
+	}
+	f.member.Config().EnvVars["GOFAIL_FAILPOINTS"] = fmt.Sprintf("%s=%s", failpoint, payload)
+	return nil
+}
+
+func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointURL.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
+	}
+	httpClient := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
 	}
 	resp, err := httpClient.Do(r)
 	if err != nil {
@@ -329,40 +380,97 @@ func (f *BinaryFailpoints) Setup(ctx context.Context, failpoint, payload string)
 	return nil
 }
 
-var httpClient = http.Client{
-	Timeout: 10 * time.Millisecond,
+func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string) error {
+	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
+	failpointURL := url.URL{
+		Scheme: "http",
+		Host:   host,
+		Path:   failpoint,
+	}
+	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointURL.String(), nil)
+	if err != nil {
+		return err
+	}
+	httpClient := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
+	}
+	resp, err := httpClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+	}
+	return nil
 }
 
-func (f *BinaryFailpoints) Available() map[string]struct{} {
+func (f *BinaryFailpoints) Enabled() bool {
+	_, err := failpoints(f.member)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+func (f *BinaryFailpoints) Available(failpoint string) bool {
 	if f.availableCache == nil {
-		fs, err := fetchFailpoints(f.member)
+		fs, err := failpoints(f.member)
 		if err != nil {
 			panic(err)
 		}
 		f.availableCache = fs
 	}
-	return f.availableCache
+	_, found := f.availableCache[failpoint]
+	return found
 }
 
-func fetchFailpoints(member EtcdProcess) (map[string]struct{}, error) {
+func failpoints(member EtcdProcess) (map[string]string, error) {
+	body, err := fetchFailpointsBody(member)
+	if err != nil {
+		return nil, err
+	}
+	defer body.Close()
+	return parseFailpointsBody(body)
+}
+
+func fetchFailpointsBody(member EtcdProcess) (io.ReadCloser, error) {
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   address,
 	}
-	resp, err := http.Get(failpointUrl.String())
+	resp, err := http.Get(failpointURL.String())
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("invalid status code, %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+func parseFailpointsBody(body io.Reader) (map[string]string, error) {
+	data, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
-	text := strings.ReplaceAll(string(body), "=", "")
-	failpoints := map[string]struct{}{}
-	for _, f := range strings.Split(text, "\n") {
-		failpoints[f] = struct{}{}
+	lines := strings.Split(string(data), "\n")
+	failpoints := map[string]string{}
+	for _, line := range lines {
+		// Format:
+		// failpoint=value
+		parts := strings.SplitN(line, "=", 2)
+		failpoint := parts[0]
+		var value string
+		if len(parts) == 2 {
+			value = parts[1]
+		}
+		failpoints[failpoint] = value
 	}
 	return failpoints, nil
 }

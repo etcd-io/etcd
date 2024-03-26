@@ -102,18 +102,19 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 
 	validateAfterCompactionInUse := func() error {
 		// Put to move PendingPages to FreePages
-		if _, err = kvc.Put(context.TODO(), putreq); err != nil {
-			t.Fatal(err)
+		_, verr := kvc.Put(context.TODO(), putreq)
+		if verr != nil {
+			t.Fatal(verr)
 		}
 		time.Sleep(500 * time.Millisecond)
 
-		afterCompactionInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
-		if err != nil {
-			t.Fatal(err)
+		afterCompactionInUse, verr := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
+		if verr != nil {
+			t.Fatal(verr)
 		}
-		aciu, err := strconv.Atoi(afterCompactionInUse)
-		if err != nil {
-			t.Fatal(err)
+		aciu, verr := strconv.Atoi(afterCompactionInUse)
+		if verr != nil {
+			t.Fatal(verr)
 		}
 		if biu <= aciu {
 			return fmt.Errorf("expected less than %d, got %d after compaction", biu, aciu)
@@ -125,7 +126,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	// which causes the result to be flaky. Retry 3 times.
 	maxRetry, retry := 3, 0
 	for {
-		err := validateAfterCompactionInUse()
+		err = validateAfterCompactionInUse()
 		if err == nil {
 			break
 		}

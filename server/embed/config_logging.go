@@ -34,7 +34,7 @@ import (
 )
 
 // GetLogger returns the logger.
-func (cfg Config) GetLogger() *zap.Logger {
+func (cfg *Config) GetLogger() *zap.Logger {
 	cfg.loggerMu.RLock()
 	l := cfg.logger
 	cfg.loggerMu.RUnlock()
@@ -246,7 +246,7 @@ func (logRotationConfig) Sync() error { return nil }
 
 // setupLogRotation initializes log rotation for a single file path target.
 func setupLogRotation(logOutputs []string, logRotateConfigJSON string) error {
-	var logRotationConfig logRotationConfig
+	var logRotationCfg logRotationConfig
 	outputFilePaths := 0
 	for _, v := range logOutputs {
 		switch v {
@@ -265,7 +265,7 @@ func setupLogRotation(logOutputs []string, logRotateConfigJSON string) error {
 		return ErrLogRotationInvalidLogOutput
 	}
 
-	if err := json.Unmarshal([]byte(logRotateConfigJSON), &logRotationConfig); err != nil {
+	if err := json.Unmarshal([]byte(logRotateConfigJSON), &logRotationCfg); err != nil {
 		var unmarshalTypeError *json.UnmarshalTypeError
 		var syntaxError *json.SyntaxError
 		switch {
@@ -278,8 +278,8 @@ func setupLogRotation(logOutputs []string, logRotateConfigJSON string) error {
 		}
 	}
 	zap.RegisterSink("rotate", func(u *url.URL) (zap.Sink, error) {
-		logRotationConfig.Filename = u.Path[1:]
-		return &logRotationConfig, nil
+		logRotationCfg.Filename = u.Path[1:]
+		return &logRotationCfg, nil
 	})
 	return nil
 }

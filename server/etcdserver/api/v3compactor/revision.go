@@ -19,11 +19,11 @@ import (
 	"sync"
 	"time"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
-
 	"github.com/jonboulle/clockwork"
 	"go.uber.org/zap"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 // Revision compacts the log by purging revisions older than

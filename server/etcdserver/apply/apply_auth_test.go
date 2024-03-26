@@ -44,13 +44,13 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
-func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest, _ membership.ShouldApplyV3) *Result {
+func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest) *Result {
 	return &Result{}
 }
 
 type fakeRaftStatusGetter struct{}
 
-func (*fakeRaftStatusGetter) MemberId() types.ID {
+func (*fakeRaftStatusGetter) MemberID() types.ID {
 	return 0
 }
 func (*fakeRaftStatusGetter) Leader() types.ID {
@@ -121,7 +121,7 @@ const (
 	rangeEnd        = "rangeEnd"
 	keyOutsideRange = "rangeEnd_outside"
 
-	LeaseId = 1
+	leaseID = 1
 )
 
 func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
@@ -215,7 +215,7 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 	defer cancel()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result := authApplier.Apply(ctx, tc.request, false, dummyApplyFunc)
+			result := authApplier.Apply(ctx, tc.request, dummyApplyFunc)
 			require.Equalf(t, result, tc.expectResult, "Apply: got %v, expect: %v", result, tc.expectResult)
 		})
 	}
@@ -386,7 +386,7 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 			if tc.adminPermissionNeeded {
 				tc.request.Header = &pb.RequestHeader{Username: userReadOnly}
 			}
-			result := authApplier.Apply(ctx, tc.request, false, dummyApplyFunc)
+			result := authApplier.Apply(ctx, tc.request, dummyApplyFunc)
 			require.Equal(t, result.Err == auth.ErrPermissionDenied, tc.adminPermissionNeeded,
 				"Admin permission needed: got %v, expect: %v", result.Err == auth.ErrPermissionDenied, tc.adminPermissionNeeded)
 		})
@@ -445,7 +445,7 @@ func TestAuthApplierV3_Put(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Put(ctx, nil, tc.request)
+			_, _, err := authApplier.Put(ctx, tc.request)
 			require.Equalf(t, tc.expectError, err, "Put returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -460,34 +460,34 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 
 	_, err := authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should be able to put the key
 	setAuthInfo(authApplier, userWriteOnly)
-	_, _, err = authApplier.Put(ctx, nil, &pb.PutRequest{
+	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
 	// Put a key under the lease outside user's key range
 	setAuthInfo(authApplier, userRoot)
-	_, _, err = authApplier.Put(ctx, nil, &pb.PutRequest{
+	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should not be able to put the key anymore
 	setAuthInfo(authApplier, userWriteOnly)
-	_, _, err = authApplier.Put(ctx, nil, &pb.PutRequest{
+	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.Equal(t, err, auth.ErrPermissionDenied)
 }
@@ -532,7 +532,7 @@ func TestAuthApplierV3_Range(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, err := authApplier.Range(ctx, nil, tc.request)
+			_, _, err := authApplier.Range(ctx, tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -596,7 +596,7 @@ func TestAuthApplierV3_DeleteRange(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, err := authApplier.DeleteRange(nil, tc.request)
+			_, _, err := authApplier.DeleteRange(context.Background(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -684,36 +684,36 @@ func TestAuthApplierV3_LeaseRevoke(t *testing.T) {
 
 	_, err := authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should be able to revoke the lease
 	setAuthInfo(authApplier, userWriteOnly)
 	_, err = authApplier.LeaseRevoke(&pb.LeaseRevokeRequest{
-		ID: LeaseId,
+		ID: leaseID,
 	})
 	require.NoError(t, err)
 
 	_, err = authApplier.LeaseGrant(&pb.LeaseGrantRequest{
 		TTL: lease.MaxLeaseTTL,
-		ID:  LeaseId,
+		ID:  leaseID,
 	})
 	require.NoError(t, err)
 
 	// Put a key under the lease outside user's key range
 	setAuthInfo(authApplier, userRoot)
-	_, _, err = authApplier.Put(ctx, nil, &pb.PutRequest{
+	_, _, err = authApplier.Put(ctx, &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
-		Lease: LeaseId,
+		Lease: leaseID,
 	})
 	require.NoError(t, err)
 
 	// The user should not be able to revoke the lease anymore
 	setAuthInfo(authApplier, userWriteOnly)
 	_, err = authApplier.LeaseRevoke(&pb.LeaseRevokeRequest{
-		ID: LeaseId,
+		ID: leaseID,
 	})
 	require.Equal(t, err, auth.ErrPermissionDenied)
 }

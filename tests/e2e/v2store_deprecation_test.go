@@ -18,88 +18,102 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func createV2store(t testing.TB, dataDirPath string) string {
-	t.Log("Creating not-yet v2-deprecated etcd")
-
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
-		e2e.WithVersion(e2e.LastVersion),
-		e2e.WithEnableV2(true),
-		e2e.WithDataDirPath(dataDirPath),
-		e2e.WithSnapshotCount(5),
-	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
-	memberDataDir := epc.Procs[0].Config().DataDirPath
-
-	defer func() {
-		assert.NoError(t, epc.Stop())
-	}()
-
-	// We need to exceed 'SnapshotCount' such that v2 snapshot is dumped.
-	for i := 0; i < 10; i++ {
+func writeCustomV2Data(t testing.TB, epc *e2e.EtcdProcessCluster, count int) {
+	for i := 0; i < count; i++ {
 		if err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
-			Expected: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}); err != nil {
+			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}}); err != nil {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}
-	return memberDataDir
 }
 
-func assertVerifyCannotStartV2deprecationWriteOnly(t testing.TB, dataDirPath string) {
-	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + dataDirPath}, nil)
-	assert.NoError(t, err)
-
-	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
-	assert.NoError(t, err)
-}
-
-func assertVerifyCannotStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
+func TestV2DeprecationNotYet(t *testing.T) {
+	e2e.BeforeTest(t)
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet", "--data-dir=" + dataDirPath}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet"}, nil)
 	assert.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
 	assert.NoError(t, err)
 }
 
-func TestV2DeprecationFlags(t *testing.T) {
+func TestV2DeprecationWriteOnlyWAL(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDirPath := t.TempDir()
 
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithEnableV2(true),
+		e2e.WithDataDirPath(dataDirPath),
+	))
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	assert.NoError(t, err)
+	memberDataDir := epc.Procs[0].Config().DataDirPath
 
-	var memberDataDir string
-	t.Run("create-storev2-data", func(t *testing.T) {
-		memberDataDir = createV2store(t, dataDirPath)
-	})
+	writeCustomV2Data(t, epc, 1)
 
-	t.Run("--v2-deprecation=not-yet fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationNotYet(t, memberDataDir)
-	})
+	assert.NoError(t, epc.Stop())
 
-	t.Run("--v2-deprecation=write-only fails", func(t *testing.T) {
-		assertVerifyCannotStartV2deprecationWriteOnly(t, memberDataDir)
-	})
+	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
+	assert.NoError(t, err)
 
+	_, err = proc.Expect("detected disallowed v2 WAL for stage --v2-deprecation=write-only")
+	assert.NoError(t, err)
+}
+
+func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
+	e2e.BeforeTest(t)
+	dataDirPath := t.TempDir()
+
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
+		e2e.WithVersion(e2e.LastVersion),
+		e2e.WithEnableV2(true),
+		e2e.WithDataDirPath(dataDirPath),
+		e2e.WithSnapshotCount(10),
+	))
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	assert.NoError(t, err)
+	memberDataDir := epc.Procs[0].Config().DataDirPath
+
+	// We need to exceed 'SnapshotCount' such that v2 snapshot is dumped.
+	writeCustomV2Data(t, epc, 10)
+
+	assert.NoError(t, epc.Stop())
+
+	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
+	assert.NoError(t, err)
+
+	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
+	assert.NoError(t, err)
 }
 
 func TestV2DeprecationSnapshotMatches(t *testing.T) {
@@ -125,15 +139,12 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	assert.NoError(t, epc.Close())
 
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
-		// Patch cluster version
-		data = bytes.Replace(data, []byte("3.5.0"), []byte("X.X.X"), -1)
-		data = bytes.Replace(data, []byte("3.6.0"), []byte("X.X.X"), -1)
 		// Patch members ids
 		for i, mid := range members1 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		for i, mid := range members2 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("member%d", i+1)), -1)
+			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
 		}
 		return data
 	})
@@ -250,7 +261,23 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 		if err != nil {
 			t.Fatal(err)
 		}
-		assert.Equal(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+	}
+}
+
+func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
+	rc1 := membership.NewCluster(zaptest.NewLogger(t))
+	rc1.SetStore(firstStore)
+	rc1.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+	rc2 := membership.NewCluster(zaptest.NewLogger(t))
+	rc2.SetStore(secondStore)
+	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+
+	//membership should match
+	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
+		t.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
+		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
 	}
 }
 

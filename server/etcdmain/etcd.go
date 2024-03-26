@@ -19,7 +19,6 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -211,8 +210,6 @@ func startEtcd(cfg *embed.Config) (<-chan struct{}, <-chan error, error) {
 	select {
 	case <-e.Server.ReadyNotify(): // wait for e.Server to join the cluster
 	case <-e.Server.StopNotify(): // publish aborted from 'ErrStopped'
-	case <-time.After(cfg.ExperimentalWaitClusterReadyTimeout):
-		e.GetLogger().Warn("startEtcd: timed out waiting for the ready notification")
 	}
 	return e.Server.StopNotify(), e.Err(), nil
 }
@@ -275,6 +272,6 @@ func checkSupportArch() {
 		return
 	}
 
-	lg.Error("running etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is set", zap.String("arch", runtime.GOARCH))
+	lg.Error("Refusing to run etcd on unsupported architecture since ETCD_UNSUPPORTED_ARCH is not set", zap.String("arch", runtime.GOARCH))
 	os.Exit(1)
 }

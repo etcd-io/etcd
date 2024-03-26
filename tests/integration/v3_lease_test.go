@@ -22,16 +22,16 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 // TestV3LeasePromote ensures the newly elected leader can promote itself
@@ -199,7 +199,7 @@ func TestV3LeaseNegativeID(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 			// restore lessor from db file
 			clus.Members[2].Stop(t)
-			if err := clus.Members[2].Restart(t); err != nil {
+			if err = clus.Members[2].Restart(t); err != nil {
 				t.Fatal(err)
 			}
 
@@ -389,15 +389,15 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 				time.Sleep(tc.checkpointingInterval + 1*time.Second)
 
 				// Force a leader election
-				leaderId := clus.WaitLeader(t)
-				leader := clus.Members[leaderId]
+				leaderID := clus.WaitLeader(t)
+				leader := clus.Members[leaderID]
 				leader.Stop(t)
 				time.Sleep(time.Duration(3*integration.ElectionTicks) * framecfg.TickDuration)
 				leader.Restart(t)
 			}
 
-			newLeaderId := clus.WaitLeader(t)
-			c2 := integration.ToGRPC(clus.Client(newLeaderId))
+			newLeaderID := clus.WaitLeader(t)
+			c2 := integration.ToGRPC(clus.Client(newLeaderID))
 
 			time.Sleep(250 * time.Millisecond)
 
@@ -528,7 +528,7 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 			t.Fatal(err)
 		}
 		for i := 0; i < 300; i++ {
-			go func(i int) { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }(i)
+			go func() { errc <- stresser(ctx, integration.ToGRPC(clusterClient).Lease) }()
 		}
 	} else {
 		for i := 0; i < 100; i++ {
@@ -747,7 +747,7 @@ func TestV3LeaseFailover(t *testing.T) {
 
 	// send keep alive to old leader until the old leader starts
 	// to drop lease request.
-	var expectedExp time.Time
+	expectedExp := time.Now().Add(5 * time.Second)
 	for {
 		if err = lac.Send(lreq); err != nil {
 			break

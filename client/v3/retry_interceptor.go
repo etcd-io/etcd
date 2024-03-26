@@ -39,7 +39,7 @@ import (
 // changed through options (e.g. WithMax) on creation of the interceptor or on call (through grpc.CallOptions).
 func (c *Client) unaryClientInterceptor(optFuncs ...retryOption) grpc.UnaryClientInterceptor {
 	intOpts := reuseOrNewWithCallOptions(defaultOptions, optFuncs)
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		ctx = withVersion(ctx)
 		grpcOpts, retryOpts := filterCallOptions(opts)
 		callOpts := reuseOrNewWithCallOptions(intOpts, retryOpts)
@@ -179,9 +179,9 @@ func (c *Client) refreshToken(ctx context.Context) error {
 type serverStreamingRetryingStream struct {
 	grpc.ClientStream
 	client        *Client
-	bufferedSends []interface{} // single message that the client can sen
-	receivedGood  bool          // indicates whether any prior receives were successful
-	wasClosedSend bool          // indicates that CloseSend was closed
+	bufferedSends []any // single message that the client can sen
+	receivedGood  bool  // indicates whether any prior receives were successful
+	wasClosedSend bool  // indicates that CloseSend was closed
 	ctx           context.Context
 	callOpts      *options
 	streamerCall  func(ctx context.Context) (grpc.ClientStream, error)
@@ -200,7 +200,7 @@ func (s *serverStreamingRetryingStream) getStream() grpc.ClientStream {
 	return s.ClientStream
 }
 
-func (s *serverStreamingRetryingStream) SendMsg(m interface{}) error {
+func (s *serverStreamingRetryingStream) SendMsg(m any) error {
 	s.mu.Lock()
 	s.bufferedSends = append(s.bufferedSends, m)
 	s.mu.Unlock()
@@ -222,7 +222,7 @@ func (s *serverStreamingRetryingStream) Trailer() metadata.MD {
 	return s.getStream().Trailer()
 }
 
-func (s *serverStreamingRetryingStream) RecvMsg(m interface{}) error {
+func (s *serverStreamingRetryingStream) RecvMsg(m any) error {
 	attemptRetry, lastErr := s.receiveMsgAndIndicateRetry(m)
 	if !attemptRetry {
 		return lastErr // success or hard failure
@@ -249,7 +249,7 @@ func (s *serverStreamingRetryingStream) RecvMsg(m interface{}) error {
 	return lastErr
 }
 
-func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m interface{}) (bool, error) {
+func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool, error) {
 	s.mu.RLock()
 	wasGood := s.receivedGood
 	s.mu.RUnlock()
@@ -311,7 +311,7 @@ func waitRetryBackoff(ctx context.Context, attempt uint, callOpts *options) erro
 		select {
 		case <-ctx.Done():
 			timer.Stop()
-			return contextErrToGrpcErr(ctx.Err())
+			return contextErrToGRPCErr(ctx.Err())
 		case <-timer.C:
 		}
 	}
@@ -349,7 +349,7 @@ func isContextError(err error) bool {
 	return status.Code(err) == codes.DeadlineExceeded || status.Code(err) == codes.Canceled
 }
 
-func contextErrToGrpcErr(err error) error {
+func contextErrToGRPCErr(err error) error {
 	switch err {
 	case context.DeadlineExceeded:
 		return status.Errorf(codes.DeadlineExceeded, err.Error())
@@ -377,10 +377,10 @@ var (
 // with the next iteration.
 type backoffFunc func(attempt uint) time.Duration
 
-// withRetryPolicy sets the retry policy of this call.
-func withRetryPolicy(rp retryPolicy) retryOption {
+// withRepeatablePolicy sets the repeatable policy of this call.
+func withRepeatablePolicy() retryOption {
 	return retryOption{applyFunc: func(o *options) {
-		o.retryPolicy = rp
+		o.retryPolicy = repeatable
 	}}
 }
 

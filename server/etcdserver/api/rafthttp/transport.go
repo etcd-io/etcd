@@ -20,16 +20,16 @@ import (
 	"sync"
 	"time"
 
+	"github.com/xiang90/probing"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
+
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
-
-	"github.com/xiang90/probing"
-	"go.uber.org/zap"
-	"golang.org/x/time/rate"
 )
 
 type Raft interface {
@@ -110,7 +110,7 @@ type Transport struct {
 	Raft        Raft       // raft state machine, to which the Transport forwards received messages and reports status
 	Snapshotter *snap.Snapshotter
 	ServerStats *stats.ServerStats // used to record general transportation statistics
-	// used to record transportation statistics with followers when
+	// LeaderStats records transportation statistics with followers when
 	// performing as leader in raft protocol
 	LeaderStats *stats.LeaderStats
 	// ErrorC is used to report detected critical errors, e.g.,

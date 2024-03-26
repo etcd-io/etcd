@@ -30,7 +30,7 @@ const (
 	hashStorageMaxSize = 10
 )
 
-func unsafeHashByRev(tx backend.ReadTx, compactRevision, revision int64, keep map[revision]struct{}) (KeyValueHash, error) {
+func unsafeHashByRev(tx backend.UnsafeReader, compactRevision, revision int64, keep map[Revision]struct{}) (KeyValueHash, error) {
 	h := newKVHasher(compactRevision, revision, keep)
 	err := tx.UnsafeForEach(schema.Key, func(k, v []byte) error {
 		h.WriteKeyValue(k, v)
@@ -43,10 +43,10 @@ type kvHasher struct {
 	hash            hash.Hash32
 	compactRevision int64
 	revision        int64
-	keep            map[revision]struct{}
+	keep            map[Revision]struct{}
 }
 
-func newKVHasher(compactRev, rev int64, keep map[revision]struct{}) kvHasher {
+func newKVHasher(compactRev, rev int64, keep map[Revision]struct{}) kvHasher {
 	h := crc32.New(crc32.MakeTable(crc32.Castagnoli))
 	h.Write(schema.Key.Name())
 	return kvHasher{
@@ -58,12 +58,12 @@ func newKVHasher(compactRev, rev int64, keep map[revision]struct{}) kvHasher {
 }
 
 func (h *kvHasher) WriteKeyValue(k, v []byte) {
-	kr := bytesToRev(k)
-	upper := revision{main: h.revision + 1}
+	kr := BytesToRev(k)
+	upper := Revision{Main: h.revision + 1}
 	if !upper.GreaterThan(kr) {
 		return
 	}
-	lower := revision{main: h.compactRevision + 1}
+	lower := Revision{Main: h.compactRevision + 1}
 	// skip revisions that are scheduled for deletion
 	// due to compacting; don't skip if there isn't one.
 	if lower.GreaterThan(kr) && len(h.keep) > 0 {
@@ -97,7 +97,7 @@ type HashStorage interface {
 	// HashByRev computes the hash of all MVCC revisions up to a given revision.
 	HashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error)
 
-	// Store adds hash value in local cache, allowing it can be returned by HashByRev.
+	// Store adds hash value in local cache, allowing it to be returned by HashByRev.
 	Store(valueHash KeyValueHash)
 
 	// Hashes returns list of up to `hashStorageMaxSize` newest previously stored hashes.

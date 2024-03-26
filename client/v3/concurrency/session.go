@@ -32,6 +32,7 @@ type Session struct {
 	opts   *sessionOptions
 	id     v3.LeaseID
 
+	ctx    context.Context
 	cancel context.CancelFunc
 	donec  <-chan struct{}
 }
@@ -61,11 +62,14 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 	}
 
 	donec := make(chan struct{})
-	s := &Session{client: client, opts: ops, id: id, cancel: cancel, donec: donec}
+	s := &Session{client: client, opts: ops, id: id, ctx: ctx, cancel: cancel, donec: donec}
 
 	// keep the lease alive until client error or cancelled context
 	go func() {
-		defer close(donec)
+		defer func() {
+			close(donec)
+			cancel()
+		}()
 		for range keepAlive {
 			// eat messages until keep alive channel closes
 		}
@@ -81,6 +85,12 @@ func (s *Session) Client() *v3.Client {
 
 // Lease is the lease ID for keys bound to the session.
 func (s *Session) Lease() v3.LeaseID { return s.id }
+
+// Ctx is the context attached to the session, it is canceled when the lease is orphaned, expires, or
+// is otherwise no longer being refreshed.
+func (s *Session) Ctx() context.Context {
+	return s.ctx
+}
 
 // Done returns a channel that closes when the lease is orphaned, expires, or
 // is otherwise no longer being refreshed.

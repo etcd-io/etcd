@@ -35,7 +35,7 @@ func newJSONPrinter() printer {
 func (p *jsonPrinter) DBStatus(r snapshot.Status) { printJSON(r) }
 
 // !!! Share ??
-func printJSON(v interface{}) {
+func printJSON(v any) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
