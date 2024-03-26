@@ -452,3 +452,61 @@ func TestEtcdTLSVersion(t *testing.T) {
 	proc.Wait() // ensure the port has been released
 	proc.Close()
 }
+
+func TestEtcdNonH2CiphersWithGRPC(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	d := t.TempDir()
+	argsWithGRPCandH2andWithoutH2Ciphers := []string{
+		e2e.BinPath.Etcd,
+		"--data-dir", d,
+		"--name", "e1",
+		"--enable-grpc-gateway",
+		"--listen-client-urls", "https://0.0.0.0:0",
+		"--advertise-client-urls", "https://0.0.0.0:0",
+		"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+		"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+		"--initial-cluster", fmt.Sprintf("e1=https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+		"--peer-cert-file", e2e.CertPath,
+		"--peer-key-file", e2e.PrivateKeyPath,
+		"--cert-file", e2e.CertPath2,
+		"--key-file", e2e.PrivateKeyPath2,
+		"--cipher-suites", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+
+		"--tls-min-version", "TLS1.2",
+		"--tls-max-version", "TLS1.2",
+	}
+	err := e2e.SpawnWithExpect(argsWithGRPCandH2andWithoutH2Ciphers, expect.ExpectedResponse{Value: "http2: TLSConfig.CipherSuites is missing an HTTP/2-required AES_128_GCM_SHA256 cipher (need at least one of TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 or TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)"})
+	require.ErrorContains(t, err, "GRPC cannot be started without HTTP2 protocol.")
+}
+
+func TestEtcdNonH2CiphersWithoutGRPC(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	d := t.TempDir()
+	proc, err := e2e.SpawnCmd(
+		[]string{
+			e2e.BinPath.Etcd,
+			"--data-dir", d,
+			"--name", "e1",
+			"--listen-client-http-urls", "https://0.0.0.0:0",
+			"--listen-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--initial-advertise-peer-urls", fmt.Sprintf("https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--initial-cluster", fmt.Sprintf("e1=https://127.0.0.1:%d", e2e.EtcdProcessBasePort),
+			"--peer-cert-file", e2e.CertPath,
+			"--peer-key-file", e2e.PrivateKeyPath,
+			"--cert-file", e2e.CertPath2,
+			"--key-file", e2e.PrivateKeyPath2,
+			"--cipher-suites", "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+
+			"--tls-min-version", "TLS1.2",
+			"--tls-max-version", "TLS1.2",
+		}, nil,
+	)
+	assert.NoError(t, err)
+	assert.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoError(t, proc.Stop())
+
+	proc.Wait() // ensure the port has been released
+	proc.Close()
+}
