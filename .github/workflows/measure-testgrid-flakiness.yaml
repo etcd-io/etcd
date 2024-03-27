@@ -1,0 +1,26 @@
+---
+name: Measure TestGrid Flakiness
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # run every Sunday at midnight
+
+permissions: read-all
+
+jobs:
+  measure-testgrid-flakiness:
+    name: Measure TestGrid Flakiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          ./scripts/measure-testgrid-flakiness.sh
