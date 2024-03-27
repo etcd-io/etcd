@@ -668,8 +668,8 @@ github.com/zmap/zcrypto v0.0.0-20201211161100-e54a5822fb7e/go.mod h1:aPM7r+JOkfL
 github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300 h1:DZH5n7L3L8RxKdSyJHZt7WePgwdhHnPhQFdQSJaHF+o=
 github.com/zmap/zcrypto v0.0.0-20230310154051-c8b263fd8300/go.mod h1:mOd4yUMgn2fe2nV9KXsa9AyQBFZGzygVPovsZR+Rl5w=
 github.com/zmap/zlint/v3 v3.0.0/go.mod h1:paGwFySdHIBEMJ61YjoqT4h7Ge+fdYG4sUQhnTb1lJ8=
-github.com/zmap/zlint/v3 v3.5.0 h1:Eh2B5t6VKgVH0DFmTwOqE50POvyDhUaU9T2mJOe1vfQ=
-github.com/zmap/zlint/v3 v3.5.0/go.mod h1:JkNSrsDJ8F4VRtBZcYUQSvnWFL7utcjDIn+FE64mlBI=
+github.com/zmap/zlint/v3 v3.6.1 h1:IM1jJ35YFBKFrbBMc8Kq34MGyDYttwRGZjO/qxIYG2Y=
+github.com/zmap/zlint/v3 v3.6.1/go.mod h1:NVgiIWssgzp0bNl8P4Gz94NHV2ep/4Jyj9V69uTmZyg=
 gitlab.com/bosi/decorder v0.4.1 h1:VdsdfxhstabyhZovHafFw+9eJ6eU0d2CkFNJcZz/NU4=
 gitlab.com/bosi/decorder v0.4.1/go.mod h1:jecSqWUew6Yle1pCr2eLWTensJMmsxHsBwt+PVbkAqA=
 go-simpler.org/assert v0.7.0 h1:OzWWZqfNxt8cLS+MlUp6Tgk1HjPkmgdKBq9qvy8lZsA=
