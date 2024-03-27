@@ -19,8 +19,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
-
-	"go.uber.org/zap"
+	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -29,6 +28,12 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.uber.org/zap"
+)
+
+const (
+	v3Version                        = "v3"
+	DefaultRangeWarningApplyDuration = 100 * time.Millisecond
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
@@ -138,6 +143,11 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 		trace = traceutil.New("range", lg)
 		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
+	op := "range"
+	defer func(start time.Time) {
+		success := err == nil
+		RangeSecObserve(op, success, time.Since(start))
+	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
 	resp, err = executeRange(ctx, lg, txnRead, r)
