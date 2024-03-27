@@ -34,6 +34,8 @@ running(leaking) after all tests.
 		...
 	}
 */
+var normalizedRegexp = regexp.MustCompile(`\(0[0-9a-fx, ]*\)`)
+
 func CheckLeakedGoroutine() bool {
 	gs := interestingGoroutines()
 	if len(gs) == 0 {
@@ -41,10 +43,9 @@ func CheckLeakedGoroutine() bool {
 	}
 
 	stackCount := make(map[string]int)
-	re := regexp.MustCompile(`\(0[0-9a-fx, ]*\)`)
 	for _, g := range gs {
 		// strip out pointer arguments in first function of stack dump
-		normalized := string(re.ReplaceAll([]byte(g), []byte("(...)")))
+		normalized := string(normalizedRegexp.ReplaceAll([]byte(g), []byte("(...)")))
 		stackCount[normalized]++
 	}
 
