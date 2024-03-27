@@ -138,7 +138,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 
 	walDir := restoreWalDir
 	if walDir == "" {
-		walDir = datadir.ToWalDir(dataDir)
+		walDir = datadir.ToWALDir(dataDir)
 	}
 
 	lg := GetLogger()
