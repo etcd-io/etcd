@@ -42,7 +42,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
+	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL}
 
 	ccfg := clientv3.Config{
 		Endpoints:            []string{eps[0]},
@@ -174,7 +174,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
+	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL}
 
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},

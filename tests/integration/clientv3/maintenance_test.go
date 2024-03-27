@@ -60,7 +60,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 		if _, err := cli.Get(context.TODO(), "foo"); err != nil {
 			t.Fatal(err)
 		}
-		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL(), 0)
+		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +87,7 @@ func TestCompactionHash(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL()}, 1000)
+	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
 }
 
 type hashTestCase struct {
@@ -406,7 +406,7 @@ func TestMaintenanceStatus(t *testing.T) {
 
 	eps := make([]string, 3)
 	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCURL()
+		eps[i] = clus.Members[i].GRPCURL
 	}
 
 	t.Logf("Creating client...")
