@@ -31,7 +31,6 @@ import (
 	_ "github.com/google/yamlfmt/cmd/yamlfmt"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
-	_ "github.com/mikefarah/yq/v4"
 	_ "go.etcd.io/gofail"
 	_ "go.etcd.io/protodoc"
 	_ "go.etcd.io/raft/v3"
