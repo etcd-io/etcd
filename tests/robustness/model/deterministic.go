@@ -216,8 +216,8 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 }
 
 func detachFromOldLease(s EtcdState, key string) EtcdState {
-	if oldLeaseId, ok := s.KeyLeases[key]; ok {
-		delete(s.Leases[oldLeaseId].Keys, key)
+	if oldLeaseID, ok := s.KeyLeases[key]; ok {
+		delete(s.Leases[oldLeaseID].Keys, key)
 		delete(s.KeyLeases, key)
 	}
 	return s

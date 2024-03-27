@@ -109,7 +109,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
-	ids := identity.NewIdProvider()
+	ids := identity.NewIDProvider()
 	g.Go(func() error {
 		defer close(finishTraffic)
 		err := failpoint.Inject(ctx, t, lg, clus, s.failpoint)

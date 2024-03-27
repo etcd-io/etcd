@@ -32,7 +32,7 @@ import (
 )
 
 func TestPersistLoadClientReports(t *testing.T) {
-	h := model.NewAppendableHistory(identity.NewIdProvider())
+	h := model.NewAppendableHistory(identity.NewIDProvider())
 	baseTime := time.Now()
 
 	start := time.Since(baseTime)
@@ -122,12 +122,12 @@ func TestPersistLoadClientReports(t *testing.T) {
 	}
 	reports := []ClientReport{
 		{
-			ClientId: 1,
+			ClientID: 1,
 			KeyValue: h.Operations(),
 			Watch:    []model.WatchOperation{watch},
 		},
 		{
-			ClientId: 2,
+			ClientID: 2,
 			KeyValue: nil,
 			Watch:    []model.WatchOperation{watch},
 		},

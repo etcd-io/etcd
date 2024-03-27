@@ -37,11 +37,11 @@ var (
 type memberReplace struct{}
 
 func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
-	memberId := rand.Int() % len(clus.Procs)
-	member := clus.Procs[memberId]
+	memberID := uint64(rand.Int() % len(clus.Procs))
+	member := clus.Procs[memberID]
 	var endpoints []string
 	for i := 1; i < len(clus.Procs); i++ {
-		endpoints = append(endpoints, clus.Procs[(memberId+i)%len(clus.Procs)].EndpointsGRPC()...)
+		endpoints = append(endpoints, clus.Procs[(int(memberID)+i)%len(clus.Procs)].EndpointsGRPC()...)
 	}
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
@@ -93,7 +93,7 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	}
 
 	lg.Info("Adding member back", zap.String("member", member.Config().Name))
-	removedMemberPeerUrl := member.Config().PeerURL.String()
+	removedMemberPeerURL := member.Config().PeerURL.String()
 	for {
 		select {
 		case <-ctx.Done():
@@ -101,7 +101,7 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 		default:
 		}
 		reqCtx, cancel := context.WithTimeout(ctx, time.Second)
-		_, err = cc.MemberAdd(reqCtx, []string{removedMemberPeerUrl})
+		_, err = cc.MemberAdd(reqCtx, []string{removedMemberPeerURL})
 		cancel()
 		if err == nil {
 			break

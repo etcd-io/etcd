@@ -62,7 +62,7 @@ func validateOrdered(t *testing.T, report report.ClientReport) {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision < lastEventRevision {
-					t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, client: %d", lastEventRevision, event.Revision, report.ClientId)
+					t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, client: %d", lastEventRevision, event.Revision, report.ClientID)
 				}
 				lastEventRevision = event.Revision
 			}
@@ -85,7 +85,7 @@ func validateUnique(t *testing.T, expectUniqueRevision bool, report report.Clien
 					}{event.Revision, event.Key}
 				}
 				if _, found := uniqueOperations[key]; found {
-					t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientId)
+					t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientID)
 				}
 				uniqueOperations[key] = struct{}{}
 			}
@@ -99,7 +99,7 @@ func validateAtomic(t *testing.T, report report.ClientReport) {
 		for _, resp := range op.Responses {
 			if len(resp.Events) > 0 {
 				if resp.Events[0].Revision == lastEventRevision {
-					t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, client: %d", lastEventRevision, resp.Events[0].Revision, report.ClientId)
+					t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, client: %d", lastEventRevision, resp.Events[0].Revision, report.ClientID)
 				}
 				lastEventRevision = resp.Events[len(resp.Events)-1].Revision
 			}

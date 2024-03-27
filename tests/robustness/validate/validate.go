@@ -55,29 +55,29 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.PersistedEve
 	type revisionEvents struct {
 		events   []model.PersistedEvent
 		revision int64
-		clientId int
+		clientID int
 	}
 	revisionToEvents := map[int64]revisionEvents{}
-	var lastClientId = 0
+	var lastClientID = 0
 	var lastRevision int64
 	events := []model.PersistedEvent{}
 	for _, r := range reports {
 		for _, op := range r.Watch {
 			for _, resp := range op.Responses {
 				for _, event := range resp.Events {
-					if event.Revision == lastRevision && lastClientId == r.ClientId {
+					if event.Revision == lastRevision && lastClientID == r.ClientID {
 						events = append(events, event.PersistedEvent)
 					} else {
 						if prev, found := revisionToEvents[lastRevision]; found {
 							// This assumes that there are txn that would be observed differently by two watches.
 							// TODO: Implement merging events from multiple watches about single revision based on operations.
 							if diff := cmp.Diff(prev.events, events); diff != "" {
-								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
+								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientID, lastClientID, lastRevision, diff)
 							}
 						} else {
-							revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
+							revisionToEvents[lastRevision] = revisionEvents{clientID: lastClientID, events: events, revision: lastRevision}
 						}
-						lastClientId = r.ClientId
+						lastClientID = r.ClientID
 						lastRevision = event.Revision
 						events = []model.PersistedEvent{event.PersistedEvent}
 					}
@@ -87,10 +87,10 @@ func mergeWatchEventHistory(reports []report.ClientReport) ([]model.PersistedEve
 	}
 	if prev, found := revisionToEvents[lastRevision]; found {
 		if diff := cmp.Diff(prev.events, events); diff != "" {
-			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
+			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientID, lastClientID, lastRevision, diff)
 		}
 	} else {
-		revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
+		revisionToEvents[lastRevision] = revisionEvents{clientID: lastClientID, events: events, revision: lastRevision}
 	}
 
 	var allRevisionEvents []revisionEvents

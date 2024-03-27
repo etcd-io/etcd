@@ -17,32 +17,32 @@ package identity
 import "sync/atomic"
 
 type Provider interface {
-	// NewStreamId returns an integer starting from zero to make it render nicely by porcupine visualization.
-	NewStreamId() int
-	// NewRequestId returns unique identification used to make write requests unique.
-	NewRequestId() int
-	// NewClientId returns unique identification for client and their reports.
-	NewClientId() int
+	// NewStreamID returns an integer starting from zero to make it render nicely by porcupine visualization.
+	NewStreamID() int
+	// NewRequestID returns unique identification used to make write requests unique.
+	NewRequestID() int
+	// NewClientID returns unique identification for client and their reports.
+	NewClientID() int
 }
 
-func NewIdProvider() Provider {
+func NewIDProvider() Provider {
 	return &atomicProvider{}
 }
 
 type atomicProvider struct {
-	streamId  atomic.Int64
-	requestId atomic.Int64
-	clientId  atomic.Int64
+	streamID  atomic.Int64
+	requestID atomic.Int64
+	clientID  atomic.Int64
 }
 
-func (id *atomicProvider) NewStreamId() int {
-	return int(id.streamId.Add(1) - 1)
+func (id *atomicProvider) NewStreamID() int {
+	return int(id.streamID.Add(1) - 1)
 }
 
-func (id *atomicProvider) NewRequestId() int {
-	return int(id.requestId.Add(1))
+func (id *atomicProvider) NewRequestID() int {
+	return int(id.requestID.Add(1))
 }
 
-func (id *atomicProvider) NewClientId() int {
-	return int(id.clientId.Add(1))
+func (id *atomicProvider) NewClientID() int {
+	return int(id.clientID.Add(1))
 }

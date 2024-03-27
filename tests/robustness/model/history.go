@@ -35,8 +35,8 @@ import (
 // Operations time should be calculated as time.Since common base time to ensure that Go monotonic time is used.
 // More in https://github.com/golang/go/blob/96add980ad27faed627f26ef1ab09e8fe45d6bd1/src/time/time.go#L10.
 type AppendableHistory struct {
-	// streamId for the next operation. Used for porcupine.Operation.ClientId as porcupine assumes no concurrent requests.
-	streamId int
+	// streamID for the next operation. Used for porcupine.Operation.ClientId as porcupine assumes no concurrent requests.
+	streamID int
 	// If needed a new streamId is requested from idProvider.
 	idProvider identity.Provider
 
@@ -45,7 +45,7 @@ type AppendableHistory struct {
 
 func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	return &AppendableHistory{
-		streamId:   ids.NewStreamId(),
+		streamID:   ids.NewStreamID(),
 		idProvider: ids,
 		History: History{
 			successful: []porcupine.Operation{},
@@ -60,7 +60,7 @@ func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit
 		respRevision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    staleRangeRequest(startKey, endKey, limit, revision),
 		Call:     start.Nanoseconds(),
 		Output:   rangeResponse(resp.Kvs, resp.Count, respRevision),
@@ -79,7 +79,7 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duratio
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
@@ -98,7 +98,7 @@ func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   putResponse(revision),
@@ -121,7 +121,7 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 		revision = resp.ResponseHeader.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   leaseGrantResponse(revision),
@@ -140,7 +140,7 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   leaseRevokeResponse(revision),
@@ -161,7 +161,7 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 		deleted = resp.Deleted
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   deleteResponse(deleted, revision),
@@ -196,7 +196,7 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, cl
 		results = append(results, toEtcdOperationResult(resp))
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   txnResponse(results, resp.Succeeded, revision),
@@ -306,7 +306,7 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 		revision = resp.Header.Revision
 	}
 	h.appendSuccessful(porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   defragmentResponse(revision),
@@ -331,7 +331,7 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err er
 		}
 	}
 	h.failed = append(h.failed, porcupine.Operation{
-		ClientId: h.streamId,
+		ClientId: h.streamID,
 		Input:    request,
 		Call:     call,
 		Output:   failedResponse(err),
@@ -339,7 +339,7 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, call int64, err er
 	})
 	// Operations of single client needs to be sequential.
 	// As we don't know return time of failed operations, all new writes need to be done with new stream id.
-	h.streamId = h.idProvider.NewStreamId()
+	h.streamID = h.idProvider.NewStreamID()
 }
 
 func getRequest(key string) EtcdRequest {

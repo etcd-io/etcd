@@ -62,7 +62,7 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 		return nil, err
 	}
 	return &RecordingClient{
-		id:           ids.NewClientId(),
+		id:           ids.NewClientID(),
 		client:       *cc,
 		kvOperations: model.NewAppendableHistory(ids),
 		baseTime:     baseTime,
@@ -75,7 +75,7 @@ func (c *RecordingClient) Close() error {
 
 func (c *RecordingClient) Report() report.ClientReport {
 	return report.ClientReport{
-		ClientId: c.id,
+		ClientID: c.id,
 		KeyValue: c.kvOperations.History.Operations(),
 		Watch:    c.watchOperations,
 	}
@@ -162,24 +162,24 @@ func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (*clientv3.
 	return resp, err
 }
 
-func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseId int64) (*clientv3.LeaseRevokeResponse, error) {
+func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseID int64) (*clientv3.LeaseRevokeResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseId))
+	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseID))
 	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendLeaseRevoke(leaseId, callTime, returnTime, resp, err)
+	c.kvOperations.AppendLeaseRevoke(leaseID, callTime, returnTime, resp, err)
 	return resp, err
 }
 
-func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseId int64) (*clientv3.PutResponse, error) {
-	opts := clientv3.WithLease(clientv3.LeaseID(leaseId))
+func (c *RecordingClient) PutWithLease(ctx context.Context, key string, value string, leaseID int64) (*clientv3.PutResponse, error) {
+	opts := clientv3.WithLease(clientv3.LeaseID(leaseID))
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Put(ctx, key, value, opts)
 	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendPutWithLease(key, value, leaseId, callTime, returnTime, resp, err)
+	c.kvOperations.AppendPutWithLease(key, value, leaseID, callTime, returnTime, resp, err)
 	return resp, err
 }
 
