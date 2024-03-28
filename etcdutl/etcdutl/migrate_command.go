@@ -94,7 +94,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	dbPath := datadir.ToBackendFileName(o.dataDir)
 	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 
-	walPath := datadir.ToWalDir(o.dataDir)
+	walPath := datadir.ToWALDir(o.dataDir)
 	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open wal: %v`, err)

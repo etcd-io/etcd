@@ -69,7 +69,7 @@ func TestGetIDs(t *testing.T) {
 		if tt.confState != nil {
 			snap.Metadata.ConfState = *tt.confState
 		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWalEntries(lg, &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, &snap, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}

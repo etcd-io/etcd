@@ -37,12 +37,12 @@ func TestToSnapDir(t *testing.T) {
 	assert.Equal(t, "/dir/data-dir/member/snap", result)
 }
 
-func TestToWalDir(t *testing.T) {
-	result := datadir.ToWalDir("/dir/data-dir")
+func TestToWALDir(t *testing.T) {
+	result := datadir.ToWALDir("/dir/data-dir")
 	assert.Equal(t, "/dir/data-dir/member/wal", result)
 }
 
-func TestToWalDirSlash(t *testing.T) {
-	result := datadir.ToWalDir("/dir/data-dir/")
+func TestToWALDirSlash(t *testing.T) {
+	result := datadir.ToWALDir("/dir/data-dir/")
 	assert.Equal(t, "/dir/data-dir/member/wal", result)
 }
