@@ -152,6 +152,88 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 	}
 }
 
+func TestInferLocalAddr(t *testing.T) {
+	tests := []struct {
+		advertisePeerUrls  []string
+		setMemberLocalAddr bool
+		expectedLocalAddr  string
+	}{
+		{
+			[]string{DefaultInitialAdvertisePeerURLs},
+			false,
+			"",
+		},
+		{
+			[]string{"https://192.168.100.110:2380"},
+			false,
+			"",
+		},
+		{
+			[]string{DefaultInitialAdvertisePeerURLs},
+			true,
+			"",
+		},
+		{
+			[]string{"https://0.0.0.0:2380"},
+			true,
+			"",
+		},
+		{
+			[]string{"https://[::]:2380"},
+			true,
+			"",
+		},
+		{
+			[]string{"https://127.0.0.1:2380"},
+			true,
+			"",
+		},
+		{
+			[]string{"https://[::1]:2380"},
+			true,
+			"",
+		},
+		{
+			[]string{"https://192.168.100.110:2380"},
+			true,
+			"192.168.100.110",
+		},
+		{
+			[]string{"https://123-host-3.corp.internal:2380", "https://192.168.100.110:2380"},
+			true,
+			"192.168.100.110",
+		},
+		{
+			// IPv4 addresses will always sort before IPv6 ones anyways
+			[]string{"https://192.168.100.110:2380", "https://[2001:db8:85a3::8a2e:370:7334]:2380"},
+			true,
+			"192.168.100.110",
+		},
+		{
+			[]string{"https://[2001:db8:85a3::8a2e:370:7334]:2380"},
+			true,
+			"2001:db8:85a3::8a2e:370:7334",
+		},
+	}
+
+	for i, tt := range tests {
+		cfg := NewConfig()
+		cfg.AdvertisePeerUrls = types.MustNewURLs(tt.advertisePeerUrls)
+		cfg.SetMemberLocalAddr = tt.setMemberLocalAddr
+
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("#%d: failed to validate test Config: %v", i, err)
+			continue
+		}
+
+		inferredLocalAddr := cfg.InferLocalAddr()
+		if inferredLocalAddr != tt.expectedLocalAddr {
+			t.Errorf("#%d: LocalAddr = %s, want = %s", i, inferredLocalAddr, tt.expectedLocalAddr)
+		}
+	}
+
+}
+
 func (s *securityConfig) equals(t *transport.TLSInfo) bool {
 	return s.CertFile == t.CertFile &&
 		s.CertAuth == t.ClientCertAuth &&

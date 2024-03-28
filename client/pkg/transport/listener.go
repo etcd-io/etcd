@@ -193,6 +193,9 @@ type TLSInfo struct {
 	// EmptyCN indicates that the cert must have empty CN.
 	// If true, ClientConfig() will return an error for a cert with non empty CN.
 	EmptyCN bool
+
+	// LocalAddr is the local IP address to use when communicating with a peer.
+	LocalAddr string
 }
 
 func (info TLSInfo) String() string {
