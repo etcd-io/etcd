@@ -63,6 +63,9 @@ type Manager interface {
 	// Status returns the snapshot file information.
 	Status(dbPath string) (Status, error)
 
+	// HashKV returns the hash of keys and values up to specified revision (0 means all).
+	HashKV(dbPath string, rev int64) (HashKV, error)
+
 	// Restore restores a new etcd data directory from given snapshot
 	// file. It returns an error if specified data directory already
 	// exists, to prevent unintended data directory overwrites.
@@ -109,6 +112,30 @@ type Status struct {
 	// Version is equal to storageVersion of the snapshot
 	// Empty if server does not supports versioned snapshots (<v3.6)
 	Version string `json:"version"`
+}
+
+type HashKV struct {
+	Hash            uint32 `json:"hash"`
+	HashRevision    int64  `json:"hashRevision"`
+	CompactRevision int64  `json:"compactRevision"`
+}
+
+func (s *v3Manager) HashKV(dbPath string, rev int64) (ds HashKV, err error) {
+	cfg := backend.DefaultBackendConfig(zap.NewNop())
+	cfg.Path = dbPath
+	b := backend.New(cfg)
+	st := mvcc.NewStore(zap.NewNop(), b, nil, mvcc.StoreConfig{})
+	hst := mvcc.NewHashStorage(zap.NewNop(), st)
+
+	h, _, err := hst.HashByRev(rev)
+	if err != nil {
+		return HashKV{}, err
+	}
+	return HashKV{
+		Hash:            h.Hash,
+		HashRevision:    h.Revision,
+		CompactRevision: h.CompactRevision,
+	}, nil
 }
 
 // Status returns the snapshot file information.

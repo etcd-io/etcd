@@ -178,7 +178,7 @@ func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
 
 func TestHasherStore(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	s := newHashStorage(lg, newFakeStore(lg))
+	s := NewHashStorage(lg, newFakeStore(lg))
 	defer s.store.Close()
 
 	var hashes []KeyValueHash
@@ -207,7 +207,7 @@ func TestHasherStore(t *testing.T) {
 
 func TestHasherStoreFull(t *testing.T) {
 	lg := zaptest.NewLogger(t)
-	s := newHashStorage(lg, newFakeStore(lg))
+	s := NewHashStorage(lg, newFakeStore(lg))
 	defer s.store.Close()
 
 	var minRevision int64 = 100
