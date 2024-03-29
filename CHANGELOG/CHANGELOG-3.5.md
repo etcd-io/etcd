@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.13 (TBD)
+## v3.5.14 (TBD)
+
+<hr>
+
+## v3.5.13 (2024-03-29)
 
 ### etcd server
 - Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17425).
