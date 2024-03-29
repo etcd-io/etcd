@@ -233,13 +233,16 @@ func decideClusterVersion(lg *zap.Logger, vers map[string]*version.Versions) *se
 // cluster version in the range of [MinClusterVersion, Version] and no known members has a cluster version
 // out of the range.
 // We set this rule since when the local member joins, another member might be offline.
-func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper) bool {
+func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local types.ID, rt http.RoundTripper, nextClusterVersionCompatible bool) bool {
 	vers := getVersions(lg, cl, local, rt)
 	minV := semver.Must(semver.NewVersion(version.MinClusterVersion))
 	maxV := semver.Must(semver.NewVersion(version.Version))
 	maxV = &semver.Version{
 		Major: maxV.Major,
 		Minor: maxV.Minor,
+	}
+	if nextClusterVersionCompatible {
+		maxV.Minor += 1
 	}
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }

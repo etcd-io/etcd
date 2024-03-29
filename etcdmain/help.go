@@ -126,7 +126,7 @@ Clustering:
   --enable-v2 '` + strconv.FormatBool(embed.DefaultEnableV2) + `'
     Accept etcd V2 client requests.
   --next-cluster-version-compatible 'false'
-  Enable 3.4 to be compatible with next version 3.5, to allow 3.4 server to join 3.5 cluster and start on 3.5 schema.
+    Enable 3.4 to be compatible with next version 3.5, to allow 3.4 server to join 3.5 cluster and start on 3.5 schema.
 
 Security:
   --cert-file ''
