@@ -307,7 +307,7 @@ func (c *ServerConfig) WALDir() string {
 	if c.DedicatedWALDir != "" {
 		return c.DedicatedWALDir
 	}
-	return datadir.ToWalDir(c.DataDir)
+	return datadir.ToWALDir(c.DataDir)
 }
 
 func (c *ServerConfig) SnapDir() string { return filepath.Join(c.MemberDir(), "snap") }

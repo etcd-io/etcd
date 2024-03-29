@@ -132,7 +132,7 @@ func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *
 }
 
 func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
-	walDir := datadir.ToWalDir(cfg.DataDir)
+	walDir := datadir.ToWALDir(cfg.DataDir)
 
 	walSnaps, err := wal2.ValidSnapshotEntries(cfg.Logger, walDir)
 	if err != nil {

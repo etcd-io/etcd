@@ -694,7 +694,7 @@ func (wal *bootstrappedWAL) CommitedEntries() []raftpb.Entry {
 func (wal *bootstrappedWAL) NewConfigChangeEntries() []raftpb.Entry {
 	return serverstorage.CreateConfigChangeEnts(
 		wal.lg,
-		serverstorage.GetEffectiveNodeIDsFromWalEntries(wal.lg, wal.snapshot, wal.ents),
+		serverstorage.GetEffectiveNodeIDsFromWALEntries(wal.lg, wal.snapshot, wal.ents),
 		uint64(wal.meta.nodeID),
 		wal.st.Term,
 		wal.st.Commit,

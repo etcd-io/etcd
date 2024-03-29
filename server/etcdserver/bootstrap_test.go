@@ -230,7 +230,7 @@ func createDataDir(t *testing.T) (string, error) {
 	}
 
 	// create ${dataDir}/member/wal
-	err = os.MkdirAll(datadir.ToWalDir(dataDir), 0700)
+	err = os.MkdirAll(datadir.ToWALDir(dataDir), 0700)
 	if err != nil {
 		return "", err
 	}

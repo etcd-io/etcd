@@ -31,7 +31,15 @@ func ToSnapDir(dataDir string) string {
 	return filepath.Join(ToMemberDir(dataDir), snapDirSegment)
 }
 
+// ToWalDir returns the directory path for the member's WAL.
+// Deprecated: use ToWALDir instead.
+//
+//revive:disable-next-line:var-naming
 func ToWalDir(dataDir string) string {
+	return ToWALDir(dataDir)
+}
+
+func ToWALDir(dataDir string) string {
 	return filepath.Join(ToMemberDir(dataDir), walDirSegment)
 }
 
