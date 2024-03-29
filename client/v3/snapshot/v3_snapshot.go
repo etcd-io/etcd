@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -84,15 +83,6 @@ func WriteSnapshotWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.
 		zap.Duration("took", time.Since(start)),
 		zap.String("etcd-version", resp.Version),
 	)
-
-	partPath := f.Name()
-	dbPath := strings.TrimSuffix(partPath, ".part")
-	if f != os.Stdout {
-		if err := os.Rename(partPath, dbPath); err != nil {
-			return resp.Version, fmt.Errorf("could not rename %s to %s (%v)", partPath, dbPath, err)
-		}
-	}
-	lg.Info("finished", zap.String("path", dbPath))
 	return resp.Version, nil
 }
 
@@ -107,7 +97,12 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	defer os.RemoveAll(partPath)
 	defer f.Close()
 
-	return WriteSnapshotWithVersion(ctx, lg, cfg, f)
+	version, err := WriteSnapshotWithVersion(ctx, lg, cfg, f)
+	if err := os.Rename(partPath, dbPath); err != nil {
+		return version, fmt.Errorf("could not rename %s to %s (%v)", partPath, dbPath, err)
+	}
+	lg.Info("saved", zap.String("path", dbPath))
+	return version, err
 }
 
 func PipeWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config) (string, error) {
