@@ -99,7 +99,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 
 	var version string
 	version, err = WriteSnapshotWithVersion(ctx, lg, cfg, f)
-	if err := os.Rename(partPath, dbPath); err != nil {
+	if err = os.Rename(partPath, dbPath); err != nil {
 		return version, fmt.Errorf("could not rename %s to %s (%v)", partPath, dbPath, err)
 	}
 	lg.Info("saved", zap.String("path", dbPath))
