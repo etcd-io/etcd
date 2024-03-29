@@ -15,6 +15,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17465).
 - Fix [no progress notification being sent for watch that doesn't get any events](https://github.com/etcd-io/etcd/pull/17567).
 - Fix [watch event loss after compaction](https://github.com/etcd-io/etcd/pull/17610).
+- Add `next-cluster-version-compatible` flag to [allow downgrade from 3.5](https://github.com/etcd-io/etcd/pull/17330).
 
 ### Package `clientv3`
 - Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17369).
