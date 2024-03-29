@@ -57,7 +57,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 	yc := struct {
 		Dir                    string `json:"data-dir"`
 		MaxSnapFiles           uint   `json:"max-snapshots"`
-		MaxWalFiles            uint   `json:"max-wals"`
+		MaxWALFiles            uint   `json:"max-wals"`
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
 		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`

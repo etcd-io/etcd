@@ -149,8 +149,9 @@ func init() {
 
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
-	Name   string `json:"name"`
-	Dir    string `json:"data-dir"`
+	Name string `json:"name"`
+	Dir  string `json:"data-dir"`
+	//revive:disable-next-line:var-naming
 	WalDir string `json:"wal-dir"`
 
 	SnapshotCount uint64 `json:"snapshot-count"`
@@ -163,7 +164,8 @@ type Config struct {
 	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
 
 	MaxSnapFiles uint `json:"max-snapshots"`
-	MaxWalFiles  uint `json:"max-wals"`
+	//revive:disable-next-line:var-naming
+	MaxWalFiles uint `json:"max-wals"`
 
 	// TickMs is the number of milliseconds between heartbeat ticks.
 	// TODO: decouple tickMs and heartbeat tick (current heartbeat tick = 1).
@@ -231,8 +233,11 @@ type Config struct {
 	CipherSuites []string `json:"cipher-suites"`
 
 	// TlsMinVersion is the minimum accepted TLS version between client/server and peers.
+	//revive:disable-next-line:var-naming
 	TlsMinVersion string `json:"tls-min-version"`
+
 	// TlsMaxVersion is the maximum accepted TLS version between client/server and peers.
+	//revive:disable-next-line:var-naming
 	TlsMaxVersion string `json:"tls-max-version"`
 
 	ClusterState          string `json:"initial-cluster-state"`
