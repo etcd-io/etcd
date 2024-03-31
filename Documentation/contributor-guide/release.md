@@ -72,10 +72,10 @@ which don't need to be executed before releasing each version.
 3. Clone the etcd repository and checkout the target branch,
    - `git clone git@github.com:etcd-io/etcd.git`
    - `git checkout release-3.X`
-4. Run the release script under the repository's root directory,
+4. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
    - `DRY_RUN=false ./scripts/release.sh ${VERSION}`
 
-   It generates all release binaries under directory ./release and images. Binaries are pushed to the google cloud bucket
+   It generates all release binaries under directory `./release` and images. Binaries are pushed to the google cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
 5. Publish release page in Github
    - Set release title as the version name
@@ -100,3 +100,11 @@ etcd team
 7. Update the changelog to reflect the correct release date.
 8. Paste the release link to the issue raised at step 1 and close the issue.
 9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+
+#### Release known issues
+
+1. Timeouts pushing binaries - If binaries fail to fully upload to google cloud storage, the script must be re-run using the same command. Any artifacts that already pushed will be overwritten to ensure they are correct. The storage bucket does not use object versioning so there no possibility for incorrect files to remain.
+
+2. Timeouts pushing images - It is rare, although possible for connection timeouts to occur when publishing etcd release images to `quay.io` or `gcr.io`. If this occurs, it is known to be safe to rerun the release script command appending the `--no-upload` flag and image uploads will gracefully resume.
+
+3. GPG vs SSH signing - The release scripts assume that git tags will be signed with a GPG key. Since 2022 GitHub has supported [signing commits and tags using ssh](https://github.blog/changelog/2022-08-23-ssh-commit-verification-now-supported). Until further release script updates are completed you will need to disable this feature in your `~/.gitconfig` and revert to signing via GPG to perform etcd releases.
