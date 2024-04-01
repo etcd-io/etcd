@@ -1,3 +1,4 @@
+---
 name: Trivy Scan Nightly
 on:
   schedule:
