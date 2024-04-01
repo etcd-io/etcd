@@ -50,6 +50,7 @@ var (
 		RaftBeforeSaveSleep,
 		RaftAfterSaveSleep,
 		ApplyBeforeOpenSnapshot,
+		SleepBeforeSendWatchResponse,
 	}
 )
 
