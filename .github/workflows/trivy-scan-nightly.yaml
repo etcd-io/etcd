@@ -1,0 +1,31 @@
+name: Trivy Scan Nightly
+on:
+  schedule:
+    - cron: '0 2 * * *' # run at 2 AM UTC
+permissions: read-all
+jobs:
+  nightly-scan:
+    name: Trivy Scan Nightly
+    permissions:
+      security-events: write  # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Get etcd HEAD version
+        id: get_etcd_version
+        run: echo "etcd_version=$(cat go.mod | grep "go.etcd.io/etcd/api/v3 v" | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339ff66b32f22ee55 # v0.19.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:${{ steps.get_etcd_version.outputs.etcd_version }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-${{ steps.get_etcd_version.outputs.etcd_version }}.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@956f09c2ef1926b580554b9014cfb8a51abf89dd # v2.16.6
+        with:
+          sarif_file: 'trivy-results-${{ steps.get_etcd_version.outputs.etcd_version }}.sarif'
