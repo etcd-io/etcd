@@ -1,5 +1,5 @@
 ARG ARCH=amd64
-FROM --platform=linux/${ARCH} gcr.io/distroless/static-debian12@sha256:6dcc833df2a475be1a3d7fc951de90ac91a2cb0be237c7578b88722e48f2e56f
+FROM --platform=linux/${ARCH} gcr.io/distroless/static-debian12@sha256:8cbe18a8a9a9fefe70590dc8f6a7bc70b4bbe41f262d9dab9084337adabf6d26
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
