@@ -39,7 +39,6 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ## v3.5.12 (2024-01-31)
 
 ### etcd server
-- Add [livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17039)
 - Fix [not validating database consistent index, and panicking on nil backend](https://github.com/etcd-io/etcd/pull/17151)
 - Document [`experimental-enable-lease-checkpoint-persist` flag in etcd help](https://github.com/etcd-io/etcd/pull/17190)
 - Fix [needlessly flocking snapshot files when deleting](https://github.com/etcd-io/etcd/pull/17206)
@@ -56,6 +55,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 - Fix distributed tracing by ensuring `--experimental-distributed-tracing-sampling-rate` configuration option is available to [set tracing sample rate](https://github.com/etcd-io/etcd/pull/16951).
 - Fix [url redirects while checking peer urls during new member addition](https://github.com/etcd-io/etcd/pull/16986)
+- Add [livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17039)
 
 ### Dependencies
 - Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
