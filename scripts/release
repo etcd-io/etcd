@@ -61,7 +61,7 @@ main() {
       REPOSITORY=$(pwd)
       BRANCH=$(git rev-parse --abbrev-ref HEAD)
   else
-      REPOSITORY=${REPOSITORY:-"https://github.com/etcd-io/etcd.git"}
+      REPOSITORY=${REPOSITORY:-"git@github.com:etcd-io/etcd.git"}
       BRANCH=${BRANCH:-"release-${MINOR_VERSION}"}
   fi
 
