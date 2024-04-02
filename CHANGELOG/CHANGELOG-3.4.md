@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.32 (TBD)
 
+### Package `clientv3`
+- Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17692).
+
 <hr>
 
 ## v3.4.31 (2024-03-21)
