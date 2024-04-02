@@ -1,7 +1,6 @@
 ---
 run:
   timeout: 30m
-  skip-files: [^zz_generated.*]
 issues:
   max-same-issues: 0
   # Excluding configuration per-path, per-linter, per-text and per-source
@@ -9,6 +8,8 @@ issues:
     # exclude ineffassing linter for generated files for conversion
     - path: conversion\.go
       linters: [ineffassign]
+  exclude-files:
+    - ^zz_generated.*
 linters:
   disable-all: true
   enable: # please keep this alphabetized
