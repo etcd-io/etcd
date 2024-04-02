@@ -151,6 +151,7 @@ main() {
     if [[ -n $(git status -s) ]]; then
       log_callout "Committing mods & api/version/version.go update."
       run git add api/version/version.go
+      # shellcheck disable=SC2038,SC2046,SC2185
       run git add $(find -name go.mod ! -path './release/*'| xargs)
       run git diff --staged | cat
       run git commit -m "version: bump up to ${VERSION}"
@@ -223,6 +224,7 @@ main() {
   # Generate SHA256SUMS
   log_callout "Generating sha256sums of release artifacts."
   pushd ./release
+  # shellcheck disable=SC2010
   ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
   if [ -s ./release/SHA256SUMS ]; then
@@ -300,6 +302,7 @@ main() {
   done
 
   # Check gsutil binary versions
+  # shellcheck disable=SC2155
   local BINARY_TGZ="etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64.tar.gz"
   if [ "${DRY_RUN}" == "true" ] || [ "${NO_UPLOAD}" == 1 ]; then
     cp "./release/${BINARY_TGZ}" downloads
@@ -307,6 +310,7 @@ main() {
     gsutil cp "gs://etcd/${RELEASE_VERSION}/${BINARY_TGZ}" downloads
   fi
   tar -zx -C downloads -f "downloads/${BINARY_TGZ}"
+  # shellcheck disable=SC2155
   local binary_version=$("./downloads/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcd" --version | grep "etcd Version" | awk -F: '{print $2}' | tr -d '[:space:]')
   if [ "${binary_version}" != "${VERSION}" ]; then
     log_error "Check failed: etcd --version output for ${BINARY_TGZ} from gs://etcd/${RELEASE_VERSION} is incorrect: ${binary_version}"
