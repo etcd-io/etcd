@@ -18,7 +18,7 @@ replace (
 require (
 	github.com/bgentry/speakeasy v0.1.0
 	github.com/dustin/go-humanize v1.0.0
-	github.com/spf13/cobra v1.1.3
+	github.com/spf13/cobra v1.8.0
 	go.etcd.io/bbolt v1.3.7
 	go.etcd.io/etcd/api/v3 v3.5.9
 	go.etcd.io/etcd/client/pkg/v3 v3.5.9
@@ -51,11 +51,11 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -82,7 +82,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20210624195500-8bfb893ecb84 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
