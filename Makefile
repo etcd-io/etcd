@@ -1,3 +1,4 @@
+.PHONY: all
 all: build
 include tests/robustness/makefile.mk
 
@@ -61,11 +62,13 @@ fuzz:
 	./scripts/fuzzing.sh
 
 # Static analysis
-
+.PHONY: verify
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-govet-shadow verify-markdown-marker
+
+.PHONY: fix
 fix: fix-bom fix-lint fix-yamllint
 	./scripts/fix.sh
 
@@ -178,7 +181,7 @@ bin/lazyfs:
 	cp /tmp/lazyfs/lazyfs/build/lazyfs ./bin/lazyfs
 
 # Cleanup
-
+.PHONY: clean
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
