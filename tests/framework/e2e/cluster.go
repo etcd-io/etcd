@@ -197,6 +197,13 @@ func NewConfig(opts ...EPClusterOption) *EtcdProcessClusterConfig {
 	return c
 }
 
+func (cfg *EtcdProcessClusterConfig) With(opts ...EPClusterOption) *EtcdProcessClusterConfig {
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return cfg
+}
+
 type EPClusterOption func(*EtcdProcessClusterConfig)
 
 func WithConfig(cfg *EtcdProcessClusterConfig) EPClusterOption {
