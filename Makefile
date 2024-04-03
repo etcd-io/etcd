@@ -178,7 +178,7 @@ bin/lazyfs:
 	cp /tmp/lazyfs/lazyfs/build/lazyfs ./bin/lazyfs
 
 # Cleanup
-
+.PHONY: clean
 clean:
 	rm -f ./codecov
 	rm -rf ./covdir
