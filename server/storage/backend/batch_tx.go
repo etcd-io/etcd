@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
+	bolterrors "go.etcd.io/bbolt/errors"
 )
 
 type BucketID int
@@ -124,7 +125,7 @@ func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
 
 func (t *batchTx) UnsafeDeleteBucket(bucket Bucket) {
 	err := t.tx.DeleteBucket(bucket.Name())
-	if err != nil && err != bolt.ErrBucketNotFound {
+	if err != nil && err != bolterrors.ErrBucketNotFound {
 		t.backend.lg.Fatal(
 			"failed to delete a bucket",
 			zap.Stringer("bucket-name", bucket),
