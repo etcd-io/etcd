@@ -33,6 +33,7 @@ require (
 	github.com/urfave/cli v1.20.0
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.3.9
+	go.etcd.io/gofail v0.1.0
 	go.uber.org/zap v1.10.0
 	golang.org/x/crypto v0.21.0
 	golang.org/x/net v0.23.0
