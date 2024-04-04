@@ -538,3 +538,12 @@ GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/g
 .PHONY: install-gofail
 install-gofail:
 	go install go.etcd.io/gofail@${GOFAIL_VERSION}
+
+
+.PHONY: gofail-enable
+gofail-enable: install-gofail
+	PASSES="toggle_failpoints" FAILPOINTS=true ./test
+
+.PHONY: gofail-disable
+gofail-disable: install-gofail
+	PASSES="toggle_failpoints" ./test

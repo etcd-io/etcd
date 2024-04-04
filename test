@@ -690,6 +690,10 @@ function build_cov_pass {
 	go test -tags cov -c -covermode=set -coverpkg="$PKGS_COMMA" -o "${out}/etcdctl_test" "${REPO_PATH}/etcdctl"
 }
 
+function toggle_failpoints_pass {
+  toggle_failpoints_default
+}
+
 # fail fast on static tests
 function build_pass {
 	echo "Checking build..."
