@@ -709,6 +709,10 @@ function mod_tidy_pass {
   run_for_modules mod_tidy_for_module
 }
 
+function toggle_failpoints_pass {
+  toggle_failpoints_default
+}
+
 ########### MAIN ###############################################################
 
 function run_pass {
