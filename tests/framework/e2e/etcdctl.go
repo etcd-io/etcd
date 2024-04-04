@@ -663,6 +663,18 @@ func (ctl *EtcdctlV3) RoleDelete(ctx context.Context, role string) (*clientv3.Au
 	return &resp, err
 }
 
+func (ctl *EtcdctlV3) MoveLeader(ctx context.Context, transfereeID uint64) error {
+	args := []string{"move-leader", fmt.Sprintf("%x", transfereeID)}
+	cmd, err := SpawnCmd(ctl.cmdArgs(args...), nil)
+	if err != nil {
+		return err
+	}
+	defer cmd.Close()
+
+	_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Leadership transferred"})
+	return err
+}
+
 func (ctl *EtcdctlV3) spawnJSONCmd(ctx context.Context, output any, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)

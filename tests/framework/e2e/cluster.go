@@ -1057,3 +1057,13 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	t.Fatal("impossible path of execution")
 	return -1
 }
+
+// MemberId returns the MemberId of the ith Proc in the cluster.
+func (epc *EtcdProcessCluster) MemberId(i int) (uint64, error) {
+	etcdctl := epc.Etcdctl()
+	memberList, err := etcdctl.MemberList(context.Background(), false)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get member list: %w", err)
+	}
+	return findMemberIDByEndpoint(memberList.Members, epc.Procs[i].Config().ClientURL)
+}
