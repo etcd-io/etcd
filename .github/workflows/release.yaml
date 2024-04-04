@@ -4,10 +4,10 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
     - id: goversion
       run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-go@v2
+    - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
       with:
         go-version: ${{ steps.goversion.outputs.goversion }}
     - name: release
@@ -30,3 +30,41 @@ jobs:
     - name: test-image
       run: |
         VERSION=3.5.99 ./scripts/test_images.sh
+    - name: save-image
+      run: |
+        docker image save -o /tmp/etcd-img.tar gcr.io/etcd-development/etcd
+    - name: upload-image
+      uses: actions/upload-artifact@v3
+      with:
+        name: etcd-img
+        path: /tmp/etcd-img.tar
+        retention-days: 1
+  trivy-scan:
+    needs: main
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [amd64, arm64, ppc64le, s390x]
+    permissions:
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: get-image
+        uses: actions/download-artifact@v3
+        with:
+          name: etcd-img
+          path: /tmp
+      - name: load-image
+        run: |
+          docker load < /tmp/etcd-img.tar
+      - name: trivy-scan
+        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339ff66b32f22ee55 # v0.19.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:v3.5.99-${{ matrix.platforms }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.platforms }}.sarif'
+      - name: upload scan results
+        uses: github/codeql-action/upload-sarif@956f09c2ef1926b580554b9014cfb8a51abf89dd # v2.16.6
+        with:
+          sarif_file: 'trivy-results-${{ matrix.platforms }}.sarif'
