@@ -170,14 +170,14 @@ func hashKV(cmd *cobra.Command, clients []*v3.Client) {
 	host := eps[0]
 
 	st := time.Now()
-	rh, eh := clients[0].HashKV(context.Background(), host, 0)
-	if eh != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, eh)
+	rh, err := clients[0].HashKV(context.Background(), host, 0)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the hashkv of endpoint %s (%v)\n", host, err)
 		panic(err)
 	}
-	rt, es := clients[0].Status(context.Background(), host)
-	if es != nil {
-		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, es)
+	rt, err := clients[0].Status(context.Background(), host)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to get the status of endpoint %s (%v)\n", host, err)
 		panic(err)
 	}
 
