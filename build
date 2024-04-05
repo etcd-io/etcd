@@ -21,7 +21,7 @@ GOFAIL_VERSION=$(cd tools/mod && go list -m -f "{{.Version}}" go.etcd.io/gofail)
 toggle_failpoints() {
 	mode="$1"
 	if command -v gofail >/dev/null 2>&1; then
-		gofail "$mode" etcdserver/ mvcc/ mvcc/backend/ wal/
+		gofail "$mode" etcdserver/ lease/leasehttp/ mvcc/ mvcc/backend/ wal/
 		# shellcheck disable=SC2086
 		if [[ "$mode" == "enable" ]]; then
 			go get go.etcd.io/gofail@${GOFAIL_VERSION}

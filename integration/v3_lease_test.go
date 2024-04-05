@@ -21,10 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/etcdserver/api/v3rpc/rpctypes"
 	pb "go.etcd.io/etcd/etcdserver/etcdserverpb"
 	"go.etcd.io/etcd/mvcc/mvccpb"
 	"go.etcd.io/etcd/pkg/testutil"
+	gofail "go.etcd.io/gofail/runtime"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -1019,6 +1023,76 @@ func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
 	}
+}
+
+func TestV3LeaseTimeToLiveWithLeaderChanged(t *testing.T) {
+	t.Run("normal", func(subT *testing.T) {
+		testV3LeaseTimeToLiveWithLeaderChanged(subT, "beforeLookupWhenLeaseTimeToLive")
+	})
+
+	t.Run("forward", func(subT *testing.T) {
+		testV3LeaseTimeToLiveWithLeaderChanged(subT, "beforeLookupWhenForwardLeaseTimeToLive")
+	})
+}
+
+func testV3LeaseTimeToLiveWithLeaderChanged(t *testing.T, fpName string) {
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
+	defer clus.Terminate(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	oldLeadIdx := clus.WaitLeader(t)
+	followerIdx := (oldLeadIdx + 1) % 3
+
+	followerMemberID := clus.Members[followerIdx].ID()
+
+	oldLeadC := clus.Client(oldLeadIdx)
+
+	leaseResp, err := oldLeadC.Grant(ctx, 100)
+	require.NoError(t, err)
+
+	require.NoError(t, gofail.Enable(fpName, `sleep("3s")`))
+	t.Cleanup(func() {
+		terr := gofail.Disable(fpName)
+		if terr != nil && terr != gofail.ErrDisabled {
+			t.Fatalf("failed to disable %s: %v", fpName, terr)
+		}
+	})
+
+	readyCh := make(chan struct{})
+	errCh := make(chan error, 1)
+
+	var targetC *clientv3.Client
+	switch fpName {
+	case "beforeLookupWhenLeaseTimeToLive":
+		targetC = oldLeadC
+	case "beforeLookupWhenForwardLeaseTimeToLive":
+		targetC = clus.Client((oldLeadIdx + 2) % 3)
+	default:
+		t.Fatalf("unsupported %s failpoint", fpName)
+	}
+
+	go func() {
+		<-readyCh
+		time.Sleep(1 * time.Second)
+
+		_, merr := oldLeadC.MoveLeader(ctx, uint64(followerMemberID))
+		assert.NoError(t, gofail.Disable(fpName))
+		errCh <- merr
+	}()
+
+	close(readyCh)
+
+	ttlResp, err := targetC.TimeToLive(ctx, leaseResp.ID)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, int64(100), ttlResp.TTL)
+
+	require.NoError(t, <-errCh)
 }
 
 // acquireLeaseAndKey creates a new lease and creates an attached key.

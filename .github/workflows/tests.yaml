@@ -38,13 +38,16 @@ jobs:
             GOARCH=amd64 PASSES='fmt bom dep' ./test
             ;;
           linux-amd64-integration-1-cpu)
-            GOARCH=amd64 CPU=1 RACE='false' make test-integration
+            make install-gofail
+            GOARCH=amd64 CPU=1 RACE='false' FAILPOINTS='true' make test-integration
             ;;
           linux-amd64-integration-2-cpu)
-            GOARCH=amd64 CPU=2 RACE='false' make test-integration
+            make install-gofail
+            GOARCH=amd64 CPU=2 RACE='false' FAILPOINTS='true' make test-integration
             ;;
           linux-amd64-integration-4-cpu)
-            GOARCH=amd64 CPU=4 RACE='false' make test-integration
+            make install-gofail
+            GOARCH=amd64 CPU=4 RACE='false' FAILPOINTS='true' make test-integration
             ;;
           linux-amd64-functional)
             ./build && GOARCH=amd64 PASSES='functional' ./test
