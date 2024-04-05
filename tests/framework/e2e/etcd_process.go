@@ -392,7 +392,8 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 		return err
 	}
 	httpClient := http.Client{
-		Timeout: 1 * time.Second,
+		// TODO: Decrease after deactivate is not blocked by sleep https://github.com/etcd-io/gofail/issues/64
+		Timeout: 2 * time.Second,
 	}
 	if f.clientTimeout != 0 {
 		httpClient.Timeout = f.clientTimeout
