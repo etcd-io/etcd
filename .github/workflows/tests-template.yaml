@@ -41,13 +41,16 @@ jobs:
               GOARCH=${{ inputs.arch }} CPU=4 RACE='false' make test-smoke
               ;;
             linux-integration-1-cpu)
-              GOARCH=${{ inputs.arch }} CPU=1 RACE='false' make test-integration
+              make install-gofail
+              GOARCH=${{ inputs.arch }} CPU=1 RACE='false' FAILPOINTS='true' make test-integration
               ;;
             linux-integration-2-cpu)
-              GOARCH=${{ inputs.arch }} CPU=2 RACE='false' make test-integration
+              make install-gofail
+              GOARCH=${{ inputs.arch }} CPU=2 RACE='false' FAILPOINTS='true' make test-integration
               ;;
             linux-integration-4-cpu)
-              GOARCH=${{ inputs.arch }} CPU=4 RACE='false' make test-integration
+              make install-gofail
+              GOARCH=${{ inputs.arch }} CPU=4 RACE='false' FAILPOINTS='true' make test-integration
               ;;
             linux-unit-4-cpu-race)
               GOARCH=${{ inputs.arch }} RACE='true' CPU='4' GO_TEST_FLAGS='-p=2' make test-unit
