@@ -33,6 +33,10 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
+const (
+	robustnessRetries = 3
+)
+
 var testRunner = framework.E2eTestRunner
 
 func TestMain(m *testing.M) {
@@ -46,7 +50,7 @@ func TestRobustnessExploratory(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.cluster.Logger = lg
 			ctx := context.Background()
-			testRobustness(ctx, t, lg, scenario)
+			testRobustnessWithRetry(ctx, t, lg, scenario)
 		})
 	}
 }
@@ -58,12 +62,36 @@ func TestRobustnessRegression(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.cluster.Logger = lg
 			ctx := context.Background()
-			testRobustness(ctx, t, lg, scenario)
+			testRobustnessWithRetry(ctx, t, lg, scenario)
 		})
 	}
 }
 
-func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
+func testRobustnessWithRetry(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
+	var err error
+	retryAttemps := 0
+	for retryAttemps < robustnessRetries {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		retryAttemps++
+		err = testRobustness(ctx, t, lg, &s)
+		if err == nil {
+			break
+		}
+		t.Logf("retrying robustness test with error: %v", err)
+	}
+	t.Logf("retried %s %d times", s.name, retryAttemps)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+// testRobustness runs one robustness test, and returns a retriable error.
+// Retriable errors include qps < minimal qps which can be temporary.
+func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s *testScenario) (retriableErr error) {
 	report := report.TestReport{Logger: lg}
 	var err error
 	report.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
@@ -88,7 +116,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer func() {
 		report.Report(t, panicked)
 	}()
-	report.Client = s.run(ctx, t, lg, report.Cluster)
+	report.Client, retriableErr = s.run(ctx, t, lg, report.Cluster)
 	forcestopCluster(report.Cluster)
 
 	watchProgressNotifyEnabled := report.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
@@ -97,9 +125,10 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
 
 	panicked = false
+	return retriableErr
 }
 
-func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
+func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport, retriableErr error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	g := errgroup.Group{}
@@ -114,8 +143,8 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		defer close(finishTraffic)
 		err := failpoint.Inject(ctx, t, lg, clus, s.failpoint)
 		if err != nil {
-			t.Error(err)
 			cancel()
+			t.Fatal(err)
 		}
 		time.Sleep(time.Second)
 		lg.Info("Finished injecting failures")
@@ -124,7 +153,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, finishTraffic, baseTime, ids)
+		operationReport, retriableErr = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, finishTraffic, baseTime, ids)
 		maxRevision := operationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating traffic", zap.Int64("max-revision", maxRevision))
@@ -135,7 +164,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		return nil
 	})
 	g.Wait()
-	return append(operationReport, watchReport...)
+	return append(operationReport, watchReport...), retriableErr
 }
 
 func operationsMaxRevision(reports []report.ClientReport) int64 {

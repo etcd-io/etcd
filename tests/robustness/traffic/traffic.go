@@ -16,6 +16,7 @@ package traffic
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ var (
 	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
@@ -85,11 +86,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	wg.Wait()
 	endTime := time.Now()
 
-	// Ensure that last operation is succeeds
+	// Ensure that last operation succeeds
 	time.Sleep(time.Second)
 	_, err = cc.Put(ctx, "tombstone", "true")
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	reports = append(reports, cc.Report())
 
@@ -102,9 +103,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	qps := float64(operationCount) / float64(endTime.Sub(startTime)) * float64(time.Second)
 	lg.Info("Average traffic", zap.Float64("qps", qps))
 	if qps < profile.MinimalQPS {
-		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", profile.MinimalQPS, qps)
+		// returns a retriable error
+		return reports, fmt.Errorf("requiring minimal %f qps for test results to be reliable, got %f qps", profile.MinimalQPS, qps)
 	}
-	return reports
+	return reports, nil
 }
 
 type Profile struct {
