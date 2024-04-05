@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.14 (TBD)
 
+### etcd server
+- Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17704).
+
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17641).
 - Fix [initialization for mu in client context](https://github.com/etcd-io/etcd/pull/17699)
