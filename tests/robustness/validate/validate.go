@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/anishathalye/porcupine"
 	"github.com/google/go-cmp/cmp"
@@ -28,9 +29,9 @@ import (
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport) (visualize func(basepath string) error) {
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, timeout time.Duration) (visualize func(basepath string) error) {
 	patchedOperations := patchedOperationHistory(reports)
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations)
+	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return visualize

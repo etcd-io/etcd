@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
@@ -37,7 +38,7 @@ func TestValidate(t *testing.T) {
 			path := filepath.Join(testdataPath, file.Name())
 			reports, err := report.LoadClientReports(path)
 			assert.NoError(t, err)
-			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports)
+			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, 5*time.Minute)
 
 			if t.Failed() {
 				err := visualize(filepath.Join(path, "history.html"))
