@@ -4,29 +4,67 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - id: goversion
-      run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-go@v2
-      with:
-        go-version: ${{ steps.goversion.outputs.goversion }}
-    - name: release
-      run: |
-        set -euo pipefail
-
-        git config --global user.email "github-action@etcd.io"
-        git config --global user.name "Github Action"
-        gpg --batch --gen-key <<EOF
-        %no-protection
-        Key-Type: 1
-        Key-Length: 2048
-        Subkey-Type: 1
-        Subkey-Length: 2048
-        Name-Real: Github Action
-        Name-Email: github-action@etcd.io
-        Expire-Date: 0
-        EOF
-        DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.4.99
-    - name: test-image
-      run: |
-        VERSION=3.4.99 ./scripts/test_images.sh
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - name: release
+        run: |
+          set -euo pipefail
+          
+          git config --global user.email "github-action@etcd.io"
+          git config --global user.name "Github Action"
+          gpg --batch --gen-key <<EOF
+          %no-protection
+          Key-Type: 1
+          Key-Length: 2048
+          Subkey-Type: 1
+          Subkey-Length: 2048
+          Name-Real: Github Action
+          Name-Email: github-action@etcd.io
+          Expire-Date: 0
+          EOF
+          DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.4.99
+      - name: test-image
+        run: |
+          VERSION=3.4.99 ./scripts/test_images.sh
+      - name: save-image
+        run: |
+          docker image save -o /tmp/etcd-img.tar gcr.io/etcd-development/etcd
+      - name: upload-image
+        uses: actions/upload-artifact@v3
+        with:
+          name: etcd-img
+          path: /tmp/etcd-img.tar
+          retention-days: 1
+  trivy-scan:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [ '', '-arm64', '-ppc64le' ]
+    permissions:
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: get-image
+        uses: actions/download-artifact@v3
+        with:
+          name: etcd-img
+          path: /tmp
+      - name: load-image
+        run: |
+          docker load < /tmp/etcd-img.tar
+      - name: trivy-scan
+        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339ff66b32f22ee55 # v0.19.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:v3.4.99${{ matrix.platforms }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.platforms }}.sarif'
+      - name: upload scan results
+        uses: github/codeql-action/upload-sarif@956f09c2ef1926b580554b9014cfb8a51abf89dd # v2.16.6
+        with:
+          sarif_file: 'trivy-results-${{ matrix.platforms }}.sarif'
