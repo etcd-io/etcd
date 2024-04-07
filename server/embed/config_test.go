@@ -677,7 +677,7 @@ func TestUndefinedAutoCompactionModeValidate(t *testing.T) {
 	require.Error(t, err)
 }
 
-type Subject struct {
+type CertificateSubject struct {
 	Organization  []string
 	Country       []string
 	Province      []string
@@ -686,7 +686,7 @@ type Subject struct {
 	PostalCode    []string
 }
 
-func generateCACert(t *testing.T, subject *Subject) (*x509.Certificate, *rsa.PrivateKey) {
+func generateCACert(t *testing.T, subject *CertificateSubject) (*x509.Certificate, *rsa.PrivateKey) {
 	caCert := &x509.Certificate{
 		IsCA:         true,
 		SerialNumber: big.NewInt(2023),
@@ -726,17 +726,17 @@ func generateCACert(t *testing.T, subject *Subject) (*x509.Certificate, *rsa.Pri
 	return caCert, caPrivateKey
 }
 
-func generateHostCertificateFromCA(t *testing.T, caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject *Subject) tls.Certificate {
+func generateHostCertificateFromCA(t *testing.T, caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject *CertificateSubject) tls.Certificate {
 	tlsCertSpecification := &x509.Certificate{
 		IsCA:         false,
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
-			Organization:  []string{"Company, Testing"},
-			Country:       []string{"Test"},
-			Province:      []string{"Test Province"},
-			Locality:      []string{"Testing"},
-			StreetAddress: []string{"Test Street"},
-			PostalCode:    []string{"01234"},
+			Organization:  subject.Organization,
+			Country:       subject.Country,
+			Province:      subject.Province,
+			Locality:      subject.Locality,
+			StreetAddress: subject.StreetAddress,
+			PostalCode:    subject.PostalCode,
 		},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -773,7 +773,7 @@ func generateHostCertificateFromCA(t *testing.T, caCert *x509.Certificate, caPri
 func TestUpdateCipherSuite(t *testing.T) {
 	t.Parallel()
 
-	caSubject := &Subject{
+	caSubject := &CertificateSubject{
 		Organization:  []string{"Company, Testing"},
 		Country:       []string{"Test"},
 		Province:      []string{"Test Province"},
@@ -783,7 +783,7 @@ func TestUpdateCipherSuite(t *testing.T) {
 	}
 	caCert, caPrivateKey := generateCACert(t, caSubject)
 
-	serverSubject := &Subject{
+	serverSubject := &CertificateSubject{
 		Organization:  []string{"Company, Testing"},
 		Country:       []string{"Test"},
 		Province:      []string{"Test Province"},
@@ -798,9 +798,9 @@ func TestUpdateCipherSuite(t *testing.T) {
 	}
 
 	cfg := NewConfig()
-	cfg.CustomClientTLSConfig = *tlsConfig
+	cfg.CustomClientTLSConfig = tlsConfig
 
-	expCipherSuites := []uint16([]uint16{0x2f})
+	expCipherSuites := []uint16{0x2f}
 	err := updateCipherSuites(tlsConfig, []string{"TLS_RSA_WITH_AES_128_CBC_SHA"})
 	require.NoError(t, err)
 	assert.Equal(t, expCipherSuites, tlsConfig.CipherSuites)
@@ -809,7 +809,7 @@ func TestUpdateCipherSuite(t *testing.T) {
 func TestMinMaxVersion(t *testing.T) {
 	t.Parallel()
 
-	caSubject := &Subject{
+	caSubject := &CertificateSubject{
 		Organization:  []string{"Company, Testing"},
 		Country:       []string{"Test"},
 		Province:      []string{"Test Province"},
@@ -819,7 +819,7 @@ func TestMinMaxVersion(t *testing.T) {
 	}
 	caCert, caPrivateKey := generateCACert(t, caSubject)
 
-	serverSubject := &Subject{
+	serverSubject := &CertificateSubject{
 		Organization:  []string{"Company, Testing"},
 		Country:       []string{"Test"},
 		Province:      []string{"Test Province"},
@@ -834,11 +834,11 @@ func TestMinMaxVersion(t *testing.T) {
 	}
 
 	cfg := NewConfig()
-	cfg.CustomClientTLSConfig = *tlsConfig
+	cfg.CustomClientTLSConfig = tlsConfig
 
 	expMinVersion := uint16(0x303)
-	expMaxVersion := uint16(0x0)
+	expMaxVersion := uint16(0x304)
 	updateMinMaxVersions(tlsConfig, "TLS1.2", "TLS1.3")
-	assert.Equal(t, tlsConfig.MinVersion, expMinVersion)
-	assert.Equal(t, tlsConfig.MaxVersion, expMaxVersion)
+	assert.Equal(t, expMinVersion, tlsConfig.MinVersion)
+	assert.Equal(t, expMaxVersion, tlsConfig.MaxVersion)
 }
