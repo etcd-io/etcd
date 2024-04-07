@@ -73,12 +73,14 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer report.Cluster.Close()
 
 	if s.failpoint == nil {
-		s.failpoint = failpoint.PickRandom(t, report.Cluster)
-	} else {
-		err = failpoint.Validate(report.Cluster, s.failpoint)
+		s.failpoint, err = failpoint.PickRandom(report.Cluster)
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+	err = failpoint.Validate(report.Cluster, s.failpoint)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// t.Failed() returns false during panicking. We need to forcibly
