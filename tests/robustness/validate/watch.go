@@ -37,9 +37,10 @@ var (
 	errBrokeFilter       = errors.New("event not matching watch filter")
 )
 
-func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.PersistedEvent) error {
+func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
+	replay := model.NewReplay(persistedRequests)
 	for _, r := range reports {
 		err := validateFilter(lg, r)
 		if err != nil {
@@ -61,23 +62,21 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, ev
 		if err != nil {
 			return err
 		}
-		if eventHistory != nil {
-			err = validateResumable(lg, eventHistory, r)
-			if err != nil {
-				return err
-			}
-			err = validateReliable(lg, eventHistory, r)
-			if err != nil {
-				return err
-			}
-			err = validatePrevKV(lg, r, eventHistory)
-			if err != nil {
-				return err
-			}
-			err = validateEventIsCreate(lg, r, eventHistory)
-			if err != nil {
-				return err
-			}
+		err = validateResumable(lg, replay, r)
+		if err != nil {
+			return err
+		}
+		err = validateReliable(lg, replay, r)
+		if err != nil {
+			return err
+		}
+		err = validatePrevKV(lg, replay, r)
+		if err != nil {
+			return err
+		}
+		err = validateIsCreate(lg, replay, r)
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -182,10 +181,11 @@ func validateAtomic(lg *zap.Logger, report report.ClientReport) (err error) {
 	return err
 }
 
-func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
+func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.ClientReport) (err error) {
 	for _, watch := range report.Watch {
 		firstRev := firstExpectedRevision(watch)
 		lastRev := lastRevision(watch)
+		events := replay.EventsForWatch(watch.Request)
 		wantEvents := []model.PersistedEvent{}
 		if firstRev != 0 {
 			for _, e := range events {
@@ -214,22 +214,23 @@ func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report repo
 	return err
 }
 
-func validateResumable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
-	for _, op := range report.Watch {
-		if op.Request.Revision == 0 {
+func validateResumable(lg *zap.Logger, replay *model.EtcdReplay, report report.ClientReport) (err error) {
+	for _, watch := range report.Watch {
+		if watch.Request.Revision == 0 {
 			continue
 		}
+		events := replay.EventsForWatch(watch.Request)
 		index := 0
-		for index < len(events) && (events[index].Revision < op.Request.Revision || !events[index].Match(op.Request)) {
+		for index < len(events) && (events[index].Revision < watch.Request.Revision || !events[index].Match(watch.Request)) {
 			index++
 		}
 		if index == len(events) {
 			continue
 		}
-		firstEvent := firstWatchEvent(op)
+		firstEvent := firstWatchEvent(watch)
 		// If watch is resumable, first event it gets should the first event that happened after the requested revision.
 		if firstEvent != nil && events[index] != firstEvent.PersistedEvent {
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "resumable"), zap.Int("client", report.ClientID), zap.Any("request", op.Request), zap.Any("got-event", *firstEvent), zap.Any("want-event", events[index]))
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "resumable"), zap.Int("client", report.ClientID), zap.Any("request", watch.Request), zap.Any("got-event", *firstEvent), zap.Any("want-event", events[index]))
 			err = errBrokeResumable
 		}
 	}
@@ -238,8 +239,7 @@ func validateResumable(lg *zap.Logger, events []model.PersistedEvent, report rep
 
 // validatePrevKV ensures that a watch response (if configured with WithPrevKV()) returns
 // the appropriate response.
-func validatePrevKV(lg *zap.Logger, report report.ClientReport, history []model.PersistedEvent) (err error) {
-	replay := model.NewReplay(history)
+func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		if !op.Request.WithPrevKV {
 			continue
@@ -247,7 +247,10 @@ func validatePrevKV(lg *zap.Logger, report report.ClientReport, history []model.
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				// Get state state just before the current event.
-				state, _ := replay.StateForRevision(event.Revision - 1)
+				state, err2 := replay.StateForRevision(event.Revision - 1)
+				if err2 != nil {
+					panic(err2)
+				}
 				// TODO(MadhavJivrajani): check if compaction has been run as part
 				// of failpoint injection. If compaction has run, prevKV can be nil
 				// even if it is not a create event.
@@ -271,13 +274,15 @@ func validatePrevKV(lg *zap.Logger, report report.ClientReport, history []model.
 	return err
 }
 
-func validateEventIsCreate(lg *zap.Logger, report report.ClientReport, history []model.PersistedEvent) (err error) {
-	replay := model.NewReplay(history)
+func validateIsCreate(lg *zap.Logger, replay *model.EtcdReplay, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				// Get state state just before the current event.
-				state, _ := replay.StateForRevision(event.Revision - 1)
+				state, err2 := replay.StateForRevision(event.Revision - 1)
+				if err2 != nil {
+					panic(err2)
+				}
 				// A create event will not have an entry in our history and a non-create
 				// event *should* have an entry in our history.
 				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {

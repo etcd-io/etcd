@@ -52,7 +52,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	}
 }
 
-func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, totalEventHistory []model.PersistedEvent) {
+func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []porcupine.Operation, persistedRequests []model.EtcdRequest) {
 	lg.Info("Validating serializable operations")
 	staleReads := filterSerializableReads(operations)
 	if len(staleReads) == 0 {
@@ -61,7 +61,7 @@ func validateSerializableOperations(t *testing.T, lg *zap.Logger, operations []p
 	sort.Slice(staleReads, func(i, j int) bool {
 		return staleReads[i].Input.(model.EtcdRequest).Range.Revision < staleReads[j].Input.(model.EtcdRequest).Range.Revision
 	})
-	replay := model.NewReplay(totalEventHistory)
+	replay := model.NewReplay(persistedRequests)
 	for _, read := range staleReads {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)

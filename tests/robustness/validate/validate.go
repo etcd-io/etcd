@@ -15,13 +15,12 @@
 package validate
 
 import (
+	"encoding/json"
 	"fmt"
-	"sort"
 	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -30,7 +29,7 @@ import (
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
-	err := checkValidationAssumptions(reports)
+	err := checkValidationAssumptions(reports, persistedRequests)
 	if err != nil {
 		t.Fatalf("Broken validation assumptions: %s", err)
 	}
@@ -40,21 +39,12 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 		t.Error("Failed linearization, skipping further validation")
 		return visualize
 	}
-	// TODO: Don't use watch events to get event history.
-	eventHistory, err := mergeWatchEventHistory(reports)
-	if err != nil {
-		t.Errorf("Failed merging watch history to create event history, err: %s", err)
-		err = validateWatch(lg, cfg, reports, nil)
-		if err != nil {
-			t.Errorf("Failed validating watch history, err: %s", err)
-		}
-		return visualize
-	}
-	err = validateWatch(lg, cfg, reports, eventHistory)
+	// TODO: Use requests from linearization instead of persisted requests from WAL.
+	err = validateWatch(lg, cfg, reports, persistedRequests)
 	if err != nil {
 		t.Errorf("Failed validating watch history, err: %s", err)
 	}
-	validateSerializableOperations(t, lg, patchedOperations, eventHistory)
+	validateSerializableOperations(t, lg, patchedOperations, persistedRequests)
 	return visualize
 }
 
@@ -62,7 +52,7 @@ type Config struct {
 	ExpectRevisionUnique bool
 }
 
-func checkValidationAssumptions(reports []report.ClientReport) error {
+func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
 	err := validatePutOperationUnique(reports)
 	if err != nil {
 		return err
@@ -71,11 +61,8 @@ func checkValidationAssumptions(reports []report.ClientReport) error {
 	if err != nil {
 		return err
 	}
-	err = validateLastOperationAndObservedInWatch(reports)
-	if err != nil {
-		return err
-	}
-	err = validateObservedAllRevisionsInWatch(reports)
+
+	err = validatePersistedRequestMatchClientRequests(reports, persistedRequests)
 	if err != nil {
 		return err
 	}
@@ -129,60 +116,48 @@ func validateEmptyDatabaseAtStart(reports []report.ClientReport) error {
 	return fmt.Errorf("non empty database at start or first write didn't succeed, required by model implementation")
 }
 
-func validateLastOperationAndObservedInWatch(reports []report.ClientReport) error {
-	var lastOperation porcupine.Operation
-
+func validatePersistedRequestMatchClientRequests(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
+	persistedRequestSet := map[string]model.EtcdRequest{}
+	for _, request := range persistedRequests {
+		data, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		persistedRequestSet[string(data)] = request
+	}
+	clientRequests := map[string]porcupine.Operation{}
 	for _, r := range reports {
 		for _, op := range r.KeyValue {
-			if op.Call > lastOperation.Call {
-				lastOperation = op
+			request := op.Input.(model.EtcdRequest)
+			data, err := json.Marshal(request)
+			if err != nil {
+				return err
 			}
+			clientRequests[string(data)] = op
 		}
 	}
-	lastResponse := lastOperation.Output.(model.MaybeEtcdResponse)
-	if lastResponse.PartialResponse || lastResponse.Error != "" {
-		return fmt.Errorf("last operation %v failed, its success is required to validate watch", lastOperation)
-	}
-	for _, r := range reports {
-		for _, watch := range r.Watch {
-			for _, watchResp := range watch.Responses {
-				for _, e := range watchResp.Events {
-					if e.Revision == lastResponse.Revision {
-						return nil
-					}
-				}
-			}
-		}
-	}
-	return fmt.Errorf("revision from the last operation %d was not observed in watch, required to validate watch", lastResponse.Revision)
-}
 
-func validateObservedAllRevisionsInWatch(reports []report.ClientReport) error {
-	var maxRevision int64
-	for _, r := range reports {
-		for _, watch := range r.Watch {
-			for _, watchResp := range watch.Responses {
-				for _, e := range watchResp.Events {
-					if e.Revision > maxRevision {
-						maxRevision = e.Revision
-					}
-				}
-			}
+	for requestDump, request := range persistedRequestSet {
+		_, found := clientRequests[requestDump]
+		// We cannot validate if persisted leaseGrant was sent by client as failed leaseGrant will not return LeaseID to clients.
+		if request.Type == model.LeaseGrant {
+			continue
+		}
+
+		if !found {
+			return fmt.Errorf("request %+v was not sent by client, required to validate", requestDump)
 		}
 	}
-	observedRevisions := make([]bool, maxRevision+1)
-	for _, r := range reports {
-		for _, watch := range r.Watch {
-			for _, watchResp := range watch.Responses {
-				for _, e := range watchResp.Events {
-					observedRevisions[e.Revision] = true
-				}
-			}
+
+	for requestDump, op := range clientRequests {
+		request := op.Input.(model.EtcdRequest)
+		response := op.Output.(model.MaybeEtcdResponse)
+		if response.Error != "" || request.IsRead() {
+			continue
 		}
-	}
-	for i := 2; i < len(observedRevisions); i++ {
-		if !observedRevisions[i] {
-			return fmt.Errorf("didn't observe revision %d in watch, required to patch operation and validate serializable requests", i)
+		_, found := persistedRequestSet[requestDump]
+		if !found {
+			return fmt.Errorf("succesful client write %+v was not persisted, required to validate", requestDump)
 		}
 	}
 	return nil
@@ -203,60 +178,4 @@ func validateNonConcurrentClientRequests(reports []report.ClientReport) error {
 		}
 	}
 	return nil
-}
-
-func mergeWatchEventHistory(reports []report.ClientReport) ([]model.PersistedEvent, error) {
-	type revisionEvents struct {
-		events   []model.PersistedEvent
-		revision int64
-		clientID int
-	}
-	revisionToEvents := map[int64]revisionEvents{}
-	var lastClientID = 0
-	var lastRevision int64
-	events := []model.PersistedEvent{}
-	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
-				for _, event := range resp.Events {
-					if event.Revision == lastRevision && lastClientID == r.ClientID {
-						events = append(events, event.PersistedEvent)
-					} else {
-						if prev, found := revisionToEvents[lastRevision]; found {
-							// This assumes that there are txn that would be observed differently by two watches.
-							// TODO: Implement merging events from multiple watches about single revision based on operations.
-							if diff := cmp.Diff(prev.events, events); diff != "" {
-								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientID, lastClientID, lastRevision, diff)
-							}
-						} else {
-							revisionToEvents[lastRevision] = revisionEvents{clientID: lastClientID, events: events, revision: lastRevision}
-						}
-						lastClientID = r.ClientID
-						lastRevision = event.Revision
-						events = []model.PersistedEvent{event.PersistedEvent}
-					}
-				}
-			}
-		}
-	}
-	if prev, found := revisionToEvents[lastRevision]; found {
-		if diff := cmp.Diff(prev.events, events); diff != "" {
-			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientID, lastClientID, lastRevision, diff)
-		}
-	} else {
-		revisionToEvents[lastRevision] = revisionEvents{clientID: lastClientID, events: events, revision: lastRevision}
-	}
-
-	var allRevisionEvents []revisionEvents
-	for _, revEvents := range revisionToEvents {
-		allRevisionEvents = append(allRevisionEvents, revEvents)
-	}
-	sort.Slice(allRevisionEvents, func(i, j int) bool {
-		return allRevisionEvents[i].revision < allRevisionEvents[j].revision
-	})
-	var eventHistory []model.PersistedEvent
-	for _, revEvents := range allRevisionEvents {
-		eventHistory = append(eventHistory, revEvents.events...)
-	}
-	return eventHistory, nil
 }

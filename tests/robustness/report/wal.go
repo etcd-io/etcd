@@ -181,7 +181,11 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 	case raftReq.Compaction != nil:
 		return nil, nil
 	case raftReq.Txn != nil:
-		txn := model.TxnRequest{}
+		txn := model.TxnRequest{
+			Conditions:          []model.EtcdCondition{},
+			OperationsOnSuccess: []model.EtcdOperation{},
+			OperationsOnFailure: []model.EtcdOperation{},
+		}
 		for _, cmp := range raftReq.Txn.Compare {
 			txn.Conditions = append(txn.Conditions, model.EtcdCondition{
 				Key:              string(cmp.Key),
