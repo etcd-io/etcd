@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -93,6 +94,7 @@ func newServeCtx(lg *zap.Logger) *serveCtx {
 func (sctx *serveCtx) serve(
 	s *etcdserver.EtcdServer,
 	tlsinfo *transport.TLSInfo,
+	customtlsinfo *tls.Config,
 	handler http.Handler,
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
@@ -144,7 +146,11 @@ func (sctx *serveCtx) serve(
 				Handler:  createAccessController(sctx.lg, s, httpmux),
 				ErrorLog: logger, // do not log user error
 			}
+<<<<<<< HEAD
 			if err = configureHTTPServer(srv, s.Cfg); err != nil {
+=======
+			if err = configureHttpServer(srv, &s.Cfg); err != nil {
+>>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
 				sctx.lg.Error("Configure http server failed", zap.Error(err))
 				return err
 			}
@@ -200,6 +206,11 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
+		if customtlsinfo != nil {
+			if len(customtlsinfo.Certificates) != 0 {
+				tlscfg = customtlsinfo
+			}
+		}
 
 		if grpcEnabled {
 			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
@@ -227,7 +238,11 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
+<<<<<<< HEAD
 			if err := configureHTTPServer(srv, s.Cfg); err != nil {
+=======
+			if err := configureHttpServer(srv, &s.Cfg); err != nil {
+>>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -241,6 +256,11 @@ func (sctx *serveCtx) serve(
 			tlsl, err := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
 			if err != nil {
 				return err
+			}
+			if customtlsinfo != nil {
+				if len(customtlsinfo.Certificates) != 0 {
+					tlsl = tls.NewListener(m.Match(cmux.Any()), customtlsinfo)
+				}
 			}
 			go func(srvhttp *http.Server, tlsl net.Listener) {
 				errHandler(srvhttp.Serve(tlsl))
@@ -258,7 +278,11 @@ func (sctx *serveCtx) serve(
 	return server()
 }
 
+<<<<<<< HEAD
 func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
+=======
+func configureHttpServer(srv *http.Server, cfg *config.ServerConfig) error {
+>>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
