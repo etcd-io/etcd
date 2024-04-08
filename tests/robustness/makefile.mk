@@ -1,3 +1,7 @@
+.PHONY: test-robustness-reports
+test-robustness-reports:
+	cd ./tests && go test ./robustness/validate -v --run TestDataReports
+
 # Test previous release branches
 
 .PHONY: test-robustness-release-3.5

@@ -28,12 +28,14 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func TestValidate(t *testing.T) {
+func TestDataReports(t *testing.T) {
 	testdataPath := testutils.MustAbsPath("../testdata/")
 	files, err := os.ReadDir(testdataPath)
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, len(files), 1)
 	for _, file := range files {
+		if file.Name() == ".gitignore" {
+			continue
+		}
 		t.Run(file.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, file.Name())
 			reports, err := report.LoadClientReports(path)

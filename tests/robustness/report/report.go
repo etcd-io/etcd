@@ -58,16 +58,18 @@ func testResultsDirectory(t *testing.T) string {
 }
 
 func (r *TestReport) Report(t *testing.T, force bool) {
+	_, persistResultsEnvSet := os.LookupEnv("PERSIST_RESULTS")
+	if !t.Failed() && !force && !persistResultsEnvSet {
+		return
+	}
 	path := testResultsDirectory(t)
-	_, ok := os.LookupEnv("PERSIST_RESULTS")
-	if t.Failed() || force || ok {
-		for _, member := range r.Cluster.Procs {
-			memberDataDir := filepath.Join(path, fmt.Sprintf("server-%s", member.Config().Name))
-			persistMemberDataDir(t, r.Logger, member, memberDataDir)
-		}
-		if r.Client != nil {
-			persistClientReports(t, r.Logger, path, r.Client)
-		}
+	r.Logger.Info("Saving robustness test report", zap.String("path", path))
+	for _, member := range r.Cluster.Procs {
+		memberDataDir := filepath.Join(path, fmt.Sprintf("server-%s", member.Config().Name))
+		persistMemberDataDir(t, r.Logger, member, memberDataDir)
+	}
+	if r.Client != nil {
+		persistClientReports(t, r.Logger, path, r.Client)
 	}
 	if r.Visualize != nil {
 		err := r.Visualize(filepath.Join(path, "history.html"))
