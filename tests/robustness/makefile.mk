@@ -1,4 +1,5 @@
 .PHONY: test-robustness-reports
+test-robustness-reports: export GOTOOLCHAIN := go$(shell cat .go-version)
 test-robustness-reports:
 	cd ./tests && go test ./robustness/validate -v --count 1 --run TestDataReports
 
