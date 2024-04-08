@@ -36,7 +36,7 @@ jobs:
         run: |
           docker image save -o /tmp/etcd-img.tar gcr.io/etcd-development/etcd
       - name: upload-image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: etcd-img
           path: /tmp/etcd-img.tar
