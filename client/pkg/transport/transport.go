@@ -18,11 +18,28 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 )
 
 type unixTransport struct{ *http.Transport }
+
+var httpTransportProxyParsingFunc = determineHTTPTransportProxyParsingFunc
+
+func determineHTTPTransportProxyParsingFunc() func(req *http.Request) (*url.URL, error) {
+	// according to the comment of http.ProxyFromEnvironment: if the proxy URL is "localhost"
+	// (with or without a port number), then a nil URL and nil error will be returned.
+	// Thus, we workaround this limitation by manually setting an ENV named E2E_TEST_FORWARD_PROXY_IP
+	// and parse the URL (which is a localhost in our case)
+	if forwardProxy, exists := os.LookupEnv("E2E_TEST_FORWARD_PROXY_IP"); exists {
+		return func(req *http.Request) (*url.URL, error) {
+			return url.Parse(forwardProxy)
+		}
+	}
+	return http.ProxyFromEnvironment
+}
 
 func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
 	cfg, err := info.ClientConfig()
@@ -39,7 +56,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	}
 
 	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: httpTransportProxyParsingFunc(),
 		DialContext: (&net.Dialer{
 			Timeout:   dialtimeoutd,
 			LocalAddr: ipAddr,
@@ -60,7 +77,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		return dialer.DialContext(ctx, "unix", addr)
 	}
 	tu := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               httpTransportProxyParsingFunc(),
 		DialContext:         dialContext,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,

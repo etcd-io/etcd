@@ -63,23 +63,17 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 	if tb.waitTillSnapshot && (entriesToGuaranteeSnapshot(config) > 200 || !e2e.CouldSetSnapshotCatchupEntries(process.Config().ExecPath)) {
 		return false
 	}
-	return config.ClusterSize > 1 && process.PeerProxy() != nil
+	return config.ClusterSize > 1 && process.PeerForwardProxy() != nil
 }
 
 func Blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
-	proxy := member.PeerProxy()
-
-	// Blackholing will cause peers to not be able to use streamWriters registered with member
-	// but peer traffic is still possible because member has 'pipeline' with peers
-	// TODO: find a way to stop all traffic
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
-	proxy.BlackholeTx()
-	proxy.BlackholeRx()
+	clus.BlackholePeer(member)
 	defer func() {
 		t.Logf("Traffic restored from and to member %q", member.Config().Name)
-		proxy.UnblackholeTx()
-		proxy.UnblackholeRx()
+		clus.UnblackholePeer(member)
 	}()
+
 	if shouldWaitTillSnapshot {
 		return waitTillSnapshot(ctx, t, clus, member)
 	}
@@ -164,15 +158,15 @@ type delayPeerNetworkFailpoint struct {
 
 func (f delayPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	proxy := member.PeerProxy()
+	forwardProxy := member.PeerForwardProxy()
 
-	proxy.DelayRx(f.baseLatency, f.randomizedLatency)
-	proxy.DelayTx(f.baseLatency, f.randomizedLatency)
+	forwardProxy.DelayRx(f.baseLatency, f.randomizedLatency)
+	forwardProxy.DelayTx(f.baseLatency, f.randomizedLatency)
 	lg.Info("Delaying traffic from and to member", zap.String("member", member.Config().Name), zap.Duration("baseLatency", f.baseLatency), zap.Duration("randomizedLatency", f.randomizedLatency))
 	time.Sleep(f.duration)
 	lg.Info("Traffic delay removed", zap.String("member", member.Config().Name))
-	proxy.UndelayRx()
-	proxy.UndelayTx()
+	forwardProxy.UndelayRx()
+	forwardProxy.UndelayTx()
 	return nil, nil
 }
 
@@ -181,7 +175,7 @@ func (f delayPeerNetworkFailpoint) Name() string {
 }
 
 func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess, profile traffic.Profile) bool {
-	return config.ClusterSize > 1 && clus.PeerProxy() != nil
+	return config.ClusterSize > 1 && clus.PeerForwardProxy() != nil
 }
 
 type dropPeerNetworkFailpoint struct {
@@ -191,15 +185,15 @@ type dropPeerNetworkFailpoint struct {
 
 func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	proxy := member.PeerProxy()
+	forwardProxy := member.PeerForwardProxy()
 
-	proxy.ModifyRx(f.modifyPacket)
-	proxy.ModifyTx(f.modifyPacket)
+	forwardProxy.ModifyRx(f.modifyPacket)
+	forwardProxy.ModifyTx(f.modifyPacket)
 	lg.Info("Dropping traffic from and to member", zap.String("member", member.Config().Name), zap.Int("probability", f.dropProbabilityPercent))
 	time.Sleep(f.duration)
 	lg.Info("Traffic drop removed", zap.String("member", member.Config().Name))
-	proxy.UnmodifyRx()
-	proxy.UnmodifyTx()
+	forwardProxy.UnmodifyRx()
+	forwardProxy.UnmodifyTx()
 	return nil, nil
 }
 
@@ -215,5 +209,5 @@ func (f dropPeerNetworkFailpoint) Name() string {
 }
 
 func (f dropPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess, profile traffic.Profile) bool {
-	return config.ClusterSize > 1 && clus.PeerProxy() != nil
+	return config.ClusterSize > 1 && clus.PeerForwardProxy() != nil
 }
