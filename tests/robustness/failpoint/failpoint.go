@@ -54,7 +54,7 @@ var (
 	}
 )
 
-func PickRandom(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
+func PickRandom(clus *e2e.EtcdProcessCluster) (Failpoint, error) {
 	availableFailpoints := make([]Failpoint, 0, len(allFailpoints))
 	for _, failpoint := range allFailpoints {
 		err := Validate(clus, failpoint)
@@ -64,10 +64,9 @@ func PickRandom(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
 		availableFailpoints = append(availableFailpoints, failpoint)
 	}
 	if len(availableFailpoints) == 0 {
-		t.Errorf("No available failpoints")
-		return nil
+		return nil, fmt.Errorf("no available failpoints")
 	}
-	return availableFailpoints[rand.Int()%len(availableFailpoints)]
+	return availableFailpoints[rand.Int()%len(availableFailpoints)], nil
 }
 
 func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
