@@ -1,6 +1,6 @@
 .PHONY: test-robustness-reports
 test-robustness-reports:
-	cd ./tests && go test ./robustness/validate -v --run TestDataReports
+	cd ./tests && go test ./robustness/validate -v --count 1 --run TestDataReports
 
 # Test previous release branches
 
