@@ -64,6 +64,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 		t.Fatal(err)
 	}
 	defer cc.Close()
+	// Ensure that first operation succeeds
+	_, err = cc.Put(ctx, "start", "true")
+	if err != nil {
+		t.Fatalf("First operation failed, validation requires first operation to succeed, err: %s", err)
+	}
 	wg := sync.WaitGroup{}
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	for i := 0; i < profile.ClientCount; i++ {
@@ -85,11 +90,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	wg.Wait()
 	endTime := time.Now()
 
-	// Ensure that last operation is succeeds
 	time.Sleep(time.Second)
+	// Ensure that last operation succeeds
 	_, err = cc.Put(ctx, "tombstone", "true")
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Last operation failed, validation requires last operation to succeed, err: %s", err)
 	}
 	reports = append(reports, cc.Report())
 
