@@ -515,6 +515,16 @@ func (b *backend) defrag() error {
 		)
 	}
 
+	defer func() {
+		// NOTE: We should exit as soon as possible because that tx
+		// might be closed. The inflight request might use invalid
+		// tx and then panic as well. The real panic reason might be
+		// shadowed by new panic. So, we should fatal here with lock.
+		if rerr := recover(); rerr != nil {
+			b.lg.Fatal("unexpected panic during defrag", zap.Any("panic", rerr))
+		}
+	}()
+
 	// Commit/stop and then reset current transactions (including the readTx)
 	b.batchTx.unsafeCommit(true)
 	b.batchTx.tx = nil
