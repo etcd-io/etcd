@@ -33,6 +33,42 @@ Upon failure tests generate a report that can be used to attribute whether failu
     * `RESULTS_DIR` - to change location where results report will be saved.
     * `PERSIST_RESULTS` - to persist the results report of the test. By default this will not be persisted in the case of a successful run.
 
+## Re-evaluate existing report
+
+Robustness test validation is constantly changing and improving.
+Errors in etcd model could be causing false positives, which makes the ability to re-evaluate the reports after we fix the issue important.
+
+> Note: Robustness test report format is not stable, and it's expected that not all old reports can be re-evaluated using the newest version.
+
+1. Identify location of the robustness test report.
+
+   > Note: By default robustness test report is only generated for failed test.
+
+   * **For local runs:** this would be by identifying log line, in the following example that would be `/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1`:
+      ```
+      logger.go:146: 2024-04-08T09:45:27.734+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1"}
+      ```
+
+   * **For remote runs on CI:** you need to go to the Github Actions page, download one of the Artifacts, extract it locally.
+
+     ![github actions artifact](./github_actions_artifact.png)
+
+     Each directory will be prefixed by `TestRobustness` each containing a robustness test report.
+
+     ![artifact archive](./artifact_archive.png)
+
+     Pick one of the directories within the archive corresponding to the failed test scenario.
+     The largest directory by size usually corresponds to the failed scenario.
+     If you are not sure, you may check which scenario failed in the test logs.
+
+2. Copy the robustness report directory into the `testdata` directory.
+
+   The `testdata` directory can contain multiple robustness test reports.
+   The name of the report directory doesn't matter, as long as it's unique to prevent clashing with reports already present in `testdata` directory.
+   For example path for `history.html` file could look like `$REPO_ROOT/tests/robustness/testdata/v3.5_failure_24_April/history.html`.
+
+3. Run `make test-robustness-reports` to validate all reports in the `testdata` directory.
+
 ## Analysing failure
 
 If robustness tests fails we want to analyse the report to confirm if the issue is on etcd side. Location of this report
