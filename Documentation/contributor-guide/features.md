@@ -37,7 +37,7 @@ Any new enhancements to the etcd are typically added as an experimental feature.
     - Label the issue with `type/feature` and `experimental`.
     - Keep the issue open for tracking purpose until a decision is made on graduation.
 - Open a Pull Request (PR)
-    - Provide unit tests. Integreation tests are also recommended as possible.
+    - Provide unit tests. Integration tests are also recommended as possible.
     - Provide robust e2e test coverage. If the feature being added is complicated or quickly needed, maintainers can decide to go with e2e tests for basic coverage initially and have robust coverage added at the later time before feature graduation to the stable feature.
     - Provide logs for proper debugging.
     - Provide metrics and benchmarks as needed.

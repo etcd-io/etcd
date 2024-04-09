@@ -33,7 +33,7 @@ Issues should be properly labeled making it easy to find something for you.
 
 Depending on your interest and experience you should check different labels:
 * If you are just starting, check issues labeled with [good first issue].
-* When you feel more conformable in your contributions, checkout [help wanted].
+* When you feel more comfortable in your contributions, checkout [help wanted].
 * Advanced contributors can try to help with issues labeled [priority/important] covering most relevant work at the time.
 
 If any of aforementioned labels don't have unassigned issues, please [contact] one of the [maintainers] asking to triage more issues.
@@ -105,7 +105,7 @@ GO_BUILD_FLAGS="-buildmode=pie" make build
 
 ### Option 2 - Automatically setup devcontainer
 
-This is a more recently added environmnent that aims to make it faster for new contributors to get started with etcd. This option is supported for etcd versions 3.6 onwards.
+This is a more recently added environment that aims to make it faster for new contributors to get started with etcd. This option is supported for etcd versions 3.6 onwards.
 
 This option can be [used locally](https://code.visualstudio.com/docs/devcontainers/tutorial) on a system running Visual Studio Code and Docker, or in a remote cloud based [Codespaces](https://github.com/features/codespaces) environment.
 
