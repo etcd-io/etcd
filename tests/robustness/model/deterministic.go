@@ -248,6 +248,21 @@ type EtcdRequest struct {
 	Defragment  *DefragmentRequest
 }
 
+func (r *EtcdRequest) IsRead() bool {
+	if r.Type == Range {
+		return true
+	}
+	if r.Type != Txn {
+		return false
+	}
+	for _, op := range append(r.Txn.OperationsOnSuccess, r.Txn.OperationsOnFailure...) {
+		if op.Type != RangeOperation {
+			return false
+		}
+	}
+	return true
+}
+
 type RangeRequest struct {
 	RangeOptions
 	Revision int64

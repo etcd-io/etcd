@@ -53,18 +53,23 @@ func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	}
 }
 
-func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, start, end time.Duration, resp *clientv3.GetResponse) {
+func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit int64, start, end time.Duration, resp *clientv3.GetResponse, err error) {
+	request := staleRangeRequest(startKey, endKey, limit, revision)
+	if err != nil {
+		h.appendFailed(request, start, end, err)
+		return
+	}
 	var respRevision int64
 	if resp != nil && resp.Header != nil {
 		respRevision = resp.Header.Revision
 	}
-	h.appendSuccessful(staleRangeRequest(startKey, endKey, limit, revision), start, end, rangeResponse(resp.Kvs, resp.Count, respRevision))
+	h.appendSuccessful(request, start, end, rangeResponse(resp.Kvs, resp.Count, respRevision))
 }
 
 func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putRequest(key, value)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -77,7 +82,7 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duratio
 func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Duration, resp *clientv3.PutResponse, err error) {
 	request := putWithLeaseRequest(key, value, leaseID)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -94,7 +99,7 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 	}
 	request := leaseGrantRequest(leaseID)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -107,7 +112,7 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration, resp *clientv3.LeaseRevokeResponse, err error) {
 	request := leaseRevokeRequest(id)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -120,7 +125,7 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration
 func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, resp *clientv3.DeleteResponse, err error) {
 	request := deleteRequest(key)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -147,7 +152,7 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, cl
 	}
 	request := txnRequest(conds, modelOnSuccess, modelOnFailure)
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -244,7 +249,7 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *clientv3.DefragmentResponse, err error) {
 	request := defragmentRequest()
 	if err != nil {
-		h.appendFailed(request, start, err)
+		h.appendFailed(request, start, end, err)
 		return
 	}
 	var revision int64
@@ -254,18 +259,23 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 	h.appendSuccessful(request, start, end, defragmentResponse(revision))
 }
 
-func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duration, err error) {
+func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Duration, err error) {
 	op := porcupine.Operation{
 		ClientId: h.streamID,
 		Input:    request,
 		Call:     start.Nanoseconds(),
 		Output:   failedResponse(err),
-		Return:   -1, // For failed writes we don't know when request has really finished.
+		Return:   end.Nanoseconds(),
+	}
+	isRead := request.IsRead()
+	if !isRead {
+		// Failed writes can still be persisted, setting -1 for now as don't know when request has took effect.
+		op.Return = -1
+		// Operations of single client needs to be sequential.
+		// As we don't know return time of failed operations, all new writes need to be done with new stream id.
+		h.streamID = h.idProvider.NewStreamID()
 	}
 	h.append(op)
-	// Operations of single client needs to be sequential.
-	// As we don't know return time of failed operations, all new writes need to be done with new stream id.
-	h.streamID = h.idProvider.NewStreamID()
 }
 
 func (h *AppendableHistory) append(op porcupine.Operation) {

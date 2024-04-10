@@ -42,7 +42,7 @@ func TestPersistLoadClientReports(t *testing.T) {
 		Key:         []byte("key"),
 		ModRevision: 2,
 		Value:       []byte("value"),
-	}}})
+	}}}, nil)
 
 	start = time.Since(baseTime)
 	time.Sleep(time.Nanosecond)

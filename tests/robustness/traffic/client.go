@@ -107,12 +107,9 @@ func (c *RecordingClient) Range(ctx context.Context, start, end string, revision
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Get(ctx, start, ops...)
-	if err != nil {
-		return nil, err
-	}
 	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp)
-	return resp, nil
+	c.kvOperations.AppendRange(start, end, revision, limit, callTime, returnTime, resp, err)
+	return resp, err
 }
 
 func (c *RecordingClient) Put(ctx context.Context, key, value string) (*clientv3.PutResponse, error) {

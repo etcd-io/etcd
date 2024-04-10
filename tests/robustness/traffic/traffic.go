@@ -93,14 +93,17 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	}
 	reports = append(reports, cc.Report())
 
-	var operationCount int
+	var totalOperations int
+	var successfulOperations int
 	for _, r := range reports {
-		operationCount += len(r.KeyValue)
+		totalOperations += len(r.KeyValue)
+		successfulOperations += r.SuccessfulOperations()
 	}
-	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
+	lg.Info("Recorded operations", zap.Int("operations", totalOperations), zap.Float64("successRate", float64(successfulOperations)/float64(totalOperations)))
 
-	qps := float64(operationCount) / float64(endTime.Sub(startTime)) * float64(time.Second)
-	lg.Info("Average traffic", zap.Float64("qps", qps))
+	period := endTime.Sub(startTime)
+	qps := float64(successfulOperations) / period.Seconds()
+	lg.Info("Traffic from successful requests", zap.Float64("qps", qps), zap.Int("operations", successfulOperations), zap.Duration("period", period))
 	if qps < profile.MinimalQPS {
 		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", profile.MinimalQPS, qps)
 	}

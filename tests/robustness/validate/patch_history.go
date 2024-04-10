@@ -23,15 +23,22 @@ import (
 )
 
 func patchedOperationHistory(reports []report.ClientReport) []porcupine.Operation {
-	allOperations := operations(reports)
+	allOperations := relevantOperations(reports)
 	uniqueEvents := uniqueWatchEvents(reports)
 	return patchOperationsWithWatchEvents(allOperations, uniqueEvents)
 }
 
-func operations(reports []report.ClientReport) []porcupine.Operation {
+func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
 	var ops []porcupine.Operation
 	for _, r := range reports {
-		ops = append(ops, r.KeyValue...)
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			resp := op.Output.(model.MaybeEtcdResponse)
+			// Remove failed read requests as they are not relevant for linearization.
+			if resp.Error == "" || !request.IsRead() {
+				ops = append(ops, op)
+			}
+		}
 	}
 	return ops
 }
