@@ -169,19 +169,7 @@ func (h *AppendableHistory) appendSuccessful(request EtcdRequest, start, end tim
 		Output:   response,
 		Return:   end.Nanoseconds(),
 	}
-	if op.Call >= op.Return {
-		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
-	}
-	if len(h.operations) > 0 {
-		prev := h.operations[len(h.operations)-1]
-		if op.Call <= prev.Call {
-			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", op.Call, prev.Call))
-		}
-		if op.Call <= prev.Return {
-			panic(fmt.Sprintf("Overlapping operations, new.call(%d) <= prev.return(%d)", op.Call, prev.Return))
-		}
-	}
-	h.operations = append(h.operations, op)
+	h.append(op)
 }
 
 func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
@@ -274,6 +262,16 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duratio
 		Output:   failedResponse(err),
 		Return:   -1, // For failed writes we don't know when request has really finished.
 	}
+	h.append(op)
+	// Operations of single client needs to be sequential.
+	// As we don't know return time of failed operations, all new writes need to be done with new stream id.
+	h.streamID = h.idProvider.NewStreamID()
+}
+
+func (h *AppendableHistory) append(op porcupine.Operation) {
+	if op.Return != -1 && op.Call >= op.Return {
+		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
+	}
 	if len(h.operations) > 0 {
 		prev := h.operations[len(h.operations)-1]
 		if op.Call <= prev.Call {
@@ -284,9 +282,6 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start time.Duratio
 		}
 	}
 	h.operations = append(h.operations, op)
-	// Operations of single client needs to be sequential.
-	// As we don't know return time of failed operations, all new writes need to be done with new stream id.
-	h.streamID = h.idProvider.NewStreamID()
 }
 
 func getRequest(key string) EtcdRequest {
