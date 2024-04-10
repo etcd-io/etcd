@@ -17,6 +17,7 @@ package validate
 import (
 	"errors"
 
+	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -55,11 +56,11 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, ev
 		if err != nil {
 			return err
 		}
-		err = validateBookmarkable(lg, r)
-		if err != nil {
-			return err
-		}
 		if eventHistory != nil {
+			err = validateBookmarkable(lg, eventHistory, r)
+			if err != nil {
+				return err
+			}
 			err = validateReliable(lg, eventHistory, r)
 			if err != nil {
 				return err
@@ -95,17 +96,37 @@ func validateFilter(lg *zap.Logger, report report.ClientReport) (err error) {
 	return err
 }
 
-func validateBookmarkable(lg *zap.Logger, report report.ClientReport) (err error) {
+func validateBookmarkable(lg *zap.Logger, eventHistory []model.PersistedEvent, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		var lastProgressNotifyRevision int64
+		var gotEventBeforeProgressNotify *model.PersistedEvent
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision <= lastProgressNotifyRevision {
 					lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.Int64("revision", event.Revision))
 					err = errBrokeBookmarkable
 				}
+				gotEventBeforeProgressNotify = &event.PersistedEvent
 			}
 			if resp.IsProgressNotify {
+				if gotEventBeforeProgressNotify != nil || op.Request.Revision != 0 {
+					var wantEventBeforeProgressNotify *model.PersistedEvent
+					for _, ev := range eventHistory {
+						if ev.Revision < op.Request.Revision {
+							continue
+						}
+						if ev.Revision > resp.Revision {
+							break
+						}
+						if ev.Match(op.Request) {
+							wantEventBeforeProgressNotify = &ev
+						}
+					}
+					if diff := cmp.Diff(wantEventBeforeProgressNotify, gotEventBeforeProgressNotify); diff != "" {
+						lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
+						err = errBrokeBookmarkable
+					}
+				}
 				lastProgressNotifyRevision = resp.Revision
 			}
 		}

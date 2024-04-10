@@ -493,8 +493,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			// TODO: Should fail as it should guarantee that all events between requested revision and bookmark are delivered
-			expectError: "",
+			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Bookmarkable - revision non decreasing - pass",
@@ -583,8 +582,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			// TODO: This should fail as bookmark lowered revision
-			expectError: "",
+			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Bookmarkable - progress precedes event - fail",
@@ -653,8 +651,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			// TODO: This should fail as there is a missing event before bookmark
-			expectError: "",
+			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Bookmarkable - missing event matching watch before bookmark - fail",
@@ -685,8 +682,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("a", "2", 3, false),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			// TODO: This should fail as there is a missing event before bookmark
-			expectError: "",
+			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Bookmarkable - missing event matching watch with prefix before bookmark - fail",
@@ -718,8 +714,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("ab", "2", 3, true),
 				putPersistedEvent("cc", "3", 4, true),
 			},
-			// TODO: This should fail as there is a missing event before bookmark
-			expectError: "",
+			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Reliable - all events history - pass",
