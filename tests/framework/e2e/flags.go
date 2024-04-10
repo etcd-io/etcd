@@ -55,6 +55,7 @@ func InitFlags() {
 	flag.Parse()
 
 	BinPath = BinDir + "/etcd"
+	BinPathLastRelease = BinDir + "/etcd-last-release"
 	CtlBinPath = BinDir + "/etcdctl"
 	UtlBinPath = BinDir + "/etcdutl"
 	CertPath = CertDir + "/server.crt"

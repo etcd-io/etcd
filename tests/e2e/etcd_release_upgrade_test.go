@@ -37,7 +37,7 @@ func TestReleaseUpgrade(t *testing.T) {
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.Version = e2e.LastVersion
 	copiedCfg.SnapshotCount = 3
 	copiedCfg.BasePeerScheme = "unix" // to avoid port conflict
 
@@ -78,7 +78,7 @@ func TestReleaseUpgrade(t *testing.T) {
 			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
 		}
 		t.Logf("Stopped node: %v", i)
-		epc.Procs[i].Config().ExecPath = e2e.BinDir + "/etcd"
+		epc.Procs[i].Config().ExecPath = e2e.BinPath
 		epc.Procs[i].Config().KeepDataDir = true
 
 		t.Logf("Restarting node in the new version: %v", i)
@@ -123,7 +123,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	e2e.BeforeTest(t)
 
 	copiedCfg := e2e.NewConfigNoTLS()
-	copiedCfg.ExecPath = lastReleaseBinary
+	copiedCfg.Version = e2e.LastVersion
 	copiedCfg.SnapshotCount = 10
 	copiedCfg.BasePeerScheme = "unix"
 
@@ -166,7 +166,7 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	wg.Add(len(epc.Procs))
 	for i := range epc.Procs {
 		go func(i int) {
-			epc.Procs[i].Config().ExecPath = e2e.BinDir + "/etcd"
+			epc.Procs[i].Config().ExecPath = e2e.BinPath
 			epc.Procs[i].Config().KeepDataDir = true
 			if err := epc.Procs[i].Restart(); err != nil {
 				t.Errorf("error restarting etcd process (%v)", err)
