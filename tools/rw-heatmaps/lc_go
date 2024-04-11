@@ -1,0 +1,165 @@
+// Copyright 2024 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package chart
+
+import (
+	"fmt"
+	"sort"
+
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
+
+	"go.etcd.io/etcd/tools/rw-heatmaps/v3/pkg/dataset"
+)
+
+/*
+type lineChart struct {
+}
+*/
+
+// PlotLineCharts creates a new line chart.
+func PlotLineCharts(datasets []*dataset.DataSet, title, outputImageFile, outputFormat string) error {
+	plot.DefaultFont = font.Font{
+		Typeface: "Liberation",
+		Variant:  "Sans",
+	}
+
+	ratios := datasets[0].GetSortedRatios()
+	for _, ratio := range ratios {
+		records := make([][]dataset.DataRecord, len(datasets))
+		for i, d := range datasets {
+			records[i] = d.Records[ratio]
+		}
+		canvas := plotLineChart(ratio, records, title)
+		if err := saveCanvas(canvas, fmt.Sprintf("%0.04f", ratio), outputImageFile, outputFormat); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func plotLineChart(ratio float64, records [][]dataset.DataRecord, title string) *vgimg.Canvas {
+	// Make a 4x2 grid of heatmaps.
+	const rows, cols = 4, 2
+
+	// Set the width and height of the canvas.
+	const width, height = 30 * vg.Centimeter, 40 * vg.Centimeter
+
+	canvas := vgimg.New(width, height)
+	dc := draw.New(canvas)
+
+	// Create a tiled layout for the plots.
+	t := draw.Tiles{
+		Rows:      rows,
+		Cols:      cols,
+		PadX:      vg.Millimeter * 4,
+		PadY:      vg.Millimeter * 4,
+		PadTop:    vg.Millimeter * 10,
+		PadBottom: vg.Millimeter * 2,
+		PadLeft:   vg.Millimeter * 2,
+		PadRight:  vg.Millimeter * 2,
+	}
+
+	plots := make([][]*plot.Plot, rows)
+	for i := range plots {
+		plots[i] = make([]*plot.Plot, cols)
+	}
+
+	var values []int
+	rec := make(map[int64][]dataset.DataRecord)
+	for _, r := range records[0] {
+		if _, ok := rec[r.ValueSize]; !ok {
+			values = append(values, int(r.ValueSize))
+		}
+		rec[r.ValueSize] = append(rec[r.ValueSize], r)
+	}
+	sort.Ints(values)
+
+	row, col := 0, 0
+	for _, value := range values {
+		records := rec[int64(value)]
+		plots[row][col] = plotIndividualLineChart(fmt.Sprintf("Value Size: %d", value), records)
+
+		if col++; col == cols {
+			col = 0
+			row++
+		}
+	}
+
+	// Fill the canvas with the plots and legends.
+	canvases := plot.Align(plots, t, dc)
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			// Continue if there is no plot in the current cell (incomplete data).
+			if plots[i][j] == nil {
+				continue
+			}
+
+			c := draw.Crop(canvases[i][j], 0, 0, 0, 0)
+			plots[i][j].Draw(c)
+		}
+	}
+
+	// Add the title and parameter legend.
+	l := plot.NewLegend()
+	l.Add(fmt.Sprintf("%s R/W Ratio %0.04f", title, ratio))
+	// TODO: Add the parameter legend.
+	//l.Add(param)
+	l.Top = true
+	l.Left = true
+	l.Draw(dc)
+
+	return canvas
+}
+
+func plotIndividualLineChart(title string, records []dataset.DataRecord) *plot.Plot {
+	p := plot.New()
+	p.Title.Text = title
+	p.X.Label.Text = "Connections Amount"
+	p.X.Scale = plot.LogScale{}
+	p.X.Tick.Marker = pow2Ticks{}
+	p.Y.Label.Text = "QPS (Requests/sec)"
+	p.Y.Scale = plot.LogScale{}
+	p.Y.Tick.Marker = pow2Ticks{}
+
+	readPts := make(plotter.XYs, len(records))
+	writePts := make(plotter.XYs, len(records))
+	qr := make(map[int64]struct{})
+	for i, record := range records {
+		writePts[i].X = float64(record.ConnSize)
+		readPts[i].X = writePts[i].X
+		readPts[i].Y = record.AvgRead
+		writePts[i].Y = record.AvgWrite
+		qr[record.ValueSize] = struct{}{}
+	}
+
+	fmt.Println("qr:")
+	for k := range qr {
+		fmt.Println(k)
+	}
+	fmt.Println("qr end")
+
+	if err := plotutil.AddLinePoints(p, "read", readPts, "write", writePts); err != nil {
+		panic(err)
+	}
+
+	return p
+}
