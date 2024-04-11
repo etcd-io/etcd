@@ -26,7 +26,7 @@ import (
 func createIssues(tests []*TestResultSummary, labels []string) {
 	openIssues := getOpenIssues(labels)
 	for _, t := range tests {
-		createIssueIfNonExist(tab, t, openIssues, append(labels, "help wanted"))
+		createIssueIfNonExist(t, openIssues, append(labels, "help wanted"))
 	}
 }
 
@@ -54,7 +54,7 @@ func getOpenIssues(labels []string) []*github.Issue {
 	return allIssues
 }
 
-func createIssueIfNonExist(tab string, t *TestResultSummary, issues []*github.Issue, labels []string) {
+func createIssueIfNonExist(t *TestResultSummary, issues []*github.Issue, labels []string) {
 	// check if there is already an open issue regarding this test
 	for _, issue := range issues {
 		if strings.Contains(*issue.Title, t.Name) {
