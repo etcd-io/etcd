@@ -39,7 +39,7 @@ func TestPatchHistory(t *testing.T) {
 				start := time.Since(baseTime)
 				time.Sleep(time.Nanosecond)
 				stop := time.Since(baseTime)
-				h.AppendRange("key", "", 0, 0, start, stop, &clientv3.GetResponse{})
+				h.AppendRange("key", "", 0, 0, start, stop, &clientv3.GetResponse{}, nil)
 			},
 			expectRemains: true,
 		},
