@@ -48,6 +48,10 @@ func describeEtcdRequest(request EtcdRequest) string {
 	case Range:
 		return describeRangeRequest(request.Range.RangeOptions, request.Range.Revision)
 	case Txn:
+		guaranteedTxnDescription := describeGuaranteedTxn(request.Txn)
+		if guaranteedTxnDescription != "" {
+			return guaranteedTxnDescription
+		}
 		onSuccess := describeEtcdOperations(request.Txn.OperationsOnSuccess)
 		if len(request.Txn.Conditions) != 0 {
 			if len(request.Txn.OperationsOnFailure) == 0 {
@@ -66,6 +70,28 @@ func describeEtcdRequest(request EtcdRequest) string {
 	default:
 		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
 	}
+}
+
+func describeGuaranteedTxn(txn *TxnRequest) string {
+	if len(txn.Conditions) != 1 || len(txn.OperationsOnSuccess) != 1 || len(txn.OperationsOnFailure) > 1 {
+		return ""
+	}
+	switch txn.OperationsOnSuccess[0].Type {
+	case PutOperation:
+		if txn.Conditions[0].Key != txn.OperationsOnSuccess[0].Put.Key || (len(txn.OperationsOnFailure) == 1 && txn.Conditions[0].Key != txn.OperationsOnFailure[0].Range.Start) {
+			return ""
+		}
+		if txn.Conditions[0].ExpectedRevision == 0 {
+			return fmt.Sprintf("guaranteedCreate(%q, %s)", txn.Conditions[0].Key, describeValueOrHash(txn.OperationsOnSuccess[0].Put.Value))
+		}
+		return fmt.Sprintf("guaranteedUpdate(%q, %s, mod_rev=%d)", txn.Conditions[0].Key, describeValueOrHash(txn.OperationsOnSuccess[0].Put.Value), txn.Conditions[0].ExpectedRevision)
+	case DeleteOperation:
+		if txn.Conditions[0].Key != txn.OperationsOnSuccess[0].Delete.Key || (len(txn.OperationsOnFailure) == 1 && txn.Conditions[0].Key != txn.OperationsOnFailure[0].Range.Start) {
+			return ""
+		}
+		return fmt.Sprintf("guaranteedDelete(%q, mod_rev=%d)", txn.Conditions[0].Key, txn.Conditions[0].ExpectedRevision)
+	}
+	return ""
 }
 
 func describeEtcdConditions(conds []EtcdCondition) string {
