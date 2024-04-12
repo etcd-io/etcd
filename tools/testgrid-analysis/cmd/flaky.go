@@ -31,6 +31,8 @@ var flakyCmd = &cobra.Command{
 var (
 	flakyThreshold    float32
 	minRuns           int
+	maxRuns           int
+	maxDays           int
 	createGithubIssue bool
 	githubOwner       string
 	githubRepo        string
@@ -44,6 +46,8 @@ func init() {
 	flakyCmd.Flags().BoolVar(&createGithubIssue, "create-issue", false, "create Github issue for each flaky test")
 	flakyCmd.Flags().Float32Var(&flakyThreshold, "flaky-threshold", 0.1, "fraction threshold of test failures for a test to be considered flaky")
 	flakyCmd.Flags().IntVar(&minRuns, "min-runs", 20, "minimum test runs for a test to be included in flaky analysis")
+	flakyCmd.Flags().IntVar(&maxRuns, "max-runs", 0, "maximum test runs for a test to be included in flaky analysis, 0 to include all")
+	flakyCmd.Flags().IntVar(&maxDays, "max-days", 0, "maximum days of results before today to be included in flaky analysis, 0 to include all")
 	flakyCmd.Flags().StringVar(&githubOwner, "github-owner", "etcd-io", "the github organization to create the issue for")
 	flakyCmd.Flags().StringVar(&githubRepo, "github-repo", "etcd", "the github repo to create the issue for")
 }
@@ -59,7 +63,7 @@ func flakyFunc(cmd *cobra.Command, args []string) {
 		}
 	}
 	fmt.Println(lineSep)
-	fmt.Printf("Detected total %d flaky tests for %s#%s\n", len(flakyTests), dashboard, tab)
+	fmt.Printf("Detected total %d flaky tests above the %.0f%% threshold for %s#%s\n", len(flakyTests), flakyThreshold*100, dashboard, tab)
 	fmt.Println(lineSep)
 	if len(flakyTests) == 0 {
 		return
