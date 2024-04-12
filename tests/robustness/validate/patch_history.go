@@ -22,25 +22,27 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func patchedOperationHistory(reports []report.ClientReport) []porcupine.Operation {
-	allOperations := relevantOperations(reports)
+func patchedOperationHistory(reports []report.ClientReport) (linearizable, nonLinearizable []porcupine.Operation) {
+	linearizable, nonLinearizable = relevantOperations(reports)
 	uniqueEvents := uniqueWatchEvents(reports)
-	return patchOperationsWithWatchEvents(allOperations, uniqueEvents)
+	patchedLinearizable, nonLinearizable2 := patchOperationsWithWatchEvents(linearizable, uniqueEvents)
+	return patchedLinearizable, append(nonLinearizable, nonLinearizable2...)
 }
 
-func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
-	var ops []porcupine.Operation
+func relevantOperations(reports []report.ClientReport) (linearizable, nonLinearizable []porcupine.Operation) {
 	for _, r := range reports {
 		for _, op := range r.KeyValue {
 			request := op.Input.(model.EtcdRequest)
 			resp := op.Output.(model.MaybeEtcdResponse)
 			// Remove failed read requests as they are not relevant for linearization.
 			if resp.Error == "" || !request.IsRead() {
-				ops = append(ops, op)
+				linearizable = append(linearizable, op)
+			} else {
+				nonLinearizable = append(nonLinearizable, op)
 			}
 		}
 	}
-	return ops
+	return linearizable, nonLinearizable
 }
 
 func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]traffic.TimedWatchEvent {
@@ -61,9 +63,10 @@ func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]traffic.Ti
 	return persisted
 }
 
-func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) []porcupine.Operation {
+func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) (linearizable, nonLinearizable []porcupine.Operation) {
 
-	newOperations := make([]porcupine.Operation, 0, len(operations))
+	linearizable = make([]porcupine.Operation, 0, len(operations))
+	nonLinearizable = make([]porcupine.Operation, 0, len(operations))
 	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
 
 	for _, op := range operations {
@@ -71,7 +74,7 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 		resp := op.Output.(model.MaybeEtcdResponse)
 		if resp.Error == "" || op.Call > lastObservedOperation.Call || request.Type != model.Txn {
 			// Cannot patch those requests.
-			newOperations = append(newOperations, op)
+			linearizable = append(linearizable, op)
 			continue
 		}
 		event := matchWatchEvent(request.Txn, watchEvents)
@@ -79,17 +82,19 @@ func patchOperationsWithWatchEvents(operations []porcupine.Operation, watchEvent
 			// Set revision and time based on watchEvent.
 			op.Return = event.Time.Nanoseconds()
 			op.Output = model.MaybeEtcdResponse{PartialResponse: true, EtcdResponse: model.EtcdResponse{Revision: event.Revision}}
-			newOperations = append(newOperations, op)
+			linearizable = append(linearizable, op)
 			continue
 		}
 		if !canBeDiscarded(request.Txn) {
 			// Leave operation as it is as we cannot discard it.
-			newOperations = append(newOperations, op)
+			linearizable = append(linearizable, op)
 			continue
+		} else {
+			nonLinearizable = append(nonLinearizable, op)
 		}
 		// Remove non persisted operations
 	}
-	return newOperations
+	return linearizable, nonLinearizable
 }
 
 func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.Event]traffic.TimedWatchEvent) porcupine.Operation {

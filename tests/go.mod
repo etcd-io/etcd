@@ -13,6 +13,8 @@ replace (
 	go.etcd.io/etcd/server/v3 => ../server
 )
 
+replace github.com/anishathalye/porcupine v0.1.4 => github.com/serathius/porcupine v0.0.0-20240412083641-c39cbb308579
+
 require (
 	github.com/anishathalye/porcupine v0.1.4
 	github.com/coreos/go-semver v0.3.1

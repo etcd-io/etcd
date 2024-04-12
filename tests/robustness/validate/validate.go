@@ -30,9 +30,9 @@ import (
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, timeout time.Duration) (visualize func(basepath string) error) {
-	patchedOperations := patchedOperationHistory(reports)
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations, timeout)
-	if linearizable != porcupine.Ok {
+	linearizable, nonLinearizable := patchedOperationHistory(reports)
+	result, visualize := validateLinearizableOperationsAndVisualize(lg, linearizable, nonLinearizable, timeout)
+	if result != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return visualize
 	}
@@ -44,7 +44,7 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 		return visualize
 	}
 	validateWatch(t, lg, cfg, reports, eventHistory)
-	validateSerializableOperations(t, lg, patchedOperations, eventHistory)
+	validateSerializableOperations(t, lg, linearizable, eventHistory)
 	return visualize
 }
 

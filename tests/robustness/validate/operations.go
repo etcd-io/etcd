@@ -28,10 +28,10 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
 
-func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
+func validateLinearizableOperationsAndVisualize(lg *zap.Logger, linearizable, nonLinearizable []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
-	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, linearizable, timeout)
 	switch result {
 	case porcupine.Illegal:
 		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
@@ -42,6 +42,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	default:
 		panic(fmt.Sprintf("Unknown Linearization result %s", result))
 	}
+	info.AddOperations(nonLinearizable)
 	return result, func(path string) error {
 		lg.Info("Saving visualization", zap.String("path", path))
 		err := porcupine.VisualizePath(model.NonDeterministicModel, info, path)
