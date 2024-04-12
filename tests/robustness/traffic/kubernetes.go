@@ -36,9 +36,9 @@ var (
 		resource:        "pods",
 		namespace:       "default",
 		writeChoices: []choiceWeight[KubernetesRequestType]{
-			{choice: KubernetesUpdate, weight: 90},
-			{choice: KubernetesDelete, weight: 5},
-			{choice: KubernetesCreate, weight: 5},
+			{choice: KubernetesUpdate, weight: 33},
+			{choice: KubernetesDelete, weight: 33},
+			{choice: KubernetesCreate, weight: 33},
 		},
 	}
 )
@@ -149,19 +149,14 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 		if rev == 0 {
 			return errors.New("storage empty")
 		}
-		if count > t.averageKeyCount*3/2 && nonUniqueWriteLimiter.Take() {
+		if count > t.averageKeyCount*3/2 {
 			_, err = kc.OptimisticDelete(writeCtx, key, rev)
-			nonUniqueWriteLimiter.Return()
 		} else {
 			choices := t.writeChoices
-			if !nonUniqueWriteLimiter.Take() {
-				choices = filterOutNonUniqueKubernetesWrites(t.writeChoices)
-			}
 			op := pickRandom(choices)
 			switch op {
 			case KubernetesDelete:
 				_, err = kc.OptimisticDelete(writeCtx, key, rev)
-				nonUniqueWriteLimiter.Return()
 			case KubernetesUpdate:
 				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestID()), rev)
 			case KubernetesCreate:

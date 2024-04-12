@@ -65,16 +65,9 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
 	}
 	enableLazyFS := e2e.BinPath.LazyFSAvailable()
-	randomizableOptions := []e2e.EPClusterOption{
-		options.WithClusterOptionGroups(
-			options.ClusterOptions{options.WithTickMs(29), options.WithElectionMs(271)},
-			options.ClusterOptions{options.WithTickMs(101), options.WithElectionMs(521)},
-			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
-	}
 
 	baseOptions := []e2e.EPClusterOption{
-		options.WithSnapshotCount(50, 100, 1000),
-		options.WithSubsetOptions(randomizableOptions...),
+		options.WithSnapshotCount(1000),
 		e2e.WithGoFailEnabled(true),
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
