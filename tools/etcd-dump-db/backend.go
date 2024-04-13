@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/server/v3/lease/leasepb"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
@@ -63,24 +64,12 @@ var decoders = map[string]decoder{
 	"meta":      metaDecoder,
 }
 
-type revision struct {
-	main int64
-	sub  int64
-}
-
-func bytesToRev(bytes []byte) revision {
-	return revision{
-		main: int64(binary.BigEndian.Uint64(bytes[0:8])),
-		sub:  int64(binary.BigEndian.Uint64(bytes[9:])),
-	}
-}
-
 func defaultDecoder(k, v []byte) {
 	fmt.Printf("key=%q, value=%q\n", k, v)
 }
 
 func keyDecoder(k, v []byte) {
-	rev := bytesToRev(k)
+	rev := mvcc.BytesToBucketKey(k)
 	var kv mvccpb.KeyValue
 	if err := kv.Unmarshal(v); err != nil {
 		panic(err)
@@ -135,7 +124,7 @@ func metaDecoder(k, v []byte) {
 	if string(k) == string(schema.MetaConsistentIndexKeyName) || string(k) == string(schema.MetaTermKeyName) {
 		fmt.Printf("key=%q, value=%v\n", k, binary.BigEndian.Uint64(v))
 	} else if string(k) == string(schema.ScheduledCompactKeyName) || string(k) == string(schema.FinishedCompactKeyName) {
-		rev := bytesToRev(v)
+		rev := mvcc.BytesToRev(v)
 		fmt.Printf("key=%q, value=%v\n", k, rev)
 	} else {
 		defaultDecoder(k, v)
