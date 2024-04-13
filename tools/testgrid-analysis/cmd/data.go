@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	apipb "github.com/GoogleCloudPlatform/testgrid/pb/api/v1"
 	statuspb "github.com/GoogleCloudPlatform/testgrid/pb/test_status"
@@ -77,6 +78,7 @@ func processRow(dashboard, tab string, row *apipb.ListRowsResponse_Row, allTests
 	if !strings.HasPrefix(row.Name, "go.etcd.io") {
 		return &t
 	}
+	earliestTimeToConsider := time.Now().AddDate(0, 0, -1*maxDays)
 	total := 0
 	failed := 0
 	logs := []string{}
@@ -89,12 +91,18 @@ func processRow(dashboard, tab string, row *apipb.ListRowsResponse_Row, allTests
 			}
 			continue
 		}
+		header := headers[i]
+		if maxDays > 0 && header.Started.AsTime().Before(earliestTimeToConsider) {
+			continue
+		}
 		total += 1
 		if _, ok := failureTestStatusesInt[cell.Result]; ok {
 			failed += 1
-			header := headers[i]
 			// markdown table format of | commit | log |
 			logs = append(logs, fmt.Sprintf("| %s | %s | https://prow.k8s.io/view/gs/kubernetes-jenkins/logs/%s/%s |", strings.Join(header.Extra, ","), header.Started.AsTime().String(), tab, header.Build))
+		}
+		if maxRuns > 0 && total >= maxRuns {
+			break
 		}
 	}
 	t.FailedRuns = failed
@@ -106,6 +114,7 @@ func processRow(dashboard, tab string, row *apipb.ListRowsResponse_Row, allTests
 		t.IssueBody = fmt.Sprintf("## %s Test: %s \nTest failed %.1f%% (%d/%d) of the time\n\nfailure logs are:\n| commit | started | log |\n| --- | --- | --- |\n%s\n",
 			dashboardUrl, t.FullName, t.FailureRate*100, t.FailedRuns, t.TotalRuns, strings.Join(t.FailureLogs, "\n"))
 		t.IssueBody += "\nPlease follow the [instructions in the contributing guide](https://github.com/etcd-io/etcd/blob/main/CONTRIBUTING.md#check-for-flaky-tests) to reproduce the issue.\n"
+		fmt.Printf("%s failed %.1f%% (%d/%d) of the time\n", t.FullName, t.FailureRate*100, t.FailedRuns, t.TotalRuns)
 	}
 	return &t
 }
