@@ -644,7 +644,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.InitialClusterToken, "initial-cluster-token", cfg.InitialClusterToken, "Initial cluster token for the etcd cluster during bootstrap.")
 	fs.BoolVar(&cfg.StrictReconfigCheck, "strict-reconfig-check", cfg.StrictReconfigCheck, "Reject reconfiguration requests that would cause quorum loss.")
 
-	fs.BoolVar(&cfg.PreVote, "pre-vote", cfg.PreVote, "Enable to run an additional Raft election phase.")
+	fs.BoolVar(&cfg.PreVote, "pre-vote", cfg.PreVote, "Enable the raft Pre-Vote algorithm to prevent disruption when a node that has been partitioned away rejoins the cluster.")
 
 	// security
 	fs.StringVar(&cfg.ClientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
