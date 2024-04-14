@@ -37,10 +37,16 @@ func TestDataReports(t *testing.T) {
 			continue
 		}
 		t.Run(file.Name(), func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
 			path := filepath.Join(testdataPath, file.Name())
 			reports, err := report.LoadClientReports(path)
 			assert.NoError(t, err)
-			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, 5*time.Minute)
+
+			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
 
 			if t.Failed() {
 				err := visualize(filepath.Join(path, "history.html"))

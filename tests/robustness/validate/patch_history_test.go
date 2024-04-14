@@ -19,7 +19,6 @@ import (
 	"testing"
 	"time"
 
-	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -28,10 +27,10 @@ import (
 
 func TestPatchHistory(t *testing.T) {
 	for _, tc := range []struct {
-		name          string
-		historyFunc   func(baseTime time.Time, h *model.AppendableHistory)
-		event         model.Event
-		expectRemains bool
+		name                        string
+		historyFunc                 func(baseTime time.Time, h *model.AppendableHistory)
+		persistedRequest            *model.EtcdRequest
+		expectedRemainingOperations int
 	}{
 		{
 			name: "successful range remains",
@@ -41,7 +40,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendRange("key", "", 0, 0, start, stop, &clientv3.GetResponse{}, nil)
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "successful put remains",
@@ -51,7 +50,21 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendPut("key", "value", start, stop, &clientv3.PutResponse{}, nil)
 			},
-			expectRemains: true,
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key",
+								Value: model.ToValueOrHash("value"),
+							},
+						},
+					},
+				},
+			},
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed put remains if there is a matching event",
@@ -61,12 +74,21 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendPut("key", "value", start, stop, nil, errors.New("failed"))
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key",
-				Value: model.ToValueOrHash("value"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key",
+								Value: model.ToValueOrHash("value"),
+							},
+						},
+					},
+				},
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed put is dropped if event has different key",
@@ -75,13 +97,26 @@ func TestPatchHistory(t *testing.T) {
 				time.Sleep(time.Nanosecond)
 				stop := time.Since(baseTime)
 				h.AppendPut("key1", "value", start, stop, nil, errors.New("failed"))
+				start2 := time.Since(baseTime)
+				time.Sleep(time.Nanosecond)
+				stop2 := time.Since(baseTime)
+				h.AppendPut("key2", "value", start2, stop2, &clientv3.PutResponse{}, nil)
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key2",
-				Value: model.ToValueOrHash("value"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key2",
+								Value: model.ToValueOrHash("value"),
+							},
+						},
+					},
+				},
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed put is dropped if event has different value",
@@ -90,13 +125,26 @@ func TestPatchHistory(t *testing.T) {
 				time.Sleep(time.Nanosecond)
 				stop := time.Since(baseTime)
 				h.AppendPut("key", "value1", start, stop, nil, errors.New("failed"))
+				start2 := time.Since(baseTime)
+				time.Sleep(time.Nanosecond)
+				stop2 := time.Since(baseTime)
+				h.AppendPut("key", "value2", start2, stop2, &clientv3.PutResponse{}, nil)
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key",
-				Value: model.ToValueOrHash("value2"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key",
+								Value: model.ToValueOrHash("value2"),
+							},
+						},
+					},
+				},
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed put with lease remains if there is a matching event",
@@ -106,12 +154,22 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendPutWithLease("key", "value", 123, start, stop, nil, errors.New("failed"))
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key",
-				Value: model.ToValueOrHash("value"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:     "key",
+								Value:   model.ToValueOrHash("value"),
+								LeaseID: 123,
+							},
+						},
+					},
+				},
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed put is dropped",
@@ -121,7 +179,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendPut("key", "value", start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed put with lease is dropped",
@@ -131,7 +189,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendPutWithLease("key", "value", 123, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "successful delete remains",
@@ -141,7 +199,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendDelete("key", start, stop, &clientv3.DeleteResponse{}, nil)
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed delete remains",
@@ -151,7 +209,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendDelete("key", start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "successful empty txn remains",
@@ -161,7 +219,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{}, start, stop, &clientv3.TxnResponse{}, nil)
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed empty txn is dropped",
@@ -171,7 +229,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed txn put is dropped",
@@ -181,7 +239,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed txn put remains if there is a matching event",
@@ -191,12 +249,21 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key",
-				Value: model.ToValueOrHash("value"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key",
+								Value: model.ToValueOrHash("value"),
+							},
+						},
+					},
+				},
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn delete remains",
@@ -206,7 +273,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "successful txn put/delete remains",
@@ -216,7 +283,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{clientv3.OpDelete("key")}, start, stop, &clientv3.TxnResponse{}, nil)
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn put/delete remains",
@@ -226,7 +293,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{clientv3.OpDelete("key")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn delete/put remains",
@@ -236,7 +303,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn empty/put is dropped",
@@ -246,7 +313,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed txn empty/put remains if there is a matching event",
@@ -256,12 +323,21 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			event: model.Event{
-				Type:  model.PutOperation,
-				Key:   "key",
-				Value: model.ToValueOrHash("value"),
+			persistedRequest: &model.EtcdRequest{
+				Type: model.Txn,
+				Txn: &model.TxnRequest{
+					OperationsOnSuccess: []model.EtcdOperation{
+						{
+							Type: model.PutOperation,
+							Put: model.PutOptions{
+								Key:   "key",
+								Value: model.ToValueOrHash("value"),
+							},
+						},
+					},
+				},
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn empty/delete remains",
@@ -271,7 +347,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpDelete("key")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: true,
+			expectedRemainingOperations: 1,
 		},
 		{
 			name: "failed txn put&delete is dropped",
@@ -281,7 +357,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed txn empty/put&delete is dropped",
@@ -291,7 +367,7 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 		{
 			name: "failed txn put&delete/put&delete is dropped",
@@ -301,55 +377,26 @@ func TestPatchHistory(t *testing.T) {
 				stop := time.Since(baseTime)
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value2"), clientv3.OpDelete("key")}, start, stop, nil, errors.New("failed"))
 			},
-			expectRemains: false,
+			expectedRemainingOperations: 0,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			baseTime := time.Now()
 			history := model.NewAppendableHistory(identity.NewIDProvider())
 			tc.historyFunc(baseTime, history)
-			time.Sleep(time.Nanosecond)
-			start := time.Since(baseTime)
-			time.Sleep(time.Nanosecond)
-			stop := time.Since(baseTime)
-			history.AppendPut("tombstone", "true", start, stop, &clientv3.PutResponse{Header: &etcdserverpb.ResponseHeader{Revision: 3}}, nil)
-			watch := []model.WatchResponse{
-				{
-					Events: []model.WatchEvent{
-						{
-							PersistedEvent: model.PersistedEvent{
-								Event: tc.event, Revision: 2,
-							},
-						},
-					},
-					Revision: 2,
-					Time:     time.Since(baseTime),
-				},
-				{
-					Events: []model.WatchEvent{
-						{
-							PersistedEvent: model.PersistedEvent{
-								Event: model.Event{
-									Type:  model.PutOperation,
-									Key:   "tombstone",
-									Value: model.ToValueOrHash("true"),
-								}, Revision: 3},
-						},
-					},
-					Revision: 3,
-					Time:     time.Since(baseTime),
-				},
+			requests := []model.EtcdRequest{}
+			if tc.persistedRequest != nil {
+				requests = append(requests, *tc.persistedRequest)
 			}
 			operations := patchedOperationHistory([]report.ClientReport{
 				{
 					ClientID: 0,
 					KeyValue: history.History.Operations(),
-					Watch:    []model.WatchOperation{{Responses: watch}},
+					Watch:    []model.WatchOperation{},
 				},
-			})
-			remains := len(operations) == history.Len()
-			if remains != tc.expectRemains {
-				t.Errorf("Unexpected remains, got: %v, want: %v", remains, tc.expectRemains)
+			}, requests)
+			if len(operations) != tc.expectedRemainingOperations {
+				t.Errorf("Unexpected remains, got: %d, want: %d", len(operations), tc.expectedRemainingOperations)
 			}
 		})
 	}

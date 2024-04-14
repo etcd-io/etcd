@@ -29,12 +29,12 @@ import (
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, timeout time.Duration) (visualize func(basepath string) error) {
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
 	err := checkValidationAssumptions(reports)
 	if err != nil {
 		t.Fatalf("Broken validation assumptions: %s", err)
 	}
-	patchedOperations := patchedOperationHistory(reports)
+	patchedOperations := patchedOperationHistory(reports, persistedRequests)
 	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
