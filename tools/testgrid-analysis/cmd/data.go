@@ -95,9 +95,9 @@ func processRow(dashboard, tab string, row *apipb.ListRowsResponse_Row, allTests
 		if maxDays > 0 && header.Started.AsTime().Before(earliestTimeToConsider) {
 			continue
 		}
-		total += 1
+		total++
 		if _, ok := failureTestStatusesInt[cell.Result]; ok {
-			failed += 1
+			failed++
 			// markdown table format of | commit | log |
 			logs = append(logs, fmt.Sprintf("| %s | %s | https://prow.k8s.io/view/gs/kubernetes-jenkins/logs/%s/%s |", strings.Join(header.Extra, ","), header.Started.AsTime().String(), tab, header.Build))
 		}
