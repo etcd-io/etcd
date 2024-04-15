@@ -15,7 +15,7 @@
 package validate
 
 import (
-	"testing"
+	"errors"
 
 	"go.uber.org/zap"
 
@@ -23,30 +23,67 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func validateWatch(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.PersistedEvent) {
+var (
+	errBrokeBookmarkable = errors.New("broke Bookmarkable - Progress notification events guarantee that all events up to a revision have been already delivered")
+	errBrokeOrdered      = errors.New("broke Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted")
+	errBrokeUnique       = errors.New("broke Unique - an event will never appear on a watch twice")
+	errBrokeAtomic       = errors.New("broke Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events")
+	errBrokeReliable     = errors.New("broke Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b")
+	errBrokeResumable    = errors.New("broke Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window")
+	errBrokePrevKV       = errors.New("incorrect event prevValue")
+	errBrokeIsCreate     = errors.New("incorrect event IsCreate")
+)
+
+func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.PersistedEvent) error {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
-		validateOrdered(t, r)
-		validateUnique(t, cfg.ExpectRevisionUnique, r)
-		validateAtomic(t, r)
-		validateBookmarkable(t, r)
+		err := validateOrdered(lg, r)
+		if err != nil {
+			return err
+		}
+		err = validateUnique(lg, cfg.ExpectRevisionUnique, r)
+		if err != nil {
+			return err
+		}
+		err = validateAtomic(lg, r)
+		if err != nil {
+			return err
+		}
+		err = validateBookmarkable(lg, r)
+		if err != nil {
+			return err
+		}
 		if eventHistory != nil {
-			validateReliable(t, eventHistory, r)
-			validateResumable(t, eventHistory, r)
-			validatePrevKV(t, r, eventHistory)
-			validateCreateEvent(t, r, eventHistory)
+			err = validateReliable(lg, eventHistory, r)
+			if err != nil {
+				return err
+			}
+			err = validateResumable(lg, eventHistory, r)
+			if err != nil {
+				return err
+			}
+			err = validatePrevKV(lg, r, eventHistory)
+			if err != nil {
+				return err
+			}
+			err = validateEventIsCreate(lg, r, eventHistory)
+			if err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func validateBookmarkable(t *testing.T, report report.ClientReport) {
+func validateBookmarkable(lg *zap.Logger, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		var lastProgressNotifyRevision int64
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision <= lastProgressNotifyRevision {
-					t.Errorf("Broke watch guarantee: Bookmarkable - Progress notification events guarantee that all events up to a revision have been already delivered, eventRevision: %d, progressNotifyRevision: %d", event.Revision, lastProgressNotifyRevision)
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.Int64("revision", event.Revision))
+					err = errBrokeBookmarkable
 				}
 			}
 			if resp.IsProgressNotify {
@@ -54,23 +91,26 @@ func validateBookmarkable(t *testing.T, report report.ClientReport) {
 			}
 		}
 	}
+	return err
 }
 
-func validateOrdered(t *testing.T, report report.ClientReport) {
+func validateOrdered(lg *zap.Logger, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		var lastEventRevision int64 = 1
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision < lastEventRevision {
-					t.Errorf("Broke watch guarantee: Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted, lastRevision: %d, currentRevision: %d, client: %d", lastEventRevision, event.Revision, report.ClientID)
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "ordered"), zap.Int("client", report.ClientID), zap.Int64("revision", event.Revision))
+					err = errBrokeOrdered
 				}
 				lastEventRevision = event.Revision
 			}
 		}
 	}
+	return err
 }
 
-func validateUnique(t *testing.T, expectUniqueRevision bool, report report.ClientReport) {
+func validateUnique(lg *zap.Logger, expectUniqueRevision bool, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		uniqueOperations := map[any]struct{}{}
 		for _, resp := range op.Responses {
@@ -85,29 +125,33 @@ func validateUnique(t *testing.T, expectUniqueRevision bool, report report.Clien
 					}{event.Revision, event.Key}
 				}
 				if _, found := uniqueOperations[key]; found {
-					t.Errorf("Broke watch guarantee: Unique - an event will never appear on a watch twice, key: %q, revision: %d, client: %d", event.Key, event.Revision, report.ClientID)
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "unique"), zap.Int("client", report.ClientID), zap.String("key", event.Key), zap.Int64("revision", event.Revision))
+					err = errBrokeUnique
 				}
 				uniqueOperations[key] = struct{}{}
 			}
 		}
 	}
+	return err
 }
 
-func validateAtomic(t *testing.T, report report.ClientReport) {
+func validateAtomic(lg *zap.Logger, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		var lastEventRevision int64 = 1
 		for _, resp := range op.Responses {
 			if len(resp.Events) > 0 {
 				if resp.Events[0].Revision == lastEventRevision {
-					t.Errorf("Broke watch guarantee: Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events, previousListEventRevision: %d, currentListEventRevision: %d, client: %d", lastEventRevision, resp.Events[0].Revision, report.ClientID)
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "atomic"), zap.Int("client", report.ClientID), zap.Int64("revision", resp.Events[0].Revision))
+					err = errBrokeAtomic
 				}
 				lastEventRevision = resp.Events[len(resp.Events)-1].Revision
 			}
 		}
 	}
+	return err
 }
 
-func validateReliable(t *testing.T, events []model.PersistedEvent, report report.ClientReport) {
+func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := firstRevision(op)
@@ -120,15 +164,17 @@ func validateReliable(t *testing.T, events []model.PersistedEvent, report report
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if events[index].Match(op.Request) && events[index] != event.PersistedEvent {
-					t.Errorf("Broke watch guarantee: Reliable - a sequence of events will never drop any subsequence of events; if there are events ordered in time as a < b < c, then if the watch receives events a and c, it is guaranteed to receive b, event missing: %+v, got: %+v", events[index], event)
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.Any("missing-event", events[index]))
+					err = errBrokeReliable
 				}
 				index++
 			}
 		}
 	}
+	return err
 }
 
-func validateResumable(t *testing.T, events []model.PersistedEvent, report report.ClientReport) {
+func validateResumable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		index := 0
 		revision := op.Request.Revision
@@ -141,14 +187,16 @@ func validateResumable(t *testing.T, events []model.PersistedEvent, report repor
 		firstEvent := firstWatchEvent(op)
 		// If watch is resumable, first event it gets should the first event that happened after the requested revision.
 		if firstEvent != nil && events[index] != firstEvent.PersistedEvent {
-			t.Errorf("Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window, watch request: %+v, event missing: %+v, got: %+v", op.Request, events[index], *firstEvent)
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "resumable"), zap.Int("client", report.ClientID), zap.Any("request", op.Request), zap.Any("got-event", *firstEvent), zap.Any("want-event", events[index]))
+			err = errBrokeResumable
 		}
 	}
+	return err
 }
 
 // validatePrevKV ensures that a watch response (if configured with WithPrevKV()) returns
 // the appropriate response.
-func validatePrevKV(t *testing.T, report report.ClientReport, history []model.PersistedEvent) {
+func validatePrevKV(lg *zap.Logger, report report.ClientReport, history []model.PersistedEvent) (err error) {
 	replay := model.NewReplay(history)
 	for _, op := range report.Watch {
 		if !op.Request.WithPrevKV {
@@ -157,10 +205,7 @@ func validatePrevKV(t *testing.T, report report.ClientReport, history []model.Pe
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				// Get state state just before the current event.
-				state, err := replay.StateForRevision(event.Revision - 1)
-				if err != nil {
-					t.Error(err)
-				}
+				state, _ := replay.StateForRevision(event.Revision - 1)
 				// TODO(MadhavJivrajani): check if compaction has been run as part
 				// of failpoint injection. If compaction has run, prevKV can be nil
 				// even if it is not a create event.
@@ -175,31 +220,32 @@ func validatePrevKV(t *testing.T, report report.ClientReport, history []model.Pe
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
 				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
-					t.Errorf("PrevKV - PrevValue doesn't match previous value under the key %s, got: %+v, want: %+v", event.Key, *event.PrevValue, state.KeyValues[event.Key])
+					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.KeyValues[event.Key]))
+					err = errBrokePrevKV
 				}
 			}
 		}
 	}
+	return err
 }
 
-func validateCreateEvent(t *testing.T, report report.ClientReport, history []model.PersistedEvent) {
+func validateEventIsCreate(lg *zap.Logger, report report.ClientReport, history []model.PersistedEvent) (err error) {
 	replay := model.NewReplay(history)
 	for _, op := range report.Watch {
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				// Get state state just before the current event.
-				state, err := replay.StateForRevision(event.Revision - 1)
-				if err != nil {
-					t.Error(err)
-				}
+				state, _ := replay.StateForRevision(event.Revision - 1)
 				// A create event will not have an entry in our history and a non-create
 				// event *should* have an entry in our history.
 				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
-					t.Errorf("CreateEvent - unexpected event ecountered, create event should not be in event history and update/delete event should be, event already exists: %t, is create event: %t, event: %+v", prevKeyExists, event.IsCreate, event)
+					lg.Error("Incorrect event IsCreate field", zap.Int("client", report.ClientID), zap.Any("event", event))
+					err = errBrokeIsCreate
 				}
 			}
 		}
 	}
+	return err
 }
 
 func firstRevision(op model.WatchOperation) int64 {
