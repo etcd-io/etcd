@@ -226,7 +226,7 @@ func (s *store) checkPrevCompactionCompleted() bool {
 	return scheduledCompact == finishedCompact && scheduledCompactFound == finishedCompactFound
 }
 
-func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevCompactionCompleted bool) (<-chan struct{}, error) {
+func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevCompactionCompleted bool) <-chan struct{} {
 	ch := make(chan struct{})
 	j := schedule.NewJob("kvstore_compact", func(ctx context.Context) {
 		if ctx.Err() != nil {
@@ -251,7 +251,7 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevC
 
 	s.fifoSched.Schedule(j)
 	trace.Step("schedule compaction")
-	return ch, nil
+	return ch
 }
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
@@ -261,7 +261,7 @@ func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 		return ch, err
 	}
 
-	return s.compact(traceutil.TODO(), rev, prevCompactRev, prevCompactionCompleted)
+	return s.compact(traceutil.TODO(), rev, prevCompactRev, prevCompactionCompleted), nil
 }
 
 func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
@@ -275,7 +275,7 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	}
 	s.mu.Unlock()
 
-	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted)
+	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted), nil
 }
 
 func (s *store) Commit() {
@@ -394,13 +394,16 @@ func (s *store) restore() error {
 
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {
-			s.lg.Warn("compaction encountered error", zap.Error(err))
+			s.lg.Warn("compaction encountered error",
+				zap.Int64("scheduled-compact-revision", scheduledCompact),
+				zap.Error(err),
+			)
+		} else {
+			s.lg.Info(
+				"resume scheduled compaction",
+				zap.Int64("scheduled-compact-revision", scheduledCompact),
+			)
 		}
-
-		s.lg.Info(
-			"resume scheduled compaction",
-			zap.Int64("scheduled-compact-revision", scheduledCompact),
-		)
 	}
 
 	return nil
