@@ -73,6 +73,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -92,6 +95,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -115,6 +121,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -135,6 +144,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -159,6 +171,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "b",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -168,6 +183,9 @@ func TestValidateWatch(t *testing.T) {
 							},
 						},
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -186,6 +204,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -206,6 +227,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -230,6 +254,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -239,6 +266,9 @@ func TestValidateWatch(t *testing.T) {
 							},
 						},
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -257,6 +287,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -276,6 +309,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -285,6 +321,9 @@ func TestValidateWatch(t *testing.T) {
 							},
 						},
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -304,6 +343,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -325,6 +367,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -345,6 +390,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -370,7 +418,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -403,7 +450,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -430,7 +476,6 @@ func TestValidateWatch(t *testing.T) {
 						{
 							Request: model.WatchRequest{
 								Revision:   2,
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -458,7 +503,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -515,7 +559,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -550,7 +593,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -588,7 +630,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -687,7 +728,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -717,7 +757,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -801,7 +840,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -831,7 +869,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
@@ -859,7 +896,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 								Revision:   3,
 							},
@@ -944,7 +980,6 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
-								Key:        "",
 								WithPrefix: true,
 								Revision:   3,
 							},
@@ -1029,6 +1064,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -1056,6 +1094,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -1084,6 +1125,9 @@ func TestValidateWatch(t *testing.T) {
 				{
 					Watch: []model.WatchOperation{
 						{
+							Request: model.WatchRequest{
+								Key: "a",
+							},
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
@@ -1113,6 +1157,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								Key:        "a",
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1143,6 +1188,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								Key:        "a",
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1173,6 +1219,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								Key:        "a",
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1204,6 +1251,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								Key:        "a",
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1235,6 +1283,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								Key:        "a",
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1266,6 +1315,7 @@ func TestValidateWatch(t *testing.T) {
 					Watch: []model.WatchOperation{
 						{
 							Request: model.WatchRequest{
+								WithPrefix: true,
 								WithPrevKV: true,
 							},
 							Responses: []model.WatchResponse{
@@ -1317,8 +1367,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("a", "3", 4, false),
 			},
-			// TODO: Test should fail as there is an event not matching selector
-			expectError: "",
+			expectError: errBrokeFilter.Error(),
 		},
 		{
 			name: "Filter - event not matching the watch with prefix - fail",
@@ -1348,8 +1397,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("bb", "2", 3, true),
 				putPersistedEvent("ac", "3", 4, true),
 			},
-			// TODO: Test should fail as there is an event not matching selector
-			expectError: "",
+			expectError: errBrokeFilter.Error(),
 		},
 	}
 	for _, tc := range tcs {
