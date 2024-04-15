@@ -151,7 +151,7 @@ type Config struct {
 	// follower to catch up.
 	// WARNING: only change this for tests.
 	// Always use "DefaultSnapshotCatchUpEntries"
-	SnapshotCatchUpEntries uint64
+	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
 
 	MaxSnapFiles uint `json:"max-snapshots"`
 	MaxWalFiles  uint `json:"max-wals"`
