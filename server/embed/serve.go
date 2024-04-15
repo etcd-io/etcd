@@ -159,7 +159,7 @@ func (sctx *serveCtx) serve(
 			defer func(gs *grpc.Server) {
 				if err != nil {
 					sctx.lg.Warn("stopping insecure grpc server due to error", zap.Error(err))
-					gs.Stop()
+					gs.GracefulStop()
 					sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
 				}
 			}(gs)
@@ -202,16 +202,39 @@ func (sctx *serveCtx) serve(
 		}
 
 		if grpcEnabled {
+			// TODO(XXX):
+			//
+			// WaitForHandlers is experimental function to drain
+			// all the inflight handlers, including stream RPCs.
+			// For cmux mode, we can't call GracefulStop because of
+			// [1].
+			//
+			// Actually, we do call http.Shutdown first in stopServers.
+			// We still need to drain all the inflight handlers to
+			// make sure that there is no leaky goroutines to
+			// use closed backend and panic. Add WaitForHandlers
+			// to force gs.Stop to drain. We can remove this option
+			// when we remove cmux [2].
+			//
+			// [1]: https://github.com/grpc/grpc-go/issues/1384#issuecomment-317124531
+			// [2]: https://github.com/etcd-io/etcd/issues/15402
+			gopts = append(gopts, grpc.WaitForHandlers(true))
+
 			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
 			v3lockpb.RegisterLockServer(gs, servLock)
 			if sctx.serviceRegister != nil {
 				sctx.serviceRegister(gs)
 			}
+
 			defer func(gs *grpc.Server) {
 				if err != nil {
 					sctx.lg.Warn("stopping secure grpc server due to error", zap.Error(err))
-					gs.Stop()
+					if httpEnabled {
+						gs.Stop()
+					} else {
+						gs.GracefulStop()
+					}
 					sctx.lg.Warn("stopped secure grpc server due to error", zap.Error(err))
 				}
 			}(gs)

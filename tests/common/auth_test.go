@@ -118,7 +118,7 @@ func TestAuthGracefulDisable(t *testing.T) {
 
 		watchCh := rootAuthClient.Watch(wCtx, "key", config.WatchOptions{Revision: 1})
 		wantedLen := 1
-		watchTimeout := 10 * time.Second
+		watchTimeout := 15 * time.Second
 		wanted := []testutils.KV{{Key: "key", Val: "value"}}
 		kvs, err := testutils.KeyValuesFromWatchChan(watchCh, wantedLen, watchTimeout)
 		require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)

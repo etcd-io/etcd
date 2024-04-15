@@ -103,6 +103,7 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 const snapshotSendBufferSize = 32 * 1024
 
 func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
+	// gofail: var v3rpcBeforeSnapshot struct{}
 	ver := schema.ReadStorageVersion(ms.bg.Backend().ReadTx())
 	storageVersion := ""
 	if ver != nil {
