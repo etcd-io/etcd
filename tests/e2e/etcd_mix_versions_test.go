@@ -82,6 +82,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg e2e.EtcdProcessClus
 
 	t.Logf("Create an etcd cluster with %d member\n", cfg.ClusterSize)
 	cfg.SnapshotCount = 10
+	cfg.SnapshotCatchUpEntries = 10
 	cfg.BasePeerScheme = "unix" // to avoid port conflict
 
 	epc, err := e2e.NewEtcdProcessCluster(t, &cfg)
@@ -126,6 +127,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg e2e.EtcdProcessClu
 
 	t.Logf("Create an etcd cluster with %d member\n", cfg.ClusterSize)
 	cfg.SnapshotCount = 10
+	cfg.SnapshotCatchUpEntries = 10
 	cfg.BasePeerScheme = "unix" // to avoid port conflict
 
 	epc, err := e2e.NewEtcdProcessCluster(t, &cfg)
@@ -154,6 +156,12 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg e2e.EtcdProcessClu
 	require.NoError(t, err)
 
 	assertKVHash(t, epc)
+
+	leaderEPC = epc.Procs[epc.WaitLeader(t)]
+	if leaderEPC.Config().ExecPath == e2e.BinPath {
+		t.Log("Verify logs to check snapshot be sent from leader to follower")
+		e2e.AssertProcessLogs(t, leaderEPC, "sent database snapshot")
+	}
 }
 
 func writeKVs(t *testing.T, etcdctl *e2e.Etcdctl, startIdx, endIdx int) {
