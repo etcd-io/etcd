@@ -207,7 +207,8 @@ func TestMemberRemove(t *testing.T) {
 
 				testutils.ExecuteUntil(ctx, t, func() {
 					if quorumTc.waitForQuorum {
-						time.Sleep(etcdserver.HealthInterval)
+						// wait for health interval + leader election
+						time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 					}
 
 					memberID, clusterID := memberToRemove(ctx, t, cc, c.ClusterSize)
