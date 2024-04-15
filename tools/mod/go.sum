@@ -259,8 +259,8 @@ github.com/golangci/misspell v0.4.1 h1:+y73iSicVy2PqyX7kmUefHusENlrP9YwuHZHPLGQj
 github.com/golangci/misspell v0.4.1/go.mod h1:9mAN1quEo3DlpbaIKKyEvRxK1pwqR9s/Sea1bJCtlNI=
 github.com/golangci/plugin-module-register v0.1.1 h1:TCmesur25LnyJkpsVrupv1Cdzo+2f7zX0H6Jkw1Ol6c=
 github.com/golangci/plugin-module-register v0.1.1/go.mod h1:TTpqoB6KkwOJMV8u7+NyXMrkwwESJLOkfl9TxR1DGFc=
-github.com/golangci/revgrep v0.5.2 h1:EndcWoRhcnfj2NHQ+28hyuXpLMF+dQmCN+YaeeIl4FU=
-github.com/golangci/revgrep v0.5.2/go.mod h1:bjAMA+Sh/QUfTDcHzxfyHxr4xKvllVr/0sCv2e7jJHA=
+github.com/golangci/revgrep v0.5.3 h1:3tL7c1XBMtWHHqVpS5ChmiAAoe4PF/d5+ULzV9sLAzs=
+github.com/golangci/revgrep v0.5.3/go.mod h1:U4R/s9dlXZsg8uJmaR1GrloUr14D7qDl8gi2iPXJH8k=
 github.com/golangci/unconvert v0.0.0-20240309020433-c5143eacb3ed h1:IURFTjxeTfNFP0hTEi1YKjB/ub8zkpaOqFFMApi2EAs=
 github.com/golangci/unconvert v0.0.0-20240309020433-c5143eacb3ed/go.mod h1:XLXN8bNw4CGRPaqgl3bv/lhz7bsGPh4/xSaMTbo2vkQ=
 github.com/google/addlicense v1.1.1 h1:jpVf9qPbU8rz5MxKo7d+RMcNHkqxi4YJi/laauX4aAE=
