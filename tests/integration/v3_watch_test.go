@@ -171,7 +171,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			},
 		},
 		{
-			"multiple puts, one watcher with matching perfix",
+			"multiple puts, one watcher with matching prefix",
 			[]string{"foo", "foo", "foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
