@@ -32,13 +32,18 @@ var (
 	errBrokeResumable    = errors.New("broke Resumable - A broken watch can be resumed by establishing a new watch starting after the last revision received in a watch event before the break, so long as the revision is in the history window")
 	errBrokePrevKV       = errors.New("incorrect event prevValue")
 	errBrokeIsCreate     = errors.New("incorrect event IsCreate")
+	errBrokeFilter       = errors.New("event not matching watch filter")
 )
 
 func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, eventHistory []model.PersistedEvent) error {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
-		err := validateOrdered(lg, r)
+		err := validateFilter(lg, r)
+		if err != nil {
+			return err
+		}
+		err = validateOrdered(lg, r)
 		if err != nil {
 			return err
 		}
@@ -74,6 +79,20 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, ev
 		}
 	}
 	return nil
+}
+
+func validateFilter(lg *zap.Logger, report report.ClientReport) (err error) {
+	for _, watch := range report.Watch {
+		for _, resp := range watch.Responses {
+			for _, event := range resp.Events {
+				if !event.Match(watch.Request) {
+					lg.Error("event not matching event filter", zap.Int("client", report.ClientID), zap.Any("request", watch.Request), zap.Any("event", event))
+					err = errBrokeFilter
+				}
+			}
+		}
+	}
+	return err
 }
 
 func validateBookmarkable(lg *zap.Logger, report report.ClientReport) (err error) {
@@ -163,7 +182,7 @@ func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report repo
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				if events[index].Match(op.Request) && events[index] != event.PersistedEvent {
+				if events[index].Match(op.Request) && (events[index].Event != event.PersistedEvent.Event || events[index].Revision != event.PersistedEvent.Revision) {
 					lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.Any("missing-event", events[index]))
 					err = errBrokeReliable
 				}
