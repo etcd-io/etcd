@@ -216,9 +216,11 @@ func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report repo
 
 func validateResumable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
+		if op.Request.Revision == 0 {
+			continue
+		}
 		index := 0
-		revision := op.Request.Revision
-		for index < len(events) && (events[index].Revision < revision || !events[index].Match(op.Request)) {
+		for index < len(events) && (events[index].Revision < op.Request.Revision || !events[index].Match(op.Request)) {
 			index++
 		}
 		if index == len(events) {

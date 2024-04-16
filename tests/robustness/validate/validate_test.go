@@ -854,8 +854,6 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			// TODO: Should pass as watch with revision 0 might start from any revision.
-			expectError: errBrokeResumable.Error(),
 		},
 		{
 			name: "Reliable - missing last event - pass",
