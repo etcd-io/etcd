@@ -88,7 +88,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 
 	t.Logf("Quering m2 after restart")
 	v, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	t.Logf("Quering m2 returned: v:%v erro:%v ", v, err)
+	t.Logf("Quering m2 returned: v:%v err:%v ", v, err)
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got err:%v v:%v", errOrderViolation, err, v)
 	}
