@@ -576,7 +576,6 @@ func newHTTPTransport(ca, cert, key string) (*http.Transport, error) {
 			Certificates: []tls.Certificate{keyPair},
 			RootCAs:      caPool,
 		}
-		tlsConfig.BuildNameToCertificate()
 		tr.TLSClientConfig = tlsConfig
 	} else if grpcProxyInsecureSkipTLSVerify {
 		tlsConfig := &tls.Config{InsecureSkipVerify: grpcProxyInsecureSkipTLSVerify}
