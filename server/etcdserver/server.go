@@ -991,6 +991,14 @@ func (s *EtcdServer) Process(ctx context.Context, m raftpb.Message) error {
 		)
 		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message from removed member")
 	}
+	if s.ID() != types.ID(m.To) {
+		lg.Warn(
+			"rejected Raft message to mismatch member",
+			zap.String("local-member-id", s.ID().String()),
+			zap.String("mismatch-member-id", types.ID(m.To).String()),
+		)
+		return httptypes.NewHTTPError(http.StatusForbidden, "cannot process message to mismatch member")
+	}
 	if m.Type == raftpb.MsgApp {
 		s.stats.RecvAppendReq(types.ID(m.From).String(), m.Size())
 	}
