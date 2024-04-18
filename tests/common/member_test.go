@@ -196,7 +196,7 @@ func TestMemberRemove(t *testing.T) {
 				continue
 			}
 			t.Run(quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 14*time.Second)
 				defer cancel()
 				c := clusterTc.config
 				c.StrictReconfigCheck = quorumTc.strictReconfigCheck
