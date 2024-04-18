@@ -8,10 +8,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 - Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17705).
+- Fix [ignore raft messages if member id mismatch](https://github.com/etcd-io/etcd/pull/17814).
 
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17692).
-- Fix [initialization for epMu in client context](https://github.com/etcd-io/etcd/pull/17714)
+- Fix [initialization for epMu in client context](https://github.com/etcd-io/etcd/pull/17714).
 
 ### Dependencies
 - Compile binaries using [go 1.21.9](https://github.com/etcd-io/etcd/pull/17709).
