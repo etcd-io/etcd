@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
 	"go.etcd.io/etcd/etcdserver/api/v2store"
 	"go.etcd.io/etcd/pkg/mock/mockstore"
 	"go.etcd.io/etcd/pkg/testutil"
@@ -945,6 +946,83 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
+	}
+}
+
+func TestIsVersionChangable(t *testing.T) {
+	tests := []struct {
+		name                         string
+		verFrom                      string
+		verTo                        string
+		nextClusterVersionCompatible bool
+		expectedResult               bool
+	}{
+		{
+			name:                         "When local version is one minor lower than cluster version in downgrade mode",
+			verFrom:                      "3.5.0",
+			verTo:                        "3.4.0",
+			nextClusterVersionCompatible: true,
+			expectedResult:               true,
+		},
+		{
+			name:           "When local version is one minor lower than cluster version not in downgrade mode",
+			verFrom:        "3.5.0",
+			verTo:          "3.4.0",
+			expectedResult: false,
+		},
+		{
+			name:                         "When local version is one minor and one patch lower than cluster version in downgrade mode",
+			verFrom:                      "3.5.2",
+			verTo:                        "3.4.1",
+			nextClusterVersionCompatible: true,
+			expectedResult:               true,
+		},
+		{
+			name:           "When local version is one minor higher than cluster version",
+			verFrom:        "3.3.0",
+			verTo:          "3.4.0",
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is two minor higher than cluster version",
+			verFrom:        "3.2.0",
+			verTo:          "3.4.0",
+			expectedResult: true,
+		},
+		{
+			name:           "When local version is one major higher than cluster version",
+			verFrom:        "2.4.0",
+			verTo:          "3.4.0",
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is equal to cluster version",
+			verFrom:        "3.4.0",
+			verTo:          "3.4.0",
+			expectedResult: false,
+		},
+		{
+			name:           "When local version is one patch higher than cluster version",
+			verFrom:        "3.4.0",
+			verTo:          "3.4.1",
+			expectedResult: false,
+		},
+		{
+			name:                         "When local version is two minor lower than cluster version",
+			verFrom:                      "3.6.0",
+			verTo:                        "3.4.0",
+			nextClusterVersionCompatible: true,
+			expectedResult:               false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			verFrom := semver.Must(semver.NewVersion(tt.verFrom))
+			verTo := semver.Must(semver.NewVersion(tt.verTo))
+			ret := IsValidClusterVersionChange(verFrom, verTo, tt.nextClusterVersionCompatible)
+			assert.Equal(t, tt.expectedResult, ret)
+		})
 	}
 }
 

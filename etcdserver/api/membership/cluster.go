@@ -789,6 +789,15 @@ func ValidateClusterAndAssignIDs(lg *zap.Logger, local *RaftCluster, existing *R
 	return nil
 }
 
+// isValidDowngrade verifies whether the cluster can be downgraded from verFrom to verTo
+func isValidDowngrade(verFrom *semver.Version, verTo *semver.Version) bool {
+	allowedDowngradeVersion := semver.Version{
+		Major: verFrom.Major,
+		Minor: verFrom.Minor - 1,
+	}
+	return verTo.Equal(allowedDowngradeVersion)
+}
+
 func mustDetectDowngrade(lg *zap.Logger, cv *semver.Version, nextClusterVersionCompatible bool) {
 	err := detectDowngrade(cv, nextClusterVersionCompatible)
 	if err != nil {
@@ -823,6 +832,22 @@ func detectDowngrade(cv *semver.Version, nextClusterVersionCompatible bool) erro
 		return fmt.Errorf("invalid downgrade; (current version: %s is lower than determined cluster version: %s).", version.Version, version.Cluster(cv.String()))
 	}
 	return nil
+}
+
+// IsValidClusterVersionChange checks the two scenario when version is valid to change:
+// 1. Downgrade: cluster version is 1 minor version higher than local version,
+// cluster version should change.
+// 2. Cluster start: when not all members version are available, cluster version
+// is set to MinVersion(3.0), when all members are at higher version, cluster version
+// is lower than minimal server version, cluster version should change
+func IsValidClusterVersionChange(verFrom *semver.Version, verTo *semver.Version, nextClusterVersionCompatible bool) bool {
+	verFrom = &semver.Version{Major: verFrom.Major, Minor: verFrom.Minor}
+	verTo = &semver.Version{Major: verTo.Major, Minor: verTo.Minor}
+
+	if (nextClusterVersionCompatible && isValidDowngrade(verFrom, verTo)) || (verFrom.Major == verTo.Major && verFrom.LessThan(*verTo)) {
+		return true
+	}
+	return false
 }
 
 // IsLocalMemberLearner returns if the local member is raft learner
