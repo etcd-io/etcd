@@ -33,7 +33,7 @@ func isConnectedToQuorumSince(transport rafthttp.Transporter, since time.Time, s
 // remote member since the given time.
 func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote types.ID) bool {
 	t := transport.ActiveSince(remote)
-	return !t.IsZero() && !t.After(since)
+	return !t.IsZero() && t.Before(since)
 }
 
 // isConnectedFullySince checks whether the local member is connected to all
