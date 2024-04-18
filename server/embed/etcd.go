@@ -124,7 +124,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	e.cfg.logger.Info(
 		"configuring peer listeners",
-		zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
+		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
 	)
 	if e.Peers, err = configurePeerListeners(cfg); err != nil {
 		return e, err
@@ -132,7 +132,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	e.cfg.logger.Info(
 		"configuring client listeners",
-		zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
+		zap.Strings("listen-client-urls", e.cfg.getListenClientURLs()),
 	)
 	if e.sctxs, err = configureClientListeners(cfg); err != nil {
 		return e, err
@@ -280,10 +280,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	e.cfg.logger.Info(
 		"now serving peer/client/metrics",
 		zap.String("local-member-id", e.Server.MemberID().String()),
-		zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
-		zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
-		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
-		zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
+		zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerURLs()),
+		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientURLs()),
+		zap.Strings("listen-client-urls", e.cfg.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", e.cfg.getMetricsURLs()),
 	)
 	serving = true
@@ -331,10 +331,10 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Uint("max-wals", sc.MaxWALFiles),
 		zap.Uint("max-snapshots", sc.MaxSnapFiles),
 		zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
-		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerUrls()),
-		zap.Strings("listen-peer-urls", ec.getListenPeerUrls()),
-		zap.Strings("advertise-client-urls", ec.getAdvertiseClientUrls()),
-		zap.Strings("listen-client-urls", ec.getListenClientUrls()),
+		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerURLs()),
+		zap.Strings("listen-peer-urls", ec.getListenPeerURLs()),
+		zap.Strings("advertise-client-urls", ec.getAdvertiseClientURLs()),
+		zap.Strings("listen-client-urls", ec.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
 		zap.Strings("cors", cors),
 		zap.Strings("host-whitelist", hss),
@@ -386,8 +386,8 @@ func (e *Etcd) Close() {
 	fields := []zap.Field{
 		zap.String("name", e.cfg.Name),
 		zap.String("data-dir", e.cfg.Dir),
-		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
-		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
+		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerURLs()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientURLs()),
 	}
 	lg := e.GetLogger()
 	lg.Info("closing etcd server", fields...)
