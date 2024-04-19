@@ -546,7 +546,7 @@ func NewConfig() *Config {
 		ExperimentalCompactHashCheckEnabled: false,
 		ExperimentalCompactHashCheckTime:    DefaultExperimentalCompactHashCheckTime,
 
-		V2Deprecation: config.V2_DEPR_DEFAULT,
+		V2Deprecation: config.V2DeprDefault,
 
 		DiscoveryCfg: v3discovery.DiscoveryConfig{
 			ConfigSpec: clientv3.ConfigSpec{
@@ -1149,7 +1149,7 @@ func (cfg *Config) ElectionTicks() int { return int(cfg.ElectionMs / cfg.TickMs)
 
 func (cfg *Config) V2DeprecationEffective() config.V2DeprecationEnum {
 	if cfg.V2Deprecation == "" {
-		return config.V2_DEPR_DEFAULT
+		return config.V2DeprDefault
 	}
 	return cfg.V2Deprecation
 }

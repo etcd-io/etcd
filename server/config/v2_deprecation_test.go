@@ -22,14 +22,14 @@ func TestV2DeprecationEnum_IsAtLeast(t *testing.T) {
 		v2d  V2DeprecationEnum
 		want bool
 	}{
-		{V2_DEPR_0_NOT_YET, V2_DEPR_0_NOT_YET, true},
-		{V2_DEPR_0_NOT_YET, V2_DEPR_1_WRITE_ONLY_DROP, false},
-		{V2_DEPR_0_NOT_YET, V2_DEPR_2_GONE, false},
-		{V2_DEPR_2_GONE, V2_DEPR_1_WRITE_ONLY_DROP, true},
-		{V2_DEPR_2_GONE, V2_DEPR_0_NOT_YET, true},
-		{V2_DEPR_2_GONE, V2_DEPR_2_GONE, true},
-		{V2_DEPR_1_WRITE_ONLY, V2_DEPR_1_WRITE_ONLY_DROP, false},
-		{V2_DEPR_1_WRITE_ONLY_DROP, V2_DEPR_1_WRITE_ONLY, true},
+		{V2Depr0NotYet, V2Depr0NotYet, true},
+		{V2Depr0NotYet, V2Depr1WriteOnlyDrop, false},
+		{V2Depr0NotYet, V2Depr2Gone, false},
+		{V2Depr2Gone, V2Depr1WriteOnlyDrop, true},
+		{V2Depr2Gone, V2Depr0NotYet, true},
+		{V2Depr2Gone, V2Depr2Gone, true},
+		{V2Depr1WriteOnly, V2Depr1WriteOnlyDrop, false},
+		{V2Depr1WriteOnlyDrop, V2Depr1WriteOnly, true},
 	}
 	for _, tt := range tests {
 		t.Run(string(tt.e)+" >= "+string(tt.v2d), func(t *testing.T) {
