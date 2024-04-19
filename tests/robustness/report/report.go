@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -42,7 +43,8 @@ func testResultsDirectory(t *testing.T) string {
 	if err != nil {
 		panic(err)
 	}
-	path, err := filepath.Abs(filepath.Join(resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_")))
+	path, err := filepath.Abs(filepath.Join(
+		resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_"), fmt.Sprintf("%v", time.Now().UnixNano())))
 	if err != nil {
 		t.Fatal(err)
 	}
