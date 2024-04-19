@@ -496,6 +496,10 @@ message RangeRequest {
   // max_create_revision is the upper bound for returned key create revisions; all keys with
   // greater create revisions will be filtered away.
   int64 max_create_revision = 13 [(versionpb.etcd_version_field)="3.1"];
+
+  // max_bytes is a limit on the total size of key-value pairs returned for the
+  // request. When max_bytes is set to 0, it is treated as no limit.
+  int64 max_bytes = 14 [(versionpb.etcd_version_field)="3.6"];
 }
 
 message RangeResponse {
