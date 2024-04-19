@@ -29,10 +29,7 @@ import (
 )
 
 const (
-	triggerTimeout               = time.Minute
-	waitBetweenFailpointTriggers = time.Second
-	failpointInjectionsCount     = 1
-	failpointInjectionsRetries   = 3
+	triggerTimeout = time.Minute
 )
 
 var (
@@ -78,45 +75,37 @@ func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	return nil
 }
 
-func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time) (*InjectionReport, error) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error
-	successes := 0
-	failures := 0
-	for successes < failpointInjectionsCount && failures < failpointInjectionsRetries {
-		time.Sleep(waitBetweenFailpointTriggers)
 
-		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", failpoint.Name()))
-		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			return fmt.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
-		}
-
-		lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
-		err = failpoint.Inject(ctx, t, lg, clus)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				return fmt.Errorf("Triggering failpoints timed out, err: %v", ctx.Err())
-			default:
-			}
-			lg.Info("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
-			failures++
-			continue
-		}
-
-		lg.Info("Verifying cluster health after failpoint", zap.String("failpoint", failpoint.Name()))
-		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			return fmt.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
-		}
-
-		successes++
+	if err = verifyClusterHealth(ctx, t, clus); err != nil {
+		return nil, fmt.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
 	}
-	if successes < failpointInjectionsCount || failures >= failpointInjectionsRetries {
-		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
+	lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
+	start := time.Since(baseTime)
+	err = failpoint.Inject(ctx, t, lg, clus)
+	if err != nil {
+		lg.Error("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
+		return nil, fmt.Errorf("failed triggering failpoint, err: %v", err)
 	}
+	if err = verifyClusterHealth(ctx, t, clus); err != nil {
+		return nil, fmt.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
+	}
+	lg.Info("Finished triggering failpoint", zap.String("failpoint", failpoint.Name()))
+	end := time.Since(baseTime)
 
-	return nil
+	return &InjectionReport{
+		Start: start,
+		End:   end,
+		Name:  failpoint.Name(),
+	}, nil
+}
+
+type InjectionReport struct {
+	Start, End time.Duration
+	Name       string
 }
 
 func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProcessCluster) error {

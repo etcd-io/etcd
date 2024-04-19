@@ -36,17 +36,6 @@ type ClientReport struct {
 	Watch    []model.WatchOperation
 }
 
-func (r ClientReport) SuccessfulOperations() int {
-	count := 0
-	for _, op := range r.KeyValue {
-		resp := op.Output.(model.MaybeEtcdResponse)
-		if resp.Error == "" {
-			count++
-		}
-	}
-	return count
-}
-
 func (r ClientReport) WatchEventCount() int {
 	count := 0
 	for _, op := range r.Watch {
