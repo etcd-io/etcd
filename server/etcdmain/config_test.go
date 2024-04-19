@@ -505,7 +505,10 @@ func TestFlagsPresentInHelp(t *testing.T) {
 			// Ignored flags do not need to be in the help
 			return
 		}
-
+		if f.Name == "experimental-snapshot-catchup-entries" {
+			// Ignore because it is supposed to only be used in tests.
+			return
+		}
 		flagText := fmt.Sprintf("--%s", f.Name)
 		if !strings.Contains(flagsline, flagText) && !strings.Contains(usageline, flagText) {
 			t.Errorf("Neither flagsline nor usageline in help.go contains flag named %s", flagText)

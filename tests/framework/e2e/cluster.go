@@ -158,7 +158,8 @@ type EtcdProcessClusterConfig struct {
 
 	MetricsURLScheme string
 
-	SnapshotCount int // default is 10000
+	SnapshotCount          int // default is 10000
+	SnapshotCatchUpEntries int // default is 5000
 
 	ClientTLS             ClientConnType
 	ClientCertAuthEnabled bool
@@ -400,6 +401,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		execPath = BinPathLastRelease
 	default:
 		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
+	}
+
+	// the "--experimental-snapshot-catchup-entries" flag is not available in 3.4.
+	// so it should not be set if the process execPath is not BinPath.
+	if cfg.SnapshotCatchUpEntries > 0 && execPath == BinPath {
+		args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
 	}
 
 	return &EtcdServerProcessConfig{
