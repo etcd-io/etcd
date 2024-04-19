@@ -60,6 +60,7 @@ type EtcdProcess interface {
 	LazyFS() *LazyFS
 	Logs() LogsExpect
 	Kill() error
+	Terminate() error
 }
 
 type LogsExpect interface {
@@ -270,6 +271,11 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 func (ep *EtcdServerProcess) Kill() error {
 	ep.cfg.lg.Info("killing server...", zap.String("name", ep.cfg.Name))
 	return ep.proc.Signal(syscall.SIGKILL)
+}
+
+func (ep *EtcdServerProcess) Terminate() error {
+	ep.cfg.lg.Info("terminate server...", zap.String("name", ep.cfg.Name))
+	return ep.proc.Signal(syscall.SIGTERM)
 }
 
 func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
