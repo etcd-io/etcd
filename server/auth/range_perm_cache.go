@@ -189,7 +189,7 @@ func isValidPermissionRange(key, rangeEnd []byte) bool {
 	if len(key) == 0 {
 		return false
 	}
-	if rangeEnd == nil || len(rangeEnd) == 0 { // ensure rule b1
+	if len(rangeEnd) == 0 { // ensure rule b1
 		return true
 	}
 
@@ -199,9 +199,5 @@ func isValidPermissionRange(key, rangeEnd []byte) bool {
 		return true
 	}
 
-	if isOpenEnded(rangeEnd) {
-		return true
-	}
-
-	return false
+	return isOpenEnded(rangeEnd)
 }
