@@ -61,10 +61,10 @@ func TestConfigFileMemberFields(t *testing.T) {
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
 		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
-		ListenPeerUrls         string `json:"listen-peer-urls"`
-		ListenClientUrls       string `json:"listen-client-urls"`
-		ListenClientHttpUrls   string `json:"listen-client-http-urls"`
-		AdvertiseClientUrls    string `json:"advertise-client-urls"`
+		ListenPeerURLs         string `json:"listen-peer-urls"`
+		ListenClientURLs       string `json:"listen-client-urls"`
+		ListenClientHTTPURLs   string `json:"listen-client-http-urls"`
+		AdvertiseClientURLs    string `json:"advertise-client-urls"`
 	}{
 		"testdir",
 		10,
