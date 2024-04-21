@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd server
 - Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17705).
 - Fix [ignore raft messages if member id mismatch](https://github.com/etcd-io/etcd/pull/17814).
+- Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17831).
 
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17692).
