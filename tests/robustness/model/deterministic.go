@@ -24,6 +24,8 @@ import (
 	"sort"
 
 	"github.com/anishathalye/porcupine"
+
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 // DeterministicModel assumes a deterministic execution of etcd requests. All
@@ -65,10 +67,11 @@ var DeterministicModel = porcupine.Model{
 }
 
 type EtcdState struct {
-	Revision  int64
-	KeyValues map[string]ValueRevision
-	KeyLeases map[string]int64
-	Leases    map[int64]EtcdLease
+	Revision        int64
+	CompactRevision int64
+	KeyValues       map[string]ValueRevision
+	KeyLeases       map[string]int64
+	Leases          map[int64]EtcdLease
 }
 
 func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
@@ -77,7 +80,10 @@ func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, Etcd
 }
 
 func (s EtcdState) DeepCopy() EtcdState {
-	newState := EtcdState{Revision: s.Revision}
+	newState := EtcdState{
+		Revision:        s.Revision,
+		CompactRevision: s.CompactRevision,
+	}
 
 	newState.KeyValues = maps.Clone(s.KeyValues)
 	newState.KeyLeases = maps.Clone(s.KeyLeases)
@@ -92,10 +98,12 @@ func (s EtcdState) DeepCopy() EtcdState {
 
 func freshEtcdState() EtcdState {
 	return EtcdState{
-		Revision:  1,
-		KeyValues: map[string]ValueRevision{},
-		KeyLeases: map[string]int64{},
-		Leases:    map[int64]EtcdLease{},
+		Revision: 1,
+		// Start from CompactRevision equal -1 as etcd allows client to compact revision 0 for some reason.
+		CompactRevision: -1,
+		KeyValues:       map[string]ValueRevision{},
+		KeyLeases:       map[string]int64{},
+		Leases:          map[int64]EtcdLease{},
 	}
 }
 
@@ -111,6 +119,9 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		}
 		if request.Range.Revision > newState.Revision {
 			return newState, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+		}
+		if request.Range.Revision < newState.CompactRevision {
+			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
 		}
 		return newState, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: newState.Revision}}
 	case Txn:
@@ -190,6 +201,14 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: newState.Revision}}
+	case Compact:
+		if request.Compact.Revision <= newState.CompactRevision {
+			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
+		}
+		newState.CompactRevision = request.Compact.Revision
+		// Set fake revision as compaction returns non-linearizable revision.
+		// TODO: Model non-linearizable response revision in model.
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: -1}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
@@ -249,6 +268,7 @@ const (
 	LeaseGrant  RequestType = "leaseGrant"
 	LeaseRevoke RequestType = "leaseRevoke"
 	Defragment  RequestType = "defragment"
+	Compact     RequestType = "compact"
 )
 
 type EtcdRequest struct {
@@ -258,6 +278,7 @@ type EtcdRequest struct {
 	Range       *RangeRequest
 	Txn         *TxnRequest
 	Defragment  *DefragmentRequest
+	Compact     *CompactRequest
 }
 
 func (r *EtcdRequest) IsRead() bool {
@@ -349,6 +370,8 @@ type EtcdResponse struct {
 	LeaseGrant  *LeaseGrantReponse
 	LeaseRevoke *LeaseRevokeResponse
 	Defragment  *DefragmentResponse
+	Compact     *CompactResponse
+	ClientError string
 	Revision    int64
 }
 
@@ -416,4 +439,11 @@ func ToValueOrHash(value string) ValueOrHash {
 		v.Hash = h.Sum32()
 	}
 	return v
+}
+
+type CompactResponse struct {
+}
+
+type CompactRequest struct {
+	Revision int64
 }

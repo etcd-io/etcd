@@ -184,7 +184,11 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 	case raftReq.ClusterVersionSet != nil:
 		return nil, nil
 	case raftReq.Compaction != nil:
-		return nil, nil
+		request := model.EtcdRequest{
+			Type:    model.Compact,
+			Compact: &model.CompactRequest{Revision: raftReq.Compaction.Revision},
+		}
+		return &request, nil
 	case raftReq.Txn != nil:
 		txn := model.TxnRequest{
 			Conditions:          []model.EtcdCondition{},

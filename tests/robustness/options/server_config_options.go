@@ -26,6 +26,12 @@ func WithSnapshotCount(input ...uint64) e2e.EPClusterOption {
 	}
 }
 
+func WithCompactionBatchLimit(input ...int) e2e.EPClusterOption {
+	return func(c *e2e.EtcdProcessClusterConfig) {
+		c.ServerConfig.ExperimentalCompactionBatchLimit = input[internalRand.Intn(len(input))]
+	}
+}
+
 func WithSnapshotCatchUpEntries(input ...uint64) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
 		c.ServerConfig.SnapshotCatchUpEntries = input[internalRand.Intn(len(input))]

@@ -38,13 +38,14 @@ var (
 			{choice: List, weight: 15},
 			{choice: StaleGet, weight: 10},
 			{choice: StaleList, weight: 10},
-			{choice: Put, weight: 23},
-			{choice: LargePut, weight: 2},
 			{choice: Delete, weight: 5},
 			{choice: MultiOpTxn, weight: 5},
 			{choice: PutWithLease, weight: 5},
 			{choice: LeaseRevoke, weight: 5},
 			{choice: CompareAndSet, weight: 5},
+			{choice: Put, weight: 15},
+			{choice: LargePut, weight: 5},
+			{choice: Compact, weight: 5},
 		},
 	}
 	EtcdPut = etcdTraffic{
@@ -56,9 +57,10 @@ var (
 			{choice: List, weight: 15},
 			{choice: StaleGet, weight: 10},
 			{choice: StaleList, weight: 10},
-			{choice: Put, weight: 40},
 			{choice: MultiOpTxn, weight: 5},
 			{choice: LargePut, weight: 5},
+			{choice: Put, weight: 35},
+			{choice: Compact, weight: 5},
 		},
 	}
 )
@@ -89,6 +91,7 @@ const (
 	LeaseRevoke   etcdRequestType = "leaseRevoke"
 	CompareAndSet etcdRequestType = "compareAndSet"
 	Defragment    etcdRequestType = "defragment"
+	Compact       etcdRequestType = "compact"
 )
 
 func (t etcdTraffic) Name() string {
@@ -263,6 +266,12 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	case Defragment:
 		var resp *clientv3.DefragmentResponse
 		resp, err = c.client.Defragment(opCtx)
+		if resp != nil {
+			rev = resp.Header.Revision
+		}
+	case Compact:
+		var resp *clientv3.CompactResponse
+		resp, err = c.client.Compact(opCtx, lastRev)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}

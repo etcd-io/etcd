@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -23,6 +24,7 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
 
@@ -259,6 +261,23 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 	h.appendSuccessful(request, start, end, defragmentResponse(revision))
 }
 
+func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, resp *clientv3.CompactResponse, err error) {
+	request := compactRequest(rev)
+	if err != nil {
+		if strings.Contains(err.Error(), mvcc.ErrCompacted.Error()) {
+			h.appendSuccessful(request, start, end, MaybeEtcdResponse{
+				EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()},
+			})
+			return
+		}
+		h.appendFailed(request, start, end, err)
+		return
+	}
+	// Set fake revision as compaction returns non-linearizable revision.
+	// TODO: Model non-linearizable response revision in model.
+	h.appendSuccessful(request, start, end, compactResponse(-1))
+}
+
 func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Duration, err error) {
 	op := porcupine.Operation{
 		ClientId: h.streamID,
@@ -442,6 +461,14 @@ func defragmentRequest() EtcdRequest {
 
 func defragmentResponse(revision int64) MaybeEtcdResponse {
 	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
+}
+
+func compactRequest(rev int64) EtcdRequest {
+	return EtcdRequest{Type: Compact, Compact: &CompactRequest{Revision: rev}}
+}
+
+func compactResponse(revision int64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: revision}}
 }
 
 type History struct {

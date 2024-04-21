@@ -78,12 +78,22 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 	}
 	_, err = cc.Compact(ctx, rev)
 	if err != nil && !connectionError(err) {
-		return nil, err
+		return nil, fmt.Errorf("failed to compact: %w", err)
 	}
 	return []report.ClientReport{cc.Report()}, nil
 }
 
-func (t triggerCompact) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
+func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess) bool {
+	// Since introduction of compaction into traffic, injecting compaction failpoints started interfeering with peer proxy.
+	// TODO: Re-enable the peer proxy for compact failpoints when we confirm the root cause.
+	if config.PeerProxy {
+		return false
+	}
+	// For multiBatchCompaction we need to guarantee that there are enough revisions between two compaction requests.
+	// With addition of compaction requests to traffic this might be hard if experimental-compaction-batch-limit is too high.
+	if t.multiBatchCompaction {
+		return config.ServerConfig.ExperimentalCompactionBatchLimit <= 10
+	}
 	return true
 }
 

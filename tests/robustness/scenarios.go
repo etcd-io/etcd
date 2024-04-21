@@ -91,7 +91,8 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 		options.WithSnapshotCount(50, 100, 1000),
 		options.WithSubsetOptions(randomizableOptions...),
 		e2e.WithGoFailEnabled(true),
-		e2e.WithCompactionBatchLimit(100),
+		// Set low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
+		options.WithCompactionBatchLimit(10, 100, 1000),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
 
