@@ -108,8 +108,8 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	g := errgroup.Group{}
-	var operationReport, watchReport []report.ClientReport
-	failpointInjected := make(chan failpoint.InjectionReport, 1)
+	var operationReport, watchReport, failpointClientReport []report.ClientReport
+	failpointInjected := make(chan failpoint.Injection, 1)
 
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
@@ -119,7 +119,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		defer close(failpointInjected)
 		// Give some time for traffic to reach qps target before injecting failpoint.
 		time.Sleep(time.Second)
-		fr, err := failpoint.Inject(ctx, t, lg, clus, s.failpoint, baseTime)
+		fr, err := failpoint.Inject(ctx, t, lg, clus, s.failpoint, baseTime, ids)
 		if err != nil {
 			t.Error(err)
 			cancel()
@@ -127,7 +127,8 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		// Give some time for traffic to reach qps target after injecting failpoint.
 		time.Sleep(time.Second)
 		if fr != nil {
-			failpointInjected <- *fr
+			failpointInjected <- fr.Injection
+			failpointClientReport = fr.Client
 		}
 		return nil
 	})
@@ -145,7 +146,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		return nil
 	})
 	g.Wait()
-	return append(operationReport, watchReport...)
+	return append(operationReport, append(failpointClientReport, watchReport...)...)
 }
 
 func operationsMaxRevision(reports []report.ClientReport) int64 {

@@ -24,6 +24,8 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
@@ -37,9 +39,9 @@ type blackholePeerNetworkFailpoint struct {
 	triggerBlackhole
 }
 
-func (f blackholePeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f blackholePeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
-	return f.Trigger(ctx, t, member, clus)
+	return f.Trigger(ctx, t, member, clus, baseTime, ids)
 }
 
 func (f blackholePeerNetworkFailpoint) Name() string {
@@ -50,8 +52,8 @@ type triggerBlackhole struct {
 	waitTillSnapshot bool
 }
 
-func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
-	return Blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
+func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	return nil, Blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
@@ -153,7 +155,7 @@ type delayPeerNetworkFailpoint struct {
 	randomizedLatency time.Duration
 }
 
-func (f delayPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f delayPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
@@ -164,7 +166,7 @@ func (f delayPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg 
 	lg.Info("Traffic delay removed", zap.String("member", member.Config().Name))
 	proxy.UndelayRx()
 	proxy.UndelayTx()
-	return nil
+	return nil, nil
 }
 
 func (f delayPeerNetworkFailpoint) Name() string {
@@ -180,7 +182,7 @@ type dropPeerNetworkFailpoint struct {
 	dropProbabilityPercent int
 }
 
-func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	proxy := member.PeerProxy()
 
@@ -191,7 +193,7 @@ func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *
 	lg.Info("Traffic drop removed", zap.String("member", member.Config().Name))
 	proxy.UnmodifyRx()
 	proxy.UnmodifyTx()
-	return nil
+	return nil, nil
 }
 
 func (f dropPeerNetworkFailpoint) modifyPacket(data []byte) []byte {

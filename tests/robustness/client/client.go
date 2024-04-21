@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package traffic
+package client
 
 import (
 	"context"
@@ -33,7 +33,7 @@ import (
 // clientv3.Client) that records all the requests and responses made. Doesn't
 // allow for concurrent requests to confirm to model.AppendableHistory requirements.
 type RecordingClient struct {
-	id     int
+	ID     int
 	client clientv3.Client
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
@@ -51,7 +51,7 @@ type TimedWatchEvent struct {
 	Time time.Duration
 }
 
-func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
+func NewRecordingClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*RecordingClient, error) {
 	cc, err := clientv3.New(clientv3.Config{
 		Endpoints:            endpoints,
 		Logger:               zap.NewNop(),
@@ -62,7 +62,7 @@ func NewClient(endpoints []string, ids identity.Provider, baseTime time.Time) (*
 		return nil, err
 	}
 	return &RecordingClient{
-		id:           ids.NewClientID(),
+		ID:           ids.NewClientID(),
 		client:       *cc,
 		kvOperations: model.NewAppendableHistory(ids),
 		baseTime:     baseTime,
@@ -75,7 +75,7 @@ func (c *RecordingClient) Close() error {
 
 func (c *RecordingClient) Report() report.ClientReport {
 	return report.ClientReport{
-		ClientID: c.id,
+		ClientID: c.ID,
 		KeyValue: c.kvOperations.History.Operations(),
 		Watch:    c.watchOperations,
 	}
@@ -188,6 +188,65 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 	returnTime := time.Since(c.baseTime)
 	c.kvOperations.AppendDefragment(callTime, returnTime, resp, err)
 	return resp, err
+}
+
+func (c *RecordingClient) Compact(ctx context.Context, rev int64) (*clientv3.CompactResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.Compact(ctx, rev)
+	return resp, err
+}
+func (c *RecordingClient) MemberList(ctx context.Context, opts ...clientv3.OpOption) (*clientv3.MemberListResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberList(ctx, opts...)
+	return resp, err
+}
+
+func (c *RecordingClient) MemberAdd(ctx context.Context, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberAdd(ctx, peerAddrs)
+	return resp, err
+}
+
+func (c *RecordingClient) MemberAddAsLearner(ctx context.Context, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberAddAsLearner(ctx, peerAddrs)
+	return resp, err
+}
+
+func (c *RecordingClient) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberRemove(ctx, id)
+	return resp, err
+}
+
+func (c *RecordingClient) MemberUpdate(ctx context.Context, id uint64, peerAddrs []string) (*clientv3.MemberUpdateResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberUpdate(ctx, id, peerAddrs)
+	return resp, err
+}
+
+func (c *RecordingClient) MemberPromote(ctx context.Context, id uint64) (*clientv3.MemberPromoteResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.MemberPromote(ctx, id)
+	return resp, err
+}
+
+func (c *RecordingClient) Status(ctx context.Context, endpoint string) (*clientv3.StatusResponse, error) {
+	c.kvMux.Lock()
+	defer c.kvMux.Unlock()
+	resp, err := c.client.Status(ctx, endpoint)
+	return resp, err
+}
+
+func (c *RecordingClient) Endpoints() []string {
+	return c.client.Endpoints()
 }
 
 func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, withPrefix bool, withProgressNotify bool, withPrevKV bool) clientv3.WatchChan {
