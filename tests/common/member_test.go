@@ -196,7 +196,7 @@ func TestMemberRemove(t *testing.T) {
 				continue
 			}
 			t.Run(quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(context.Background(), 14*time.Second)
 				defer cancel()
 				c := clusterTc.config
 				c.StrictReconfigCheck = quorumTc.strictReconfigCheck
@@ -207,7 +207,8 @@ func TestMemberRemove(t *testing.T) {
 
 				testutils.ExecuteUntil(ctx, t, func() {
 					if quorumTc.waitForQuorum {
-						time.Sleep(etcdserver.HealthInterval)
+						// wait for health interval + leader election
+						time.Sleep(etcdserver.HealthInterval + 2*time.Second)
 					}
 
 					memberID, clusterID := memberToRemove(ctx, t, cc, c.ClusterSize)
