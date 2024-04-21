@@ -412,7 +412,40 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeAtomic.Error(),
 		},
 		{
-			name: "Resumable, Reliable, Bookmarkable - all events with bookmark - pass",
+			name: "Resumable, Reliable, Bookmarkable - all events with watch revision and bookmark - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Revision:   2,
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+										putWatchEvent("c", "3", 4, true),
+									},
+								},
+								{
+									Revision:         4,
+									IsProgressNotify: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+				putPersistedEvent("b", "2", 3, true),
+				putPersistedEvent("c", "3", 4, true),
+			},
+		},
+		{
+			name: "Resumable, Reliable, Bookmarkable - all events with only bookmarks - pass",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -421,6 +454,10 @@ func TestValidateWatch(t *testing.T) {
 								WithPrefix: true,
 							},
 							Responses: []model.WatchResponse{
+								{
+									Revision:         1,
+									IsProgressNotify: true,
+								},
 								{
 									Events: []model.WatchEvent{
 										putWatchEvent("a", "1", 2, true),
@@ -493,7 +530,112 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			expectError: errBrokeBookmarkable.Error(),
+			expectError: errBrokeReliable.Error(),
+		},
+		{
+			name: "Resumable, Reliable, Bookmarkable - unmatched events with watch revision - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:      "d",
+								Revision: 2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Revision:         2,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         3,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         3,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         4,
+									IsProgressNotify: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+				putPersistedEvent("b", "2", 3, true),
+				putPersistedEvent("c", "3", 4, true),
+			},
+		},
+		{
+			name: "Resumable, Reliable, Bookmarkable - empty events between progress notifies - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Revision:         1,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         4,
+									IsProgressNotify: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+				putPersistedEvent("b", "2", 3, true),
+				putPersistedEvent("c", "3", 4, true),
+			},
+			expectError: errBrokeReliable.Error(),
+		},
+		{
+			name: "Resumable, Reliable, Bookmarkable - unmatched events between progress notifies - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key: "d",
+							},
+							Responses: []model.WatchResponse{
+								{
+									Revision:         2,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         3,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         3,
+									IsProgressNotify: true,
+								},
+								{
+									Revision:         4,
+									IsProgressNotify: true,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+				putPersistedEvent("b", "2", 3, true),
+				putPersistedEvent("c", "3", 4, true),
+			},
 		},
 		{
 			name: "Bookmarkable - revision non decreasing - pass",
@@ -622,7 +764,82 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokeBookmarkable.Error(),
 		},
 		{
-			name: "Bookmarkable - missing event before bookmark - fail",
+			name: "Bookmarkable - progress precedes other progress - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									IsProgressNotify: true,
+									Revision:         2,
+								},
+								{
+									IsProgressNotify: true,
+									Revision:         1,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{},
+			expectError:  errBrokeBookmarkable.Error(),
+		},
+		{
+			name: "Bookmarkable - progress notification lower than watch request - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Revision:   3,
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									IsProgressNotify: true,
+									Revision:         2,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+		},
+		{
+			name: "Bookmarkable - empty event history - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									IsProgressNotify: true,
+									Revision:         1,
+								},
+								{
+									IsProgressNotify: true,
+									Revision:         1,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{},
+		},
+		{
+			name: "Reliable - missing event before bookmark - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -651,10 +868,10 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("b", "2", 3, true),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			expectError: errBrokeBookmarkable.Error(),
+			expectError: errBrokeReliable.Error(),
 		},
 		{
-			name: "Bookmarkable - missing event matching watch before bookmark - fail",
+			name: "Reliable - missing event matching watch before bookmark - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -682,10 +899,10 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("a", "2", 3, false),
 				putPersistedEvent("c", "3", 4, true),
 			},
-			expectError: errBrokeBookmarkable.Error(),
+			expectError: errBrokeReliable.Error(),
 		},
 		{
-			name: "Bookmarkable - missing event matching watch with prefix before bookmark - fail",
+			name: "Reliable - missing event matching watch with prefix before bookmark - fail",
 			reports: []report.ClientReport{
 				{
 					Watch: []model.WatchOperation{
@@ -714,7 +931,7 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("ab", "2", 3, true),
 				putPersistedEvent("cc", "3", 4, true),
 			},
-			expectError: errBrokeBookmarkable.Error(),
+			expectError: errBrokeReliable.Error(),
 		},
 		{
 			name: "Reliable - all events history - pass",
@@ -744,6 +961,135 @@ func TestValidateWatch(t *testing.T) {
 				putPersistedEvent("c", "3", 4, true),
 			},
 			expectError: "",
+		},
+		{
+			name: "Reliable - single revision - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+			expectError: "",
+		},
+		{
+			name: "Reliable - single revision with watch revision - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+			expectError: "",
+		},
+		{
+			name: "Reliable - missing single revision with watch revision - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{},
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+			expectError: "",
+		},
+		{
+			name: "Reliable - single revision with progress notify - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+								{
+									IsProgressNotify: true,
+									Revision:         2,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+			expectError: "",
+		},
+		{
+			name: "Reliable - single revision missing with progress notify - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   2,
+							},
+							Responses: []model.WatchResponse{
+								{
+									IsProgressNotify: true,
+									Revision:         2,
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+			},
+			expectError: errBrokeReliable.Error(),
 		},
 		{
 			name: "Reliable - missing middle event - fail",

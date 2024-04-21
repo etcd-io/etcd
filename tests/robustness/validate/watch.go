@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -56,16 +57,16 @@ func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, ev
 		if err != nil {
 			return err
 		}
+		err = validateBookmarkable(lg, r)
+		if err != nil {
+			return err
+		}
 		if eventHistory != nil {
-			err = validateBookmarkable(lg, eventHistory, r)
+			err = validateResumable(lg, eventHistory, r)
 			if err != nil {
 				return err
 			}
 			err = validateReliable(lg, eventHistory, r)
-			if err != nil {
-				return err
-			}
-			err = validateResumable(lg, eventHistory, r)
 			if err != nil {
 				return err
 			}
@@ -96,36 +97,26 @@ func validateFilter(lg *zap.Logger, report report.ClientReport) (err error) {
 	return err
 }
 
-func validateBookmarkable(lg *zap.Logger, eventHistory []model.PersistedEvent, report report.ClientReport) (err error) {
+func validateBookmarkable(lg *zap.Logger, report report.ClientReport) (err error) {
 	for _, op := range report.Watch {
 		var lastProgressNotifyRevision int64
-		var gotEventBeforeProgressNotify *model.PersistedEvent
+		var lastEventRevision int64
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				if event.Revision <= lastProgressNotifyRevision {
 					lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.Int64("revision", event.Revision))
 					err = errBrokeBookmarkable
 				}
-				gotEventBeforeProgressNotify = &event.PersistedEvent
+				lastEventRevision = event.Revision
 			}
 			if resp.IsProgressNotify {
-				if gotEventBeforeProgressNotify != nil || op.Request.Revision != 0 {
-					var wantEventBeforeProgressNotify *model.PersistedEvent
-					for _, ev := range eventHistory {
-						if ev.Revision < op.Request.Revision {
-							continue
-						}
-						if ev.Revision > resp.Revision {
-							break
-						}
-						if ev.Match(op.Request) {
-							wantEventBeforeProgressNotify = &ev
-						}
-					}
-					if diff := cmp.Diff(wantEventBeforeProgressNotify, gotEventBeforeProgressNotify); diff != "" {
-						lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
-						err = errBrokeBookmarkable
-					}
+				if resp.Revision < lastProgressNotifyRevision {
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.Int64("revision", resp.Revision))
+					err = errBrokeBookmarkable
+				}
+				if resp.Revision < lastEventRevision {
+					lg.Error("Broke watch guarantee", zap.String("guarantee", "bookmarkable"), zap.Int("client", report.ClientID), zap.Int64("revision", resp.Revision))
+					err = errBrokeBookmarkable
 				}
 				lastProgressNotifyRevision = resp.Revision
 			}
@@ -192,23 +183,32 @@ func validateAtomic(lg *zap.Logger, report report.ClientReport) (err error) {
 }
 
 func validateReliable(lg *zap.Logger, events []model.PersistedEvent, report report.ClientReport) (err error) {
-	for _, op := range report.Watch {
-		index := 0
-		revision := firstRevision(op)
-		for index < len(events) && events[index].Revision < revision {
-			index++
-		}
-		if index == len(events) {
-			continue
-		}
-		for _, resp := range op.Responses {
-			for _, event := range resp.Events {
-				if events[index].Match(op.Request) && (events[index].Event != event.PersistedEvent.Event || events[index].Revision != event.PersistedEvent.Revision) {
-					lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.Any("missing-event", events[index]))
-					err = errBrokeReliable
+	for _, watch := range report.Watch {
+		firstRev := firstExpectedRevision(watch)
+		lastRev := lastRevision(watch)
+		wantEvents := []model.PersistedEvent{}
+		if firstRev != 0 {
+			for _, e := range events {
+				if e.Revision < firstRev {
+					continue
 				}
-				index++
+				if e.Revision > lastRev {
+					break
+				}
+				if e.Match(watch.Request) {
+					wantEvents = append(wantEvents, e)
+				}
 			}
+		}
+		gotEvents := make([]model.PersistedEvent, 0)
+		for _, resp := range watch.Responses {
+			for _, event := range resp.Events {
+				gotEvents = append(gotEvents, event.PersistedEvent)
+			}
+		}
+		if diff := cmp.Diff(wantEvents, gotEvents, cmpopts.IgnoreFields(model.PersistedEvent{}, "IsCreate")); diff != "" {
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
+			err = errBrokeReliable
 		}
 	}
 	return err
@@ -290,10 +290,31 @@ func validateEventIsCreate(lg *zap.Logger, report report.ClientReport, history [
 	return err
 }
 
-func firstRevision(op model.WatchOperation) int64 {
-	for _, resp := range op.Responses {
-		for _, event := range resp.Events {
-			return event.Revision
+func firstExpectedRevision(op model.WatchOperation) int64 {
+	if op.Request.Revision != 0 {
+		return op.Request.Revision
+	}
+	if len(op.Responses) > 0 {
+		firstResp := op.Responses[0]
+		if firstResp.IsProgressNotify {
+			return firstResp.Revision + 1
+		}
+		if len(firstResp.Events) > 0 {
+			return firstResp.Events[0].Revision
+		}
+	}
+	return 0
+}
+
+func lastRevision(op model.WatchOperation) int64 {
+	if len(op.Responses) > 0 {
+		lastResp := op.Responses[len(op.Responses)-1]
+		if lastResp.IsProgressNotify {
+			return lastResp.Revision
+		}
+		if len(lastResp.Events) > 0 {
+			lastEvent := lastResp.Events[len(lastResp.Events)-1]
+			return lastEvent.Revision
 		}
 	}
 	return 0
