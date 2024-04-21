@@ -1229,6 +1229,38 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
+			name: "Reliable - ignore empty last error response - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+										putWatchEvent("c", "3", 4, true),
+									},
+								},
+								{
+									Revision: 5,
+									Error:    "etcdserver: mvcc: required revision has been compacted",
+								},
+							},
+						},
+					},
+				},
+			},
+			eventHistory: []model.PersistedEvent{
+				putPersistedEvent("a", "1", 2, true),
+				putPersistedEvent("b", "2", 3, true),
+				putPersistedEvent("c", "3", 4, true),
+			},
+		},
+		{
 			name: "Resumable - watch revision from middle event - pass",
 			reports: []report.ClientReport{
 				{

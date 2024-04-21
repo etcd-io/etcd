@@ -307,13 +307,13 @@ func firstExpectedRevision(op model.WatchOperation) int64 {
 }
 
 func lastRevision(op model.WatchOperation) int64 {
-	if len(op.Responses) > 0 {
-		lastResp := op.Responses[len(op.Responses)-1]
-		if lastResp.IsProgressNotify {
-			return lastResp.Revision
+	for i := len(op.Responses) - 1; i >= 0; i-- {
+		resp := op.Responses[i]
+		if resp.IsProgressNotify {
+			return resp.Revision
 		}
-		if len(lastResp.Events) > 0 {
-			lastEvent := lastResp.Events[len(lastResp.Events)-1]
+		if len(resp.Events) > 0 {
+			lastEvent := resp.Events[len(resp.Events)-1]
 			return lastEvent.Revision
 		}
 	}
