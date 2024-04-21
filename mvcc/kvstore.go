@@ -276,7 +276,7 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 	return nil, nil
 }
 
-func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
+func (s *store) compact(trace *traceutil.Trace, rev int64) <-chan struct{} {
 	ch := make(chan struct{})
 	var j = func(ctx context.Context) {
 		if ctx.Err() != nil {
@@ -295,7 +295,7 @@ func (s *store) compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 
 	s.fifoSched.Schedule(j)
 	trace.Step("schedule compaction")
-	return ch, nil
+	return ch
 }
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
@@ -304,7 +304,7 @@ func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 		return ch, err
 	}
 
-	return s.compact(traceutil.TODO(), rev)
+	return s.compact(traceutil.TODO(), rev), nil
 }
 
 func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
@@ -318,7 +318,7 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	}
 	s.mu.Unlock()
 
-	return s.compact(trace, rev)
+	return s.compact(trace, rev), nil
 }
 
 // DefaultIgnores is a map of keys to ignore in hash checking.
@@ -477,17 +477,28 @@ func (s *store) restore() error {
 	tx.Unlock()
 
 	if scheduledCompact != 0 {
-		s.compactLockfree(scheduledCompact)
-
-		if s.lg != nil {
-			s.lg.Info(
-				"resume scheduled compaction",
-				zap.String("meta-bucket-name", string(metaBucketName)),
-				zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
-				zap.Int64("scheduled-compact-revision", scheduledCompact),
-			)
+		if _, err := s.compactLockfree(scheduledCompact); err != nil {
+			if s.lg != nil {
+				s.lg.Warn("compaction encountered error",
+					zap.String("meta-bucket-name", string(metaBucketName)),
+					zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
+					zap.Int64("scheduled-compact-revision", scheduledCompact),
+					zap.Error(err),
+				)
+			} else {
+				plog.Printf("compaction encountered error, scheduled-compact-revision: %d", scheduledCompact)
+			}
 		} else {
-			plog.Printf("resume scheduled compaction at %d", scheduledCompact)
+			if s.lg != nil {
+				s.lg.Info(
+					"resume scheduled compaction",
+					zap.String("meta-bucket-name", string(metaBucketName)),
+					zap.String("meta-bucket-name-key", string(scheduledCompactKeyName)),
+					zap.Int64("scheduled-compact-revision", scheduledCompact),
+				)
+			} else {
+				plog.Printf("resume scheduled compaction at %d", scheduledCompact)
+			}
 		}
 	}
 
