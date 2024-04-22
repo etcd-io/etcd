@@ -375,7 +375,11 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("bad status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("bad status code: %d, err: %s", resp.StatusCode, errMsg)
 	}
 	return nil
 }
@@ -404,17 +408,18 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("bad status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("bad status code: %d, err: %s", resp.StatusCode, errMsg)
 	}
 	return nil
 }
 
 func (f *BinaryFailpoints) Enabled() bool {
 	_, err := failpoints(f.member)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (f *BinaryFailpoints) Available(failpoint string) bool {
@@ -449,8 +454,12 @@ func fetchFailpointsBody(member EtcdProcess) (io.ReadCloser, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("invalid status code, %d", resp.StatusCode)
+		defer resp.Body.Close()
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("invalid status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return nil, fmt.Errorf("invalid status code: %d, err:%s", resp.StatusCode, errMsg)
 	}
 	return resp.Body, nil
 }
