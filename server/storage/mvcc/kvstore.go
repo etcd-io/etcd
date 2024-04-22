@@ -389,6 +389,17 @@ func (s *store) restore() error {
 		}
 	}
 
+	// If the latest revision was a tombstone revision and etcd just compacted
+	// it, but crashed right before persisting the FinishedCompactRevision,
+	// then it would lead to revision decreasing in bbolt db file. In such
+	// a scenario, we should adjust the current revision using the scheduled
+	// compact revision on bootstrap when etcd gets started again.
+	//
+	// See https://github.com/etcd-io/etcd/issues/17780#issuecomment-2061900231
+	if s.currentRev < scheduledCompact {
+		s.currentRev = scheduledCompact
+	}
+
 	tx.RUnlock()
 
 	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
