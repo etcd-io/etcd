@@ -110,27 +110,32 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	defer cancel()
 	g := errgroup.Group{}
 	var operationReport, watchReport []report.ClientReport
-	finishTraffic := make(chan struct{})
+	failpointInjected := make(chan failpoint.InjectionReport, 1)
 
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
 	ids := identity.NewIDProvider()
 	g.Go(func() error {
-		defer close(finishTraffic)
-		err := failpoint.Inject(ctx, t, lg, clus, s.failpoint)
+		defer close(failpointInjected)
+		// Give some time for traffic to reach qps target before injecting failpoint.
+		time.Sleep(time.Second)
+		fr, err := failpoint.Inject(ctx, t, lg, clus, s.failpoint, baseTime)
 		if err != nil {
 			t.Error(err)
 			cancel()
 		}
+		// Give some time for traffic to reach qps target after injecting failpoint.
 		time.Sleep(time.Second)
-		lg.Info("Finished injecting failures")
+		if fr != nil {
+			failpointInjected <- *fr
+		}
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, finishTraffic, baseTime, ids)
+		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, failpointInjected, baseTime, ids)
 		maxRevision := operationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating traffic", zap.Int64("max-revision", maxRevision))
