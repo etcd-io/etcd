@@ -59,17 +59,17 @@ func allowedDowngradeVersion(ver *semver.Version) *semver.Version {
 	return &semver.Version{Major: ver.Major, Minor: ver.Minor - 1}
 }
 
-// IsValidVersionChange checks the two scenario when version is valid to change:
+// IsValidClusterVersionChange checks the two scenario when version is valid to change:
 // 1. Downgrade: cluster version is 1 minor version higher than local version,
 // cluster version should change.
 // 2. Cluster start: when not all members version are available, cluster version
 // is set to MinVersion(3.0), when all members are at higher version, cluster version
-// is lower than local version, cluster version should change
-func IsValidVersionChange(cv *semver.Version, lv *semver.Version) bool {
-	cv = &semver.Version{Major: cv.Major, Minor: cv.Minor}
-	lv = &semver.Version{Major: lv.Major, Minor: lv.Minor}
+// is lower than minimal server version, cluster version should change
+func IsValidClusterVersionChange(verFrom *semver.Version, verTo *semver.Version) bool {
+	verFrom = &semver.Version{Major: verFrom.Major, Minor: verFrom.Minor}
+	verTo = &semver.Version{Major: verTo.Major, Minor: verTo.Minor}
 
-	if isValidDowngrade(cv, lv) || (cv.Major == lv.Major && cv.LessThan(*lv)) {
+	if isValidDowngrade(verFrom, verTo) || (verFrom.Major == verTo.Major && verFrom.LessThan(*verTo)) {
 		return true
 	}
 	return false
