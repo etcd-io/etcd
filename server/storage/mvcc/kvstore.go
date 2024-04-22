@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -442,8 +443,15 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					ok = true
 				}
 			}
+
 			rev := BytesToRev(rkv.key)
+			verify.Verify(func() {
+				if rev.Main < currentRev {
+					panic(fmt.Errorf("revision %d shouldn't be less than the previous revision %d", rev.Main, currentRev))
+				}
+			})
 			currentRev = rev.Main
+
 			if ok {
 				if isTombstone(rkv.key) {
 					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {
