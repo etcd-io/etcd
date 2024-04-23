@@ -2636,8 +2636,8 @@ func (s *EtcdServer) monitorVersions() {
 		}
 
 		// update cluster version only if the decided version is greater than
-		// the current cluster version
-		if v != nil && s.cluster.Version().LessThan(*v) {
+		// the current cluster version or it is a valid downgrade
+		if v != nil && membership.IsValidClusterVersionChange(s.cluster.Version(), v, s.Config().NextClusterVersionCompatible) {
 			s.goAttach(func() { s.updateClusterVersion(v.String()) })
 		}
 	}
