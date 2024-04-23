@@ -97,7 +97,7 @@ func (m *Monitor) decideClusterVersion() (*semver.Version, error) {
 		}
 		return downgrade.GetTargetVersion(), nil
 	}
-	if clusterVersion.LessThan(*minimalServerVersion) && IsValidVersionChange(clusterVersion, minimalServerVersion) {
+	if clusterVersion.LessThan(*minimalServerVersion) && IsValidClusterVersionChange(clusterVersion, minimalServerVersion) {
 		return minimalServerVersion, nil
 	}
 	return nil, nil
