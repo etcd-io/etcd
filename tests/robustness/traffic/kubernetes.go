@@ -21,7 +21,6 @@ import (
 	"math/rand"
 	"sync"
 
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -62,16 +61,18 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
-	g := errgroup.Group{}
+	wg := sync.WaitGroup{}
 	readLimit := t.averageKeyCount
 
-	g.Go(func() error {
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return
 			case <-finish:
-				return nil
+				return
 			default:
 			}
 			rev, err := t.Read(ctx, kc, s, limiter, keyPrefix, readLimit)
@@ -80,15 +81,16 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 			}
 			t.Watch(ctx, kc, s, limiter, keyPrefix, rev+1)
 		}
-	})
-	g.Go(func() error {
+	}()
+	go func() {
+		defer wg.Done()
 		lastWriteFailed := false
 		for {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return
 			case <-finish:
-				return nil
+				return
 			default:
 			}
 			// Avoid multiple failed writes in a row
@@ -104,8 +106,9 @@ func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter 
 				continue
 			}
 		}
-	})
-	g.Wait()
+	}()
+
+	wg.Wait()
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, kc *kubernetesClient, s *storage, limiter *rate.Limiter, keyPrefix string, limit int) (rev int64, err error) {

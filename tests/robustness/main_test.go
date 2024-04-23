@@ -16,12 +16,12 @@ package robustness
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
-	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -108,7 +108,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	g := errgroup.Group{}
+	wg := sync.WaitGroup{}
 	var operationReport, watchReport []report.ClientReport
 	failpointInjected := make(chan failpoint.InjectionReport, 1)
 
@@ -116,7 +116,9 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
 	ids := identity.NewIDProvider()
-	g.Go(func() error {
+	wg.Add(3)
+	go func() {
+		defer wg.Done()
 		defer close(failpointInjected)
 		// Give some time for traffic to reach qps target before injecting failpoint.
 		time.Sleep(time.Second)
@@ -130,22 +132,21 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		if fr != nil {
 			failpointInjected <- *fr
 		}
-		return nil
-	})
+	}()
 	maxRevisionChan := make(chan int64, 1)
-	g.Go(func() error {
+	go func() {
+		defer wg.Done()
 		defer close(maxRevisionChan)
 		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, failpointInjected, baseTime, ids)
 		maxRevision := operationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating traffic", zap.Int64("max-revision", maxRevision))
-		return nil
-	})
-	g.Go(func() error {
+	}()
+	go func() {
+		defer wg.Done()
 		watchReport = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime, ids)
-		return nil
-	})
-	g.Wait()
+	}()
+	wg.Wait()
 	return append(operationReport, watchReport...)
 }
 

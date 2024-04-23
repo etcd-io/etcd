@@ -15,40 +15,42 @@
 package traffic
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/sync/errgroup"
 )
 
 func TestLimiter(t *testing.T) {
 	limiter := NewConcurrencyLimiter(3)
 	counter := &atomic.Int64{}
-	g := errgroup.Group{}
+	wg := sync.WaitGroup{}
 	for i := 0; i < 10; i++ {
-		g.Go(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			if limiter.Take() {
 				counter.Add(1)
 			}
-			return nil
-		})
+		}()
 	}
-	g.Wait()
+	wg.Wait()
 	assert.Equal(t, 3, int(counter.Load()))
 	assert.False(t, limiter.Take())
 
 	limiter.Return()
 	counter.Store(0)
 	for i := 0; i < 10; i++ {
-		g.Go(func() error {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
 			if limiter.Take() {
 				counter.Add(1)
 			}
-			return nil
-		})
+		}()
 	}
-	g.Wait()
+	wg.Wait()
 	assert.Equal(t, 1, int(counter.Load()))
 	assert.False(t, limiter.Take())
 
