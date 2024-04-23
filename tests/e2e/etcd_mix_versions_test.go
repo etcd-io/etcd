@@ -92,11 +92,15 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg *e2e.EtcdProcessClu
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 		e2e.WithConfig(cfg),
 		e2e.WithSnapshotCount(10),
+		e2e.WithKeepDataDir(true),
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
 		derr := epc.Close()
 		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+		for _, proc := range epc.Procs {
+			require.NoError(t, proc.VerifySchemaVersion(epc.Cfg.Logger))
+		}
 	}()
 
 	t.Log("Writing 20 keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot)")
@@ -135,11 +139,15 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 		e2e.WithConfig(cfg),
 		e2e.WithSnapshotCount(10),
 		e2e.WithSnapshotCatchUpEntries(10),
+		e2e.WithKeepDataDir(true),
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
 		derr := epc.Close()
 		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+		for _, proc := range epc.Procs {
+			require.NoError(t, proc.VerifySchemaVersion(epc.Cfg.Logger))
+		}
 	}()
 	toPartitionedMember := epc.Procs[mockPartitionNodeIndex]
 

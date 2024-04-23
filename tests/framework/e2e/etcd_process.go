@@ -31,9 +31,13 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
@@ -60,6 +64,8 @@ type EtcdProcess interface {
 	LazyFS() *LazyFS
 	Logs() LogsExpect
 	Kill() error
+	// VerifySchemaVersion verifies the db file schema version is compatible with the binary after the process is closed.
+	VerifySchemaVersion(lg *zap.Logger) error
 }
 
 type LogsExpect interface {
@@ -249,6 +255,38 @@ func (ep *EtcdServerProcess) Close() error {
 	if !ep.cfg.KeepDataDir {
 		ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.DataDirPath))
 		return os.RemoveAll(ep.cfg.DataDirPath)
+	}
+	return nil
+}
+
+func (ep *EtcdServerProcess) VerifySchemaVersion(lg *zap.Logger) error {
+	currentEtcdVer, err := GetVersionFromBinary(ep.cfg.ExecPath)
+	if err != nil {
+		return err
+	}
+	currentEtcdVer.Patch = 0
+	prevEtcdVer := semver.Version{Major: currentEtcdVer.Major, Minor: currentEtcdVer.Minor - 1}
+
+	dbPath := datadir.ToBackendFileName(ep.cfg.DataDirPath)
+	be := backend.NewDefaultBackend(lg, dbPath)
+	defer be.Close()
+	ver, err := schema.UnsafeDetectSchemaVersion(lg, be.BatchTx())
+	if err != nil {
+		return err
+	}
+
+	// in a mix version cluster, the storage version would be set to the cluster version,
+	// which could be lower than the server version by 1 minor version.
+	if currentEtcdVer.LessThan(ver) || ver.LessThan(prevEtcdVer) {
+		return fmt.Errorf("expect backend schema version to be between [%s, %s], but got %s", prevEtcdVer.String(), currentEtcdVer.String(), ver.String())
+	}
+	// check new fields introduced in V3_6 do not exist in V3_5 data file.
+	// V3_6 contains all the fields in V3_5, so no need to check for V3_6 servers.
+	if *currentEtcdVer == version.V3_5 {
+		_, vs := be.BatchTx().UnsafeRange(schema.Meta, schema.MetaStorageVersionName, nil, 1)
+		if len(vs) != 0 {
+			return fmt.Errorf("expect storageVersion not exist in the meta bucket, but got %s", string(vs[0]))
+		}
 	}
 	return nil
 }

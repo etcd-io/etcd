@@ -202,6 +202,9 @@ func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdPr
 		if errC := epc.Close(); errC != nil {
 			t.Fatalf("error closing etcd processes (%v)", errC)
 		}
+		for _, proc := range epc.Procs {
+			require.NoError(t, proc.VerifySchemaVersion(epc.Cfg.Logger))
+		}
 	})
 	return epc
 }
