@@ -81,8 +81,16 @@ func (r *TestReport) Report(t *testing.T, force bool) {
 
 func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, path string) {
 	lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", path))
-	err := os.Rename(member.Config().DataDirPath, path)
+	err := os.Rename(memberDataDir(member), path)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func memberDataDir(member e2e.EtcdProcess) string {
+	lazyFS := member.LazyFS()
+	if lazyFS != nil {
+		return filepath.Join(lazyFS.LazyFSDir, "data")
+	}
+	return member.Config().DataDirPath
 }

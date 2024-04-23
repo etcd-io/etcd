@@ -70,7 +70,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Cluster.Close()
+	defer forcestopCluster(r.Cluster)
 
 	if s.failpoint == nil {
 		s.failpoint, err = failpoint.PickRandom(r.Cluster)
@@ -95,7 +95,6 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	if err != nil {
 		t.Fatal(err)
 	}
-	forcestopCluster(r.Cluster)
 
 	watchProgressNotifyEnabled := r.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, r.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
