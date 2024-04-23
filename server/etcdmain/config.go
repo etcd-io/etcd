@@ -91,9 +91,9 @@ func newConfig() *config {
 			fallbackFlagProxy,
 		),
 		v2deprecation: flags.NewSelectiveStringsValue(
-			string(cconfig.V2_DEPR_1_WRITE_ONLY),
-			string(cconfig.V2_DEPR_1_WRITE_ONLY_DROP),
-			string(cconfig.V2_DEPR_2_GONE)),
+			string(cconfig.V2Depr1WriteOnly),
+			string(cconfig.V2Depr1WriteOnlyDrop),
+			string(cconfig.V2Depr2Gone)),
 	}
 	fs := cfg.cf.flagSet
 	fs.Usage = func() {
@@ -157,7 +157,7 @@ func (cfg *config) parse(arguments []string) error {
 	}
 
 	if cfg.ec.V2Deprecation == "" {
-		cfg.ec.V2Deprecation = cconfig.V2_DEPR_DEFAULT
+		cfg.ec.V2Deprecation = cconfig.V2DeprDefault
 	}
 
 	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()

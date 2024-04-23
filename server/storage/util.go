@@ -39,7 +39,7 @@ func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage c
 	if metaOnly {
 		return nil
 	}
-	if deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
+	if deprecationStage.IsAtLeast(config.V2Depr1WriteOnly) {
 		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
 	}
 	lg.Warn("detected custom v2store content. Etcd v3.5 is the last version allowing to access it using API v2. Please remove the content.")
