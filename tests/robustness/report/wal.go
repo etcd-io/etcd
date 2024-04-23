@@ -52,7 +52,7 @@ func LoadClusterPersistedRequests(lg *zap.Logger, path string) ([]model.EtcdRequ
 func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) ([]model.EtcdRequest, error) {
 	dataDirs := []string{}
 	for _, proc := range cluster.Procs {
-		dataDirs = append(dataDirs, proc.Config().DataDirPath)
+		dataDirs = append(dataDirs, memberDataDir(proc))
 	}
 	return PersistedRequestsDirs(lg, dataDirs)
 }
