@@ -264,11 +264,11 @@ func (reg *CheckRegistry) RootPath() string {
 }
 
 // InstallHttpEndpoints installs the http handlers for the health checks.
+//
 // Deprecated: Please use (*CheckRegistry) InstallHTTPEndpoints instead.
 //
-//revive:disable:var-naming
+//revive:disable-next-line:var-naming
 func (reg *CheckRegistry) InstallHttpEndpoints(lg *zap.Logger, mux *http.ServeMux) {
-	//revive:enable:var-naming
 	reg.InstallHTTPEndpoints(lg, mux)
 }
 

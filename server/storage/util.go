@@ -111,6 +111,7 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 
 // GetEffectiveNodeIdsFromWalEntries returns an ordered set of IDs included in the given snapshot and
 // the entries.
+//
 // Deprecated: use GetEffectiveNodeIDsFromWALEntries instead.
 //
 //revive:disable-next-line:var-naming
