@@ -140,6 +140,7 @@ type etcdProcessClusterConfig struct {
 
 	MaxConcurrentStreams       uint32 // default is math.MaxUint32
 	WatchProcessNotifyInterval time.Duration
+	CompactionBatchLimit       int
 
 	debug bool
 
@@ -332,6 +333,9 @@ func (cfg *etcdProcessClusterConfig) etcdServerProcessConfigs() []*etcdServerPro
 
 		if cfg.WatchProcessNotifyInterval != 0 {
 			args = append(args, "--experimental-watch-progress-notify-interval", cfg.WatchProcessNotifyInterval.String())
+		}
+		if cfg.CompactionBatchLimit != 0 {
+			args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
 		}
 
 		if cfg.debug {
