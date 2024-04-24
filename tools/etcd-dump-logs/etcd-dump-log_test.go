@@ -51,7 +51,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 
 	p := t.TempDir()
 
-	mustCreateWalLog(t, p)
+	mustCreateWALLog(t, p)
 
 	argtests := []struct {
 		name         string
@@ -96,7 +96,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 
 }
 
-func mustCreateWalLog(t *testing.T, path string) {
+func mustCreateWALLog(t *testing.T, path string) {
 	memberdir := filepath.Join(path, "member")
 	err := os.Mkdir(memberdir, 0744)
 	if err != nil {
