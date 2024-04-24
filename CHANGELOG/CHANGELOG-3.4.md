@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17831).
 - [Allow new server to join 3.5 cluster if `next-cluster-version-compatible=true`](https://github.com/etcd-io/etcd/pull/17665)
 - [Allow updating the cluster version when downgrading from 3.5](https://github.com/etcd-io/etcd/pull/17821).
+- Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17864)
 
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17692).
