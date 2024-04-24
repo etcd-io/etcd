@@ -43,14 +43,14 @@ func TestStatus(t *testing.T) {
 				if len(rs) != tc.config.ClusterSize {
 					t.Fatalf("wrong number of status responses. expected:%d, got:%d ", tc.config.ClusterSize, len(rs))
 				}
-				memberIds := make(map[uint64]struct{})
+				memberIDs := make(map[uint64]struct{})
 				for _, r := range rs {
 					if r == nil {
 						t.Fatalf("status response is nil")
 					}
-					memberIds[r.Header.MemberId] = struct{}{}
+					memberIDs[r.Header.MemberId] = struct{}{}
 				}
-				if len(rs) != len(memberIds) {
+				if len(rs) != len(memberIDs) {
 					t.Fatalf("found duplicated members")
 				}
 			})
