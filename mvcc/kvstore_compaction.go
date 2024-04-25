@@ -49,6 +49,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		}
 
 		if len(keys) < s.cfg.CompactionBatchLimit {
+			// gofail: var compactBeforeSetFinishedCompact struct{}
 			rbytes := make([]byte, 8+1+8)
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
