@@ -2,6 +2,8 @@ module go.etcd.io/etcd/client/pkg/v3
 
 go 1.22
 
+toolchain go1.22.2
+
 require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/stretchr/testify v1.9.0

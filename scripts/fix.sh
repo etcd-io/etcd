@@ -36,5 +36,7 @@ run_for_modules run ${GO_CMD} fmt || exit 2
 run_for_module tests bom_fix || exit 2
 bash_ws_fix || exit 2
 
+log_callout "Syncing go toolchain directives"
+run ./scripts/sync_go_toolchain_directive.sh || exit 2
 
 log_success -e "\\nSUCCESS: etcd code is fixed :)"
