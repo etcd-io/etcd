@@ -327,14 +327,14 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
 			return nil, membership.ErrMemberNotLearner
 		}
-		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, membership.ErrIDNotFound
 	}
 
 	if resp.StatusCode != http.StatusOK { // all other types of errors
-		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 
 	var membs []*membership.Member

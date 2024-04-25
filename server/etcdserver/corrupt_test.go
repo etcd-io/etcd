@@ -573,7 +573,7 @@ func TestHashKVHandler(t *testing.T) {
 			}
 			if resp.StatusCode != http.StatusOK {
 				if !strings.Contains(string(body), tt.wKeyWords) {
-					t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
+					t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
 				}
 				return
 			}

@@ -52,7 +52,7 @@ func TestBatchTxPut(t *testing.T) {
 		_, gv := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if !reflect.DeepEqual(gv[0], v) {
-			t.Errorf("v = %s, want %s", string(gv[0]), string(v))
+			t.Errorf("v = %s, want %s", gv[0], v)
 		}
 		tx.Commit()
 	}

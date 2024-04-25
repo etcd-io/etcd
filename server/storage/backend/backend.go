@@ -394,7 +394,7 @@ func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, e
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
 			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+				return fmt.Errorf("cannot get hash of bucket %s", next)
 			}
 			h.Write(next)
 			b.ForEach(func(k, v []byte) error {
@@ -598,7 +598,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 	for next, _ := c.First(); next != nil; next, _ = c.Next() {
 		b := tx.Bucket(next)
 		if b == nil {
-			return fmt.Errorf("backend: cannot defrag bucket %s", string(next))
+			return fmt.Errorf("backend: cannot defrag bucket %s", next)
 		}
 
 		tmpb, berr := tmptx.CreateBucketIfNotExists(next)

@@ -114,10 +114,10 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	}
 	for i := range gresp.Kvs {
 		if string(gresp.Kvs[i].Key) != kvs[i].k {
-			t.Fatalf("#%d: key expected %s, got %s", i, kvs[i].k, string(gresp.Kvs[i].Key))
+			t.Fatalf("#%d: key expected %s, got %s", i, kvs[i].k, gresp.Kvs[i].Key)
 		}
 		if string(gresp.Kvs[i].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[i].Value))
+			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[i].Value)
 		}
 	}
 }

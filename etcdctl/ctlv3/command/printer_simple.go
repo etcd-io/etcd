@@ -223,7 +223,7 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	for _, perm := range r.Perm {
 		if perm.PermType == v3.PermRead || perm.PermType == v3.PermReadWrite {
 			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", string(perm.Key))
+				fmt.Printf("\t%s\n", perm.Key)
 			} else {
 				printRange((*v3.Permission)(perm))
 			}
@@ -233,7 +233,7 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	for _, perm := range r.Perm {
 		if perm.PermType == v3.PermWrite || perm.PermType == v3.PermReadWrite {
 			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", string(perm.Key))
+				fmt.Printf("\t%s\n", perm.Key)
 			} else {
 				printRange((*v3.Permission)(perm))
 			}
