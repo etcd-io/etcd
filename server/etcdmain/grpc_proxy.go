@@ -29,10 +29,9 @@ import (
 	"path/filepath"
 	"time"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	grpc_logging "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -461,32 +460,32 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
-	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject any) bool { return true }
+	srvMetrics := grpc_prometheus.NewServerMetrics()
+	prometheus.Register(srvMetrics)
 
 	grpcChainStreamList := []grpc.StreamServerInterceptor{
-		grpc_prometheus.StreamServerInterceptor,
+		srvMetrics.StreamServerInterceptor(),
 	}
 	grpcChainUnaryList := []grpc.UnaryServerInterceptor{
-		grpc_prometheus.UnaryServerInterceptor,
+		srvMetrics.UnaryServerInterceptor(),
 	}
+
 	if grpcProxyEnableLogging {
+		opts := []grpc_logging.Option{
+			grpc_logging.WithLogOnEvents(grpc_logging.StartCall, grpc_logging.FinishCall),
+		}
+
 		grpcChainStreamList = append(grpcChainStreamList,
-			grpc_ctxtags.StreamServerInterceptor(),
-			grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer),
+			grpc_logging.StreamServerInterceptor(interceptorLogger(lg), opts...),
 		)
 		grpcChainUnaryList = append(grpcChainUnaryList,
-			grpc_ctxtags.UnaryServerInterceptor(),
-			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
+			grpc_logging.UnaryServerInterceptor(interceptorLogger(lg), opts...),
 		)
 	}
 
 	gopts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpcChainStreamList...,
-		)),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpcChainUnaryList...,
-		)),
+		grpc.ChainStreamInterceptor(grpcChainStreamList...),
+		grpc.ChainUnaryInterceptor(grpcChainUnaryList...),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
 	}
 	if grpcKeepAliveMinTime > time.Duration(0) {

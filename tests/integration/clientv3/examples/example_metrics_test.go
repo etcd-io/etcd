@@ -23,7 +23,8 @@ import (
 	"net/http"
 	"strings"
 
-	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
@@ -35,11 +36,13 @@ func mockClient_metrics() {
 
 func ExampleClient_metrics() {
 	forUnitTestsRunInMockedContext(mockClient_metrics, func() {
+		cliMetrics := grpcprom.NewClientMetrics()
+		prometheus.Register(cliMetrics)
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints: exampleEndpoints(),
 			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
-				grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
+				grpc.WithUnaryInterceptor(cliMetrics.UnaryClientInterceptor()),
+				grpc.WithStreamInterceptor(cliMetrics.StreamClientInterceptor()),
 			},
 		})
 		if err != nil {

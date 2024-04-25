@@ -97,6 +97,7 @@ func (sctx *serveCtx) serve(
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
 	splitHTTP bool,
+	metrics string,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
@@ -150,7 +151,7 @@ func (sctx *serveCtx) serve(
 			}
 		}
 		if grpcEnabled {
-			gs = v3rpc.Server(s, nil, nil, gopts...)
+			gs = v3rpc.Server(s, nil, nil, metrics, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
 			v3lockpb.RegisterLockServer(gs, servLock)
 			if sctx.serviceRegister != nil {
@@ -202,7 +203,7 @@ func (sctx *serveCtx) serve(
 		}
 
 		if grpcEnabled {
-			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
+			gs = v3rpc.Server(s, tlscfg, nil, metrics, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
 			v3lockpb.RegisterLockServer(gs, servLock)
 			if sctx.serviceRegister != nil {

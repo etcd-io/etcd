@@ -31,7 +31,6 @@ import (
 	"sync"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -767,7 +766,7 @@ func (e *Etcd) serveClients() {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, e.cfg.Metrics, gopts...))
 		}(sctx)
 	}
 }
@@ -818,10 +817,6 @@ func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 }
 
 func (e *Etcd) serveMetrics() (err error) {
-	if e.cfg.Metrics == "extensive" {
-		grpc_prometheus.EnableHandlingTimeHistogram()
-	}
-
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
 		etcdhttp.HandleMetrics(metricsMux)

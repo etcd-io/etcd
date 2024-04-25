@@ -983,7 +983,7 @@ func (m *Member) Launch() error {
 				return err
 			}
 		}
-		m.GRPCServer = v3rpc.Server(m.Server, tlscfg, m.GRPCServerRecorder.UnaryInterceptor(), m.GRPCServerOpts...)
+		m.GRPCServer = v3rpc.Server(m.Server, tlscfg, m.GRPCServerRecorder.UnaryInterceptor(), "", m.GRPCServerOpts...)
 		m.ServerClient = v3client.New(m.Server)
 		lockpb.RegisterLockServer(m.GRPCServer, v3lock.NewLockServer(m.ServerClient))
 		epb.RegisterElectionServer(m.GRPCServer, v3election.NewElectionServer(m.ServerClient))

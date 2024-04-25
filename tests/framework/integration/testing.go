@@ -15,14 +15,16 @@
 package integration
 
 import (
+	"io"
 	"os"
+	"sync"
 	"testing"
 
-	grpclogsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc/grpclog"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -31,11 +33,11 @@ import (
 	gofail "go.etcd.io/gofail/runtime"
 )
 
-var grpcLogger grpclogsettable.SettableLoggerV2
+var grpcLogger SettableLoggerV2
 var insideTestContext bool
 
 func init() {
-	grpcLogger = grpclogsettable.ReplaceGrpcLoggerV2()
+	grpcLogger = ReplaceGrpcLoggerV2()
 }
 
 type testOptions struct {
@@ -150,4 +152,95 @@ func NewClient(t testing.TB, cfg clientv3.Config) (*clientv3.Client, error) {
 		cfg.Logger = zaptest.NewLogger(t).Named("client")
 	}
 	return clientv3.New(cfg)
+}
+
+// SettableLoggerV2 is thread-safe.
+type SettableLoggerV2 interface {
+	grpclog.LoggerV2
+	// Set given logger as the underlying implementation.
+	Set(loggerv2 grpclog.LoggerV2)
+	// Reset `discard` logger as the underlying implementation.
+	Reset()
+}
+
+// ReplaceGrpcLoggerV2 creates and configures SettableLoggerV2 as grpc logger.
+func ReplaceGrpcLoggerV2() SettableLoggerV2 {
+	settable := &settableLoggerV2{}
+	settable.Reset()
+	grpclog.SetLoggerV2(settable)
+	return settable
+}
+
+// SettableLoggerV2 implements SettableLoggerV2
+type settableLoggerV2 struct {
+	log grpclog.LoggerV2
+	mu  sync.RWMutex
+}
+
+func (s *settableLoggerV2) Set(log grpclog.LoggerV2) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.log = log
+}
+
+func (s *settableLoggerV2) Reset() {
+	s.Set(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
+}
+
+func (s *settableLoggerV2) get() grpclog.LoggerV2 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.log
+}
+
+func (s *settableLoggerV2) Info(args ...interface{}) {
+	s.get().Info(args)
+}
+
+func (s *settableLoggerV2) Infoln(args ...interface{}) {
+	s.get().Infoln(args)
+}
+
+func (s *settableLoggerV2) Infof(format string, args ...interface{}) {
+	s.get().Infof(format, args)
+}
+
+func (s *settableLoggerV2) Warning(args ...interface{}) {
+	s.get().Warning(args)
+}
+
+func (s *settableLoggerV2) Warningln(args ...interface{}) {
+	s.get().Warningln(args)
+}
+
+func (s *settableLoggerV2) Warningf(format string, args ...interface{}) {
+	s.get().Warningf(format, args)
+}
+
+func (s *settableLoggerV2) Error(args ...interface{}) {
+	s.get().Error(args)
+}
+
+func (s *settableLoggerV2) Errorln(args ...interface{}) {
+	s.get().Errorln(args)
+}
+
+func (s *settableLoggerV2) Errorf(format string, args ...interface{}) {
+	s.get().Errorf(format, args)
+}
+
+func (s *settableLoggerV2) Fatal(args ...interface{}) {
+	s.get().Fatal(args)
+}
+
+func (s *settableLoggerV2) Fatalln(args ...interface{}) {
+	s.get().Fatalln(args)
+}
+
+func (s *settableLoggerV2) Fatalf(format string, args ...interface{}) {
+	s.get().Fatalf(format, args)
+}
+
+func (s *settableLoggerV2) V(l int) bool {
+	return s.get().V(l)
 }

@@ -18,8 +18,8 @@ import (
 	"crypto/tls"
 	"math"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -35,16 +35,26 @@ const (
 	maxSendBytes      = math.MaxInt32
 )
 
-func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnaryServerInterceptor, gopts ...grpc.ServerOption) *grpc.Server {
+func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnaryServerInterceptor, metrics string, gopts ...grpc.ServerOption) *grpc.Server {
 	var opts []grpc.ServerOption
 	opts = append(opts, grpc.CustomCodec(&codec{}))
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
+
+	promOpts := []grpc_prometheus.ServerMetricsOption{}
+
+	if metrics == "extensive" {
+		promOpts = append(promOpts, grpc_prometheus.WithServerHandlingTimeHistogram())
+	}
+
+	srvMetrics := grpc_prometheus.NewServerMetrics(promOpts...)
+	prometheus.Register(srvMetrics)
+
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
 		newUnaryInterceptor(s),
-		grpc_prometheus.UnaryServerInterceptor,
+		srvMetrics.UnaryServerInterceptor(),
 	}
 	if interceptor != nil {
 		chainUnaryInterceptors = append(chainUnaryInterceptors, interceptor)
@@ -52,7 +62,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 
 	chainStreamInterceptors := []grpc.StreamServerInterceptor{
 		newStreamInterceptor(s),
-		grpc_prometheus.StreamServerInterceptor,
+		srvMetrics.StreamServerInterceptor(),
 	}
 
 	if s.Cfg.ExperimentalEnableDistributedTracing {
@@ -61,8 +71,8 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 
 	}
 
-	opts = append(opts, grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(chainUnaryInterceptors...)))
-	opts = append(opts, grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(chainStreamInterceptors...)))
+	opts = append(opts, grpc.ChainUnaryInterceptor(chainUnaryInterceptors...))
+	opts = append(opts, grpc.ChainStreamInterceptor(chainStreamInterceptors...))
 
 	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
@@ -82,7 +92,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s, healthNotifier))
 
 	// set zero values for metrics registered for this grpc server
-	grpc_prometheus.Register(grpcServer)
+	srvMetrics.InitializeMetrics(grpcServer)
 
 	return grpcServer
 }
