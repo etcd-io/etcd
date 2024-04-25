@@ -178,6 +178,9 @@ function maybe_run() {
   fi
 }
 
+# modules
+# returns the list of all modules in the project, not including the tools,
+# as they are not considered to be added to the bill for materials.
 function modules() {
   modules=(
     "${ROOT_MODULE}/api/v3"
