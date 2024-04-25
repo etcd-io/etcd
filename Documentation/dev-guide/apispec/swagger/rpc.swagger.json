@@ -2835,6 +2835,11 @@
         "storageVersion": {
           "type": "string",
           "description": "storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version."
+        },
+        "dbSizeQuota": {
+          "type": "string",
+          "format": "int64",
+          "title": "dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)"
         }
       }
     },
