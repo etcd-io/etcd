@@ -61,11 +61,11 @@ func TestDataReports(t *testing.T) {
 
 func TestValidateWatch(t *testing.T) {
 	tcs := []struct {
-		name         string
-		config       Config
-		reports      []report.ClientReport
-		eventHistory []model.PersistedEvent
-		expectError  string
+		name              string
+		config            Config
+		reports           []report.ClientReport
+		persistedRequests []model.EtcdRequest
+		expectError       string
 	}{
 		{
 			name: "Ordered, Unique - ordered unique events in one response - pass",
@@ -87,6 +87,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 		},
 		{
@@ -114,6 +118,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
 		},
 		{
 			name: "Ordered - unordered events in one response - fail",
@@ -135,6 +143,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeOrdered.Error(),
 		},
@@ -162,6 +174,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeOrdered.Error(),
 		},
@@ -197,6 +213,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
 		},
 		{
 			name: "Unique - duplicated events in one response - fail",
@@ -218,6 +238,9 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: errBrokeUnique.Error(),
 		},
@@ -247,6 +270,9 @@ func TestValidateWatch(t *testing.T) {
 				},
 			},
 			expectError: errBrokeUnique.Error(),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+			},
 		},
 		{
 			name: "Unique - duplicated events in watch requests - pass",
@@ -272,13 +298,16 @@ func TestValidateWatch(t *testing.T) {
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
-										putWatchEvent("a", "2", 2, true),
+										putWatchEvent("a", "1", 2, true),
 									},
 								},
 							},
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 		},
 		{
@@ -300,6 +329,35 @@ func TestValidateWatch(t *testing.T) {
 							},
 						},
 					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				{
+					Type:        model.Txn,
+					LeaseGrant:  nil,
+					LeaseRevoke: nil,
+					Range:       nil,
+					Txn: &model.TxnRequest{
+						Conditions: nil,
+						OperationsOnSuccess: []model.EtcdOperation{
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:   "a",
+									Value: model.ToValueOrHash("1"),
+								},
+							},
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:   "b",
+									Value: model.ToValueOrHash("2"),
+								},
+							},
+						},
+						OperationsOnFailure: nil,
+					},
+					Defragment: nil,
 				},
 			},
 		},
@@ -335,6 +393,9 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+			},
 		},
 		{
 			name:   "Unique revision - duplicated revision in one response - fail",
@@ -357,6 +418,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeUnique.Error(),
 		},
@@ -381,6 +446,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeUnique.Error(),
 		},
@@ -408,6 +477,10 @@ func TestValidateWatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeAtomic.Error(),
 		},
@@ -438,10 +511,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -474,10 +547,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -499,10 +572,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -525,10 +598,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -564,10 +637,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -593,10 +666,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -631,10 +704,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -687,10 +760,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -719,10 +792,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeBookmarkable.Error(),
 		},
@@ -756,10 +829,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeBookmarkable.Error(),
 		},
@@ -786,8 +859,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{},
-			expectError:  errBrokeBookmarkable.Error(),
+			persistedRequests: []model.EtcdRequest{},
+			expectError:       errBrokeBookmarkable.Error(),
 		},
 		{
 			name: "Bookmarkable - progress notification lower than watch request - pass",
@@ -809,8 +882,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 		},
 		{
@@ -836,7 +909,7 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{},
+			persistedRequests: []model.EtcdRequest{},
 		},
 		{
 			name: "Reliable - missing event before bookmark - fail",
@@ -863,10 +936,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -894,10 +967,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -926,10 +999,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("aa", "1", 2, true),
-				putPersistedEvent("ab", "2", 3, true),
-				putPersistedEvent("cc", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("aa", "1"),
+				putRequest("ab", "2"),
+				putRequest("cc", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -955,10 +1028,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: "",
 		},
@@ -982,8 +1055,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: "",
 		},
@@ -1008,8 +1081,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: "",
 		},
@@ -1032,8 +1105,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: "",
 		},
@@ -1061,8 +1134,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: "",
 		},
@@ -1086,8 +1159,8 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -1112,10 +1185,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeReliable.Error(),
 		},
@@ -1140,10 +1213,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("ab", "2", 3, true),
-				putPersistedEvent("a", "3", 4, false),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("ab", "2"),
+				putRequest("a", "3"),
 			},
 		},
 		{
@@ -1168,10 +1241,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("aa", "1", 2, true),
-				putPersistedEvent("bb", "2", 3, true),
-				putPersistedEvent("ac", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("aa", "1"),
+				putRequest("bb", "2"),
+				putRequest("ac", "3"),
 			},
 		},
 		{
@@ -1195,10 +1268,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -1222,10 +1295,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -1254,10 +1327,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -1282,10 +1355,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -1309,10 +1382,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 		},
 		{
@@ -1338,10 +1411,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("bb", "2", 3, true),
-				putPersistedEvent("bc", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("bb", "2"),
+				putRequest("bc", "3"),
 			},
 		},
 		{
@@ -1365,10 +1438,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("c", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("c", "3"),
 			},
 			expectError: errBrokeResumable.Error(),
 		},
@@ -1385,7 +1458,7 @@ func TestValidateWatch(t *testing.T) {
 							Responses: []model.WatchResponse{
 								{
 									Events: []model.WatchEvent{
-										putWatchEvent("b", "3", 4, true),
+										putWatchEvent("b", "3", 4, false),
 									},
 								},
 							},
@@ -1393,10 +1466,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("b", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+				putRequest("b", "3"),
 			},
 			expectError: errBrokeResumable.Error(),
 		},
@@ -1422,10 +1495,10 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("bb", "2", 3, true),
-				putPersistedEvent("bc", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("bb", "2"),
+				putRequest("bc", "3"),
 			},
 			expectError: errBrokeResumable.Error(),
 		},
@@ -1452,11 +1525,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 		},
 		{
@@ -1482,11 +1555,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokeIsCreate.Error(),
 		},
@@ -1513,11 +1586,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokeIsCreate.Error(),
 		},
@@ -1545,11 +1618,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 		},
 		{
@@ -1576,11 +1649,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 		},
 		{
@@ -1607,11 +1680,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokePrevKV.Error(),
 		},
@@ -1639,11 +1712,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokePrevKV.Error(),
 		},
@@ -1671,11 +1744,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokePrevKV.Error(),
 		},
@@ -1703,11 +1776,11 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("a", "2", 3, false),
-				deletePersistedEvent("a", 4),
-				putPersistedEvent("a", "4", 5, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				deleteRequest("a"),
+				putRequest("a", "4"),
 			},
 			expectError: errBrokePrevKV.Error(),
 		},
@@ -1725,7 +1798,6 @@ func TestValidateWatch(t *testing.T) {
 									Events: []model.WatchEvent{
 										putWatchEvent("a", "1", 2, true),
 										putWatchEvent("b", "2", 3, true),
-										putWatchEvent("a", "3", 4, false),
 									},
 								},
 							},
@@ -1733,10 +1805,9 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("a", "1", 2, true),
-				putPersistedEvent("b", "2", 3, true),
-				putPersistedEvent("a", "3", 4, false),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
 			},
 			expectError: errBrokeFilter.Error(),
 		},
@@ -1763,17 +1834,17 @@ func TestValidateWatch(t *testing.T) {
 					},
 				},
 			},
-			eventHistory: []model.PersistedEvent{
-				putPersistedEvent("aa", "1", 2, true),
-				putPersistedEvent("bb", "2", 3, true),
-				putPersistedEvent("ac", "3", 4, true),
+			persistedRequests: []model.EtcdRequest{
+				putRequest("aa", "1"),
+				putRequest("bb", "2"),
+				putRequest("ac", "3"),
 			},
 			expectError: errBrokeFilter.Error(),
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, tc.eventHistory)
+			err := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, tc.persistedRequests)
 			var errStr string
 			if err != nil {
 				errStr = err.Error()
@@ -1836,5 +1907,50 @@ func deletePersistedEvent(key string, rev int64) model.PersistedEvent {
 			Key:  key,
 		},
 		Revision: rev,
+	}
+}
+
+func putRequest(key, value string) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type:        model.Txn,
+		LeaseGrant:  nil,
+		LeaseRevoke: nil,
+		Range:       nil,
+		Txn: &model.TxnRequest{
+			Conditions: nil,
+			OperationsOnSuccess: []model.EtcdOperation{
+				{
+					Type: model.PutOperation,
+					Put: model.PutOptions{
+						Key:   key,
+						Value: model.ToValueOrHash(value),
+					},
+				},
+			},
+			OperationsOnFailure: nil,
+		},
+		Defragment: nil,
+	}
+}
+
+func deleteRequest(key string) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type:        model.Txn,
+		LeaseGrant:  nil,
+		LeaseRevoke: nil,
+		Range:       nil,
+		Txn: &model.TxnRequest{
+			Conditions: nil,
+			OperationsOnSuccess: []model.EtcdOperation{
+				{
+					Type: model.DeleteOperation,
+					Delete: model.DeleteOptions{
+						Key: key,
+					},
+				},
+			},
+			OperationsOnFailure: nil,
+		},
+		Defragment: nil,
 	}
 }
