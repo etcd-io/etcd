@@ -148,7 +148,7 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 				t.Fatalf("Expected 1 key, got %d", len(resp.Kvs))
 			}
 			if !bytes.Equal([]byte(val), resp.Kvs[0].Value) {
-				t.Fatalf("Unexpected value, expected: %s, got: %s", val, string(resp.Kvs[0].Value))
+				t.Fatalf("Unexpected value, expected: %s, got: %s", val, resp.Kvs[0].Value)
 			}
 			return nil
 		}()

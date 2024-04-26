@@ -80,6 +80,6 @@ func TestNewTimeoutTransport(t *testing.T) {
 	}
 
 	if bytes.Equal(addr0, addr1) {
-		t.Errorf("addr0 = %s addr1= %s, want not equal", string(addr0), string(addr1))
+		t.Errorf("addr0 = %s addr1= %s, want not equal", addr0, addr1)
 	}
 }

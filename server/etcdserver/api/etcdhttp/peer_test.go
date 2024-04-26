@@ -278,7 +278,7 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 			t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
 		}
 		if tt.checkBody && strings.Contains(string(body), tt.wKeyWords) {
-			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, string(body), tt.wKeyWords)
+			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
 		}
 	}
 }

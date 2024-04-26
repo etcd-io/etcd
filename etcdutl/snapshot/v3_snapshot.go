@@ -143,10 +143,10 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
 			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+				return fmt.Errorf("cannot get hash of bucket %s", next)
 			}
 			if _, err = h.Write(next); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
+				return fmt.Errorf("cannot write bucket %s : %v", next, err)
 			}
 			iskeyb := (string(next) == "key")
 			if err = b.ForEach(func(k, v []byte) error {
@@ -163,7 +163,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 				ds.TotalKey++
 				return nil
 			}); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
+				return fmt.Errorf("cannot write bucket %s : %v", next, err)
 			}
 		}
 		return nil

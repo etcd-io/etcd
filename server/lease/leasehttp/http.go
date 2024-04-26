@@ -192,12 +192,12 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return -1, fmt.Errorf("lease: unknown error(%s)", string(b))
+		return -1, fmt.Errorf("lease: unknown error(%s)", b)
 	}
 
 	lresp := &pb.LeaseKeepAliveResponse{}
 	if err := lresp.Unmarshal(b); err != nil {
-		return -1, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
+		return -1, fmt.Errorf(`lease: %v. data = "%s"`, err, b)
 	}
 	if lresp.ID != int64(id) {
 		return -1, fmt.Errorf("lease: renew id mismatch")

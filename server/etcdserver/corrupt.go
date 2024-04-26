@@ -615,7 +615,7 @@ func HashByRev(ctx context.Context, cid types.ID, cc *http.Client, url string, r
 		}
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unknown error: %s", string(b))
+		return nil, fmt.Errorf("unknown error: %s", b)
 	}
 
 	hashResp := &pb.HashKVResponse{}

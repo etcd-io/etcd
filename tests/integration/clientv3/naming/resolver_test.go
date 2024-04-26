@@ -114,7 +114,7 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	t.Logf("Last response: %v", string(lastResponse))
 	if lbPolicy == "pick_first" {
 		if string(lastResponse) != "3500" {
-			t.Fatalf("unexpected total responses from foo: %s", string(lastResponse))
+			t.Fatalf("unexpected total responses from foo: %s", lastResponse)
 		}
 	}
 
@@ -122,12 +122,12 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	if lbPolicy == "round_robin" {
 		responses, err := strconv.Atoi(string(lastResponse))
 		if err != nil {
-			t.Fatalf("couldn't convert to int: %s", string(lastResponse))
+			t.Fatalf("couldn't convert to int: %s", lastResponse)
 		}
 
 		// Allow 25% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5
-		assert.InEpsilon(t, expected, float64(responses), 0.25, "unexpected total responses from foo: %s", string(lastResponse))
+		assert.InEpsilon(t, expected, float64(responses), 0.25, "unexpected total responses from foo: %s", lastResponse)
 	}
 }
 
