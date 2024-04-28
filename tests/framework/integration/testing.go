@@ -18,7 +18,6 @@ import (
 	"os"
 	"testing"
 
-	grpclogsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zapgrpc"
@@ -31,11 +30,11 @@ import (
 	gofail "go.etcd.io/gofail/runtime"
 )
 
-var grpcLogger grpclogsettable.SettableLoggerV2
+var grpcLogger settableLoggerV2
 var insideTestContext bool
 
 func init() {
-	grpcLogger = grpclogsettable.ReplaceGrpcLoggerV2()
+	grpcLogger = replaceGrpcLoggerV2()
 }
 
 type testOptions struct {

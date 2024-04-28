@@ -162,7 +162,7 @@
 		]
 	},
 	{
-		"project": "github.com/golang/protobuf",
+		"project": "github.com/golang/protobuf/proto",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -198,8 +198,12 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors",
 		"licenses": [
+			{
+				"type": "\"Do What The F*ck You Want To Public License\"",
+				"confidence": 0.14814814814814814
+			},
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
