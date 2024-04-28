@@ -50,7 +50,10 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	lg := logutil.CreateUtilZapLogger(zap.InfoLevel)
+	lg, err := logutil.CreateUtilZapLogger(zap.InfoLevel)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
 	cfg := mustClientCfgFromCmd(cmd)
 
 	// if user does not specify "--command-timeout" flag, there will be no timeout for snapshot save command
