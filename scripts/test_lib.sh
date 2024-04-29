@@ -166,7 +166,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests ."
+  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests tools/rw-heatmaps tools/testgrid-analysis ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -178,6 +178,9 @@ function maybe_run() {
   fi
 }
 
+# modules
+# returns the list of all modules in the project, not including the tools,
+# as they are not considered to be added to the bill for materials.
 function modules() {
   modules=(
     "${ROOT_MODULE}/api/v3"
