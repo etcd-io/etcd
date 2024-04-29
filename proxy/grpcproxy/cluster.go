@@ -105,9 +105,9 @@ func (cp *clusterProxy) monitor(wc endpoints.WatchChannel) {
 			for _, up := range updates {
 				switch up.Op {
 				case endpoints.Add:
-					cp.umap[up.Endpoint.Addr] = up.Endpoint
+					cp.umap[up.Key] = up.Endpoint
 				case endpoints.Delete:
-					delete(cp.umap, up.Endpoint.Addr)
+					delete(cp.umap, up.Key)
 				}
 			}
 			cp.umu.Unlock()
@@ -162,12 +162,12 @@ func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
 	cp.umu.RLock()
 	defer cp.umu.RUnlock()
 	mbs := make([]*pb.Member, 0, len(cp.umap))
-	for addr, upt := range cp.umap {
+	for _, upt := range cp.umap {
 		m, err := decodeMeta(fmt.Sprint(upt.Metadata))
 		if err != nil {
 			return nil, err
 		}
-		mbs = append(mbs, &pb.Member{Name: m.Name, ClientURLs: []string{addr}})
+		mbs = append(mbs, &pb.Member{Name: m.Name, ClientURLs: []string{upt.Addr}})
 	}
 	return mbs, nil
 }
