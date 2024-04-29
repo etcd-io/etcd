@@ -10,17 +10,6 @@ build:
 tools:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
 
-TEMP_TEST_ANALYZER_DIR=/tmp/etcd-test-analyzer
-TEST_ANALYZER_BIN=${PWD}/bin
-bin/etcd-test-analyzer: $(TEMP_TEST_ANALYZER_DIR)/*
-	make -C ${TEMP_TEST_ANALYZER_DIR} build
-	mkdir -p ${TEST_ANALYZER_BIN}
-	install ${TEMP_TEST_ANALYZER_DIR}/bin/etcd-test-analyzer ${TEST_ANALYZER_BIN}
-	${TEST_ANALYZER_BIN}/etcd-test-analyzer -h
-
-$(TEMP_TEST_ANALYZER_DIR)/*:
-	git clone "https://github.com/endocrimes/etcd-test-analyzer.git" ${TEMP_TEST_ANALYZER_DIR}
-
 # Tests
 
 GO_TEST_FLAGS?=

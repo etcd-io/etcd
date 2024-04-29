@@ -3,7 +3,7 @@ name: Measure TestGrid Flakiness
 
 on:
   schedule:
-    - cron: "0 0 * * 0" # run every Sunday at midnight
+    - cron: "0 0 * * *" # run every day at midnight
 
 permissions: read-all
 
