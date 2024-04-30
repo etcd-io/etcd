@@ -191,6 +191,8 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckTime       time.Duration
 	WatchProcessNotifyInterval time.Duration
 	CompactionBatchLimit       int
+
+	ExperimentalStopGRPCServiceOnDefrag bool
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -328,6 +330,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if cfg.InitialCorruptCheck {
 		args = append(args, "--experimental-initial-corrupt-check")
+	}
+	if cfg.ExperimentalStopGRPCServiceOnDefrag {
+		args = append(args, "--experimental-stop-grpc-service-on-defrag")
 	}
 	var murl string
 	if cfg.MetricsURLScheme != "" {

@@ -282,6 +282,8 @@ Experimental feature:
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
+  --experimental-stop-grpc-service-on-defrag
+    Enable etcd gRPC service to stop serving client requests on defragmentation.
 
 Unsafe feature:
   --force-new-cluster 'false'
