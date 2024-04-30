@@ -32,6 +32,7 @@ func ToSnapDir(dataDir string) string {
 }
 
 // ToWalDir returns the directory path for the member's WAL.
+//
 // Deprecated: use ToWALDir instead.
 //
 //revive:disable-next-line:var-naming
