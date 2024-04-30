@@ -31,7 +31,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
@@ -280,12 +279,17 @@ func (ep *EtcdServerProcess) VerifySchemaVersion(lg *zap.Logger) error {
 	if currentEtcdVer.LessThan(ver) || ver.LessThan(prevEtcdVer) {
 		return fmt.Errorf("expect backend schema version to be between [%s, %s], but got %s", prevEtcdVer.String(), currentEtcdVer.String(), ver.String())
 	}
-	// check new fields introduced in V3_6 do not exist in V3_5 data file.
-	// V3_6 contains all the fields in V3_5, so no need to check for V3_6 servers.
-	if *currentEtcdVer == version.V3_5 {
-		_, vs := be.BatchTx().UnsafeRange(schema.Meta, schema.MetaStorageVersionName, nil, 1)
+	// storage schema is generally backward compatible. No need to check the buckets for higher version.
+	if ep.cfg.ExecPath == BinPath.Etcd {
+		return nil
+	}
+	lg.Info("verify no new storage schema field is present in the db file of last release process")
+	nextEtcdVer := semver.Version{Major: currentEtcdVer.Major, Minor: currentEtcdVer.Minor + 1}
+	newFields := schema.NewFieldsForVersion(nextEtcdVer)
+	for _, f := range newFields {
+		_, vs := be.BatchTx().UnsafeRange(f.Bucket, f.FieldName, nil, 1)
 		if len(vs) != 0 {
-			return fmt.Errorf("expect storageVersion not exist in the meta bucket, but got %s", string(vs[0]))
+			return fmt.Errorf("expect %s not exist in the %s bucket, but got %s", f.Bucket.Name(), f.FieldName, vs[0])
 		}
 	}
 	return nil

@@ -21,17 +21,22 @@ type schemaChange interface {
 	downgradeAction() action
 }
 
-// addNewField represents adding new field when upgrading. Downgrade will remove the field.
-func addNewField(bucket backend.Bucket, fieldName []byte, fieldValue []byte) schemaChange {
+type NewField struct {
+	Bucket     backend.Bucket
+	FieldName  []byte
+	FieldValue []byte
+}
+
+func (f *NewField) schemaChange() schemaChange {
 	return simpleSchemaChange{
 		upgrade: setKeyAction{
-			Bucket:     bucket,
-			FieldName:  fieldName,
-			FieldValue: fieldValue,
+			Bucket:     f.Bucket,
+			FieldName:  f.FieldName,
+			FieldValue: f.FieldValue,
 		},
 		downgrade: deleteKeyAction{
-			Bucket:    bucket,
-			FieldName: fieldName,
+			Bucket:    f.Bucket,
+			FieldName: f.FieldName,
 		},
 	}
 }

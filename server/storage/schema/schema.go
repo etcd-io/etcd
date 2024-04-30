@@ -123,14 +123,37 @@ func schemaChangesForVersion(v semver.Version, isUpgrade bool) ([]schemaChange, 
 	return actions, nil
 }
 
+func NewFieldsForVersion(v semver.Version) []NewField {
+	if newFields, found := newFieldsMapping[v]; found {
+		return newFields
+	}
+	return nil
+}
+
+func newFieldMappingsToSchemaChanges(newFieldMap map[semver.Version][]NewField) map[semver.Version][]schemaChange {
+	schemaChangeMap := map[semver.Version][]schemaChange{}
+	for ver, newFields := range newFieldMap {
+		changes := []schemaChange{}
+		for _, f := range newFields {
+			changes = append(changes, f.schemaChange())
+		}
+		schemaChangeMap[ver] = changes
+	}
+	return schemaChangeMap
+}
+
 var (
-	// schemaChanges list changes that were introduced in a particular version.
+	// newFieldsMapping list new fields that were introduced in a particular version.
 	// schema was introduced in v3.6 as so its changes were not tracked before.
-	schemaChanges = map[semver.Version][]schemaChange{
+	newFieldsMapping = map[semver.Version][]NewField{
 		version.V3_6: {
-			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
+			{Meta, MetaStorageVersionName, emptyStorageVersion},
 		},
 	}
+	// schemaChanges list changes that were introduced in a particular version.
+	// schema was introduced in v3.6 as so its changes were not tracked before.
+	schemaChanges = newFieldMappingsToSchemaChanges(newFieldsMapping)
+
 	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
 	// Adding a addNewField for StorageVersion we can reuse logic to remove it when downgrading to v3.5
 	emptyStorageVersion = []byte("")
