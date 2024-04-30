@@ -30,6 +30,8 @@ permissions: read-all
 
 jobs:
   test:
+    # this is to prevent the job to run at forked projects
+    if: github.repository == 'etcd-io/etcd'
     timeout-minutes: 210
     runs-on: ${{ fromJson(inputs.runs-on) }}
     steps:
