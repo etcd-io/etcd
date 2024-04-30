@@ -86,7 +86,7 @@ const (
 	StoreKeysPrefix    = "/1"
 
 	// HealthInterval is the minimum time the cluster should be healthy
-	// before accepting add member requests.
+	// before accepting add and delete member requests.
 	HealthInterval = 5 * time.Second
 
 	purgeFileInterval = 30 * time.Second
