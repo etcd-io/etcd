@@ -139,14 +139,15 @@ type EtcdProcessCluster struct {
 }
 
 type EtcdProcessClusterConfig struct {
-	DataDirPath         string
-	KeepDataDir         bool
-	Logger              *zap.Logger
-	GoFailEnabled       bool
-	GoFailClientTimeout time.Duration
-	PeerProxy           bool
-	EnvVars             map[string]string
-	Version             ClusterVersion
+	DataDirPath                  string
+	KeepDataDir                  bool
+	Logger                       *zap.Logger
+	GoFailEnabled                bool
+	GoFailClientTimeout          time.Duration
+	PeerProxy                    bool
+	EnvVars                      map[string]string
+	Version                      ClusterVersion
+	NextClusterVersionCompatible bool
 
 	ClusterSize int
 
@@ -407,6 +408,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	// so it should not be set if the process execPath is not BinPath.
 	if cfg.SnapshotCatchUpEntries > 0 && execPath == BinPath {
 		args = append(args, "--experimental-snapshot-catchup-entries", fmt.Sprintf("%d", cfg.SnapshotCatchUpEntries))
+	}
+
+	if cfg.NextClusterVersionCompatible && execPath == BinPathLastRelease {
+		args = append(args, "--next-cluster-version-compatible")
 	}
 
 	return &EtcdServerProcessConfig{

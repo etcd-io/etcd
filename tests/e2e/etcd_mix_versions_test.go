@@ -67,13 +67,11 @@ func TestMixVersionsSnapshotByAddingMember(t *testing.T) {
 		t.Run(tc.name+"-adding-new-member-of-current-version", func(t *testing.T) {
 			mixVersionsSnapshotTestByAddingMember(t, tc.config, e2e.CurrentVersion)
 		})
-		// TODO: uncomment after v3.4.32 release.
-		// After v3.4.32, etcd can support adding a new member of 3.4 into
-		// a cluster with 3.5 if the 3.4 member is started with '--next-cluster-version-compatible'.
-
-		// t.Run(tc.name+"-adding-new-member-of-last-version", func(t *testing.T) {
-		// 	mixVersionsSnapshotTestByAddingMember(t, tc.config, e2e.LastVersion)
-		// })
+		if fileutil.Exist(e2e.BinPathLastRelease) {
+			t.Run(tc.name+"-adding-new-member-of-last-version", func(t *testing.T) {
+				mixVersionsSnapshotTestByAddingMember(t, tc.config, e2e.LastVersion)
+			})
+		}
 	}
 }
 
@@ -84,6 +82,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg e2e.EtcdProcessClus
 	cfg.SnapshotCount = 10
 	cfg.SnapshotCatchUpEntries = 10
 	cfg.BasePeerScheme = "unix" // to avoid port conflict
+	cfg.NextClusterVersionCompatible = true
 
 	epc, err := e2e.NewEtcdProcessCluster(t, &cfg)
 
@@ -107,6 +106,12 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg e2e.EtcdProcessClus
 	defer epc.Close()
 
 	assertKVHash(t, epc)
+
+	leaderEPC := epc.Procs[epc.WaitLeader(t)]
+	if leaderEPC.Config().ExecPath == e2e.BinPath {
+		t.Log("Verify logs to check snapshot be sent from leader to follower")
+		e2e.AssertProcessLogs(t, leaderEPC, "sent database snapshot")
+	}
 }
 
 func TestMixVersionsSnapshotByMockingPartition(t *testing.T) {
@@ -129,6 +134,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg e2e.EtcdProcessClu
 	cfg.SnapshotCount = 10
 	cfg.SnapshotCatchUpEntries = 10
 	cfg.BasePeerScheme = "unix" // to avoid port conflict
+	cfg.NextClusterVersionCompatible = true
 
 	epc, err := e2e.NewEtcdProcessCluster(t, &cfg)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
