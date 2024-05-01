@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
-	"sort"
+	"slices"
 	"syscall"
 
 	"go.etcd.io/etcd/pkg/v3/cpuutil"
@@ -48,14 +48,13 @@ func GetDefaultHost() (string, error) {
 	}
 
 	// sort so choice is deterministic
-	var families []int
+	var families []uint8
 	for family := range rmsgs {
-		families = append(families, int(family))
+		families = append(families, family)
 	}
-	sort.Ints(families)
+	slices.Sort(families)
 
-	for _, f := range families {
-		family := uint8(f)
+	for _, family := range families {
 		if host, err := chooseHost(family, rmsgs[family]); host != "" || err != nil {
 			return host, err
 		}
