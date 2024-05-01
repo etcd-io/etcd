@@ -29,7 +29,6 @@ import (
 	"path/filepath"
 	"time"
 
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -481,12 +480,8 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	}
 
 	gopts := []grpc.ServerOption{
-		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-			grpcChainStreamList...,
-		)),
-		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-			grpcChainUnaryList...,
-		)),
+		grpc.ChainStreamInterceptor(grpcChainStreamList...),
+		grpc.ChainUnaryInterceptor(grpcChainUnaryList...),
 		grpc.MaxConcurrentStreams(math.MaxUint32),
 	}
 	if grpcKeepAliveMinTime > time.Duration(0) {
