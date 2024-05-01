@@ -37,10 +37,9 @@ var (
 	errBrokeFilter       = errors.New("event not matching watch filter")
 )
 
-func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
+func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) error {
 	lg.Info("Validating watch")
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
-	replay := model.NewReplay(persistedRequests)
 	for _, r := range reports {
 		err := validateFilter(lg, r)
 		if err != nil {

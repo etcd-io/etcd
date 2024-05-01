@@ -24,7 +24,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-func patchedOperationHistory(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
+func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	allOperations := relevantOperations(reports)
 	uniqueEvents := uniqueWatchEvents(reports)
 	operationsReturnTime := persistedOperationsReturnTime(allOperations, persistedRequests)

@@ -33,18 +33,25 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	if err != nil {
 		t.Fatalf("Broken validation assumptions: %s", err)
 	}
-	patchedOperations := patchedOperationHistory(reports, persistedRequests)
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations, timeout)
+	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
+	serializableOperations := filterSerializableOperations(reports)
+
+	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return visualize
 	}
-	// TODO: Use requests from linearization instead of persisted requests from WAL.
-	err = validateWatch(lg, cfg, reports, persistedRequests)
+	// TODO: Use requests from linearization for replay.
+	replay := model.NewReplay(persistedRequests)
+
+	err = validateWatch(lg, cfg, reports, replay)
 	if err != nil {
 		t.Errorf("Failed validating watch history, err: %s", err)
 	}
-	validateSerializableOperations(t, lg, patchedOperations, persistedRequests)
+	err = validateSerializableOperations(lg, serializableOperations, replay)
+	if err != nil {
+		t.Errorf("Failed validating serializable operations, err: %s", err)
+	}
 	return visualize
 }
 
