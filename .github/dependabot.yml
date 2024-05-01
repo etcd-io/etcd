@@ -7,9 +7,22 @@ updates:
       interval: weekly
 
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /api
+      - /client/internal/v2
+      - /client/pkg
+      - /client/v3
+      - /etcdctl
+      - /etcdutl
+      - /pkg
+      - /server
+      - /tests
+      - /tools/mod # Not linked from /go.mod
+      - /tools/rw-heatmaps
+      - /tools/testgrid-analysis
     schedule:
-      interval: weekly
+      interval: daily
     allow:
       - dependency-type: all
 
