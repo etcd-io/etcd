@@ -468,7 +468,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 
 	if grpcProxyEnableLogging {
 		opts := []grpc_logging.Option{
-			grpc_logging.WithLogOnEvents(grpc_logging.StartCall, grpc_logging.FinishCall),
+			grpc_logging.WithLogOnEvents(grpc_logging.PayloadReceived, grpc_logging.PayloadSent),
 		}
 
 		grpcChainStreamList = append(grpcChainStreamList,
