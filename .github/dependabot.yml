@@ -26,13 +26,6 @@ updates:
     allow:
       - dependency-type: all
 
-  - package-ecosystem: gomod
-    directory: /tools/mod # Not linked from /go.mod
-    schedule:
-      interval: weekly
-    allow:
-      - dependency-type: all
-
   - package-ecosystem: docker
     directory: /
     schedule:
