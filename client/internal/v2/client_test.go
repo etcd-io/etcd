@@ -318,7 +318,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 }
 
 func TestHTTPClusterClientDo(t *testing.T) {
-	fakeErr := errors.New("fake")
+	fakeErr := errors.New("fake!")
 	fakeURL := url.URL{}
 	tests := []struct {
 		client *httpClusterClient
