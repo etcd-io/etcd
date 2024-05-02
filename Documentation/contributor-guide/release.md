@@ -58,7 +58,7 @@ which don't need to be executed before releasing each version.
     - Ensure the Golang version matches the version defined in `.go-version` file.
     - Ensure non-privileged users can run docker commands, refer to the [Linux postinstall](https://docs.docker.com/engine/install/linux-postinstall/).
     - Ensure there is at least 500MB of free space on your Linux machine.
-3. Install gsutil, refer to [gsutil_install](https://cloud.google.com/storage/docs/gsutil_install).
+3. Install gsutil, refer to [gsutil_install](https://cloud.google.com/storage/docs/gsutil_install). When asked about cloud project to use, pick `etcd-development`.
 4. Authenticate the image registry, refer to [Authentication methods](https://cloud.google.com/container-registry/docs/advanced-authentication).
    - `gcloud auth login`
    - `gcloud auth configure-docker`
