@@ -161,7 +161,7 @@ function run_for_module {
   local module=${1:-"."}
   shift 1
   (
-    cd "${ETCD_ROOT_DIR}/${module}" && "$@"
+    cd "${ETCD_ROOT_DIR}/${module}" && "${@//\$MODULE_DIR/$module}"
   )
 }
 

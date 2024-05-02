@@ -411,7 +411,9 @@ function govet_shadow_pass {
 }
 
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
+  local opts
+  read -ra opts <<< "${GOLANGCI_LINT_PASS_OPTIONS:-}"
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" "${opts[@]}"
 }
 
 function lint_fix_pass {

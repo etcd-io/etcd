@@ -34,7 +34,7 @@ jobs:
       - run: |
           set -euo pipefail
 
-          make verify
+          GOLANGCI_LINT_PASS_OPTIONS='--out-format=github-actions --path-prefix=$MODULE_DIR' make verify
       - run: |
           set -euo pipefail
 
