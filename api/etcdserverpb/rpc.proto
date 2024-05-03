@@ -1185,6 +1185,8 @@ message StatusResponse {
   bool isLearner = 10 [(versionpb.etcd_version_field)="3.4"];
   // storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version.
   string storageVersion = 11 [(versionpb.etcd_version_field)="3.6"];
+  // dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)
+  int64 dbSizeQuota = 12 [(versionpb.etcd_version_field)="3.6"];
 }
 
 message AuthEnableRequest {

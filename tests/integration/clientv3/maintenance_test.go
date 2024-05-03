@@ -35,6 +35,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/lease"
+	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
@@ -397,7 +398,7 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 func TestMaintenanceStatus(t *testing.T) {
 	integration2.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, QuotaBackendBytes: storage.DefaultQuotaBytes})
 	defer clus.Terminate(t)
 
 	t.Logf("Waiting for leader...")
@@ -424,6 +425,9 @@ func TestMaintenanceStatus(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Logf("Response from %v: %v", i, resp)
+		if resp.DbSizeQuota != storage.DefaultQuotaBytes {
+			t.Errorf("unexpected backend default quota returned: %d, expected %d", resp.DbSizeQuota, storage.DefaultQuotaBytes)
+		}
 		if prevID == 0 {
 			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
 			continue
