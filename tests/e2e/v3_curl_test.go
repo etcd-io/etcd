@@ -18,6 +18,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"path"
 	"strconv"
 	"testing"
@@ -244,7 +245,7 @@ func testV3CurlAuth(cx ctlCtx) {
 			lineFunc   = func(txt string) bool { return true }
 		)
 
-		cmdArgs = e2e.CURLPrefixArgsCluster(cx.epc, "POST", e2e.CURLReq{Endpoint: path.Join(p, "/auth/authenticate"), Value: string(authreq)})
+		cmdArgs = e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{Endpoint: path.Join(p, "/auth/authenticate"), Value: string(authreq)})
 		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 		testutil.AssertNil(cx.t, err)
 		defer proc.Close()
@@ -283,7 +284,7 @@ func testV3CurlCampaign(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatal(err)
 	}
-	cargs := e2e.CURLPrefixArgsCluster(cx.epc, "POST", e2e.CURLReq{
+	cargs := e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{
 		Endpoint: path.Join(cx.apiPrefix, "/election/campaign"),
 		Value:    string(cdata),
 	})

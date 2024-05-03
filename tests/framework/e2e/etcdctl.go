@@ -61,6 +61,12 @@ func (ctl *Etcdctl) Get(key string) (*clientv3.GetResponse, error) {
 	return &resp, err
 }
 
+func (ctl *Etcdctl) GetWithPrefix(key string) (*clientv3.GetResponse, error) {
+	var resp clientv3.GetResponse
+	err := ctl.spawnJsonCmd(&resp, "get", key, "--prefix")
+	return &resp, err
+}
+
 func (ctl *Etcdctl) Put(key, value string) error {
 	if ctl.v2 {
 		panic("Unsupported method for v2")
@@ -146,6 +152,15 @@ func (ctl *Etcdctl) MemberAdd(name string, peerURLs []string) (*clientv3.MemberA
 	}
 	var resp clientv3.MemberAddResponse
 	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--peer-urls", strings.Join(peerURLs, ","))
+	return &resp, err
+}
+
+func (ctl *Etcdctl) MemberAddAsLearner(name string, peerURLs []string) (*clientv3.MemberAddResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	var resp clientv3.MemberAddResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerURLs, ","))
 	return &resp, err
 }
 

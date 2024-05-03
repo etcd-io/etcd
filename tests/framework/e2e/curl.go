@@ -43,13 +43,12 @@ type CURLReq struct {
 
 // CURLPrefixArgsCluster builds the beginning of a curl command for a given key
 // addressed to a random URL in the given cluster.
-func CURLPrefixArgsCluster(clus *EtcdProcessCluster, method string, req CURLReq) []string {
-	member := clus.Procs[rand.Intn(clus.Cfg.ClusterSize)]
+func CURLPrefixArgsCluster(cfg *EtcdProcessClusterConfig, member EtcdProcess, method string, req CURLReq) []string {
 	clientURL := member.Config().Acurl
 	if req.MetricsURLScheme != "" {
 		clientURL = member.EndpointsMetrics()[0]
 	}
-	return CURLPrefixArgs(clientURL, clus.Cfg.ClientTLS, !clus.Cfg.NoCN, method, req)
+	return CURLPrefixArgs(clientURL, cfg.ClientTLS, !cfg.NoCN, method, req)
 }
 
 // CURLPrefixArgs builds the beginning of a curl command for a given key
@@ -111,13 +110,13 @@ func CURLPrefixArgs(clientURL string, connType ClientConnType, CN bool, method s
 }
 
 func CURLPost(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgsCluster(clus, "POST", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "POST", req), req.Expected)
 }
 
 func CURLPut(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgsCluster(clus, "PUT", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "PUT", req), req.Expected)
 }
 
 func CURLGet(clus *EtcdProcessCluster, req CURLReq) error {
-	return SpawnWithExpect(CURLPrefixArgsCluster(clus, "GET", req), req.Expected)
+	return SpawnWithExpect(CURLPrefixArgsCluster(clus.Cfg, clus.Procs[rand.Intn(clus.Cfg.ClusterSize)], "GET", req), req.Expected)
 }
