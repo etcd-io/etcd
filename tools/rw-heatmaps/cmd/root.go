@@ -56,7 +56,8 @@ func NewRootCommand() *cobra.Command {
 				}
 			}
 
-			return chart.PlotHeatMaps(datasets, o.title, o.outputImageFile, o.outputFormat, o.zeroCentered)
+			return chart.PlotLineCharts(datasets, o.title, o.outputImageFile, o.outputFormat)
+			//return chart.PlotHeatMaps(datasets, o.title, o.outputImageFile, o.outputFormat, o.zeroCentered)
 		},
 	}
 

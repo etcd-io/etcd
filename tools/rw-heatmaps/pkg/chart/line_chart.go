@@ -52,10 +52,10 @@ func PlotLineCharts(datasets []*dataset.DataSet, title, outputImageFile, outputF
 
 func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	// Make a 4x2 grid of heatmaps.
-	const rows, cols = 4, 2
+	const rows, cols = 8, 1
 
 	// Set the width and height of the canvas.
-	const width, height = 30 * vg.Centimeter, 40 * vg.Centimeter
+	const width, height = 30 * vg.Centimeter, 100 * vg.Centimeter
 
 	canvas := vgimg.New(width, height)
 	dc := draw.New(canvas)
@@ -73,8 +73,10 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	}
 
 	plots := make([][]*plot.Plot, rows)
+	legends := make([][]plot.Legend, rows)
 	for i := range plots {
 		plots[i] = make([]*plot.Plot, cols)
+		legends[i] = make([]plot.Legend, cols)
 	}
 
 	// Load records into the grid.
@@ -82,7 +84,9 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	row, col := 0, 0
 	for _, ratio := range ratios {
 		records := datasets[0].Records[ratio]
-		plots[row][col] = plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records)
+		p, l := plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records)
+		plots[row][col] = p
+		legends[row][col] = l
 
 		if col++; col == cols {
 			col = 0
@@ -99,7 +103,14 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 				continue
 			}
 
-			c := draw.Crop(canvases[i][j], 0, 0, 0, 0)
+			l := legends[i][j]
+			r := l.Rectangle(canvases[i][j])
+			legendWidth := r.Max.X - r.Min.X
+			// Adjust the legend down a little.
+			l.YOffs = plots[i][j].Title.TextStyle.FontExtents().Height * 3
+			l.Draw(canvases[i][j])
+
+			c := draw.Crop(canvases[i][j], 0, -legendWidth-vg.Millimeter, 0, 0)
 			plots[i][j].Draw(c)
 		}
 	}
@@ -115,7 +126,7 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	return canvas
 }
 
-func plotIndividualLineChart(title string, records []dataset.DataRecord) *plot.Plot {
+func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.Plot, plot.Legend) {
 	p := plot.New()
 	p.Title.Text = title
 	p.X.Label.Text = "Connections Amount"
@@ -124,6 +135,8 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) *plot.P
 	p.Y.Label.Text = "QPS (Requests/sec)"
 	p.Y.Scale = plot.LogScale{}
 	p.Y.Tick.Marker = pow2Ticks{}
+
+	legend := plot.NewLegend()
 
 	var values []int
 	rec := make(map[int64][]dataset.DataRecord)
@@ -166,7 +179,7 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) *plot.P
 		s.Shape = DefaultGlyphShapes[i%len(DefaultGlyphShapes)]
 		p.Add(l, s)
 		if i == 0 {
-			p.Legend.Add("read", plot.Thumbnailer(l))
+			legend.Add("read", plot.Thumbnailer(l))
 		}
 
 		l, s, err = plotter.NewLinePoints(writePts)
@@ -174,14 +187,20 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) *plot.P
 			panic(err)
 		}
 		l.Color = color.RGBA{90, 155, 212, 255}
-		l.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		//l.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
 		s.Color = l.Color
 		s.Shape = DefaultGlyphShapes[i%len(DefaultGlyphShapes)]
 		p.Add(l, s)
 		if i == 0 {
-			p.Legend.Add("write", plot.Thumbnailer(l))
+			legend.Add("write", plot.Thumbnailer(l))
 		}
+
+		sc, _ := plotter.NewScatter(writePts)
+		sc.Color = color.RGBA{0, 0, 0, 255}
+		sc.Shape = s.Shape
+		sc.XYs = s.XYs
+		legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(sc))
 	}
 
-	return p
+	return p, legend
 }
