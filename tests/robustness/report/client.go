@@ -58,9 +58,13 @@ func persistClientReports(t *testing.T, lg *zap.Logger, path string, reports []C
 		}
 		if len(r.Watch) != 0 {
 			persistWatchOperations(t, lg, filepath.Join(clientDir, "watch.json"), r.Watch)
+		} else {
+			lg.Info("no watch operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 		if len(r.KeyValue) != 0 {
 			persistKeyValueOperations(t, lg, filepath.Join(clientDir, "operations.json"), r.KeyValue)
+		} else {
+			lg.Info("no KV operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 	}
 }
