@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -143,6 +145,9 @@ type EtcdProcessClusterConfig struct {
 	GoFailClientTimeout time.Duration
 	LazyFSEnabled       bool
 	PeerProxy           bool
+	SSLTerminationProxy bool
+	BlackholeMap        map[string]bool
+	BlackholeMapMu      *sync.RWMutex
 
 	// Process config
 
@@ -253,6 +258,10 @@ func WithIsPeerTLS(isPeerTLS bool) EPClusterOption {
 
 func WithIsPeerAutoTLS(isPeerAutoTLS bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.IsPeerAutoTLS = isPeerAutoTLS }
+}
+
+func WithSSLTerminationProxy(SSLTerminationProxy bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.SSLTerminationProxy = SSLTerminationProxy }
 }
 
 func WithClientAutoTLS(isClientAutoTLS bool) EPClusterOption {
@@ -397,6 +406,10 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 	if cfg.ServerConfig.SnapshotCount == 0 {
 		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
+	if cfg.SSLTerminationProxy {
+		cfg.BlackholeMap = make(map[string]bool)
+		cfg.BlackholeMapMu = &sync.RWMutex{}
+	}
 
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
 	epc := &EtcdProcessCluster{
@@ -481,12 +494,25 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
 	var curl string
-	port := cfg.BasePort + 5*i
+	port := cfg.BasePort + 6*i
 	clientPort := port
-	peerPort := port + 1
+	peerPort := port + 1 // the port the the peer actually listens on
 	metricsPort := port + 2
-	peer2Port := port + 3
+	peer2Port := port + 3 // the port that the peer advertises
 	clientHTTPPort := port + 4
+	transparentProxyPort := port + 5 // used when SSL termination proxy is turned on
+
+	/*
+		0
+		out = 20003
+		listen = 20005
+		1
+		out = 20009
+		listen = 20011
+		2
+		out = 20015
+		listen = 20017
+	*/
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -499,15 +525,60 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
+	var SSLTerminationProxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
 		}
+
+		/*
+			if the SSL terminating proxy is switch off, the traffic will go like this
+			peer2Port        -- (transparent proxy)-- peerPort
+			peerAdvertiseURL 						  peerListenURL
+
+			if the SSL terminating proxy is switch on, the traffic will go like this
+			peer2Port        --(SSL terminating proxy)-- transparentProxyPort -- (transparent proxy)-- peerPort
+			peerAdvertiseURL 							 transparentProxyURL						   peerListenURL
+		*/
 		peerAdvertiseURL.Host = fmt.Sprintf("localhost:%d", peer2Port)
-		proxyCfg = &proxy.ServerConfig{
-			Logger: zap.NewNop(),
-			To:     peerListenURL,
-			From:   peerAdvertiseURL,
+		transparentProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", transparentProxyPort)}
+		if cfg.SSLTerminationProxy {
+			connectionMap := make(map[string]string)
+			var connectionMapMu sync.RWMutex
+
+			SSLTerminationProxyCfg = &proxy.ServerConfig{
+				Logger: zap.NewNop(),
+				To:     transparentProxyURL,
+				From:   peerAdvertiseURL,
+				TLSInfo: transport.TLSInfo{
+					CertFile:      CertPath,
+					KeyFile:       PrivateKeyPath,
+					TrustedCAFile: CaPath,
+				},
+				IsSSLTerminatingProxy: true,
+				ConnectionMap:         connectionMap,
+				ConnectionMapMu:       &connectionMapMu,
+				BlackholeMap:          cfg.BlackholeMap,
+				BlackholeMapMu:        cfg.BlackholeMapMu,
+			}
+
+			proxyCfg = &proxy.ServerConfig{
+				Logger:                zap.NewNop(),
+				To:                    peerListenURL,
+				From:                  transparentProxyURL,
+				IsSSLTerminatingProxy: false,
+				ConnectionMap:         connectionMap,
+				ConnectionMapMu:       &connectionMapMu,
+				BlackholeMap:          cfg.BlackholeMap,
+				BlackholeMapMu:        cfg.BlackholeMapMu,
+			}
+		} else {
+			proxyCfg = &proxy.ServerConfig{
+				Logger:                zap.NewNop(),
+				To:                    peerListenURL,
+				From:                  peerAdvertiseURL,
+				IsSSLTerminatingProxy: false,
+			}
 		}
 	}
 
@@ -624,6 +695,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		KeepDataDir:         cfg.KeepDataDir,
 		Name:                name,
 		PeerURL:             peerAdvertiseURL,
+		PeerListenURL:       peerListenURL,
 		ClientURL:           curl,
 		ClientHTTPURL:       clientHTTPURL,
 		MetricsURL:          murl,
@@ -631,6 +703,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		GoFailPort:          gofailPort,
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
 		Proxy:               proxyCfg,
+		SSLTerminationProxy: SSLTerminationProxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
 }

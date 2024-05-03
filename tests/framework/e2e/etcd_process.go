@@ -69,12 +69,13 @@ type LogsExpect interface {
 }
 
 type EtcdServerProcess struct {
-	cfg        *EtcdServerProcessConfig
-	proc       *expect.ExpectProcess
-	proxy      proxy.Server
-	lazyfs     *LazyFS
-	failpoints *BinaryFailpoints
-	donec      chan struct{} // closed when Interact() terminates
+	cfg                 *EtcdServerProcessConfig
+	proc                *expect.ExpectProcess
+	proxy               proxy.Server
+	SSLTerminationProxy proxy.Server
+	lazyfs              *LazyFS
+	failpoints          *BinaryFailpoints
+	donec               chan struct{} // closed when Interact() terminates
 }
 
 type EtcdServerProcessConfig struct {
@@ -91,6 +92,7 @@ type EtcdServerProcessConfig struct {
 	Name string
 
 	PeerURL       url.URL
+	PeerListenURL url.URL
 	ClientURL     string
 	ClientHTTPURL string
 	MetricsURL    string
@@ -100,8 +102,9 @@ type EtcdServerProcessConfig struct {
 	GoFailPort          int
 	GoFailClientTimeout time.Duration
 
-	LazyFSEnabled bool
-	Proxy         *proxy.ServerConfig
+	LazyFSEnabled       bool
+	Proxy               *proxy.ServerConfig
+	SSLTerminationProxy *proxy.ServerConfig
 }
 
 func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -150,6 +153,15 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	ep.donec = make(chan struct{})
 	if ep.proc != nil {
 		panic("already started")
+	}
+	if ep.cfg.SSLTerminationProxy != nil && ep.SSLTerminationProxy == nil {
+		ep.cfg.lg.Info("starting SSL termination proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.SSLTerminationProxy.From.String()), zap.String("to", ep.cfg.SSLTerminationProxy.To.String()))
+		ep.SSLTerminationProxy = proxy.NewServer(*ep.cfg.SSLTerminationProxy)
+		select {
+		case <-ep.SSLTerminationProxy.Ready():
+		case err := <-ep.SSLTerminationProxy.Error():
+			return err
+		}
 	}
 	if ep.cfg.Proxy != nil && ep.proxy == nil {
 		ep.cfg.lg.Info("starting proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.Proxy.From.String()), zap.String("to", ep.cfg.Proxy.To.String()))
@@ -200,23 +212,12 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 
 	ep.cfg.lg.Info("stopping server...", zap.String("name", ep.cfg.Name))
 
-	defer func() {
-		ep.proc = nil
-	}()
-
-	err = ep.proc.Stop()
-	if err != nil {
-		return err
-	}
-	err = ep.proc.Close()
-	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-		return err
-	}
-	<-ep.donec
-	ep.donec = make(chan struct{})
-	if ep.cfg.PeerURL.Scheme == "unix" || ep.cfg.PeerURL.Scheme == "unixs" {
-		err = os.Remove(ep.cfg.PeerURL.Host + ep.cfg.PeerURL.Path)
-		if err != nil && !os.IsNotExist(err) {
+	// TODO: if we terminate the proxies first, stopping SSL termination proxy will not hang as long. Why?! (timeout setting?)
+	if ep.SSLTerminationProxy != nil {
+		ep.cfg.lg.Info("stopping SSL termination proxy...", zap.String("name", ep.cfg.Name))
+		err = ep.SSLTerminationProxy.Close()
+		ep.SSLTerminationProxy = nil
+		if err != nil {
 			return err
 		}
 	}
@@ -237,6 +238,28 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 			return err
 		}
 	}
+
+	defer func() {
+		ep.proc = nil
+	}()
+
+	err = ep.proc.Stop()
+	if err != nil {
+		return err
+	}
+	err = ep.proc.Close()
+	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+		return err
+	}
+	<-ep.donec
+	ep.donec = make(chan struct{})
+	if ep.cfg.PeerURL.Scheme == "unix" || ep.cfg.PeerURL.Scheme == "unixs" {
+		err = os.Remove(ep.cfg.PeerURL.Host + ep.cfg.PeerURL.Path)
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -375,11 +398,19 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
+<<<<<<< HEAD
 		errMsg, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return fmt.Errorf("bad status code: %d, err: %w", resp.StatusCode, err)
 		}
 		return fmt.Errorf("bad status code: %d, err: %s", resp.StatusCode, errMsg)
+=======
+		errorBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("bad status code: %d (%#v)", resp.StatusCode, string(errorBody))
+>>>>>>> 60c52400e ([RFC] Attempt to make Blockhole blocking on L7)
 	}
 	return nil
 }

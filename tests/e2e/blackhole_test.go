@@ -43,6 +43,7 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 		e2e.WithClusterSize(clusterSize),
 		e2e.WithSnapshotCount(10),
 		e2e.WithSnapshotCatchUpEntries(10),
+		e2e.WithSSLTerminationProxy(true),
 		e2e.WithIsPeerTLS(true),
 		e2e.WithPeerProxy(true),
 	)
@@ -68,6 +69,7 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 
 	t.Logf("Wait for new leader election with remaining members")
 	leaderEPC := epc.Procs[waitLeader(t, epc, mockPartitionNodeIndex)]
+
 	t.Log("Writing 20 keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot.)")
 	writeKVs(t, leaderEPC.Etcdctl(), 0, 20)
 	e2e.AssertProcessLogs(t, leaderEPC, "saved snapshot")
@@ -76,7 +78,8 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	assertRevision(t, leaderEPC, 21)
 	assertRevision(t, partitionedMember, 1)
 
-	// Wait for some time to restore the network
+	// Wait for 1s before restoring the network
+	t.Logf("Wait 1s before restoring the network")
 	time.Sleep(1 * time.Second)
 	t.Logf("Unblackholing traffic from and to member %q", partitionedMember.Config().Name)
 	proxy.UnblackholeTx()

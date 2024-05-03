@@ -64,9 +64,6 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 func Blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
 	proxy := member.PeerProxy()
 
-	// Blackholing will cause peers to not be able to use streamWriters registered with member
-	// but peer traffic is still possible because member has 'pipeline' with peers
-	// TODO: find a way to stop all traffic
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
