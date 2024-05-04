@@ -9,7 +9,7 @@ REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"
 
 if [ -z "$VER" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
-  exit 255
+  exit 1
 fi
 
 function setup_env {

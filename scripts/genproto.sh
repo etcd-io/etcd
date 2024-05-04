@@ -9,7 +9,7 @@ shopt -s globstar
 
 if ! [[ "$0" =~ scripts/genproto.sh ]]; then
   echo "must be run from repository root"
-  exit 255
+  exit 1
 fi
 
 # Set SED variable
@@ -34,7 +34,7 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
     "arm64") file="aarch_64" ;;
     *)
       echo "Unsupported architecture: ${arch}"
-      exit 255
+      exit 1
       ;;
   esac
 

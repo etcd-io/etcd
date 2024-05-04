@@ -10,7 +10,7 @@ source ./scripts/test_lib.sh
 VERSION=${1:-}
 if [ -z "${VERSION}" ]; then
   echo "Usage: ${0} VERSION" >> /dev/stderr
-  exit 255
+  exit 1
 fi
 
 if ! command -v docker >/dev/null; then
