@@ -1,0 +1,9 @@
+FROM golang:1.22.3
+
+RUN apt-get update && \
+    apt install -y \
+    shellcheck unzip python3.11-venv jq && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY . /go/etcd
+WORKDIR /go/etcd

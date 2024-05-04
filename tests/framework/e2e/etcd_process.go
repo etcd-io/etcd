@@ -55,7 +55,8 @@ type EtcdProcess interface {
 	Stop() error
 	Close() error
 	Config() *EtcdServerProcessConfig
-	PeerProxy() proxy.Server
+	PeerReverseProxy() proxy.Server
+	PeerForwardProxy() proxy.Server
 	Failpoints() *BinaryFailpoints
 	LazyFS() *LazyFS
 	Logs() LogsExpect
@@ -69,12 +70,13 @@ type LogsExpect interface {
 }
 
 type EtcdServerProcess struct {
-	cfg        *EtcdServerProcessConfig
-	proc       *expect.ExpectProcess
-	proxy      proxy.Server
-	lazyfs     *LazyFS
-	failpoints *BinaryFailpoints
-	donec      chan struct{} // closed when Interact() terminates
+	cfg          *EtcdServerProcessConfig
+	proc         *expect.ExpectProcess
+	forwardProxy proxy.Server
+	reverseProxy proxy.Server
+	lazyfs       *LazyFS
+	failpoints   *BinaryFailpoints
+	donec        chan struct{} // closed when Interact() terminates
 }
 
 type EtcdServerProcessConfig struct {
@@ -101,7 +103,8 @@ type EtcdServerProcessConfig struct {
 	GoFailClientTimeout time.Duration
 
 	LazyFSEnabled bool
-	Proxy         *proxy.ServerConfig
+	ReverseProxy  *proxy.ServerConfig
+	ForwardProxy  *proxy.ServerConfig
 }
 
 func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -151,12 +154,26 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	if ep.proc != nil {
 		panic("already started")
 	}
-	if ep.cfg.Proxy != nil && ep.proxy == nil {
-		ep.cfg.lg.Info("starting proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.Proxy.From.String()), zap.String("to", ep.cfg.Proxy.To.String()))
-		ep.proxy = proxy.NewServer(*ep.cfg.Proxy)
+
+	if !((ep.cfg.ReverseProxy != nil && ep.cfg.ForwardProxy != nil) || (ep.cfg.ReverseProxy == nil && ep.cfg.ForwardProxy == nil)) {
+		panic("both forward and reverse proxy confiugration files must exist or not exist at the same time")
+	}
+
+	if ep.cfg.ReverseProxy != nil && ep.reverseProxy == nil {
+		ep.cfg.lg.Info("starting reverse proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.ReverseProxy.From.String()), zap.String("to", ep.cfg.ReverseProxy.To.String()))
+		ep.reverseProxy = proxy.NewServer(*ep.cfg.ReverseProxy)
 		select {
-		case <-ep.proxy.Ready():
-		case err := <-ep.proxy.Error():
+		case <-ep.reverseProxy.Ready():
+		case err := <-ep.reverseProxy.Error():
+			return err
+		}
+	}
+	if ep.cfg.ForwardProxy != nil && ep.forwardProxy == nil {
+		ep.cfg.lg.Info("starting forward proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.ForwardProxy.From.String()), zap.String("to", ep.cfg.ForwardProxy.To.String()))
+		ep.forwardProxy = proxy.NewServer(*ep.cfg.ForwardProxy)
+		select {
+		case <-ep.forwardProxy.Ready():
+		case err := <-ep.forwardProxy.Error():
 			return err
 		}
 	}
@@ -221,10 +238,18 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 		}
 	}
 	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.Name))
-	if ep.proxy != nil {
-		ep.cfg.lg.Info("stopping proxy...", zap.String("name", ep.cfg.Name))
-		err = ep.proxy.Close()
-		ep.proxy = nil
+	if ep.forwardProxy != nil {
+		ep.cfg.lg.Info("stopping forward proxy...", zap.String("name", ep.cfg.Name))
+		err = ep.forwardProxy.Close()
+		ep.forwardProxy = nil
+		if err != nil {
+			return err
+		}
+	}
+	if ep.reverseProxy != nil {
+		ep.cfg.lg.Info("stopping reverse proxy...", zap.String("name", ep.cfg.Name))
+		err = ep.reverseProxy.Close()
+		ep.reverseProxy = nil
 		if err != nil {
 			return err
 		}
@@ -326,8 +351,12 @@ func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	}
 }
 
-func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
-	return ep.proxy
+func (ep *EtcdServerProcess) PeerReverseProxy() proxy.Server {
+	return ep.reverseProxy
+}
+
+func (ep *EtcdServerProcess) PeerForwardProxy() proxy.Server {
+	return ep.forwardProxy
 }
 
 func (ep *EtcdServerProcess) LazyFS() *LazyFS {

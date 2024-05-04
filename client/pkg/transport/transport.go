@@ -18,6 +18,8 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -31,7 +33,17 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	}
 
 	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			// according to the comment of http.ProxyFromEnvironment: if the
+			// proxy URL is "localhost" (with or without a port number),
+			// then a nil URL and nil error will be returned.
+			// Thus, we need to workaround this by manually setting an
+			// ENV named FORWARD_PROXY and parse the URL (which is a localhost in our case)
+			if forwardProxy, exists := os.LookupEnv("FORWARD_PROXY"); exists {
+				return url.Parse(forwardProxy)
+			}
+			return http.ProxyFromEnvironment(req)
+		},
 		DialContext: (&net.Dialer{
 			Timeout: dialtimeoutd,
 			// value taken from http.DefaultTransport
