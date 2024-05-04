@@ -155,12 +155,12 @@ function generic_checker {
   if ! output=$("${cmd[@]}"); then
     echo "${output}"
     log_error -e "FAIL: '${cmd[*]}' checking failed (!=0 return code)"
-    return 255
+    return 1
   fi
   if [ -n "${output}" ]; then
     echo "${output}"
     log_error -e "FAIL: '${cmd[*]}' checking failed (printed output)"
-    return 255
+    return 1
   fi
 }
 
