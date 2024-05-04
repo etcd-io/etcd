@@ -87,9 +87,13 @@ linters-settings: # please keep this alphabetized
       - name: error-strings
         severity: error
         disabled: false
-      # TODO: enable the following rules
       - name: var-naming
-        disabled: true
+        disabled: false
+        arguments:
+          # The following is the configuration for var-naming rule, the first element is the allow list and the second element is the deny list.
+          - [] # AllowList: leave it empty to use the default (empty, too). This means that we're not relaxing the rule in any way, i.e. elementId will raise a violation, it should be elementID, refer to the next line to see the list of denied initialisms.
+          - ["GRPC", "WAL"] # DenyList: Add GRPC and WAL to strict the rule not allowing instances like Wal or Grpc. The default values are located at commonInitialisms, refer to: https://github.com/mgechev/revive/blob/v1.3.7/lint/utils.go#L93-L133.
+      # TODO: enable the following rules
       - name: exported
         disabled: true
       - name: unexported-return

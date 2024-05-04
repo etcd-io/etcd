@@ -110,9 +110,9 @@ func processRow(dashboard, tab string, row *apipb.ListRowsResponse_Row, allTests
 	t.FailureLogs = logs
 	t.FailureRate = float32(failed) / float32(total)
 	if t.FailedRuns > 0 {
-		dashboardUrl := fmt.Sprintf("[%s](https://testgrid.k8s.io/%s#%s)", tab, dashboard, tab)
+		dashboardURL := fmt.Sprintf("[%s](https://testgrid.k8s.io/%s#%s)", tab, dashboard, tab)
 		t.IssueBody = fmt.Sprintf("## %s Test: %s \nTest failed %.1f%% (%d/%d) of the time\n\nfailure logs are:\n| commit | started | log |\n| --- | --- | --- |\n%s\n",
-			dashboardUrl, t.FullName, t.FailureRate*100, t.FailedRuns, t.TotalRuns, strings.Join(t.FailureLogs, "\n"))
+			dashboardURL, t.FullName, t.FailureRate*100, t.FailedRuns, t.TotalRuns, strings.Join(t.FailureLogs, "\n"))
 		t.IssueBody += "\nPlease follow the [instructions in the contributing guide](https://github.com/etcd-io/etcd/blob/main/CONTRIBUTING.md#check-for-flaky-tests) to reproduce the issue.\n"
 		fmt.Printf("%s failed %.1f%% (%d/%d) of the time\n", t.FullName, t.FailureRate*100, t.FailedRuns, t.TotalRuns)
 	}
