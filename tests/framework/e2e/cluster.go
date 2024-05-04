@@ -481,12 +481,13 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
 	var curl string
-	port := cfg.BasePort + 5*i
+	port := cfg.BasePort + 6*i
 	clientPort := port
-	peerPort := port + 1
+	peerPort := port + 1 // the port that the peer actually listens on
 	metricsPort := port + 2
-	peer2Port := port + 3
+	peer2Port := port + 3 // the port that the peer advertises
 	clientHTTPPort := port + 4
+	forwardProxyPort := port + 5 // the port of the forward proxy
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -499,6 +500,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
+	var forwardProxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
@@ -509,6 +511,19 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 			To:     peerListenURL,
 			From:   peerAdvertiseURL,
 		}
+
+		// setup forward proxy
+		forwardProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", forwardProxyPort)}
+		forwardProxyCfg = &proxy.ServerConfig{
+			Logger:         zap.NewNop(),
+			From:           forwardProxyURL,
+			IsForwardProxy: true,
+		}
+
+		if cfg.EnvVars == nil {
+			cfg.EnvVars = make(map[string]string)
+		}
+		cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://127.0.0.1:%d", forwardProxyPort)
 	}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
@@ -631,6 +646,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		GoFailPort:          gofailPort,
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
 		Proxy:               proxyCfg,
+		ForwardProxy:        forwardProxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
 }

@@ -15,6 +15,8 @@
 package proxy
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -130,17 +132,20 @@ type Server interface {
 
 // ServerConfig defines proxy server configuration.
 type ServerConfig struct {
-	Logger        *zap.Logger
-	From          url.URL
-	To            url.URL
-	TLSInfo       transport.TLSInfo
-	DialTimeout   time.Duration
-	BufferSize    int
-	RetryInterval time.Duration
+	Logger         *zap.Logger
+	From           url.URL
+	To             url.URL
+	TLSInfo        transport.TLSInfo
+	DialTimeout    time.Duration
+	BufferSize     int
+	RetryInterval  time.Duration
+	IsForwardProxy bool
 }
 
 type server struct {
 	lg *zap.Logger
+
+	isForwardProxy bool
 
 	from     url.URL
 	fromPort int
@@ -194,6 +199,8 @@ func NewServer(cfg ServerConfig) Server {
 	s := &server{
 		lg: cfg.Logger,
 
+		isForwardProxy: cfg.IsForwardProxy,
+
 		from: cfg.From,
 		to:   cfg.To,
 
@@ -216,10 +223,12 @@ func NewServer(cfg ServerConfig) Server {
 	if err == nil {
 		s.fromPort, _ = strconv.Atoi(fromPort)
 	}
-	var toPort string
-	_, toPort, err = net.SplitHostPort(cfg.To.Host)
-	if err == nil {
-		s.toPort, _ = strconv.Atoi(toPort)
+	if !s.isForwardProxy {
+		var toPort string
+		_, toPort, err = net.SplitHostPort(cfg.To.Host)
+		if err == nil {
+			s.toPort, _ = strconv.Atoi(toPort)
+		}
 	}
 
 	if s.dialTimeout == 0 {
@@ -239,8 +248,10 @@ func NewServer(cfg ServerConfig) Server {
 	if strings.HasPrefix(s.from.Scheme, "http") {
 		s.from.Scheme = "tcp"
 	}
-	if strings.HasPrefix(s.to.Scheme, "http") {
-		s.to.Scheme = "tcp"
+	if !s.isForwardProxy {
+		if strings.HasPrefix(s.to.Scheme, "http") {
+			s.to.Scheme = "tcp"
+		}
 	}
 
 	addr := fmt.Sprintf(":%d", s.fromPort)
@@ -273,7 +284,10 @@ func (s *server) From() string {
 }
 
 func (s *server) To() string {
-	return fmt.Sprintf("%s://%s", s.to.Scheme, s.to.Host)
+	if !s.isForwardProxy {
+		return fmt.Sprintf("%s://%s", s.to.Scheme, s.to.Host)
+	}
+	return ""
 }
 
 // TODO: implement packet reordering from multiple TCP connections
@@ -353,6 +367,40 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
+		parseHeaderForDestination := func() string {
+			// the first request should always contain a CONNECT header field
+			// since we set the transport to forward the traffic to the proxy
+			buf := make([]byte, s.bufferSize)
+			var data []byte
+			if nr1, err := in.Read(buf); err != nil {
+				if err == io.EOF {
+					panic("No data available for forward proxy to work on")
+				}
+			} else {
+				data = buf[:nr1]
+			}
+
+			// attempt to parse for the HOST from the CONNECT request
+			var req *http.Request
+			if req, err = http.ReadRequest(bufio.NewReader(bytes.NewReader(data))); err != nil {
+				panic("Failed to parse header in forward proxy")
+			}
+
+			if req.Method == http.MethodConnect {
+				// make sure a reply is sent back to the client
+				connectResponse := &http.Response{
+					StatusCode: 200,
+					ProtoMajor: 1,
+					ProtoMinor: 1,
+				}
+				connectResponse.Write(in)
+
+				return req.URL.Host
+			}
+
+			panic("Wrong header type to start the connection")
+		}
+
 		var out net.Conn
 		if !s.tlsInfo.Empty() {
 			var tp *http.Transport
@@ -370,9 +418,19 @@ func (s *server) listenAndServe() {
 				}
 				continue
 			}
-			out, err = tp.DialContext(ctx, s.to.Scheme, s.to.Host)
+			if s.isForwardProxy {
+				dest := parseHeaderForDestination()
+				out, err = tp.DialContext(ctx, "tcp", dest)
+			} else {
+				out, err = tp.DialContext(ctx, s.to.Scheme, s.to.Host)
+			}
 		} else {
-			out, err = net.Dial(s.to.Scheme, s.to.Host)
+			if s.isForwardProxy {
+				dest := parseHeaderForDestination()
+				out, err = net.Dial("tcp", dest)
+			} else {
+				out, err = net.Dial(s.to.Scheme, s.to.Host)
+			}
 		}
 		if err != nil {
 			select {
