@@ -19,15 +19,25 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v60/github"
 )
 
-func createIssues(tests []*TestResultSummary, labels []string) {
-	openIssues := getOpenIssues(labels)
-	for _, t := range tests {
-		createIssueIfNonExist(t, openIssues, append(labels, "help wanted"))
+func createIssues(summary *TabResultSummary, minRuns, maxSubIssues int, labels []string) {
+	subIssues := []string{}
+	for _, t := range summary.TestsWithFailures {
+		if t.TotalRuns < minRuns {
+			continue
+		}
+		subIssue := createOrUpdateIssue(fmt.Sprintf("Flaky Test: %s", t.Name), t.IssueBody, labels)
+		subIssues = append(subIssues, subIssue)
+		if len(subIssues) >= maxSubIssues {
+			break
+		}
 	}
+	body := summary.IssueBody + fmt.Sprintf("\n## Sub-issues\nauto created sub-issues for the top %d failed tests with at least %d runs:\n", maxSubIssues, minRuns) + strings.Join(subIssues, "\n")
+	createOrUpdateIssue(fmt.Sprintf("Flaky Test Set: %s", summary.TabName), body, labels)
 }
 
 func getOpenIssues(labels []string) []*github.Issue {
@@ -54,25 +64,84 @@ func getOpenIssues(labels []string) []*github.Issue {
 	return allIssues
 }
 
-func createIssueIfNonExist(t *TestResultSummary, issues []*github.Issue, labels []string) {
+func createOrUpdateIssue(title, body string, labels []string) string {
+	issues := getOpenIssues(labels)
+	newLabels := append(labels, "help wanted")
+
+	var currentIssue *github.Issue
+	title = strings.TrimSpace(title)
 	// check if there is already an open issue regarding this test
 	for _, issue := range issues {
-		if strings.Contains(*issue.Title, t.Name) {
-			fmt.Printf("%s is already open for test %s\n\n", issue.GetHTMLURL(), t.Name)
-			return
+		if strings.Contains(*issue.Title, title) {
+			fmt.Printf("%s is already open for %s\n", issue.GetHTMLURL(), title)
+			currentIssue = issue
+			break
 		}
 	}
-	fmt.Printf("Opening new issue for %s\n", t.Name)
 	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
 	ctx := context.Background()
-	req := &github.IssueRequest{
-		Title:  github.String(fmt.Sprintf("Flaky test %s", t.Name)),
-		Body:   &t.IssueBody,
-		Labels: &labels,
+	if currentIssue == nil {
+		fmt.Printf("Opening new issue for %s\n", title)
+		req := &github.IssueRequest{
+			Title:  github.String(title),
+			Body:   &body,
+			Labels: &newLabels,
+		}
+		issue, _, err := client.Issues.Create(ctx, githubOwner, githubRepo, req)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("New issue %s created for %s\n\n", issue.GetHTMLURL(), title)
+		return issue.GetHTMLURL()
 	}
-	issue, _, err := client.Issues.Create(ctx, githubOwner, githubRepo, req)
+	// if the issue already exists, append comments
+	comment := &github.IssueComment{
+		Body: &body,
+	}
+	issueComment, _, err := client.Issues.CreateComment(ctx, githubOwner, githubRepo, *currentIssue.Number, comment)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("New issue %s created for %s\n\n", issue.GetHTMLURL(), t.Name)
+	fmt.Printf("New comment %s created for %s\n\n", issueComment.GetHTMLURL(), title)
+	return currentIssue.GetHTMLURL()
+}
+
+func closeStaleIssues(daysBeforeAutoClose int, labels []string) {
+	earliestTimeToConsider := time.Now().AddDate(0, 0, -1*daysBeforeAutoClose)
+	issues := getOpenIssues(labels)
+	client := github.NewClient(nil).WithAuthToken(os.Getenv("GITHUB_TOKEN"))
+	ctx := context.Background()
+	newLabels := append(labels, "stale")
+	warning := fmt.Sprintf("auto close due to no updates for %d days", daysBeforeAutoClose)
+	state := "closed"
+	cnt := 0
+
+	for _, issue := range issues {
+		if issue.UpdatedAt.Before(earliestTimeToConsider) {
+			fmt.Printf("closing stale issue %s last updated at %s\n", *issue.HTMLURL, issue.UpdatedAt.String())
+			comment := &github.IssueComment{
+				Body: &warning,
+			}
+			_, _, err := client.Issues.CreateComment(ctx, githubOwner, githubRepo, *issue.Number, comment)
+			if err != nil {
+				panic(err)
+			}
+
+			req := &github.IssueRequest{
+				Labels: &newLabels,
+				State:  &state,
+			}
+			respIssue, _, err := client.Issues.Edit(ctx, githubOwner, githubRepo, *issue.Number, req)
+			if err != nil {
+				panic(err)
+			}
+			if *respIssue.State == "closed" {
+				fmt.Printf("closed stale issue %s\n", *issue.HTMLURL)
+				cnt++
+			} else {
+				fmt.Printf("failed to close stale issue %s\n", *issue.HTMLURL)
+			}
+		}
+	}
+	fmt.Printf("closed %d/%d stale issues\n", cnt, len(issues))
 }

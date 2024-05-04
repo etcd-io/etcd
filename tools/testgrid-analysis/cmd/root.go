@@ -21,8 +21,10 @@ import (
 )
 
 var (
-	dashboard string
-	tab       string
+	dashboard   string
+	tab         string
+	githubOwner string
+	githubRepo  string
 )
 
 var rootCmd = &cobra.Command{
@@ -41,4 +43,6 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().StringVar(&dashboard, "dashboard", "sig-etcd-periodics", "testgrid dashboard to retrieve data from")
 	rootCmd.PersistentFlags().StringVar(&tab, "tab", "ci-etcd-e2e-amd64", "testgrid tab within the dashboard to retrieve data from")
+	rootCmd.PersistentFlags().StringVar(&githubOwner, "github-owner", "etcd-io", "the github organization to create the issue for")
+	rootCmd.PersistentFlags().StringVar(&githubRepo, "github-repo", "etcd", "the github repo to create the issue for")
 }
