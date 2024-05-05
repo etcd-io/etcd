@@ -47,12 +47,12 @@ type TestResultSummary struct {
 
 func fetchTestResultSummaries(dashboard, tab string) []*TestResultSummary {
 	// Fetch test data
-	rowsURL := fmt.Sprintf("http://testgrid-data.k8s.io/api/v1/dashboards/%s/tabs/%s/rows", dashboard, tab)
+	rowsUrl := fmt.Sprintf("http://testgrid-data.k8s.io/api/v1/dashboards/%s/tabs/%s/rows", dashboard, tab)
 	headersURL := fmt.Sprintf("http://testgrid-data.k8s.io/api/v1/dashboards/%s/tabs/%s/headers", dashboard, tab)
 
 	var testData apipb.ListRowsResponse
 	var headerData apipb.ListHeadersResponse
-	protojson.Unmarshal(fetchJSON(rowsURL), &testData)
+	protojson.Unmarshal(fetchJSON(rowsUrl), &testData)
 	protojson.Unmarshal(fetchJSON(headersURL), &headerData)
 
 	var allTests []string
