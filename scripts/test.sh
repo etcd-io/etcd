@@ -155,12 +155,12 @@ function generic_checker {
   if ! output=$("${cmd[@]}"); then
     echo "${output}"
     log_error -e "FAIL: '${cmd[*]}' checking failed (!=0 return code)"
-    return 1
+    return 255
   fi
   if [ -n "${output}" ]; then
     echo "${output}"
     log_error -e "FAIL: '${cmd[*]}' checking failed (printed output)"
-    return 1
+    return 255
   fi
 }
 
@@ -264,7 +264,7 @@ function cov_pass {
   # shellcheck disable=SC2153
   if [ -z "${COVERDIR:-}" ]; then
     log_error "COVERDIR undeclared"
-    return 1
+    return 255
   fi
 
   local coverdir
@@ -317,7 +317,7 @@ function cov_pass {
     done
     log_warning "Despite failures, you can see partial report:"
     log_warning "  go tool cover -html ${cover_out_file}"
-    return 1
+    return 255
   fi
 
   log_success "done :) [see report: go tool cover -html ${cover_out_file}]"
@@ -444,7 +444,7 @@ function receiver_name_for_package {
       log_error "Mismatched receiver for $recv..."
       grep "$recv" "${gofiles[@]}" | grep 'func ('
     done
-    return 1
+    return 255
   fi
 }
 
@@ -469,17 +469,17 @@ function goword_for_package {
   # only check for broke exported godocs
   if gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${gofiles[@]}" | grep godoc-export | sort); then
     log_error -e "goword checking failed:\\n${gowordRes}"
-    return 1
+    return 255
   fi
   if [ -n "$gowordRes" ]; then
     log_error -e "goword checking returned output:\\n${gowordRes}"
-    return 1
+    return 255
   fi
 }
 
 
 function goword_pass {
-  run_for_modules goword_for_package || return 1
+  run_for_modules goword_for_package || return 255
 }
 
 function go_fmt_for_package {
@@ -512,13 +512,13 @@ function bom_pass {
 
   if [ "${code}" -ne 0 ] ; then
     log_error -e "license-bill-of-materials (code: ${code}) failed with:\\n${output}"
-    return 1
+    return 255
   else
     echo "${output}" > "bom-now.json.tmp"
   fi
   if ! diff ./bill-of-materials.json bom-now.json.tmp; then
     log_error "modularized licenses do not match given bill of materials"
-    return 1
+    return 255
   fi
   rm bom-now.json.tmp
 }
@@ -528,7 +528,7 @@ function bom_pass {
 function dump_deps_of_module() {
   local module
   if ! module=$(run go list -m); then
-    return 1
+    return 255
   fi
   run go list -f "{{if not .Indirect}}{{if .Version}}{{.Path}},{{.Version}},${module}{{end}}{{end}}" -m all
 }
@@ -629,7 +629,7 @@ function mod_tidy_for_module {
 
   if [ "${tmpFileGoModInSync}" -ne 0 ]; then
     log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
-    return 1
+    return 255
   fi
   set -e
 }
@@ -660,7 +660,7 @@ function run_pass {
     if [ "$KEEP_GOING_SUITE" = true ]; then
       return 2
     else
-      exit 1
+      exit 255
     fi
   fi
 }
@@ -676,7 +676,7 @@ for pass in $PASSES; do
 done
 if [ "$fail_flag" = true ]; then
   log_error "There was FAILURE in the test suites ran. Look above log detail"
-  exit 1
+  exit 255
 fi
 
 log_success "SUCCESS"

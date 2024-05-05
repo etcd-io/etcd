@@ -6,7 +6,7 @@ ROOT_MODULE="go.etcd.io/etcd"
 
 if [[ "$(go list)" != "${ROOT_MODULE}/v3" ]]; then
   echo "must be run from '${ROOT_MODULE}/v3' module directory"
-  exit 1
+  exit 255
 fi
 
 function set_root_dir {
@@ -322,7 +322,7 @@ function go_test {
     # shellcheck disable=SC2086
     if ! unpacked_packages=($(go list ${packages})); then
       log_error "Cannot resolve packages: ${packages}"
-      return 1
+      return 255
     fi
   fi
 
@@ -372,7 +372,7 @@ function tool_exists {
   local instruction="${2}"
   if ! command -v "${tool}" >/dev/null; then
     log_warning "Tool: '${tool}' not found on PATH. ${instruction}"
-    return 1
+    return 255
   fi
 }
 
