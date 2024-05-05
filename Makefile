@@ -125,9 +125,11 @@ verify-genproto:
 verify-yamllint:
 ifeq (, $(shell which yamllint))
 	@echo "Installing yamllint..."
-	python3 -m venv bin/python
-	bin/python/bin/python3 -m pip install yamllint
-	./bin/python/bin/yamllint --config-file tools/.yamllint .
+	tmpdir=$$(mktemp -d); \
+	trap "rm -rf $$tmpdir" EXIT; \
+	python3 -m venv $$tmpdir; \
+	$$tmpdir/bin/python3 -m pip install yamllint; \
+	$$tmpdir/bin/yamllint --config-file tools/.yamllint .
 else
 	@echo "yamllint already installed..."
 	yamllint --config-file tools/.yamllint .
