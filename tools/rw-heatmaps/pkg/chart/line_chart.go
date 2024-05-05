@@ -22,6 +22,7 @@ import (
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
 	"gonum.org/v1/plot/vg/draw"
 	"gonum.org/v1/plot/vg/vgimg"
@@ -148,17 +149,6 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 	}
 	sort.Ints(values)
 
-	var DefaultGlyphShapes = []draw.GlyphDrawer{
-		draw.RingGlyph{},
-		draw.SquareGlyph{},
-		draw.TriangleGlyph{},
-		draw.CrossGlyph{},
-		draw.PlusGlyph{},
-		draw.CircleGlyph{},
-		draw.BoxGlyph{},
-		draw.PyramidGlyph{},
-	}
-
 	for i, value := range values {
 		r := rec[int64(value)]
 		readPts := make(plotter.XYs, len(r))
@@ -174,9 +164,9 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 		if err != nil {
 			panic(err)
 		}
-		l.Color = color.RGBA{241, 90, 96, 255}
+		l.Color = plotutil.Color(0)
 		s.Color = l.Color
-		s.Shape = DefaultGlyphShapes[i%len(DefaultGlyphShapes)]
+		s.Shape = plotutil.Shape(i)
 		p.Add(l, s)
 		if i == 0 {
 			legend.Add("read", plot.Thumbnailer(l))
@@ -186,10 +176,10 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 		if err != nil {
 			panic(err)
 		}
-		l.Color = color.RGBA{90, 155, 212, 255}
+		l.Color = plotutil.Color(1)
 		//l.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
 		s.Color = l.Color
-		s.Shape = DefaultGlyphShapes[i%len(DefaultGlyphShapes)]
+		s.Shape = plotutil.Shape(i)
 		p.Add(l, s)
 		if i == 0 {
 			legend.Add("write", plot.Thumbnailer(l))
