@@ -130,6 +130,8 @@ type EtcdProcessCluster struct {
 	Cfg     *EtcdProcessClusterConfig
 	Procs   []EtcdProcess
 	nextSeq int // sequence number of the next etcd process (if it will be required)
+
+	SingleHTTPProxyInstance proxy.Server
 }
 
 type EtcdProcessClusterConfig struct {
@@ -143,6 +145,9 @@ type EtcdProcessClusterConfig struct {
 	GoFailClientTimeout time.Duration
 	LazyFSEnabled       bool
 	PeerProxy           bool
+
+	SingleHTTPProxy     bool
+	SingleHTTPProxyPort int
 
 	// Process config
 
@@ -184,6 +189,8 @@ func DefaultConfig() *EtcdProcessClusterConfig {
 		CN:          true,
 
 		ServerConfig: *embed.NewConfig(),
+
+		SingleHTTPProxyPort: 55688,
 	}
 	cfg.ServerConfig.InitialClusterToken = "new"
 	return cfg
@@ -371,6 +378,10 @@ func WithPeerProxy(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.PeerProxy = enabled }
 }
 
+func WithSingleHTTPProxy(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.SingleHTTPProxy = enabled }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -421,6 +432,20 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
 func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	if cfg.SingleHTTPProxy && epc.SingleHTTPProxyInstance == nil {
+		cfg.Logger.Info("starting single HTTP proxy...", zap.String("name", cfg.ServerConfig.Name))
+		epc.SingleHTTPProxyInstance = proxy.NewServer(proxy.ServerConfig{
+			Logger:      zap.NewNop(),
+			From:        url.URL{Scheme: "tcp", Host: fmt.Sprintf("localhost:%d", cfg.SingleHTTPProxyPort)},
+			IsHTTPProxy: true,
+		})
+		select {
+		case <-epc.SingleHTTPProxyInstance.Ready():
+		case err := <-epc.SingleHTTPProxyInstance.Error():
+			return nil, err
+		}
+	}
+
 	if cfg.RollingStart {
 		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %v", err)
@@ -501,6 +526,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
 	var httpProxyCfg *proxy.ServerConfig
+
+	if cfg.PeerProxy && cfg.SingleHTTPProxy {
+		panic("Can't only use PeerProxy and SingleHTTPProxy at the same time")
+	}
+
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
@@ -524,6 +554,17 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 			cfg.EnvVars = make(map[string]string)
 		}
 		cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://127.0.0.1:%d", httpProxyPort)
+	} else if cfg.SingleHTTPProxy {
+		if !cfg.IsPeerTLS {
+			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
+		}
+
+		if cfg.EnvVars == nil {
+			cfg.EnvVars = make(map[string]string)
+		}
+		// TODO: switch to using basic
+		cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://%d:doesnotmatter@127.0.0.1:%d", peerPort, cfg.SingleHTTPProxyPort)
+		// cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://127.0.0.1:%d", httpProxyPort)
 	}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
@@ -986,6 +1027,14 @@ func (epc *EtcdProcessCluster) Close() error {
 			err = cerr
 		}
 	}
+
+	if epc.SingleHTTPProxyInstance != nil {
+		epc.lg.Info("closing single HTTP Proxy...")
+		if err = epc.SingleHTTPProxyInstance.Close(); err != nil {
+			return err
+		}
+	}
+
 	epc.lg.Info("closed test cluster.")
 	return err
 }

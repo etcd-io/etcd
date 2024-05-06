@@ -44,7 +44,7 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 		e2e.WithSnapshotCount(10),
 		e2e.WithSnapshotCatchUpEntries(10),
 		e2e.WithIsPeerTLS(true),
-		e2e.WithPeerProxy(true),
+		e2e.WithSingleHTTPProxy(true),
 	)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
@@ -58,13 +58,8 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	}
 	partitionedMember := epc.Procs[mockPartitionNodeIndex]
 	// Mock partition
-	proxy := partitionedMember.PeerProxy()
-	httpProxy := partitionedMember.PeerHTTPProxy()
 	t.Logf("Blackholing traffic from and to member %q", partitionedMember.Config().Name)
-	proxy.BlackholeTx()
-	proxy.BlackholeRx()
-	httpProxy.BlackholeTx()
-	httpProxy.BlackholeRx()
+	epc.SingleHTTPProxyInstance.BlackholePeer(partitionedMember.Config().PeerURL)
 
 	t.Logf("Wait 5s for any open connections to expire")
 	time.Sleep(5 * time.Second)
@@ -82,10 +77,7 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	// Wait for some time to restore the network
 	time.Sleep(1 * time.Second)
 	t.Logf("Unblackholing traffic from and to member %q", partitionedMember.Config().Name)
-	proxy.UnblackholeTx()
-	proxy.UnblackholeRx()
-	httpProxy.UnblackholeTx()
-	httpProxy.UnblackholeRx()
+	epc.SingleHTTPProxyInstance.UnblackholePeer(partitionedMember.Config().PeerURL)
 
 	leaderEPC = epc.Procs[epc.WaitLeader(t)]
 	time.Sleep(5 * time.Second)

@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -116,6 +117,11 @@ type Server interface {
 	// UnblackholeRx removes blackhole operation on "receiving".
 	UnblackholeRx()
 
+	// BlackholePeer drops all traffic coming in and out of the specified peer
+	BlackholePeer(url.URL)
+	// UnblackholePeer resumes all traffic coming in and out of the specified peer
+	UnblackholePeer(url.URL)
+
 	// PauseTx stops "forwarding" packets; "outgoing" traffic blocks.
 	PauseTx()
 	// UnpauseTx removes "forwarding" pause operation.
@@ -191,6 +197,11 @@ type server struct {
 
 	latencyRxMu sync.RWMutex
 	latencyRx   time.Duration
+
+	blackholeURL    map[string]struct{}
+	blackholeURLMu  sync.RWMutex
+	connectionMap   map[string]string
+	connectionMapMu sync.RWMutex
 }
 
 // NewServer returns a proxy implementation with no iptables/tc dependencies.
@@ -217,6 +228,9 @@ func NewServer(cfg ServerConfig) Server {
 		pauseAcceptc: make(chan struct{}),
 		pauseTxc:     make(chan struct{}),
 		pauseRxc:     make(chan struct{}),
+
+		blackholeURL:  make(map[string]struct{}),
+		connectionMap: make(map[string]string),
 	}
 
 	_, fromPort, err := net.SplitHostPort(cfg.From.Host)
@@ -395,6 +409,28 @@ func (s *server) listenAndServe() {
 				}
 				connectResponse.Write(in)
 
+				// maintain connection mapping
+				// we use the Proxy-Authorization field to identify the sender
+				// we map the randomly selected port to the port that the peer is listening on
+				proxyAuthString := req.Header.Get("Proxy-Authorization")
+				proxyAuthString = strings.ReplaceAll(proxyAuthString, "Basic ", "")
+				payload, err := base64.StdEncoding.DecodeString(proxyAuthString)
+				if err != nil {
+					panic("Invalid Proxy-Authorization data")
+				}
+				payloadSplit := strings.Split(string(payload), ":")
+				if len(payloadSplit) != 2 {
+					panic("Wrong Proxy-Authorization format")
+				}
+				sourcePort := payloadSplit[0]
+				s.connectionMapMu.Lock()
+				_, extractedPort, err := net.SplitHostPort(in.RemoteAddr().String())
+				if err != nil {
+					panic("Failed to parse port")
+				}
+				s.connectionMap[extractedPort] = sourcePort
+				s.connectionMapMu.Unlock()
+
 				return req.URL.Host
 			}
 
@@ -454,6 +490,16 @@ func (s *server) listenAndServe() {
 			s.transmit(out, in)
 			out.Close()
 			in.Close()
+
+			s.connectionMapMu.Lock()
+			_, extractedPort, err := net.SplitHostPort(in.RemoteAddr().String())
+			if err != nil {
+				panic("Failed to parse port")
+			}
+			if sourcePeer, ok := s.connectionMap[extractedPort]; ok {
+				delete(s.connectionMap, sourcePeer)
+			}
+			s.connectionMapMu.Unlock()
 		}()
 		go func() {
 			defer s.closeWg.Done()
@@ -465,11 +511,11 @@ func (s *server) listenAndServe() {
 	}
 }
 
-func (s *server) transmit(dst io.Writer, src io.Reader) {
+func (s *server) transmit(dst, src net.Conn) {
 	s.ioCopy(dst, src, proxyTx)
 }
 
-func (s *server) receive(dst io.Writer, src io.Reader) {
+func (s *server) receive(dst, src net.Conn) {
 	s.ioCopy(dst, src, proxyRx)
 }
 
@@ -480,7 +526,7 @@ const (
 	proxyRx
 )
 
-func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
+func (s *server) ioCopy(dst, src net.Conn, ptype proxyType) {
 	buf := make([]byte, s.bufferSize)
 	for {
 		nr1, err := src.Read(buf)
@@ -530,6 +576,41 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 		default:
 			panic("unknown proxy type")
 		}
+
+		// blackhole by URL
+		switch ptype {
+		case proxyTx:
+			s.connectionMapMu.RLock()
+			_, extractedPort, err := net.SplitHostPort(src.RemoteAddr().String())
+			if err != nil {
+				panic("Failed to parse port")
+			}
+			if sourcePeer, ok := s.connectionMap[extractedPort]; ok {
+				s.blackholeURLMu.RLock()
+				if _, ok := s.blackholeURL[sourcePeer]; ok {
+					data = nil
+				}
+				s.blackholeURLMu.RUnlock()
+			}
+			s.connectionMapMu.RUnlock()
+		case proxyRx:
+			s.connectionMapMu.RLock()
+			_, extractedPort, err := net.SplitHostPort(dst.RemoteAddr().String())
+			if err != nil {
+				panic("Failed to parse port")
+			}
+			if sourcePeer, ok := s.connectionMap[extractedPort]; ok {
+				s.blackholeURLMu.RLock()
+				if _, ok := s.blackholeURL[sourcePeer]; ok {
+					data = nil
+				}
+				s.blackholeURLMu.RUnlock()
+			}
+			s.connectionMapMu.RUnlock()
+		default:
+			panic("unknown proxy type")
+		}
+
 		nr2 := len(data)
 		switch ptype {
 		case proxyTx:
@@ -952,6 +1033,18 @@ func (s *server) UnblackholeRx() {
 		zap.String("from", s.To()),
 		zap.String("to", s.From()),
 	)
+}
+
+func (s *server) BlackholePeer(peerURL url.URL) {
+	s.blackholeURLMu.Lock()
+	s.blackholeURL[peerURL.Port()] = struct{}{}
+	s.blackholeURLMu.Unlock()
+}
+
+func (s *server) UnblackholePeer(peerURL url.URL) {
+	s.blackholeURLMu.Lock()
+	delete(s.blackholeURL, peerURL.Port())
+	s.blackholeURLMu.Unlock()
 }
 
 func (s *server) PauseTx() {
