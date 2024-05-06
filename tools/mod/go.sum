@@ -607,8 +607,8 @@ github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f h1:92ZQJRega
 github.com/trustmaster/go-aspell v0.0.0-20200701131845-c2b1f55bec8f/go.mod h1:wxUiQ1klFJmwnM41kQI7IT2g8jjOKbtuL54LdjkxAI0=
 github.com/ultraware/funlen v0.1.0 h1:BuqclbkY6pO+cvxoq7OsktIXZpgBSkYTQtmwhAK81vI=
 github.com/ultraware/funlen v0.1.0/go.mod h1:XJqmOQja6DpxarLj6Jj1U7JuoS8PvL4nEqDaQhy22p4=
-github.com/ultraware/whitespace v0.1.0 h1:O1HKYoh0kIeqE8sFqZf1o0qbORXUCOQFrlaQyZsczZw=
-github.com/ultraware/whitespace v0.1.0/go.mod h1:/se4r3beMFNmewJ4Xmz0nMQ941GJt+qmSHGP9emHYe0=
+github.com/ultraware/whitespace v0.1.1 h1:bTPOGejYFulW3PkcrqkeQwOd6NKOOXvmGD9bo/Gk8VQ=
+github.com/ultraware/whitespace v0.1.1/go.mod h1:XcP1RLD81eV4BW8UhQlpaR+SDc2givTvyI8a586WjW8=
 github.com/uudashr/gocognit v1.1.2 h1:l6BAEKJqQH2UpKAPKdMfZf5kE4W/2xk8pfU1OVLvniI=
 github.com/uudashr/gocognit v1.1.2/go.mod h1:aAVdLURqcanke8h3vg35BC++eseDm66Z7KmchI5et4k=
 github.com/weppos/publicsuffix-go v0.12.0/go.mod h1:z3LCPQ38eedDQSwmsSRW4Y7t2L8Ln16JPQ02lHAdn5k=
