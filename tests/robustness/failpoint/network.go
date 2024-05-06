@@ -63,19 +63,19 @@ func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, proces
 
 func Blackhole(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, shouldWaitTillSnapshot bool) error {
 	proxy := member.PeerProxy()
-	forwardProxy := member.PeerForwardProxy()
+	httpProxy := member.PeerHTTPProxy()
 
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
-	forwardProxy.BlackholeTx()
-	forwardProxy.BlackholeRx()
+	httpProxy.BlackholeTx()
+	httpProxy.BlackholeRx()
 	defer func() {
 		t.Logf("Traffic restored from and to member %q", member.Config().Name)
 		proxy.UnblackholeTx()
 		proxy.UnblackholeRx()
-		forwardProxy.UnblackholeTx()
-		forwardProxy.UnblackholeRx()
+		httpProxy.UnblackholeTx()
+		httpProxy.UnblackholeRx()
 	}()
 
 	if shouldWaitTillSnapshot {

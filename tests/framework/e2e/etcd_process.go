@@ -56,7 +56,7 @@ type EtcdProcess interface {
 	Close() error
 	Config() *EtcdServerProcessConfig
 	PeerProxy() proxy.Server
-	PeerForwardProxy() proxy.Server
+	PeerHTTPProxy() proxy.Server
 	Failpoints() *BinaryFailpoints
 	LazyFS() *LazyFS
 	Logs() LogsExpect
@@ -70,13 +70,13 @@ type LogsExpect interface {
 }
 
 type EtcdServerProcess struct {
-	cfg          *EtcdServerProcessConfig
-	proc         *expect.ExpectProcess
-	proxy        proxy.Server
-	forwardProxy proxy.Server
-	lazyfs       *LazyFS
-	failpoints   *BinaryFailpoints
-	donec        chan struct{} // closed when Interact() terminates
+	cfg        *EtcdServerProcessConfig
+	proc       *expect.ExpectProcess
+	proxy      proxy.Server
+	httpProxy  proxy.Server
+	lazyfs     *LazyFS
+	failpoints *BinaryFailpoints
+	donec      chan struct{} // closed when Interact() terminates
 }
 
 type EtcdServerProcessConfig struct {
@@ -104,7 +104,7 @@ type EtcdServerProcessConfig struct {
 
 	LazyFSEnabled bool
 	Proxy         *proxy.ServerConfig
-	ForwardProxy  *proxy.ServerConfig
+	HTTPProxy     *proxy.ServerConfig
 }
 
 func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
@@ -163,11 +163,11 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 			return err
 		}
 
-		ep.cfg.lg.Info("starting forward proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.ForwardProxy.From.String()), zap.String("to", ep.cfg.ForwardProxy.To.String()))
-		ep.forwardProxy = proxy.NewServer(*ep.cfg.ForwardProxy)
+		ep.cfg.lg.Info("starting http proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.HTTPProxy.From.String()), zap.String("to", ep.cfg.HTTPProxy.To.String()))
+		ep.httpProxy = proxy.NewServer(*ep.cfg.HTTPProxy)
 		select {
-		case <-ep.forwardProxy.Ready():
-		case err := <-ep.forwardProxy.Error():
+		case <-ep.httpProxy.Ready():
+		case err := <-ep.httpProxy.Error():
 			return err
 		}
 	}
@@ -233,9 +233,9 @@ func (ep *EtcdServerProcess) Stop() (err error) {
 	}
 	ep.cfg.lg.Info("stopped server.", zap.String("name", ep.cfg.Name))
 	if ep.proxy != nil {
-		ep.cfg.lg.Info("stopping forward proxy...", zap.String("name", ep.cfg.Name))
-		err = ep.forwardProxy.Close()
-		ep.forwardProxy = nil
+		ep.cfg.lg.Info("stopping http proxy...", zap.String("name", ep.cfg.Name))
+		err = ep.httpProxy.Close()
+		ep.httpProxy = nil
 		if err != nil {
 			return err
 		}
@@ -348,8 +348,8 @@ func (ep *EtcdServerProcess) PeerProxy() proxy.Server {
 	return ep.proxy
 }
 
-func (ep *EtcdServerProcess) PeerForwardProxy() proxy.Server {
-	return ep.forwardProxy
+func (ep *EtcdServerProcess) PeerHTTPProxy() proxy.Server {
+	return ep.httpProxy
 }
 
 func (ep *EtcdServerProcess) LazyFS() *LazyFS {

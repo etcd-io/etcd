@@ -39,8 +39,8 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 			// then a nil URL and nil error will be returned.
 			// Thus, we need to workaround this by manually setting an
 			// ENV named FORWARD_PROXY and parse the URL (which is a localhost in our case)
-			if forwardProxy, exists := os.LookupEnv("FORWARD_PROXY"); exists {
-				return url.Parse(forwardProxy)
+			if httpProxy, exists := os.LookupEnv("FORWARD_PROXY"); exists {
+				return url.Parse(httpProxy)
 			}
 			return http.ProxyFromEnvironment(req)
 		},

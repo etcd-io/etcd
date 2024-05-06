@@ -132,20 +132,20 @@ type Server interface {
 
 // ServerConfig defines proxy server configuration.
 type ServerConfig struct {
-	Logger         *zap.Logger
-	From           url.URL
-	To             url.URL
-	TLSInfo        transport.TLSInfo
-	DialTimeout    time.Duration
-	BufferSize     int
-	RetryInterval  time.Duration
-	IsForwardProxy bool
+	Logger        *zap.Logger
+	From          url.URL
+	To            url.URL
+	TLSInfo       transport.TLSInfo
+	DialTimeout   time.Duration
+	BufferSize    int
+	RetryInterval time.Duration
+	IsHTTPProxy   bool
 }
 
 type server struct {
 	lg *zap.Logger
 
-	isForwardProxy bool
+	isHTTPProxy bool
 
 	from     url.URL
 	fromPort int
@@ -199,7 +199,7 @@ func NewServer(cfg ServerConfig) Server {
 	s := &server{
 		lg: cfg.Logger,
 
-		isForwardProxy: cfg.IsForwardProxy,
+		isHTTPProxy: cfg.IsHTTPProxy,
 
 		from: cfg.From,
 		to:   cfg.To,
@@ -223,7 +223,7 @@ func NewServer(cfg ServerConfig) Server {
 	if err == nil {
 		s.fromPort, _ = strconv.Atoi(fromPort)
 	}
-	if !s.isForwardProxy {
+	if !s.isHTTPProxy {
 		var toPort string
 		_, toPort, err = net.SplitHostPort(cfg.To.Host)
 		if err == nil {
@@ -248,7 +248,7 @@ func NewServer(cfg ServerConfig) Server {
 	if strings.HasPrefix(s.from.Scheme, "http") {
 		s.from.Scheme = "tcp"
 	}
-	if !s.isForwardProxy {
+	if !s.isHTTPProxy {
 		if strings.HasPrefix(s.to.Scheme, "http") {
 			s.to.Scheme = "tcp"
 		}
@@ -284,7 +284,7 @@ func (s *server) From() string {
 }
 
 func (s *server) To() string {
-	if !s.isForwardProxy {
+	if !s.isHTTPProxy {
 		return fmt.Sprintf("%s://%s", s.to.Scheme, s.to.Host)
 	}
 	return ""
@@ -374,7 +374,7 @@ func (s *server) listenAndServe() {
 			var data []byte
 			if nr1, err := in.Read(buf); err != nil {
 				if err == io.EOF {
-					panic("No data available for forward proxy to work on")
+					panic("No data available for http proxy to work on")
 				}
 			} else {
 				data = buf[:nr1]
@@ -383,7 +383,7 @@ func (s *server) listenAndServe() {
 			// attempt to parse for the HOST from the CONNECT request
 			var req *http.Request
 			if req, err = http.ReadRequest(bufio.NewReader(bytes.NewReader(data))); err != nil {
-				panic("Failed to parse header in forward proxy")
+				panic("Failed to parse header in http proxy")
 			}
 
 			if req.Method == http.MethodConnect {
@@ -418,14 +418,14 @@ func (s *server) listenAndServe() {
 				}
 				continue
 			}
-			if s.isForwardProxy {
+			if s.isHTTPProxy {
 				dest := parseHeaderForDestination()
 				out, err = tp.DialContext(ctx, "tcp", dest)
 			} else {
 				out, err = tp.DialContext(ctx, s.to.Scheme, s.to.Host)
 			}
 		} else {
-			if s.isForwardProxy {
+			if s.isHTTPProxy {
 				dest := parseHeaderForDestination()
 				out, err = net.Dial("tcp", dest)
 			} else {

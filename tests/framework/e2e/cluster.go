@@ -487,7 +487,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	metricsPort := port + 2
 	peer2Port := port + 3 // the port that the peer advertises
 	clientHTTPPort := port + 4
-	forwardProxyPort := port + 5 // the port of the forward proxy
+	httpProxyPort := port + 5 // the port of the http proxy
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -500,7 +500,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
-	var forwardProxyCfg *proxy.ServerConfig
+	var httpProxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
@@ -512,18 +512,18 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 			From:   peerAdvertiseURL,
 		}
 
-		// setup forward proxy
-		forwardProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", forwardProxyPort)}
-		forwardProxyCfg = &proxy.ServerConfig{
-			Logger:         zap.NewNop(),
-			From:           forwardProxyURL,
-			IsForwardProxy: true,
+		// setup http proxy
+		httpProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", httpProxyPort)}
+		httpProxyCfg = &proxy.ServerConfig{
+			Logger:      zap.NewNop(),
+			From:        httpProxyURL,
+			IsHTTPProxy: true,
 		}
 
 		if cfg.EnvVars == nil {
 			cfg.EnvVars = make(map[string]string)
 		}
-		cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://127.0.0.1:%d", forwardProxyPort)
+		cfg.EnvVars["FORWARD_PROXY"] = fmt.Sprintf("http://127.0.0.1:%d", httpProxyPort)
 	}
 
 	name := fmt.Sprintf("%s-test-%d", testNameCleanRegex.ReplaceAllString(tb.Name(), ""), i)
@@ -646,7 +646,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		GoFailPort:          gofailPort,
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
 		Proxy:               proxyCfg,
-		ForwardProxy:        forwardProxyCfg,
+		HTTPProxy:           httpProxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
 }

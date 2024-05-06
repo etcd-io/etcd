@@ -59,12 +59,12 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	partitionedMember := epc.Procs[mockPartitionNodeIndex]
 	// Mock partition
 	proxy := partitionedMember.PeerProxy()
-	forwardProxy := partitionedMember.PeerForwardProxy()
+	httpProxy := partitionedMember.PeerHTTPProxy()
 	t.Logf("Blackholing traffic from and to member %q", partitionedMember.Config().Name)
 	proxy.BlackholeTx()
 	proxy.BlackholeRx()
-	forwardProxy.BlackholeTx()
-	forwardProxy.BlackholeRx()
+	httpProxy.BlackholeTx()
+	httpProxy.BlackholeRx()
 
 	t.Logf("Wait 5s for any open connections to expire")
 	time.Sleep(5 * time.Second)
@@ -84,8 +84,8 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	t.Logf("Unblackholing traffic from and to member %q", partitionedMember.Config().Name)
 	proxy.UnblackholeTx()
 	proxy.UnblackholeRx()
-	forwardProxy.UnblackholeTx()
-	forwardProxy.UnblackholeRx()
+	httpProxy.UnblackholeTx()
+	httpProxy.UnblackholeRx()
 
 	leaderEPC = epc.Procs[epc.WaitLeader(t)]
 	time.Sleep(5 * time.Second)
