@@ -19,6 +19,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Dependencies
 - Compile binaries using [go 1.21.9](https://github.com/etcd-io/etcd/pull/17708).
+- Upgrade [bbolt to v1.3.10](https://github.com/etcd-io/etcd/pull/17943).
 
 <hr>
 
