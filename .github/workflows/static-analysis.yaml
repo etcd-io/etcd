@@ -12,13 +12,8 @@ jobs:
       - uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
-      - id: golangci_lint_version
-        run: echo "golangci_lint_version=$(cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)" >> "$GITHUB_OUTPUT"
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@9d1e0624a798bb64f6c3cea93db47765312263dc # v5.1.0
-        with:
-          version: ${{ steps.golangci_lint_version.outputs.golangci_lint_version }}
-          args: --config tools/.golangci.yaml
+      - run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@"$(cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)"
       - name: protoc
         uses: arduino/setup-protoc@149f6c87b92550901b26acd1632e11c3662e381f # v1.3.0
         with:
