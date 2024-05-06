@@ -26,8 +26,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/testutils"
 )
 
 func TestAuthority(t *testing.T) {
@@ -140,7 +140,7 @@ func TestAuthority(t *testing.T) {
 					}
 				}
 
-				executeWithTimeout(t, 5*time.Second, func() {
+				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {
 					assertAuthority(t, tc.expectAuthorityPattern, epc)
 				})
 			})
@@ -176,20 +176,6 @@ func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.Etcd
 		expectAuthority := strings.ReplaceAll(expectAuthorityPattern, "${MEMBER_PORT}", u.Port())
 		expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAuthority)
 		assert.True(t, strings.HasSuffix(line, expectLine), fmt.Sprintf("Got %q expected suffix %q", line, expectLine))
-	}
-}
-
-func executeWithTimeout(t *testing.T, timeout time.Duration, f func()) {
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		f()
-	}()
-
-	select {
-	case <-time.After(timeout):
-		testutil.FatalStack(t, fmt.Sprintf("test timed out after %v", timeout))
-	case <-donec:
 	}
 }
 
