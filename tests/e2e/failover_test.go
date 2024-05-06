@@ -49,11 +49,11 @@ func TestFailoverOnDefrag(t *testing.T) {
 		gRPCDialOptions                            []grpc.DialOption
 
 		// common assertion
-		expectedMinTotalRequestsCount int
+		expectedMinQPS float64
 		// happy case assertion
-		expectedMaxFailedRequestsCount int
+		expectedMaxFailureRate float64
 		// negative case assertion
-		expectedMinFailedRequestsCount int
+		expectedMinFailureRate float64
 	}{
 		{
 			name: "defrag failover happy case",
@@ -62,8 +62,8 @@ func TestFailoverOnDefrag(t *testing.T) {
 				grpc.WithDisableServiceConfig(),
 				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
 			},
-			expectedMinTotalRequestsCount:  300,
-			expectedMaxFailedRequestsCount: 5,
+			expectedMinQPS:         20,
+			expectedMaxFailureRate: 0.01,
 		},
 		{
 			name: "defrag blocks one-third of requests with stopGRPCServiceOnDefrag set to false",
@@ -72,14 +72,14 @@ func TestFailoverOnDefrag(t *testing.T) {
 				grpc.WithDisableServiceConfig(),
 				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
 			},
-			expectedMinTotalRequestsCount:  300,
-			expectedMinFailedRequestsCount: 90,
+			expectedMinQPS:         20,
+			expectedMinFailureRate: 0.25,
 		},
 		{
 			name: "defrag blocks one-third of requests with stopGRPCServiceOnDefrag set to true and client health check disabled",
 			experimentalStopGRPCServiceOnDefragEnabled: true,
-			expectedMinTotalRequestsCount:              300,
-			expectedMinFailedRequestsCount:             90,
+			expectedMinQPS:         20,
+			expectedMinFailureRate: 0.25,
 		},
 	}
 
@@ -98,6 +98,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			endpoints := clus.EndpointsGRPC()
 
 			requestVolume, successfulRequestCount := 0, 0
+			start := time.Now()
 			g := new(errgroup.Group)
 			g.Go(func() (lastErr error) {
 				clusterClient, cerr := clientv3.New(clientv3.Config{
@@ -137,15 +138,16 @@ func TestFailoverOnDefrag(t *testing.T) {
 			if err != nil {
 				t.Logf("etcd client failed to fail over, error (%v)", err)
 			}
-			t.Logf("request failure rate is %.2f%%, traffic volume successfulRequestCount %d requests, total %d requests", (1-float64(successfulRequestCount)/float64(requestVolume))*100, successfulRequestCount, requestVolume)
+			qps := float64(requestVolume) / float64(time.Since(start)) * float64(time.Second)
+			failureRate := 1 - float64(successfulRequestCount)/float64(requestVolume)
+			t.Logf("request failure rate is %.2f%%, qps is %.2f requests/second", failureRate*100, qps)
 
-			require.GreaterOrEqual(t, requestVolume, tc.expectedMinTotalRequestsCount)
-			failedRequestCount := requestVolume - successfulRequestCount
-			if tc.expectedMaxFailedRequestsCount != 0 {
-				require.LessOrEqual(t, failedRequestCount, tc.expectedMaxFailedRequestsCount)
+			require.GreaterOrEqual(t, qps, tc.expectedMinQPS)
+			if tc.expectedMaxFailureRate != 0.0 {
+				require.LessOrEqual(t, failureRate, tc.expectedMaxFailureRate)
 			}
-			if tc.expectedMinFailedRequestsCount != 0 {
-				require.GreaterOrEqual(t, failedRequestCount, tc.expectedMinFailedRequestsCount)
+			if tc.expectedMinFailureRate != 0.0 {
+				require.GreaterOrEqual(t, failureRate, tc.expectedMinFailureRate)
 			}
 		})
 	}

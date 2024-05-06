@@ -15,6 +15,7 @@
 package v3rpc
 
 import (
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -24,31 +25,39 @@ const (
 	allGRPCServices = ""
 )
 
-type HealthNotifier interface {
-	StartServe()
-	StopServe(reason string)
+type notifier interface {
+	defragStarted()
+	defragFinished()
 }
 
-func NewHealthNotifier(hs *health.Server, lg *zap.Logger) HealthNotifier {
+func newHealthNotifier(hs *health.Server, s *etcdserver.EtcdServer) notifier {
 	if hs == nil {
 		panic("unexpected nil gRPC health server")
 	}
-	if lg == nil {
-		lg = zap.NewNop()
-	}
-	hc := &healthChecker{hs: hs, lg: lg}
+	hc := &healthNotifier{hs: hs, lg: s.Logger(), stopGRPCServiceOnDefrag: s.Cfg.ExperimentalStopGRPCServiceOnDefrag}
 	// set grpc health server as serving status blindly since
 	// the grpc server will serve iff s.ReadyNotify() is closed.
-	hc.StartServe()
+	hc.startServe()
 	return hc
 }
 
-type healthChecker struct {
+type healthNotifier struct {
 	hs *health.Server
 	lg *zap.Logger
+
+	stopGRPCServiceOnDefrag bool
 }
 
-func (hc *healthChecker) StartServe() {
+func (hc *healthNotifier) defragStarted() {
+	if !hc.stopGRPCServiceOnDefrag {
+		return
+	}
+	hc.stopServe("defrag is active")
+}
+
+func (hc *healthNotifier) defragFinished() { hc.startServe() }
+
+func (hc *healthNotifier) startServe() {
 	hc.lg.Info(
 		"grpc service status changed",
 		zap.String("service", allGRPCServices),
@@ -57,7 +66,7 @@ func (hc *healthChecker) StartServe() {
 	hc.hs.SetServingStatus(allGRPCServices, healthpb.HealthCheckResponse_SERVING)
 }
 
-func (hc *healthChecker) StopServe(reason string) {
+func (hc *healthNotifier) stopServe(reason string) {
 	hc.lg.Warn(
 		"grpc service status changed",
 		zap.String("service", allGRPCServices),
