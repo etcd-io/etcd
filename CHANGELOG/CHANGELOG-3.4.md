@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### etcd grpc-proxy
 - Fix [Memberlist results not updated when proxy node down](https://github.com/etcd-io/etcd/pull/17896).
 
+### Dependencies
+- Upgrade [bbolt to 1.3.10](https://github.com/etcd-io/etcd/pull/17945).
+
 <hr>
 
 ## v3.4.32 (2024-04-25)
