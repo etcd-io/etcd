@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [ignore raft messages if member id mismatch](https://github.com/etcd-io/etcd/pull/17813).
 - Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17830).
 - Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17865)
+- Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/17914) to enable client failover on defrag.
 
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17641).
