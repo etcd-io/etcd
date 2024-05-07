@@ -138,7 +138,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 
 func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
-	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, _ := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
