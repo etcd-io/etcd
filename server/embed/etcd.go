@@ -222,6 +222,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		WarningApplyDuration:                     cfg.ExperimentalWarningApplyDuration,
 		ExperimentalMemoryMlock:                  cfg.ExperimentalMemoryMlock,
 		ExperimentalTxnModeWriteWithSharedBuffer: cfg.ExperimentalTxnModeWriteWithSharedBuffer,
+		ExperimentalStopGRPCServiceOnDefrag:      cfg.ExperimentalStopGRPCServiceOnDefrag,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
 		V2Deprecation: cfg.V2DeprecationEffective(),
 	}
