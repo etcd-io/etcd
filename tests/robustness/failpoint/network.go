@@ -55,9 +55,6 @@ func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
-	if tb.waitTillSnapshot && config.ServerConfig.SnapshotCatchUpEntries > 100 {
-		return false
-	}
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
 }
 

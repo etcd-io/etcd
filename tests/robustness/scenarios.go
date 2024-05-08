@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
@@ -162,19 +164,22 @@ func regressionScenarios(t *testing.T) []testScenario {
 			e2e.WithClusterSize(1),
 		),
 	})
-	// TODO: Deflake waiting for waiting until snapshot for etcd versions that don't support setting snapshot catchup entries.
-	if v.Compare(version.V3_6) >= 0 {
+	if v.Compare(version.V3_5) >= 0 {
+		opts := []e2e.EPClusterOption{
+			e2e.WithSnapshotCount(100),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+		}
+		v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
+		if v.Compare(v3_5_13) >= 0 {
+			opts = append(opts, e2e.WithSnapshotCatchUpEntries(100))
+		}
 		scenarios = append(scenarios, testScenario{
 			name:      "Issue15271",
 			failpoint: failpoint.BlackholeUntilSnapshot,
 			profile:   traffic.HighTrafficProfile,
 			traffic:   traffic.EtcdPut,
-			cluster: *e2e.NewConfig(
-				e2e.WithSnapshotCatchUpEntries(100),
-				e2e.WithSnapshotCount(100),
-				e2e.WithPeerProxy(true),
-				e2e.WithIsPeerTLS(true),
-			),
+			cluster:   *e2e.NewConfig(opts...),
 		})
 	}
 	return scenarios
