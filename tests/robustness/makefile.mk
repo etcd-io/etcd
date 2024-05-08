@@ -37,31 +37,34 @@ test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
 
 # Failpoints
 
+GOPATH = $(shell go env GOPATH)
 GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
 
+.PHONY:install-gofail
+install-gofail: $(GOPATH)/bin/gofail
+
 .PHONY: gofail-enable
-gofail-enable: install-gofail
-	gofail enable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
+gofail-enable: $(GOPATH)/bin/gofail
+	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
 	cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd ./etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd ./etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd ./tests && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 
 .PHONY: gofail-disable
-gofail-disable: install-gofail
-	gofail disable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
+gofail-disable: $(GOPATH)/bin/gofail
+	$(GOPATH)/bin/gofail disable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
 	cd ./server && go mod tidy
 	cd ./etcdutl && go mod tidy
 	cd ./etcdctl && go mod tidy
 	cd ./tests && go mod tidy
 
-.PHONY: install-gofail
-install-gofail:
+$(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
 # Build previous releases for robustness tests
 
-/tmp/etcd-v3.6.0-failpoints/bin: install-gofail
+/tmp/etcd-v3.6.0-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.6.0-failpoints/
 	mkdir -p /tmp/etcd-v3.6.0-failpoints/
 	cd /tmp/etcd-v3.6.0-failpoints/; \
@@ -72,7 +75,7 @@ install-gofail:
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:
 /tmp/etcd-v3.5.5-failpoints/bin:
-/tmp/etcd-v3.5.%-failpoints/bin: install-gofail
+/tmp/etcd-v3.5.%-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.5.$*-failpoints/
 	mkdir -p /tmp/etcd-v3.5.$*-failpoints/
 	cd /tmp/etcd-v3.5.$*-failpoints/; \
@@ -83,7 +86,7 @@ install-gofail:
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.5-failpoints/bin: install-gofail
+/tmp/etcd-release-3.5-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-release-3.5-failpoints/
 	mkdir -p /tmp/etcd-release-3.5-failpoints/
 	cd /tmp/etcd-release-3.5-failpoints/; \
@@ -95,7 +98,7 @@ install-gofail:
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.4.23-failpoints/bin:
-/tmp/etcd-v3.4.%-failpoints/bin: install-gofail
+/tmp/etcd-v3.4.%-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.4.$*-failpoints/
 	mkdir -p /tmp/etcd-v3.4.$*-failpoints/
 	cd /tmp/etcd-v3.4.$*-failpoints/; \
@@ -103,7 +106,7 @@ install-gofail:
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
 	  FAILPOINTS=true ./build;
 
-/tmp/etcd-release-3.4-failpoints/bin: install-gofail
+/tmp/etcd-release-3.4-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-release-3.4-failpoints/
 	mkdir -p /tmp/etcd-release-3.4-failpoints/
 	cd /tmp/etcd-release-3.4-failpoints/; \
