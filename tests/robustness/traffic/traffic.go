@@ -24,6 +24,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -52,7 +53,7 @@ var (
 	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan failpoint.InjectionReport, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan failpoint.Injection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
@@ -60,7 +61,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
 
-	cc, err := NewClient(endpoints, ids, baseTime)
+	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,11 +78,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	startTime := time.Since(baseTime)
 	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
-		c, nerr := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
 		if nerr != nil {
 			t.Fatal(nerr)
 		}
-		go func(c *RecordingClient) {
+		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
@@ -91,7 +92,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			mux.Unlock()
 		}(c)
 	}
-	var fr *failpoint.InjectionReport
+	var fr *failpoint.Injection
 	select {
 	case frp, ok := <-failpointInjected:
 		if !ok {
@@ -172,7 +173,7 @@ type Profile struct {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	Run(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
 	Name() string
 }

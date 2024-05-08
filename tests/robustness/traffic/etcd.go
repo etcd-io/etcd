@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 )
@@ -94,7 +95,7 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -151,7 +152,7 @@ func filterOutNonUniqueEtcdWrites(choices []choiceWeight[etcdRequestType]) (resp
 type etcdTrafficClient struct {
 	etcdTraffic
 	keyPrefix    string
-	client       *RecordingClient
+	client       *client.RecordingClient
 	limiter      *rate.Limiter
 	idProvider   identity.Provider
 	leaseStorage identity.LeaseIDStorage
@@ -222,7 +223,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 		}
 	case PutWithLease:
-		leaseID := c.leaseStorage.LeaseID(c.client.id)
+		leaseID := c.leaseStorage.LeaseID(c.client.ID)
 		if leaseID == 0 {
 			var resp *clientv3.LeaseGrantResponse
 			resp, err = c.client.LeaseGrant(opCtx, c.leaseTTL)
@@ -231,7 +232,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 				rev = resp.ResponseHeader.Revision
 			}
 			if err == nil {
-				c.leaseStorage.AddLeaseID(c.client.id, leaseID)
+				c.leaseStorage.AddLeaseID(c.client.ID, leaseID)
 				c.limiter.Wait(ctx)
 			}
 		}
@@ -245,13 +246,13 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 		}
 	case LeaseRevoke:
-		leaseID := c.leaseStorage.LeaseID(c.client.id)
+		leaseID := c.leaseStorage.LeaseID(c.client.ID)
 		if leaseID != 0 {
 			var resp *clientv3.LeaseRevokeResponse
 			resp, err = c.client.LeaseRevoke(opCtx, leaseID)
 			//if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
-				c.leaseStorage.RemoveLeaseID(c.client.id)
+				c.leaseStorage.RemoveLeaseID(c.client.ID)
 			}
 			if resp != nil {
 				rev = resp.Header.Revision

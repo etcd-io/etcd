@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
 
@@ -58,7 +59,7 @@ func (t kubernetesTraffic) Name() string {
 	return "Kubernetes"
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t kubernetesTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -214,7 +215,7 @@ const (
 )
 
 type kubernetesClient struct {
-	client *RecordingClient
+	client *client.RecordingClient
 }
 
 func (k kubernetesClient) List(ctx context.Context, prefix string, revision, limit int64) (*clientv3.GetResponse, error) {

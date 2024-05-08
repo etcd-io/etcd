@@ -28,6 +28,9 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
@@ -36,26 +39,21 @@ var (
 
 type memberReplace struct{}
 
-func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	memberID := uint64(rand.Int() % len(clus.Procs))
 	member := clus.Procs[memberID]
 	var endpoints []string
 	for i := 1; i < len(clus.Procs); i++ {
 		endpoints = append(endpoints, clus.Procs[(int(memberID)+i)%len(clus.Procs)].EndpointsGRPC()...)
 	}
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            endpoints,
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    50 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer cc.Close()
 	memberID, found, err := getID(ctx, cc, member.Config().Name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !found {
 		t.Fatal("Member not found")
@@ -65,11 +63,11 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	lg.Info("Removing member", zap.String("member", member.Config().Name))
 	_, err = cc.MemberRemove(ctx, memberID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, found, err = getID(ctx, cc, member.Config().Name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if found {
 		t.Fatal("Expected member to be removed")
@@ -83,13 +81,13 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Failed to kill the process", zap.Error(err))
-			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
+			return nil, fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
 	lg.Info("Removing member data", zap.String("member", member.Config().Name))
 	err = os.RemoveAll(member.Config().DataDirPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	lg.Info("Adding member back", zap.String("member", member.Config().Name))
@@ -97,7 +95,7 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 		reqCtx, cancel := context.WithTimeout(ctx, time.Second)
@@ -109,17 +107,17 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	}
 	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	lg.Info("Starting member", zap.String("member", member.Config().Name))
 	err = member.Start(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 		_, found, err := getID(ctx, cc, member.Config().Name)
@@ -130,7 +128,7 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 			break
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func (f memberReplace) Name() string {
@@ -141,7 +139,7 @@ func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, _ e2e.Etcd
 	return config.ClusterSize > 1
 }
 
-func getID(ctx context.Context, cc *clientv3.Client, name string) (id uint64, found bool, err error) {
+func getID(ctx context.Context, cc clientv3.Cluster, name string) (id uint64, found bool, err error) {
 	resp, err := cc.MemberList(ctx)
 	if err != nil {
 		return 0, false, err

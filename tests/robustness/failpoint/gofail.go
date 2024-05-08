@@ -25,6 +25,8 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
@@ -73,17 +75,17 @@ const (
 	Follower  failpointTarget = "Follower"
 )
 
-func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) (reports []report.ClientReport, err error) {
 	member := f.pickMember(t, clus)
 
 	for member.IsRunning() {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return reports, ctx.Err()
 		default:
 		}
 		lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
-		err := member.Failpoints().SetupHTTP(ctx, f.failpoint, "panic")
+		err = member.Failpoints().SetupHTTP(ctx, f.failpoint, "panic")
 		if err != nil {
 			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			continue
@@ -93,17 +95,21 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 			break
 		}
 		if f.trigger != nil {
+			var r []report.ClientReport
 			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
-			err = f.trigger.Trigger(ctx, t, member, clus)
+			r, err = f.trigger.Trigger(ctx, t, member, clus, baseTime, ids)
 			if err != nil {
 				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
+			}
+			if r != nil {
+				reports = append(reports, r...)
 			}
 		}
 		lg.Info("Waiting for member to exit", zap.String("member", member.Config().Name))
 		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
-			return fmt.Errorf("member didn't exit as expected: %v", err)
+			return reports, fmt.Errorf("member didn't exit as expected: %v", err)
 		}
 		lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 	}
@@ -112,11 +118,11 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 		lg.Info("Removing data that was not fsynced")
 		err := lazyfs.ClearCache(ctx)
 		if err != nil {
-			return err
+			return reports, err
 		}
 	}
 
-	return member.Start(ctx)
+	return reports, member.Start(ctx)
 }
 
 func (f goPanicFailpoint) pickMember(t *testing.T, clus *e2e.EtcdProcessCluster) e2e.EtcdProcess {
@@ -155,7 +161,7 @@ type killAndGofailSleep struct {
 	time      time.Duration
 }
 
-func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	for member.IsRunning() {
 		err := member.Kill()
@@ -165,20 +171,20 @@ func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Lo
 		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 			lg.Info("Failed to kill the process", zap.Error(err))
-			return fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
+			return nil, fmt.Errorf("failed to kill the process within %s, err: %w", triggerTimeout, err)
 		}
 	}
 	lg.Info("Setting up goFailpoint", zap.String("failpoint", f.Name()))
 	err := member.Failpoints().SetupEnv(f.failpoint, fmt.Sprintf(`sleep(%q)`, f.time))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = member.Start(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// TODO: Check gofail status (https://github.com/etcd-io/gofail/pull/47) and wait for sleep to beis executed at least once.
-	return nil
+	return nil, nil
 }
 
 func (f killAndGofailSleep) Name() string {
@@ -201,22 +207,22 @@ type gofailSleepAndDeactivate struct {
 	time      time.Duration
 }
 
-func (f gofailSleepAndDeactivate) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error {
+func (f gofailSleepAndDeactivate) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	lg.Info("Setting up gofailpoint", zap.String("failpoint", f.Name()))
 	err := member.Failpoints().SetupHTTP(ctx, f.failpoint, fmt.Sprintf(`sleep(%q)`, f.time))
 	if err != nil {
 		lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
-		return fmt.Errorf("goFailpoint %s setup failed, err:%w", f.Name(), err)
+		return nil, fmt.Errorf("goFailpoint %s setup failed, err:%w", f.Name(), err)
 	}
 	time.Sleep(f.time)
 	lg.Info("Deactivating gofailpoint", zap.String("failpoint", f.Name()))
 	err = member.Failpoints().DeactivateHTTP(ctx, f.failpoint)
 	if err != nil {
 		lg.Info("goFailpoint deactivate failed", zap.String("failpoint", f.Name()), zap.Error(err))
-		return fmt.Errorf("goFailpoint %s deactivate failed, err: %w", f.Name(), err)
+		return nil, fmt.Errorf("goFailpoint %s deactivate failed, err: %w", f.Name(), err)
 	}
-	return nil
+	return nil, nil
 }
 
 func (f gofailSleepAndDeactivate) Name() string {

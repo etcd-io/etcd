@@ -26,6 +26,8 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 const (
@@ -75,7 +77,7 @@ func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	return nil
 }
 
-func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time) (*InjectionReport, error) {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time, ids identity.Provider) (*FailpointReport, error) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error
@@ -85,7 +87,7 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 	}
 	lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
 	start := time.Since(baseTime)
-	err = failpoint.Inject(ctx, t, lg, clus)
+	clientReport, err := failpoint.Inject(ctx, t, lg, clus, baseTime, ids)
 	if err != nil {
 		lg.Error("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
 		return nil, fmt.Errorf("failed triggering failpoint, err: %v", err)
@@ -96,14 +98,22 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 	lg.Info("Finished triggering failpoint", zap.String("failpoint", failpoint.Name()))
 	end := time.Since(baseTime)
 
-	return &InjectionReport{
-		Start: start,
-		End:   end,
-		Name:  failpoint.Name(),
+	return &FailpointReport{
+		Injection: Injection{
+			Start: start,
+			End:   end,
+			Name:  failpoint.Name(),
+		},
+		Client: clientReport,
 	}, nil
 }
 
-type InjectionReport struct {
+type FailpointReport struct {
+	Injection
+	Client []report.ClientReport
+}
+
+type Injection struct {
 	Start, End time.Duration
 	Name       string
 }
@@ -137,7 +147,7 @@ func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProces
 }
 
 type Failpoint interface {
-	Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
+	Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error)
 	Name() string
 	AvailabilityChecker
 }
