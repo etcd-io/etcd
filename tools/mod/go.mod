@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tools/v3
 
 go 1.22.1
 
-toolchain go1.22.2
+toolchain go1.22.3
 
 require (
 	github.com/alexfalkowski/gocovmerge v1.3.4
@@ -36,7 +36,7 @@ require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.0 // indirect
 	github.com/RageCage64/multilinediff v0.2.0 // indirect
-	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
+	github.com/akhenakh/hunspellgo v0.0.0-20160221.22.32-9db38fa26e19 // indirect
 	github.com/alecthomas/assert/v2 v2.3.0 // indirect
 	github.com/alecthomas/go-check-sumtype v0.1.4 // indirect
 	github.com/alecthomas/repr v0.4.0 // indirect
