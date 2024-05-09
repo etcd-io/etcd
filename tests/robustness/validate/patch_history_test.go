@@ -388,7 +388,7 @@ func TestPatchHistory(t *testing.T) {
 			if tc.persistedRequest != nil {
 				requests = append(requests, *tc.persistedRequest)
 			}
-			operations := patchedOperationHistory([]report.ClientReport{
+			operations := patchLinearizableOperations([]report.ClientReport{
 				{
 					ClientID: 0,
 					KeyValue: history.History.Operations(),

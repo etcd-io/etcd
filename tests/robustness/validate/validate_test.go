@@ -1844,7 +1844,8 @@ func TestValidateWatch(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, tc.persistedRequests)
+			replay := model.NewReplay(tc.persistedRequests)
+			err := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay)
 			var errStr string
 			if err != nil {
 				errStr = err.Error()
