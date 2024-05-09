@@ -207,8 +207,21 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-prometheus",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
 		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors",
+		"licenses": [
+			{
+				"type": "\"Do What The F*ck You Want To Public License\"",
+				"confidence": 0.14814814814814814
+			},
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1

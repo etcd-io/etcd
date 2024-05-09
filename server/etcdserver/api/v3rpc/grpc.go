@@ -18,7 +18,8 @@ import (
 	"crypto/tls"
 	"math"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -40,10 +41,13 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	if tls != nil {
 		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
+	serverMetrics := grpc_prometheus.NewServerMetrics()
+	prometheus.Register(serverMetrics)
+
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
 		newUnaryInterceptor(s),
-		grpc_prometheus.UnaryServerInterceptor,
+		serverMetrics.UnaryServerInterceptor(),
 	}
 	if interceptor != nil {
 		chainUnaryInterceptors = append(chainUnaryInterceptors, interceptor)
@@ -51,7 +55,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 
 	chainStreamInterceptors := []grpc.StreamServerInterceptor{
 		newStreamInterceptor(s),
-		grpc_prometheus.StreamServerInterceptor,
+		serverMetrics.StreamServerInterceptor(),
 	}
 
 	if s.Cfg.ExperimentalEnableDistributedTracing {
@@ -81,7 +85,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	pb.RegisterMaintenanceServer(grpcServer, NewMaintenanceServer(s, healthNotifier))
 
 	// set zero values for metrics registered for this grpc server
-	grpc_prometheus.Register(grpcServer)
+	serverMetrics.InitializeMetrics(grpcServer)
 
 	return grpcServer
 }

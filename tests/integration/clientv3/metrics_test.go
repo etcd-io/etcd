@@ -25,7 +25,8 @@ import (
 	"testing"
 	"time"
 
-	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 
@@ -72,11 +73,14 @@ func TestV3ClientMetrics(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
+	clientMetrics := grpcprom.NewClientMetrics()
+	prometheus.Register(clientMetrics)
+
 	cfg := clientv3.Config{
 		Endpoints: []string{clus.Members[0].GRPCURL},
 		DialOptions: []grpc.DialOption{
-			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
+			grpc.WithUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
+			grpc.WithStreamInterceptor(clientMetrics.StreamClientInterceptor()),
 		},
 	}
 	cli, cerr := integration2.NewClient(t, cfg)
