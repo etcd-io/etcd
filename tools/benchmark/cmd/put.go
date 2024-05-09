@@ -152,13 +152,6 @@ func compactKV(clients []*v3.Client) {
 	}
 }
 
-func max(n1, n2 int64) int64 {
-	if n1 > n2 {
-		return n1
-	}
-	return n2
-}
-
 func hashKV(cmd *cobra.Command, clients []*v3.Client) {
 	eps, err := cmd.Flags().GetStringSlice("endpoints")
 	if err != nil {
