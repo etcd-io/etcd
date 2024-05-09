@@ -156,16 +156,37 @@ func validatePersistedRequestMatchClientRequests(reports []report.ClientReport, 
 		}
 	}
 
-	for requestDump, op := range clientRequests {
-		request := op.Input.(model.EtcdRequest)
-		response := op.Output.(model.MaybeEtcdResponse)
-		if response.Error != "" || request.IsRead() {
-			continue
+	var firstOp, lastOp porcupine.Operation
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			response := op.Output.(model.MaybeEtcdResponse)
+			if response.Error != "" || request.IsRead() {
+				continue
+			}
+			if firstOp.Call == 0 || op.Call < firstOp.Call {
+				firstOp = op
+			}
+			if lastOp.Call == 0 || op.Call > lastOp.Call {
+				lastOp = op
+			}
 		}
-		_, found := persistedRequestSet[requestDump]
-		if !found {
-			return fmt.Errorf("succesful client write %+v was not persisted, required to validate", requestDump)
-		}
+	}
+	firstOpData, err := json.Marshal(firstOp.Input.(model.EtcdRequest))
+	if err != nil {
+		return err
+	}
+	_, found := persistedRequestSet[string(firstOpData)]
+	if !found {
+		return fmt.Errorf("first succesful client write %s was not persisted, required to validate", firstOpData)
+	}
+	lastOpData, err := json.Marshal(lastOp.Input.(model.EtcdRequest))
+	if err != nil {
+		return err
+	}
+	_, found = persistedRequestSet[string(lastOpData)]
+	if !found {
+		return fmt.Errorf("last succesful client write %s was not persisted, required to validate", lastOpData)
 	}
 	return nil
 }
