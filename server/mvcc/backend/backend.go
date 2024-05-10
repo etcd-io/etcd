@@ -36,10 +36,10 @@ var (
 
 	defragLimit = 10000
 
-	// initialMmapSize is the initial size of the mmapped region. Setting this larger than
+	// InitialMmapSize is the initial size of the mmapped region. Setting this larger than
 	// the potential max db size can prevent writer from blocking reader.
 	// This only works for linux.
-	initialMmapSize = uint64(10 * 1024 * 1024 * 1024)
+	InitialMmapSize = uint64(10 * 1024 * 1024 * 1024)
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
 	minSnapshotWarningTimeout = 30 * time.Second
@@ -157,7 +157,7 @@ func DefaultBackendConfig() BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
-		MmapSize:      initialMmapSize,
+		MmapSize:      InitialMmapSize,
 	}
 }
 

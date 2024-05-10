@@ -42,6 +42,7 @@ var (
 	skipHashCheck       bool
 	markCompacted       bool
 	revisionBump        uint64
+	initialMmapSize     uint64
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
@@ -93,6 +94,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
 	cmd.Flags().Uint64Var(&revisionBump, "bump-revision", 0, "How much to increase the latest revision after restore")
 	cmd.Flags().BoolVar(&markCompacted, "mark-compacted", false, "Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)")
+	cmd.Flags().Uint64Var(&initialMmapSize, "initial-memory-map-size", initialMmapSize, "Initial memory map size of the database in bytes. It uses the default value if not defined or defined to 0")
 
 	return cmd
 }
@@ -131,7 +133,7 @@ func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
 	fmt.Fprintf(os.Stderr, "Deprecated: Use `etcdutl snapshot restore` instead.\n\n")
 	etcdutl.SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, revisionBump, markCompacted, args)
+		restorePeerURLs, restoreName, skipHashCheck, initialMmapSize, revisionBump, markCompacted, args)
 }
 
 func initialClusterFromName(name string) string {
