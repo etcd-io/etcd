@@ -21,6 +21,7 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 
 	"github.com/spf13/cobra"
 )
@@ -38,6 +39,7 @@ var (
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
+	initialMmapSize     = backend.InitialMmapSize
 	markCompacted       bool
 	revisionBump        uint64
 )
@@ -93,6 +95,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.Flags().Uint64Var(&initialMmapSize, "initial-memory-map-size", initialMmapSize, "Initial memory map size of the database in bytes. It uses the default value if not defined or defined to 0")
 	cmd.Flags().Uint64Var(&revisionBump, "bump-revision", 0, "How much to increase the latest revision after restore")
 	cmd.Flags().BoolVar(&markCompacted, "mark-compacted", false, "Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)")
 
@@ -119,7 +122,7 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 
 func snapshotRestoreCommandFunc(_ *cobra.Command, args []string) {
 	SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, revisionBump, markCompacted, args)
+		restorePeerURLs, restoreName, skipHashCheck, initialMmapSize, revisionBump, markCompacted, args)
 }
 
 func SnapshotRestoreCommandFunc(restoreCluster string,
@@ -129,6 +132,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	restorePeerURLs string,
 	restoreName string,
 	skipHashCheck bool,
+	initialMmapSize uint64,
 	revisionBump uint64,
 	markCompacted bool,
 	args []string) {
@@ -164,6 +168,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 		InitialCluster:      restoreCluster,
 		InitialClusterToken: restoreClusterToken,
 		SkipHashCheck:       skipHashCheck,
+		InitialMmapSize:     initialMmapSize,
 		RevisionBump:        revisionBump,
 		MarkCompacted:       markCompacted,
 	}); err != nil {

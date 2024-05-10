@@ -83,7 +83,8 @@ type v3Manager struct {
 	snapDir   string
 	cl        *membership.RaftCluster
 
-	skipHashCheck bool
+	skipHashCheck   bool
+	initialMmapSize uint64
 }
 
 // hasChecksum returns "true" if the file size "n"
@@ -197,6 +198,9 @@ type RestoreConfig struct {
 	// (required if copied from data directory).
 	SkipHashCheck bool
 
+	// InitialMmapSize is the database initial memory map size.
+	InitialMmapSize uint64
+
 	// RevisionBump is the amount to increase the latest revision after restore,
 	// to allow administrators to trick clients into thinking that revision never decreased.
 	// If 0, revision bumping is skipped.
@@ -256,6 +260,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	s.walDir = walDir
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
+	s.initialMmapSize = cfg.InitialMmapSize
 
 	s.lg.Info(
 		"restoring snapshot",
@@ -263,6 +268,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	if err = s.saveDB(); err != nil {
@@ -290,6 +296,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	return verify.VerifyIfEnabled(verify.Config{
@@ -310,7 +317,7 @@ func (s *v3Manager) saveDB() error {
 		return err
 	}
 
-	be := backend.NewDefaultBackend(s.outDbPath())
+	be := backend.NewDefaultBackend(s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 
 	err = membership.TrimMembershipFromBackend(s.lg, be)
@@ -324,7 +331,7 @@ func (s *v3Manager) saveDB() error {
 // modifyLatestRevision can increase the latest revision by the given amount and sets the scheduled compaction
 // to that revision so that the server will consider this revision compacted.
 func (s *v3Manager) modifyLatestRevision(bumpAmount uint64) error {
-	be := backend.NewDefaultBackend(s.outDbPath())
+	be := backend.NewDefaultBackend(s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer func() {
 		be.ForceCommit()
 		be.Close()
@@ -467,7 +474,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	// add members again to persist them to the store we create.
 	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 	s.cl.SetStore(st)
-	be := backend.NewDefaultBackend(s.outDbPath())
+	be := backend.NewDefaultBackend(s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 	s.cl.SetBackend(be)
 	for _, m := range s.cl.Members() {
