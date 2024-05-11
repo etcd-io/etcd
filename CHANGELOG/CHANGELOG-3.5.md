@@ -14,6 +14,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17865)
 - Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/17914) to enable client failover on defrag.
 
+### etcdutl v3
+- Add [`--initial-memory-map-size` to `snapshot restore` to avoid memory allocation issues](https://github.com/etcd-io/etcd/pull/17977)
+
 ### Package `clientv3`
 - Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17641).
 - Fix [initialization for mu in client context](https://github.com/etcd-io/etcd/pull/17699).
