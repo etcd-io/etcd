@@ -365,7 +365,7 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
-		parseHeaderForDestination := func() string {
+		parseHeaderForDestination := func() *string {
 			// the first request should always contain a CONNECT header field
 			// since we set the transport to forward the traffic to the proxy
 			buf := make([]byte, s.bufferSize)
@@ -373,8 +373,11 @@ func (s *server) listenAndServe() {
 			var nr1 int
 			if nr1, err = in.Read(buf); err != nil {
 				if err == io.EOF {
-					panic("No data available for forward proxy to work on")
+					return nil
+					// why??
+					// panic("No data available for forward proxy to work on")
 				}
+				panic(err)
 			} else {
 				data = buf[:nr1]
 			}
@@ -394,7 +397,7 @@ func (s *server) listenAndServe() {
 				}
 				connectResponse.Write(in)
 
-				return req.URL.Host
+				return &req.URL.Host
 			}
 
 			panic("Wrong header type to start the connection")
@@ -418,15 +421,21 @@ func (s *server) listenAndServe() {
 				continue
 			}
 			if s.isForwardProxy {
-				dest := parseHeaderForDestination()
-				out, err = tp.DialContext(ctx, "tcp", dest)
+				if dest := parseHeaderForDestination(); dest == nil {
+					continue
+				} else {
+					out, err = tp.DialContext(ctx, "tcp", *dest)
+				}
 			} else {
 				out, err = tp.DialContext(ctx, s.to.Scheme, s.to.Host)
 			}
 		} else {
 			if s.isForwardProxy {
-				dest := parseHeaderForDestination()
-				out, err = net.Dial("tcp", dest)
+				if dest := parseHeaderForDestination(); dest == nil {
+					continue
+				} else {
+					out, err = net.Dial("tcp", *dest)
+				}
 			} else {
 				out, err = net.Dial(s.to.Scheme, s.to.Host)
 			}
