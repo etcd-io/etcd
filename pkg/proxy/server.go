@@ -219,14 +219,11 @@ func NewServer(cfg ServerConfig) Server {
 		pauseRxc:     make(chan struct{}),
 	}
 
-	_, fromPort, err := net.SplitHostPort(cfg.From.Host)
-	if err == nil {
+	if _, fromPort, err := net.SplitHostPort(cfg.From.Host); err == nil {
 		s.fromPort, _ = strconv.Atoi(fromPort)
 	}
 	if !s.isForwardProxy {
-		var toPort string
-		_, toPort, err = net.SplitHostPort(cfg.To.Host)
-		if err == nil {
+		if _, toPort, err := net.SplitHostPort(cfg.To.Host); err == nil {
 			s.toPort, _ = strconv.Atoi(toPort)
 		}
 	}
@@ -260,6 +257,7 @@ func NewServer(cfg ServerConfig) Server {
 	}
 
 	var ln net.Listener
+	var err error
 	if !s.tlsInfo.Empty() {
 		ln, err = transport.NewListener(addr, s.from.Scheme, &s.tlsInfo)
 	} else {
