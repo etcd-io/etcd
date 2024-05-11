@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -138,6 +139,10 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 		trace = traceutil.New("range", lg)
 		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 	}
+	defer func(start time.Time) {
+		success := err == nil
+		RangeSecObserve(success, time.Since(start))
+	}(time.Now())
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
 	resp, err = executeRange(ctx, lg, txnRead, r)
