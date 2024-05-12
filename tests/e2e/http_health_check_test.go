@@ -385,12 +385,9 @@ func triggerSlowApply(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
 	member := clus.Procs[0]
 	forwardProxy := member.PeerForwardProxy()
-	reverseProxy := member.PeerReverseProxy()
 	t.Logf("Blackholing traffic from and to member %q", member.Config().Name)
 	forwardProxy.BlackholeTx()
 	forwardProxy.BlackholeRx()
-	reverseProxy.BlackholeTx()
-	reverseProxy.BlackholeRx()
 }
 
 func triggerRaftLoopDeadLock(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, duration time.Duration) {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/bits"
 	mrand "math/rand"
 	"net"
 	"net/http"
@@ -116,6 +117,16 @@ type Server interface {
 	// UnblackholeRx removes blackhole operation on "receiving".
 	UnblackholeRx()
 
+	// ??
+	BlackholePeerTx(peer url.URL)
+	// ??
+	UnblackholePeerTx(peer url.URL)
+
+	// ??
+	BlackholePeerRx(peer url.URL)
+	// ??
+	UnblackholePeerRx(peer url.URL)
+
 	// PauseTx stops "forwarding" packets; "outgoing" traffic blocks.
 	PauseTx()
 	// UnpauseTx removes "forwarding" pause operation.
@@ -141,6 +152,12 @@ type ServerConfig struct {
 	RetryInterval  time.Duration
 	IsForwardProxy bool
 }
+
+const (
+	blackholePeerTypeNone uint8 = iota
+	blackholePeerTypeTx
+	blackholePeerTypeRx
+)
 
 type server struct {
 	lg *zap.Logger
@@ -191,6 +208,9 @@ type server struct {
 
 	latencyRxMu sync.RWMutex
 	latencyRx   time.Duration
+
+	blackholePeerMap   map[int]uint8 // port number, blackhole type
+	blackholePeerMapMu sync.RWMutex
 }
 
 // NewServer returns a proxy implementation with no iptables/tc dependencies.
@@ -217,6 +237,8 @@ func NewServer(cfg ServerConfig) Server {
 		pauseAcceptc: make(chan struct{}),
 		pauseTxc:     make(chan struct{}),
 		pauseRxc:     make(chan struct{}),
+
+		blackholePeerMap: make(map[int]uint8),
 	}
 
 	if _, fromPort, err := net.SplitHostPort(cfg.From.Host); err == nil {
@@ -455,30 +477,60 @@ func (s *server) listenAndServe() {
 			continue
 		}
 
+		var dstPort int
+		dstPort, err = getPort(out.RemoteAddr())
+		if err != nil {
+			select {
+			case s.errc <- err:
+				select {
+				case <-s.donec:
+					return
+				default:
+				}
+			case <-s.donec:
+				return
+			}
+			s.lg.Debug("failed to parse port in transmit", zap.Error(err))
+			return
+		}
+
 		s.closeWg.Add(2)
 		go func() {
 			defer s.closeWg.Done()
 			// read incoming bytes from listener, dispatch to outgoing connection
-			s.transmit(out, in)
+			s.transmit(out, in, dstPort)
 			out.Close()
 			in.Close()
 		}()
 		go func() {
 			defer s.closeWg.Done()
 			// read response from outgoing connection, write back to listener
-			s.receive(in, out)
+			s.receive(in, out, dstPort)
 			in.Close()
 			out.Close()
 		}()
 	}
 }
 
-func (s *server) transmit(dst io.Writer, src io.Reader) {
-	s.ioCopy(dst, src, proxyTx)
+func getPort(addr net.Addr) (int, error) {
+	switch addr := addr.(type) {
+	case *net.TCPAddr:
+		return addr.Port, nil
+	case *net.UDPAddr:
+		return addr.Port, nil
+	case *net.UnixAddr:
+		return -1, nil
+	default:
+		return 0, fmt.Errorf("unsupported address type: %T", addr)
+	}
 }
 
-func (s *server) receive(dst io.Writer, src io.Reader) {
-	s.ioCopy(dst, src, proxyRx)
+func (s *server) transmit(dst, src net.Conn, port int) {
+	s.ioCopy(dst, src, proxyTx, port)
+}
+
+func (s *server) receive(dst, src net.Conn, port int) {
+	s.ioCopy(dst, src, proxyRx, port)
 }
 
 type proxyType uint8
@@ -488,7 +540,7 @@ const (
 	proxyRx
 )
 
-func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
+func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 	buf := make([]byte, s.bufferSize)
 	for {
 		nr1, err := src.Read(buf)
@@ -529,12 +581,30 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 				data = s.modifyTx(data)
 			}
 			s.modifyTxMu.RUnlock()
+
+			s.blackholePeerMapMu.RLock()
+			// Tx from other peers is Rx for the target peer
+			if val, exist := s.blackholePeerMap[peerPort]; exist {
+				if (val & blackholePeerTypeRx) > 0 {
+					data = nil
+				}
+			}
+			s.blackholePeerMapMu.RUnlock()
 		case proxyRx:
 			s.modifyRxMu.RLock()
 			if s.modifyRx != nil {
 				data = s.modifyRx(data)
 			}
 			s.modifyRxMu.RUnlock()
+
+			s.blackholePeerMapMu.RLock()
+			// Rx from other peers is Tx for the target peer
+			if val, exist := s.blackholePeerMap[peerPort]; exist {
+				if (val & blackholePeerTypeTx) > 0 {
+					data = nil
+				}
+			}
+			s.blackholePeerMapMu.RUnlock()
 		default:
 			panic("unknown proxy type")
 		}
@@ -960,6 +1030,66 @@ func (s *server) UnblackholeRx() {
 		zap.String("from", s.To()),
 		zap.String("to", s.From()),
 	)
+}
+
+func (s *server) BlackholePeerTx(peer url.URL) {
+	s.blackholePeerMapMu.Lock()
+	defer s.blackholePeerMapMu.Unlock()
+
+	port, err := strconv.Atoi(peer.Port())
+	if err != nil {
+		panic("port parsing failed")
+	}
+	if val, exist := s.blackholePeerMap[port]; exist {
+		val |= blackholePeerTypeTx
+		s.blackholePeerMap[port] = val
+	} else {
+		s.blackholePeerMap[port] = blackholePeerTypeTx
+	}
+}
+
+func (s *server) UnblackholePeerTx(peer url.URL) {
+	s.blackholePeerMapMu.Lock()
+	defer s.blackholePeerMapMu.Unlock()
+
+	port, err := strconv.Atoi(peer.Port())
+	if err != nil {
+		panic("port parsing failed")
+	}
+	if val, exist := s.blackholePeerMap[port]; exist {
+		val &= bits.Reverse8(blackholePeerTypeTx)
+		s.blackholePeerMap[port] = val
+	}
+}
+
+func (s *server) BlackholePeerRx(peer url.URL) {
+	s.blackholePeerMapMu.Lock()
+	defer s.blackholePeerMapMu.Unlock()
+
+	port, err := strconv.Atoi(peer.Port())
+	if err != nil {
+		panic("port parsing failed")
+	}
+	if val, exist := s.blackholePeerMap[port]; exist {
+		val |= blackholePeerTypeRx
+		s.blackholePeerMap[port] = val
+	} else {
+		s.blackholePeerMap[port] = blackholePeerTypeTx
+	}
+}
+
+func (s *server) UnblackholePeerRx(peer url.URL) {
+	s.blackholePeerMapMu.Lock()
+	defer s.blackholePeerMapMu.Unlock()
+
+	port, err := strconv.Atoi(peer.Port())
+	if err != nil {
+		panic("port parsing failed")
+	}
+	if val, exist := s.blackholePeerMap[port]; exist {
+		val &= bits.Reverse8(blackholePeerTypeRx)
+		s.blackholePeerMap[port] = val
+	}
 }
 
 func (s *server) PauseTx() {
