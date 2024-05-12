@@ -34,6 +34,7 @@ import (
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
@@ -48,6 +49,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	compactor "go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
 )
@@ -307,6 +309,12 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 	if quota == 0 {
 		quota = storage.DefaultQuotaBytes
 	}
+	var autoCompactRetention zapcore.Field
+	if sc.AutoCompactionMode == compactor.ModePeriodic {
+		autoCompactRetention = zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention)
+	} else {
+		autoCompactRetention = zap.Int64("auto-compaction-retention", int64(sc.AutoCompactionRetention))
+	}
 
 	lg.Info(
 		"starting an etcd server",
@@ -351,8 +359,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("compact-check-time-enabled", sc.CompactHashCheckEnabled),
 		zap.Duration("compact-check-time-interval", sc.CompactHashCheckTime),
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
-		zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
-		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
+		autoCompactRetention,
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 
