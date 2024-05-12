@@ -53,7 +53,7 @@ jobs:
       - name: install-lazyfs
         if: ${{ inputs.lazyfsEnabled }}
         run: |
-          sudo apt update && sudo apt-get --yes install cmake libfuse3-dev libfuse3-3 fuse3
+          sudo apt-get -o APT::Update::Error-Mode=any update && sudo apt-get --yes install cmake libfuse3-dev libfuse3-3 fuse3
           sudo sed -i 's/#user_allow_other/user_allow_other/g' /etc/fuse.conf
           make install-lazyfs
       - name: test-robustness
