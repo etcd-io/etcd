@@ -481,13 +481,12 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
 	var curl string
-	port := cfg.BasePort + 6*i
+	port := cfg.BasePort + 5*i
 	clientPort := port
 	peerPort := port + 1 // the port that the peer actually listens on
 	metricsPort := port + 2
-	reverseProxyPort := port + 3 // the port that the peer advertises
-	clientHTTPPort := port + 4
-	forwardProxyPort := port + 5
+	clientHTTPPort := port + 3
+	forwardProxyPort := port + 4
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -500,18 +499,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var forwardProxyCfg *proxy.ServerConfig
-	var reverseProxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
-		}
-
-		// setup reverse proxy
-		peerAdvertiseURL.Host = fmt.Sprintf("localhost:%d", reverseProxyPort)
-		reverseProxyCfg = &proxy.ServerConfig{
-			Logger: zap.NewNop(),
-			To:     peerListenURL,
-			From:   peerAdvertiseURL,
 		}
 
 		// setup forward proxy
@@ -647,7 +637,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		InitialToken:        cfg.ServerConfig.InitialClusterToken,
 		GoFailPort:          gofailPort,
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
-		ReverseProxy:        reverseProxyCfg,
 		ForwardProxy:        forwardProxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
@@ -896,6 +885,38 @@ func (epc *EtcdProcessCluster) RollingStart(ctx context.Context) error {
 
 func (epc *EtcdProcessCluster) Restart(ctx context.Context) error {
 	return epc.start(func(ep EtcdProcess) error { return ep.Restart(ctx) })
+}
+
+func (epc *EtcdProcessCluster) BlackholePeer(blackholePeer EtcdProcess) error {
+	blackholePeer.PeerForwardProxy().BlackholeRx()
+	blackholePeer.PeerForwardProxy().BlackholeTx()
+
+	for _, peer := range epc.Procs {
+		if peer.Config().Name == blackholePeer.Config().Name {
+			continue
+		}
+
+		peer.PeerForwardProxy().BlackholePeerRx(blackholePeer.Config().PeerURL)
+		peer.PeerForwardProxy().BlackholePeerTx(blackholePeer.Config().PeerURL)
+	}
+
+	return nil
+}
+
+func (epc *EtcdProcessCluster) UnblackholePeer(blackholePeer EtcdProcess) error {
+	blackholePeer.PeerForwardProxy().UnblackholeRx()
+	blackholePeer.PeerForwardProxy().UnblackholeTx()
+
+	for _, peer := range epc.Procs {
+		if peer.Config().Name == blackholePeer.Config().Name {
+			continue
+		}
+
+		peer.PeerForwardProxy().UnblackholePeerRx(blackholePeer.Config().PeerURL)
+		peer.PeerForwardProxy().UnblackholePeerTx(blackholePeer.Config().PeerURL)
+	}
+
+	return nil
 }
 
 func (epc *EtcdProcessCluster) start(f func(ep EtcdProcess) error) error {
