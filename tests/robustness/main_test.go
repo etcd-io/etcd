@@ -78,10 +78,6 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 			t.Fatal(err)
 		}
 	}
-	err = failpoint.Validate(r.Cluster, s.failpoint)
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.

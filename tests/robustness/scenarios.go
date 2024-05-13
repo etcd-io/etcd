@@ -81,6 +81,11 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
+	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
+	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
+	if v.Compare(v3_5_13) >= 0 {
+		baseOptions = append(baseOptions, e2e.WithSnapshotCatchUpEntries(100))
+	}
 	scenarios := []testScenario{}
 	for _, tp := range trafficProfiles {
 		name := filepath.Join(tp.Traffic.Name(), tp.Profile.Name, "ClusterOfSize1")
@@ -104,9 +109,6 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		clusterOfSize3Options := baseOptions
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithIsPeerTLS(true))
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithPeerProxy(true))
-		if !v.LessThan(version.V3_6) {
-			clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithSnapshotCatchUpEntries(100))
-		}
 		scenarios = append(scenarios, testScenario{
 			name:    name,
 			traffic: tp.Traffic,

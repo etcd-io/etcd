@@ -57,6 +57,11 @@ func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e
 }
 
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
+	// Avoid triggering failpoint if waiting for failpoint would take too long to fit into timeout.
+	// Number of required entries for snapshot depends on etcd configuration.
+	if tb.waitTillSnapshot && entriesToGuaranteeSnapshot(config) > 200 {
+		return false
+	}
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
 }
 
@@ -127,14 +132,18 @@ func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 		}
 		t.Logf("clusterRevision: %d, blackholedMemberRevision: %d", clusterRevision, blackholedMemberRevision)
 		// Blackholed member has to be sufficiently behind to trigger snapshot transfer.
-		// Need to make sure leader compacted latest revBlackholedMem inside EtcdServer.snapshot.
-		// That's why we wait for clus.Cfg.SnapshotCount (to trigger snapshot) + clus.Cfg.SnapshotCatchUpEntries (EtcdServer.snapshot compaction offset)
-		if clusterRevision-blackholedMemberRevision > int64(clus.Cfg.ServerConfig.SnapshotCount+clus.Cfg.ServerConfig.SnapshotCatchUpEntries) {
+		if clusterRevision-blackholedMemberRevision > int64(entriesToGuaranteeSnapshot(*clus.Cfg)) {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 	return nil
+}
+
+func entriesToGuaranteeSnapshot(config e2e.EtcdProcessClusterConfig) uint64 {
+	// Need to make sure leader compacted latest revBlackholedMem inside EtcdServer.snapshot.
+	// That's why we wait for clus.Cfg.SnapshotCount (to trigger snapshot) + clus.Cfg.SnapshotCatchUpEntries (EtcdServer.snapshot compaction offset)
+	return config.ServerConfig.SnapshotCount + config.ServerConfig.SnapshotCatchUpEntries
 }
 
 // latestRevisionForEndpoint gets latest revision of the first endpoint in Client.Endpoints list
