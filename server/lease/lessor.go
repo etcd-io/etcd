@@ -302,6 +302,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	l.persistTo(le.b)
 
 	leaseTotalTTLs.Observe(float64(l.ttl))
+	lease.Inc()
 	leaseGranted.Inc()
 
 	if le.isPrimary() {
@@ -350,6 +351,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 
 	txn.End()
 
+	lease.Dec()
 	leaseRevoked.Inc()
 	return nil
 }

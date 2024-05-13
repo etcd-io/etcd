@@ -19,6 +19,13 @@ import (
 )
 
 var (
+	lease = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "total",
+		Help:      "The total number of active leases.",
+	})
+
 	leaseGranted = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd_debugging",
 		Subsystem: "lease",
@@ -52,6 +59,7 @@ var (
 )
 
 func init() {
+	prometheus.MustRegister(lease)
 	prometheus.MustRegister(leaseGranted)
 	prometheus.MustRegister(leaseRevoked)
 	prometheus.MustRegister(leaseRenewed)
