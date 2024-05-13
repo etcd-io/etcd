@@ -60,7 +60,7 @@ jobs:
         run: |
           docker load < /tmp/etcd-img.tar
       - name: trivy-scan
-        uses: aquasecurity/trivy-action@d710430a6722f083d3b36b8339ff66b32f22ee55 # v0.19.0
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561 # v0.20.0
         with:
           image-ref: 'gcr.io/etcd-development/etcd:v3.6.99-${{ matrix.platforms }}'
           severity: 'CRITICAL,HIGH'
