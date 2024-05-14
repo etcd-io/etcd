@@ -309,11 +309,11 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 	if quota == 0 {
 		quota = storage.DefaultQuotaBytes
 	}
-	var autoCompactRetention zapcore.Field
+	var autoCompactionRetention zapcore.Field
 	if sc.AutoCompactionMode == compactor.ModePeriodic {
-		autoCompactRetention = zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention)
+		autoCompactionRetention = zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention)
 	} else {
-		autoCompactRetention = zap.Int64("auto-compaction-retention", int64(sc.AutoCompactionRetention))
+		autoCompactionRetention = zap.Int64("auto-compaction-retention", int64(sc.AutoCompactionRetention))
 	}
 
 	lg.Info(
@@ -359,7 +359,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Bool("compact-check-time-enabled", sc.CompactHashCheckEnabled),
 		zap.Duration("compact-check-time-interval", sc.CompactHashCheckTime),
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
-		autoCompactRetention,
+		autoCompactionRetention,
 		zap.String("discovery-url", sc.DiscoveryURL),
 		zap.String("discovery-proxy", sc.DiscoveryProxy),
 
