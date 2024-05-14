@@ -53,11 +53,15 @@ func setupEmbedCfg(cfg *embed.Config, curls, purls, ics []url.URL) {
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
 
-	cfg.InitialCluster = ""
-	for i := range ics {
-		cfg.InitialCluster += fmt.Sprintf(",%d=%s", i, ics[i].String())
+	cfg.InitialCluster = joinURLs(ics)
+}
+
+func joinURLs(ics []url.URL) string {
+	initialCluster := make([]string, len(ics))
+	for i, ic := range ics {
+		initialCluster[i] = fmt.Sprintf("%d=%s", i, ic.String())
 	}
-	cfg.InitialCluster = cfg.InitialCluster[1:]
+	return strings.Join(initialCluster, ",")
 }
 
 func getCommand(exec, name, dir, cURL, pURL, cluster string) (args []string) {

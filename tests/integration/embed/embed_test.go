@@ -206,11 +206,16 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 	cfg.ClusterState = "new"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
-	cfg.InitialCluster = ""
-	for i := range purls {
-		cfg.InitialCluster += ",default=" + purls[i].String()
+
+	cfg.InitialCluster = joinURLs(purls)
+}
+
+func joinURLs(purls []url.URL) string {
+	initialCluster := make([]string, len(purls))
+	for i, purl := range purls {
+		initialCluster[i] = fmt.Sprintf("default=%s", purl.String())
 	}
-	cfg.InitialCluster = cfg.InitialCluster[1:]
+	return strings.Join(initialCluster, ",")
 }
 
 func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
