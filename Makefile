@@ -58,7 +58,7 @@ verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-
 	verify-govet-shadow verify-markdown-marker verify-go-versions
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint
+fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
