@@ -15,6 +15,7 @@
 package validate
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,6 +25,11 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+)
+
+var (
+	errRespNotMatched         = errors.New("response didn't match expected")
+	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
 func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
@@ -86,14 +92,14 @@ func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request 
 			return nil
 		}
 		lg.Error("Failed validating serializable operation", zap.Any("request", request), zap.Any("response", response))
-		return fmt.Errorf("request about a future rev with response")
+		return errFutureRevRespRequested
 	}
 
 	_, expectResp := state.Step(request)
 
 	if diff := cmp.Diff(response.EtcdResponse.Range, expectResp.Range); diff != "" {
 		lg.Error("Failed validating serializable operation", zap.Any("request", request), zap.String("diff", diff))
-		return fmt.Errorf("response didn't match expected")
+		return errRespNotMatched
 	}
 	return nil
 }

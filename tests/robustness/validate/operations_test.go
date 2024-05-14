@@ -121,7 +121,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 					),
 				},
 			},
-			expectError: "response didn't match expected",
+			expectError: errRespNotMatched.Error(),
 		},
 		{
 			name: "Invalid count",
@@ -136,7 +136,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 					Output: rangeResponse(1),
 				},
 			},
-			expectError: "response didn't match expected",
+			expectError: errRespNotMatched.Error(),
 		},
 		{
 			name: "Invalid keys",
@@ -153,7 +153,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 					),
 				},
 			},
-			expectError: "response didn't match expected",
+			expectError: errRespNotMatched.Error(),
 		},
 		{
 			name: "Invalid revision",
@@ -171,7 +171,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 					),
 				},
 			},
-			expectError: "response didn't match expected",
+			expectError: errRespNotMatched.Error(),
 		},
 		{
 			name: "Error",
@@ -218,7 +218,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 					Output: rangeResponse(0),
 				},
 			},
-			expectError: "request about a future rev with response",
+			expectError: errFutureRevRespRequested.Error(),
 		},
 		{
 			name: "Future rev failure",
