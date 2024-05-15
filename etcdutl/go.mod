@@ -2,6 +2,8 @@ module go.etcd.io/etcd/etcdutl/v3
 
 go 1.21
 
+toolchain go1.21.10
+
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
 	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg

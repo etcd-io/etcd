@@ -2,6 +2,8 @@ module go.etcd.io/etcd/tools/v3
 
 go 1.21
 
+toolchain go1.21.10
+
 require (
 	github.com/alexkohler/nakedret v1.0.0
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03

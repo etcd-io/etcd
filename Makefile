@@ -580,3 +580,18 @@ gofail-enable: install-gofail
 .PHONY: gofail-disable
 gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test.sh
+
+.PHONY: verify
+verify: verify-go-versions
+
+.PHONY: verify-go-versions
+verify-go-versions:
+	./scripts/verify_go_versions.sh
+
+.PHONY: fix
+fix: sync-toolchain-directive
+	./scripts/fix.sh
+
+.PHONY: sync-toolchain-directive
+sync-toolchain-directive:
+	./scripts/sync_go_toolchain_directive.sh

@@ -2,6 +2,8 @@ module go.etcd.io/etcd/client/v3
 
 go 1.21
 
+toolchain go1.21.10
+
 require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0

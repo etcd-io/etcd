@@ -1,0 +1,32 @@
+---
+name: Static Analysis
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@44c2b7a8a4ea60a981eaca3cf939b5f4305c123b # v4.1.5
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - run: |
+          set -euo pipefail
+
+          make verify
+      - run: |
+          set -euo pipefail
+
+          make fix
+
+          DIFF=$(git status --porcelain)
+
+          if [ -n "$DIFF" ]; then
+            echo "These files were modified:"
+            echo
+            echo "$DIFF"
+            echo
+            exit 1
+          fi

@@ -2,6 +2,8 @@ module go.etcd.io/etcd/api/v3
 
 go 1.21
 
+toolchain go1.21.10
+
 require (
 	github.com/coreos/go-semver v0.3.0
 	github.com/gogo/protobuf v1.3.2
