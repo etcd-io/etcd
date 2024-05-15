@@ -28,6 +28,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	gofail "github.com/henrybear327/gofail/runtime"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -35,7 +36,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
-	gofail "go.etcd.io/gofail/runtime"
 )
 
 // TestV3LeasePromote ensures the newly elected leader can promote itself

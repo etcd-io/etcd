@@ -328,6 +328,8 @@ github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
+github.com/henrybear327/gofail v0.0.0-20240515132345-a29375860516 h1:ot/rK4rIf01UPO6w79g4niTl9I2wW+hNpChzPrGZhFY=
+github.com/henrybear327/gofail v0.0.0-20240515132345-a29375860516/go.mod h1:zJhki/QdO//BCP4spvJ11oibYo5xO2W5rAP+AEg6has=
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/hexops/gotextdiff v1.0.3/go.mod h1:pSWU5MAI3yDq+fZBTazCSJysOMbxWL1BSow5/V2vxeg=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
@@ -650,8 +652,6 @@ go-simpler.org/musttag v0.9.0 h1:Dzt6/tyP9ONr5g9h9P3cnYWCxeBFRkd0uJL/w+1Mxos=
 go-simpler.org/musttag v0.9.0/go.mod h1:gA9nThnalvNSKpEoyp3Ko4/vCX2xTpqKoUtNqXOnVR4=
 go-simpler.org/sloglint v0.5.0 h1:2YCcd+YMuYpuqthCgubcF5lBSjb6berc5VMOYUHKrpY=
 go-simpler.org/sloglint v0.5.0/go.mod h1:EUknX5s8iXqf18KQxKnaBHUPVriiPnOrPjjJcsaTcSQ=
-go.etcd.io/gofail v0.1.0 h1:XItAMIhOojXFQMgrxjnd2EIIHun/d5qL0Pf7FzVTkFg=
-go.etcd.io/gofail v0.1.0/go.mod h1:VZBCXYGZhHAinaBiiqYvuDynvahNsAyLFwB3kEHKz1M=
 go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116 h1:QQiUXlqz+d96jyNG71NE+IGTgOK6Xlhdx+PzvfbLHlQ=
 go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116/go.mod h1:F9kog+iVAuvPJucb1dkYcDcbV0g4uyGEHllTP5NrXiw=
 go.etcd.io/raft/v3 v3.6.0-alpha.0 h1:cMmjAEjCKMGiQPowjSWM43Y5ZnBEeNP8RSYcm3ewtns=

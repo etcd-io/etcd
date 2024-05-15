@@ -24,11 +24,11 @@ import (
 	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
 
+	gofail "github.com/henrybear327/gofail/runtime"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	gofail "go.etcd.io/gofail/runtime"
 )
 
 var grpcLogger grpclogsettable.SettableLoggerV2

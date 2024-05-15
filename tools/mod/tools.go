@@ -31,7 +31,7 @@ import (
 	_ "github.com/google/yamlfmt/cmd/yamlfmt"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
-	_ "go.etcd.io/gofail"
+	_ "github.com/henrybear327/gofail"
 	_ "go.etcd.io/protodoc"
 	_ "go.etcd.io/raft/v3"
 	_ "gotest.tools/gotestsum"

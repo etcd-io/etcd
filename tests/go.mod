@@ -23,6 +23,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
+	github.com/henrybear327/gofail v0.0.0-20240515132345-a29375860516
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.53.0
 	github.com/soheilhy/cmux v0.1.5
@@ -35,7 +36,6 @@ require (
 	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
-	go.etcd.io/gofail v0.1.0
 	go.etcd.io/raft/v3 v3.6.0-alpha.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.51.0
 	go.opentelemetry.io/otel v1.26.0

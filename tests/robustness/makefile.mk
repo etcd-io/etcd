@@ -38,7 +38,7 @@ test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
-GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
+GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/henrybear327/gofail)
 
 .PHONY:install-gofail
 install-gofail: $(GOPATH)/bin/gofail
@@ -46,10 +46,10 @@ install-gofail: $(GOPATH)/bin/gofail
 .PHONY: gofail-enable
 gofail-enable: $(GOPATH)/bin/gofail
 	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/
-	cd ./server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
-	cd ./tests && go get go.etcd.io/gofail@${GOFAIL_VERSION}
+	cd ./server && go get github.com/henrybear327/gofail@${GOFAIL_VERSION}
+	cd ./etcdutl && go get github.com/henrybear327/gofail@${GOFAIL_VERSION}
+	cd ./etcdctl && go get github.com/henrybear327/gofail@${GOFAIL_VERSION}
+	cd ./tests && go get github.com/henrybear327/gofail@${GOFAIL_VERSION}
 
 .PHONY: gofail-disable
 gofail-disable: $(GOPATH)/bin/gofail
@@ -60,7 +60,7 @@ gofail-disable: $(GOPATH)/bin/gofail
 	cd ./tests && go mod tidy
 
 $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
-	go install go.etcd.io/gofail@${GOFAIL_VERSION}
+	go install github.com/henrybear327/gofail@${GOFAIL_VERSION}
 
 # Build previous releases for robustness tests
 
@@ -80,10 +80,10 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	mkdir -p /tmp/etcd-v3.5.$*-failpoints/
 	cd /tmp/etcd-v3.5.$*-failpoints/; \
 	  git clone --depth 1 --branch v3.5.$* https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  go get github.com/henrybear327/gofail@${GOFAIL_VERSION}; \
+	  (cd server; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdctl; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdutl; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-release-3.5-failpoints/bin: $(GOPATH)/bin/gofail
@@ -91,10 +91,10 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	mkdir -p /tmp/etcd-release-3.5-failpoints/
 	cd /tmp/etcd-release-3.5-failpoints/; \
 	  git clone --depth 1 --branch release-3.5 https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  go get github.com/henrybear327/gofail@${GOFAIL_VERSION}; \
+	  (cd server; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdctl; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdutl; go get github.com/henrybear327/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.4.23-failpoints/bin:
@@ -103,7 +103,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	mkdir -p /tmp/etcd-v3.4.$*-failpoints/
 	cd /tmp/etcd-v3.4.$*-failpoints/; \
 	  git clone --depth 1 --branch v3.4.$* https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
+	  go get github.com/henrybear327/gofail@${GOFAIL_VERSION}; \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-release-3.4-failpoints/bin: $(GOPATH)/bin/gofail
@@ -111,5 +111,5 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	mkdir -p /tmp/etcd-release-3.4-failpoints/
 	cd /tmp/etcd-release-3.4-failpoints/; \
 	  git clone --depth 1 --branch release-3.4 https://github.com/etcd-io/etcd.git .; \
-	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
+	  go get github.com/henrybear327/gofail@${GOFAIL_VERSION}; \
 	  FAILPOINTS=true ./build;
