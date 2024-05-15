@@ -570,27 +570,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--discovery="+cfg.Discovery)
 	}
 
-	defaultValues := values(*embed.NewConfig())
-	overrideValues := values(cfg.ServerConfig)
-	for flag, value := range overrideValues {
-		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
-			continue
-		}
-		if flag == "experimental-snapshot-catchup-entries" && !(cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2)) {
-			continue
-		}
-		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
-	}
-	envVars := map[string]string{}
-	for key, value := range cfg.EnvVars {
-		envVars[key] = value
-	}
-	var gofailPort int
-	if cfg.GoFailEnabled {
-		gofailPort = (i+1)*10000 + 2381
-		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
-	}
-
 	var execPath string
 	switch cfg.Version {
 	case CurrentVersion:
@@ -611,6 +590,27 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		execPath = BinPath.EtcdLastRelease
 	default:
 		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
+	}
+
+	defaultValues := values(*embed.NewConfig())
+	overrideValues := values(cfg.ServerConfig)
+	for flag, value := range overrideValues {
+		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
+			continue
+		}
+		if flag == "experimental-snapshot-catchup-entries" && !CouldSetSnapshotCatchupEntries(execPath) {
+			continue
+		}
+		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
+	}
+	envVars := map[string]string{}
+	for key, value := range cfg.EnvVars {
+		envVars[key] = value
+	}
+	var gofailPort int
+	if cfg.GoFailEnabled {
+		gofailPort = (i+1)*10000 + 2381
+		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
 	return &EtcdServerProcessConfig{

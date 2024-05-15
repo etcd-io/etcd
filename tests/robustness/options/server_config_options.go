@@ -49,3 +49,7 @@ func WithExperimentalWatchProgressNotifyInterval(input ...time.Duration) e2e.EPC
 		c.ServerConfig.ExperimentalWatchProgressNotifyInterval = input[internalRand.Intn(len(input))]
 	}
 }
+
+func WithVersion(input ...e2e.ClusterVersion) e2e.EPClusterOption {
+	return func(c *e2e.EtcdProcessClusterConfig) { c.Version = input[internalRand.Intn(len(input))] }
+}

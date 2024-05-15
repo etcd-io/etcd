@@ -130,12 +130,13 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
+	clusterOptions := []e2e.EPClusterOption{e2e.WithConfig(cfg), e2e.WithSnapshotCount(10)}
+	// TODO: remove version check after 3.5.14 release.
+	if cfg.Version == e2e.CurrentVersion {
+		clusterOptions = append(clusterOptions, e2e.WithSnapshotCatchUpEntries(10))
+	}
 	t.Logf("Create an etcd cluster with %d member", cfg.ClusterSize)
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
-		e2e.WithConfig(cfg),
-		e2e.WithSnapshotCount(10),
-		e2e.WithSnapshotCatchUpEntries(10),
-	)
+	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, clusterOptions...)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
 	defer func() {
 		derr := epc.Close()
@@ -161,7 +162,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 	assertKVHash(t, epc)
 
 	leaderEPC = epc.Procs[epc.WaitLeader(t)]
-	if leaderEPC.Config().ExecPath == e2e.BinPath.Etcd {
+	if cfg.Version == e2e.CurrentVersion {
 		t.Log("Verify logs to check snapshot be sent from leader to follower")
 		e2e.AssertProcessLogs(t, leaderEPC, "sent database snapshot")
 	}

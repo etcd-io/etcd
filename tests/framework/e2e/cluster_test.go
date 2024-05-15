@@ -74,13 +74,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 				"--experimental-snapshot-catchup-entries=100",
 			},
 		},
-		{
-			name:   "CatchUpEntriesLastVersion",
-			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
-			expectArgsNotContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
-			},
-		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
