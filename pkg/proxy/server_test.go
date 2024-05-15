@@ -37,6 +37,8 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
+// FIXME: add tests?
+
 func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
 func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
 func TestServer_Unix_Secure(t *testing.T)           { testServer(t, "unix", true, false) }
