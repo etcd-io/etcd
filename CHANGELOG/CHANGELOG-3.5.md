@@ -22,7 +22,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [initialization for mu in client context](https://github.com/etcd-io/etcd/pull/17699).
 
 ### Dependencies
-- Compile binaries using [go 1.21.9](https://github.com/etcd-io/etcd/pull/17708).
+- Compile binaries using [go 1.21.10](https://github.com/etcd-io/etcd/pull/17980).
 - Upgrade [bbolt to v1.3.10](https://github.com/etcd-io/etcd/pull/17943).
 
 <hr>
