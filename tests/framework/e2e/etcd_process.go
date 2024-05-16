@@ -485,7 +485,10 @@ func parseFailpointsBody(body io.Reader) (map[string]string, error) {
 	return failpoints, nil
 }
 
-func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
+var GetVersionFromBinary = func(binaryPath string) (*semver.Version, error) {
+	if !fileutil.Exist(binaryPath) {
+		return nil, fmt.Errorf("binary path does not exist: %s", binaryPath)
+	}
 	lines, err := RunUtilCompletion([]string{binaryPath, "--version"}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
@@ -509,15 +512,19 @@ func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
 	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
 }
 
+// setGetVersionFromBinary changes the GetVersionFromBinary function to a mock in testing.
+func setGetVersionFromBinary(tb testing.TB, f func(binaryPath string) (*semver.Version, error)) {
+	origGetVersionFromBinary := GetVersionFromBinary
+	GetVersionFromBinary = f
+	tb.Cleanup(func() {
+		GetVersionFromBinary = origGetVersionFromBinary
+	})
+}
+
 func CouldSetSnapshotCatchupEntries(execPath string) bool {
-	if !fileutil.Exist(execPath) {
-		// default to true if the binary does not exist, because binary might not exist for unit test,
-		// which does not really matter because "experimental-snapshot-catchup-entries" can be set for v3.6 and v3.5.
-		return true
-	}
 	v, err := GetVersionFromBinary(execPath)
 	if err != nil {
-		panic(err)
+		return false
 	}
 	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
 	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}

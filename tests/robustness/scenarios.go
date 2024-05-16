@@ -69,9 +69,23 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
 	}
 
-	// 66% current version, 33% MinorityLastVersion and QuorumLastVersion
-	mixedVersionOption := options.WithVersion(e2e.CurrentVersion, e2e.CurrentVersion, e2e.CurrentVersion,
-		e2e.CurrentVersion, e2e.MinorityLastVersion, e2e.QuorumLastVersion)
+	mixedVersionOption := options.WithClusterOptionGroups(
+		// 60% with all members of current version
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		// 10% with 2 members of current version, 1 member last version, leader is current version
+		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(0)},
+		// 10% with 2 members of current version, 1 member last version, leader is last version
+		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(2)},
+		// 10% with 2 members of last version, 1 member current version, leader is last version
+		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(0)},
+		// 10% with 2 members of last version, 1 member current version, leader is current version
+		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(2)},
+	)
 
 	baseOptions := []e2e.EPClusterOption{
 		options.WithSnapshotCount(50, 100, 1000),

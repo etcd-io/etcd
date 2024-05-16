@@ -151,8 +151,11 @@ type EtcdProcessClusterConfig struct {
 
 	// Cluster setup config
 
-	ClusterSize  int
-	RollingStart bool
+	ClusterSize int
+	// InitialLeaderIndex makes sure the leader is the ith proc
+	// when the cluster starts if it is specified (>=0).
+	InitialLeaderIndex int
+	RollingStart       bool
 	// BaseDataDirPath specifies the data-dir for the members. If test cases
 	// do not specify `BaseDataDirPath`, then e2e framework creates a
 	// temporary directory for each member; otherwise, it creates a
@@ -180,10 +183,10 @@ type EtcdProcessClusterConfig struct {
 
 func DefaultConfig() *EtcdProcessClusterConfig {
 	cfg := &EtcdProcessClusterConfig{
-		ClusterSize: 3,
-		CN:          true,
-
-		ServerConfig: *embed.NewConfig(),
+		ClusterSize:        3,
+		CN:                 true,
+		InitialLeaderIndex: -1,
+		ServerConfig:       *embed.NewConfig(),
 	}
 	cfg.ServerConfig.InitialClusterToken = "new"
 	return cfg
@@ -205,6 +208,10 @@ func WithConfig(cfg *EtcdProcessClusterConfig) EPClusterOption {
 
 func WithVersion(version ClusterVersion) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Version = version }
+}
+
+func WithInitialLeaderIndex(i int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.InitialLeaderIndex = i }
 }
 
 func WithDataDirPath(path string) EPClusterOption {
@@ -398,6 +405,16 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
 
+	// validate SnapshotCatchUpEntries could be set for at least one member
+	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+		if !CouldSetSnapshotCatchupEntries(BinPath.Etcd) {
+			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for current etcd version: %s", BinPath.Etcd)
+		}
+		if cfg.Version == LastVersion && !CouldSetSnapshotCatchupEntries(BinPath.EtcdLastRelease) {
+			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for last etcd version: %s", BinPath.EtcdLastRelease)
+		}
+	}
+
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
 	epc := &EtcdProcessCluster{
 		Cfg:     cfg,
@@ -437,7 +454,11 @@ func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcess
 			t.Skip("please run 'make gofail-enable && make build' before running the test")
 		}
 	}
-
+	if cfg.InitialLeaderIndex >= 0 {
+		if err := epc.MoveLeader(ctx, t, cfg.InitialLeaderIndex); err != nil {
+			return nil, fmt.Errorf("failed to move leader: %v", err)
+		}
+	}
 	return epc, nil
 }
 
@@ -1049,4 +1070,32 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	}
 	t.Fatal("impossible path of execution")
 	return -1
+}
+
+// MoveLeader moves the leader to the ith process.
+func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i int) error {
+	if i < 0 || i >= len(epc.Procs) {
+		return fmt.Errorf("invalid index: %d, must between 0 and %d", i, len(epc.Procs)-1)
+	}
+	t.Logf("moving leader to Procs[%d]", i)
+	oldLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	if oldLeader == i {
+		t.Logf("Procs[%d] is already the leader", i)
+		return nil
+	}
+	resp, err := epc.Procs[i].Etcdctl().Status(ctx)
+	if err != nil {
+		return err
+	}
+	memberID := resp[0].Header.MemberId
+	err = epc.Procs[oldLeader].Etcdctl().MoveLeader(ctx, memberID)
+	if err != nil {
+		return err
+	}
+	newLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	if newLeader != i {
+		t.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
+	}
+	t.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
+	return nil
 }

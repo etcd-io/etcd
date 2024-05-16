@@ -312,6 +312,13 @@ func (ctl *EtcdctlV3) MemberPromote(ctx context.Context, id uint64) (*clientv3.M
 	return &resp, err
 }
 
+// MoveLeader requests current leader to transfer its leadership to the transferee.
+// Request must be made to the leader.
+func (ctl *EtcdctlV3) MoveLeader(ctx context.Context, transfereeID uint64) error {
+	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("move-leader", fmt.Sprintf("%x", transfereeID)), nil, expect.ExpectedResponse{Value: "Leadership transferred"})
+	return err
+}
+
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
 	cmdArgs := []string{BinPath.Etcdctl}
 	for k, v := range ctl.flags() {
