@@ -61,8 +61,8 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	t.Logf("Blackholing traffic from and to member %q", partitionedMember.Config().Name)
 	epc.BlackholePeer(partitionedMember)
 
-	t.Logf("Wait 5s for any open connections to expire")
-	time.Sleep(5 * time.Second)
+	t.Logf("Wait 1s for any open connections to expire")
+	time.Sleep(1 * time.Second)
 
 	t.Logf("Wait for new leader election with remaining members")
 	leaderEPC := epc.Procs[waitLeader(t, epc, mockPartitionNodeIndex)]
@@ -80,7 +80,7 @@ func blackholeTestByMockingPartition(t *testing.T, clusterSize int, partitionLea
 	epc.UnblackholePeer(partitionedMember)
 
 	leaderEPC = epc.Procs[epc.WaitLeader(t)]
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 	assertRevision(t, leaderEPC, 21)
 	assertRevision(t, partitionedMember, 21)
 }

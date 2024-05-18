@@ -177,11 +177,12 @@ type server struct {
 	donec  chan struct{}
 	errc   chan error
 
-	closeOnce sync.Once
-	closeWg   sync.WaitGroup
+	closeOnce         sync.Once
+	closeWg           sync.WaitGroup
+	closeHijackedConn sync.WaitGroup
 
 	listenerMu sync.RWMutex
-	listener   net.Listener
+	listener   *customListener
 
 	pauseAcceptMu sync.Mutex
 	pauseAcceptc  chan struct{}
@@ -278,98 +279,197 @@ func NewServer(cfg ServerConfig) Server {
 		addr = s.from.Host
 	}
 
-	// We do not have an unified implementation for the proxy because we are dealing with the connection in different layers
-	// L7 (serverHandler) can't deal with features such as "pause/delay accepting connections", as it can only be done at L4 (transport layer's feature)
-	// If the aforementioned features aren't required, we can remove the L4 proxy code, but that's another discussion
 	s.closeWg.Add(1)
-	if s.isForwardProxy {
-		// L7 proxy
-		//
-		// the main goal is to parse the CONNECT header for the destination host first (at L7 application layer),
-		// then continuing on to forward the traffic like we do in L4
-		if !(s.tlsInfo.Empty() && s.from.Scheme == "tcp") {
-			panic("Unsupported configuration")
-		}
-
-		handler := &serverHandler{
-			closeWg: &s.closeWg,
-			s:       s,
-		}
-
-		s.httpServer = startHTTPServer(&s.closeWg, s.readyc, addr, handler)
+	var ln net.Listener
+	var err error
+	if !s.tlsInfo.Empty() {
+		ln, err = transport.NewListener(addr, s.from.Scheme, &s.tlsInfo)
 	} else {
-		// L4 proxy
-		//
-		// the destination host is known, thus, we can directly forward the traffic (at L4 transport layer)
-		var ln net.Listener
-		var err error
-		if !s.tlsInfo.Empty() {
-			ln, err = transport.NewListener(addr, s.from.Scheme, &s.tlsInfo)
-		} else {
-			ln, err = net.Listen(s.from.Scheme, addr)
-		}
-		if err != nil {
-			s.errc <- err
-			s.Close()
-			return s
-		}
-		s.listener = ln
-
-		go s.listenAndServe()
+		ln, err = net.Listen(s.from.Scheme, addr)
 	}
+	if err != nil {
+		s.errc <- err
+		s.Close()
+		return s
+	}
+
+	s.listener = &customListener{
+		l: ln,
+		s: s,
+	}
+
+	go func() {
+		defer s.closeWg.Done()
+
+		s.httpServer = &http.Server{
+			Handler: &serverHandler{s: s},
+		}
+
+		s.lg.Info("proxy is listening on", zap.String("from", s.From()))
+		close(s.readyc)
+		if err := s.httpServer.Serve(*s.listener); err != http.ErrServerClosed {
+			// always returns error. ErrServerClosed on graceful close
+			panic(fmt.Sprintf("startHTTPServer Serve(): %v", err))
+		}
+	}()
 
 	s.lg.Info("started proxying", zap.String("from", s.From()), zap.String("to", s.To()))
 	return s
 }
 
-func startHTTPServer(closeWg *sync.WaitGroup, readyc chan struct{}, addr string, handler *serverHandler) *http.Server {
-	srv := &http.Server{
-		Addr: addr,
+// Because we are implementing L7 proxy, but would like to keep the L4 features,
+// thus, we need to encapsulate the L4 functionalities in our custom Listener
+type customListener struct {
+	s *server
+	l net.Listener
+}
+
+func (c customListener) Accept() (net.Conn, error) {
+	// we implement the L4 features here (pause / latency accept)
+	c.s.pauseAcceptMu.Lock()
+	pausec := c.s.pauseAcceptc
+	c.s.pauseAcceptMu.Unlock()
+	select {
+	case <-pausec:
+	case <-c.s.donec:
+		return nil, fmt.Errorf("listener is closed")
 	}
-	srv.Handler = handler
 
-	go func() {
-		defer closeWg.Done() // let main know we are done cleaning up
-
-		close(readyc)
-		// always returns error. ErrServerClosed on graceful close
-		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
-			panic(fmt.Sprintf("ListenAndServe(): %v", err))
+	c.s.latencyAcceptMu.RLock()
+	lat := c.s.latencyAccept
+	c.s.latencyAcceptMu.RUnlock()
+	if lat > 0 {
+		select {
+		case <-time.After(lat):
+		case <-c.s.donec:
+			return nil, fmt.Errorf("listener is closed")
 		}
-	}()
+	}
 
-	// returning reference so caller can call Shutdown()
-	return srv
+	conn, err := c.l.Accept()
+	if err != nil {
+		select {
+		case c.s.errc <- err:
+			select {
+			case <-c.s.donec:
+				return nil, err
+			default:
+			}
+		case <-c.s.donec:
+			return nil, err
+		}
+		c.s.lg.Debug("listener accept error", zap.Error(err))
+
+		if strings.HasSuffix(err.Error(), "use of closed network connection") {
+			select {
+			case <-time.After(c.s.retryInterval):
+			case <-c.s.donec:
+				return nil, err
+			}
+			c.s.lg.Debug("listener is closed; retry listening on", zap.String("from", c.s.From()))
+
+			if err = c.s.ResetListener(); err != nil {
+				select {
+				case c.s.errc <- err:
+					select {
+					case <-c.s.donec:
+						return nil, err
+					default:
+					}
+				case <-c.s.donec:
+					return nil, err
+				}
+				c.s.lg.Warn("failed to reset listener", zap.Error(err))
+			}
+		}
+	}
+
+	return conn, err
+}
+
+// Close closes the listener.
+// Any blocked Accept operations will be unblocked and return errors.
+func (c customListener) Close() error {
+	return c.l.Close()
+}
+
+// Addr returns the listener's network address.
+func (c customListener) Addr() net.Addr {
+	return c.l.Addr()
 }
 
 type serverHandler struct {
-	closeWg *sync.WaitGroup
-
 	s *server
 }
 
 func (s *serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	hijacker, _ := resp.(http.Hijacker)
-	conn, _, err := hijacker.Hijack()
+	in, _, err := hijacker.Hijack()
 	if err != nil {
-		// TODO: write error back to chan
-		return
-	}
-
-	// dial to target host
-	targetConn, err := net.Dial("tcp", req.URL.Host)
-	if err != nil {
-		// TODO: write error back to chan
-		return
+		select {
+		case s.s.errc <- err:
+			select {
+			case <-s.s.donec:
+				return
+			default:
+			}
+		case <-s.s.donec:
+			return
+		}
+		s.s.lg.Debug("ServeHTTP hijack error", zap.Error(err))
+		panic(err)
 	}
 
 	// for CONNECT, we need to send 200 response back first
+	targetScheme := s.s.to.Scheme
+	targetHost := s.s.to.Host
+	ctx := context.Background()
 	if req.Method == "CONNECT" {
-		conn.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
+		in.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
+
+		targetScheme = "tcp"
+		targetHost = req.URL.Host
+	}
+
+	var out net.Conn
+	if !s.s.tlsInfo.Empty() {
+		var tp *http.Transport
+		tp, err = transport.NewTransport(s.s.tlsInfo, s.s.dialTimeout)
+		if err != nil {
+			select {
+			case s.s.errc <- err:
+				select {
+				case <-s.s.donec:
+					return
+				default:
+				}
+			case <-s.s.donec:
+				return
+			}
+			s.s.lg.Debug("failed to get new Transport", zap.Error(err))
+			return
+		}
+		out, err = tp.DialContext(ctx, targetScheme, targetHost)
+	} else {
+		out, err = net.Dial(targetScheme, targetHost)
+	}
+	if err != nil {
+		select {
+		case s.s.errc <- err:
+			select {
+			case <-s.s.donec:
+				return
+			default:
+			}
+		case <-s.s.donec:
+			return
+		}
+		s.s.lg.Debug("failed to dial", zap.Error(err))
+		return
 	}
 
 	var dstPort int
-	dstPort, err = getPort(targetConn.RemoteAddr())
+	dstPort, err = getPort(out.RemoteAddr())
 	if err != nil {
 		select {
 		case s.s.errc <- err:
@@ -385,19 +485,16 @@ func (s *serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	out := targetConn
-	in := conn
-
-	s.closeWg.Add(2)
+	s.s.closeHijackedConn.Add(2)
 	go func() {
-		defer s.closeWg.Done()
+		defer s.s.closeHijackedConn.Done()
 		// read incoming bytes from listener, dispatch to outgoing connection
 		s.s.transmit(out, in, dstPort)
 		out.Close()
 		in.Close()
 	}()
 	go func() {
-		defer s.closeWg.Done()
+		defer s.s.closeHijackedConn.Done()
 		// read response from outgoing connection, write back to listener
 		s.s.receive(in, out, dstPort)
 		in.Close()
@@ -414,153 +511,6 @@ func (s *server) To() string {
 		return fmt.Sprintf("%s://%s", s.to.Scheme, s.to.Host)
 	}
 	return ""
-}
-
-// TODO: implement packet reordering from multiple TCP connections
-// buffer packets per connection for awhile, reorder before transmit
-// - https://github.com/etcd-io/etcd/issues/5614
-// - https://github.com/etcd-io/etcd/pull/6918#issuecomment-264093034
-func (s *server) listenAndServe() {
-	defer s.closeWg.Done()
-
-	ctx := context.Background()
-	s.lg.Info("proxy is listening on", zap.String("from", s.From()))
-	close(s.readyc)
-
-	for {
-		s.pauseAcceptMu.Lock()
-		pausec := s.pauseAcceptc
-		s.pauseAcceptMu.Unlock()
-		select {
-		case <-pausec:
-		case <-s.donec:
-			return
-		}
-
-		s.latencyAcceptMu.RLock()
-		lat := s.latencyAccept
-		s.latencyAcceptMu.RUnlock()
-		if lat > 0 {
-			select {
-			case <-time.After(lat):
-			case <-s.donec:
-				return
-			}
-		}
-
-		s.listenerMu.RLock()
-		ln := s.listener
-		s.listenerMu.RUnlock()
-
-		in, err := ln.Accept()
-		if err != nil {
-			select {
-			case s.errc <- err:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
-			case <-s.donec:
-				return
-			}
-			s.lg.Debug("listener accept error", zap.Error(err))
-
-			if strings.HasSuffix(err.Error(), "use of closed network connection") {
-				select {
-				case <-time.After(s.retryInterval):
-				case <-s.donec:
-					return
-				}
-				s.lg.Debug("listener is closed; retry listening on", zap.String("from", s.From()))
-
-				if err = s.ResetListener(); err != nil {
-					select {
-					case s.errc <- err:
-						select {
-						case <-s.donec:
-							return
-						default:
-						}
-					case <-s.donec:
-						return
-					}
-					s.lg.Warn("failed to reset listener", zap.Error(err))
-				}
-			}
-
-			continue
-		}
-
-		var out net.Conn
-		if !s.tlsInfo.Empty() {
-			var tp *http.Transport
-			tp, err = transport.NewTransport(s.tlsInfo, s.dialTimeout)
-			if err != nil {
-				select {
-				case s.errc <- err:
-					select {
-					case <-s.donec:
-						return
-					default:
-					}
-				case <-s.donec:
-					return
-				}
-				continue
-			}
-			out, err = tp.DialContext(ctx, s.to.Scheme, s.to.Host)
-		} else {
-			out, err = net.Dial(s.to.Scheme, s.to.Host)
-		}
-		if err != nil {
-			select {
-			case s.errc <- err:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
-			case <-s.donec:
-				return
-			}
-			s.lg.Debug("failed to dial", zap.Error(err))
-			continue
-		}
-
-		var dstPort int
-		dstPort, err = getPort(out.RemoteAddr())
-		if err != nil {
-			select {
-			case s.errc <- err:
-				select {
-				case <-s.donec:
-					return
-				default:
-				}
-			case <-s.donec:
-				return
-			}
-			s.lg.Debug("failed to parse port in transmit", zap.Error(err))
-			return
-		}
-
-		s.closeWg.Add(2)
-		go func() {
-			defer s.closeWg.Done()
-			// read incoming bytes from listener, dispatch to outgoing connection
-			s.transmit(out, in, dstPort)
-			out.Close()
-			in.Close()
-		}()
-		go func() {
-			defer s.closeWg.Done()
-			// read response from outgoing connection, write back to listener
-			s.receive(in, out, dstPort)
-			in.Close()
-			out.Close()
-		}()
-	}
 }
 
 func getPort(addr net.Addr) (int, error) {
@@ -816,27 +766,24 @@ func (s *server) Close() (err error) {
 	s.closeOnce.Do(func() {
 		close(s.donec)
 
-		if s.httpServer != nil {
-			if err = s.httpServer.Shutdown(context.TODO()); err != nil {
-				return
-			}
-			s.httpServer = nil
-		} else {
-			s.listenerMu.Lock()
-
-			if s.listener != nil {
-				err = s.listener.Close()
-				s.lg.Info(
-					"closed proxy listener",
-					zap.String("from", s.From()),
-					zap.String("to", s.To()),
-				)
-			}
-			s.lg.Sync()
-			s.listenerMu.Unlock()
+		// we shutdown the server
+		if err = s.httpServer.Shutdown(context.TODO()); err != nil {
+			return
 		}
+		s.httpServer = nil
+
+		// listener was closed by the Shutdown() call
+		s.listenerMu.Lock()
+		s.listener = nil
+		s.lg.Sync()
+		s.listenerMu.Unlock()
+
+		// the hijacked connections aren't tracked by the server so we need to wait for them
+		s.closeHijackedConn.Wait()
 	})
-	s.closeWg.Wait()
+
+	// s.closeWg.Wait()
+
 	return err
 }
 
@@ -1235,7 +1182,10 @@ func (s *server) ResetListener() error {
 	if err != nil {
 		return err
 	}
-	s.listener = ln
+	s.listener = &customListener{
+		l: ln,
+		s: s,
+	}
 
 	s.lg.Info(
 		"reset listener on",
