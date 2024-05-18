@@ -91,6 +91,7 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
 - Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
+- Add [`etcd_server_range_duration_seconds`](https://github.com/etcd-io/etcd/pull/17983).
 
 ### Go
 - Require [Go 1.22+](https://github.com/etcd-io/etcd/pull/16594).
