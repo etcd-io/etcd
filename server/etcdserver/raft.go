@@ -218,7 +218,6 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
 				// ensure that recovery after a snapshot restore is possible.
 				if m.Snapshot != nil {
-					r.lg.Info("Save snap", zap.Any("snap", m.Snapshot))
 					// gofail: var raftBeforeSaveSnap struct{}
 					if err := r.storage.SaveSnap(*m.Snapshot); err != nil {
 						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
@@ -227,17 +226,15 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				}
 
 				// gofail: var raftBeforeSave struct{}
-				r.lg.Info("Save entries", zap.Any("entries", m.Entries))
 				if err := r.storage.Save(messageHardState.hardState, m.Entries); err != nil {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
-				//if !raft.IsEmptyHardState(hardState) {
-				//	proposalsCommitted.Set(float64(hardState.Commit))
-				//}
+				if !raft.IsEmptyHardState(messageHardState.hardState) {
+					proposalsCommitted.Set(float64(messageHardState.hardState.Commit))
+				}
 				// gofail: var raftAfterSave struct{}
 
 				if m.Snapshot != nil {
-					r.lg.Info("Sync wal")
 					// Force WAL to fsync its hard state before Release() releases
 					// old data from the WAL. Otherwise could get an error like:
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
@@ -249,7 +246,6 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// etcdserver now claim the snapshot has been persisted onto the disk
 					// gofail: var raftBeforeApplySnap struct{}
 					r.raftStorage.ApplySnapshot(*m.Snapshot)
-					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index))
 					// gofail: var raftAfterApplySnap struct{}
 
 					if err := r.storage.Release(*m.Snapshot); err != nil {
@@ -257,9 +253,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					}
 					// gofail: var raftAfterWALRelease struct{}
 				}
-				r.lg.Info("Append entries", zap.Any("entries", m.Entries))
 				r.raftStorage.Append(m.Entries)
-				r.lg.Info("Append sent responses", zap.Any("entries", m.Responses))
 				r.transport.Send(m.Responses)
 			case <-r.stopped:
 				return
@@ -302,33 +296,24 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 			case <-r.ticker.C:
 				r.tick()
 			case rd := <-r.Ready():
-				r.lg.Info("Ready")
 				if rd.SoftState != nil {
-					r.lg.Info("SoftState", zap.Any("soft-state", rd.SoftState))
 					r.handleSoftState(rh, rd.SoftState, rd.RaftState)
 				}
 				if len(rd.ReadStates) != 0 {
-					r.lg.Info("ReadyStates", zap.Any("ready-state", rd.ReadStates))
 					if r.handleReadyStates(rd.ReadStates) {
 						return
 					}
 				}
-				if !raft.IsEmptyHardState(rd.HardState) {
-					r.lg.Info("HardState", zap.Any("hard-state", rd.HardState))
-				}
 				for _, m := range rd.Messages {
 					switch m.To {
 					case raft.LocalApplyThread:
-						r.lg.Info("Message apply", zap.Any("message", m))
 						toApply <- m
 					case raft.LocalAppendThread:
-						r.lg.Info("Message append", zap.Any("message", m))
 						toAppend <- hardStateMessage{
 							hardState: rd.HardState,
 							message:   m,
 						}
 					default:
-						r.lg.Info("Message sent", zap.Any("message", m))
 						r.transport.Send([]raftpb.Message{m})
 					}
 				}

@@ -174,15 +174,12 @@ func (t *Transport) Get(id types.ID) Peer {
 
 func (t *Transport) Send(msgs []raftpb.Message) {
 	for _, m := range msgs {
-		t.Logger.Info("Got message to send", zap.Any("to", m.To))
 		if m.To == 0 {
-			t.Logger.Info("Drop")
 			// ignore intentionally dropped message
 			continue
 		}
 		to := types.ID(m.To)
 		if to == t.ID {
-			t.Logger.Info("Sending message to self", zap.Any("to", m.To))
 			t.Raft.Process(context.Background(), m)
 			continue
 		}
@@ -193,7 +190,6 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 		t.mu.RUnlock()
 
 		if pok {
-			t.Logger.Info("Send to peer", zap.Any("peer", p))
 			if isMsgApp(m) {
 				t.ServerStats.SendAppendReq(m.Size())
 			}
@@ -202,13 +198,12 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 		}
 
 		if rok {
-			t.Logger.Info("Send to remote", zap.Any("remote", g))
 			g.send(m)
 			continue
 		}
 
 		if t.Logger != nil {
-			t.Logger.Info(
+			t.Logger.Debug(
 				"ignored message send request; unknown remote peer target",
 				zap.String("type", m.Type.String()),
 				zap.String("unknown-target-peer-id", to.String()),
