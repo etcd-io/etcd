@@ -202,67 +202,135 @@ func (r *raftNode) getLatestTickTs() time.Time {
 // start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
 func (r *raftNode) start(rh *raftReadyHandler) {
+	type hardStateMessage struct {
+		message   raftpb.Message
+		hardState raftpb.HardState
+	}
+	toAppend := make(chan hardStateMessage, 1)
+	toApply := make(chan raftpb.Message, 1)
+
+	go func() {
+		for {
+			select {
+			case messageHardState := <-toAppend:
+				m := messageHardState.message
+
+				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
+				// ensure that recovery after a snapshot restore is possible.
+				if m.Snapshot != nil {
+					r.lg.Info("Save snap", zap.Any("snap", m.Snapshot))
+					// gofail: var raftBeforeSaveSnap struct{}
+					if err := r.storage.SaveSnap(*m.Snapshot); err != nil {
+						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
+					}
+					// gofail: var raftAfterSaveSnap struct{}
+				}
+
+				// gofail: var raftBeforeSave struct{}
+				r.lg.Info("Save entries", zap.Any("entries", m.Entries))
+				if err := r.storage.Save(messageHardState.hardState, m.Entries); err != nil {
+					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
+				}
+				//if !raft.IsEmptyHardState(hardState) {
+				//	proposalsCommitted.Set(float64(hardState.Commit))
+				//}
+				// gofail: var raftAfterSave struct{}
+
+				if m.Snapshot != nil {
+					r.lg.Info("Sync wal")
+					// Force WAL to fsync its hard state before Release() releases
+					// old data from the WAL. Otherwise could get an error like:
+					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
+					// See https://github.com/etcd-io/etcd/issues/10219 for more details.
+					if err := r.storage.Sync(); err != nil {
+						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
+					}
+
+					// etcdserver now claim the snapshot has been persisted onto the disk
+					// gofail: var raftBeforeApplySnap struct{}
+					r.raftStorage.ApplySnapshot(*m.Snapshot)
+					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", m.Snapshot.Metadata.Index))
+					// gofail: var raftAfterApplySnap struct{}
+
+					if err := r.storage.Release(*m.Snapshot); err != nil {
+						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
+					}
+					// gofail: var raftAfterWALRelease struct{}
+				}
+				r.lg.Info("Append entries", zap.Any("entries", m.Entries))
+				r.raftStorage.Append(m.Entries)
+				r.lg.Info("Append sent responses", zap.Any("entries", m.Responses))
+				r.transport.Send(m.Responses)
+			case <-r.stopped:
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case m := <-toApply:
+				ap, stopped := r.handleApply(rh, m.Entries, m.Snapshot)
+				if stopped {
+					return
+				}
+				ap.NotifyRaftLogPersisted()
+				confChanged := includesConfigChange(m.Entries)
+				if confChanged {
+					if ap.WaitForApply(r.stopped) {
+						return
+					}
+				}
+				// gofail: var raftBeforeFollowerSend struct{}
+				r.transport.Send(m.Responses)
+				// gofail: var raftBeforeAdvance struct{}
+				if confChanged {
+					ap.NotifyRaftAdvanced()
+				}
+			case <-r.stopped:
+				return
+			}
+		}
+	}()
 
 	go func() {
 		defer r.onStop()
-		islead := false
 
 		for {
 			select {
 			case <-r.ticker.C:
 				r.tick()
 			case rd := <-r.Ready():
+				r.lg.Info("Ready")
 				if rd.SoftState != nil {
-					r.lg.Info("Handle soft state", zap.Any("soft-state", rd.SoftState))
-					islead = r.handleSoftState(rh, rd.SoftState, rd.RaftState)
+					r.lg.Info("SoftState", zap.Any("soft-state", rd.SoftState))
+					r.handleSoftState(rh, rd.SoftState, rd.RaftState)
 				}
 				if len(rd.ReadStates) != 0 {
-					r.lg.Info("Handle ready states", zap.Any("ready-state", rd.ReadStates))
+					r.lg.Info("ReadyStates", zap.Any("ready-state", rd.ReadStates))
 					if r.handleReadyStates(rd.ReadStates) {
 						return
 					}
 				}
-
-				r.lg.Info("Apply entries", zap.Any("entries", rd.CommittedEntries))
-				ap, stopped := r.handleApply(rh, rd.CommittedEntries, rd.Snapshot)
-				if stopped {
-					return
+				if !raft.IsEmptyHardState(rd.HardState) {
+					r.lg.Info("HardState", zap.Any("hard-state", rd.HardState))
 				}
-
-				// the leader can write to its disk in parallel with replicating to the followers and then
-				// writing to their disks.
-				// For more details, check raft thesis 10.2.1
-				if islead {
-					r.lg.Info("Send messages", zap.Any("messages", rd.Messages))
-					// gofail: var raftBeforeLeaderSend struct{}
-					r.transport.Send(r.processMessages(rd.Messages))
-				}
-				r.lg.Info("Handle hard state", zap.Any("hard-state", rd.HardState))
-				r.handleHardStateAndSnapshot(rd.Snapshot, rd.HardState, rd.Entries, ap)
-				r.lg.Info("Append entries", zap.Any("entries", rd.Entries))
-				r.raftStorage.Append(rd.Entries)
-				var processedMessages []raftpb.Message
-				if !islead {
-					// finish processing incoming messages before we signal notifyc chan
-					processedMessages = r.processMessages(rd.Messages)
-				}
-				ap.NotifyRaftLogPersisted()
-				confChanged := includesConfigChange(rd.CommittedEntries)
-				if !islead {
-					if confChanged {
-						if ap.WaitForApply(r.stopped) {
-							return
+				for _, m := range rd.Messages {
+					switch m.To {
+					case raft.LocalApplyThread:
+						r.lg.Info("Message apply", zap.Any("message", m))
+						toApply <- m
+					case raft.LocalAppendThread:
+						r.lg.Info("Message append", zap.Any("message", m))
+						toAppend <- hardStateMessage{
+							hardState: rd.HardState,
+							message:   m,
 						}
+					default:
+						r.lg.Info("Message sent", zap.Any("message", m))
+						r.transport.Send([]raftpb.Message{m})
 					}
-					// gofail: var raftBeforeFollowerSend struct{}
-					r.lg.Info("Send messages", zap.Any("messages", rd.Messages))
-					r.transport.Send(processedMessages)
-				}
-				// gofail: var raftBeforeAdvance struct{}
-				r.lg.Info("Advance")
-				r.Advance()
-				if confChanged {
-					ap.NotifyRaftAdvanced()
 				}
 			case <-r.stopped:
 				return
@@ -307,14 +375,16 @@ func (r *raftNode) handleReadyStates(rs []raft.ReadState) bool {
 	return false
 }
 
-func (r *raftNode) handleApply(rh *raftReadyHandler, committedEntries []raftpb.Entry, snapshot raftpb.Snapshot) (*toApply, bool) {
+func (r *raftNode) handleApply(rh *raftReadyHandler, committedEntries []raftpb.Entry, snapshot *raftpb.Snapshot) (*toApply, bool) {
 	notifyc := make(chan struct{}, 1)
 	raftAdvancedC := make(chan struct{}, 1)
 	ap := toApply{
 		entries:       committedEntries,
-		snapshot:      snapshot,
 		notifyc:       notifyc,
 		raftAdvancedC: raftAdvancedC,
+	}
+	if snapshot != nil {
+		ap.snapshot = *snapshot
 	}
 
 	var ci uint64
@@ -335,51 +405,10 @@ func (r *raftNode) handleApply(rh *raftReadyHandler, committedEntries []raftpb.E
 	return &ap, false
 }
 
-func (r *raftNode) handleHardStateAndSnapshot(snapshot raftpb.Snapshot, hardState raftpb.HardState, entries []raftpb.Entry, ap *toApply) {
-	// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
-	// ensure that recovery after a snapshot restore is possible.
-	if !raft.IsEmptySnap(snapshot) {
-		// gofail: var raftBeforeSaveSnap struct{}
-		if err := r.storage.SaveSnap(snapshot); err != nil {
-			r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
-		}
-		// gofail: var raftAfterSaveSnap struct{}
-	}
-
-	// gofail: var raftBeforeSave struct{}
-	if err := r.storage.Save(hardState, entries); err != nil {
-		r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
-	}
-	if !raft.IsEmptyHardState(hardState) {
-		proposalsCommitted.Set(float64(hardState.Commit))
-	}
-	// gofail: var raftAfterSave struct{}
-
-	if !raft.IsEmptySnap(snapshot) {
-		// Force WAL to fsync its hard state before Release() releases
-		// old data from the WAL. Otherwise could get an error like:
-		// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
-		// See https://github.com/etcd-io/etcd/issues/10219 for more details.
-		if err := r.storage.Sync(); err != nil {
-			r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
-		}
-
-		// etcdserver now claim the snapshot has been persisted onto the disk
-		ap.NotifySnapshotPersisted()
-		r.handleSnapshot(snapshot)
-	}
+func (r *raftNode) handleHardStateAndSnapshot(snapshot *raftpb.Snapshot, hardState raftpb.HardState, entries []raftpb.Entry) {
 }
 
 func (r *raftNode) handleSnapshot(snapshot raftpb.Snapshot) {
-	// gofail: var raftBeforeApplySnap struct{}
-	r.raftStorage.ApplySnapshot(snapshot)
-	r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", snapshot.Metadata.Index))
-	// gofail: var raftAfterApplySnap struct{}
-
-	if err := r.storage.Release(snapshot); err != nil {
-		r.lg.Fatal("failed to release Raft wal", zap.Error(err))
-	}
-	// gofail: var raftAfterWALRelease struct{}
 }
 
 func includesConfigChange(entries []raftpb.Entry) bool {
@@ -442,13 +471,7 @@ func (r *raftNode) apply() chan toApply {
 }
 
 func (r *raftNode) stop() {
-	select {
-	case r.stopped <- struct{}{}:
-		// Not already stopped, so trigger it
-	case <-r.done:
-		// Has already been stopped - no need to do anything
-		return
-	}
+	close(r.stopped)
 	// Block until the stop has been acknowledged by start()
 	<-r.done
 }
