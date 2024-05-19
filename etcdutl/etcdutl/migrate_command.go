@@ -95,7 +95,11 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 
 	walPath := datadir.ToWALDir(o.dataDir)
-	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})
+	lastSnapshot, err := getLastSnapshotIndex(walPath)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to find last snapshot: %v`, err)
+	}
+	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{Index: lastSnapshot})
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open wal: %v`, err)
 	}
@@ -155,4 +159,17 @@ func migrateForce(lg *zap.Logger, tx backend.BatchTx, target *semver.Version) {
 
 func storageVersionToString(ver *semver.Version) string {
 	return fmt.Sprintf("%d.%d", ver.Major, ver.Minor)
+}
+
+func getLastSnapshotIndex(walPath string) (uint64, error) {
+	walSnaps, err := wal.ValidSnapshotEntries(nil, walPath)
+	if err != nil {
+		return 0, err
+	}
+	if len(walSnaps) == 0 {
+		return 0, fmt.Errorf("no valid snapshot entries found")
+	}
+
+	snapshot := walSnaps[len(walSnaps)-1]
+	return snapshot.Index, nil
 }
