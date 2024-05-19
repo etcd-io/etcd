@@ -38,21 +38,33 @@ const (
 var allFailpoints = []Failpoint{
 	KillFailpoint, BeforeCommitPanic, AfterCommitPanic, RaftBeforeSavePanic, RaftAfterSavePanic,
 	DefragBeforeCopyPanic, DefragBeforeRenamePanic, BackendBeforePreCommitHookPanic, BackendAfterPreCommitHookPanic,
-	BackendBeforeStartDBTxnPanic, BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
+	BackendAfterStartDBTxnPanic, BackendBeforeWritebackBufPanic,
 	BackendAfterWritebackBufPanic, CompactBeforeCommitScheduledCompactPanic, CompactAfterCommitScheduledCompactPanic,
 	CompactBeforeSetFinishedCompactPanic, CompactAfterSetFinishedCompactPanic, CompactBeforeCommitBatchPanic,
-	CompactAfterCommitBatchPanic, RaftBeforeLeaderSendPanic, BlackholePeerNetwork, DelayPeerNetwork,
-	RaftBeforeFollowerSendPanic, RaftBeforeApplySnapPanic, RaftAfterApplySnapPanic, RaftAfterWALReleasePanic,
-	RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
+	CompactAfterCommitBatchPanic, BlackholePeerNetwork, DelayPeerNetwork,
+	RaftBeforeFollowerSendPanic,
 	BeforeApplyOneConfChangeSleep,
-	MemberReplace,
 	MemberDowngrade,
 	MemberDowngradeUpgrade,
 	DropPeerNetwork,
+	SleepBeforeSendWatchResponse,
+	// bad
+	BackendBeforeStartDBTxnPanic,
+	RaftBeforeApplySnapPanic,
+	RaftAfterApplySnapPanic,
+	RaftAfterWALReleasePanic,
+	RaftBeforeSaveSnapPanic,
+	BlackholeUntilSnapshot,
+	MemberReplace,
+
+	// not available
+	RaftBeforeLeaderSendPanic,
+	RaftAfterSaveSnapPanic,
+
+	// not tested yet
 	RaftBeforeSaveSleep,
 	RaftAfterSaveSleep,
 	ApplyBeforeOpenSnapshot,
-	SleepBeforeSendWatchResponse,
 }
 
 func PickRandom(clus *e2e.EtcdProcessCluster, profile traffic.Profile) (Failpoint, error) {
