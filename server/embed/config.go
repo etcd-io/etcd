@@ -322,7 +322,7 @@ type Config struct {
 	UserHandlers map[string]http.Handler `json:"-"`
 	// ServiceRegister is for registering users' gRPC services. A simple usage example:
 	//	cfg := embed.NewConfig()
-	//	cfg.ServerRegister = func(s *grpc.Server) {
+	//	cfg.ServiceRegister = func(s *grpc.Server) {
 	//		pb.RegisterFooServer(s, &fooServer{})
 	//		pb.RegisterBarServer(s, &barServer{})
 	//	}
