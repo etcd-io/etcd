@@ -66,10 +66,15 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
+	// setup proxy URL
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", srcAddr)
+
 	cfg := ServerConfig{
 		Logger: lg,
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		// we don't set TO since we are testing the forward proxy
+		// as the server is now using L7, we can only send in properly crafted http requests, or
+		// send a CONNECT request first, then we can send whatever we want afterwards
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -86,7 +91,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go func() {
 		defer close(donec)
 		for data := range writec {
-			send(t, data, scheme, srcAddr, tlsInfo)
+			send(t, data, scheme, dstAddr, tlsInfo)
 		}
 	}()
 
@@ -127,7 +132,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 
 	if delayTx {
 		p.UndelayTx()
-		if took2 < lat-rv {
+		if took2 > lat-rv {
 			close(writec)
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
