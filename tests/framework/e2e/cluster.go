@@ -528,9 +528,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		// setup forward proxy
 		forwardProxyURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", forwardProxyPort)}
 		forwardProxyCfg = &proxy.ServerConfig{
-			Logger:         zap.NewNop(),
-			From:           forwardProxyURL,
-			IsForwardProxy: true,
+			Logger: zap.NewNop(),
+			Listen: forwardProxyURL,
 		}
 
 		if cfg.EnvVars == nil {

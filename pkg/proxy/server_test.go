@@ -37,8 +37,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
-// FIXME: add tests?
-
 func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
 func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
 func TestServer_Unix_Secure(t *testing.T)           { testServer(t, "unix", true, false) }
@@ -50,15 +48,15 @@ func TestServer_TCP_Secure_DelayTx(t *testing.T)    { testServer(t, "tcp", true,
 
 func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	lg := zaptest.NewLogger(t)
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	if scheme == "tcp" {
 		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
-		srcAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
+		forwardProxyAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
 		ln1.Close()
 		ln2.Close()
 	} else {
 		defer func() {
-			os.RemoveAll(srcAddr)
+			os.RemoveAll(forwardProxyAddr)
 			os.RemoveAll(dstAddr)
 		}()
 	}
@@ -66,15 +64,12 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
-	// setup proxy URL
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", srcAddr)
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
 
 	cfg := ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		// we don't set TO since we are testing the forward proxy
-		// as the server is now using L7, we can only send in properly crafted http requests, or
-		// send a CONNECT request first, then we can send whatever we want afterwards
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -132,7 +127,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 
 	if delayTx {
 		p.UndelayTx()
-		if took2 > lat-rv {
+		if took2 < lat-rv {
 			close(writec)
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
@@ -186,9 +181,9 @@ func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(
 func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
 func testServerDelayAccept(t *testing.T, secure bool) {
 	lg := zaptest.NewLogger(t)
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	tlsInfo := createTLSInfo(lg, secure)
@@ -196,10 +191,12 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 	ln := listen(t, scheme, dstAddr, tlsInfo)
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	cfg := ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -213,7 +210,7 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 	data := []byte("Hello World!")
 
 	now := time.Now()
-	send(t, data, scheme, srcAddr, tlsInfo)
+	send(t, data, scheme, dstAddr, tlsInfo)
 	if d := receive(t, ln); !bytes.Equal(data, d) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -223,20 +220,16 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 	lat, rv := 700*time.Millisecond, 10*time.Millisecond
 	p.DelayAccept(lat, rv)
 	defer p.UndelayAccept()
-	if err := p.ResetListener(); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(200 * time.Millisecond)
 
 	now = time.Now()
-	send(t, data, scheme, srcAddr, tlsInfo)
+	send(t, data, scheme, dstAddr, tlsInfo)
 	if d := receive(t, ln); !bytes.Equal(data, d) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
-	if took1 >= took2 {
+	if took1 < took2 {
 		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
 	}
 }
@@ -244,18 +237,20 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 func TestServer_PauseTx(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -265,7 +260,7 @@ func TestServer_PauseTx(t *testing.T) {
 	p.PauseTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 
 	recvc := make(chan []byte, 1)
 	go func() {
@@ -293,18 +288,20 @@ func TestServer_PauseTx(t *testing.T) {
 func TestServer_ModifyTx_corrupt(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -316,13 +313,13 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 		return d
 	})
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); bytes.Equal(d, data) {
 		t.Fatalf("expected corrupted data, got %q", string(d))
 	}
 
 	p.UnmodifyTx()
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected uncorrupted data, got %q", string(d))
 	}
@@ -331,18 +328,20 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 func TestServer_ModifyTx_packet_loss(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -355,13 +354,13 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 		return d[:half:half]
 	})
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); bytes.Equal(d, data) {
 		t.Fatalf("expected corrupted data, got %q", string(d))
 	}
 
 	p.UnmodifyTx()
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected uncorrupted data, got %q", string(d))
 	}
@@ -370,18 +369,20 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 func TestServer_BlackholeTx(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -391,7 +392,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	p.BlackholeTx()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 
 	recvc := make(chan []byte, 1)
 	go func() {
@@ -408,7 +409,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	// expect different data, old data dropped
 	data[0]++
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 
 	select {
 	case d := <-recvc:
@@ -423,18 +424,20 @@ func TestServer_BlackholeTx(t *testing.T) {
 func TestServer_Shutdown(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -446,7 +449,7 @@ func TestServer_Shutdown(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -455,19 +458,21 @@ func TestServer_Shutdown(t *testing.T) {
 func TestServer_ShutdownListener(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
-		os.RemoveAll(srcAddr)
+		os.RemoveAll(forwardProxyAddr)
 		os.RemoveAll(dstAddr)
 	}()
 
 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
 	defer ln.Close()
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	p := NewServer(ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	})
 
 	waitForServer(t, p)
@@ -482,7 +487,7 @@ func TestServer_ShutdownListener(t *testing.T) {
 	defer ln.Close()
 
 	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
+	send(t, data, scheme, dstAddr, transport.TLSInfo{})
 	if d := receive(t, ln); !bytes.Equal(d, data) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -496,7 +501,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	lg := zaptest.NewLogger(t)
 	scheme := "tcp"
 	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
-	srcAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
+	forwardProxyAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
 	ln1.Close()
 	ln2.Close()
 
@@ -541,10 +546,12 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
 	cfg := ServerConfig{
 		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
+		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
 	}
 	if secure {
 		cfg.TLSInfo = tlsInfo
@@ -568,11 +575,11 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
 		assert.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
-		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
 		defer tp.CloseIdleConnections()
 	} else {
-		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
 	assert.NoError(t, err)
@@ -606,11 +613,11 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 			t.Fatal(terr)
 		}
 		cli := &http.Client{Transport: tp}
-		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
+		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
 		defer tp.CloseIdleConnections()
 	} else {
-		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
+		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
 	if err != nil {

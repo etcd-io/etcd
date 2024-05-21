@@ -153,7 +153,7 @@ func (ep *EtcdServerProcess) Start(ctx context.Context) error {
 	}
 
 	if ep.cfg.ForwardProxy != nil && ep.forwardProxy == nil {
-		ep.cfg.lg.Info("starting forward proxy...", zap.String("name", ep.cfg.Name), zap.String("from", ep.cfg.ForwardProxy.From.String()), zap.String("to", ep.cfg.ForwardProxy.To.String()))
+		ep.cfg.lg.Info("starting forward proxy...", zap.String("name", ep.cfg.Name), zap.String("listen on", ep.cfg.ForwardProxy.Listen.String()))
 		ep.forwardProxy = proxy.NewServer(*ep.cfg.ForwardProxy)
 		select {
 		case <-ep.forwardProxy.Ready():
