@@ -134,9 +134,6 @@ type Server interface {
 	PauseRx()
 	// UnpauseRx removes "receiving" pause operation.
 	UnpauseRx()
-
-	// ResetListener closes and restarts listener.
-	ResetListener() error
 }
 
 // ServerConfig defines proxy server configuration.
@@ -346,7 +343,9 @@ func (c customListener) Accept() (net.Conn, error) {
 		}
 	}
 
+	c.s.listenerMu.RLock()
 	conn, err := c.l.Accept()
+	c.s.listenerMu.RUnlock()
 	if err != nil {
 		select {
 		case c.s.errc <- err:
@@ -366,21 +365,7 @@ func (c customListener) Accept() (net.Conn, error) {
 			case <-c.s.donec:
 				return nil, err
 			}
-			c.s.lg.Debug("listener is closed; retry listening on", zap.String("from", c.s.From()))
-
-			if err = c.s.ResetListener(); err != nil {
-				select {
-				case c.s.errc <- err:
-					select {
-					case <-c.s.donec:
-						return nil, err
-					default:
-					}
-				case <-c.s.donec:
-					return nil, err
-				}
-				c.s.lg.Warn("failed to reset listener", zap.Error(err))
-			}
+			c.s.lg.Debug("listener is closed")
 		}
 	}
 
@@ -390,11 +375,15 @@ func (c customListener) Accept() (net.Conn, error) {
 // Close closes the listener.
 // Any blocked Accept operations will be unblocked and return errors.
 func (c customListener) Close() error {
+	c.s.listenerMu.RLock()
+	defer c.s.listenerMu.RUnlock()
 	return c.l.Close()
 }
 
 // Addr returns the listener's network address.
 func (c customListener) Addr() net.Addr {
+	c.s.listenerMu.RLock()
+	defer c.s.listenerMu.RUnlock()
 	return c.l.Addr()
 }
 
@@ -1159,37 +1148,4 @@ func (s *server) UnpauseRx() {
 		zap.String("from", s.To()),
 		zap.String("to", s.From()),
 	)
-}
-
-func (s *server) ResetListener() error {
-	s.listenerMu.Lock()
-	defer s.listenerMu.Unlock()
-
-	if err := s.listener.Close(); err != nil {
-		// already closed
-		if !strings.HasSuffix(err.Error(), "use of closed network connection") {
-			return err
-		}
-	}
-
-	var ln net.Listener
-	var err error
-	if !s.tlsInfo.Empty() {
-		ln, err = transport.NewListener(s.from.Host, s.from.Scheme, &s.tlsInfo)
-	} else {
-		ln, err = net.Listen(s.from.Scheme, s.from.Host)
-	}
-	if err != nil {
-		return err
-	}
-	s.listener = &customListener{
-		l: ln,
-		s: s,
-	}
-
-	s.lg.Info(
-		"reset listener on",
-		zap.String("from", s.From()),
-	)
-	return nil
 }
