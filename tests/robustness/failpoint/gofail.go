@@ -90,29 +90,37 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 			lg.Info("goFailpoint setup failed", zap.String("failpoint", f.Name()), zap.Error(err))
 			continue
 		}
-		if !member.IsRunning() {
-			// TODO: Check member logs that etcd not running is caused panic caused by proper gofailpoint.
-			break
-		}
-		if f.trigger != nil {
+		break
+	}
+
+	if f.trigger != nil {
+		for member.IsRunning() {
+			select {
+			case <-ctx.Done():
+				return reports, ctx.Err()
+			default:
+			}
 			var r []report.ClientReport
 			lg.Info("Triggering gofailpoint", zap.String("failpoint", f.Name()))
 			r, err = f.trigger.Trigger(ctx, t, member, clus, baseTime, ids)
 			if err != nil {
 				lg.Info("gofailpoint trigger failed", zap.String("failpoint", f.Name()), zap.Error(err))
+				continue
 			}
 			if r != nil {
 				reports = append(reports, r...)
 			}
+			break
 		}
-		lg.Info("Waiting for member to exit", zap.String("member", member.Config().Name))
-		err = member.Wait(ctx)
-		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
-			lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
-			return reports, fmt.Errorf("member didn't exit as expected: %v", err)
-		}
-		lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 	}
+
+	lg.Info("Waiting for member to exit", zap.String("member", member.Config().Name))
+	err = member.Wait(ctx)
+	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
+		lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
+		return reports, fmt.Errorf("member didn't exit as expected: %v", err)
+	}
+	lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 
 	if lazyfs := member.LazyFS(); lazyfs != nil {
 		lg.Info("Removing data that was not fsynced")
