@@ -3,11 +3,11 @@ test-robustness-reports: export GOTOOLCHAIN := go$(shell cat .go-version)
 test-robustness-reports:
 	cd ./tests && go test ./robustness/validate -v --count 1 --run TestDataReports
 
-# Test previous release branches
+# Test main and previous release branches
 
-.PHONY: test-robustness-release-3.6
-test-robustness-release-3.6: /tmp/etcd-release-3.6-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.6-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" make test-robustness
+.PHONY: test-robustness-main
+test-robustness-main: /tmp/etcd-main-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" make test-robustness
 
 .PHONY: test-robustness-release-3.5
 test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin /tmp/etcd-release-3.4-failpoints/bin
@@ -66,7 +66,15 @@ gofail-disable: $(GOPATH)/bin/gofail
 $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	go install go.etcd.io/gofail@${GOFAIL_VERSION}
 
-# Build previous releases for robustness tests
+# Build main and previous releases for robustness tests
+
+/tmp/etcd-main-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-main-failpoints/
+	mkdir -p /tmp/etcd-main-failpoints/
+	cd /tmp/etcd-main-failpoints/; \
+	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
+	  make gofail-enable; \
+	  make build;
 
 /tmp/etcd-v3.6.0-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.6.0-failpoints/
@@ -75,14 +83,6 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
 	  make gofail-enable; \
 	  make build;
-
-/tmp/etcd-release-3.6-failpoints/bin: $(GOPATH)/bin/gofail
-	rm -rf /tmp/etcd-release-3.6-failpoints/
-	mkdir -p /tmp/etcd-release-3.6-failpoints/
-	cd /tmp/etcd-release-3.6-failpoints/; \
-	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
-	  make gofail-enable; \
-	  make build;	  
 
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:

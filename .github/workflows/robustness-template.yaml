@@ -72,9 +72,7 @@ jobs:
               EXPECT_DEBUG=true GO_TEST_FLAGS=${GO_TEST_FLAGS} RESULTS_DIR=/tmp/results make test-robustness-release-3.4
               ;;
             main)
-              make gofail-enable
-              make build
-              EXPECT_DEBUG=true GO_TEST_FLAGS=${GO_TEST_FLAGS} RESULTS_DIR=/tmp/results make test-robustness
+              EXPECT_DEBUG=true GO_TEST_FLAGS=${GO_TEST_FLAGS} RESULTS_DIR=/tmp/results make test-robustness-main
               ;;
             *)
               echo "Failed to find target ${ETCD_BRANCH}"
