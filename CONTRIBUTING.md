@@ -175,7 +175,8 @@ releases.
 
 ## Get your pull request reviewed
 
-Before requesting review please ensure that all GitHub checks were successful.
+Before requesting review please ensure that all GitHub and Prow checks are successful. In some cases your pull request may have the label `needs-ok-to-test`. If so an `etcd-io` organisation member will leave a comment on your pull request with `/ok-to-test` to trigger all checks to be run.
+
 It might happen that some unrelated tests on your PR are failing, due to their flakiness.
 In such cases please [file an issue] to deflake the problematic test and ask one of [maintainers] to rerun the tests.
 
