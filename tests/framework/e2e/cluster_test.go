@@ -15,17 +15,22 @@
 package e2e
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
+	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
+	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
 		expectArgsNotContain []string
 		expectArgsContain    []string
+		mockBinaryVersion    *semver.Version
 	}{
 		{
 			name:   "Default",
@@ -73,17 +78,37 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--experimental-snapshot-catchup-entries=100",
 			},
+			mockBinaryVersion: &v3_5_13,
 		},
 		{
-			name:   "CatchUpEntriesLastVersion",
+			name:   "CatchUpEntriesNoVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
 			expectArgsNotContain: []string{
 				"--experimental-snapshot-catchup-entries=100",
 			},
 		},
+		{
+			name:   "CatchUpEntriesOldVersion",
+			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
+			expectArgsNotContain: []string{
+				"--experimental-snapshot-catchup-entries=100",
+			},
+			mockBinaryVersion: &v3_5_12,
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
+			var mockGetVersionFromBinary func(binaryPath string) (*semver.Version, error)
+			if tc.mockBinaryVersion == nil {
+				mockGetVersionFromBinary = func(binaryPath string) (*semver.Version, error) {
+					return nil, fmt.Errorf("could not get binary version")
+				}
+			} else {
+				mockGetVersionFromBinary = func(binaryPath string) (*semver.Version, error) {
+					return tc.mockBinaryVersion, nil
+				}
+			}
+			setGetVersionFromBinary(t, mockGetVersionFromBinary)
 			args := tc.config.EtcdServerProcessConfig(t, 0).Args
 			if len(tc.expectArgsContain) != 0 {
 				assert.Subset(t, args, tc.expectArgsContain)

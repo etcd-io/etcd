@@ -5,9 +5,13 @@ test-robustness-reports:
 
 # Test previous release branches
 
+.PHONY: test-robustness-release-3.6
+test-robustness-release-3.6: /tmp/etcd-release-3.6-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.6-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" make test-robustness
+
 .PHONY: test-robustness-release-3.5
-test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin" make test-robustness
+test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin /tmp/etcd-release-3.4-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin --bin-last-release=/tmp/etcd-release-3.4-failpoints/bin/etcd" make test-robustness
 
 .PHONY: test-robustness-release-3.4
 test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin
@@ -71,6 +75,14 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
 	  make gofail-enable; \
 	  make build;
+
+/tmp/etcd-release-3.6-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-release-3.6-failpoints/
+	mkdir -p /tmp/etcd-release-3.6-failpoints/
+	cd /tmp/etcd-release-3.6-failpoints/; \
+	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
+	  make gofail-enable; \
+	  make build;	  
 
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:

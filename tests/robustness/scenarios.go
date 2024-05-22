@@ -19,9 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/options"
@@ -61,11 +60,7 @@ type testScenario struct {
 	watch     watchConfig
 }
 
-func exploratoryScenarios(t *testing.T) []testScenario {
-	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
-	if err != nil {
-		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
-	}
+func exploratoryScenarios(_ *testing.T) []testScenario {
 	enableLazyFS := e2e.BinPath.LazyFSAvailable()
 	randomizableOptions := []e2e.EPClusterOption{
 		options.WithClusterOptionGroups(
@@ -74,6 +69,24 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
 	}
 
+	mixedVersionOption := options.WithClusterOptionGroups(
+		// 60% with all members of current version
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		// 10% with 2 members of current version, 1 member last version, leader is current version
+		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(0)},
+		// 10% with 2 members of current version, 1 member last version, leader is last version
+		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(2)},
+		// 10% with 2 members of last version, 1 member current version, leader is last version
+		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(0)},
+		// 10% with 2 members of last version, 1 member current version, leader is current version
+		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(2)},
+	)
+
 	baseOptions := []e2e.EPClusterOption{
 		options.WithSnapshotCount(50, 100, 1000),
 		options.WithSubsetOptions(randomizableOptions...),
@@ -81,9 +94,8 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		e2e.WithCompactionBatchLimit(100),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
-	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
-	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
-	if v.Compare(v3_5_13) >= 0 {
+
+	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
 		baseOptions = append(baseOptions, e2e.WithSnapshotCatchUpEntries(100))
 	}
 	scenarios := []testScenario{}
@@ -109,6 +121,9 @@ func exploratoryScenarios(t *testing.T) []testScenario {
 		clusterOfSize3Options := baseOptions
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithIsPeerTLS(true))
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithPeerProxy(true))
+		if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+			clusterOfSize3Options = append(clusterOfSize3Options, mixedVersionOption)
+		}
 		scenarios = append(scenarios, testScenario{
 			name:    name,
 			traffic: tp.Traffic,
@@ -172,8 +187,7 @@ func regressionScenarios(t *testing.T) []testScenario {
 			e2e.WithPeerProxy(true),
 			e2e.WithIsPeerTLS(true),
 		}
-		v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
-		if v.Compare(v3_5_13) >= 0 {
+		if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
 			opts = append(opts, e2e.WithSnapshotCatchUpEntries(100))
 		}
 		scenarios = append(scenarios, testScenario{

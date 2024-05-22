@@ -59,7 +59,7 @@ func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e
 func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
 	// Avoid triggering failpoint if waiting for failpoint would take too long to fit into timeout.
 	// Number of required entries for snapshot depends on etcd configuration.
-	if tb.waitTillSnapshot && entriesToGuaranteeSnapshot(config) > 200 {
+	if tb.waitTillSnapshot && (entriesToGuaranteeSnapshot(config) > 200 || !e2e.CouldSetSnapshotCatchupEntries(process.Config().ExecPath)) {
 		return false
 	}
 	return config.ClusterSize > 1 && process.PeerProxy() != nil
