@@ -33,7 +33,7 @@ import (
 
 var (
 	DefaultLeaseTTL   int64 = 7200
-	RequestTimeout          = 40 * time.Millisecond
+	RequestTimeout          = 200 * time.Millisecond
 	WatchTimeout            = 400 * time.Millisecond
 	MultiOpTxnOpCount       = 4
 
