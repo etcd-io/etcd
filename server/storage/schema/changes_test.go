@@ -30,7 +30,7 @@ func TestUpgradeDowngrade(t *testing.T) {
 	}{
 		{
 			name:                    "addNewField empty",
-			change:                  addNewField(Meta, []byte("/test"), []byte("1")),
+			change:                  (&NewField{Meta, []byte("/test"), []byte("1")}).schemaChange(),
 			expectStateAfterUpgrade: map[string]string{"/test": "1"},
 		},
 	}
