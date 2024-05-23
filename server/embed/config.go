@@ -473,8 +473,8 @@ type securityConfig struct {
 	CertAuth         bool     `json:"client-cert-auth"`
 	TrustedCAFile    string   `json:"trusted-ca-file"`
 	AutoTLS          bool     `json:"auto-tls"`
-	AllowedCNs       []string `json:"allowed-cn,omitempty"`
-	AllowedHostnames []string `json:"allowed-hostname,omitempty"`
+	AllowedCNs       []string `json:"allowed-cn"`
+	AllowedHostnames []string `json:"allowed-hostname"`
 }
 
 // NewConfig creates a new Config populated with default values.

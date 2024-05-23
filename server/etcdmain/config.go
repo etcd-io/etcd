@@ -216,6 +216,9 @@ func (cfg *config) configFromCmdLine() error {
 	cfg.ec.ClientTLSInfo.AllowedHostnames = flags.StringsFromFlag(cfg.cf.flagSet, "client-cert-allowed-hostname")
 	cfg.ec.PeerTLSInfo.AllowedCNs = flags.StringsFromFlag(cfg.cf.flagSet, "peer-cert-allowed-cn")
 	cfg.ec.PeerTLSInfo.AllowedHostnames = flags.StringsFromFlag(cfg.cf.flagSet, "peer-cert-allowed-hostname")
+	lg.Info("allowed CNs and hostnames",
+		zap.Strings("allowed-cn", cfg.ec.PeerTLSInfo.AllowedCNs),
+		zap.Strings("allowed-hostnames", cfg.ec.PeerTLSInfo.AllowedHostnames))
 
 	cfg.ec.CipherSuites = flags.StringsFromFlag(cfg.cf.flagSet, "cipher-suites")
 
