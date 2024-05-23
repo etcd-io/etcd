@@ -156,6 +156,48 @@ func TestDialNoTimeout(t *testing.T) {
 	c.Close()
 }
 
+func TestMaxUnaryRetries(t *testing.T) {
+	maxUnaryRetries := uint(10)
+	cfg := Config{
+		Endpoints:       []string{"127.0.0.1:12345"},
+		MaxUnaryRetries: maxUnaryRetries,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, maxUnaryRetries, c.cfg.MaxUnaryRetries)
+}
+
+func TestBackoff(t *testing.T) {
+	backoffWaitBetween := 100 * time.Millisecond
+	cfg := Config{
+		Endpoints:          []string{"127.0.0.1:12345"},
+		BackoffWaitBetween: backoffWaitBetween,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, backoffWaitBetween, c.cfg.BackoffWaitBetween)
+}
+
+func TestBackoffJitterFraction(t *testing.T) {
+	backoffJitterFraction := float64(0.9)
+	cfg := Config{
+		Endpoints:             []string{"127.0.0.1:12345"},
+		BackoffJitterFraction: backoffJitterFraction,
+	}
+	c, err := NewClient(t, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	defer c.Close()
+
+	require.Equal(t, backoffJitterFraction, c.cfg.BackoffJitterFraction)
+}
+
 func TestIsHaltErr(t *testing.T) {
 	assert.Equal(t,
 		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),

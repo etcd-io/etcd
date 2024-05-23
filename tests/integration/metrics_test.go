@@ -22,10 +22,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 // TestMetricDbSizeBoot checks that the db size metric is set on boot.
@@ -210,4 +214,34 @@ func TestMetricsHealth(t *testing.T) {
 	if hv != "0" {
 		t.Fatalf("expected '0' from etcd_server_health_failures, got %q", hv)
 	}
+}
+
+func TestMetricsRangeDurationSeconds(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+
+	keys := []string{
+		"my-namespace/foobar", "my-namespace/foobar1", "namespace/foobar1"}
+	for _, key := range keys {
+		_, err := client.Put(context.Background(), key, "data")
+		require.NoError(t, err)
+	}
+
+	_, err := client.Get(context.Background(), "", clientv3.WithFromKey())
+	require.NoError(t, err)
+
+	rangeDurationSeconds, err := clus.Members[0].Metric("etcd_server_range_duration_seconds")
+	require.NoError(t, err)
+
+	require.NotEmpty(t, rangeDurationSeconds, "expected a number from etcd_server_range_duration_seconds")
+
+	rangeDuration, err := strconv.ParseFloat(rangeDurationSeconds, 64)
+	require.NoError(t, err, "failed to parse duration: %s", err)
+
+	maxRangeDuration := 600.0
+	require.GreaterOrEqual(t, rangeDuration, 0.0, "expected etcd_server_range_duration_seconds to be between 0 and %f, got %f", maxRangeDuration, rangeDuration)
+	require.LessOrEqual(t, rangeDuration, maxRangeDuration, "expected etcd_server_range_duration_seconds to be between 0 and %f, got %f", maxRangeDuration, rangeDuration)
 }

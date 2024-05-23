@@ -115,7 +115,7 @@ func NewConfigJWT() *EtcdProcessClusterConfig {
 	return NewConfig(
 		WithClusterSize(1),
 		WithAuthTokenOpts("jwt,pub-key="+path.Join(FixturesDir, "server.crt")+
-			",priv-key="+path.Join(FixturesDir, "server.key.insecure")+",sign-method=RS256,ttl=1s"),
+			",priv-key="+path.Join(FixturesDir, "server.key.insecure")+",sign-method=RS256,ttl=5s"),
 	)
 }
 
@@ -137,11 +137,12 @@ type EtcdProcessClusterConfig struct {
 
 	// Test config
 
-	KeepDataDir   bool
-	Logger        *zap.Logger
-	GoFailEnabled bool
-	LazyFSEnabled bool
-	PeerProxy     bool
+	KeepDataDir         bool
+	Logger              *zap.Logger
+	GoFailEnabled       bool
+	GoFailClientTimeout time.Duration
+	LazyFSEnabled       bool
+	PeerProxy           bool
 
 	// Process config
 
@@ -150,8 +151,11 @@ type EtcdProcessClusterConfig struct {
 
 	// Cluster setup config
 
-	ClusterSize  int
-	RollingStart bool
+	ClusterSize int
+	// InitialLeaderIndex makes sure the leader is the ith proc
+	// when the cluster starts if it is specified (>=0).
+	InitialLeaderIndex int
+	RollingStart       bool
 	// BaseDataDirPath specifies the data-dir for the members. If test cases
 	// do not specify `BaseDataDirPath`, then e2e framework creates a
 	// temporary directory for each member; otherwise, it creates a
@@ -166,7 +170,7 @@ type EtcdProcessClusterConfig struct {
 	BaseClientScheme   string
 	MetricsURLScheme   string
 	Client             ClientConfig
-	ClientHttpSeparate bool
+	ClientHTTPSeparate bool
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
 	CN                 bool
@@ -179,10 +183,10 @@ type EtcdProcessClusterConfig struct {
 
 func DefaultConfig() *EtcdProcessClusterConfig {
 	cfg := &EtcdProcessClusterConfig{
-		ClusterSize: 3,
-		CN:          true,
-
-		ServerConfig: *embed.NewConfig(),
+		ClusterSize:        3,
+		CN:                 true,
+		InitialLeaderIndex: -1,
+		ServerConfig:       *embed.NewConfig(),
 	}
 	cfg.ServerConfig.InitialClusterToken = "new"
 	return cfg
@@ -204,6 +208,10 @@ func WithConfig(cfg *EtcdProcessClusterConfig) EPClusterOption {
 
 func WithVersion(version ClusterVersion) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Version = version }
+}
+
+func WithInitialLeaderIndex(i int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.InitialLeaderIndex = i }
 }
 
 func WithDataDirPath(path string) EPClusterOption {
@@ -326,6 +334,10 @@ func WithGoFailEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.GoFailEnabled = enabled }
 }
 
+func WithGoFailClientTimeout(dur time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.GoFailClientTimeout = dur }
+}
+
 func WithLazyFSEnabled(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.LazyFSEnabled = enabled }
 }
@@ -393,6 +405,16 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
 
+	// validate SnapshotCatchUpEntries could be set for at least one member
+	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+		if !CouldSetSnapshotCatchupEntries(BinPath.Etcd) {
+			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for current etcd version: %s", BinPath.Etcd)
+		}
+		if cfg.Version == LastVersion && !CouldSetSnapshotCatchupEntries(BinPath.EtcdLastRelease) {
+			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for last etcd version: %s", BinPath.EtcdLastRelease)
+		}
+	}
+
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
 	epc := &EtcdProcessCluster{
 		Cfg:     cfg,
@@ -432,7 +454,11 @@ func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcess
 			t.Skip("please run 'make gofail-enable && make build' before running the test")
 		}
 	}
-
+	if cfg.InitialLeaderIndex >= 0 {
+		if err := epc.MoveLeader(ctx, t, cfg.InitialLeaderIndex); err != nil {
+			return nil, fmt.Errorf("failed to move leader: %v", err)
+		}
+	}
 	return epc, nil
 }
 
@@ -481,7 +507,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peerPort := port + 1
 	metricsPort := port + 2
 	peer2Port := port + 3
-	clientHttpPort := port + 4
+	clientHTTPPort := port + 4
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -491,18 +517,18 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		curls = []string{curl}
 	}
 
-	peerListenUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
-	peerAdvertiseUrl := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	peerListenURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
+	peerAdvertiseURL := url.URL{Scheme: cfg.PeerScheme(), Host: fmt.Sprintf("localhost:%d", peerPort)}
 	var proxyCfg *proxy.ServerConfig
 	if cfg.PeerProxy {
 		if !cfg.IsPeerTLS {
 			panic("Can't use peer proxy without peer TLS as it can result in malformed packets")
 		}
-		peerAdvertiseUrl.Host = fmt.Sprintf("localhost:%d", peer2Port)
+		peerAdvertiseURL.Host = fmt.Sprintf("localhost:%d", peer2Port)
 		proxyCfg = &proxy.ServerConfig{
 			Logger: zap.NewNop(),
-			To:     peerListenUrl,
-			From:   peerAdvertiseUrl,
+			To:     peerListenURL,
+			From:   peerAdvertiseURL,
 		}
 	}
 
@@ -524,16 +550,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--name=" + name,
 		"--listen-client-urls=" + strings.Join(curls, ","),
 		"--advertise-client-urls=" + strings.Join(curls, ","),
-		"--listen-peer-urls=" + peerListenUrl.String(),
-		"--initial-advertise-peer-urls=" + peerAdvertiseUrl.String(),
+		"--listen-peer-urls=" + peerListenURL.String(),
+		"--initial-advertise-peer-urls=" + peerAdvertiseURL.String(),
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
-	var clientHttpUrl string
-	if cfg.ClientHttpSeparate {
-		clientHttpUrl = clientURL(cfg.ClientScheme(), clientHttpPort, cfg.Client.ConnectionType)
-		args = append(args, "--listen-client-http-urls="+clientHttpUrl)
+	var clientHTTPURL string
+	if cfg.ClientHTTPSeparate {
+		clientHTTPURL = clientURL(cfg.ClientScheme(), clientHTTPPort, cfg.Client.ConnectionType)
+		args = append(args, "--listen-client-http-urls="+clientHTTPURL)
 	}
 
 	if cfg.ServerConfig.ForceNewCluster {
@@ -559,31 +585,10 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--listen-metrics-urls="+murl)
 	}
 
-	args = append(args, cfg.TlsArgs()...)
+	args = append(args, cfg.TLSArgs()...)
 
 	if cfg.Discovery != "" {
 		args = append(args, "--discovery="+cfg.Discovery)
-	}
-
-	defaultValues := values(*embed.NewConfig())
-	overrideValues := values(cfg.ServerConfig)
-	for flag, value := range overrideValues {
-		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
-			continue
-		}
-		if flag == "experimental-snapshot-catchup-entries" && !(cfg.Version == CurrentVersion || (cfg.Version == MinorityLastVersion && i <= cfg.ClusterSize/2) || (cfg.Version == QuorumLastVersion && i > cfg.ClusterSize/2)) {
-			continue
-		}
-		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
-	}
-	envVars := map[string]string{}
-	for key, value := range cfg.EnvVars {
-		envVars[key] = value
-	}
-	var gofailPort int
-	if cfg.GoFailEnabled {
-		gofailPort = (i+1)*10000 + 2381
-		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
 	var execPath string
@@ -608,24 +613,46 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
 	}
 
+	defaultValues := values(*embed.NewConfig())
+	overrideValues := values(cfg.ServerConfig)
+	for flag, value := range overrideValues {
+		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
+			continue
+		}
+		if flag == "experimental-snapshot-catchup-entries" && !CouldSetSnapshotCatchupEntries(execPath) {
+			continue
+		}
+		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
+	}
+	envVars := map[string]string{}
+	for key, value := range cfg.EnvVars {
+		envVars[key] = value
+	}
+	var gofailPort int
+	if cfg.GoFailEnabled {
+		gofailPort = (i+1)*10000 + 2381
+		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
+	}
+
 	return &EtcdServerProcessConfig{
-		lg:            cfg.Logger,
-		ExecPath:      execPath,
-		Args:          args,
-		EnvVars:       envVars,
-		TlsArgs:       cfg.TlsArgs(),
-		Client:        cfg.Client,
-		DataDirPath:   dataDirPath,
-		KeepDataDir:   cfg.KeepDataDir,
-		Name:          name,
-		PeerURL:       peerAdvertiseUrl,
-		ClientURL:     curl,
-		ClientHTTPURL: clientHttpUrl,
-		MetricsURL:    murl,
-		InitialToken:  cfg.ServerConfig.InitialClusterToken,
-		GoFailPort:    gofailPort,
-		Proxy:         proxyCfg,
-		LazyFSEnabled: cfg.LazyFSEnabled,
+		lg:                  cfg.Logger,
+		ExecPath:            execPath,
+		Args:                args,
+		EnvVars:             envVars,
+		TLSArgs:             cfg.TLSArgs(),
+		Client:              cfg.Client,
+		DataDirPath:         dataDirPath,
+		KeepDataDir:         cfg.KeepDataDir,
+		Name:                name,
+		PeerURL:             peerAdvertiseURL,
+		ClientURL:           curl,
+		ClientHTTPURL:       clientHTTPURL,
+		MetricsURL:          murl,
+		InitialToken:        cfg.ServerConfig.InitialClusterToken,
+		GoFailPort:          gofailPort,
+		GoFailClientTimeout: cfg.GoFailClientTimeout,
+		Proxy:               proxyCfg,
+		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
 }
 
@@ -655,7 +682,7 @@ func clientURL(scheme string, port int, connType ClientConnType) string {
 	}
 }
 
-func (cfg *EtcdProcessClusterConfig) TlsArgs() (args []string) {
+func (cfg *EtcdProcessClusterConfig) TLSArgs() (args []string) {
 	if cfg.Client.ConnectionType != ClientNonTLS {
 		if cfg.Client.AutoTLS {
 			args = append(args, "--auto-tls")
@@ -774,7 +801,21 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 // Phase 1 - Inform cluster of new configuration
 // Phase 2 - Start new member
 func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, addAsLearner bool, opts ...config.ClientOption) (memberID uint64, err error) {
-	var serverCfg *EtcdServerProcessConfig
+	memberID, serverCfg, err := epc.AddMember(ctx, cfg, tb, addAsLearner, opts...)
+	if err != nil {
+		return 0, err
+	}
+
+	// Then start process
+	if err = epc.StartNewProcFromConfig(ctx, tb, serverCfg); err != nil {
+		return 0, err
+	}
+
+	return memberID, nil
+}
+
+// AddMember adds a new member to the cluster without starting it.
+func (epc *EtcdProcessCluster) AddMember(ctx context.Context, cfg *EtcdProcessClusterConfig, tb testing.TB, addAsLearner bool, opts ...config.ClientOption) (memberID uint64, serverCfg *EtcdServerProcessConfig, err error) {
 	if cfg != nil {
 		serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
 	} else {
@@ -802,20 +843,24 @@ func (epc *EtcdProcessCluster) StartNewProc(ctx context.Context, cfg *EtcdProces
 		resp, err = memberCtl.MemberAdd(ctx, serverCfg.Name, []string{serverCfg.PeerURL.String()})
 	}
 	if err != nil {
-		return 0, fmt.Errorf("failed to add new member: %w", err)
+		return 0, nil, fmt.Errorf("failed to add new member: %w", err)
 	}
 
-	// Then start process
+	return resp.Member.ID, serverCfg, nil
+}
+
+// StartNewProcFromConfig starts a new member process from the given config.
+func (epc *EtcdProcessCluster) StartNewProcFromConfig(ctx context.Context, tb testing.TB, serverCfg *EtcdServerProcessConfig) error {
 	tb.Log("start new member")
 	proc, err := NewEtcdProcess(tb, serverCfg)
 	if err != nil {
 		epc.Close()
-		return 0, fmt.Errorf("cannot configure: %v", err)
+		return fmt.Errorf("cannot configure: %v", err)
 	}
 
 	epc.Procs = append(epc.Procs, proc)
 
-	return resp.Member.ID, proc.Start(ctx)
+	return proc.Start(ctx)
 }
 
 // UpdateProcOptions updates the options for a specific process. If no opt is set, then the config is identical
@@ -1025,4 +1070,32 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	}
 	t.Fatal("impossible path of execution")
 	return -1
+}
+
+// MoveLeader moves the leader to the ith process.
+func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i int) error {
+	if i < 0 || i >= len(epc.Procs) {
+		return fmt.Errorf("invalid index: %d, must between 0 and %d", i, len(epc.Procs)-1)
+	}
+	t.Logf("moving leader to Procs[%d]", i)
+	oldLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	if oldLeader == i {
+		t.Logf("Procs[%d] is already the leader", i)
+		return nil
+	}
+	resp, err := epc.Procs[i].Etcdctl().Status(ctx)
+	if err != nil {
+		return err
+	}
+	memberID := resp[0].Header.MemberId
+	err = epc.Procs[oldLeader].Etcdctl().MoveLeader(ctx, memberID)
+	if err != nil {
+		return err
+	}
+	newLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	if newLeader != i {
+		t.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
+	}
+	t.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
+	return nil
 }

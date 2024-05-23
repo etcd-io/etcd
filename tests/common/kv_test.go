@@ -47,7 +47,7 @@ func TestKVPut(t *testing.T) {
 					t.Fatalf("count not get key %q, err: %s", key, err)
 				}
 				if len(resp.Kvs) != 1 {
-					t.Errorf("Unexpected lenth of response, got %d", len(resp.Kvs))
+					t.Errorf("Unexpected length of response, got %d", len(resp.Kvs))
 				}
 				if string(resp.Kvs[0].Key) != key {
 					t.Errorf("Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
@@ -234,7 +234,7 @@ func TestKVGetNoQuorum(t *testing.T) {
 				_, err := cc.Get(ctx, key, tc.options)
 				gotError := err != nil
 				if gotError != tc.wantError {
-					t.Fatalf("Unexpeted result, wantError: %v, gotErr: %v, err: %s", tc.wantError, gotError, err)
+					t.Fatalf("Unexpected result, wantError: %v, gotErr: %v, err: %s", tc.wantError, gotError, err)
 				}
 			})
 		})

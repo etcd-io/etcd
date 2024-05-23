@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 )
 
@@ -34,10 +35,11 @@ var (
 	restoreCluster      string
 	restoreClusterToken string
 	restoreDataDir      string
-	restoreWalDir       string
+	restoreWALDir       string
 	restorePeerURLs     string
 	restoreName         string
 	skipHashCheck       bool
+	initialMmapSize     = backend.InitialMmapSize
 	markCompacted       bool
 	revisionBump        uint64
 )
@@ -71,12 +73,13 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 		Run:   snapshotRestoreCommandFunc,
 	}
 	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the output data directory")
-	cmd.Flags().StringVar(&restoreWalDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
+	cmd.Flags().StringVar(&restoreWALDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
 	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
 	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
 	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
 	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
 	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+	cmd.Flags().Uint64Var(&initialMmapSize, "initial-memory-map-size", initialMmapSize, "Initial memory map size of the database in bytes. It uses the default value if not defined or defined to 0")
 	cmd.Flags().Uint64Var(&revisionBump, "bump-revision", 0, "How much to increase the latest revision after restore")
 	cmd.Flags().BoolVar(&markCompacted, "mark-compacted", false, "Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)")
 
@@ -103,17 +106,18 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 }
 
 func snapshotRestoreCommandFunc(_ *cobra.Command, args []string) {
-	SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
-		restorePeerURLs, restoreName, skipHashCheck, revisionBump, markCompacted, args)
+	SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWALDir,
+		restorePeerURLs, restoreName, skipHashCheck, initialMmapSize, revisionBump, markCompacted, args)
 }
 
 func SnapshotRestoreCommandFunc(restoreCluster string,
 	restoreClusterToken string,
 	restoreDataDir string,
-	restoreWalDir string,
+	restoreWALDir string,
 	restorePeerURLs string,
 	restoreName string,
 	skipHashCheck bool,
+	initialMmapSize uint64,
 	revisionBump uint64,
 	markCompacted bool,
 	args []string) {
@@ -132,9 +136,9 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 		dataDir = restoreName + ".etcd"
 	}
 
-	walDir := restoreWalDir
+	walDir := restoreWALDir
 	if walDir == "" {
-		walDir = datadir.ToWalDir(dataDir)
+		walDir = datadir.ToWALDir(dataDir)
 	}
 
 	lg := GetLogger()
@@ -149,6 +153,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 		InitialCluster:      restoreCluster,
 		InitialClusterToken: restoreClusterToken,
 		SkipHashCheck:       skipHashCheck,
+		InitialMmapSize:     initialMmapSize,
 		RevisionBump:        revisionBump,
 		MarkCompacted:       markCompacted,
 	}); err != nil {

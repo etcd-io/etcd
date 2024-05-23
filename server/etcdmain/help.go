@@ -110,7 +110,7 @@ Clustering:
   --initial-cluster 'default=http://localhost:2380'
     Initial cluster configuration for bootstrapping.
   --initial-cluster-state 'new'
-    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster). 
+    Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster).
     After successful initialization (bootstrapping or adding), flag is ignored on restarts
   --initial-cluster-token 'etcd-cluster'
     Initial cluster token for the etcd cluster during bootstrap.
@@ -157,12 +157,12 @@ Clustering:
   --strict-reconfig-check '` + strconv.FormatBool(embed.DefaultStrictReconfigCheck) + `'
     Reject reconfiguration requests that would cause quorum loss.
   --pre-vote 'true'
-    Enable to run an additional Raft election phase.
+    Enable the raft Pre-Vote algorithm to prevent disruption when a node that has been partitioned away rejoins the cluster.
   --auto-compaction-retention '0'
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
-  --v2-deprecation '` + string(cconfig.V2_DEPR_DEFAULT) + `'
+  --v2-deprecation '` + string(cconfig.V2DeprDefault) + `'
     Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
     Supported values:
       'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)

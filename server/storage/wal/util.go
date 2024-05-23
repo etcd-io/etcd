@@ -74,14 +74,14 @@ func readWALNames(lg *zap.Logger, dirpath string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("[readWALNames] fileutil.ReadDir failed: %w", err)
 	}
-	wnames := checkWalNames(lg, names)
+	wnames := checkWALNames(lg, names)
 	if len(wnames) == 0 {
 		return nil, ErrFileNotFound
 	}
 	return wnames, nil
 }
 
-func checkWalNames(lg *zap.Logger, names []string) []string {
+func checkWALNames(lg *zap.Logger, names []string) []string {
 	wnames := make([]string, 0)
 	for _, name := range names {
 		if _, _, err := parseWALName(name); err != nil {

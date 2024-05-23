@@ -72,6 +72,9 @@ func getClusterFromRemotePeers(lg *zap.Logger, urls []string, timeout time.Durat
 	cc := &http.Client{
 		Transport: rt,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	for _, u := range urls {
 		addr := u + "/members"
@@ -289,11 +292,16 @@ func getVersion(lg *zap.Logger, m *membership.Member, rt http.RoundTripper, time
 }
 
 func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.RoundTripper) ([]*membership.Member, error) {
-	cc := &http.Client{Transport: peerRt}
+	cc := &http.Client{
+		Transport: peerRt,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
 	// TODO: refactor member http handler code
 	// cannot import etcdhttp, so manually construct url
-	requestUrl := url + "/members/promote/" + fmt.Sprintf("%d", id)
-	req, err := http.NewRequest(http.MethodPost, requestUrl, nil)
+	requestURL := url + "/members/promote/" + fmt.Sprintf("%d", id)
+	req, err := http.NewRequest(http.MethodPost, requestURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -319,14 +327,14 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 		if strings.Contains(string(b), membership.ErrMemberNotLearner.Error()) {
 			return nil, membership.ErrMemberNotLearner
 		}
-		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, membership.ErrIDNotFound
 	}
 
 	if resp.StatusCode != http.StatusOK { // all other types of errors
-		return nil, fmt.Errorf("member promote: unknown error(%s)", string(b))
+		return nil, fmt.Errorf("member promote: unknown error(%s)", b)
 	}
 
 	var membs []*membership.Member
@@ -362,6 +370,9 @@ func getDowngradeEnabled(lg *zap.Logger, m *membership.Member, rt http.RoundTrip
 	cc := &http.Client{
 		Transport: rt,
 		Timeout:   timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 	var (
 		err  error

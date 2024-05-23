@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -24,13 +25,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 // TestV3WatchFromCurrentRevision tests Watch APIs from current revision.
@@ -166,7 +171,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			},
 		},
 		{
-			"multiple puts, one watcher with matching perfix",
+			"multiple puts, one watcher with matching prefix",
 			[]string{"foo", "foo", "foo"},
 			&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 				CreateRequest: &pb.WatchCreateRequest{
@@ -238,7 +243,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				t.Fatalf("#%d: canceled watcher on create %+v", i, cresp)
 			}
 
-			createdWatchId := cresp.WatchId
+			createdWatchID := cresp.WatchId
 			if cresp.Header == nil || cresp.Header.Revision != 1 {
 				t.Fatalf("#%d: header revision got +%v, wanted revison 1", i, cresp)
 			}
@@ -273,8 +278,8 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				if wresp.Created != resp.Created {
 					t.Errorf("#%d.%d: resp.Created got = %v, want = %v", i, j, resp.Created, wresp.Created)
 				}
-				if resp.WatchId != createdWatchId {
-					t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchId)
+				if resp.WatchId != createdWatchID {
+					t.Errorf("#%d.%d: resp.WatchId got = %d, want = %d", i, j, resp.WatchId, createdWatchID)
 				}
 
 				if !reflect.DeepEqual(resp.Events, wresp.Events) {
@@ -1433,15 +1438,15 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 	wch := client.Watch(ctx, "foo", clientv3.WithRev(1))
 
 	// Immediately request a progress notification. As the client
-	// is unsynchronised, the server will have to defer the
-	// notification internally.
+	// is unsynchronised, the server will not sent any notification,
+	//as client can infer progress from events.
 	err := client.RequestProgress(ctx)
 	require.NoError(t, err)
 
 	// Verify that we get the watch responses first. Note that
 	// events might be spread across multiple packets.
-	var event_count = 0
-	for event_count < count {
+	eventCount := 0
+	for eventCount < count {
 		wr := <-wch
 		if wr.Err() != nil {
 			t.Fatal(fmt.Errorf("watch error: %w", wr.Err()))
@@ -1452,10 +1457,11 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 		if wr.Header.Revision != int64(count+1) {
 			t.Fatal("Incomplete watch response!")
 		}
-		event_count += len(wr.Events)
+		eventCount += len(wr.Events)
 	}
-
-	// ... followed by the requested progress notification
+	// client needs to request progress notification again
+	err = client.RequestProgress(ctx)
+	require.NoError(t, err)
 	wr2 := <-wch
 	if wr2.Err() != nil {
 		t.Fatal(fmt.Errorf("watch error: %w", wr2.Err()))
@@ -1466,4 +1472,101 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 	if wr2.Header.Revision != int64(count+1) {
 		t.Fatal("Wrong revision in progress notification!")
 	}
+}
+
+func TestV3WatchProgressWaitsForSyncNoEvents(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := client.Put(ctx, "bar", "1")
+	require.NoError(t, err)
+
+	wch := client.Watch(ctx, "foo", clientv3.WithRev(resp.Header.Revision))
+	// Request the progress notification on newly created watch that was not yet synced.
+	err = client.RequestProgress(ctx)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+
+	require.NoError(t, err)
+	gotProgressNotification := false
+	for {
+		select {
+		case <-ticker.C:
+			err := client.RequestProgress(ctx)
+			require.NoError(t, err)
+		case resp := <-wch:
+			if resp.Err() != nil {
+				t.Fatal(fmt.Errorf("watch error: %w", resp.Err()))
+			}
+			if resp.IsProgressNotify() {
+				gotProgressNotification = true
+			}
+		}
+		if gotProgressNotification {
+			break
+		}
+	}
+	require.True(t, gotProgressNotification, "Expected to get progress notification")
+}
+
+// TestV3NoEventsLostOnCompact verifies that slow watchers exit with compacted watch response
+// if its next revision of events are compacted and no lost events sent to client.
+func TestV3NoEventsLostOnCompact(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+	integration.BeforeTest(t)
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	client := clus.RandClient()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// sendLoop throughput is rate-limited to 1 event per second
+	require.NoError(t, gofail.Enable("beforeSendWatchResponse", `sleep("1s")`))
+	wch := client.Watch(ctx, "foo")
+
+	var rev int64
+	writeCount := mvcc.ChanBufLen() * 11 / 10
+	for i := 0; i < writeCount; i++ {
+		resp, err := client.Put(ctx, "foo", "bar")
+		require.NoError(t, err)
+		rev = resp.Header.Revision
+	}
+	_, err := client.Compact(ctx, rev)
+	require.NoError(t, err)
+
+	time.Sleep(time.Second)
+	require.NoError(t, gofail.Disable("beforeSendWatchResponse"))
+
+	eventCount := 0
+	compacted := false
+	for resp := range wch {
+		err = resp.Err()
+		if err != nil {
+			if !errors.Is(err, rpctypes.ErrCompacted) {
+				t.Fatalf("want watch response err %v but got %v", rpctypes.ErrCompacted, err)
+			}
+			compacted = true
+			break
+		}
+		eventCount += len(resp.Events)
+		if eventCount == writeCount {
+			break
+		}
+	}
+	assert.Truef(t, compacted, "Expected stream to get compacted, instead we got %d events out of %d events", eventCount, writeCount)
 }

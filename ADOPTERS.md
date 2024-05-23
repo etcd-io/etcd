@@ -212,7 +212,7 @@ At [Branch][branch], we use kubernetes heavily as our core microservice platform
 ## Baidu Waimai
 
 - *Application*: SkyDNS, Kubernetes, UDC, CMDB and other distributed systems
-- *Launched*: April. 2016
+- *Launched*: April 2016
 - *Cluster Size*: 3 clusters of 5 members
 - *Order of Data Size*: several gigabytes
 - *Operator*: Baidu Waimai Operations Department
@@ -248,3 +248,13 @@ At [Branch][branch], we use kubernetes heavily as our core microservice platform
 - *Operator*: Trasnwarp Operating System
 - *Environment*: Bare Metal, Container
 - *Backups*: backup scripts
+
+## Cyberfusion
+
+- *Application*: cluster configuration management
+- *Launched*: February 2023
+- *Cluster Size*: single cluster, 3 nodes
+- *Order of Data Size*: kilobytes
+- *Operator*: Cyberfusion
+- *Environment*: Debian on VMs
+- *Backups*: periodic `etcdctl snapshot save` + rotation in cron. More about our setup: https://cyberfusion.io/articles/building-hosting-infrastructure-in-2024-configuration-management-part-1

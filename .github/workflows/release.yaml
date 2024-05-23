@@ -6,10 +6,10 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@a5ac7e51b41094c92402da3b24376905380afc29 # v4.1.6
       - id: goversion
         run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@93397bea11091df50f3d7e59dc26a7711a8bcfbe # v4.1.0
+      - uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v5.0.1
         with:
           go-version: ${{ steps.goversion.outputs.goversion }}
       - name: release
@@ -32,3 +32,41 @@ jobs:
       - name: test-image
         run: |
           VERSION=3.6.99 ./scripts/test_images.sh
+      - name: save-image
+        run: |
+          docker image save -o /tmp/etcd-img.tar gcr.io/etcd-development/etcd
+      - name: upload-image
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4.3.3
+        with:
+          name: etcd-img
+          path: /tmp/etcd-img.tar
+          retention-days: 1
+  trivy-scan:
+    needs: main
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [amd64, arm64, ppc64le, s390x]
+    permissions:
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: get-image
+        uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        with:
+          name: etcd-img
+          path: /tmp
+      - name: load-image
+        run: |
+          docker load < /tmp/etcd-img.tar
+      - name: trivy-scan
+        uses: aquasecurity/trivy-action@b2933f565dbc598b29947660e66259e3c7bc8561 # v0.20.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:v3.6.99-${{ matrix.platforms }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.platforms }}.sarif'
+      - name: upload scan results
+        uses: github/codeql-action/upload-sarif@9fdb3e49720b44c48891d036bb502feb25684276 # v3.25.6
+        with:
+          sarif_file: 'trivy-results-${{ matrix.platforms }}.sarif'

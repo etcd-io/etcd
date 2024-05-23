@@ -32,7 +32,7 @@ import (
 )
 
 func TestPersistLoadClientReports(t *testing.T) {
-	h := model.NewAppendableHistory(identity.NewIdProvider())
+	h := model.NewAppendableHistory(identity.NewIDProvider())
 	baseTime := time.Now()
 
 	start := time.Since(baseTime)
@@ -42,7 +42,7 @@ func TestPersistLoadClientReports(t *testing.T) {
 		Key:         []byte("key"),
 		ModRevision: 2,
 		Value:       []byte("value"),
-	}}})
+	}}}, nil)
 
 	start = time.Since(baseTime)
 	time.Sleep(time.Nanosecond)
@@ -95,19 +95,23 @@ func TestPersistLoadClientReports(t *testing.T) {
 			{
 				Events: []model.WatchEvent{
 					{
-						Event: model.Event{
-							Type:  model.PutOperation,
-							Key:   "key1",
-							Value: model.ToValueOrHash("1"),
+						PersistedEvent: model.PersistedEvent{
+							Event: model.Event{
+								Type:  model.PutOperation,
+								Key:   "key1",
+								Value: model.ToValueOrHash("1"),
+							},
+							Revision: 2,
 						},
-						Revision: 2,
 					},
 					{
-						Event: model.Event{
-							Type: model.DeleteOperation,
-							Key:  "key2",
+						PersistedEvent: model.PersistedEvent{
+							Event: model.Event{
+								Type: model.DeleteOperation,
+								Key:  "key2",
+							},
+							Revision: 3,
 						},
-						Revision: 3,
 					},
 				},
 				IsProgressNotify: false,
@@ -118,12 +122,12 @@ func TestPersistLoadClientReports(t *testing.T) {
 	}
 	reports := []ClientReport{
 		{
-			ClientId: 1,
+			ClientID: 1,
 			KeyValue: h.Operations(),
 			Watch:    []model.WatchOperation{watch},
 		},
 		{
-			ClientId: 2,
+			ClientID: 2,
 			KeyValue: nil,
 			Watch:    []model.WatchOperation{watch},
 		},

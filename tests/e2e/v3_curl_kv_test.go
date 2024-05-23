@@ -185,7 +185,7 @@ func mustExecuteTxn(cx ctlCtx, reqData string) (bool, []any) {
 		Endpoint: "/v3/kv/txn",
 		Value:    reqData,
 	})
-	resp, err := runCommandAndReadJsonOutput(args)
+	resp, err := runCommandAndReadJSONOutput(args)
 	require.NoError(cx.t, err)
 
 	succeeded, ok := resp["succeeded"]

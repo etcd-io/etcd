@@ -42,9 +42,9 @@ func TestBackendPreCommitHook(t *testing.T) {
 	// Empty commit.
 	tx.Commit()
 
-	assert.Equal(t, ">cc", getCommitsKey(t, be), "expected 2 explict commits")
+	assert.Equal(t, ">cc", getCommitsKey(t, be), "expected 2 explicit commits")
 	tx.Commit()
-	assert.Equal(t, ">ccc", getCommitsKey(t, be), "expected 3 explict commits")
+	assert.Equal(t, ">ccc", getCommitsKey(t, be), "expected 3 explicit commits")
 }
 
 func TestBackendAutoCommitLimitHook(t *testing.T) {

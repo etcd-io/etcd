@@ -19,87 +19,102 @@ import (
 	"strings"
 )
 
-func NewReplay(eventHistory []WatchEvent) *EtcdReplay {
-	var lastEventRevision int64 = 1
-	for _, event := range eventHistory {
-		if event.Revision > lastEventRevision && event.Revision != lastEventRevision+1 {
-			panic("Replay requires a complete event history")
+func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
+	state := freshEtcdState()
+	// Padding for index 0 and 1, so index matches revision..
+	revisionToEtcdState := []EtcdState{state, state}
+	var events []PersistedEvent
+	for _, request := range persistedRequests {
+		newState, response := state.Step(request)
+		if state.Revision != newState.Revision {
+			revisionToEtcdState = append(revisionToEtcdState, newState)
 		}
-		lastEventRevision = event.Revision
+		for _, e := range toWatchEvents(&state, request, response) {
+			events = append(events, e)
+		}
+		state = newState
 	}
 	return &EtcdReplay{
-		eventHistory: eventHistory,
+		revisionToEtcdState: revisionToEtcdState,
+		Events:              events,
 	}
 }
 
 type EtcdReplay struct {
-	eventHistory []WatchEvent
-
-	// Cached state and event index used for it's calculation
-	cachedState       *EtcdState
-	eventHistoryIndex int
+	revisionToEtcdState []EtcdState
+	Events              []PersistedEvent
 }
 
 func (r *EtcdReplay) StateForRevision(revision int64) (EtcdState, error) {
-	if revision < 1 {
-		return EtcdState{}, fmt.Errorf("invalid revision: %d", revision)
+	if int(revision) >= len(r.revisionToEtcdState) {
+		return EtcdState{}, fmt.Errorf("requested revision %d, higher than observed in replay %d", revision, len(r.revisionToEtcdState)-1)
 	}
-	if r.cachedState == nil || r.cachedState.Revision > revision {
-		r.reset()
-	}
+	return r.revisionToEtcdState[revision], nil
+}
 
-	for r.eventHistoryIndex < len(r.eventHistory) && r.cachedState.Revision < revision {
-		nextRequest, nextRevision, nextIndex := r.next()
-		newState, _ := r.cachedState.Step(nextRequest)
-		if newState.Revision != nextRevision {
-			return EtcdState{}, fmt.Errorf("model returned different revision than one present in event history, model: %d, event: %d", newState.Revision, nextRevision)
+func (r *EtcdReplay) EventsForWatch(watch WatchRequest) (events []PersistedEvent) {
+	for _, e := range r.Events {
+		if e.Revision < watch.Revision || !e.Match(watch) {
+			continue
 		}
-		r.cachedState = &newState
-		r.eventHistoryIndex = nextIndex
+		events = append(events, e)
 	}
-	if r.eventHistoryIndex > len(r.eventHistory) && r.cachedState.Revision < revision {
-		return EtcdState{}, fmt.Errorf("requested revision higher then available in even history, requested: %d, model: %d", revision, r.cachedState.Revision)
-	}
-	return *r.cachedState, nil
+	return events
 }
 
-func (r *EtcdReplay) reset() {
-	state := freshEtcdState()
-	r.cachedState = &state
-	r.eventHistoryIndex = 0
-}
-
-func (r *EtcdReplay) next() (request EtcdRequest, revision int64, index int) {
-	revision = r.eventHistory[r.eventHistoryIndex].Revision
-	index = r.eventHistoryIndex
-	operations := []EtcdOperation{}
-	for r.eventHistory[index].Revision == revision {
-		event := r.eventHistory[index]
-		switch event.Type {
-		case PutOperation:
-			operations = append(operations, EtcdOperation{
-				Type: event.Type,
-				Put:  PutOptions{Key: event.Key, Value: event.Value},
-			})
+func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcdResponse) (events []PersistedEvent) {
+	if request.Type != Txn || response.Error != "" {
+		return events
+	}
+	var ops []EtcdOperation
+	if response.Txn.Failure {
+		ops = request.Txn.OperationsOnFailure
+	} else {
+		ops = request.Txn.OperationsOnSuccess
+	}
+	for _, op := range ops {
+		switch op.Type {
+		case RangeOperation:
 		case DeleteOperation:
-			operations = append(operations, EtcdOperation{
-				Type:   event.Type,
-				Delete: DeleteOptions{Key: event.Key},
-			})
+			e := PersistedEvent{
+				Event: Event{
+					Type: op.Type,
+					Key:  op.Delete.Key,
+				},
+				Revision: response.Revision,
+			}
+			if _, ok := prevState.KeyValues[op.Delete.Key]; ok {
+				events = append(events, e)
+			}
+		case PutOperation:
+			e := PersistedEvent{
+				Event: Event{
+					Type:  op.Type,
+					Key:   op.Put.Key,
+					Value: op.Put.Value,
+				},
+				Revision: response.Revision,
+			}
+			if _, ok := prevState.KeyValues[op.Put.Key]; !ok {
+				e.IsCreate = true
+			}
+			events = append(events, e)
+		default:
+			panic(fmt.Sprintf("unsupported operation type: %v", op))
 		}
-		index++
 	}
-	return EtcdRequest{
-		Type: Txn,
-		Txn: &TxnRequest{
-			OperationsOnSuccess: operations,
-		},
-	}, revision, index
+	return events
 }
 
 type WatchEvent struct {
+	PersistedEvent
+	PrevValue *ValueRevision
+}
+
+type PersistedEvent struct {
 	Event
 	Revision int64
+	IsCreate bool
 }
 
 type Event struct {
@@ -120,4 +135,5 @@ type WatchRequest struct {
 	Revision           int64
 	WithPrefix         bool
 	WithProgressNotify bool
+	WithPrevKV         bool
 }

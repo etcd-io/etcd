@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time, ids identity.Provider) []report.ClientReport {
@@ -32,14 +32,14 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	reports := make([]report.ClientReport, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
-		c, err := traffic.NewClient(member.EndpointsGRPC(), ids, baseTime)
+		c, err := client.NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
 		if err != nil {
 			t.Fatal(err)
 		}
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		wg.Add(1)
-		go func(i int, c *traffic.RecordingClient) {
+		go func(i int, c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 			watchUntilRevision(ctx, t, c, memberMaxRevisionChan, cfg)
@@ -65,12 +65,12 @@ type watchConfig struct {
 }
 
 // watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, t *testing.T, c *traffic.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
+func watchUntilRevision(ctx context.Context, t *testing.T, c *client.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
 	var maxRevision int64
 	var lastRevision int64
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	watch := c.Watch(ctx, "", 1, true, true)
+	watch := c.Watch(ctx, "", 1, true, true, false)
 	for {
 		select {
 		case <-ctx.Done():

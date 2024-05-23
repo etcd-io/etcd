@@ -4,9 +4,81 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.11 (tbd)
+## v3.5.14 (TBD)
+
+### etcd server
+- Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17704).
+- Add [metrics `etcd_disk_wal_write_duration_seconds`](https://github.com/etcd-io/etcd/pull/17616).
+- Fix [ignore raft messages if member id mismatch](https://github.com/etcd-io/etcd/pull/17813).
+- Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17830).
+- Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17865)
+- Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/17914) to enable client failover on defrag.
+
+### etcdutl v3
+- Add [`--initial-memory-map-size` to `snapshot restore` to avoid memory allocation issues](https://github.com/etcd-io/etcd/pull/17977)
+
+### Package `clientv3`
+- Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17641).
+- Fix [initialization for mu in client context](https://github.com/etcd-io/etcd/pull/17699).
+
 ### Dependencies
-- Compile binaries using [go 1.20.11](https://github.com/etcd-io/etcd/pull/16915)
+- Compile binaries using [go 1.21.10](https://github.com/etcd-io/etcd/pull/17980).
+- Upgrade [bbolt to v1.3.10](https://github.com/etcd-io/etcd/pull/17943).
+
+<hr>
+
+## v3.5.13 (2024-03-29)
+
+### etcd server
+- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17425).
+- Fix [no progress notification being sent for watch that doesn't get any events](https://github.com/etcd-io/etcd/pull/17566).
+- Fix [watch event loss after compaction](https://github.com/etcd-io/etcd/pull/17612).
+
+### Package `clientv3`
+- Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17363).
+- [Ignore SetKeepAlivePeriod errors on OpenBSD](https://github.com/etcd-io/etcd/pull/17387).
+- [Support unix/unixs socket in client or peer URLs](https://github.com/etcd-io/etcd/pull/15940)
+
+### gRPC Proxy
+- Add [three flags (see below) for grpc-proxy](https://github.com/etcd-io/etcd/pull/17447)
+  - `--dial-keepalive-time`
+  - `--dial-keepalive-timeout`
+  - `--permit-without-stream`
+
+### Dependencies
+- Upgrade [bbolt to v1.3.9](https://github.com/etcd-io/etcd/pull/17483).
+- Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17537).
+- Upgrade [google.golang.org/protobuf to v1.33.0 to address CVE-2024-24786](https://github.com/etcd-io/etcd/pull/17553).
+- Upgrade github.com/sirupsen/logrus to v1.9.3 to address [PRISMA-2023-0056](https://github.com/etcd-io/etcd/pull/17482).
+
+### Others
+- [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17421).
+
+<hr>
+
+## v3.5.12 (2024-01-31)
+
+### etcd server
+- Fix [not validating database consistent index, and panicking on nil backend](https://github.com/etcd-io/etcd/pull/17151)
+- Document [`experimental-enable-lease-checkpoint-persist` flag in etcd help](https://github.com/etcd-io/etcd/pull/17190)
+- Fix [needlessly flocking snapshot files when deleting](https://github.com/etcd-io/etcd/pull/17206)
+- Add [digest for etcd base image](https://github.com/etcd-io/etcd/pull/17205)
+- Fix [delete inconsistencies in read buffer](https://github.com/etcd-io/etcd/pull/17230)
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17291)
+
+### Dependencies
+- Compile binaries using [go 1.20.13](https://github.com/etcd-io/etcd/pull/17275)
+- Upgrade [golang.org/x/crypto to v0.17+ to address CVE-2023-48795](https://github.com/etcd-io/etcd/pull/17346)
+
+## v3.5.11 (2023-12-07)
+
+### etcd server
+- Fix distributed tracing by ensuring `--experimental-distributed-tracing-sampling-rate` configuration option is available to [set tracing sample rate](https://github.com/etcd-io/etcd/pull/16951).
+- Fix [url redirects while checking peer urls during new member addition](https://github.com/etcd-io/etcd/pull/16986)
+- Add [livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17039)
+
+### Dependencies
+- Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
 - Fix [CVE-2023-47108](https://github.com/advisories/GHSA-8pgv-569h-w5rw) by [bumping go.opentelemetry.io/otel to 1.20.0 and go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to 0.46.0](https://github.com/etcd-io/etcd/pull/16946).
 
 <hr>

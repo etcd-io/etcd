@@ -26,13 +26,12 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 const (
-	triggerTimeout               = time.Minute
-	waitBetweenFailpointTriggers = time.Second
-	failpointInjectionsCount     = 1
-	failpointInjectionsRetries   = 3
+	triggerTimeout = time.Minute
 )
 
 var (
@@ -50,10 +49,11 @@ var (
 		DropPeerNetwork,
 		RaftBeforeSaveSleep,
 		RaftAfterSaveSleep,
+		ApplyBeforeOpenSnapshot,
 	}
 )
 
-func PickRandom(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
+func PickRandom(clus *e2e.EtcdProcessCluster) (Failpoint, error) {
 	availableFailpoints := make([]Failpoint, 0, len(allFailpoints))
 	for _, failpoint := range allFailpoints {
 		err := Validate(clus, failpoint)
@@ -63,10 +63,9 @@ func PickRandom(t *testing.T, clus *e2e.EtcdProcessCluster) Failpoint {
 		availableFailpoints = append(availableFailpoints, failpoint)
 	}
 	if len(availableFailpoints) == 0 {
-		t.Errorf("No available failpoints")
-		return nil
+		return nil, fmt.Errorf("no available failpoints")
 	}
-	return availableFailpoints[rand.Int()%len(availableFailpoints)]
+	return availableFailpoints[rand.Int()%len(availableFailpoints)], nil
 }
 
 func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
@@ -78,48 +77,45 @@ func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
 	return nil
 }
 
-func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint) {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time, ids identity.Provider) (*FailpointReport, error) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error
-	successes := 0
-	failures := 0
-	for successes < failpointInjectionsCount && failures < failpointInjectionsRetries {
-		time.Sleep(waitBetweenFailpointTriggers)
 
-		lg.Info("Verifying cluster health before failpoint", zap.String("failpoint", failpoint.Name()))
-		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			t.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
-			return
-		}
-
-		lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
-		err = failpoint.Inject(ctx, t, lg, clus)
-		if err != nil {
-			select {
-			case <-ctx.Done():
-				t.Errorf("Triggering failpoints timed out, err: %v", ctx.Err())
-				return
-			default:
-			}
-			lg.Info("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
-			failures++
-			continue
-		}
-
-		lg.Info("Verifying cluster health after failpoint", zap.String("failpoint", failpoint.Name()))
-		if err = verifyClusterHealth(ctx, t, clus); err != nil {
-			t.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
-			return
-		}
-
-		successes++
+	if err = verifyClusterHealth(ctx, t, clus); err != nil {
+		return nil, fmt.Errorf("failed to verify cluster health before failpoint injection, err: %v", err)
 	}
-	if successes < failpointInjectionsCount || failures >= failpointInjectionsRetries {
-		t.Errorf("failed to trigger failpoints enough times, err: %v", err)
+	lg.Info("Triggering failpoint", zap.String("failpoint", failpoint.Name()))
+	start := time.Since(baseTime)
+	clientReport, err := failpoint.Inject(ctx, t, lg, clus, baseTime, ids)
+	if err != nil {
+		lg.Error("Failed to trigger failpoint", zap.String("failpoint", failpoint.Name()), zap.Error(err))
+		return nil, fmt.Errorf("failed triggering failpoint, err: %v", err)
 	}
+	if err = verifyClusterHealth(ctx, t, clus); err != nil {
+		return nil, fmt.Errorf("failed to verify cluster health after failpoint injection, err: %v", err)
+	}
+	lg.Info("Finished triggering failpoint", zap.String("failpoint", failpoint.Name()))
+	end := time.Since(baseTime)
 
-	return
+	return &FailpointReport{
+		Injection: Injection{
+			Start: start,
+			End:   end,
+			Name:  failpoint.Name(),
+		},
+		Client: clientReport,
+	}, nil
+}
+
+type FailpointReport struct {
+	Injection
+	Client []report.ClientReport
+}
+
+type Injection struct {
+	Start, End time.Duration
+	Name       string
 }
 
 func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProcessCluster) error {
@@ -151,7 +147,7 @@ func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProces
 }
 
 type Failpoint interface {
-	Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) error
+	Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error)
 	Name() string
 	AvailabilityChecker
 }

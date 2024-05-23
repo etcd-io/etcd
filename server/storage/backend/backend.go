@@ -36,10 +36,10 @@ var (
 
 	defragLimit = 10000
 
-	// initialMmapSize is the initial size of the mmapped region. Setting this larger than
+	// InitialMmapSize is the initial size of the mmapped region. Setting this larger than
 	// the potential max db size can prevent writer from blocking reader.
 	// This only works for linux.
-	initialMmapSize = uint64(10 * 1024 * 1024 * 1024)
+	InitialMmapSize = uint64(10 * 1024 * 1024 * 1024)
 
 	// minSnapshotWarningTimeout is the minimum threshold to trigger a long running snapshot warning.
 	minSnapshotWarningTimeout = 30 * time.Second
@@ -151,11 +151,13 @@ type BackendConfig struct {
 	Hooks Hooks
 }
 
+type BackendConfigOption func(*BackendConfig)
+
 func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 	return BackendConfig{
 		BatchInterval: defaultBatchInterval,
 		BatchLimit:    defaultBatchLimit,
-		MmapSize:      initialMmapSize,
+		MmapSize:      InitialMmapSize,
 		Logger:        lg,
 	}
 }
@@ -164,9 +166,19 @@ func New(bcfg BackendConfig) Backend {
 	return newBackend(bcfg)
 }
 
-func NewDefaultBackend(lg *zap.Logger, path string) Backend {
+func WithMmapSize(size uint64) BackendConfigOption {
+	return func(bcfg *BackendConfig) {
+		bcfg.MmapSize = size
+	}
+}
+
+func NewDefaultBackend(lg *zap.Logger, path string, opts ...BackendConfigOption) Backend {
 	bcfg := DefaultBackendConfig(lg)
 	bcfg.Path = path
+	for _, opt := range opts {
+		opt(&bcfg)
+	}
+
 	return newBackend(bcfg)
 }
 
@@ -180,6 +192,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.NoSync = bcfg.UnsafeNoFsync
 	bopts.NoGrowSync = bcfg.UnsafeNoFsync
 	bopts.Mlock = bcfg.Mlock
+	bopts.Logger = newBoltLoggerZap(bcfg)
 
 	db, err := bolt.Open(bcfg.Path, 0600, bopts)
 	if err != nil {
@@ -381,7 +394,7 @@ func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, e
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
 			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+				return fmt.Errorf("cannot get hash of bucket %s", next)
 			}
 			h.Write(next)
 			b.ForEach(func(k, v []byte) error {
@@ -585,7 +598,7 @@ func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 	for next, _ := c.First(); next != nil; next, _ = c.Next() {
 		b := tx.Bucket(next)
 		if b == nil {
-			return fmt.Errorf("backend: cannot defrag bucket %s", string(next))
+			return fmt.Errorf("backend: cannot defrag bucket %s", next)
 		}
 
 		tmpb, berr := tmptx.CreateBucketIfNotExists(next)
@@ -658,4 +671,21 @@ func (s *snapshot) Close() error {
 	close(s.stopc)
 	<-s.donec
 	return s.Tx.Rollback()
+}
+
+func newBoltLoggerZap(bcfg BackendConfig) bolt.Logger {
+	lg := bcfg.Logger.Named("bbolt")
+	return &zapBoltLogger{lg.WithOptions(zap.AddCallerSkip(1)).Sugar()}
+}
+
+type zapBoltLogger struct {
+	*zap.SugaredLogger
+}
+
+func (zl *zapBoltLogger) Warning(args ...any) {
+	zl.SugaredLogger.Warn(args...)
+}
+
+func (zl *zapBoltLogger) Warningf(format string, args ...any) {
+	zl.SugaredLogger.Warnf(format, args...)
 }

@@ -32,7 +32,7 @@ import (
 	"github.com/creack/pty"
 )
 
-const DEBUG_LINES_TAIL = 40
+const debugLinesTail = 40
 
 var (
 	ErrProcessRunning = fmt.Errorf("process is still running")
@@ -218,7 +218,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 		}
 	}
 
-	lastLinesIndex := len(ep.lines) - DEBUG_LINES_TAIL
+	lastLinesIndex := len(ep.lines) - debugLinesTail
 	if lastLinesIndex < 0 {
 		lastLinesIndex = 0
 	}

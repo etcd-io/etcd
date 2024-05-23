@@ -892,7 +892,7 @@ func TestHTTPWatcherNextFail(t *testing.T) {
 	tests := []httpClient{
 		// generic HTTP client failure
 		&staticHTTPClient{
-			err: errors.New("fail!"),
+			err: errors.New("fail"),
 		},
 
 		// unusable status code
@@ -994,7 +994,7 @@ func TestHTTPKeysAPIWatcherAction(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		testError := errors.New("fail!")
+		testError := errors.New("fail")
 		kAPI := &httpKeysAPI{
 			client: &staticHTTPClient{err: testError},
 		}
@@ -1080,7 +1080,7 @@ func TestHTTPKeysAPISetError(t *testing.T) {
 	tests := []httpClient{
 		// generic HTTP client failure
 		&staticHTTPClient{
-			err: errors.New("fail!"),
+			err: errors.New("fail"),
 		},
 
 		// unusable status code
@@ -1191,7 +1191,7 @@ func TestHTTPKeysAPIGetError(t *testing.T) {
 	tests := []httpClient{
 		// generic HTTP client failure
 		&staticHTTPClient{
-			err: errors.New("fail!"),
+			err: errors.New("fail"),
 		},
 
 		// unusable status code
@@ -1310,7 +1310,7 @@ func TestHTTPKeysAPIDeleteError(t *testing.T) {
 	tests := []httpClient{
 		// generic HTTP client failure
 		&staticHTTPClient{
-			err: errors.New("fail!"),
+			err: errors.New("fail"),
 		},
 
 		// unusable status code

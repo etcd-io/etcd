@@ -90,8 +90,8 @@ func TestLeaseGrantAndList(t *testing.T) {
 						createdLeases = append(createdLeases, leaseResp.ID)
 					}
 
-					// Because we're not guarunteed to talk to the same member, wait for
-					// listing to eventually return true, either by the result propagaing
+					// Because we're not guaranteed to talk to the same member, wait for
+					// listing to eventually return true, either by the result propagating
 					// or by hitting an up to date member.
 					var leases []clientv3.LeaseStatus
 					require.Eventually(t, func() bool {

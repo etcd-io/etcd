@@ -148,7 +148,7 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 		_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
 		return &resp, err
 	}
-	err := ctl.spawnJsonCmd(ctx, &resp, args...)
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
@@ -177,7 +177,7 @@ func (ctl *EtcdctlV3) Delete(ctx context.Context, key string, o config.DeleteOpt
 		args = append(args, "--from-key")
 	}
 	var resp clientv3.DeleteResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, args...)
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
@@ -284,32 +284,39 @@ func (ctl *EtcdctlV3) MemberList(ctx context.Context, serializable bool) (*clien
 	if serializable {
 		args = append(args, "--consistency", "s")
 	}
-	err := ctl.spawnJsonCmd(ctx, &resp, args...)
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberAdd(ctx context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
 	var resp clientv3.MemberAddResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "member", "add", name, "--peer-urls", strings.Join(peerAddrs, ","))
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "add", name, "--peer-urls", strings.Join(peerAddrs, ","))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberAddAsLearner(ctx context.Context, name string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {
 	var resp clientv3.MemberAddResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "add", name, "--learner", "--peer-urls", strings.Join(peerAddrs, ","))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error) {
 	var resp clientv3.MemberRemoveResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "member", "remove", fmt.Sprintf("%x", id))
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "remove", fmt.Sprintf("%x", id))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) MemberPromote(ctx context.Context, id uint64) (*clientv3.MemberPromoteResponse, error) {
 	var resp clientv3.MemberPromoteResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "member", "promote", fmt.Sprintf("%x", id))
+	err := ctl.spawnJSONCmd(ctx, &resp, "member", "promote", fmt.Sprintf("%x", id))
 	return &resp, err
+}
+
+// MoveLeader requests current leader to transfer its leadership to the transferee.
+// Request must be made to the leader.
+func (ctl *EtcdctlV3) MoveLeader(ctx context.Context, transfereeID uint64) error {
+	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("move-leader", fmt.Sprintf("%x", transfereeID)), nil, expect.ExpectedResponse{Value: "Leadership transferred"})
+	return err
 }
 
 func (ctl *EtcdctlV3) cmdArgs(args ...string) []string {
@@ -361,7 +368,7 @@ func (ctl *EtcdctlV3) Status(ctx context.Context) ([]*clientv3.StatusResponse, e
 		Endpoint string
 		Status   *clientv3.StatusResponse
 	}
-	err := ctl.spawnJsonCmd(ctx, &epStatus, "endpoint", "status")
+	err := ctl.spawnJSONCmd(ctx, &epStatus, "endpoint", "status")
 	if err != nil {
 		return nil, err
 	}
@@ -377,7 +384,7 @@ func (ctl *EtcdctlV3) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKV
 		Endpoint string
 		HashKV   *clientv3.HashKVResponse
 	}
-	err := ctl.spawnJsonCmd(ctx, &epHashKVs, "endpoint", "hashkv", "--rev", fmt.Sprint(rev))
+	err := ctl.spawnJSONCmd(ctx, &epHashKVs, "endpoint", "hashkv", "--rev", fmt.Sprint(rev))
 	if err != nil {
 		return nil, err
 	}
@@ -483,13 +490,13 @@ func (ctl *EtcdctlV3) KeepAliveOnce(ctx context.Context, id clientv3.LeaseID) (*
 
 func (ctl *EtcdctlV3) Revoke(ctx context.Context, id clientv3.LeaseID) (*clientv3.LeaseRevokeResponse, error) {
 	var resp clientv3.LeaseRevokeResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "lease", "revoke", strconv.FormatInt(int64(id), 16))
+	err := ctl.spawnJSONCmd(ctx, &resp, "lease", "revoke", strconv.FormatInt(int64(id), 16))
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) AlarmList(ctx context.Context) (*clientv3.AlarmResponse, error) {
 	var resp clientv3.AlarmResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "alarm", "list")
+	err := ctl.spawnJSONCmd(ctx, &resp, "alarm", "list")
 	return &resp, err
 }
 
@@ -536,7 +543,7 @@ func (ctl *EtcdctlV3) AuthDisable(ctx context.Context) error {
 
 func (ctl *EtcdctlV3) AuthStatus(ctx context.Context) (*clientv3.AuthStatusResponse, error) {
 	var resp clientv3.AuthStatusResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "auth", "status")
+	err := ctl.spawnJSONCmd(ctx, &resp, "auth", "status")
 	return &resp, err
 }
 
@@ -581,19 +588,19 @@ func (ctl *EtcdctlV3) UserAdd(ctx context.Context, name, password string, opts c
 
 func (ctl *EtcdctlV3) UserGet(ctx context.Context, name string) (*clientv3.AuthUserGetResponse, error) {
 	var resp clientv3.AuthUserGetResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "user", "get", name)
+	err := ctl.spawnJSONCmd(ctx, &resp, "user", "get", name)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) UserList(ctx context.Context) (*clientv3.AuthUserListResponse, error) {
 	var resp clientv3.AuthUserListResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "user", "list")
+	err := ctl.spawnJSONCmd(ctx, &resp, "user", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) UserDelete(ctx context.Context, name string) (*clientv3.AuthUserDeleteResponse, error) {
 	var resp clientv3.AuthUserDeleteResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "user", "delete", name)
+	err := ctl.spawnJSONCmd(ctx, &resp, "user", "delete", name)
 	return &resp, err
 }
 
@@ -616,54 +623,54 @@ func (ctl *EtcdctlV3) UserChangePass(ctx context.Context, user, newPass string) 
 
 func (ctl *EtcdctlV3) UserGrantRole(ctx context.Context, user string, role string) (*clientv3.AuthUserGrantRoleResponse, error) {
 	var resp clientv3.AuthUserGrantRoleResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "user", "grant-role", user, role)
+	err := ctl.spawnJSONCmd(ctx, &resp, "user", "grant-role", user, role)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) UserRevokeRole(ctx context.Context, user string, role string) (*clientv3.AuthUserRevokeRoleResponse, error) {
 	var resp clientv3.AuthUserRevokeRoleResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "user", "revoke-role", user, role)
+	err := ctl.spawnJSONCmd(ctx, &resp, "user", "revoke-role", user, role)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleAdd(ctx context.Context, name string) (*clientv3.AuthRoleAddResponse, error) {
 	var resp clientv3.AuthRoleAddResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "add", name)
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "add", name)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleGrantPermission(ctx context.Context, name string, key, rangeEnd string, permType clientv3.PermissionType) (*clientv3.AuthRoleGrantPermissionResponse, error) {
 	permissionType := authpb.Permission_Type_name[int32(permType)]
 	var resp clientv3.AuthRoleGrantPermissionResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "grant-permission", name, permissionType, key, rangeEnd)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleGet(ctx context.Context, role string) (*clientv3.AuthRoleGetResponse, error) {
 	var resp clientv3.AuthRoleGetResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "get", role)
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "get", role)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleList(ctx context.Context) (*clientv3.AuthRoleListResponse, error) {
 	var resp clientv3.AuthRoleListResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "list")
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "list")
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleRevokePermission(ctx context.Context, role string, key, rangeEnd string) (*clientv3.AuthRoleRevokePermissionResponse, error) {
 	var resp clientv3.AuthRoleRevokePermissionResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "revoke-permission", role, key, rangeEnd)
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "revoke-permission", role, key, rangeEnd)
 	return &resp, err
 }
 
 func (ctl *EtcdctlV3) RoleDelete(ctx context.Context, role string) (*clientv3.AuthRoleDeleteResponse, error) {
 	var resp clientv3.AuthRoleDeleteResponse
-	err := ctl.spawnJsonCmd(ctx, &resp, "role", "delete", role)
+	err := ctl.spawnJSONCmd(ctx, &resp, "role", "delete", role)
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) spawnJsonCmd(ctx context.Context, output any, args ...string) error {
+func (ctl *EtcdctlV3) spawnJSONCmd(ctx context.Context, output any, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), nil)
 	if err != nil {

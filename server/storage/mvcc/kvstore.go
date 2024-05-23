@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/pkg/v3/schedule"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -226,7 +227,7 @@ func (s *store) checkPrevCompactionCompleted() bool {
 	return scheduledCompact == finishedCompact && scheduledCompactFound == finishedCompactFound
 }
 
-func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevCompactionCompleted bool) (<-chan struct{}, error) {
+func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevCompactionCompleted bool) <-chan struct{} {
 	ch := make(chan struct{})
 	j := schedule.NewJob("kvstore_compact", func(ctx context.Context) {
 		if ctx.Err() != nil {
@@ -251,7 +252,7 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevC
 
 	s.fifoSched.Schedule(j)
 	trace.Step("schedule compaction")
-	return ch, nil
+	return ch
 }
 
 func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
@@ -261,7 +262,7 @@ func (s *store) compactLockfree(rev int64) (<-chan struct{}, error) {
 		return ch, err
 	}
 
-	return s.compact(traceutil.TODO(), rev, prevCompactRev, prevCompactionCompleted)
+	return s.compact(traceutil.TODO(), rev, prevCompactRev, prevCompactionCompleted), nil
 }
 
 func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, error) {
@@ -275,7 +276,7 @@ func (s *store) Compact(trace *traceutil.Trace, rev int64) (<-chan struct{}, err
 	}
 	s.mu.Unlock()
 
-	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted)
+	return s.compact(trace, rev, prevCompactRev, prevCompactionCompleted), nil
 }
 
 func (s *store) Commit() {
@@ -366,6 +367,17 @@ func (s *store) restore() error {
 		if s.currentRev < s.compactMainRev {
 			s.currentRev = s.compactMainRev
 		}
+
+		// If the latest revision was a tombstone revision and etcd just compacted
+		// it, but crashed right before persisting the FinishedCompactRevision,
+		// then it would lead to revision decreasing in bbolt db file. In such
+		// a scenario, we should adjust the current revision using the scheduled
+		// compact revision on bootstrap when etcd gets started again.
+		//
+		// See https://github.com/etcd-io/etcd/issues/17780#issuecomment-2061900231
+		if s.currentRev < scheduledCompact {
+			s.currentRev = scheduledCompact
+		}
 		s.revMu.Unlock()
 	}
 
@@ -387,20 +399,22 @@ func (s *store) restore() error {
 			)
 		}
 	}
-
 	tx.RUnlock()
 
 	s.lg.Info("kvstore restored", zap.Int64("current-rev", s.currentRev))
 
 	if scheduledCompact != 0 {
 		if _, err := s.compactLockfree(scheduledCompact); err != nil {
-			s.lg.Warn("compaction encountered error", zap.Error(err))
+			s.lg.Warn("compaction encountered error",
+				zap.Int64("scheduled-compact-revision", scheduledCompact),
+				zap.Error(err),
+			)
+		} else {
+			s.lg.Info(
+				"resume scheduled compaction",
+				zap.Int64("scheduled-compact-revision", scheduledCompact),
+			)
 		}
-
-		s.lg.Info(
-			"resume scheduled compaction",
-			zap.Int64("scheduled-compact-revision", scheduledCompact),
-		)
 	}
 
 	return nil
@@ -439,8 +453,15 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					ok = true
 				}
 			}
+
 			rev := BytesToRev(rkv.key)
+			verify.Verify(func() {
+				if rev.Main < currentRev {
+					panic(fmt.Errorf("revision %d shouldn't be less than the previous revision %d", rev.Main, currentRev))
+				}
+			})
 			currentRev = rev.Main
+
 			if ok {
 				if isTombstone(rkv.key) {
 					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {

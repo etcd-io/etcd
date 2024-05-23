@@ -77,7 +77,7 @@ func mvccPutFunc(_ *cobra.Command, _ []string) {
 			fmt.Fprintln(os.Stderr, "Failed to create a file for storing cpu profile result: ", err)
 			os.Exit(1)
 		}
-
+		defer f.Close()
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to start cpu profile: ", err)
@@ -92,7 +92,7 @@ func mvccPutFunc(_ *cobra.Command, _ []string) {
 			fmt.Fprintln(os.Stderr, "Failed to create a file for storing heap profile result: ", err)
 			os.Exit(1)
 		}
-
+		defer f.Close()
 		defer func() {
 			err := pprof.WriteHeapProfile(f)
 			if err != nil {

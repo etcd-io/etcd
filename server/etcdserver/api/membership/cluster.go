@@ -284,6 +284,10 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
+		if c.localID == m.ID {
+			setIsLearnerMetric(m)
+		}
+
 		c.lg.Info(
 			"recovered/added member from store",
 			zap.String("cluster-id", c.cid.String()),
@@ -393,6 +397,11 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	if c.v2store != nil {
 		mustSaveMemberToStore(c.lg, c.v2store, m)
 	}
+
+	if m.ID == c.localID {
+		setIsLearnerMetric(m)
+	}
+
 	if c.be != nil && shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(m)
 
@@ -503,6 +512,10 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		m := *(c.members[id])
 		m.RaftAttributes.IsLearner = false
 		mustUpdateMemberInStore(c.lg, c.v2store, &m)
+	}
+
+	if id == c.localID {
+		isLearner.Set(0)
 	}
 
 	if c.be != nil && shouldApplyV3 {
@@ -821,23 +834,6 @@ func (c *RaftCluster) VotingMemberIDs() []types.ID {
 	}
 	sort.Sort(types.IDSlice(ids))
 	return ids
-}
-
-// PushMembershipToStorage is overriding storage information about cluster's
-// members, such that they fully reflect internal RaftCluster's storage.
-func (c *RaftCluster) PushMembershipToStorage() {
-	if c.be != nil {
-		c.be.TrimMembershipFromBackend()
-		for _, m := range c.members {
-			c.be.MustSaveMemberToBackend(m)
-		}
-	}
-	if c.v2store != nil {
-		TrimMembershipFromV2Store(c.lg, c.v2store)
-		for _, m := range c.members {
-			mustSaveMemberToStore(c.lg, c.v2store, m)
-		}
-	}
 }
 
 // buildMembershipMetric sets the knownPeers metric based on the current

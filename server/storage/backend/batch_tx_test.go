@@ -15,9 +15,13 @@
 package backend_test
 
 import (
+	"fmt"
+	"math/rand"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -48,7 +52,7 @@ func TestBatchTxPut(t *testing.T) {
 		_, gv := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
 		if !reflect.DeepEqual(gv[0], v) {
-			t.Errorf("v = %s, want %s", string(gv[0]), string(v))
+			t.Errorf("v = %s, want %s", gv[0], v)
 		}
 		tx.Commit()
 	}
@@ -204,4 +208,269 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+func TestRangeAfterDeleteBucketMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	tx.Commit()
+
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar")})
+
+	tx.Lock()
+	tx.UnsafeDeleteBucket(schema.Test)
+	tx.Unlock()
+
+	checkForEach(t, b.BatchTx(), b.ReadTx(), nil, nil)
+}
+
+func TestRangeAfterDeleteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	tx.Commit()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar")})
+
+	tx.Lock()
+	tx.UnsafeDelete(schema.Test, []byte("foo"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), nil, nil)
+}
+
+func TestRangeAfterUnorderedKeyWriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo5"), []byte("bar5"))
+	tx.UnsafePut(schema.Test, []byte("foo2"), []byte("bar2"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar1"))
+	tx.UnsafePut(schema.Test, []byte("foo3"), []byte("bar3"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.UnsafePut(schema.Test, []byte("foo4"), []byte("bar4"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), nil, 1)
+}
+
+func TestRangeAfterAlternatingBucketWriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafeSeqPut(schema.Key, []byte("key1"), []byte("val1"))
+	tx.Unlock()
+
+	tx.Lock()
+	tx.UnsafeSeqPut(schema.Key, []byte("key2"), []byte("val2"))
+	tx.Unlock()
+	tx.Commit()
+	// only in the 2nd commit the schema.Key key is removed from the readBuffer.buckets.
+	// This makes sure to test the case when an empty writeBuffer.bucket
+	// is used to replace the read buffer bucket.
+	tx.Commit()
+
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar"))
+	tx.Unlock()
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Key, []byte("key"), []byte("key5"), 100)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), []byte("foo3"), 1)
+}
+
+func TestRangeAfterOverwriteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), []byte("foo3"), 1)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+}
+
+func TestRangeAfterOverwriteAndDeleteMatch(t *testing.T) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar2"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar0"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar10"))
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar1"))
+	tx.UnsafePut(schema.Test, []byte("foo1"), []byte("bar11"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo"), []byte("foo1")}, [][]byte{[]byte("bar1"), []byte("bar11")})
+
+	tx.Lock()
+	tx.UnsafePut(schema.Test, []byte("foo"), []byte("bar3"))
+	tx.UnsafeDelete(schema.Test, []byte("foo1"))
+	tx.Unlock()
+
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo"), nil, 0)
+	checkRangeResponseMatch(t, b.BatchTx(), b.ReadTx(), schema.Test, []byte("foo1"), nil, 0)
+	checkForEach(t, b.BatchTx(), b.ReadTx(), [][]byte{[]byte("foo")}, [][]byte{[]byte("bar3")})
+}
+
+func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, bucket backend.Bucket, key, endKey []byte, limit int64) {
+	tx.Lock()
+	ks1, vs1 := tx.UnsafeRange(bucket, key, endKey, limit)
+	tx.Unlock()
+
+	rtx.RLock()
+	ks2, vs2 := rtx.UnsafeRange(bucket, key, endKey, limit)
+	rtx.RUnlock()
+
+	if diff := cmp.Diff(ks1, ks2); diff != "" {
+		t.Errorf("keys on read and batch transaction doesn't match, diff: %s", diff)
+	}
+	if diff := cmp.Diff(vs1, vs2); diff != "" {
+		t.Errorf("values on read and batch transaction doesn't match, diff: %s", diff)
+	}
+}
+
+func checkForEach(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, expectedKeys, expectedValues [][]byte) {
+	tx.Lock()
+	checkUnsafeForEach(t, tx, expectedKeys, expectedValues)
+	tx.Unlock()
+
+	rtx.RLock()
+	checkUnsafeForEach(t, rtx, expectedKeys, expectedValues)
+	rtx.RUnlock()
+}
+
+func checkUnsafeForEach(t *testing.T, tx backend.UnsafeReader, expectedKeys, expectedValues [][]byte) {
+	var ks, vs [][]byte
+	tx.UnsafeForEach(schema.Test, func(k, v []byte) error {
+		ks = append(ks, k)
+		vs = append(vs, v)
+		return nil
+	})
+
+	if diff := cmp.Diff(ks, expectedKeys); diff != "" {
+		t.Errorf("keys on transaction doesn't match expected, diff: %s", diff)
+	}
+	if diff := cmp.Diff(vs, expectedValues); diff != "" {
+		t.Errorf("values on transaction doesn't match expected, diff: %s", diff)
+	}
+}
+
+// runWriteback is used test the txWriteBuffer.writeback function, which is called inside tx.Unlock().
+// The parameters are chosen based on defaultBatchLimit = 10000
+func runWriteback(t testing.TB, kss, vss [][]string, isSeq bool) {
+	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
+	defer betesting.Close(t, b)
+
+	tx := b.BatchTx()
+
+	tx.Lock()
+	tx.UnsafeCreateBucket(schema.Test)
+	tx.UnsafeCreateBucket(schema.Key)
+	tx.Unlock()
+
+	for i, ks := range kss {
+		vs := vss[i]
+		tx.Lock()
+		for j := 0; j < len(ks); j++ {
+			if isSeq {
+				tx.UnsafeSeqPut(schema.Key, []byte(ks[j]), []byte(vs[j]))
+			} else {
+				tx.UnsafePut(schema.Test, []byte(ks[j]), []byte(vs[j]))
+			}
+		}
+		tx.Unlock()
+	}
+}
+
+func BenchmarkWritebackSeqBatches1BatchSize10000(b *testing.B) { benchmarkWriteback(b, 1, 10000, true) }
+
+func BenchmarkWritebackSeqBatches10BatchSize1000(b *testing.B) { benchmarkWriteback(b, 10, 1000, true) }
+
+func BenchmarkWritebackSeqBatches100BatchSize100(b *testing.B) { benchmarkWriteback(b, 100, 100, true) }
+
+func BenchmarkWritebackSeqBatches1000BatchSize10(b *testing.B) { benchmarkWriteback(b, 1000, 10, true) }
+
+func BenchmarkWritebackNonSeqBatches1000BatchSize1(b *testing.B) {
+	// for non sequential writes, the batch size is usually small, 1 or the order of cluster size.
+	benchmarkWriteback(b, 1000, 1, false)
+}
+
+func BenchmarkWritebackNonSeqBatches10000BatchSize1(b *testing.B) {
+	benchmarkWriteback(b, 10000, 1, false)
+}
+
+func BenchmarkWritebackNonSeqBatches100BatchSize10(b *testing.B) {
+	benchmarkWriteback(b, 100, 10, false)
+}
+
+func BenchmarkWritebackNonSeqBatches1000BatchSize10(b *testing.B) {
+	benchmarkWriteback(b, 1000, 10, false)
+}
+
+func benchmarkWriteback(b *testing.B, batches, batchSize int, isSeq bool) {
+	// kss and vss are key and value arrays to write with size batches*batchSize
+	var kss, vss [][]string
+	for i := 0; i < batches; i++ {
+		var ks, vs []string
+		for j := i * batchSize; j < (i+1)*batchSize; j++ {
+			k := fmt.Sprintf("key%d", j)
+			v := fmt.Sprintf("val%d", j)
+			ks = append(ks, k)
+			vs = append(vs, v)
+		}
+		if !isSeq {
+			// make sure each batch is shuffled differently but the same for different test runs.
+			shuffleList(ks, i*batchSize)
+		}
+		kss = append(kss, ks)
+		vss = append(vss, vs)
+	}
+	b.ResetTimer()
+	for n := 1; n < b.N; n++ {
+		runWriteback(b, kss, vss, isSeq)
+	}
+}
+
+func shuffleList(l []string, seed int) {
+	r := rand.New(rand.NewSource(int64(seed)))
+	for i := 0; i < len(l); i++ {
+		j := r.Intn(i + 1)
+		l[i], l[j] = l[j], l[i]
+	}
 }

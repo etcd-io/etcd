@@ -69,6 +69,7 @@ func write(key string, value string, version int64) error {
 	if err != nil {
 		log.Fatalf("failed to read request body: %s", err)
 	}
+	httpResp.Body.Close()
 
 	resp := new(response)
 	err = json.Unmarshal(respBytes, resp)

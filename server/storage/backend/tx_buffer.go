@@ -16,6 +16,8 @@ package backend
 
 import (
 	"bytes"
+	"encoding/hex"
+	"fmt"
 	"sort"
 
 	"go.etcd.io/etcd/client/pkg/v3/verify"
@@ -52,7 +54,20 @@ func (txw *txWriteBuffer) put(bucket Bucket, k, v []byte) {
 }
 
 func (txw *txWriteBuffer) putSeq(bucket Bucket, k, v []byte) {
-	// TODO: Add (in tests?) verification whether k>b[len(b)]
+	// putSeq is only be called for the data in the Key bucket. The keys
+	// in the Key bucket should be monotonically increasing revisions.
+	verify.Verify(func() {
+		b, ok := txw.buckets[bucket.ID()]
+		if !ok || b.used == 0 {
+			return
+		}
+
+		existingMaxKey := b.buf[b.used-1].key
+		if bytes.Compare(k, existingMaxKey) <= 0 {
+			panic(fmt.Sprintf("Broke the rule of monotonically increasing, existingMaxKey: %s, currentKey: %s",
+				hex.EncodeToString(existingMaxKey), hex.EncodeToString(k)))
+		}
+	})
 	txw.putInternal(bucket, k, v)
 }
 
@@ -82,6 +97,9 @@ func (txw *txWriteBuffer) writeback(txr *txReadBuffer) {
 		rb, ok := txr.buckets[k]
 		if !ok {
 			delete(txw.buckets, k)
+			if seq, ok := txw.bucket2seq[k]; ok && !seq {
+				wb.dedupe()
+			}
 			txr.buckets[k] = wb
 			continue
 		}
@@ -203,10 +221,15 @@ func (bb *bucketBuffer) merge(bbsrc *bucketBuffer) {
 	if bytes.Compare(bb.buf[(bb.used-bbsrc.used)-1].key, bbsrc.buf[0].key) < 0 {
 		return
 	}
+	bb.dedupe()
+}
 
+// dedupe removes duplicates, using only newest update
+func (bb *bucketBuffer) dedupe() {
+	if bb.used <= 1 {
+		return
+	}
 	sort.Stable(bb)
-
-	// remove duplicates, using only newest update
 	widx := 0
 	for ridx := 1; ridx < bb.used; ridx++ {
 		if !bytes.Equal(bb.buf[ridx].key, bb.buf[widx].key) {

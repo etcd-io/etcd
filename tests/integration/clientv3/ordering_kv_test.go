@@ -36,9 +36,9 @@ func TestDetectKvOrderViolation(t *testing.T) {
 
 	cfg := clientv3.Config{
 		Endpoints: []string{
-			clus.Members[0].GRPCURL(),
-			clus.Members[1].GRPCURL(),
-			clus.Members[2].GRPCURL(),
+			clus.Members[0].GRPCURL,
+			clus.Members[1].GRPCURL,
+			clus.Members[2].GRPCURL,
 		},
 	}
 	cli, err := integration2.NewClient(t, cfg)
@@ -83,12 +83,12 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	clus.Members[1].Stop(t)
 	assert.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
-	cli.SetEndpoints(clus.Members[2].GRPCURL())
+	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 
 	t.Logf("Quering m2 after restart")
 	v, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	t.Logf("Quering m2 returned: v:%v erro:%v ", v, err)
+	t.Logf("Quering m2 returned: v:%v err:%v ", v, err)
 	if err != errOrderViolation {
 		t.Fatalf("expected %v, got err:%v v:%v", errOrderViolation, err, v)
 	}
@@ -103,9 +103,9 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 
 	cfg := clientv3.Config{
 		Endpoints: []string{
-			clus.Members[0].GRPCURL(),
-			clus.Members[1].GRPCURL(),
-			clus.Members[2].GRPCURL(),
+			clus.Members[0].GRPCURL,
+			clus.Members[1].GRPCURL,
+			clus.Members[2].GRPCURL,
 		},
 	}
 	cli, err := integration2.NewClient(t, cfg)
@@ -152,7 +152,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	clus.Members[1].Stop(t)
 	assert.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
-	cli.SetEndpoints(clus.Members[2].GRPCURL())
+	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	if err != errOrderViolation {

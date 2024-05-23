@@ -21,7 +21,7 @@ import (
 )
 
 func TestHeapPushPop(t *testing.T) {
-	h := newTtlKeyHeap()
+	h := newTTLKeyHeap()
 
 	// add from older expire time to earlier expire time
 	// the path is equal to ttl from now
@@ -45,7 +45,7 @@ func TestHeapPushPop(t *testing.T) {
 }
 
 func TestHeapUpdate(t *testing.T) {
-	h := newTtlKeyHeap()
+	h := newTTLKeyHeap()
 
 	kvs := make([]*node, 10)
 

@@ -55,8 +55,6 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Package `datadir` was moved to `storage/datadir`
 
 ### Package `raft`
-- Send empty `MsgApp` when entry in-flight limits are exceeded. See [pull/14633](https://github.com/etcd-io/etcd/pull/14633).
-- Add [MaxInflightBytes](https://github.com/etcd-io/etcd/pull/14624) setting in `raft.Config` for better flow control of entries.
 - [Decouple raft from etcd](https://github.com/etcd-io/etcd/issues/14713). Migrated raft to a separate [repository](https://github.com/etcd-io/raft), and renamed raft module to `go.etcd.io/raft/v3`.
 
 ### etcd server
@@ -76,7 +74,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`etcd --experimental-snapshot-catch-up-entries`](https://github.com/etcd-io/etcd/pull/15033) flag to configure number of entries for a slow follower to catch up after compacting the raft storage entries and defaults to 5k. 
 - Decreased [`--snapshot-count` default value from 100,000 to 10,000](https://github.com/etcd-io/etcd/pull/15408)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15156) to enable support for TLS 1.3.
-- Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/16278) to enable client failover on defrag.
+- Add [quota to endpoint status response](https://github.com/etcd-io/etcd/pull/17877)
 
 ### etcd grpc-proxy
 
@@ -93,10 +91,11 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 
 - Add [`etcd_disk_defrag_inflight`](https://github.com/etcd-io/etcd/pull/13371).
 - Add [`etcd_debugging_server_alarms`](https://github.com/etcd-io/etcd/pull/14276).
+- Add [`etcd_server_range_duration_seconds`](https://github.com/etcd-io/etcd/pull/17983).
 
 ### Go
-- Require [Go 1.21+](https://github.com/etcd-io/etcd/pull/16594).
-- Compile with [Go 1.21+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
+- Require [Go 1.22+](https://github.com/etcd-io/etcd/pull/16594).
+- Compile with [Go 1.22+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
 
 ### Other
 

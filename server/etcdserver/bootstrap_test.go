@@ -198,6 +198,9 @@ func TestBootstrapBackend(t *testing.T) {
 			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 			ss := snap.New(cfg.Logger, cfg.SnapDir())
 			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			defer t.Cleanup(func() {
+				backend.Close()
+			})
 
 			hasError := err != nil
 			expectedHasError := tt.expectedError != nil
@@ -227,7 +230,7 @@ func createDataDir(t *testing.T) (string, error) {
 	}
 
 	// create ${dataDir}/member/wal
-	err = os.MkdirAll(datadir.ToWalDir(dataDir), 0700)
+	err = os.MkdirAll(datadir.ToWALDir(dataDir), 0700)
 	if err != nil {
 		return "", err
 	}

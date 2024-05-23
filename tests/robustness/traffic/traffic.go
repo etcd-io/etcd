@@ -24,13 +24,16 @@ import (
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
+	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
 	DefaultLeaseTTL   int64 = 7200
-	RequestTimeout          = 40 * time.Millisecond
+	RequestTimeout          = 200 * time.Millisecond
 	WatchTimeout            = 400 * time.Millisecond
 	MultiOpTxnOpCount       = 4
 
@@ -50,29 +53,36 @@ var (
 	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, finish <-chan struct{}, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan failpoint.Injection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
-	lm := identity.NewLeaseIdStorage()
+	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
 
-	startTime := time.Now()
-	cc, err := NewClient(endpoints, ids, baseTime)
+	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer cc.Close()
+	// Ensure that first operation succeeds
+	_, err = cc.Put(ctx, "start", "true")
+	if err != nil {
+		t.Fatalf("First operation failed, validation requires first operation to succeed, err: %s", err)
+	}
 	wg := sync.WaitGroup{}
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	finish := make(chan struct{})
+	lg.Info("Start traffic")
+	startTime := time.Since(baseTime)
 	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
-		c, nerr := NewClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
 		if nerr != nil {
 			t.Fatal(nerr)
 		}
-		go func(c *RecordingClient) {
+		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
@@ -82,29 +92,76 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			mux.Unlock()
 		}(c)
 	}
+	var fr *failpoint.Injection
+	select {
+	case frp, ok := <-failpointInjected:
+		if !ok {
+			t.Fatalf("Failed to collect failpoint report")
+		}
+		fr = &frp
+	case <-ctx.Done():
+		t.Fatalf("Traffic finished before failure was injected: %s", ctx.Err())
+	}
+	close(finish)
 	wg.Wait()
-	endTime := time.Now()
+	lg.Info("Finished traffic")
+	endTime := time.Since(baseTime)
 
-	// Ensure that last operation is succeeds
 	time.Sleep(time.Second)
+	// Ensure that last operation succeeds
 	_, err = cc.Put(ctx, "tombstone", "true")
 	if err != nil {
-		t.Error(err)
+		t.Fatalf("Last operation failed, validation requires last operation to succeed, err: %s", err)
 	}
 	reports = append(reports, cc.Report())
 
-	var operationCount int
-	for _, r := range reports {
-		operationCount += len(r.KeyValue)
-	}
-	lg.Info("Recorded operations", zap.Int("operationCount", operationCount))
+	totalStats := calculateStats(reports, startTime, endTime)
+	beforeFailpointStats := calculateStats(reports, startTime, fr.Start)
+	duringFailpointStats := calculateStats(reports, fr.Start, fr.End)
+	afterFailpointStats := calculateStats(reports, fr.End, endTime)
 
-	qps := float64(operationCount) / float64(endTime.Sub(startTime)) * float64(time.Second)
-	lg.Info("Average traffic", zap.Float64("qps", qps))
-	if qps < profile.MinimalQPS {
-		t.Errorf("Requiring minimal %f qps for test results to be reliable, got %f qps", profile.MinimalQPS, qps)
+	lg.Info("Reporting complete traffic", zap.Int("successes", totalStats.successes), zap.Int("failures", totalStats.failures), zap.Float64("successRate", totalStats.successRate()), zap.Duration("period", totalStats.period), zap.Float64("qps", totalStats.QPS()))
+	lg.Info("Reporting traffic before failure injection", zap.Int("successes", beforeFailpointStats.successes), zap.Int("failures", beforeFailpointStats.failures), zap.Float64("successRate", beforeFailpointStats.successRate()), zap.Duration("period", beforeFailpointStats.period), zap.Float64("qps", beforeFailpointStats.QPS()))
+	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.successes), zap.Int("failures", duringFailpointStats.failures), zap.Float64("successRate", duringFailpointStats.successRate()), zap.Duration("period", duringFailpointStats.period), zap.Float64("qps", duringFailpointStats.QPS()))
+	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.successes), zap.Int("failures", afterFailpointStats.failures), zap.Float64("successRate", afterFailpointStats.successRate()), zap.Duration("period", afterFailpointStats.period), zap.Float64("qps", afterFailpointStats.QPS()))
+
+	if beforeFailpointStats.QPS() < profile.MinimalQPS {
+		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
 	}
+	// TODO: Validate QPS post failpoint injection to ensure the that we sufficiently cover period when cluster recovers.
 	return reports
+}
+
+func calculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
+	ts.period = end - start
+
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			if op.Call < start.Nanoseconds() || op.Call > end.Nanoseconds() {
+				continue
+			}
+			resp := op.Output.(model.MaybeEtcdResponse)
+			if resp.Error == "" {
+				ts.successes++
+			} else {
+				ts.failures++
+			}
+		}
+	}
+	return ts
+}
+
+type trafficStats struct {
+	successes, failures int
+	period              time.Duration
+}
+
+func (ts *trafficStats) successRate() float64 {
+	return float64(ts.successes) / float64(ts.successes+ts.failures)
+}
+
+func (ts *trafficStats) QPS() float64 {
+	return float64(ts.successes) / ts.period.Seconds()
 }
 
 type Profile struct {
@@ -116,7 +173,7 @@ type Profile struct {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIdStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	Run(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
 	Name() string
 }

@@ -438,7 +438,7 @@ func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int,
 // exists in the log). Such a situation can happen in cases described in figure 7. of the
 // RAFT paper (http://web.stanford.edu/~ouster/cgi-bin/papers/raft-atc14.pdf).
 //
-// ReadAll may return uncommitted yet entries, that are subject to be overriden.
+// ReadAll may return uncommitted yet entries, that are subject to be overridden.
 // Do not apply entries that have index > state.commit, as they are subject to change.
 func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.Entry, err error) {
 	w.mu.Lock()

@@ -39,9 +39,21 @@ func TestMain(m *testing.M) {
 	testRunner.TestMain(m)
 }
 
-func TestRobustness(t *testing.T) {
+func TestRobustnessExploratory(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, scenario := range scenarios(t) {
+	for _, scenario := range exploratoryScenarios(t) {
+		t.Run(scenario.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			scenario.cluster.Logger = lg
+			ctx := context.Background()
+			testRobustness(ctx, t, lg, scenario)
+		})
+	}
+}
+
+func TestRobustnessRegression(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, scenario := range regressionScenarios(t) {
 		t.Run(scenario.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			scenario.cluster.Logger = lg
@@ -52,18 +64,16 @@ func TestRobustness(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
-	report := report.TestReport{Logger: lg}
+	r := report.TestReport{Logger: lg}
 	var err error
-	report.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+	r.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer report.Cluster.Close()
+	defer forcestopCluster(r.Cluster)
 
 	if s.failpoint == nil {
-		s.failpoint = failpoint.PickRandom(t, report.Cluster)
-	} else {
-		err = failpoint.Validate(report.Cluster, s.failpoint)
+		s.failpoint, err = failpoint.PickRandom(r.Cluster)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,39 +84,57 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		report.Report(t, panicked)
+		r.Report(t, panicked)
 	}()
-	report.Client = s.run(ctx, t, lg, report.Cluster)
-	forcestopCluster(report.Cluster)
+	r.Client = s.run(ctx, t, lg, r.Cluster)
+	persistedRequests, err := report.PersistedRequestsCluster(lg, r.Cluster)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	watchProgressNotifyEnabled := report.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
-	validateGotAtLeastOneProgressNotify(t, report.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
+	watchProgressNotifyEnabled := r.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
+	validateGotAtLeastOneProgressNotify(t, r.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
-	report.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, report.Client)
+	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
 
 	panicked = false
 }
 
 func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	g := errgroup.Group{}
-	var operationReport, watchReport []report.ClientReport
-	finishTraffic := make(chan struct{})
+	var operationReport, watchReport, failpointClientReport []report.ClientReport
+	failpointInjected := make(chan failpoint.Injection, 1)
 
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
-	ids := identity.NewIdProvider()
+	ids := identity.NewIDProvider()
 	g.Go(func() error {
-		defer close(finishTraffic)
-		failpoint.Inject(ctx, t, lg, clus, s.failpoint)
+		defer close(failpointInjected)
+		// Give some time for traffic to reach qps target before injecting failpoint.
 		time.Sleep(time.Second)
+		fr, err := failpoint.Inject(ctx, t, lg, clus, s.failpoint, baseTime, ids)
+		if err != nil {
+			t.Error(err)
+			cancel()
+		}
+		// Give some time for traffic to reach qps target after injecting failpoint.
+		time.Sleep(time.Second)
+		if fr != nil {
+			failpointInjected <- fr.Injection
+			failpointClientReport = fr.Client
+		}
 		return nil
 	})
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, finishTraffic, baseTime, ids)
-		maxRevisionChan <- operationsMaxRevision(operationReport)
+		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.profile, s.traffic, failpointInjected, baseTime, ids)
+		maxRevision := operationsMaxRevision(operationReport)
+		maxRevisionChan <- maxRevision
+		lg.Info("Finished simulating traffic", zap.Int64("max-revision", maxRevision))
 		return nil
 	})
 	g.Go(func() error {
@@ -114,7 +142,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		return nil
 	})
 	g.Wait()
-	return append(operationReport, watchReport...)
+	return append(operationReport, append(failpointClientReport, watchReport...)...)
 }
 
 func operationsMaxRevision(reports []report.ClientReport) int64 {

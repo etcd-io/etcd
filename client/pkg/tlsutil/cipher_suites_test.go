@@ -26,13 +26,13 @@ func TestGetCipherSuite_not_existing(t *testing.T) {
 	}
 }
 
-func CipherSuiteExpectedToExist(tb testing.TB, cipher string, expectedId uint16) {
+func CipherSuiteExpectedToExist(tb testing.TB, cipher string, expectedID uint16) {
 	vid, ok := GetCipherSuite(cipher)
 	if !ok {
 		tb.Errorf("Expected %v cipher to exist", cipher)
 	}
-	if vid != expectedId {
-		tb.Errorf("For %v expected=%v found=%v", cipher, expectedId, vid)
+	if vid != expectedID {
+		tb.Errorf("For %v expected=%v found=%v", cipher, expectedID, vid)
 	}
 }
 

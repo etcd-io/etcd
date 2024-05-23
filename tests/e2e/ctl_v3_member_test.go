@@ -291,3 +291,21 @@ func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: " updated in cluster "})
 }
+
+func TestRemoveNonExistingMember(t *testing.T) {
+	e2e.BeforeTest(t)
+	ctx := context.Background()
+
+	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
+	assert.NoError(t, err)
+	defer epc.Close()
+	c := epc.Etcdctl()
+
+	_, err = c.MemberRemove(ctx, 1)
+	assert.Error(t, err)
+
+	// Ensure that membership is properly bootstrapped.
+	err = epc.Restart(ctx)
+	assert.NoError(t, err)
+}

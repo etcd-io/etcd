@@ -38,7 +38,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
-	oldLeadID := uint64(clus.Members[oldLeadIdx].Server.MemberId())
+	oldLeadID := uint64(clus.Members[oldLeadIdx].Server.MemberID())
 
 	// ensure followers go through leader transition while leadership transfer
 	idc := make(chan uint64)
@@ -56,7 +56,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 		}
 	}
 
-	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.MemberId())
+	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.MemberID())
 	if auto {
 		err := clus.Members[oldLeadIdx].Server.TryTransferLeadershipOnShutdown()
 		if err != nil {
@@ -108,7 +108,7 @@ func TestMoveLeaderError(t *testing.T) {
 	oldLeadIdx := clus.WaitLeader(t)
 	followerIdx := (oldLeadIdx + 1) % 3
 
-	target := uint64(clus.Members[(oldLeadIdx+2)%3].Server.MemberId())
+	target := uint64(clus.Members[(oldLeadIdx+2)%3].Server.MemberID())
 
 	mvc := integration.ToGRPC(clus.Client(followerIdx)).Maintenance
 	_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})
@@ -195,14 +195,14 @@ func TestFirstCommitNotification(t *testing.T) {
 	oldLeaderClient := cluster.Client(oldLeaderIdx)
 
 	newLeaderIdx := (oldLeaderIdx + 1) % clusterSize
-	newLeaderId := uint64(cluster.Members[newLeaderIdx].ID())
+	newLeaderID := uint64(cluster.Members[newLeaderIdx].ID())
 
 	notifiers := make(map[int]<-chan struct{}, clusterSize)
 	for i, clusterMember := range cluster.Members {
 		notifiers[i] = clusterMember.Server.FirstCommitInTermNotify()
 	}
 
-	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderId)
+	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderID)
 
 	if err != nil {
 		t.Errorf("got error during leadership transfer: %v", err)

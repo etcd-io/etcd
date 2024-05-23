@@ -64,7 +64,7 @@ func UpdateCapability(lg *zap.Logger, v *semver.Version) {
 		return
 	}
 	enableMapMu.Lock()
-	if curVersion != nil && !serverversion.IsValidVersionChange(v, curVersion) {
+	if curVersion != nil && !serverversion.IsValidClusterVersionChange(curVersion, v) {
 		enableMapMu.Unlock()
 		return
 	}

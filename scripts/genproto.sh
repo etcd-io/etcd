@@ -25,8 +25,29 @@ fi
 source ./scripts/test_lib.sh
 
 if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
-  echo "could not find protoc 3.20.3, is it installed + in PATH?"
-  exit 255
+  echo "Could not find protoc 3.20.3, installing now..."
+
+  arch=$(go env GOARCH)
+
+  case ${arch} in
+    "amd64") file="x86_64" ;;
+    "arm64") file="aarch_64" ;;
+    *)
+      echo "Unsupported architecture: ${arch}"
+      exit 255
+      ;;
+  esac
+
+  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-${file}.zip"
+  echo "Running on ${arch}."
+  mkdir -p bin
+  wget ${download_url} && unzip -p protoc-3.20.3-linux-${file}.zip bin/protoc > tmpFile && mv tmpFile bin/protoc 
+  rm protoc-3.20.3-linux-${file}.zip
+  chmod +x bin/protoc
+  PATH=$PATH:$(pwd)/bin
+  export PATH
+  echo "Now running: $(protoc --version)"
+
 fi
 
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)

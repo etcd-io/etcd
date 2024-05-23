@@ -82,7 +82,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 	initialLead := clus.WaitMembersForLeader(t, clus.Members[1:]) + 1
-	t.Logf("elected lead: %v", clus.Members[initialLead].Server.MemberId())
+	t.Logf("elected lead: %v", clus.Members[initialLead].Server.MemberID())
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
 	t.Logf("sleeping for 2 seconds DONE")

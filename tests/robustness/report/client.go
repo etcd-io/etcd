@@ -31,7 +31,7 @@ import (
 )
 
 type ClientReport struct {
-	ClientId int
+	ClientID int
 	KeyValue []porcupine.Operation
 	Watch    []model.WatchOperation
 }
@@ -48,19 +48,23 @@ func (r ClientReport) WatchEventCount() int {
 
 func persistClientReports(t *testing.T, lg *zap.Logger, path string, reports []ClientReport) {
 	sort.Slice(reports, func(i, j int) bool {
-		return reports[i].ClientId < reports[j].ClientId
+		return reports[i].ClientID < reports[j].ClientID
 	})
 	for _, r := range reports {
-		clientDir := filepath.Join(path, fmt.Sprintf("client-%d", r.ClientId))
+		clientDir := filepath.Join(path, fmt.Sprintf("client-%d", r.ClientID))
 		err := os.MkdirAll(clientDir, 0700)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(r.Watch) != 0 {
 			persistWatchOperations(t, lg, filepath.Join(clientDir, "watch.json"), r.Watch)
+		} else {
+			lg.Info("no watch operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 		if len(r.KeyValue) != 0 {
 			persistKeyValueOperations(t, lg, filepath.Join(clientDir, "operations.json"), r.KeyValue)
+		} else {
+			lg.Info("no KV operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 	}
 }
@@ -82,12 +86,12 @@ func LoadClientReports(path string) ([]ClientReport, error) {
 			if err != nil {
 				return nil, err
 			}
-			r.ClientId = id
+			r.ClientID = id
 			reports = append(reports, r)
 		}
 	}
 	sort.Slice(reports, func(i, j int) bool {
-		return reports[i].ClientId < reports[j].ClientId
+		return reports[i].ClientID < reports[j].ClientID
 	})
 	return reports, nil
 }
@@ -145,7 +149,7 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 	decoder := json.NewDecoder(file)
 	for decoder.More() {
 		var operation struct {
-			ClientId int
+			ClientID int
 			Input    model.EtcdRequest
 			Call     int64
 			Output   model.MaybeEtcdResponse
@@ -156,7 +160,7 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 			return nil, fmt.Errorf("failed to decode watch operation, err: %w", err)
 		}
 		operations = append(operations, porcupine.Operation{
-			ClientId: operation.ClientId,
+			ClientId: operation.ClientID,
 			Input:    operation.Input,
 			Call:     operation.Call,
 			Output:   operation.Output,

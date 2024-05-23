@@ -65,9 +65,9 @@ func TestSessionTTLOptions(t *testing.T) {
 	}
 	defer s.Close()
 
-	leaseId := s.Lease()
+	leaseID := s.Lease()
 	// TTL retrieved should be less than the set TTL, but not equal to default:60 or exprired:-1
-	resp, err := cli.Lease.TimeToLive(context.Background(), leaseId)
+	resp, err := cli.Lease.TimeToLive(context.Background(), leaseID)
 	if err != nil {
 		t.Log(err)
 	}

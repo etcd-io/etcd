@@ -50,7 +50,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/grpc_testing"
+	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -139,10 +139,10 @@ type ClusterConfig struct {
 
 	DiscoveryURL string
 
-	AuthToken    string
-	AuthTokenTTL uint
+	AuthToken string
 
-	QuotaBackendBytes int64
+	QuotaBackendBytes    int64
+	BackendBatchInterval time.Duration
 
 	MaxTxnOps              uint
 	MaxRequestBytes        uint
@@ -236,7 +236,7 @@ func (c *Cluster) Launch(t testutil.TB) {
 	c.WaitMembersMatch(t, c.ProtoMembers())
 	c.waitVersion()
 	for _, m := range c.Members {
-		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL())
+		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL)
 	}
 }
 
@@ -267,17 +267,17 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			Name:                                fmt.Sprintf("m%v", memberNumber),
 			MemberNumber:                        memberNumber,
 			AuthToken:                           c.Cfg.AuthToken,
-			AuthTokenTTL:                        c.Cfg.AuthTokenTTL,
 			PeerTLS:                             c.Cfg.PeerTLS,
 			ClientTLS:                           c.Cfg.ClientTLS,
 			QuotaBackendBytes:                   c.Cfg.QuotaBackendBytes,
+			BackendBatchInterval:                c.Cfg.BackendBatchInterval,
 			MaxTxnOps:                           c.Cfg.MaxTxnOps,
 			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
 			SnapshotCount:                       c.Cfg.SnapshotCount,
 			SnapshotCatchUpEntries:              c.Cfg.SnapshotCatchUpEntries,
-			GrpcKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
-			GrpcKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
-			GrpcKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
+			GRPCKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
+			GRPCKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
+			GRPCKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
 			ClientMaxCallSendMsgSize:            c.Cfg.ClientMaxCallSendMsgSize,
 			ClientMaxCallRecvMsgSize:            c.Cfg.ClientMaxCallRecvMsgSize,
 			UseIP:                               c.Cfg.UseIP,
@@ -359,7 +359,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 	}
 	newMembers := make([]*Member, 0)
 	for _, m := range c.Members {
-		if uint64(m.Server.MemberId()) != id {
+		if uint64(m.Server.MemberID()) != id {
 			newMembers = append(newMembers, m)
 		} else {
 			m.Client.Close()
@@ -370,7 +370,7 @@ func (c *Cluster) RemoveMember(t testutil.TB, cc *clientv3.Client, id uint64) er
 			// TODO: remove connection write timeout by selecting on http response closeNotifier
 			// blocking on https://github.com/golang/go/issues/9524
 			case <-time.After(time.Second + time.Duration(ElectionTicks)*framecfg.TickDuration + time.Second + rafthttp.ConnWriteTimeout):
-				t.Fatalf("failed to remove member %s in time", m.Server.MemberId())
+				t.Fatalf("failed to remove member %s in time", m.Server.MemberID())
 			}
 		}
 	}
@@ -444,7 +444,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
-		possibleLead[uint64(m.Server.MemberId())] = true
+		possibleLead[uint64(m.Server.MemberID())] = true
 	}
 	cc, err := c.ClusterClient(t)
 	if err != nil {
@@ -478,7 +478,7 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 	}
 
 	for i, m := range membs {
-		if uint64(m.Server.MemberId()) == lead {
+		if uint64(m.Server.MemberID()) == lead {
 			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
@@ -551,7 +551,7 @@ type Member struct {
 	MemberNumber                   int
 	Port                           string
 	PeerListeners, ClientListeners []net.Listener
-	GrpcListener                   net.Listener
+	GRPCListener                   net.Listener
 	// PeerTLSInfo enables peer TLS when set
 	PeerTLSInfo *transport.TLSInfo
 	// ClientTLSInfo enables client TLS when set
@@ -562,10 +562,10 @@ type Member struct {
 	Server        *etcdserver.EtcdServer
 	ServerClosers []func()
 
-	GrpcServerOpts []grpc.ServerOption
-	GrpcServer     *grpc.Server
-	GrpcURL        string
-	GrpcBridge     *bridge
+	GRPCServerOpts []grpc.ServerOption
+	GRPCServer     *grpc.Server
+	GRPCURL        string
+	GRPCBridge     *bridge
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
@@ -582,12 +582,10 @@ type Member struct {
 	IsLearner bool
 	Closed    bool
 
-	GrpcServerRecorder *grpc_testing.GrpcRecorder
+	GRPCServerRecorder *grpctesting.GRPCRecorder
 
 	LogObserver *testutils.LogObserver
 }
-
-func (m *Member) GRPCURL() string { return m.GrpcURL }
 
 type MemberConfig struct {
 	Name                        string
@@ -596,15 +594,15 @@ type MemberConfig struct {
 	PeerTLS                     *transport.TLSInfo
 	ClientTLS                   *transport.TLSInfo
 	AuthToken                   string
-	AuthTokenTTL                uint
 	QuotaBackendBytes           int64
+	BackendBatchInterval        time.Duration
 	MaxTxnOps                   uint
 	MaxRequestBytes             uint
 	SnapshotCount               uint64
 	SnapshotCatchUpEntries      uint64
-	GrpcKeepAliveMinTime        time.Duration
-	GrpcKeepAliveInterval       time.Duration
-	GrpcKeepAliveTimeout        time.Duration
+	GRPCKeepAliveMinTime        time.Duration
+	GRPCKeepAliveInterval       time.Duration
+	GRPCKeepAliveTimeout        time.Duration
 	ClientMaxCallSendMsgSize    int
 	ClientMaxCallRecvMsgSize    int
 	UseIP                       bool
@@ -671,6 +669,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.TickMs = uint(framecfg.TickDuration / time.Millisecond)
 	m.PreVote = true
 	m.QuotaBackendBytes = mcfg.QuotaBackendBytes
+	m.BackendBatchInterval = mcfg.BackendBatchInterval
 	m.MaxTxnOps = mcfg.MaxTxnOps
 	if m.MaxTxnOps == 0 {
 		m.MaxTxnOps = embed.DefaultMaxTxnOps
@@ -693,24 +692,21 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	if mcfg.AuthToken != "" {
 		m.AuthToken = mcfg.AuthToken
 	}
-	if mcfg.AuthTokenTTL != 0 {
-		m.TokenTTL = mcfg.AuthTokenTTL
-	}
 
 	m.BcryptCost = uint(bcrypt.MinCost) // use min bcrypt cost to speedy up integration testing
 
-	m.GrpcServerOpts = []grpc.ServerOption{}
-	if mcfg.GrpcKeepAliveMinTime > time.Duration(0) {
-		m.GrpcServerOpts = append(m.GrpcServerOpts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
-			MinTime:             mcfg.GrpcKeepAliveMinTime,
+	m.GRPCServerOpts = []grpc.ServerOption{}
+	if mcfg.GRPCKeepAliveMinTime > time.Duration(0) {
+		m.GRPCServerOpts = append(m.GRPCServerOpts, grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             mcfg.GRPCKeepAliveMinTime,
 			PermitWithoutStream: false,
 		}))
 	}
-	if mcfg.GrpcKeepAliveInterval > time.Duration(0) &&
-		mcfg.GrpcKeepAliveTimeout > time.Duration(0) {
-		m.GrpcServerOpts = append(m.GrpcServerOpts, grpc.KeepaliveParams(keepalive.ServerParameters{
-			Time:    mcfg.GrpcKeepAliveInterval,
-			Timeout: mcfg.GrpcKeepAliveTimeout,
+	if mcfg.GRPCKeepAliveInterval > time.Duration(0) &&
+		mcfg.GRPCKeepAliveTimeout > time.Duration(0) {
+		m.GRPCServerOpts = append(m.GRPCServerOpts, grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    mcfg.GRPCKeepAliveInterval,
+			Timeout: mcfg.GRPCKeepAliveTimeout,
 		}))
 	}
 	m.ClientMaxCallSendMsgSize = mcfg.ClientMaxCallSendMsgSize
@@ -736,7 +732,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.ExperimentalMaxLearners = mcfg.ExperimentalMaxLearners
 	}
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
-	m.GrpcServerRecorder = &grpc_testing.GrpcRecorder{}
+	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 
@@ -792,8 +788,8 @@ func (m *Member) listenGRPC() error {
 		return fmt.Errorf("failed to parse grpc listen port from address %s (%v)", addr, err)
 	}
 	m.Port = port
-	m.GrpcURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
-	m.Logger.Info("LISTEN GRPC SUCCESS", zap.String("grpcAddr", m.GrpcURL), zap.String("m.Name", m.Name),
+	m.GRPCURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
+	m.Logger.Info("LISTEN GRPC SUCCESS", zap.String("grpcAddr", m.GRPCURL), zap.String("m.Name", m.Name),
 		zap.String("workdir", wd), zap.String("port", m.Port))
 
 	if m.UseBridge {
@@ -803,7 +799,7 @@ func (m *Member) listenGRPC() error {
 			return err
 		}
 	}
-	m.GrpcListener = grpcListener
+	m.GRPCListener = grpcListener
 	return nil
 }
 
@@ -835,19 +831,19 @@ func (m *Member) addBridge() (*bridge, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", bridgeAddr, err)
 	}
-	m.GrpcBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
+	m.GRPCBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
 
 	addr := bridgeListener.Addr().String()
 	m.Logger.Info("LISTEN BRIDGE SUCCESS", zap.String("grpc-address", addr), zap.String("member", m.Name))
-	m.GrpcURL = m.clientScheme() + "://" + addr
-	return m.GrpcBridge, nil
+	m.GRPCURL = m.clientScheme() + "://" + addr
+	return m.GRPCBridge, nil
 }
 
 func (m *Member) Bridge() *bridge {
 	if !m.UseBridge {
 		m.Logger.Panic("Bridge not available. Please configure using bridge before creating Cluster.")
 	}
-	return m.GrpcBridge
+	return m.GRPCBridge
 }
 
 func (m *Member) grpcAddr() (network, host, port string) {
@@ -873,7 +869,7 @@ func (m *Member) grpcAddr() (network, host, port string) {
 	return network, host, port
 }
 
-func (m *Member) GrpcPortNumber() string {
+func (m *Member) GRPCPortNumber() string {
 	return m.Port
 }
 
@@ -890,16 +886,16 @@ func (m *Member) ElectionTimeout() time.Duration {
 	return time.Duration(m.Server.Cfg.ElectionTicks*int(m.Server.Cfg.TickMs)) * time.Millisecond
 }
 
-func (m *Member) ID() types.ID { return m.Server.MemberId() }
+func (m *Member) ID() types.ID { return m.Server.MemberID() }
 
 // NewClientV3 creates a new grpc client connection to the member
 func NewClientV3(m *Member) (*clientv3.Client, error) {
-	if m.GrpcURL == "" {
+	if m.GRPCURL == "" {
 		return nil, fmt.Errorf("member not configured for grpc")
 	}
 
 	cfg := clientv3.Config{
-		Endpoints:          []string{m.GrpcURL},
+		Endpoints:          []string{m.GRPCURL},
 		DialTimeout:        5 * time.Second,
 		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
 		MaxCallSendMsgSize: m.ClientMaxCallSendMsgSize,
@@ -961,7 +957,7 @@ func (m *Member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	var err error
 	if m.Server, err = etcdserver.NewServer(m.ServerConfig); err != nil {
@@ -977,7 +973,7 @@ func (m *Member) Launch() error {
 		}
 	}
 
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		var (
 			tlscfg *tls.Config
 		)
@@ -987,17 +983,17 @@ func (m *Member) Launch() error {
 				return err
 			}
 		}
-		m.GrpcServer = v3rpc.Server(m.Server, tlscfg, m.GrpcServerRecorder.UnaryInterceptor(), m.GrpcServerOpts...)
+		m.GRPCServer = v3rpc.Server(m.Server, tlscfg, m.GRPCServerRecorder.UnaryInterceptor(), m.GRPCServerOpts...)
 		m.ServerClient = v3client.New(m.Server)
-		lockpb.RegisterLockServer(m.GrpcServer, v3lock.NewLockServer(m.ServerClient))
-		epb.RegisterElectionServer(m.GrpcServer, v3election.NewElectionServer(m.ServerClient))
-		go m.GrpcServer.Serve(m.GrpcListener)
+		lockpb.RegisterLockServer(m.GRPCServer, v3lock.NewLockServer(m.ServerClient))
+		epb.RegisterElectionServer(m.GRPCServer, v3election.NewElectionServer(m.ServerClient))
+		go m.GRPCServer.Serve(m.GRPCListener)
 	}
 
 	m.RaftHandler = &testutil.PauseableHandler{Next: etcdhttp.NewPeerHandler(m.Logger, m.Server)}
 
 	h := (http.Handler)(m.RaftHandler)
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			m.RaftHandler.ServeHTTP(w, r)
 		})
@@ -1103,7 +1099,7 @@ func (m *Member) Launch() error {
 		}
 		m.ServerClosers = append(m.ServerClosers, closer)
 	}
-	if m.GrpcURL != "" && m.Client == nil {
+	if m.GRPCURL != "" && m.Client == nil {
 		m.Client, err = NewClientV3(m)
 		if err != nil {
 			return err
@@ -1115,13 +1111,13 @@ func (m *Member) Launch() error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	return nil
 }
 
-func (m *Member) RecordedRequests() []grpc_testing.RequestInfo {
-	return m.GrpcServerRecorder.RecordedRequests()
+func (m *Member) RecordedRequests() []grpctesting.RequestInfo {
+	return m.GRPCServerRecorder.RecordedRequests()
 }
 
 func (m *Member) WaitOK(t testutil.TB) {
@@ -1179,21 +1175,21 @@ func (m *Member) Resume() {
 
 // Close stops the member'Server etcdserver and closes its connections
 func (m *Member) Close() {
-	if m.GrpcBridge != nil {
-		m.GrpcBridge.Close()
-		m.GrpcBridge = nil
+	if m.GRPCBridge != nil {
+		m.GRPCBridge.Close()
+		m.GRPCBridge = nil
 	}
 	if m.ServerClient != nil {
 		m.ServerClient.Close()
 		m.ServerClient = nil
 	}
-	if m.GrpcServer != nil {
+	if m.GRPCServer != nil {
 		ch := make(chan struct{})
 		go func() {
 			defer close(ch)
 			// close listeners to stop accepting new connections,
 			// will block on any existing transports
-			m.GrpcServer.GracefulStop()
+			m.GRPCServer.GracefulStop()
 		}()
 		// wait until all pending RPCs are finished
 		select {
@@ -1201,10 +1197,10 @@ func (m *Member) Close() {
 		case <-time.After(2 * time.Second):
 			// took too long, manually close open transports
 			// e.g. watch streams
-			m.GrpcServer.Stop()
+			m.GRPCServer.Stop()
 			<-ch
 		}
-		m.GrpcServer = nil
+		m.GRPCServer = nil
 	}
 	if m.Server != nil {
 		m.Server.HardStop()
@@ -1231,7 +1227,7 @@ func (m *Member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	m.Close()
 	m.ServerClosers = nil
@@ -1240,7 +1236,7 @@ func (m *Member) Stop(_ testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 }
 
@@ -1265,7 +1261,7 @@ func (m *Member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	newPeerListeners := make([]net.Listener, 0)
 	for _, ln := range m.PeerListeners {
@@ -1278,7 +1274,7 @@ func (m *Member) Restart(t testutil.TB) error {
 	}
 	m.ClientListeners = newClientListeners
 
-	if m.GrpcListener != nil {
+	if m.GRPCListener != nil {
 		if err := m.listenGRPC(); err != nil {
 			t.Fatal(err)
 		}
@@ -1290,7 +1286,7 @@ func (m *Member) Restart(t testutil.TB) error {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 		zap.Error(err),
 	)
 	return err
@@ -1303,7 +1299,7 @@ func (m *Member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 	m.Close()
 	if !m.KeepDataDirTerminate {
@@ -1316,7 +1312,7 @@ func (m *Member) Terminate(t testutil.TB) {
 		zap.String("name", m.Name),
 		zap.Strings("advertise-peer-urls", m.PeerURLs.StringSlice()),
 		zap.Strings("listen-client-urls", m.ClientURLs.StringSlice()),
-		zap.String("grpc-url", m.GrpcURL),
+		zap.String("grpc-url", m.GRPCURL),
 	)
 }
 
@@ -1360,18 +1356,18 @@ func (m *Member) Metric(metricName string, expectLabels ...string) (string, erro
 // InjectPartition drops connections from m to others, vice versa.
 func (m *Member) InjectPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.CutPeer(other.Server.MemberId())
-		other.Server.CutPeer(m.Server.MemberId())
-		t.Logf("network partition injected between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
+		m.Server.CutPeer(other.Server.MemberID())
+		other.Server.CutPeer(m.Server.MemberID())
+		t.Logf("network partition injected between: %v <-> %v", m.Server.MemberID(), other.Server.MemberID())
 	}
 }
 
 // RecoverPartition recovers connections from m to others, vice versa.
 func (m *Member) RecoverPartition(t testutil.TB, others ...*Member) {
 	for _, other := range others {
-		m.Server.MendPeer(other.Server.MemberId())
-		other.Server.MendPeer(m.Server.MemberId())
-		t.Logf("network partition between: %v <-> %v", m.Server.MemberId(), other.Server.MemberId())
+		m.Server.MendPeer(other.Server.MemberID())
+		other.Server.MendPeer(m.Server.MemberID())
+		t.Logf("network partition between: %v <-> %v", m.Server.MemberID(), other.Server.MemberID())
 	}
 }
 
@@ -1450,7 +1446,7 @@ func (c *Cluster) Client(i int) *clientv3.Client {
 func (c *Cluster) Endpoints() []string {
 	var endpoints []string
 	for _, m := range c.Members {
-		endpoints = append(endpoints, m.GrpcURL)
+		endpoints = append(endpoints, m.GRPCURL)
 	}
 	return endpoints
 }
@@ -1547,7 +1543,7 @@ func CloseClients(t testutil.TB, clients []*clientv3.Client) {
 	}
 }
 
-type GrpcAPI struct {
+type GRPCAPI struct {
 	// Cluster is the Cluster API for the client'Server connection.
 	Cluster pb.ClusterClient
 	// KV is the keyvalue API for the client'Server connection.

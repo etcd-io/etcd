@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -120,73 +121,68 @@ func TestIsValidDowngrade(t *testing.T) {
 }
 
 func TestIsVersionChangable(t *testing.T) {
-	v0 := semver.Must(semver.NewVersion("2.4.0"))
-	v1 := semver.Must(semver.NewVersion("3.4.0"))
-	v2 := semver.Must(semver.NewVersion("3.5.0"))
-	v3 := semver.Must(semver.NewVersion("3.5.1"))
-	v4 := semver.Must(semver.NewVersion("3.6.0"))
-
 	tests := []struct {
 		name           string
-		currentVersion *semver.Version
-		localVersion   *semver.Version
+		verFrom        string
+		verTo          string
 		expectedResult bool
 	}{
 		{
 			name:           "When local version is one minor lower than cluster version",
-			currentVersion: v2,
-			localVersion:   v1,
+			verFrom:        "3.5.0",
+			verTo:          "3.4.0",
 			expectedResult: true,
 		},
 		{
 			name:           "When local version is one minor and one patch lower than cluster version",
-			currentVersion: v3,
-			localVersion:   v1,
+			verFrom:        "3.5.1",
+			verTo:          "3.4.0",
 			expectedResult: true,
 		},
 		{
 			name:           "When local version is one minor higher than cluster version",
-			currentVersion: v1,
-			localVersion:   v2,
+			verFrom:        "3.4.0",
+			verTo:          "3.5.0",
 			expectedResult: true,
 		},
 		{
 			name:           "When local version is two minor higher than cluster version",
-			currentVersion: v1,
-			localVersion:   v4,
+			verFrom:        "3.4.0",
+			verTo:          "3.6.0",
 			expectedResult: true,
 		},
 		{
 			name:           "When local version is one major higher than cluster version",
-			currentVersion: v0,
-			localVersion:   v1,
+			verFrom:        "2.4.0",
+			verTo:          "3.4.0",
 			expectedResult: false,
 		},
 		{
 			name:           "When local version is equal to cluster version",
-			currentVersion: v1,
-			localVersion:   v1,
+			verFrom:        "3.4.0",
+			verTo:          "3.4.0",
 			expectedResult: false,
 		},
 		{
 			name:           "When local version is one patch higher than cluster version",
-			currentVersion: v2,
-			localVersion:   v3,
+			verFrom:        "3.5.0",
+			verTo:          "3.5.1",
 			expectedResult: false,
 		},
 		{
 			name:           "When local version is two minor lower than cluster version",
-			currentVersion: v4,
-			localVersion:   v1,
+			verFrom:        "3.6.0",
+			verTo:          "3.4.0",
 			expectedResult: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if ret := IsValidVersionChange(tt.currentVersion, tt.localVersion); ret != tt.expectedResult {
-				t.Errorf("Expected %v; Got %v", tt.expectedResult, ret)
-			}
+			verFrom := semver.Must(semver.NewVersion(tt.verFrom))
+			verTo := semver.Must(semver.NewVersion(tt.verTo))
+			ret := IsValidClusterVersionChange(verFrom, verTo)
+			assert.Equal(t, tt.expectedResult, ret)
 		})
 	}
 }

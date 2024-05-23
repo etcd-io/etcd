@@ -38,7 +38,7 @@ type CURLReq struct {
 	Header   string
 
 	Ciphers     string
-	HttpVersion string
+	HTTPVersion string
 
 	OutputFile string
 }
@@ -62,8 +62,8 @@ func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, 
 	var (
 		cmdArgs = []string{"curl"}
 	)
-	if req.HttpVersion != "" {
-		cmdArgs = append(cmdArgs, "--http"+req.HttpVersion)
+	if req.HTTPVersion != "" {
+		cmdArgs = append(cmdArgs, "--http"+req.HTTPVersion)
 	}
 	if req.IsTLS {
 		if cfg.ConnectionType != ClientTLSAndNonTLS {

@@ -278,6 +278,16 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
 	if s.isLeader() {
+		// If s.isLeader() returns true, but we fail to ensure the current
+		// member's leadership, there are a couple of possibilities:
+		//   1. current member gets stuck on writing WAL entries;
+		//   2. current member is in network isolation status;
+		//   3. current member isn't a leader anymore (possibly due to #1 above).
+		// In such case, we just return error to client, so that the client can
+		// switch to another member to continue the lease keep-alive operation.
+		if !s.ensureLeadership() {
+			return -1, lease.ErrNotPrimary
+		}
 		if err := s.waitAppliedIndex(); err != nil {
 			return 0, err
 		}
@@ -347,6 +357,9 @@ func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 		if err := s.waitAppliedIndex(); err != nil {
 			return nil, err
 		}
+
+		// gofail: var beforeLookupWhenLeaseTimeToLive struct{}
+
 		// primary; timetolive directly from leader
 		le := s.lessor.Lookup(lease.LeaseID(r.ID))
 		if le == nil {
@@ -361,6 +374,15 @@ func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 				kbs[i] = []byte(ks[i])
 			}
 			resp.Keys = kbs
+		}
+
+		// The leasor could be demoted if leader changed during lookup.
+		// We should return error to force retry instead of returning
+		// incorrect remaining TTL.
+		if le.Demoted() {
+			// NOTE: lease.ErrNotPrimary is not retryable error for
+			// client. Instead, uses ErrLeaderChanged.
+			return nil, errors.ErrLeaderChanged
 		}
 		return resp, nil
 	}
@@ -419,7 +441,7 @@ func (s *EtcdServer) LeaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 func (s *EtcdServer) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(s.cluster.ID()),
-		MemberId:  uint64(s.MemberId()),
+		MemberId:  uint64(s.MemberID()),
 		Revision:  s.KV().Rev(),
 		RaftTerm:  s.Term(),
 	}
@@ -780,7 +802,7 @@ func (s *EtcdServer) Watchable() mvcc.WatchableKV { return s.KV() }
 
 func (s *EtcdServer) linearizableReadLoop() {
 	for {
-		requestId := s.reqIDGen.Next()
+		requestID := s.reqIDGen.Next()
 		leaderChangedNotifier := s.leaderChanged.Receive()
 		select {
 		case <-leaderChangedNotifier:
@@ -800,7 +822,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 		s.readNotifier = nextnr
 		s.readMu.Unlock()
 
-		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestId)
+		confirmedIndex, err := s.requestCurrentIndex(leaderChangedNotifier, requestID)
 		if isStopped(err) {
 			return
 		}
@@ -835,8 +857,8 @@ func isStopped(err error) bool {
 	return err == raft.ErrStopped || err == errors.ErrStopped
 }
 
-func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestId uint64) (uint64, error) {
-	err := s.sendReadIndex(requestId)
+func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestID uint64) (uint64, error) {
+	err := s.sendReadIndex(requestID)
 	if err != nil {
 		return 0, err
 	}
@@ -852,19 +874,19 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 	for {
 		select {
 		case rs := <-s.r.readStateC:
-			requestIdBytes := uint64ToBigEndianBytes(requestId)
-			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIdBytes)
+			requestIDBytes := uint64ToBigEndianBytes(requestID)
+			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIDBytes)
 			if !gotOwnResponse {
 				// a previous request might time out. now we should ignore the response of it and
 				// continue waiting for the response of the current requests.
-				responseId := uint64(0)
+				responseID := uint64(0)
 				if len(rs.RequestCtx) == 8 {
-					responseId = binary.BigEndian.Uint64(rs.RequestCtx)
+					responseID = binary.BigEndian.Uint64(rs.RequestCtx)
 				}
 				lg.Warn(
 					"ignored out-of-date read index response; local node read indexes queueing up and waiting to be in sync with leader",
-					zap.Uint64("sent-request-id", requestId),
-					zap.Uint64("received-request-id", responseId),
+					zap.Uint64("sent-request-id", requestID),
+					zap.Uint64("received-request-id", responseID),
 				)
 				slowReadIndex.Inc()
 				continue
@@ -877,7 +899,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-firstCommitInTermNotifier:
 			firstCommitInTermNotifier = s.firstCommitInTerm.Receive()
 			lg.Info("first commit in current term: resending ReadIndex request")
-			err := s.sendReadIndex(requestId)
+			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
 			}
@@ -886,10 +908,10 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 		case <-retryTimer.C:
 			lg.Warn(
 				"waiting for ReadIndex response took too long, retrying",
-				zap.Uint64("sent-request-id", requestId),
+				zap.Uint64("sent-request-id", requestID),
 				zap.Duration("retry-timeout", readIndexRetryTime),
 			)
-			err := s.sendReadIndex(requestId)
+			err := s.sendReadIndex(requestID)
 			if err != nil {
 				return 0, err
 			}

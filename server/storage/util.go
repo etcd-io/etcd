@@ -39,7 +39,7 @@ func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage c
 	if metaOnly {
 		return nil
 	}
-	if deprecationStage.IsAtLeast(config.V2_DEPR_1_WRITE_ONLY) {
+	if deprecationStage.IsAtLeast(config.V2Depr1WriteOnly) {
 		return fmt.Errorf("detected disallowed custom content in v2store for stage --v2-deprecation=%s", deprecationStage)
 	}
 	lg.Warn("detected custom v2store content. Etcd v3.5 is the last version allowing to access it using API v2. Please remove the content.")
@@ -109,13 +109,23 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 	return ents
 }
 
-// GetEffectiveNodeIDsFromWalEntries returns an ordered set of IDs included in the given snapshot and
+// GetEffectiveNodeIdsFromWalEntries returns an ordered set of IDs included in the given snapshot and
+// the entries.
+//
+// Deprecated: use GetEffectiveNodeIDsFromWALEntries instead.
+//
+//revive:disable-next-line:var-naming
+func GetEffectiveNodeIdsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
+	return GetEffectiveNodeIDsFromWALEntries(lg, snap, ents)
+}
+
+// GetEffectiveNodeIDsFromWALEntries returns an ordered set of IDs included in the given snapshot and
 // the entries. The given snapshot/entries can contain three kinds of
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will Be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will Be removed from the set.
 // - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
-func GetEffectiveNodeIDsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
+func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
 		for _, id := range snap.Metadata.ConfState.Voters {

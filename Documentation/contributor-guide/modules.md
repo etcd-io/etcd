@@ -5,17 +5,17 @@ The etcd project (since version 3.5) is organized into multiple
 
 ![modules graph](modules.svg)
 
-There are following modules:
+There are the following modules:
 
   - **go.etcd.io/etcd/api/v3** - contains API definitions
   (like protos & proto-generated libraries) that defines communication protocol
-  between etcd clients and server.
+  between etcd clients and servers.
 
-  - **go.etcd.io/etcd/pkg/v3** - collection of utility packages used by etcd
+  - **go.etcd.io/etcd/pkg/v3** - a collection of utility packages used by etcd
   without being specific to etcd itself. A package belongs here
   only if it could possibly be moved out into its own repository in the future.
   Please avoid adding here code that has a lot of dependencies on its own, as
-  they automatically becoming dependencies of the client library
+  they automatically become dependencies of the client library
   (that we want to keep lightweight).
 
   - **go.etcd.io/etcd/client/v3** - client library used to contact etcd over
@@ -26,14 +26,14 @@ There are following modules:
   https://github.com/etcd-io/raft.
 
   - **go.etcd.io/etcd/server/v3** - etcd implementation.
-  The code in this package is etcd internal and should not be consumed
+  The code in this package is internal to etcd and should not be consumed
   by external projects. The package layout and API can change within the minor versions.
 
   - **go.etcd.io/etcd/etcdctl/v3** - a command line tool to access and manage etcd.
 
   - **go.etcd.io/etcd/tests/v3** - a module that contains all integration tests of etcd.
-    Notice: All unit-tests (fast and not requiring cross-module dependencies)
-    should be kept in the local modules to the code under the test.
+    Notice: All unit tests (fast and not requiring cross-module dependencies)
+    should be kept in the local modules of the code under the test.
 
   - **go.etcd.io/bbolt** - implementation of persistent b-tree.
     Hosted in a separate repository: https://github.com/etcd-io/bbolt.
@@ -44,7 +44,7 @@ There are following modules:
 1. All etcd modules should be released in the same versions, e.g.
    `go.etcd.io/etcd/client/v3@v3.5.10` must depend on `go.etcd.io/etcd/api/v3@v3.5.10`.
 
-   The consistent updating of versions can by performed using:
+   The consistent updating of versions can be performed using:
    ```shell script
    % DRY_RUN=false TARGET_VERSION="v3.5.10" ./scripts/release_mod.sh update_versions
    ```
@@ -76,7 +76,7 @@ There are following modules:
 
 ### Future
 
-As a North Star, we would like to evaluate etcd modules towards following model:
+As a North Star, we would like to evaluate etcd modules towards the following model:
 
 ![modules graph](modules-future.svg)
 

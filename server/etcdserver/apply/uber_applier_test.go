@@ -34,7 +34,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
-const memberId = 111195
+const memberID = 111195
 
 func defaultUberApplier(t *testing.T) UberApplier {
 	lg := zaptest.NewLogger(t)
@@ -44,7 +44,7 @@ func defaultUberApplier(t *testing.T) UberApplier {
 	})
 
 	cluster := membership.NewCluster(lg)
-	cluster.AddMember(&membership.Member{ID: memberId}, true)
+	cluster.AddMember(&membership.Member{ID: memberID}, true)
 	lessor := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
 	kv := mvcc.NewStore(lg, be, lessor, mvcc.StoreConfig{})
 	alarmStore, err := v3alarm.NewAlarmStore(lg, schema.NewAlarmBackend(lg, be))
@@ -125,16 +125,16 @@ func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_CORRUPT,
 		},
-	}, true)
+	})
 	require.NotNil(t, result)
 	require.Nil(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request, true)
+			result = ua.Apply(tc.request)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -224,16 +224,16 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, true)
+	})
 	require.NotNil(t, result)
 	require.Nil(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request, true)
+			result = ua.Apply(tc.request)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -247,14 +247,14 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_ACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, true)
+	})
 	require.NotNil(t, result)
 	require.Nil(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, true)
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
 	require.NotNil(t, result)
 	require.Equalf(t, errors.ErrNoSpace, result.Err, "Apply: got %v, expect: %v", result.Err, errors.ErrNoSpace)
 
@@ -262,14 +262,14 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 		Header: &pb.RequestHeader{},
 		Alarm: &pb.AlarmRequest{
 			Action:   pb.AlarmRequest_DEACTIVATE,
-			MemberID: memberId,
+			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	}, true)
+	})
 	require.NotNil(t, result)
 	require.Nil(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, true)
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
 	require.NotNil(t, result)
 	require.Nil(t, result.Err)
 }

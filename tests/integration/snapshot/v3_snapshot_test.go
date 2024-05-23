@@ -95,7 +95,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 			t.Fatal(err)
 		}
 		if string(gresp.Kvs[0].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[0].Value))
+			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 		}
 	}
 }
@@ -132,7 +132,7 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 				t.Fatal(err)
 			}
 			if string(gresp.Kvs[0].Value) != kvs[i].v {
-				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, string(gresp.Kvs[0].Value))
+				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 			}
 		}
 	}

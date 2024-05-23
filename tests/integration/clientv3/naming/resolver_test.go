@@ -28,21 +28,21 @@ import (
 
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
-	"go.etcd.io/etcd/pkg/v3/grpc_testing"
+	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
+func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 
 	// Setup two new dummy stub servers
 	payloadBody := []byte{'1'}
-	s1 := grpc_testing.NewDummyStubServer(payloadBody)
+	s1 := grpctesting.NewDummyStubServer(payloadBody)
 	if err := s1.Start(nil); err != nil {
 		t.Fatal("failed to start dummy grpc server (s1)", err)
 	}
 	defer s1.Stop()
 
-	s2 := grpc_testing.NewDummyStubServer(payloadBody)
+	s2 := grpctesting.NewDummyStubServer(payloadBody)
 	if err := s2.Start(nil); err != nil {
 		t.Fatal("failed to start dummy grpc server (s2)", err)
 	}
@@ -114,7 +114,7 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 	t.Logf("Last response: %v", string(lastResponse))
 	if lbPolicy == "pick_first" {
 		if string(lastResponse) != "3500" {
-			t.Fatalf("unexpected total responses from foo: %s", string(lastResponse))
+			t.Fatalf("unexpected total responses from foo: %s", lastResponse)
 		}
 	}
 
@@ -122,12 +122,12 @@ func testEtcdGrpcResolver(t *testing.T, lbPolicy string) {
 	if lbPolicy == "round_robin" {
 		responses, err := strconv.Atoi(string(lastResponse))
 		if err != nil {
-			t.Fatalf("couldn't convert to int: %s", string(lastResponse))
+			t.Fatalf("couldn't convert to int: %s", lastResponse)
 		}
 
 		// Allow 25% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5
-		assert.InEpsilon(t, expected, float64(responses), 0.25, "unexpected total responses from foo: %s", string(lastResponse))
+		assert.InEpsilon(t, expected, float64(responses), 0.25, "unexpected total responses from foo: %s", lastResponse)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestEtcdGrpcResolverPickFirst(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Pick first is the default load balancer policy for grpc-go
-	testEtcdGrpcResolver(t, "pick_first")
+	testEtcdGRPCResolver(t, "pick_first")
 }
 
 // TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
@@ -146,20 +146,20 @@ func TestEtcdGrpcResolverRoundRobin(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Round robin is a common alternative for more production oriented scenarios
-	testEtcdGrpcResolver(t, "round_robin")
+	testEtcdGRPCResolver(t, "round_robin")
 }
 
 func TestEtcdEndpointManager(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	s1PayloadBody := []byte{'1'}
-	s1 := grpc_testing.NewDummyStubServer(s1PayloadBody)
+	s1 := grpctesting.NewDummyStubServer(s1PayloadBody)
 	err := s1.Start(nil)
 	assert.NoError(t, err)
 	defer s1.Stop()
 
 	s2PayloadBody := []byte{'2'}
-	s2 := grpc_testing.NewDummyStubServer(s2PayloadBody)
+	s2 := grpctesting.NewDummyStubServer(s2PayloadBody)
 	err = s2.Start(nil)
 	assert.NoError(t, err)
 	defer s2.Stop()

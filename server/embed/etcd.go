@@ -124,7 +124,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 	e.cfg.logger.Info(
 		"configuring peer listeners",
-		zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
+		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
 	)
 	if e.Peers, err = configurePeerListeners(cfg); err != nil {
 		return e, err
@@ -132,7 +132,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	e.cfg.logger.Info(
 		"configuring client listeners",
-		zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
+		zap.Strings("listen-client-urls", e.cfg.getListenClientURLs()),
 	)
 	if e.sctxs, err = configureClientListeners(cfg); err != nil {
 		return e, err
@@ -279,11 +279,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	e.cfg.logger.Info(
 		"now serving peer/client/metrics",
-		zap.String("local-member-id", e.Server.MemberId().String()),
-		zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
-		zap.Strings("listen-peer-urls", e.cfg.getListenPeerUrls()),
-		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
-		zap.Strings("listen-client-urls", e.cfg.getListenClientUrls()),
+		zap.String("local-member-id", e.Server.MemberID().String()),
+		zap.Strings("initial-advertise-peer-urls", e.cfg.getAdvertisePeerURLs()),
+		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientURLs()),
+		zap.Strings("listen-client-urls", e.cfg.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", e.cfg.getMetricsURLs()),
 	)
 	serving = true
@@ -331,10 +331,10 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Uint("max-wals", sc.MaxWALFiles),
 		zap.Uint("max-snapshots", sc.MaxSnapFiles),
 		zap.Uint64("snapshot-catchup-entries", sc.SnapshotCatchUpEntries),
-		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerUrls()),
-		zap.Strings("listen-peer-urls", ec.getListenPeerUrls()),
-		zap.Strings("advertise-client-urls", ec.getAdvertiseClientUrls()),
-		zap.Strings("listen-client-urls", ec.getListenClientUrls()),
+		zap.Strings("initial-advertise-peer-urls", ec.getAdvertisePeerURLs()),
+		zap.Strings("listen-peer-urls", ec.getListenPeerURLs()),
+		zap.Strings("advertise-client-urls", ec.getAdvertiseClientURLs()),
+		zap.Strings("listen-client-urls", ec.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
 		zap.Strings("cors", cors),
 		zap.Strings("host-whitelist", hss),
@@ -386,8 +386,8 @@ func (e *Etcd) Close() {
 	fields := []zap.Field{
 		zap.String("name", e.cfg.Name),
 		zap.String("data-dir", e.cfg.Dir),
-		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerUrls()),
-		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientUrls()),
+		zap.Strings("advertise-peer-urls", e.cfg.getAdvertisePeerURLs()),
+		zap.Strings("advertise-client-urls", e.cfg.getAdvertiseClientURLs()),
 	}
 	lg := e.GetLogger()
 	lg.Info("closing etcd server", fields...)
@@ -549,6 +549,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
 		)
 		if err != nil {
+			cfg.logger.Error("creating peer listener failed", zap.Error(err))
 			return nil, err
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
@@ -638,7 +639,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	}
 
 	for _, u := range cfg.ListenClientUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 		sctx := sctxs[addr]
 		if sctx == nil {
 			sctx = newServeCtx(cfg.logger)
@@ -651,7 +652,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		sctx.network = network
 	}
 	for _, u := range cfg.ListenClientHttpUrls {
-		addr, secure, network := resolveUrl(u)
+		addr, secure, network := resolveURL(u)
 
 		sctx := sctxs[addr]
 		if sctx == nil {
@@ -714,7 +715,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 	return sctxs, nil
 }
 
-func resolveUrl(u url.URL) (addr string, secure bool, network string) {
+func resolveURL(u url.URL) (addr string, secure bool, network string) {
 	addr = u.Host
 	network = "tcp"
 	if u.Scheme == "unix" || u.Scheme == "unixs" {
@@ -756,26 +757,26 @@ func (e *Etcd) serveClients() {
 		}))
 	}
 
-	splitHttp := false
+	splitHTTP := false
 	for _, sctx := range e.sctxs {
 		if sctx.httpOnly {
-			splitHttp = true
+			splitHTTP = true
 		}
 	}
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
 }
 
-func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
+func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Context) (*grpc.ClientConn, error)) {
 	if !e.cfg.EnableGRPCGateway {
 		return nil
 	}
-	sctx := e.pickGrpcGatewayServeContext(splitHttp)
+	sctx := e.pickGRPCGatewayServeContext(splitHTTP)
 	addr := sctx.addr
 	if network := sctx.network; network == "unix" {
 		// explicitly define unix network for gRPC socket support
@@ -807,9 +808,9 @@ func (e *Etcd) grpcGatewayDial(splitHttp bool) (grpcDial func(ctx context.Contex
 	}
 }
 
-func (e *Etcd) pickGrpcGatewayServeContext(splitHttp bool) *serveCtx {
+func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 	for _, sctx := range e.sctxs {
-		if !splitHttp || !sctx.httpOnly {
+		if !splitHTTP || !sctx.httpOnly {
 			return sctx
 		}
 	}

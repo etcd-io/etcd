@@ -216,8 +216,8 @@ func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 }
 
 func detachFromOldLease(s EtcdState, key string) EtcdState {
-	if oldLeaseId, ok := s.KeyLeases[key]; ok {
-		delete(s.Leases[oldLeaseId].Keys, key)
+	if oldLeaseID, ok := s.KeyLeases[key]; ok {
+		delete(s.Leases[oldLeaseID].Keys, key)
 		delete(s.KeyLeases, key)
 	}
 	return s
@@ -246,6 +246,21 @@ type EtcdRequest struct {
 	Range       *RangeRequest
 	Txn         *TxnRequest
 	Defragment  *DefragmentRequest
+}
+
+func (r *EtcdRequest) IsRead() bool {
+	if r.Type == Range {
+		return true
+	}
+	if r.Type != Txn {
+		return false
+	}
+	for _, op := range append(r.Txn.OperationsOnSuccess, r.Txn.OperationsOnFailure...) {
+		if op.Type != RangeOperation {
+			return false
+		}
+	}
+	return true
 }
 
 type RangeRequest struct {

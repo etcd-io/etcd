@@ -21,35 +21,30 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
+	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 type trigger interface {
-	Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error
+	Trigger(ctx context.Context, t *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error)
 	AvailabilityChecker
 }
 
 type triggerDefrag struct{}
 
-func (t triggerDefrag) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, _ *e2e.EtcdProcessCluster) error {
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsGRPC(),
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+func (t triggerDefrag) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	cc, err := client.NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
 	if err != nil {
-		return fmt.Errorf("failed creating client: %w", err)
+		return nil, fmt.Errorf("failed creating client: %w", err)
 	}
 	defer cc.Close()
-	_, err = cc.Defragment(ctx, member.EndpointsGRPC()[0])
+	_, err = cc.Defragment(ctx)
 	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
-		return err
+		return nil, err
 	}
-	return nil
+	return nil, nil
 }
 
 func (t triggerDefrag) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
@@ -60,37 +55,32 @@ type triggerCompact struct {
 	multiBatchCompaction bool
 }
 
-func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster) error {
-	cc, err := clientv3.New(clientv3.Config{
-		Endpoints:            member.EndpointsGRPC(),
-		Logger:               zap.NewNop(),
-		DialKeepAliveTime:    10 * time.Second,
-		DialKeepAliveTimeout: 100 * time.Millisecond,
-	})
+func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.EtcdProcess, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	cc, err := client.NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
 	if err != nil {
-		return fmt.Errorf("failed creating client: %w", err)
+		return nil, fmt.Errorf("failed creating client: %w", err)
 	}
 	defer cc.Close()
 
 	var rev int64
 	for {
-		resp, gerr := cc.Get(ctx, "/")
-		if gerr != nil {
-			return gerr
+		_, rev, err = cc.Get(ctx, "/", 0)
+		if err != nil {
+			return nil, err
 		}
 
-		rev = resp.Header.Revision
 		if !t.multiBatchCompaction || rev > int64(clus.Cfg.ServerConfig.ExperimentalCompactionBatchLimit) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-
 	_, err = cc.Compact(ctx, rev)
 	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
-		return err
+		return nil, err
 	}
-	return nil
+	return []report.ClientReport{cc.Report()}, nil
 }
 
 func (t triggerCompact) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {

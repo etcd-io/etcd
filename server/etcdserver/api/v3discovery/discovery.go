@@ -59,7 +59,7 @@ type DiscoveryConfig struct {
 type memberInfo struct {
 	// peerRegKey is the key used by the member when registering in the
 	// discovery service.
-	// Format: "/_etcd/registry/<ClusterToken>/members/<memberId>".
+	// Format: "/_etcd/registry/<ClusterToken>/members/<memberID>".
 	peerRegKey string
 	// peerURLsMap format: "peerName=peerURLs", i.e., "member1=http://127.0.0.1:2380".
 	peerURLsMap string
@@ -88,9 +88,9 @@ func getMemberKeyPrefix(clusterToken string) string {
 	return path.Join(getClusterKeyPrefix(clusterToken), "members")
 }
 
-// key format for each member: "/_etcd/registry/<ClusterToken>/members/<memberId>".
-func getMemberKey(cluster, memberId string) string {
-	return path.Join(getMemberKeyPrefix(cluster), memberId)
+// key format for each member: "/_etcd/registry/<ClusterToken>/members/<memberID>".
+func getMemberKey(cluster, memberID string) string {
+	return path.Join(getMemberKeyPrefix(cluster), memberID)
 }
 
 // GetCluster will connect to the discovery service at the given endpoints and
@@ -155,7 +155,7 @@ func JoinCluster(lg *zap.Logger, cfg *DiscoveryConfig, id types.ID, config strin
 type discovery struct {
 	lg           *zap.Logger
 	clusterToken string
-	memberId     types.ID
+	memberID     types.ID
 	c            *clientv3.Client
 	retries      uint
 
@@ -182,7 +182,7 @@ func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discover
 	return &discovery{
 		lg:           lg,
 		clusterToken: dcfg.Token,
-		memberId:     id,
+		memberID:     id,
 		c:            c,
 		cfg:          dcfg,
 		clock:        clockwork.NewRealClock(),
@@ -317,10 +317,10 @@ func (d *discovery) checkCluster() (*clusterInfo, int, int64, error) {
 	d.retries = 0
 
 	// find self position
-	memberSelfId := getMemberKey(d.clusterToken, d.memberId.String())
+	memberSelfID := getMemberKey(d.clusterToken, d.memberID.String())
 	idx := 0
 	for _, m := range cls.members {
-		if m.peerRegKey == memberSelfId {
+		if m.peerRegKey == memberSelfID {
 			break
 		}
 		if idx >= clusterSize-1 {
@@ -341,7 +341,7 @@ func (d *discovery) registerSelfRetry(contents string) error {
 
 func (d *discovery) registerSelf(contents string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), d.cfg.RequestTimeout)
-	memberKey := getMemberKey(d.clusterToken, d.memberId.String())
+	memberKey := getMemberKey(d.clusterToken, d.memberID.String())
 	_, err := d.c.Put(ctx, memberKey, contents)
 	cancel()
 

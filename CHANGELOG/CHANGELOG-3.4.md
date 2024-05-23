@@ -4,6 +4,84 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
+## v3.4.33 (TBD)
+
+### etcd grpc-proxy
+- Fix [Memberlist results not updated when proxy node down](https://github.com/etcd-io/etcd/pull/17896).
+
+### Dependencies
+- Compile binaries using go [1.21.10](https://github.com/etcd-io/etcd/pull/17981).
+- Upgrade [bbolt to 1.3.10](https://github.com/etcd-io/etcd/pull/17945).
+
+<hr>
+
+## v3.4.32 (2024-04-25)
+
+### etcd server
+- Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17705).
+- Fix [ignore raft messages if member id mismatch](https://github.com/etcd-io/etcd/pull/17814).
+- Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17831).
+- [Allow new server to join 3.5 cluster if `next-cluster-version-compatible=true`](https://github.com/etcd-io/etcd/pull/17665)
+- [Allow updating the cluster version when downgrading from 3.5](https://github.com/etcd-io/etcd/pull/17821).
+- Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17864)
+
+### Package `clientv3`
+- Add [requests retry when receiving ErrGPRCNotSupportedForLearner and endpoints > 1](https://github.com/etcd-io/etcd/pull/17692).
+- Fix [initialization for epMu in client context](https://github.com/etcd-io/etcd/pull/17714).
+
+### Dependencies
+- Compile binaries using [go 1.21.9](https://github.com/etcd-io/etcd/pull/17709).
+
+<hr>
+
+## v3.4.31 (2024-03-21)
+
+### etcd server
+- Add [mvcc: print backend database size and size in use in compaction logs](https://github.com/etcd-io/etcd/pull/17436).
+- Fix leases wrongly revoked by the leader by [ignoring old leader's leases revoking request](https://github.com/etcd-io/etcd/pull/17465).
+- Fix [no progress notification being sent for watch that doesn't get any events](https://github.com/etcd-io/etcd/pull/17567).
+- Fix [watch event loss after compaction](https://github.com/etcd-io/etcd/pull/17610).
+- Add `next-cluster-version-compatible` flag to [allow downgrade from 3.5](https://github.com/etcd-io/etcd/pull/17330).
+
+### Package `clientv3`
+- Add [client backoff and retry config options](https://github.com/etcd-io/etcd/pull/17369).
+
+### Dependencies
+- Upgrade [bbolt to 1.3.9](https://github.com/etcd-io/etcd/pull/17484).
+- Compile binaries using [go 1.21.8](https://github.com/etcd-io/etcd/pull/17538).
+- Upgrade [google.golang.org/protobuf to v1.33.0 to address CVE-2024-24786](https://github.com/etcd-io/etcd/pull/17554).
+- Upgrade github.com/sirupsen/logrus to v1.9.3 to address [PRISMA-2023-0056](https://github.com/etcd-io/etcd/pull/17580).
+
+### Others
+- [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17422).
+
+<hr>
+
+## v3.4.30 (2024-01-31)
+
+### etcd server
+- Fix [nil pointer panicking due to using the wrong log library](https://github.com/etcd-io/etcd/pull/17270)
+
+### Dependencies
+- Compile binaries using go [1.20.13](https://github.com/etcd-io/etcd/pull/17276).
+- Upgrade [golang.org/x/crypto to v0.17+ to address CVE-2023-48795](https://github.com/etcd-io/etcd/pull/17347).
+
+<hr>
+
+## v3.4.29 (2024-01-09)
+
+### etcd server
+- [Disable following HTTP redirects in peer communication](https://github.com/etcd-io/etcd/pull/17112)
+- [Add livez/readyz HTTP endpoints](https://github.com/etcd-io/etcd/pull/17128)
+- Fix [Check if be is nil to avoid panic when be is overriden with nil](https://github.com/etcd-io/etcd/pull/17154)
+- Fix [Add missing experimental-enable-lease-checkpoint-persist flag in etcd help](https://github.com/etcd-io/etcd/pull/17189)
+- Fix [Don't flock snapshot files](https://github.com/etcd-io/etcd/pull/17208)
+
+### Dependencies
+- Compile binaries using go [1.20.12](https://github.com/etcd-io/etcd/pull/17076).
+
+<hr>
+
 ## v3.4.28 (2023-11-23)
 
 ### etcd server

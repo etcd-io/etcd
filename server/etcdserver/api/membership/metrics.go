@@ -32,9 +32,24 @@ var (
 	},
 		[]string{"Local", "Remote"},
 	)
+	isLearner = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd",
+		Subsystem: "server",
+		Name:      "is_learner",
+		Help:      "Whether or not this member is a learner. 1 if is, 0 otherwise.",
+	})
 )
+
+func setIsLearnerMetric(m *Member) {
+	if m.IsLearner {
+		isLearner.Set(1)
+	} else {
+		isLearner.Set(0)
+	}
+}
 
 func init() {
 	prometheus.MustRegister(ClusterVersionMetrics)
 	prometheus.MustRegister(knownPeers)
+	prometheus.MustRegister(isLearner)
 }

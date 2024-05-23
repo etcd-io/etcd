@@ -22,7 +22,7 @@ import (
 
 func Test_readRaw(t *testing.T) {
 	path := t.TempDir()
-	mustCreateWalLog(t, path)
+	mustCreateWALLog(t, path)
 	var out bytes.Buffer
 	readRaw(nil, walDir(path), &out)
 	assert.Equal(t,

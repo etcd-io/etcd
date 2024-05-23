@@ -20,11 +20,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -449,4 +451,64 @@ func hasKVs(t *testing.T, ctl *e2e.EtcdctlV3, kvs []testutils.KV, currentRev int
 		require.Equal(t, int64(1), v.Kvs[0].Version)
 		require.True(t, int64(currentRev) >= v.Kvs[0].ModRevision)
 	}
+}
+
+func TestBreakConsistentIndexNewerThanSnapshot(t *testing.T) {
+	e2e.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var snapshotCount uint64 = 50
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+		e2e.WithClusterSize(1),
+		e2e.WithKeepDataDir(true),
+		e2e.WithSnapshotCount(snapshotCount),
+	)
+	require.NoError(t, err)
+	defer epc.Close()
+	member := epc.Procs[0]
+
+	t.Log("Stop member and copy out the db file to tmp directory")
+	err = member.Stop()
+	assert.NoError(t, err)
+	dbPath := path.Join(member.Config().DataDirPath, "member", "snap", "db")
+	tmpFile := path.Join(t.TempDir(), "db")
+	err = copyFile(dbPath, tmpFile)
+	assert.NoError(t, err)
+
+	t.Log("Ensure snapshot there is a newer snapshot")
+	err = member.Start(ctx)
+	assert.NoError(t, err)
+	generateSnapshot(t, snapshotCount, member.Etcdctl())
+	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "saved snapshot"})
+	assert.NoError(t, err)
+	err = member.Stop()
+	assert.NoError(t, err)
+
+	t.Log("Start etcd with older db file")
+	err = copyFile(tmpFile, dbPath)
+	assert.NoError(t, err)
+	err = member.Start(ctx)
+	assert.Error(t, err)
+	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failed to find database snapshot file (snap: snapshot file doesn't exist)"})
+	assert.NoError(t, err)
+}
+
+func copyFile(src, dst string) error {
+	f, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	w, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+
+	if _, err = io.Copy(w, f); err != nil {
+		return err
+	}
+	return w.Sync()
 }

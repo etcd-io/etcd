@@ -83,7 +83,8 @@ type v3Manager struct {
 	snapDir   string
 	cl        *membership.RaftCluster
 
-	skipHashCheck bool
+	skipHashCheck   bool
+	initialMmapSize uint64
 }
 
 // hasChecksum returns "true" if the file size "n"
@@ -142,10 +143,10 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
 			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", string(next))
+				return fmt.Errorf("cannot get hash of bucket %s", next)
 			}
 			if _, err = h.Write(next); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
+				return fmt.Errorf("cannot write bucket %s : %v", next, err)
 			}
 			iskeyb := (string(next) == "key")
 			if err = b.ForEach(func(k, v []byte) error {
@@ -162,7 +163,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 				ds.TotalKey++
 				return nil
 			}); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", string(next), err)
+				return fmt.Errorf("cannot write bucket %s : %v", next, err)
 			}
 		}
 		return nil
@@ -203,6 +204,9 @@ type RestoreConfig struct {
 	// SkipHashCheck is "true" to ignore snapshot integrity hash value
 	// (required if copied from data directory).
 	SkipHashCheck bool
+
+	// InitialMmapSize is the database initial memory map size.
+	InitialMmapSize uint64
 
 	// RevisionBump is the amount to increase the latest revision after restore,
 	// to allow administrators to trick clients into thinking that revision never decreased.
@@ -263,6 +267,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 	s.walDir = walDir
 	s.snapDir = filepath.Join(dataDir, "member", "snap")
 	s.skipHashCheck = cfg.SkipHashCheck
+	s.initialMmapSize = cfg.InitialMmapSize
 
 	s.lg.Info(
 		"restoring snapshot",
@@ -270,6 +275,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	if err = s.saveDB(); err != nil {
@@ -297,6 +303,7 @@ func (s *v3Manager) Restore(cfg RestoreConfig) error {
 		zap.String("wal-dir", s.walDir),
 		zap.String("data-dir", dataDir),
 		zap.String("snap-dir", s.snapDir),
+		zap.Uint64("initial-memory-map-size", s.initialMmapSize),
 	)
 
 	return verify.VerifyIfEnabled(verify.Config{
@@ -317,7 +324,7 @@ func (s *v3Manager) saveDB() error {
 		return err
 	}
 
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 
 	err = schema.NewMembershipBackend(s.lg, be).TrimMembershipFromBackend()
@@ -472,7 +479,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 	}
 
 	// add members again to persist them to the backend we create.
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 	s.cl.SetBackend(schema.NewMembershipBackend(s.lg, be))
 	for _, m := range s.cl.Members() {
@@ -551,7 +558,7 @@ func (s *v3Manager) saveWALAndSnap() (*raftpb.HardState, error) {
 }
 
 func (s *v3Manager) updateCIndex(commit uint64, term uint64) error {
-	be := backend.NewDefaultBackend(s.lg, s.outDbPath())
+	be := backend.NewDefaultBackend(s.lg, s.outDbPath(), backend.WithMmapSize(s.initialMmapSize))
 	defer be.Close()
 
 	cindex.UpdateConsistentIndexForce(be.BatchTx(), commit, term)

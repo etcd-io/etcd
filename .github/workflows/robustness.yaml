@@ -11,6 +11,8 @@ jobs:
       testTimeout: 30m
       artifactName: main
       runs-on: "['ubuntu-latest-8-cores']"
+      scenario: TestRobustness
+      lazyfsEnabled: true
   main-arm64:
     uses: ./.github/workflows/robustness-template.yaml
     with:
@@ -18,4 +20,6 @@ jobs:
       count: 12
       testTimeout: 30m
       artifactName: main-arm64
-      runs-on: "['actuated-arm64-8cpu-32gb']"
+      runs-on: "['actuated-arm64-12cpu-8gb']"
+      scenario: TestRobustness
+      lazyfsEnabled: false

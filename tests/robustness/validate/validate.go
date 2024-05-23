@@ -15,12 +15,12 @@
 package validate
 
 import (
+	"encoding/json"
 	"fmt"
-	"sort"
 	"testing"
+	"time"
 
 	"github.com/anishathalye/porcupine"
-	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -28,21 +28,30 @@ import (
 )
 
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport) (visualize func(basepath string) error) {
-	patchedOperations := patchedOperationHistory(reports)
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, patchedOperations)
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
+	err := checkValidationAssumptions(reports, persistedRequests)
+	if err != nil {
+		t.Fatalf("Broken validation assumptions: %s", err)
+	}
+	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
+	serializableOperations := filterSerializableOperations(reports)
+
+	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return visualize
 	}
-	// TODO: Don't use watch events to get event history.
-	eventHistory, err := mergeWatchEventHistory(reports)
+	// TODO: Use requests from linearization for replay.
+	replay := model.NewReplay(persistedRequests)
+
+	err = validateWatch(lg, cfg, reports, replay)
 	if err != nil {
-		t.Errorf("Failed merging watch history to create event history, skipping further validation, err: %s", err)
-		return visualize
+		t.Errorf("Failed validating watch history, err: %s", err)
 	}
-	validateWatch(t, lg, cfg, reports, eventHistory)
-	validateSerializableOperations(t, lg, patchedOperations, eventHistory)
+	err = validateSerializableOperations(lg, serializableOperations, replay)
+	if err != nil {
+		t.Errorf("Failed validating serializable operations, err: %s", err)
+	}
 	return visualize
 }
 
@@ -50,58 +59,151 @@ type Config struct {
 	ExpectRevisionUnique bool
 }
 
-func mergeWatchEventHistory(reports []report.ClientReport) ([]model.WatchEvent, error) {
-	type revisionEvents struct {
-		events   []model.WatchEvent
-		revision int64
-		clientId int
+func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
+	err := validatePutOperationUnique(reports)
+	if err != nil {
+		return err
 	}
-	revisionToEvents := map[int64]revisionEvents{}
-	var lastClientId = 0
-	var lastRevision int64
-	events := []model.WatchEvent{}
+	err = validateEmptyDatabaseAtStart(reports)
+	if err != nil {
+		return err
+	}
+
+	err = validatePersistedRequestMatchClientRequests(reports, persistedRequests)
+	if err != nil {
+		return err
+	}
+	err = validateNonConcurrentClientRequests(reports)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func validatePutOperationUnique(reports []report.ClientReport) error {
+	type KV struct {
+		Key   string
+		Value model.ValueOrHash
+	}
+	putValue := map[KV]struct{}{}
 	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
-				for _, event := range resp.Events {
-					if event.Revision == lastRevision && lastClientId == r.ClientId {
-						events = append(events, event)
-					} else {
-						if prev, found := revisionToEvents[lastRevision]; found {
-							// This assumes that there are txn that would be observed differently by two watches.
-							// TODO: Implement merging events from multiple watches about single revision based on operations.
-							if diff := cmp.Diff(prev.events, events); diff != "" {
-								return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
-							}
-						} else {
-							revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
-						}
-						lastClientId = r.ClientId
-						lastRevision = event.Revision
-						events = []model.WatchEvent{event}
-					}
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			if request.Type != model.Txn {
+				continue
+			}
+			for _, op := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+				if op.Type != model.PutOperation {
+					continue
 				}
+				kv := KV{
+					Key:   op.Put.Key,
+					Value: op.Put.Value,
+				}
+				if _, ok := putValue[kv]; ok {
+					return fmt.Errorf("non unique put %v, required to patch operation history", kv)
+				}
+				putValue[kv] = struct{}{}
 			}
 		}
 	}
-	if prev, found := revisionToEvents[lastRevision]; found {
-		if diff := cmp.Diff(prev.events, events); diff != "" {
-			return nil, fmt.Errorf("events between clients %d and %d don't match, revision: %d, diff: %s", prev.clientId, lastClientId, lastRevision, diff)
+	return nil
+}
+
+func validateEmptyDatabaseAtStart(reports []report.ClientReport) error {
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			response := op.Output.(model.MaybeEtcdResponse)
+			if response.Revision == 2 && !request.IsRead() {
+				return nil
+			}
 		}
-	} else {
-		revisionToEvents[lastRevision] = revisionEvents{clientId: lastClientId, events: events, revision: lastRevision}
+	}
+	return fmt.Errorf("non empty database at start or first write didn't succeed, required by model implementation")
+}
+
+func validatePersistedRequestMatchClientRequests(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
+	persistedRequestSet := map[string]model.EtcdRequest{}
+	for _, request := range persistedRequests {
+		data, err := json.Marshal(request)
+		if err != nil {
+			return err
+		}
+		persistedRequestSet[string(data)] = request
+	}
+	clientRequests := map[string]porcupine.Operation{}
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			data, err := json.Marshal(request)
+			if err != nil {
+				return err
+			}
+			clientRequests[string(data)] = op
+		}
 	}
 
-	var allRevisionEvents []revisionEvents
-	for _, revEvents := range revisionToEvents {
-		allRevisionEvents = append(allRevisionEvents, revEvents)
+	for requestDump, request := range persistedRequestSet {
+		_, found := clientRequests[requestDump]
+		// We cannot validate if persisted leaseGrant was sent by client as failed leaseGrant will not return LeaseID to clients.
+		if request.Type == model.LeaseGrant {
+			continue
+		}
+
+		if !found {
+			return fmt.Errorf("request %+v was not sent by client, required to validate", requestDump)
+		}
 	}
-	sort.Slice(allRevisionEvents, func(i, j int) bool {
-		return allRevisionEvents[i].revision < allRevisionEvents[j].revision
-	})
-	var eventHistory []model.WatchEvent
-	for _, revEvents := range allRevisionEvents {
-		eventHistory = append(eventHistory, revEvents.events...)
+
+	var firstOp, lastOp porcupine.Operation
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			response := op.Output.(model.MaybeEtcdResponse)
+			if response.Error != "" || request.IsRead() {
+				continue
+			}
+			if firstOp.Call == 0 || op.Call < firstOp.Call {
+				firstOp = op
+			}
+			if lastOp.Call == 0 || op.Call > lastOp.Call {
+				lastOp = op
+			}
+		}
 	}
-	return eventHistory, nil
+	firstOpData, err := json.Marshal(firstOp.Input.(model.EtcdRequest))
+	if err != nil {
+		return err
+	}
+	_, found := persistedRequestSet[string(firstOpData)]
+	if !found {
+		return fmt.Errorf("first succesful client write %s was not persisted, required to validate", firstOpData)
+	}
+	lastOpData, err := json.Marshal(lastOp.Input.(model.EtcdRequest))
+	if err != nil {
+		return err
+	}
+	_, found = persistedRequestSet[string(lastOpData)]
+	if !found {
+		return fmt.Errorf("last succesful client write %s was not persisted, required to validate", lastOpData)
+	}
+	return nil
+}
+
+func validateNonConcurrentClientRequests(reports []report.ClientReport) error {
+	lastClientRequestReturn := map[int]int64{}
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			lastRequest := lastClientRequestReturn[op.ClientId]
+			if op.Call <= lastRequest {
+				return fmt.Errorf("client %d has concurrent request, required for operation linearization", op.ClientId)
+			}
+			if op.Return <= op.Call {
+				return fmt.Errorf("operation %v ends before it starts, required for operation linearization", op)
+			}
+			lastClientRequestReturn[op.ClientId] = op.Return
+		}
+	}
+	return nil
 }

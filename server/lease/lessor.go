@@ -75,7 +75,7 @@ type RangeDeleter func() TxnDelete
 
 // Checkpointer permits checkpointing of lease remaining TTLs to the consensus log. Defined here to
 // avoid circular dependency with mvcc.
-type Checkpointer func(ctx context.Context, lc *pb.LeaseCheckpointRequest)
+type Checkpointer func(ctx context.Context, lc *pb.LeaseCheckpointRequest) error
 
 type LeaseID int64
 
@@ -281,15 +281,15 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 	// with longer TTL to reduce renew load.
 	l := NewLease(id, ttl)
 
-	if l.ttl < le.minLeaseTTL {
-		l.ttl = le.minLeaseTTL
-	}
-
 	le.mu.Lock()
 	defer le.mu.Unlock()
 
 	if _, ok := le.leaseMap[id]; ok {
 		return nil, ErrLeaseExists
+	}
+
+	if l.ttl < le.minLeaseTTL {
+		l.ttl = le.minLeaseTTL
 	}
 
 	if le.isPrimary() {
@@ -322,11 +322,6 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return ErrLeaseNotFound
 	}
 
-	// We shouldn't delete the lease inside the transaction lock, otherwise
-	// it may lead to deadlock with Grant or Checkpoint operations, which
-	// acquire the le.mu firstly and then the batchTx lock.
-	delete(le.leaseMap, id)
-
 	defer close(l.revokec)
 	// unlock before doing external work
 	le.mu.Unlock()
@@ -345,6 +340,9 @@ func (le *lessor) Revoke(id LeaseID) error {
 		txn.DeleteRange([]byte(key), nil)
 	}
 
+	le.mu.Lock()
+	defer le.mu.Unlock()
+	delete(le.leaseMap, l.ID)
 	// lease deletion needs to be in the same backend transaction with the
 	// kv deletion. Or we might end up with not executing the revoke or not
 	// deleting the keys if etcdserver fails in between.
@@ -424,7 +422,9 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	// By applying a RAFT entry only when the remainingTTL is already set, we limit the number
 	// of RAFT entries written per lease to a max of 2 per checkpoint interval.
 	if clearRemainingTTL {
-		le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: []*pb.LeaseCheckpoint{{ID: int64(l.ID), Remaining_TTL: 0}}})
+		if err := le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: []*pb.LeaseCheckpoint{{ID: int64(l.ID), Remaining_TTL: 0}}}); err != nil {
+			return -1, err
+		}
 	}
 
 	le.mu.Lock()
@@ -658,7 +658,9 @@ func (le *lessor) checkpointScheduledLeases() {
 		le.mu.Unlock()
 
 		if len(cps) != 0 {
-			le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: cps})
+			if err := le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: cps}); err != nil {
+				return
+			}
 		}
 		if len(cps) < maxLeaseCheckpointBatchSize {
 			return

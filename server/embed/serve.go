@@ -97,7 +97,7 @@ func (sctx *serveCtx) serve(
 	handler http.Handler,
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
-	splitHttp bool,
+	splitHTTP bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
@@ -106,9 +106,9 @@ func (sctx *serveCtx) serve(
 
 	m := cmux.New(sctx.l)
 	var server func() error
-	onlyGRPC := splitHttp && !sctx.httpOnly
-	onlyHttp := splitHttp && sctx.httpOnly
-	grpcEnabled := !onlyHttp
+	onlyGRPC := splitHTTP && !sctx.httpOnly
+	onlyHTTP := splitHTTP && sctx.httpOnly
+	grpcEnabled := !onlyHTTP
 	httpEnabled := !onlyGRPC
 
 	v3c := v3client.New(s)
@@ -130,7 +130,7 @@ func (sctx *serveCtx) serve(
 	switch {
 	case onlyGRPC:
 		traffic = "grpc"
-	case onlyHttp:
+	case onlyHTTP:
 		traffic = "http"
 	default:
 		traffic = "grpc+http"
@@ -145,7 +145,7 @@ func (sctx *serveCtx) serve(
 				Handler:  createAccessController(sctx.lg, s, httpmux),
 				ErrorLog: logger, // do not log user error
 			}
-			if err = configureHttpServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure http server failed", zap.Error(err))
 				return err
 			}
@@ -241,7 +241,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-			if err := configureHttpServer(srv, s.Cfg); err != nil {
+			if err := configureHTTPServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -272,7 +272,7 @@ func (sctx *serveCtx) serve(
 	return server()
 }
 
-func configureHttpServer(srv *http.Server, cfg config.ServerConfig) error {
+func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,

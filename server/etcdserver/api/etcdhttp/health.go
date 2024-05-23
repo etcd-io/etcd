@@ -240,7 +240,7 @@ type CheckRegistry struct {
 func installLivezEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
 	reg := CheckRegistry{checkType: checkTypeLivez, checks: make(map[string]HealthCheck)}
 	reg.Register("serializable_read", readCheck(server, true /* serializable */))
-	reg.InstallHttpEndpoints(lg, mux)
+	reg.InstallHTTPEndpoints(lg, mux)
 }
 
 func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHealth) {
@@ -252,7 +252,7 @@ func installReadyzEndpoints(lg *zap.Logger, mux *http.ServeMux, server ServerHea
 	reg.Register("serializable_read", readCheck(server, true))
 	// linearizable_read check would be replaced by read_index check in 3.6
 	reg.Register("linearizable_read", readCheck(server, false))
-	reg.InstallHttpEndpoints(lg, mux)
+	reg.InstallHTTPEndpoints(lg, mux)
 }
 
 func (reg *CheckRegistry) Register(name string, check HealthCheck) {
@@ -263,14 +263,23 @@ func (reg *CheckRegistry) RootPath() string {
 	return "/" + reg.checkType
 }
 
+// InstallHttpEndpoints installs the http handlers for the health checks.
+//
+// Deprecated: Please use (*CheckRegistry) InstallHTTPEndpoints instead.
+//
+//revive:disable-next-line:var-naming
 func (reg *CheckRegistry) InstallHttpEndpoints(lg *zap.Logger, mux *http.ServeMux) {
+	reg.InstallHTTPEndpoints(lg, mux)
+}
+
+func (reg *CheckRegistry) InstallHTTPEndpoints(lg *zap.Logger, mux *http.ServeMux) {
 	checkNames := make([]string, 0, len(reg.checks))
 	for k := range reg.checks {
 		checkNames = append(checkNames, k)
 	}
 
 	// installs the http handler for the root path.
-	reg.installRootHttpEndpoint(lg, mux, checkNames...)
+	reg.installRootHTTPEndpoint(lg, mux, checkNames...)
 	for _, checkName := range checkNames {
 		// installs the http handler for the individual check sub path.
 		subpath := path.Join(reg.RootPath(), checkName)
@@ -302,8 +311,8 @@ func (reg *CheckRegistry) runHealthChecks(ctx context.Context, checkNames ...str
 	return h
 }
 
-// installRootHttpEndpoint installs the http handler for the root path.
-func (reg *CheckRegistry) installRootHttpEndpoint(lg *zap.Logger, mux *http.ServeMux, checks ...string) {
+// installRootHTTPEndpoint installs the http handler for the root path.
+func (reg *CheckRegistry) installRootHTTPEndpoint(lg *zap.Logger, mux *http.ServeMux, checks ...string) {
 	hfunc := func(r *http.Request) HealthStatus {
 		// extracts the health check names to be excludeList from the query param
 		excluded := getQuerySet(r, "exclude")

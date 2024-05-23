@@ -9,6 +9,7 @@
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd)
+<a href="https://actuated.dev/"><img alt="Arm CI sponsored by Actuated" src="https://docs.actuated.dev/images/actuated-badge.png" width="120px"></img></a>
 
 **Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
 
@@ -140,18 +141,21 @@ Now it's time to dig into the full etcd API and other guides.
 
 ### Community meetings
 
-etcd contributors and maintainers meet every week at 11:00 AM (USA Pacific) on Thursday and meetings alternate between community meetings and issue triage meetings. An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas. 
+etcd contributors and maintainers meet every week at `11:00` AM (USA Pacific) on Thursday and meetings alternate between community meetings and issue triage meetings. Meeting agendas are recorded in a [shared Google doc][shared-meeting-notes] and everyone is welcome to suggest additional topics or other agendas.
 
 Issue triage meetings are aimed at getting through our backlog of PRs and Issues. Triage meetings are open to any contributor; you don't have to be a reviewer or approver to help out! They can also be a good way to get started contributing.
 
-Meeting recordings are uploaded to official etcd [YouTube channel].
+The meeting lead role is rotated for each meeting between etcd maintainers or sig-etcd leads and is recorded in a [shared Google sheet][shared-rotation-sheet].
 
-Get calendar invitation by joining [etcd-dev](https://groups.google.com/g/etcd-dev) mailing group.
+Meeting recordings are uploaded to the official etcd [YouTube channel].
 
-Join CNCF-funded Zoom channel: [zoom.us/my/cncfetcdproject](https://zoom.us/my/cncfetcdproject)
+Get calendar invitations by joining [etcd-dev](https://groups.google.com/g/etcd-dev) mailing group.
+
+Join the CNCF-funded Zoom channel: [zoom.us/my/cncfetcdproject](https://zoom.us/my/cncfetcdproject)
 
 [shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
-[YouTube channel]: https://www.youtube.com/channel/UC7tUWR24I5AR9NMsG-NYBlg
+[shared-rotation-sheet]: https://docs.google.com/spreadsheets/d/1jodHIO7Dk2VWTs1IRnfMFaRktS9IH8XRyifOnPdSY8I/edit
+[YouTube channel]: https://www.youtube.com/@etcdio
 
 ## Contributing
 
@@ -190,6 +194,8 @@ These emeritus maintainers dedicated a part of their career to etcd and reviewed
 * Xiang Li
 * Ben Darnell
 * Sam Batschelet
+* Piotr Tabor
+* Hitoshi Mitake
 
 ### License
 

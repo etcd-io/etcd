@@ -12,4 +12,4 @@ jobs:
     uses: ./.github/workflows/tests-template.yaml
     with:
       arch: arm64
-      runs-on: actuated-arm64-8cpu-32gb
+      runs-on: actuated-arm64-8cpu-8gb

@@ -82,32 +82,47 @@ func TestModelDescribe(t *testing.T) {
 		{
 			req:            compareRevisionAndPutRequest("key7", 7, "77"),
 			resp:           txnEmptyResponse(false, 7),
-			expectDescribe: `if(mod_rev(key7)==7).then(put("key7", "77")) -> failure(), rev: 7`,
+			expectDescribe: `guaranteedUpdate("key7", "77", mod_rev=7) -> failure(), rev: 7`,
 		},
 		{
 			req:            compareRevisionAndPutRequest("key8", 8, "88"),
 			resp:           txnPutResponse(true, 8),
-			expectDescribe: `if(mod_rev(key8)==8).then(put("key8", "88")) -> success(ok), rev: 8`,
+			expectDescribe: `guaranteedUpdate("key8", "88", mod_rev=8) -> success(ok), rev: 8`,
+		},
+		{
+			req:            compareRevisionAndPutRequest("key8", 0, "89"),
+			resp:           txnPutResponse(true, 8),
+			expectDescribe: `guaranteedCreate("key8", "89") -> success(ok), rev: 8`,
 		},
 		{
 			req:            compareRevisionAndPutRequest("key9", 9, "99"),
 			resp:           failedResponse(errors.New("failed")),
-			expectDescribe: `if(mod_rev(key9)==9).then(put("key9", "99")) -> err: "failed"`,
+			expectDescribe: `guaranteedUpdate("key9", "99", mod_rev=9) -> err: "failed"`,
 		},
 		{
 			req:            txnRequest([]EtcdCondition{{Key: "key9b", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9b", Value: ValueOrHash{Value: "991"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Start: "key9b"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{}}, true, 10),
-			expectDescribe: `if(mod_rev(key9b)==9).then(put("key9b", "991")).else(get("key9b")) -> success(ok), rev: 10`,
+			expectDescribe: `guaranteedUpdate("key9b", "991", mod_rev=9) -> success(ok), rev: 10`,
 		},
 		{
 			req:            txnRequest([]EtcdCondition{{Key: "key9c", ExpectedRevision: 9}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key9c", Value: ValueOrHash{Value: "992"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Start: "key9c"}}}),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{Key: "key9c", ValueRevision: ValueRevision{Value: ValueOrHash{Value: "993"}, ModRevision: 10}}}}}}, false, 10),
-			expectDescribe: `if(mod_rev(key9c)==9).then(put("key9c", "992")).else(get("key9c")) -> failure("993"), rev: 10`,
+			expectDescribe: `guaranteedUpdate("key9c", "992", mod_rev=9) -> failure("993"), rev: 10`,
 		},
 		{
 			req:            txnRequest(nil, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Start: "10"}}, {Type: PutOperation, Put: PutOptions{Key: "11", Value: ValueOrHash{Value: "111"}}}, {Type: DeleteOperation, Delete: DeleteOptions{Key: "12"}}}, nil),
 			resp:           txnResponse([]EtcdOperationResult{{RangeResponse: RangeResponse{KVs: []KeyValue{{ValueRevision: ValueRevision{Value: ValueOrHash{Value: "110"}}}}}}, {}, {Deleted: 1}}, true, 10),
 			expectDescribe: `get("10"), put("11", "111"), delete("12") -> "110", ok, deleted: 1, rev: 10`,
+		},
+		{
+			req:            txnRequest([]EtcdCondition{{Key: "key11", ExpectedRevision: 11}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key11", Value: ValueOrHash{Value: "11"}}}}, []EtcdOperation{{Type: RangeOperation, Range: RangeOptions{Start: "key12"}}}),
+			resp:           txnResponse([]EtcdOperationResult{{}}, true, 11),
+			expectDescribe: `if(mod_rev(key11)==11).then(put("key11", "11")).else(get("key12")) -> success(ok), rev: 11`,
+		},
+		{
+			req:            txnRequest([]EtcdCondition{{Key: "key11", ExpectedRevision: 11}}, []EtcdOperation{{Type: PutOperation, Put: PutOptions{Key: "key12", Value: ValueOrHash{Value: "11"}}}}, nil),
+			resp:           txnResponse([]EtcdOperationResult{{}}, true, 11),
+			expectDescribe: `if(mod_rev(key11)==11).then(put("key12", "11")) -> success(ok), rev: 11`,
 		},
 		{
 			req:            defragmentRequest(),

@@ -22,7 +22,7 @@ type ttlKeyHeap struct {
 	keyMap map[*node]int
 }
 
-func newTtlKeyHeap() *ttlKeyHeap {
+func newTTLKeyHeap() *ttlKeyHeap {
 	h := &ttlKeyHeap{keyMap: make(map[*node]int)}
 	heap.Init(h)
 	return h

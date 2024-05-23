@@ -7,14 +7,14 @@ etcd uses the [zap][zap] library for logging application output categorized into
     * Send a normal message to a remote peer
     * Write a log entry to disk
 
-* Info: Normal, working log information, everything is fine, but helpful notices for auditing or common operations. Should rather not be logged more frequently than once per a few seconds in normal server's operation.
+* Info: Normal, working log information, everything is fine, but helpful notices for auditing or common operations. Should rather not be logged more frequently than once per a few seconds in a normal server's operation.
   * Examples:
     * Startup configuration
-    * Start to do snapshot
+    * Start to do a snapshot
 
 * Warning: (Hopefully) Temporary conditions that may cause errors, but may work fine. A replica disappearing (that may reconnect) is a warning.
   * Examples:
-    * Failure to send raft message to a remote peer
+    * Failure to send a raft message to a remote peer
     * Failure to receive heartbeat message within the configured election timeout
 
 * Error: Data has been lost, a request has failed for a bad reason, or a required resource has been lost.

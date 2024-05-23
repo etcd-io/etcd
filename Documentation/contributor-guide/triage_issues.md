@@ -4,19 +4,19 @@
 
 Speed up issue management.
 
-The `etcd` issues are listed at <https://github.com/etcd-io/etcd/issues> and are identified with labels. For example, an issue that is identified as a bug will be set to label `type/bug`.
+The `etcd` issues are listed at <https://github.com/etcd-io/etcd/issues> and are identified with labels. For example, an issue that is identified as a bug will be set to the label `type/bug`.
 
-The etcd project uses labels to indicate common attributes such as `area`, `type` and `priority` of incoming issues.
+The etcd project uses labels to indicate common attributes such as `area`, `type`, and `priority` of incoming issues.
 
-New issues will often start out without any labels, but typically `etcd` maintainers, reviewers and members will add labels by following these triage guidelines. The detailed list of labels can be found at <https://github.com/etcd-io/etcd/labels>.
+New issues will often start without any labels, but typically `etcd` maintainers, reviewers, and members will add labels by following these triage guidelines. The detailed list of labels can be found at <https://github.com/etcd-io/etcd/labels>.
 
 ## Scope
 
 This document serves as the primary guidelines for triaging incoming issues in `etcd`.
 
-All contributors are encouraged and welcome to help manage issues which will help reduce burden on project maintainers, though the work and responsibilities discussed in this document are created with `etcd` project reviewers and members in mind as these individuals will have triage access to the etcd project which is a requirement for actions like applying labels or closing issues.
+All contributors are encouraged and welcome to help manage issues which will help reduce the burden on project maintainers, though the work and responsibilities discussed in this document are created with `etcd` project reviewers and members in mind as these individuals will have triage access to the etcd project which is a requirement for actions like applying labels or closing issues.
 
-Refer to [etcd community membership](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/community-membership.md) for guidance on becoming and etcd project member or reviewer.
+Refer to [etcd community membership](https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/community-membership.md) for guidance on becoming an etcd project member or reviewer.
 
 ## Step 1 - Find an issue to triage
 
@@ -34,33 +34,33 @@ Before we start adding labels or trying to work out a priority, our first triage
 
 ### Issues that don't belong to etcd
 
-Sometime issues are reported that actually belongs to other projects that `etcd` use. For example, `grpc` or `golang` issues. Such issues should be addressed by asking reporter to open issues in appropriate other project.
+Sometimes issues are reported that belong to other projects that `etcd` use. For example, `grpc` or `golang` issues. Such issues should be addressed by asking the reporter to open issues in the appropriate other projects.
 
-These issues can generally be closed unless a maintainer and issue reporter see a need to keep it open for tracking purpose. If you have triage permissions please close it, alternatively mention the @etcd-io/members group to request a member with triage access close the issue.
+These issues can generally be closed unless a maintainer and issue reporter see a need to keep it open for tracking purposes. If you have triage permissions please close it, alternatively mention the @etcd-io/members group to request a member with triage access to close the issue.
 
 ### Duplicate issues
 
 If an issue is a duplicate, add a comment stating so along with a reference for the original issue and if you have triage permissions please close it, alternatively mention the @etcd-io/members group to request a member with triage access close the issue.
 
-## Step 3 - Apply the appropriate type label
+## Step 3 - Apply the appropriate type of label
 
 Adding a `type` label to an issue helps create visibility on the health of the project and helps contributors identify potential priorities, i.e. addressing existing bugs or test flakes before implementing new features.
 
 ### Support requests
 
-As a general rule the focus for etcd support is to address common themes in a broad way that helps all users, i.e. through channels like known issues, frequently asked questions and high quality documentation. To make the best use of project members time we should avoid providing 1:1 support if a broad approach is available.
+As a general rule, the focus for etcd support is to address common themes in a broad way that helps all users, i.e. through channels like known issues, frequently asked questions, and high-quality documentation. To make the best use of project members time we should avoid providing 1:1 support if a broad approach is available.
 
-Some people mistakenly use our GitHub bug report or feature request templates to file support requests. Usually they are asking for help operating or configuring some aspect of etcd. Support requests for etcd should instead be raised as [discussions](https://github.com/etcd-io/etcd/discussions).
+Some people mistakenly use our GitHub bug report or feature request templates to file support requests. Usually, they are asking for help operating or configuring some aspect of etcd. Support requests for etcd should instead be raised as [discussions](https://github.com/etcd-io/etcd/discussions).
 
 Common types of support requests are:
 
- 1. Questions about configuring or operating existing well documented etcd features, for example <https://github.com/etcd-io/etcd/issues/15945>. Note - If an existing feature is not well documented please apply the `area/documentation` label and propose documentation improvements that would prevent future users from stumbling on the problem again.
+ 1. Questions about configuring or operating existing well-documented etcd features, for example, <https://github.com/etcd-io/etcd/issues/15945>. Note - If an existing feature is not well documented please apply the `area/documentation` label and propose documentation improvements that would prevent future users from stumbling on the problem again.
 
- 2. Bug reports or questions about unspported versions of etcd, for example <https://github.com/etcd-io/etcd/issues/15796>. When responding to these issues please refer to our [supported versions documentation](https://etcd.io/docs/latest/op-guide/versioning) and encourage the reporter to upgrade to a recent patch release of a supported version as soon as possible. We should limit the effort supporting users that do not make the effort to run a supported version of etcd or ensure their version is patched.
+ 2. Bug reports or questions about unsupported versions of etcd, for example <https://github.com/etcd-io/etcd/issues/15796>. When responding to these issues please refer to our [supported versions documentation](https://etcd.io/docs/latest/op-guide/versioning) and encourage the reporter to upgrade to a recent patch release of a supported version as soon as possible. We should limit the effort supporting users that do not make the effort to run a supported version of etcd or ensure their version is patched.
 
- 3. Bug reports that do not provide a complete list of steps to reproduce issue and/or contributors are not able to reproduce the issue, for example <https://github.com/etcd-io/etcd/issues/15740>. We should limit the effort we put into reproducing issues ourselves and motivate users to provide necessary information to accept the bug report.
+ 3. Bug reports that do not provide a complete list of steps to reproduce the issue and/or contributors are not able to reproduce the issue, for example, <https://github.com/etcd-io/etcd/issues/15740>. We should limit the effort we put into reproducing issues ourselves and motivate users to provide the necessary information to accept the bug report.
 
- 4. General questions that are filed using feature request or bug report issue templates, for example <https://github.com/etcd-io/etcd/issues/15914>. Note - These types of requests may surface good additions to our [frequently asked questions](https://etcd.io/docs/v3.5/faq).
+ 4. General questions that are filed using feature request or bug report issue templates, for example, <https://github.com/etcd-io/etcd/issues/15914>. Note - These types of requests may surface good additions to our [frequently asked questions](https://etcd.io/docs/v3.5/faq).
 
 If you identify that an issue is a support request please:
 
@@ -70,7 +70,7 @@ If you identify that an issue is a support request please:
 
     > Thank you for your question, this support issue will be moved to our [Discussion Forums](https://github.com/etcd-io/etcd/discussions).
     >
-    > We are trying to consolidate the channels to which questions for help/support are posted so that we can improve our efficiency in responding to your requests, and to make it easier for you to find answers to frequently asked questions and how to address common use cases.
+    > We are trying to consolidate the channels to which questions for help/support are posted so that we can improve our efficiency in responding to your requests, and make it easier for you to find answers to frequently asked questions and how to address common use cases.
     >
     > We regularly see messages posted in multiple forums, with the full response thread only in one place or, worse, spread across multiple forums. Also, the large volume of support issues on GitHub is making it difficult for us to use issues to identify real bugs.
     >
@@ -83,23 +83,23 @@ If you identify that an issue is a support request please:
     >
     > The etcd team
 
- 3. Finally, click `Convert to discussion` on the right hand panel, selecting the appropriate discussion category.
+ 3. Finally, click `Convert to discussion` on the right-hand panel, selecting the appropriate discussion category.
 
 ### Bug reports
 
-If an issue has been raised as a bug it should already have the `type/bug` label, however if this is missing for an issue you determine to be a bug please add the label manually.
+If an issue has been raised as a bug it should already have the `type/bug` label, however, if this is missing for an issue you determine to be a bug please add the label manually.
 
-The next step is to validate if the issue is indeed a bug. If not, add a comment with findings and close trivial issue. For non-trivial issue, wait to hear back from issue reporter and see if there is any objection. If issue reporter does not reply in 30 days, close the issue.
+The next step is to validate if the issue is indeed a bug. If not, add a comment with the findings and close the trivial issue. For non-trivial issues, wait to hear back from the issue reporter and see if there is any objection. If the issue reporter does not reply in 30 days, close the issue.
 
-If the problem can not be reproduced or requires more information, leave a comment for the issue reporter as soon as possible while the issue will be fresh for the issue reporter.
+If the problem can not be reproduced or requires more information, leave a comment for the issue reporter as soon as possible while the issue is fresh for the issue reporter.
 
 ### Feature requests
 
-New feature requests should be created via the etcd feature request template and in theory already have the `type/feature` label, however if this is missing for an issue you determine to be a feature please add the label manually.
+New feature requests should be created via the etcd feature request template and in theory already have the `type/feature` label, however, if this is missing for an issue you determine to be a feature please add the label manually.
 
 ### Test flakes
 
-Test flakes are a specific type of bug that the etcd project tracks separately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however if this is missing for an issue you determine to be related to a flaking test please add the label manually.
+Test flakes are a specific type of bug that the etcd project tracks separately as these are a priority to address. These should be created via the test flake template and in theory already have the `type/flake` label, however, if this is missing for an issue you determine to be related to a flaking test please add the label manually.
 
 ## Step 4 - Define the areas impacted
 
@@ -121,15 +121,25 @@ Below is a brief summary of the area labels in active use by the etcd project al
 | area/auth               |                                                               |
 | area/etcdctl            |                                                               |
 | area/etcdutl            |                                                               |
-| area/contrib            | Not to be confused with `area/community` this label is specifically used for issues relating to community maintained scripts or files in the `contrib/` directory which aren't part of the core etcd project. |
+| area/contrib            | Not to be confused with `area/community` this label is specifically used for issues relating to community-maintained scripts or files in the `contrib/` directory which aren't part of the core etcd project. |
 | area/documentation      |                                                               |
-| area/tooling            | Generally used in relation to the third party / external utilities or tools that are used in various stages of the etcd build, test or release process, for example tooling to create sboms.          |
+| area/tooling            | Generally used in relation to the third party / external utilities or tools that are used in various stages of the etcd build, test, or release process, for example, tooling to create sboms.          |
 | area/testing            |                                                               |
 | area/robustness-testing |                                                               |
 
 ## Step 5 - Prioritise the issue
 
-Placeholder.
+If an issue lacks a priority label it has not been formally prioritized yet.
+
+Adding a `priority` label helps the etcd project understand what is important and should be worked on now, and conversely, what is not as important and is on the project backlog.
+
+|Priority label|What it means|Examples|
+|---|---|---|
+| `priority/critical-urgent` | Maintainers are responsible for making sure that these issues (in their area) are being actively worked on—i.e., drop what you're doing. The stuff is burning. These should be fixed before the next release. | user-visible critical bugs in core features <br> broken builds on tier1 supported platforms <br> tests and critical security issues |
+| `priority/important-soon` | Must be staffed and worked on either currently or very soon—ideally in time for the next release. | |
+| `priority/important-longterm` | Important over the long term, but may not be currently staffed and/or may require multiple releases to complete. | |
+| `priority/backlog`  | General agreement that this is a nice-to-have, but no one's available to work on it anytime soon. Community contributions would be most welcome in the meantime, though it might take a while to get them reviewed if reviewers are fully occupied with higher-priority issues—for example, immediately before a release.| |
+| `priority/awaiting-more-evidence` | Possibly useful, but not yet enough support to actually get it done. | Mostly placeholders for potentially good ideas, so that they don't get completely forgotten, and can be referenced or deduped every time they come up |
 
 ## Step 6 - Support new contributors
 
@@ -169,11 +179,11 @@ Once initial triage has been completed, issues need to be re-evaluated over time
 
 ### Track important issues
 
-If an issue is at risk of being closed by stale bot in future, but is an important issuefor the etcd project, then please apply the `stage/tracked` label and remove any `stale` labels that exist. This will ensure the project does not lose sight of the issue.
+If an issue is at risk of being closed by the stale bot in the future, but is an important issue for the etcd project, then please apply the `stage/tracked` label and remove any `stale` labels that exist. This will ensure the project does not lose sight of the issue.
 
 ### Close incomplete issues
 
-Issues that lack enough information from the issue reporter should be closed if issue reporter do not provide information in 30 days. Issues can always be re-opened at a later date if new information is provided.
+Issues that lack enough information from the issue reporter should be closed if the issue reporter does not provide information in 30 days. Issues can always be re-opened at a later date if new information is provided.
 
 ### Check for incomplete work
 

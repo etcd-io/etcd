@@ -81,7 +81,7 @@ type EtcdServerProcessConfig struct {
 	lg       *zap.Logger
 	ExecPath string
 	Args     []string
-	TlsArgs  []string
+	TLSArgs  []string
 	EnvVars  map[string]string
 
 	Client      ClientConfig
@@ -95,9 +95,10 @@ type EtcdServerProcessConfig struct {
 	ClientHTTPURL string
 	MetricsURL    string
 
-	InitialToken   string
-	InitialCluster string
-	GoFailPort     int
+	InitialToken        string
+	InitialCluster      string
+	GoFailPort          int
+	GoFailClientTimeout time.Duration
 
 	LazyFSEnabled bool
 	Proxy         *proxy.ServerConfig
@@ -117,7 +118,10 @@ func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServ
 	}
 	ep := &EtcdServerProcess{cfg: cfg, donec: make(chan struct{})}
 	if cfg.GoFailPort != 0 {
-		ep.failpoints = &BinaryFailpoints{member: ep}
+		ep.failpoints = &BinaryFailpoints{
+			member:        ep,
+			clientTimeout: cfg.GoFailClientTimeout,
+		}
 	}
 	if cfg.LazyFSEnabled {
 		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, t)
@@ -337,6 +341,7 @@ func (ep *EtcdServerProcess) Failpoints() *BinaryFailpoints {
 type BinaryFailpoints struct {
 	member         EtcdProcess
 	availableCache map[string]string
+	clientTimeout  time.Duration
 }
 
 func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
@@ -349,14 +354,20 @@ func (f *BinaryFailpoints) SetupEnv(failpoint, payload string) error {
 
 func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "PUT", failpointUrl.String(), bytes.NewBuffer([]byte(payload)))
+	r, err := http.NewRequestWithContext(ctx, "PUT", failpointURL.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
+	}
+	httpClient := http.Client{
+		Timeout: 1 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
 	}
 	resp, err := httpClient.Do(r)
 	if err != nil {
@@ -364,21 +375,32 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("bad status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("bad status code: %d, err: %s", resp.StatusCode, errMsg)
 	}
 	return nil
 }
 
 func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string) error {
 	host := fmt.Sprintf("127.0.0.1:%d", f.member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointUrl.String(), nil)
+	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointURL.String(), nil)
 	if err != nil {
 		return err
+	}
+	httpClient := http.Client{
+		// TODO: Decrease after deactivate is not blocked by sleep https://github.com/etcd-io/gofail/issues/64
+		Timeout: 2 * time.Second,
+	}
+	if f.clientTimeout != 0 {
+		httpClient.Timeout = f.clientTimeout
 	}
 	resp, err := httpClient.Do(r)
 	if err != nil {
@@ -386,21 +408,18 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
-		return fmt.Errorf("bad status code: %d", resp.StatusCode)
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("bad status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return fmt.Errorf("bad status code: %d, err: %s", resp.StatusCode, errMsg)
 	}
 	return nil
 }
 
-var httpClient = http.Client{
-	Timeout: 1 * time.Second,
-}
-
 func (f *BinaryFailpoints) Enabled() bool {
 	_, err := failpoints(f.member)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func (f *BinaryFailpoints) Available(failpoint string) bool {
@@ -426,17 +445,21 @@ func failpoints(member EtcdProcess) (map[string]string, error) {
 
 func fetchFailpointsBody(member EtcdProcess) (io.ReadCloser, error) {
 	address := fmt.Sprintf("127.0.0.1:%d", member.Config().GoFailPort)
-	failpointUrl := url.URL{
+	failpointURL := url.URL{
 		Scheme: "http",
 		Host:   address,
 	}
-	resp, err := http.Get(failpointUrl.String())
+	resp, err := http.Get(failpointURL.String())
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, fmt.Errorf("invalid status code, %d", resp.StatusCode)
+		defer resp.Body.Close()
+		errMsg, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("invalid status code: %d, err: %w", resp.StatusCode, err)
+		}
+		return nil, fmt.Errorf("invalid status code: %d, err:%s", resp.StatusCode, errMsg)
 	}
 	return resp.Body, nil
 }
@@ -462,7 +485,10 @@ func parseFailpointsBody(body io.Reader) (map[string]string, error) {
 	return failpoints, nil
 }
 
-func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
+var GetVersionFromBinary = func(binaryPath string) (*semver.Version, error) {
+	if !fileutil.Exist(binaryPath) {
+		return nil, fmt.Errorf("binary path does not exist: %s", binaryPath)
+	}
 	lines, err := RunUtilCompletion([]string{binaryPath, "--version"}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not find binary version from %s, err: %w", binaryPath, err)
@@ -484,4 +510,23 @@ func GetVersionFromBinary(binaryPath string) (*semver.Version, error) {
 	}
 
 	return nil, fmt.Errorf("could not find version in binary output of %s, lines outputted were %v", binaryPath, lines)
+}
+
+// setGetVersionFromBinary changes the GetVersionFromBinary function to a mock in testing.
+func setGetVersionFromBinary(tb testing.TB, f func(binaryPath string) (*semver.Version, error)) {
+	origGetVersionFromBinary := GetVersionFromBinary
+	GetVersionFromBinary = f
+	tb.Cleanup(func() {
+		GetVersionFromBinary = origGetVersionFromBinary
+	})
+}
+
+func CouldSetSnapshotCatchupEntries(execPath string) bool {
+	v, err := GetVersionFromBinary(execPath)
+	if err != nil {
+		return false
+	}
+	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
+	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
+	return v.Compare(v3_5_13) >= 0
 }
