@@ -747,6 +747,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// unsafe
 	fs.BoolVar(&cfg.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
+	fs.PrintDefaults()
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -849,8 +850,10 @@ func (cfg *configYAML) configFromFile(path string) error {
 		tls.ClientKeyFile = ysc.ClientKeyFile
 		tls.ClientCertAuth = ysc.CertAuth
 		tls.TrustedCAFile = ysc.TrustedCAFile
-		tls.AllowedCNs = ysc.AllowedCNs
-		tls.AllowedHostnames = ysc.AllowedHostnames
+		tls.AllowedCNs = make([]string, len(ysc.AllowedCNs))
+		copy(tls.AllowedCNs, ysc.AllowedCNs)
+		tls.AllowedHostnames = make([]string, len(ysc.AllowedHostnames))
+		copy(tls.AllowedHostnames, ysc.AllowedHostnames)
 	}
 	copySecurityDetails(&cfg.ClientTLSInfo, &cfg.ClientSecurityJSON)
 	copySecurityDetails(&cfg.PeerTLSInfo, &cfg.PeerSecurityJSON)
