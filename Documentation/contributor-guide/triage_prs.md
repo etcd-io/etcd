@@ -16,6 +16,10 @@ Following are a few example searches on PR for convenience:
 
 These guidelines serve as a primary document for managing PRs in `etcd`. Everyone is welcome to help manage PRs but the work and responsibilities discussed in this document are created with `etcd` maintainers and active contributors in mind.
 
+## Ensure tests are run
+
+The etcd project use Kubernetes Prow and GitHub Actions to run tests. To ensure all required tests run if a pull request is ready for testing and still has the `needs-ok-to-test` label then please comment on the pull request `/ok-to-test`.
+
 ## Handle inactive PRs
 Poke PR owner if review comments are not addressed in 15 days. If the PR owner does not reply in 90 days, update the PR with a new commit if possible. If not, inactive PR should be closed after 180 days.
 
