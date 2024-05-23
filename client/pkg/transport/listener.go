@@ -412,6 +412,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	// or a more general check of the CN and SANs.
 	var verifyCertificate func(*x509.Certificate) bool
 	if len(info.AllowedCNs) > 0 {
+		info.Logger.Warn("TLS: using CN verification", zap.Strings("allowed-cn", info.AllowedCNs))
 		if len(info.AllowedHostnames) > 0 {
 			return nil, fmt.Errorf("AllowedCNs and AllowedHostnames are mutually exclusive (cn=%q, hostname=%q)", info.AllowedCNs, info.AllowedHostnames)
 		}
@@ -425,6 +426,7 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		}
 	}
 	if len(info.AllowedHostnames) > 0 {
+		info.Logger.Warn("TLS: using hostname verification", zap.Strings("allowed-hostnames", info.AllowedHostnames))
 		verifyCertificate = func(cert *x509.Certificate) bool {
 			for _, allowedHostname := range info.AllowedHostnames {
 				if cert.VerifyHostname(allowedHostname) == nil {
