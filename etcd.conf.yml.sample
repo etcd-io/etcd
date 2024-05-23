@@ -125,6 +125,12 @@ peer-transport-security:
   # Peer TLS using generated certificates.
   auto-tls: false
 
+  # Allowed CN for inter peer authentication.
+  allowed-cn:
+
+  # Allowed TLS hostname for inter peer authentication.
+  allowed-hostname:
+
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1
 

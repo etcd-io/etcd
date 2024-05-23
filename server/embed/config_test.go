@@ -40,7 +40,8 @@ func notFoundErr(service, domain string) error {
 
 func TestConfigFileOtherFields(t *testing.T) {
 	ctls := securityConfig{TrustedCAFile: "cca", CertFile: "ccert", KeyFile: "ckey"}
-	ptls := securityConfig{TrustedCAFile: "pca", CertFile: "pcert", KeyFile: "pkey"}
+	// Note AllowedCN and AllowedHostname are mutually exclusive, this test is just to verify the fields can be correctly marshalled & unmarshalled.
+	ptls := securityConfig{TrustedCAFile: "pca", CertFile: "pcert", KeyFile: "pkey", AllowedCN: "etcd", AllowedHostname: "whatever.example.com"}
 	yc := struct {
 		ClientSecurityCfgFile securityConfig       `json:"client-transport-security"`
 		PeerSecurityCfgFile   securityConfig       `json:"peer-transport-security"`
@@ -155,7 +156,12 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 func (s *securityConfig) equals(t *transport.TLSInfo) bool {
 	return s.CertFile == t.CertFile &&
 		s.CertAuth == t.ClientCertAuth &&
-		s.TrustedCAFile == t.TrustedCAFile
+		s.TrustedCAFile == t.TrustedCAFile &&
+		s.ClientCertFile == t.ClientCertFile &&
+		s.ClientKeyFile == t.ClientKeyFile &&
+		s.KeyFile == t.KeyFile &&
+		s.AllowedCN == t.AllowedCN &&
+		s.AllowedHostname == t.AllowedHostname
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
