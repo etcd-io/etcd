@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
+	"go.etcd.io/etcd/server/v3/internal/pkg/featuregate"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 )
 
@@ -207,6 +208,9 @@ type ServerConfig struct {
 
 	// ExperimentalLocalAddress is the local IP address to use when communicating with a peer.
 	ExperimentalLocalAddress string `json:"experimental-local-address"`
+
+	// ServerFeatureGate is a server level feature gate
+	ServerFeatureGate featuregate.FeatureGate
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
