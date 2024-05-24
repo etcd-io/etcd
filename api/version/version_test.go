@@ -80,6 +80,7 @@ func TestVersionCompare(t *testing.T) {
 			assert.Equal(t, tc.expectedCompareResult, compareResult)
 			assert.Equal(t, tc.expectedLessThanResult, lessThanResult)
 			assert.Equal(t, tc.expectedEqualResult, equalResult)
+			assert.Fail(t, "Fail")
 		})
 	}
 }
