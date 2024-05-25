@@ -303,6 +303,7 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 
 	leaseTotalTTLs.Observe(float64(l.ttl))
 	leaseGranted.Inc()
+	leaseActive.Inc()
 
 	if le.isPrimary() {
 		item := &LeaseWithTime{id: l.ID, time: l.expiry}
@@ -351,6 +352,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 	txn.End()
 
 	leaseRevoked.Inc()
+	leaseActive.Dec()
 	return nil
 }
 
@@ -812,6 +814,7 @@ func (le *lessor) initAndRecover() {
 	}
 	le.leaseExpiredNotifier.Init()
 	heap.Init(&le.leaseCheckpointHeap)
+	leaseActive.Set(float64(len(le.leaseMap)))
 
 	le.b.ForceCommit()
 }
