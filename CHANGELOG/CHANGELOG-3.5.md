@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Update [the compaction log when bootstrap](https://github.com/etcd-io/etcd/pull/17830).
 - Fix [Revision decreasing after panic during compaction](https://github.com/etcd-io/etcd/pull/17865)
 - Add [`etcd --experimental-stop-grpc-service-on-defrag`](https://github.com/etcd-io/etcd/pull/17914) to enable client failover on defrag.
+- Add [support for `AllowedCN` and `AllowedHostname` through config file](https://github.com/etcd-io/etcd/pull/18063)
 
 ### etcdutl v3
 - Add [`--initial-memory-map-size` to `snapshot restore` to avoid memory allocation issues](https://github.com/etcd-io/etcd/pull/17977)
