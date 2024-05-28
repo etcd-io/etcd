@@ -313,11 +313,13 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 
 	certOut, err := os.Create(certPath)
 	if err != nil {
-		info.Logger.Warn(
-			"cannot cert file",
-			zap.String("path", certPath),
-			zap.Error(err),
-		)
+		if info.Logger != nil {
+			info.Logger.Warn(
+				"cannot cert file",
+				zap.String("path", certPath),
+				zap.Error(err),
+			)
+		}
 		return info, err
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
