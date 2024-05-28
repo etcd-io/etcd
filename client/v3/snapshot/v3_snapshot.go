@@ -64,6 +64,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	if err != nil {
 		return "", fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
+	defer f.Close()
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
 	start := time.Now()
@@ -82,9 +83,6 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 		return resp.Version, fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
-		return resp.Version, err
-	}
-	if err = f.Close(); err != nil {
 		return resp.Version, err
 	}
 	lg.Info("fetched snapshot",
