@@ -95,11 +95,11 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 
 	walPath := datadir.ToWALDir(o.dataDir)
-	lastSnapshot, err := getLastSnapshotIndex(walPath)
+	lastSnapshot, err := getLastSnapshot(c.lg, walPath)
 	if err != nil {
-		return nil, fmt.Errorf(`failed to find last snapshot: %v`, err)
+		c.lg.Warn("failed to find last snapshot, falling back to beginning of wal", zap.Error(err))
 	}
-	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{Index: lastSnapshot})
+	w, err := wal.OpenForRead(c.lg, walPath, lastSnapshot)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open wal: %v`, err)
 	}
@@ -161,15 +161,13 @@ func storageVersionToString(ver *semver.Version) string {
 	return fmt.Sprintf("%d.%d", ver.Major, ver.Minor)
 }
 
-func getLastSnapshotIndex(walPath string) (uint64, error) {
-	walSnaps, err := wal.ValidSnapshotEntries(nil, walPath)
+func getLastSnapshot(lg *zap.Logger, walPath string) (walpb.Snapshot, error) {
+	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
 	if err != nil {
-		return 0, err
+		return walpb.Snapshot{}, err
 	}
 	if len(walSnaps) == 0 {
-		return 0, fmt.Errorf("no valid snapshot entries found")
+		return walpb.Snapshot{}, fmt.Errorf("no valid snapshot entries found")
 	}
-
-	snapshot := walSnaps[len(walSnaps)-1]
-	return snapshot.Index, nil
+	return walSnaps[len(walSnaps)-1], nil
 }
