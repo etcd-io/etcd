@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.14 (TBD)
+## v3.5.15 (TBD)
+
+<hr>
+
+## v3.5.14 (2024-05-29)
 
 ### etcd server
 - Fix [LeaseTimeToLive returns error if leader changed](https://github.com/etcd-io/etcd/pull/17704).
