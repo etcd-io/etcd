@@ -6,6 +6,18 @@ include tests/robustness/makefile.mk
 build:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
 
+PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
+
+.PHONY: build-all
+build-all:
+	@for platform in $(PLATFORMS); do \
+		$(MAKE) build-$${platform}; \
+	done
+
+.PHONY: build-%
+build-%:
+	GOOS=$$(echo $* | cut -d- -f 1) GOARCH=$$(echo $* | cut -d- -f 2) GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+
 .PHONY: tools
 tools:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
