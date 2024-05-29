@@ -227,6 +227,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
 		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
 		V2Deprecation:                                 cfg.V2DeprecationEffective(),
+		ExperimentalLocalAddress:                      cfg.InferLocalAddr(),
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -244,6 +245,8 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			"distributed tracing setup enabled",
 		)
 	}
+
+	srvcfg.PeerTLSInfo.LocalAddr = srvcfg.ExperimentalLocalAddress
 
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 
@@ -336,6 +339,8 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Strings("advertise-client-urls", ec.getAdvertiseClientURLs()),
 		zap.Strings("listen-client-urls", ec.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
+		zap.Bool("experimental-set-member-localaddr", ec.ExperimentalSetMemberLocalAddr),
+		zap.String("experimental-local-address", sc.ExperimentalLocalAddress),
 		zap.Strings("cors", cors),
 		zap.Strings("host-whitelist", hss),
 		zap.String("initial-cluster", sc.InitialPeerURLsMap.String()),

@@ -211,7 +211,7 @@ func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]stri
 }
 
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
-	hdr = []string{"endpoint", "ID", "version", "storage version", "db size", "db size in use", "is leader", "is learner", "raft term",
+	hdr = []string{"endpoint", "ID", "version", "storage version", "db size", "in use", "percentage not in use", "quota", "is leader", "is learner", "raft term",
 		"raft index", "raft applied index", "errors"}
 	for _, status := range statusList {
 		rows = append(rows, []string{
@@ -221,6 +221,8 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			status.Resp.StorageVersion,
 			humanize.Bytes(uint64(status.Resp.DbSize)),
 			humanize.Bytes(uint64(status.Resp.DbSizeInUse)),
+			fmt.Sprintf("%d%%", int(float64(100-(status.Resp.DbSizeInUse*100/status.Resp.DbSize)))),
+			humanize.Bytes(uint64(status.Resp.DbSizeQuota)),
 			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
 			fmt.Sprint(status.Resp.IsLearner),
 			fmt.Sprint(status.Resp.RaftTerm),

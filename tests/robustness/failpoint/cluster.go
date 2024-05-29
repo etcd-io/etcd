@@ -135,8 +135,9 @@ func (f memberReplace) Name() string {
 	return "MemberReplace"
 }
 
-func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess) bool {
-	return config.ClusterSize > 1
+func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
+	// a lower etcd version may not be able to join a cluster with higher cluster version.
+	return config.ClusterSize > 1 && (config.Version == e2e.QuorumLastVersion || member.Config().ExecPath == e2e.BinPath.Etcd)
 }
 
 func getID(ctx context.Context, cc clientv3.Cluster, name string) (id uint64, found bool, err error) {
