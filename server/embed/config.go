@@ -30,7 +30,6 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc"
@@ -1140,7 +1139,7 @@ func (cfg *Config) GetDNSClusterNames() ([]string, error) {
 		zap.Error(httpCerr),
 	)
 
-	return clusterStrs, multierr.Combine(cerr, httpCerr)
+	return clusterStrs, errors.Join(cerr, httpCerr)
 }
 
 func (cfg *Config) InitialClusterFromName(name string) (ret string) {
