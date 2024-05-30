@@ -39,6 +39,11 @@ test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
 	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue17780
+test-robustness-issue17780: /tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17780 --count 100 --failfast --bin-dir=/tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/bin' make test-robustness && \
+	  echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
@@ -83,6 +88,19 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
 	  make gofail-enable; \
 	  make build;
+
+# REF: https://github.com/etcd-io/etcd/commit/6b034466aa0ac2b46fe01fb5bd2233946f46d453
+/tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/
+	mkdir -p /tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/
+	cd /tmp/etcd-3.5.6b034466aa0ac2b46fe01fb5bd2233946f46d453-failpoints/; \
+		git clone --branch release-3.5 https://github.com/etcd-io/etcd.git .; \
+		git checkout 6b034466aa0ac2b46fe01fb5bd2233946f46d453; \
+		go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
+		(cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+		(cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+		(cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+		FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:
