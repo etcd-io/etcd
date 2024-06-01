@@ -255,7 +255,11 @@ func (ep *EtcdServerProcess) Close() error {
 
 func (ep *EtcdServerProcess) waitReady(ctx context.Context) error {
 	defer close(ep.donec)
-	return WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
+	err := WaitReadyExpectProc(ctx, ep.proc, EtcdServerReadyLines)
+	if err != nil {
+		return fmt.Errorf("failed to find etcd ready lines %q, err: %w", EtcdServerReadyLines, err)
+	}
+	return nil
 }
 
 func (ep *EtcdServerProcess) Config() *EtcdServerProcessConfig { return ep.cfg }
