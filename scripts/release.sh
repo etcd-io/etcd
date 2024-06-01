@@ -65,7 +65,7 @@ main() {
   if [ ! -d "${reldir}/etcd" ] && [ "${IN_PLACE}" == 0 ]; then
     mkdir -p "${reldir}"
     cd "${reldir}"
-    git clone "${REPOSITORY}" --branch "${BRANCH}"
+    git clone "${REPOSITORY}" --branch "${BRANCH}" --depth 1
     cd "${reldir}/etcd" || exit 2
     git checkout "${BRANCH}" || exit 2
     git pull origin
