@@ -29,3 +29,9 @@ func (p *fieldsPrinter) DBStatus(r snapshot.Status) {
 	fmt.Println(`"Size" :`, r.TotalSize)
 	fmt.Println(`"Version" :`, r.Version)
 }
+
+func (p *fieldsPrinter) DBHashKV(r HashKV) {
+	fmt.Println(`"Hash" :`, r.Hash)
+	fmt.Println(`"Hash revision" :`, r.HashRevision)
+	fmt.Println(`"Compact revision" :`, r.CompactRevision)
+}

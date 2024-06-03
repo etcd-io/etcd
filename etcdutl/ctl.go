@@ -43,6 +43,7 @@ func init() {
 	rootCmd.AddCommand(
 		etcdutl.NewDefragCommand(),
 		etcdutl.NewSnapshotCommand(),
+		etcdutl.NewHashKVCommand(),
 		etcdutl.NewVersionCommand(),
 		etcdutl.NewCompletionCommand(),
 		etcdutl.NewMigrateCommand(),

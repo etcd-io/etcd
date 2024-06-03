@@ -30,3 +30,10 @@ func (s *simplePrinter) DBStatus(ds snapshot.Status) {
 		fmt.Println(strings.Join(row, ", "))
 	}
 }
+
+func (s *simplePrinter) DBHashKV(ds HashKV) {
+	_, rows := makeDBHashKVTable(ds)
+	for _, row := range rows {
+		fmt.Println(strings.Join(row, ", "))
+	}
+}

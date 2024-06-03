@@ -119,6 +119,44 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 +----------+----------+------------+------------+
 ```
 
+### HASHKV [options] \<filename\>
+
+HASHKV prints hash of keys and values up to given revision.
+
+#### Options
+
+- rev -- Revision number. Default is 0 which means the latest revision.
+
+#### Output
+
+##### Simple format
+
+Prints a humanized table of the KV hash, hash revision and compact revision.
+
+##### JSON format
+
+Prints a line of JSON encoding the KV hash, hash revision and compact revision.
+
+#### Examples
+```bash
+./etcdutl hashkv file.db
+# 35c86e9b, 214, 150
+```
+
+```bash
+./etcdutl --write-out=json hashkv file.db
+# {"hash":902327963,"hashRevision":214,"compactRevision":150}
+```
+
+```bash
+./etcdutl --write-out=table hashkv file.db
++----------+---------------+------------------+
+|   HASH   | HASH REVISION | COMPACT REVISION |
++----------+---------------+------------------+
+| 35c86e9b |           214 |              150 |
++----------+---------------+------------------+
+```
+
 ### VERSION
 
 Prints the version of etcdutl.

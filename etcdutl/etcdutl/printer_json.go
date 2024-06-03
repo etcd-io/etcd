@@ -33,6 +33,7 @@ func newJSONPrinter() printer {
 }
 
 func (p *jsonPrinter) DBStatus(r snapshot.Status) { printJSON(r) }
+func (p *jsonPrinter) DBHashKV(r HashKV)          { printJSON(r) }
 
 // !!! Share ??
 func printJSON(v any) {

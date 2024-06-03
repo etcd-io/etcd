@@ -34,3 +34,14 @@ func (tp *tablePrinter) DBStatus(r snapshot.Status) {
 	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
+
+func (tp *tablePrinter) DBHashKV(r HashKV) {
+	hdr, rows := makeDBHashKVTable(r)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
+	for _, row := range rows {
+		table.Append(row)
+	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
+	table.Render()
+}

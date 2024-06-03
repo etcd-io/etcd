@@ -31,6 +31,7 @@ var (
 
 type printer interface {
 	DBStatus(snapshot.Status)
+	DBHashKV(HashKV)
 }
 
 func NewPrinter(printerType string) printer {
@@ -64,6 +65,7 @@ func newPrinterUnsupported(n string) printer {
 }
 
 func (p *printerUnsupported) DBStatus(snapshot.Status) { p.p(nil) }
+func (p *printerUnsupported) DBHashKV(HashKV)          { p.p(nil) }
 
 func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 	hdr = []string{"hash", "revision", "total keys", "total size", "version"}
@@ -73,6 +75,16 @@ func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 		fmt.Sprint(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
 		ds.Version,
+	})
+	return hdr, rows
+}
+
+func makeDBHashKVTable(ds HashKV) (hdr []string, rows [][]string) {
+	hdr = []string{"hash", "hash revision", "compact revision"}
+	rows = append(rows, []string{
+		fmt.Sprint(ds.Hash),
+		fmt.Sprint(ds.HashRevision),
+		fmt.Sprint(ds.CompactRevision),
 	})
 	return hdr, rows
 }
