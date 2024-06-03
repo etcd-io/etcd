@@ -31,7 +31,7 @@ require (
 	github.com/Antonboom/nilnil v0.1.9 // indirect
 	github.com/Antonboom/testifylint v1.3.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
-	github.com/Crocmagnon/fatcontext v0.2.2 // indirect
+	github.com/Crocmagnon/fatcontext v0.3.0 // indirect
 	github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 // indirect
 	github.com/GaijinEntertainment/go-exhaustruct/v3 v3.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
