@@ -83,7 +83,7 @@ func NewReport(precision string) Report { return newReport(precision) }
 
 func newReport(precision string) *report {
 	r := &report{
-		results:   make(chan Result, 16),
+		results:   make(chan Result, 65536),
 		precision: precision,
 	}
 	r.stats.ErrorDist = make(map[string]int)
