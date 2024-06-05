@@ -527,6 +527,6 @@ func CouldSetSnapshotCatchupEntries(execPath string) bool {
 		return false
 	}
 	// snapshot-catchup-entries flag was backported in https://github.com/etcd-io/etcd/pull/17808
-	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
-	return v.Compare(v3_5_13) >= 0
+	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
+	return v.Compare(v3_5_14) >= 0
 }

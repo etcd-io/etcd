@@ -24,7 +24,7 @@ import (
 
 func TestEtcdServerProcessConfig(t *testing.T) {
 	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
-	v3_5_13 := semver.Version{Major: 3, Minor: 5, Patch: 13}
+	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -78,7 +78,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--experimental-snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_5_13,
+			mockBinaryVersion: &v3_5_14,
 		},
 		{
 			name:   "CatchUpEntriesNoVersion",
