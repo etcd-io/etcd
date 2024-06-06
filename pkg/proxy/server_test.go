@@ -20,11 +20,9 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -35,6 +33,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
+/* Helper functions */
 type dummyServerHandler struct {
 	t      *testing.T
 	output chan<- []byte
@@ -53,32 +52,19 @@ func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	}
 }
 
-// func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
-// func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
-func TestServer_Unix_Secure(t *testing.T) { testServer(t, "unix", true, false) }
-func TestServer_TCP_Secure(t *testing.T)  { testServer(t, "tcp", true, false) }
-
-// func TestServer_Unix_Insecure_DelayTx(t *testing.T) { testServer(t, "unix", false, true) }
-// func TestServer_TCP_Insecure_DelayTx(t *testing.T)  { testServer(t, "tcp", false, true) }
-func TestServer_Unix_Secure_DelayTx(t *testing.T) { testServer(t, "unix", true, true) }
-func TestServer_TCP_Secure_DelayTx(t *testing.T)  { testServer(t, "tcp", true, true) }
-
-func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
+func prepare(t *testing.T) (chan []byte, chan struct{}, chan []byte, Server, *http.Server) {
 	lg := zaptest.NewLogger(t)
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	log.Println(forwardProxyAddr)
-	if scheme == "tcp" {
-		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
-		forwardProxyAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
-		ln1.Close()
-		ln2.Close()
-	} else {
-		defer func() {
-			os.RemoveAll(forwardProxyAddr)
-			os.RemoveAll(dstAddr)
-		}()
-	}
-	tlsInfo := createTLSInfo(lg, secure)
+	scheme := "tcp"
+	L7Scheme := "http"
+
+	// we always send the traffic to destination with HTTPS, allowing us to just
+	// handle byte streams.
+	tlsInfo := createTLSInfo(lg)
+
+	ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
+	forwardProxyAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
+	ln1.Close()
+	ln2.Close()
 
 	recvc := make(chan []byte, 1)
 	httpServer := &http.Server{
@@ -88,35 +74,20 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 		},
 	}
 	go startHTTPServer(scheme, dstAddr, tlsInfo, httpServer)
-	defer httpServer.Shutdown(context.Background())
 
-	L7Scheme := ""
-	if scheme == "tcp" {
-		L7Scheme = "http"
-	} else if scheme == "unix" {
-		L7Scheme = scheme
-	} else {
-		panic("")
-	}
+	// we connect to the proxy without TLS
 	proxyURL := url.URL{Scheme: L7Scheme, Host: forwardProxyAddr}
 	cfg := ServerConfig{
 		Logger: lg,
 		Listen: proxyURL,
 	}
-	// if secure {
-	// cfg.TLSInfo = tlsInfo
-	// }
 	p := NewServer(cfg)
-
 	waitForServer(t, p)
-
-	defer p.Close()
 
 	// setup forward proxy
 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", proxyURL.String())
 	log.Println("Proxy URL", proxyURL.String())
 
-	data1 := []byte("Hello World!")
 	donec, writec := make(chan struct{}), make(chan []byte)
 
 	go func() {
@@ -127,6 +98,154 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 		}
 	}()
 
+	return recvc, donec, writec, p, httpServer
+}
+
+func destroy(t *testing.T, writec chan []byte, donec chan struct{}, p Server, httpServer *http.Server) {
+	close(writec)
+	if err := httpServer.Shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-donec:
+	case <-time.After(3 * time.Second):
+		t.Fatal("took too long to write")
+	}
+
+	select {
+	case <-p.Done():
+		t.Fatal("unexpected done")
+	case err := <-p.Error():
+		t.Fatal(err)
+	default:
+	}
+
+	if err := p.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-p.Done():
+	case err := <-p.Error():
+		if !strings.HasPrefix(err.Error(), "accept ") &&
+			!strings.HasSuffix(err.Error(), "use of closed network connection") {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("took too long to close")
+	}
+}
+
+func createTLSInfo(lg *zap.Logger) transport.TLSInfo {
+	return transport.TLSInfo{
+		KeyFile:        "../../tests/fixtures/server.key.insecure",
+		CertFile:       "../../tests/fixtures/server.crt",
+		TrustedCAFile:  "../../tests/fixtures/ca.crt",
+		ClientCertAuth: true,
+		Logger:         lg,
+	}
+}
+
+func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln net.Listener) {
+	var err error
+	if !tlsInfo.Empty() {
+		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
+	} else {
+		ln, err = net.Listen(scheme, addr)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ln
+}
+
+func startHTTPServer(scheme, addr string, tlsInfo transport.TLSInfo, httpServer *http.Server) {
+	var err error
+	var ln net.Listener
+
+	ln, err = net.Listen(scheme, addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("HTTP Server started on", addr)
+	if err := httpServer.ServeTLS(ln, tlsInfo.CertFile, tlsInfo.KeyFile); err != http.ErrServerClosed {
+		// always returns error. ErrServerClosed on graceful close
+		log.Fatalf(fmt.Sprintf("startHTTPServer ServeTLS(): %v", err))
+	}
+}
+
+func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
+	var err error
+	var tp *http.Transport
+	if !tlsInfo.Empty() {
+		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
+	} else {
+		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	tp.IdleConnTimeout = 1 * time.Second // without this, the test will hang for a while, because RoundTripper is designed to reuse the underlying connection!
+
+	// If you do Dial(), you will get a Conn that you can write the byte stream directly
+	// If you do RoundTrip(), you will get a connection managed for you, but you need to send valid HTTP request
+	dataReader := bytes.NewReader(data)
+	protocolScheme := scheme
+	if scheme == "tcp" {
+		protocolScheme = "http"
+		if !tlsInfo.Empty() {
+			protocolScheme = "https"
+		}
+	} else if scheme == "unix" {
+		protocolScheme = scheme
+	} else {
+		panic("Scheme not supported")
+	}
+	rawURL := url.URL{
+		Scheme: protocolScheme,
+		Host:   addr,
+	}
+
+	log.Println("Before POST", rawURL.String())
+	req, err := http.NewRequest("POST", rawURL.String(), dataReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := tp.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	log.Println("After POST")
+
+	if res.StatusCode != 200 {
+		t.Fatalf("status code not 200")
+	}
+}
+
+// Waits until a proxy is ready to serve.
+// Aborts test on proxy start-up error.
+func waitForServer(t *testing.T, s Server) {
+	select {
+	case <-s.Ready():
+	case err := <-s.Error():
+		t.Fatal(err)
+	}
+}
+
+/* Unit tests */
+
+func TestServer_TCP_Secure(t *testing.T)         { testServer(t, false) }
+func TestServer_TCP_Secure_DelayTx(t *testing.T) { testServer(t, true) }
+
+func testServer(t *testing.T, delayTx bool) {
+	recvc, donec, writec, p, httpServer := prepare(t)
+	defer destroy(t, writec, donec, p, httpServer)
+
+	data1 := []byte("Hello World!")
 	writec <- data1
 	now := time.Now()
 	if d := <-recvc; !bytes.Equal(data1, d) {
@@ -162,91 +281,20 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
 	}
-
-	close(writec)
-	log.Println("Here 1")
-
-	select {
-	case <-donec:
-	case <-time.After(3 * time.Second):
-		t.Fatal("took too long to write")
-	}
-
-	log.Println("Here 2")
-	select {
-	case <-p.Done():
-		t.Fatal("unexpected done")
-	case err := <-p.Error():
-		t.Fatal(err)
-	default:
-	}
-
-	log.Println("Here 3")
-	if err := p.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	log.Println("Here 4")
-	select {
-	case <-p.Done():
-	case err := <-p.Error():
-		if !strings.HasPrefix(err.Error(), "accept ") &&
-			!strings.HasSuffix(err.Error(), "use of closed network connection") {
-			t.Fatal(err)
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("took too long to close")
-	}
-}
-
-func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
-	if secure {
-		return transport.TLSInfo{
-			KeyFile:        "../../tests/fixtures/server.key.insecure",
-			CertFile:       "../../tests/fixtures/server.crt",
-			TrustedCAFile:  "../../tests/fixtures/ca.crt",
-			ClientCertAuth: true,
-			Logger:         lg,
-		}
-	}
-	return transport.TLSInfo{Logger: lg}
 }
 
 // func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
 // func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
 // func testServerDelayAccept(t *testing.T, secure bool) {
-// 	lg := zaptest.NewLogger(t)
-// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-// 	defer func() {
-// 		os.RemoveAll(forwardProxyAddr)
-// 		os.RemoveAll(dstAddr)
-// 	}()
-// 	tlsInfo := createTLSInfo(lg, secure)
-// 	scheme := "unix"
-// 	ln := listen(t, scheme, dstAddr, tlsInfo)
-// 	defer ln.Close()
-
-// 	// setup forward proxy
-// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-// 	cfg := ServerConfig{
-// 		Logger: lg,
-// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-// 	}
-// 	if secure {
-// 		cfg.TLSInfo = tlsInfo
-// 	}
-// 	p := NewServer(cfg)
-
-// 	waitForServer(t, p)
-
-// 	defer p.Close()
+// 	recvc, donec, writec, p, httpServer := prepare(t)
+// 	defer (p).Close()
+// 	defer httpServer.Shutdown(context.Background())
 
 // 	data := []byte("Hello World!")
-
 // 	now := time.Now()
-// 	send(t, data, scheme, dstAddr, tlsInfo)
-// 	if d := receive(t, ln); !bytes.Equal(data, d) {
+// 	writec <- data
+// 	if d := <-recvc; !bytes.Equal(data, d) {
+// 		close(writec)
 // 		t.Fatalf("expected %q, got %q", string(data), string(d))
 // 	}
 // 	took1 := time.Since(now)
@@ -257,8 +305,9 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 // 	defer p.UndelayAccept()
 
 // 	now = time.Now()
-// 	send(t, data, scheme, dstAddr, tlsInfo)
-// 	if d := receive(t, ln); !bytes.Equal(data, d) {
+// 	writec <- data
+// 	if d := <-recvc; !bytes.Equal(data, d) {
+// 		close(writec)
 // 		t.Fatalf("expected %q, got %q", string(data), string(d))
 // 	}
 // 	took2 := time.Since(now)
@@ -267,6 +316,8 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 // 	if took1 >= took2 {
 // 		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
 // 	}
+
+// 	close(writec)
 // }
 
 // func TestServer_PauseTx(t *testing.T) {
@@ -674,111 +725,3 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 // 		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
 // 	}
 // }
-
-func newUnixAddr() string {
-	now := time.Now().UnixNano()
-	addr := fmt.Sprintf("%X%X.unix-conn", now, rand.Intn(35000))
-	os.RemoveAll(addr)
-	return addr
-}
-
-func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln net.Listener) {
-	var err error
-	if !tlsInfo.Empty() {
-		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
-	} else {
-		ln, err = net.Listen(scheme, addr)
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	return ln
-}
-
-func startHTTPServer(scheme, addr string, tlsInfo transport.TLSInfo, httpServer *http.Server) {
-	var err error
-	var ln net.Listener
-
-	// if !tlsInfo.Empty() {
-	// 	ln, err = transport.NewListener(addr, scheme, &tlsInfo)
-	// } else {
-	// 	ln, err = net.Listen(scheme, addr)
-	// }
-	ln, err = net.Listen(scheme, addr)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("HTTP Server started on", addr)
-	if tlsInfo.Empty() {
-		if err := httpServer.Serve(ln); err != http.ErrServerClosed {
-			// always returns error. ErrServerClosed on graceful close
-			log.Fatalf(fmt.Sprintf("startHTTPServer Serve(): %v", err))
-		}
-	} else {
-		if err := httpServer.ServeTLS(ln, tlsInfo.CertFile, tlsInfo.KeyFile); err != http.ErrServerClosed {
-			// always returns error. ErrServerClosed on graceful close
-			log.Fatalf(fmt.Sprintf("startHTTPServer ServeTLS(): %v", err))
-		}
-	}
-}
-
-func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
-	var err error
-	var tp *http.Transport
-	if !tlsInfo.Empty() {
-		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
-	} else {
-		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	tp.IdleConnTimeout = 1 * time.Second // without this, the test will hang for a while, because RoundTripper is designed to reuse the underlying connection!
-
-	// If you do Dial(), you will get a Conn that you can write the byte stream directly
-	// If you do RoundTrip(), you will get a connection managed for you, but you need to send valid HTTP request
-	dataReader := bytes.NewReader(data)
-	protocolScheme := scheme
-	if scheme == "tcp" {
-		protocolScheme = "http"
-		if !tlsInfo.Empty() {
-			protocolScheme = "https"
-		}
-	} else if scheme == "unix" {
-		protocolScheme = scheme
-	} else {
-		panic("Scheme not supported")
-	}
-	rawURL := url.URL{
-		Scheme: protocolScheme,
-		Host:   addr,
-	}
-
-	log.Println("Before POST", rawURL.String())
-	req, err := http.NewRequest("POST", rawURL.String(), dataReader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := tp.RoundTrip(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-
-	log.Println("After POST")
-
-	if res.StatusCode != 200 {
-		t.Fatalf("status code not 200")
-	}
-}
-
-// Waits until a proxy is ready to serve.
-// Aborts test on proxy start-up error.
-func waitForServer(t *testing.T, s Server) {
-	select {
-	case <-s.Ready():
-	case err := <-s.Error():
-		t.Fatal(err)
-	}
-}

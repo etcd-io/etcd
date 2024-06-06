@@ -246,6 +246,8 @@ func NewServer(cfg ServerConfig) Server {
 	close(s.pauseTxc)
 	close(s.pauseRxc)
 
+	// L7 is http (scheme), L4 is tcp (network listener)
+	addr := ""
 	if strings.HasPrefix(s.listen.Scheme, "http") {
 		s.listen.Scheme = "tcp"
 
@@ -259,11 +261,10 @@ func NewServer(cfg ServerConfig) Server {
 			s.Close()
 			return nil
 		}
-	}
 
-	addr := fmt.Sprintf(":%d", s.listenPort)
-	if strings.HasPrefix(s.listen.Scheme, "unix") { // unix
-		addr = s.listen.Host
+		addr = fmt.Sprintf(":%d", s.listenPort)
+	} else {
+		panic(fmt.Sprintf("%s is not supported", s.listen.Scheme))
 	}
 
 	s.closeWg.Add(1)
@@ -402,7 +403,6 @@ func (sh *serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) 
 		panic(err)
 	}
 
-	// for CONNECT, we need to send 200 response back first
 	targetScheme := "tcp"
 	targetHost := req.URL.Host
 	ctx := context.Background()
@@ -412,21 +412,16 @@ func (sh *serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) 
 		first (containing the intended destination HOST).
 
 		If the traffic to the destination is HTTP, no CONNECT request will be sent
-		first, but normal HTTP request, with the HOST set to the final destination,
-		will be sent.
+		first. Only normal HTTP request is sent, with the HOST set to the final destination.
+		This will be troublesome since we need to manually forward the request to the
+		destination, and we can't do bte stream manipulation.
+
+		Thus, we need to send the traffic to destination with HTTPS, allowing us to
+		handle byte streams.
 	*/
 	if req.Method == "CONNECT" {
-		log.Println("CONNECT")
+		// for CONNECT, we need to send 200 response back first
 		in.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
-
-		// targetScheme = "tcp"
-		// targetHost = req.URL.Host
-	} else {
-		// if the incoming connection is HTTP, then no CONNECT will be sent
-		// missing CONNECT FOR HTTP -> we need to stuff back the entire request...
-		// log.Fatalf("Wrong usage of the forward proxy. Please check your setup. %#v", req)
-		log.Printf("OTHER %#v", req)
-		log.Println(targetScheme, targetHost)
 	}
 
 	var out net.Conn

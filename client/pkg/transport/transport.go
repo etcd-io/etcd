@@ -77,7 +77,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		return dialer.DialContext(ctx, "unix", addr)
 	}
 	tu := &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               httpTransportProxyParsingFunc(),
 		DialContext:         dialContext,
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
