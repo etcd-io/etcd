@@ -2381,13 +2381,18 @@ func (s *EtcdServer) notifyAboutFirstCommitInTerm() {
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState) (bool, error) {
+	lg := s.getLogger()
 	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+		if lg != nil {
+			lg.Error("Validation on configuration change failed", zap.Error(err))
+		} else {
+			plog.Errorf("Validation on configuration change failed: %v", err)
+		}
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
 		return false, err
 	}
 
-	lg := s.getLogger()
 	*confState = *s.r.ApplyConfChange(cc)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
