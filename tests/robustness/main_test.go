@@ -16,6 +16,7 @@ package robustness
 
 import (
 	"context"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -36,6 +37,7 @@ import (
 var testRunner = framework.E2eTestRunner
 
 func TestMain(m *testing.M) {
+	rand.Seed(time.Now().UnixNano())
 	testRunner.TestMain(m)
 }
 
