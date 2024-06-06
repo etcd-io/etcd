@@ -45,6 +45,14 @@ var (
 // latency spikes and packet drop or corruption. The proxy overhead is very
 // small overhead (<500μs per request). Please run tests to compute actual
 // overhead.
+//
+// Note that the current implementation is a forward proxy, thus, unix socket
+// is not supported, due to the forwarding is done in L7, which requires
+// properly constructed HTTP header and body
+//
+// Also, because we are forced to use TLS to communicate with the proxy server
+// and using well-formed header to talk to the destination server,
+// we can't do random modification on the data on-the-fly anymore.
 type Server interface {
 	// Listen returns proxy listen address in "scheme://host:port" format.
 	Listen() string
@@ -505,8 +513,6 @@ func getPort(addr net.Addr) (int, error) {
 		return addr.Port, nil
 	case *net.UDPAddr:
 		return addr.Port, nil
-	case *net.UnixAddr:
-		return -1, nil
 	default:
 		return 0, fmt.Errorf("unsupported address type: %T", addr)
 	}
