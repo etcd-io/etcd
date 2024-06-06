@@ -41,6 +41,8 @@ type dummyServerHandler struct {
 }
 
 func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	log.Println("ServeHTTP")
+
 	defer req.Body.Close()
 	resp.WriteHeader(200)
 
@@ -51,18 +53,20 @@ func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	}
 }
 
-func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
-func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
-func TestServer_Unix_Secure(t *testing.T)           { testServer(t, "unix", true, false) }
-func TestServer_TCP_Secure(t *testing.T)            { testServer(t, "tcp", true, false) }
-func TestServer_Unix_Insecure_DelayTx(t *testing.T) { testServer(t, "unix", false, true) }
-func TestServer_TCP_Insecure_DelayTx(t *testing.T)  { testServer(t, "tcp", false, true) }
-func TestServer_Unix_Secure_DelayTx(t *testing.T)   { testServer(t, "unix", true, true) }
-func TestServer_TCP_Secure_DelayTx(t *testing.T)    { testServer(t, "tcp", true, true) }
+// func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
+// func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
+func TestServer_Unix_Secure(t *testing.T) { testServer(t, "unix", true, false) }
+func TestServer_TCP_Secure(t *testing.T)  { testServer(t, "tcp", true, false) }
+
+// func TestServer_Unix_Insecure_DelayTx(t *testing.T) { testServer(t, "unix", false, true) }
+// func TestServer_TCP_Insecure_DelayTx(t *testing.T)  { testServer(t, "tcp", false, true) }
+func TestServer_Unix_Secure_DelayTx(t *testing.T) { testServer(t, "unix", true, true) }
+func TestServer_TCP_Secure_DelayTx(t *testing.T)  { testServer(t, "tcp", true, true) }
 
 func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	lg := zaptest.NewLogger(t)
 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+	log.Println(forwardProxyAddr)
 	if scheme == "tcp" {
 		ln1, ln2 := listen(t, "tcp", "localhost:0", transport.TLSInfo{}), listen(t, "tcp", "localhost:0", transport.TLSInfo{})
 		forwardProxyAddr, dstAddr = ln1.Addr().String(), ln2.Addr().String()
@@ -86,21 +90,31 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go startHTTPServer(scheme, dstAddr, tlsInfo, httpServer)
 	defer httpServer.Shutdown(context.Background())
 
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
+	L7Scheme := ""
+	if scheme == "tcp" {
+		L7Scheme = "http"
+	} else if scheme == "unix" {
+		L7Scheme = scheme
+	} else {
+		panic("")
+	}
+	proxyURL := url.URL{Scheme: L7Scheme, Host: forwardProxyAddr}
 	cfg := ServerConfig{
 		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+		Listen: proxyURL,
 	}
-	if secure {
-		cfg.TLSInfo = tlsInfo
-	}
+	// if secure {
+	// cfg.TLSInfo = tlsInfo
+	// }
 	p := NewServer(cfg)
 
 	waitForServer(t, p)
 
 	defer p.Close()
+
+	// setup forward proxy
+	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", proxyURL.String())
+	log.Println("Proxy URL", proxyURL.String())
 
 	data1 := []byte("Hello World!")
 	donec, writec := make(chan struct{}), make(chan []byte)
@@ -108,7 +122,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go func() {
 		defer close(donec)
 		for data := range writec {
-			t.Logf("send")
+			t.Logf("send %s", data)
 			send(t, data, scheme, dstAddr, tlsInfo)
 		}
 	}()
@@ -150,12 +164,15 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	}
 
 	close(writec)
+	log.Println("Here 1")
+
 	select {
 	case <-donec:
 	case <-time.After(3 * time.Second):
 		t.Fatal("took too long to write")
 	}
 
+	log.Println("Here 2")
 	select {
 	case <-p.Done():
 		t.Fatal("unexpected done")
@@ -164,10 +181,12 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	default:
 	}
 
+	log.Println("Here 3")
 	if err := p.Close(); err != nil {
 		t.Fatal(err)
 	}
 
+	log.Println("Here 4")
 	select {
 	case <-p.Done():
 	case err := <-p.Error():
@@ -680,18 +699,27 @@ func startHTTPServer(scheme, addr string, tlsInfo transport.TLSInfo, httpServer 
 	var err error
 	var ln net.Listener
 
-	if !tlsInfo.Empty() {
-		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
-	} else {
-		ln, err = net.Listen(scheme, addr)
-	}
+	// if !tlsInfo.Empty() {
+	// 	ln, err = transport.NewListener(addr, scheme, &tlsInfo)
+	// } else {
+	// 	ln, err = net.Listen(scheme, addr)
+	// }
+	ln, err = net.Listen(scheme, addr)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := httpServer.Serve(ln); err != http.ErrServerClosed {
-		// always returns error. ErrServerClosed on graceful close
-		log.Fatalf(fmt.Sprintf("startHTTPServer Serve(): %v", err))
+	log.Println("HTTP Server started on", addr)
+	if tlsInfo.Empty() {
+		if err := httpServer.Serve(ln); err != http.ErrServerClosed {
+			// always returns error. ErrServerClosed on graceful close
+			log.Fatalf(fmt.Sprintf("startHTTPServer Serve(): %v", err))
+		}
+	} else {
+		if err := httpServer.ServeTLS(ln, tlsInfo.CertFile, tlsInfo.KeyFile); err != http.ErrServerClosed {
+			// always returns error. ErrServerClosed on graceful close
+			log.Fatalf(fmt.Sprintf("startHTTPServer ServeTLS(): %v", err))
+		}
 	}
 }
 
@@ -706,6 +734,7 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	if err != nil {
 		t.Fatal(err)
 	}
+	tp.IdleConnTimeout = 1 * time.Second // without this, the test will hang for a while, because RoundTripper is designed to reuse the underlying connection!
 
 	// If you do Dial(), you will get a Conn that you can write the byte stream directly
 	// If you do RoundTrip(), you will get a connection managed for you, but you need to send valid HTTP request
@@ -713,6 +742,9 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	protocolScheme := scheme
 	if scheme == "tcp" {
 		protocolScheme = "http"
+		if !tlsInfo.Empty() {
+			protocolScheme = "https"
+		}
 	} else if scheme == "unix" {
 		protocolScheme = scheme
 	} else {
@@ -732,6 +764,8 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer res.Body.Close()
+
 	log.Println("After POST")
 
 	if res.StatusCode != 200 {

@@ -403,16 +403,30 @@ func (sh *serverHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) 
 	}
 
 	// for CONNECT, we need to send 200 response back first
-	targetScheme := ""
-	targetHost := ""
+	targetScheme := "tcp"
+	targetHost := req.URL.Host
 	ctx := context.Background()
+
+	/*
+		If the traffic to the destination is HTTPS, a CONNECT request will be sent
+		first (containing the intended destination HOST).
+
+		If the traffic to the destination is HTTP, no CONNECT request will be sent
+		first, but normal HTTP request, with the HOST set to the final destination,
+		will be sent.
+	*/
 	if req.Method == "CONNECT" {
+		log.Println("CONNECT")
 		in.Write([]byte("HTTP/1.0 200 Connection established\r\n\r\n"))
 
-		targetScheme = "tcp"
-		targetHost = req.URL.Host
+		// targetScheme = "tcp"
+		// targetHost = req.URL.Host
 	} else {
-		log.Fatal("Wrong usage of the forward proxy. Please check your setup")
+		// if the incoming connection is HTTP, then no CONNECT will be sent
+		// missing CONNECT FOR HTTP -> we need to stuff back the entire request...
+		// log.Fatalf("Wrong usage of the forward proxy. Please check your setup. %#v", req)
+		log.Printf("OTHER %#v", req)
+		log.Println(targetScheme, targetHost)
 	}
 
 	var out net.Conn
@@ -744,11 +758,13 @@ func (s *server) Close() (err error) {
 		close(s.donec)
 
 		// we shutdown the server
+		log.Println("we shutdown the server")
 		if err = s.httpServer.Shutdown(context.TODO()); err != nil {
 			return
 		}
 		s.httpServer = nil
 
+		log.Println("waiting for listenerMu")
 		// listener was closed by the Shutdown() call
 		s.listenerMu.Lock()
 		s.listener = nil
@@ -756,6 +772,7 @@ func (s *server) Close() (err error) {
 		s.listenerMu.Unlock()
 
 		// the hijacked connections aren't tracked by the server so we need to wait for them
+		log.Println("waiting for closeHijackedConn")
 		s.closeHijackedConn.Wait()
 	})
 
