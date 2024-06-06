@@ -26,7 +26,7 @@ import (
 
 type unixTransport struct{ *http.Transport }
 
-var httpTransportProxyParsingFunc = determineHTTPTransportProxyParsingFunc()
+var httpTransportProxyParsingFunc = determineHTTPTransportProxyParsingFunc
 
 func determineHTTPTransportProxyParsingFunc() func(req *http.Request) (*url.URL, error) {
 	// according to the comment of http.ProxyFromEnvironment: if the proxy URL is "localhost"
@@ -56,7 +56,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 	}
 
 	t := &http.Transport{
-		Proxy: httpTransportProxyParsingFunc,
+		Proxy: httpTransportProxyParsingFunc(),
 		DialContext: (&net.Dialer{
 			Timeout:   dialtimeoutd,
 			LocalAddr: ipAddr,

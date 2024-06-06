@@ -17,7 +17,6 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -30,12 +29,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
+
+type dummyServerHandler struct {
+	t      *testing.T
+	output chan<- []byte
+}
+
+func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
+	defer req.Body.Close()
+	resp.WriteHeader(200)
+
+	if data, err := io.ReadAll(req.Body); err != nil {
+		sh.t.Fatal(err)
+	} else {
+		sh.output <- data
+	}
+}
 
 func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
 func TestServer_TCP_Insecure(t *testing.T)          { testServer(t, "tcp", false, false) }
@@ -61,8 +75,16 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 		}()
 	}
 	tlsInfo := createTLSInfo(lg, secure)
-	ln := listen(t, scheme, dstAddr, tlsInfo)
-	defer ln.Close()
+
+	recvc := make(chan []byte, 1)
+	httpServer := &http.Server{
+		Handler: &dummyServerHandler{
+			t:      t,
+			output: recvc,
+		},
+	}
+	go startHTTPServer(scheme, dstAddr, tlsInfo, httpServer)
+	defer httpServer.Shutdown(context.Background())
 
 	// setup forward proxy
 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
@@ -86,14 +108,8 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go func() {
 		defer close(donec)
 		for data := range writec {
+			t.Logf("send")
 			send(t, data, scheme, dstAddr, tlsInfo)
-		}
-	}()
-
-	recvc := make(chan []byte, 1)
-	go func() {
-		for i := 0; i < 2; i++ {
-			recvc <- receive(t, ln)
 		}
 	}()
 
@@ -177,468 +193,468 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 	return transport.TLSInfo{Logger: lg}
 }
 
-func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
-func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
-func testServerDelayAccept(t *testing.T, secure bool) {
-	lg := zaptest.NewLogger(t)
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	tlsInfo := createTLSInfo(lg, secure)
-	scheme := "unix"
-	ln := listen(t, scheme, dstAddr, tlsInfo)
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	cfg := ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	}
-	if secure {
-		cfg.TLSInfo = tlsInfo
-	}
-	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	data := []byte("Hello World!")
-
-	now := time.Now()
-	send(t, data, scheme, dstAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took1 := time.Since(now)
-	t.Logf("took %v with no latency", took1)
-
-	lat, rv := 700*time.Millisecond, 10*time.Millisecond
-	p.DelayAccept(lat, rv)
-	defer p.UndelayAccept()
-
-	now = time.Now()
-	send(t, data, scheme, dstAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took2 := time.Since(now)
-	t.Logf("took %v with latency %v±%v", took2, lat, rv)
-
-	if took1 < took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
-	}
-}
-
-func TestServer_PauseTx(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	p.PauseTx()
-
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-
-	recvc := make(chan []byte, 1)
-	go func() {
-		recvc <- receive(t, ln)
-	}()
-
-	select {
-	case d := <-recvc:
-		t.Fatalf("received unexpected data %q during pause", string(d))
-	case <-time.After(200 * time.Millisecond):
-	}
-
-	p.UnpauseTx()
-
-	select {
-	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("took too long to receive after unpause")
-	}
-}
-
-func TestServer_ModifyTx_corrupt(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	p.ModifyTx(func(d []byte) []byte {
-		d[len(d)/2]++
-		return d
-	})
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); bytes.Equal(d, data) {
-		t.Fatalf("expected corrupted data, got %q", string(d))
-	}
-
-	p.UnmodifyTx()
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected uncorrupted data, got %q", string(d))
-	}
-}
-
-func TestServer_ModifyTx_packet_loss(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	// 50% packet loss
-	p.ModifyTx(func(d []byte) []byte {
-		half := len(d) / 2
-		return d[:half:half]
-	})
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); bytes.Equal(d, data) {
-		t.Fatalf("expected corrupted data, got %q", string(d))
-	}
-
-	p.UnmodifyTx()
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected uncorrupted data, got %q", string(d))
-	}
-}
-
-func TestServer_BlackholeTx(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	p.BlackholeTx()
-
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-
-	recvc := make(chan []byte, 1)
-	go func() {
-		recvc <- receive(t, ln)
-	}()
-
-	select {
-	case d := <-recvc:
-		t.Fatalf("unexpected data receive %q during blackhole", string(d))
-	case <-time.After(200 * time.Millisecond):
-	}
-
-	p.UnblackholeTx()
-
-	// expect different data, old data dropped
-	data[0]++
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-
-	select {
-	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("took too long to receive after unblackhole")
-	}
-}
-
-func TestServer_Shutdown(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	s, _ := p.(*server)
-	s.listener.Close()
-	time.Sleep(200 * time.Millisecond)
-
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-}
-
-func TestServer_ShutdownListener(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(forwardProxyAddr)
-		os.RemoveAll(dstAddr)
-	}()
-
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	// shut down destination
-	ln.Close()
-	time.Sleep(200 * time.Millisecond)
-
-	ln = listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	data := []byte("Hello World!")
-	send(t, data, scheme, dstAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-}
-
-func TestServerHTTP_Insecure_DelayTx(t *testing.T) { testServerHTTP(t, false, true) }
-func TestServerHTTP_Secure_DelayTx(t *testing.T)   { testServerHTTP(t, true, true) }
-func TestServerHTTP_Insecure_DelayRx(t *testing.T) { testServerHTTP(t, false, false) }
-func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, false) }
-func testServerHTTP(t *testing.T, secure, delayTx bool) {
-	lg := zaptest.NewLogger(t)
-	scheme := "tcp"
-	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
-	forwardProxyAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
-	ln1.Close()
-	ln2.Close()
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
-		d, err := io.ReadAll(req.Body)
-		req.Body.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d)))); err != nil {
-			t.Fatal(err)
-		}
-	})
-	tlsInfo := createTLSInfo(lg, secure)
-	var tlsConfig *tls.Config
-	if secure {
-		_, err := tlsInfo.ServerConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	srv := &http.Server{
-		Addr:      dstAddr,
-		Handler:   mux,
-		TLSConfig: tlsConfig,
-		ErrorLog:  log.New(io.Discard, "net/http", 0),
-	}
-
-	donec := make(chan struct{})
-	defer func() {
-		srv.Close()
-		<-donec
-	}()
-	go func() {
-		if !secure {
-			srv.ListenAndServe()
-		} else {
-			srv.ListenAndServeTLS(tlsInfo.CertFile, tlsInfo.KeyFile)
-		}
-		defer close(donec)
-	}()
-	time.Sleep(200 * time.Millisecond)
-
-	// setup forward proxy
-	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
-
-	cfg := ServerConfig{
-		Logger: lg,
-		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
-	}
-	if secure {
-		cfg.TLSInfo = tlsInfo
-	}
-	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
-	defer func() {
-		lg.Info("closing Proxy server...")
-		p.Close()
-		lg.Info("closed Proxy server.")
-	}()
-
-	data := "Hello World!"
-
-	var resp *http.Response
-	var err error
-	now := time.Now()
-	if secure {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		assert.NoError(t, terr)
-		cli := &http.Client{Transport: tp}
-		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
-		defer cli.CloseIdleConnections()
-		defer tp.CloseIdleConnections()
-	} else {
-		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
-		defer http.DefaultClient.CloseIdleConnections()
-	}
-	assert.NoError(t, err)
-	d, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-	took1 := time.Since(now)
-	t.Logf("took %v with no latency", took1)
-
-	rs1 := string(d)
-	exp := fmt.Sprintf("%q(confirmed)", data)
-	if rs1 != exp {
-		t.Fatalf("got %q, expected %q", rs1, exp)
-	}
-
-	lat, rv := 100*time.Millisecond, 10*time.Millisecond
-	if delayTx {
-		p.DelayTx(lat, rv)
-		defer p.UndelayTx()
-	} else {
-		p.DelayRx(lat, rv)
-		defer p.UndelayRx()
-	}
-
-	now = time.Now()
-	if secure {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		if terr != nil {
-			t.Fatal(terr)
-		}
-		cli := &http.Client{Transport: tp}
-		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
-		defer cli.CloseIdleConnections()
-		defer tp.CloseIdleConnections()
-	} else {
-		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
-		defer http.DefaultClient.CloseIdleConnections()
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	d, err = io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-	took2 := time.Since(now)
-	t.Logf("took %v with latency %v±%v", took2, lat, rv)
-
-	rs2 := string(d)
-	if rs2 != exp {
-		t.Fatalf("got %q, expected %q", rs2, exp)
-	}
-	if took1 > took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
-	}
-}
+// func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
+// func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
+// func testServerDelayAccept(t *testing.T, secure bool) {
+// 	lg := zaptest.NewLogger(t)
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	tlsInfo := createTLSInfo(lg, secure)
+// 	scheme := "unix"
+// 	ln := listen(t, scheme, dstAddr, tlsInfo)
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	cfg := ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	}
+// 	if secure {
+// 		cfg.TLSInfo = tlsInfo
+// 	}
+// 	p := NewServer(cfg)
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	data := []byte("Hello World!")
+
+// 	now := time.Now()
+// 	send(t, data, scheme, dstAddr, tlsInfo)
+// 	if d := receive(t, ln); !bytes.Equal(data, d) {
+// 		t.Fatalf("expected %q, got %q", string(data), string(d))
+// 	}
+// 	took1 := time.Since(now)
+// 	t.Logf("took %v with no latency", took1)
+
+// 	lat, rv := 700*time.Millisecond, 10*time.Millisecond
+// 	p.DelayAccept(lat, rv)
+// 	defer p.UndelayAccept()
+
+// 	now = time.Now()
+// 	send(t, data, scheme, dstAddr, tlsInfo)
+// 	if d := receive(t, ln); !bytes.Equal(data, d) {
+// 		t.Fatalf("expected %q, got %q", string(data), string(d))
+// 	}
+// 	took2 := time.Since(now)
+// 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
+
+// 	if took1 >= took2 {
+// 		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
+// 	}
+// }
+
+// func TestServer_PauseTx(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	p.PauseTx()
+
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+
+// 	recvc := make(chan []byte, 1)
+// 	go func() {
+// 		recvc <- receive(t, ln)
+// 	}()
+
+// 	select {
+// 	case d := <-recvc:
+// 		t.Fatalf("received unexpected data %q during pause", string(d))
+// 	case <-time.After(200 * time.Millisecond):
+// 	}
+
+// 	p.UnpauseTx()
+
+// 	select {
+// 	case d := <-recvc:
+// 		if !bytes.Equal(data, d) {
+// 			t.Fatalf("expected %q, got %q", string(data), string(d))
+// 		}
+// 	case <-time.After(2 * time.Second):
+// 		t.Fatal("took too long to receive after unpause")
+// 	}
+// }
+
+// func TestServer_ModifyTx_corrupt(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	p.ModifyTx(func(d []byte) []byte {
+// 		d[len(d)/2]++
+// 		return d
+// 	})
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); bytes.Equal(d, data) {
+// 		t.Fatalf("expected corrupted data, got %q", string(d))
+// 	}
+
+// 	p.UnmodifyTx()
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); !bytes.Equal(d, data) {
+// 		t.Fatalf("expected uncorrupted data, got %q", string(d))
+// 	}
+// }
+
+// func TestServer_ModifyTx_packet_loss(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	// 50% packet loss
+// 	p.ModifyTx(func(d []byte) []byte {
+// 		half := len(d) / 2
+// 		return d[:half:half]
+// 	})
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); bytes.Equal(d, data) {
+// 		t.Fatalf("expected corrupted data, got %q", string(d))
+// 	}
+
+// 	p.UnmodifyTx()
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); !bytes.Equal(d, data) {
+// 		t.Fatalf("expected uncorrupted data, got %q", string(d))
+// 	}
+// }
+
+// func TestServer_BlackholeTx(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	p.BlackholeTx()
+
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+
+// 	recvc := make(chan []byte, 1)
+// 	go func() {
+// 		recvc <- receive(t, ln)
+// 	}()
+
+// 	select {
+// 	case d := <-recvc:
+// 		t.Fatalf("unexpected data receive %q during blackhole", string(d))
+// 	case <-time.After(200 * time.Millisecond):
+// 	}
+
+// 	p.UnblackholeTx()
+
+// 	// expect different data, old data dropped
+// 	data[0]++
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+
+// 	select {
+// 	case d := <-recvc:
+// 		if !bytes.Equal(data, d) {
+// 			t.Fatalf("expected %q, got %q", string(data), string(d))
+// 		}
+// 	case <-time.After(2 * time.Second):
+// 		t.Fatal("took too long to receive after unblackhole")
+// 	}
+// }
+
+// func TestServer_Shutdown(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	s, _ := p.(*server)
+// 	s.listener.Close()
+// 	time.Sleep(200 * time.Millisecond)
+
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); !bytes.Equal(d, data) {
+// 		t.Fatalf("expected %q, got %q", string(data), string(d))
+// 	}
+// }
+
+// func TestServer_ShutdownListener(t *testing.T) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "unix"
+// 	forwardProxyAddr, dstAddr := newUnixAddr(), newUnixAddr()
+// 	defer func() {
+// 		os.RemoveAll(forwardProxyAddr)
+// 		os.RemoveAll(dstAddr)
+// 	}()
+
+// 	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	p := NewServer(ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	})
+
+// 	waitForServer(t, p)
+
+// 	defer p.Close()
+
+// 	// shut down destination
+// 	ln.Close()
+// 	time.Sleep(200 * time.Millisecond)
+
+// 	ln = listen(t, scheme, dstAddr, transport.TLSInfo{})
+// 	defer ln.Close()
+
+// 	data := []byte("Hello World!")
+// 	send(t, data, scheme, dstAddr, transport.TLSInfo{})
+// 	if d := receive(t, ln); !bytes.Equal(d, data) {
+// 		t.Fatalf("expected %q, got %q", string(data), string(d))
+// 	}
+// }
+
+// func TestServerHTTP_Insecure_DelayTx(t *testing.T) { testServerHTTP(t, false, true) }
+// func TestServerHTTP_Secure_DelayTx(t *testing.T)   { testServerHTTP(t, true, true) }
+// func TestServerHTTP_Insecure_DelayRx(t *testing.T) { testServerHTTP(t, false, false) }
+// func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, false) }
+// func testServerHTTP(t *testing.T, secure, delayTx bool) {
+// 	lg := zaptest.NewLogger(t)
+// 	scheme := "tcp"
+// 	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
+// 	forwardProxyAddr, dstAddr := ln1.Addr().String(), ln2.Addr().String()
+// 	ln1.Close()
+// 	ln2.Close()
+
+// 	mux := http.NewServeMux()
+// 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
+// 		d, err := io.ReadAll(req.Body)
+// 		req.Body.Close()
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 		if _, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d)))); err != nil {
+// 			t.Fatal(err)
+// 		}
+// 	})
+// 	tlsInfo := createTLSInfo(lg, secure)
+// 	var tlsConfig *tls.Config
+// 	if secure {
+// 		_, err := tlsInfo.ServerConfig()
+// 		if err != nil {
+// 			t.Fatal(err)
+// 		}
+// 	}
+// 	srv := &http.Server{
+// 		Addr:      dstAddr,
+// 		Handler:   mux,
+// 		TLSConfig: tlsConfig,
+// 		ErrorLog:  log.New(io.Discard, "net/http", 0),
+// 	}
+
+// 	donec := make(chan struct{})
+// 	defer func() {
+// 		srv.Close()
+// 		<-donec
+// 	}()
+// 	go func() {
+// 		if !secure {
+// 			srv.ListenAndServe()
+// 		} else {
+// 			srv.ListenAndServeTLS(tlsInfo.CertFile, tlsInfo.KeyFile)
+// 		}
+// 		defer close(donec)
+// 	}()
+// 	time.Sleep(200 * time.Millisecond)
+
+// 	// setup forward proxy
+// 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", forwardProxyAddr)
+
+// 	cfg := ServerConfig{
+// 		Logger: lg,
+// 		Listen: url.URL{Scheme: scheme, Host: forwardProxyAddr},
+// 	}
+// 	if secure {
+// 		cfg.TLSInfo = tlsInfo
+// 	}
+// 	p := NewServer(cfg)
+
+// 	waitForServer(t, p)
+
+// 	defer func() {
+// 		lg.Info("closing Proxy server...")
+// 		p.Close()
+// 		lg.Info("closed Proxy server.")
+// 	}()
+
+// 	data := "Hello World!"
+
+// 	var resp *http.Response
+// 	var err error
+// 	now := time.Now()
+// 	if secure {
+// 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+// 		assert.NoError(t, terr)
+// 		cli := &http.Client{Transport: tp}
+// 		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
+// 		defer cli.CloseIdleConnections()
+// 		defer tp.CloseIdleConnections()
+// 	} else {
+// 		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
+// 		defer http.DefaultClient.CloseIdleConnections()
+// 	}
+// 	assert.NoError(t, err)
+// 	d, err := io.ReadAll(resp.Body)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	resp.Body.Close()
+// 	took1 := time.Since(now)
+// 	t.Logf("took %v with no latency", took1)
+
+// 	rs1 := string(d)
+// 	exp := fmt.Sprintf("%q(confirmed)", data)
+// 	if rs1 != exp {
+// 		t.Fatalf("got %q, expected %q", rs1, exp)
+// 	}
+
+// 	lat, rv := 100*time.Millisecond, 10*time.Millisecond
+// 	if delayTx {
+// 		p.DelayTx(lat, rv)
+// 		defer p.UndelayTx()
+// 	} else {
+// 		p.DelayRx(lat, rv)
+// 		defer p.UndelayRx()
+// 	}
+
+// 	now = time.Now()
+// 	if secure {
+// 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+// 		if terr != nil {
+// 			t.Fatal(terr)
+// 		}
+// 		cli := &http.Client{Transport: tp}
+// 		resp, err = cli.Post("https://"+dstAddr+"/hello", "", strings.NewReader(data))
+// 		defer cli.CloseIdleConnections()
+// 		defer tp.CloseIdleConnections()
+// 	} else {
+// 		resp, err = http.Post("http://"+dstAddr+"/hello", "", strings.NewReader(data))
+// 		defer http.DefaultClient.CloseIdleConnections()
+// 	}
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	d, err = io.ReadAll(resp.Body)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	resp.Body.Close()
+// 	took2 := time.Since(now)
+// 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
+
+// 	rs2 := string(d)
+// 	if rs2 != exp {
+// 		t.Fatalf("got %q, expected %q", rs2, exp)
+// 	}
+// 	if took1 > took2 {
+// 		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
+// 	}
+// }
 
 func newUnixAddr() string {
 	now := time.Now().UnixNano()
@@ -660,46 +676,67 @@ func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln ne
 	return ln
 }
 
-func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
-	var out net.Conn
+func startHTTPServer(scheme, addr string, tlsInfo transport.TLSInfo, httpServer *http.Server) {
 	var err error
+	var ln net.Listener
+
 	if !tlsInfo.Empty() {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		if terr != nil {
-			t.Fatal(terr)
-		}
-		out, err = tp.DialContext(context.Background(), scheme, addr)
+		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
 	} else {
-		out, err = net.Dial(scheme, addr)
+		ln, err = net.Listen(scheme, addr)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := httpServer.Serve(ln); err != http.ErrServerClosed {
+		// always returns error. ErrServerClosed on graceful close
+		log.Fatalf(fmt.Sprintf("startHTTPServer Serve(): %v", err))
+	}
+}
+
+func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
+	var err error
+	var tp *http.Transport
+	if !tlsInfo.Empty() {
+		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
+	} else {
+		tp, err = transport.NewTransport(tlsInfo, 3*time.Second)
 	}
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = out.Write(data); err != nil {
-		t.Fatal(err)
-	}
-	if err = out.Close(); err != nil {
-		t.Fatal(err)
-	}
-}
 
-func receive(t *testing.T, ln net.Listener) (data []byte) {
-	buf := bytes.NewBuffer(make([]byte, 0, 1024))
-	for {
-		in, err := ln.Accept()
-		if err != nil {
-			t.Fatal(err)
-		}
-		var n int64
-		n, err = buf.ReadFrom(in)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if n > 0 {
-			break
-		}
+	// If you do Dial(), you will get a Conn that you can write the byte stream directly
+	// If you do RoundTrip(), you will get a connection managed for you, but you need to send valid HTTP request
+	dataReader := bytes.NewReader(data)
+	protocolScheme := scheme
+	if scheme == "tcp" {
+		protocolScheme = "http"
+	} else if scheme == "unix" {
+		protocolScheme = scheme
+	} else {
+		panic("Scheme not supported")
 	}
-	return buf.Bytes()
+	rawURL := url.URL{
+		Scheme: protocolScheme,
+		Host:   addr,
+	}
+
+	log.Println("Before POST", rawURL.String())
+	req, err := http.NewRequest("POST", rawURL.String(), dataReader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := tp.RoundTrip(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	log.Println("After POST")
+
+	if res.StatusCode != 200 {
+		t.Fatalf("status code not 200")
+	}
 }
 
 // Waits until a proxy is ready to serve.
