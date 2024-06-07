@@ -260,6 +260,7 @@ function merge_cov {
   merge_cov_files "${coverdir}" "${coverdir}/all.coverprofile"
 }
 
+# https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes
 function cov_pass {
   # shellcheck disable=SC2153
   if [ -z "${COVERDIR:-}" ]; then
