@@ -225,9 +225,6 @@ type Config struct {
 	AdvertisePeerUrls, AdvertiseClientUrls                 []url.URL
 	//revive:enable:var-naming
 
-	// User can either specify CustomTLSConfig or ClientTLSInfo. CustomTLSConfig is especially useful
-	// when you want to programmatically inject certificates instead of referencing file
-	// CustomClientTLSConfig or ClientTLSInfo must be specified.
 	// CustomClientTLSConfig is especially useful when you want to
 	// programmatically inject certificates instead of referencing file
 	// paths to certificates.

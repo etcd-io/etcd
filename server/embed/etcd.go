@@ -862,7 +862,7 @@ func (e *Etcd) serveClients() {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, e.cfg.CustomClientTLSConfig, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, e.cfg.CustomClientTLSConfig, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
 }

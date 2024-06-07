@@ -146,11 +146,7 @@ func (sctx *serveCtx) serve(
 				Handler:  createAccessController(sctx.lg, s, httpmux),
 				ErrorLog: logger, // do not log user error
 			}
-<<<<<<< HEAD
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-=======
-			if err = configureHttpServer(srv, &s.Cfg); err != nil {
->>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
+			if err = configureHTTPServer(srv, &s.Cfg); err != nil {
 				sctx.lg.Error("Configure http server failed", zap.Error(err))
 				return err
 			}
@@ -238,11 +234,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-<<<<<<< HEAD
-			if err := configureHTTPServer(srv, s.Cfg); err != nil {
-=======
-			if err := configureHttpServer(srv, &s.Cfg); err != nil {
->>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
+			if err := configureHTTPServer(srv, &s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -278,11 +270,7 @@ func (sctx *serveCtx) serve(
 	return server()
 }
 
-<<<<<<< HEAD
-func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
-=======
-func configureHttpServer(srv *http.Server, cfg *config.ServerConfig) error {
->>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
+func configureHTTPServer(srv *http.Server, cfg *config.ServerConfig) error {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
