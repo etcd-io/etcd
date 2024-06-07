@@ -193,7 +193,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("failed to find match string: %w", ctx.Err())
+			return "", fmt.Errorf("context done before matching log found")
 		case <-time.After(time.Millisecond * 10):
 			// continue loop
 		}
@@ -203,7 +203,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 	// NOTE: we wait readCloseCh for ep.read() to complete draining the log before acquring the lock.
 	case <-ep.readCloseCh:
 	case <-ctx.Done():
-		return "", fmt.Errorf("failed to find match string: %w", ctx.Err())
+		return "", fmt.Errorf("context done before to found matching log")
 	}
 
 	ep.mu.Lock()

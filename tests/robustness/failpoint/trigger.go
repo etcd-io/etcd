@@ -68,7 +68,7 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 	for {
 		_, rev, err = cc.Get(ctx, "/", 0)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get revision: %w", err)
 		}
 
 		if !t.multiBatchCompaction || rev > int64(clus.Cfg.ServerConfig.ExperimentalCompactionBatchLimit) {
