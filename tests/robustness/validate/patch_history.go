@@ -192,6 +192,7 @@ func persistedOperationsReturnTime(allOperations []porcupine.Operation, persiste
 				}
 			}
 		case model.LeaseGrant:
+		case model.LeaseRevoke:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}
@@ -216,6 +217,7 @@ func operationReturnTime(operations []porcupine.Operation) map[model.EtcdOperati
 			}
 		case model.Range:
 		case model.LeaseGrant:
+		case model.LeaseRevoke:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}

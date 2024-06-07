@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"maps"
 	"reflect"
 	"sort"
 
@@ -75,6 +76,20 @@ func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, Etcd
 	return Match(MaybeEtcdResponse{EtcdResponse: response}, modelResponse), newState
 }
 
+func (s EtcdState) DeepCopy() EtcdState {
+	newState := EtcdState{Revision: s.Revision}
+
+	newState.KeyValues = maps.Clone(s.KeyValues)
+	newState.KeyLeases = maps.Clone(s.KeyLeases)
+
+	newLeases := map[int64]EtcdLease{}
+	for key, val := range s.Leases {
+		newLeases[key] = val.DeepCopy()
+	}
+	newState.Leases = newLeases
+	return newState
+}
+
 func freshEtcdState() EtcdState {
 	return EtcdState{
 		Revision:  1,
@@ -86,25 +101,22 @@ func freshEtcdState() EtcdState {
 
 // Step handles a successful request, returning updated state and response it would generate.
 func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
-	newKVs := map[string]ValueRevision{}
-	for k, v := range s.KeyValues {
-		newKVs[k] = v
-	}
-	s.KeyValues = newKVs
+	newState := s.DeepCopy()
+
 	switch request.Type {
 	case Range:
-		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
-			resp := s.getRange(request.Range.RangeOptions)
-			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		if request.Range.Revision == 0 || request.Range.Revision == newState.Revision {
+			resp := newState.getRange(request.Range.RangeOptions)
+			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: newState.Revision}}
 		}
-		if request.Range.Revision > s.Revision {
-			return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+		if request.Range.Revision > newState.Revision {
+			return newState, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
 		}
-		return s, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: s.Revision}}
+		return newState, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: newState.Revision}}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
-			if val := s.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
+			if val := newState.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
 				failure = true
 				break
 			}
@@ -119,27 +131,27 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 			switch op.Type {
 			case RangeOperation:
 				opResp[i] = EtcdOperationResult{
-					RangeResponse: s.getRange(op.Range),
+					RangeResponse: newState.getRange(op.Range),
 				}
 			case PutOperation:
-				_, leaseExists := s.Leases[op.Put.LeaseID]
+				_, leaseExists := newState.Leases[op.Put.LeaseID]
 				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
-				s.KeyValues[op.Put.Key] = ValueRevision{
+				newState.KeyValues[op.Put.Key] = ValueRevision{
 					Value:       op.Put.Value,
-					ModRevision: s.Revision + 1,
+					ModRevision: newState.Revision + 1,
 				}
 				increaseRevision = true
-				s = detachFromOldLease(s, op.Put.Key)
+				newState = detachFromOldLease(newState, op.Put.Key)
 				if leaseExists {
-					s = attachToNewLease(s, op.Put.LeaseID, op.Put.Key)
+					newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
 				}
 			case DeleteOperation:
-				if _, ok := s.KeyValues[op.Delete.Key]; ok {
-					delete(s.KeyValues, op.Delete.Key)
+				if _, ok := newState.KeyValues[op.Delete.Key]; ok {
+					delete(newState.KeyValues, op.Delete.Key)
 					increaseRevision = true
-					s = detachFromOldLease(s, op.Delete.Key)
+					newState = detachFromOldLease(newState, op.Delete.Key)
 					opResp[i].Deleted = 1
 				}
 			default:
@@ -147,37 +159,37 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 			}
 		}
 		if increaseRevision {
-			s.Revision++
+			newState.Revision++
 		}
-		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: s.Revision}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: newState.Revision}}
 	case LeaseGrant:
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
 			Keys:    map[string]struct{}{},
 		}
-		s.Leases[request.LeaseGrant.LeaseID] = lease
-		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+		newState.Leases[request.LeaseGrant.LeaseID] = lease
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
 	case LeaseRevoke:
 		//Delete the keys attached to the lease
 		keyDeleted := false
-		for key := range s.Leases[request.LeaseRevoke.LeaseID].Keys {
+		for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
 			//same as delete.
-			if _, ok := s.KeyValues[key]; ok {
+			if _, ok := newState.KeyValues[key]; ok {
 				if !keyDeleted {
 					keyDeleted = true
 				}
-				delete(s.KeyValues, key)
-				delete(s.KeyLeases, key)
+				delete(newState.KeyValues, key)
+				delete(newState.KeyLeases, key)
 			}
 		}
 		//delete the lease
-		delete(s.Leases, request.LeaseRevoke.LeaseID)
+		delete(newState.Leases, request.LeaseRevoke.LeaseID)
 		if keyDeleted {
-			s.Revision++
+			newState.Revision++
 		}
-		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: s.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
-		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: s.Revision}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: newState.Revision}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
@@ -375,6 +387,13 @@ var leased = struct{}{}
 type EtcdLease struct {
 	LeaseID int64
 	Keys    map[string]struct{}
+}
+
+func (el EtcdLease) DeepCopy() EtcdLease {
+	return EtcdLease{
+		LeaseID: el.LeaseID,
+		Keys:    maps.Clone(el.Keys),
+	}
 }
 
 type ValueRevision struct {

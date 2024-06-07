@@ -154,21 +154,25 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 			_, err = kc.OptimisticDelete(writeCtx, key, rev)
 			nonUniqueWriteLimiter.Return()
 		} else {
+			shouldReturn := false
+
 			choices := t.writeChoices
-			if !nonUniqueWriteLimiter.Take() {
+			if shouldReturn = nonUniqueWriteLimiter.Take(); !shouldReturn {
 				choices = filterOutNonUniqueKubernetesWrites(t.writeChoices)
 			}
 			op := pickRandom(choices)
 			switch op {
 			case KubernetesDelete:
 				_, err = kc.OptimisticDelete(writeCtx, key, rev)
-				nonUniqueWriteLimiter.Return()
 			case KubernetesUpdate:
 				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestID()), rev)
 			case KubernetesCreate:
 				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestID()))
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
+			}
+			if shouldReturn {
+				nonUniqueWriteLimiter.Return()
 			}
 		}
 	}

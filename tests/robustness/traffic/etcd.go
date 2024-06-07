@@ -115,10 +115,12 @@ func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter
 			return
 		default:
 		}
+		shouldReturn := false
+
 		// Avoid multiple failed writes in a row
 		if lastOperationSucceeded {
 			choices := t.requests
-			if !nonUniqueWriteLimiter.Take() {
+			if shouldReturn = nonUniqueWriteLimiter.Take(); !shouldReturn {
 				choices = filterOutNonUniqueEtcdWrites(choices)
 			}
 			requestType = pickRandom(choices)
@@ -126,7 +128,7 @@ func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter
 			requestType = Get
 		}
 		rev, err := client.Request(ctx, requestType, lastRev)
-		if requestType == Delete || requestType == LeaseRevoke {
+		if shouldReturn {
 			nonUniqueWriteLimiter.Return()
 		}
 		lastOperationSucceeded = err == nil

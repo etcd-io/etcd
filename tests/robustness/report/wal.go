@@ -172,7 +172,7 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 	case raftReq.LeaseRevoke != nil:
 		return &model.EtcdRequest{
 			Type:        model.LeaseRevoke,
-			LeaseRevoke: &model.LeaseRevokeRequest{LeaseID: raftReq.LeaseGrant.ID},
+			LeaseRevoke: &model.LeaseRevokeRequest{LeaseID: raftReq.LeaseRevoke.ID},
 		}, nil
 	case raftReq.LeaseGrant != nil:
 		return &model.EtcdRequest{
