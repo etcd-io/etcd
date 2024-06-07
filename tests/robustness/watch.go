@@ -67,44 +67,58 @@ type watchConfig struct {
 // watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
 func watchUntilRevision(ctx context.Context, t *testing.T, c *client.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
 	var maxRevision int64
-	var lastRevision int64
+	var lastRevision int64 = 1
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	watch := c.Watch(ctx, "", 1, true, true, false)
+resetWatch:
 	for {
-		select {
-		case <-ctx.Done():
-			if maxRevision == 0 {
-				t.Errorf("Client didn't collect all events, max revision not set")
-			}
-			if lastRevision < maxRevision {
-				t.Errorf("Client didn't collect all events, revision got %d, expected: %d", lastRevision, maxRevision)
-			}
-			return
-		case revision, ok := <-maxRevisionChan:
-			if ok {
-				maxRevision = revision
-				if lastRevision >= maxRevision {
-					cancel()
-				}
-			} else {
-				// Only cancel if maxRevision was never set.
+		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
+		for {
+			select {
+			case <-ctx.Done():
 				if maxRevision == 0 {
+					t.Errorf("Client didn't collect all events, max revision not set")
+				}
+				if lastRevision < maxRevision {
+					t.Errorf("Client didn't collect all events, revision got %d, expected: %d", lastRevision, maxRevision)
+				}
+				return
+			case revision, ok := <-maxRevisionChan:
+				if ok {
+					maxRevision = revision
+					if lastRevision >= maxRevision {
+						cancel()
+					}
+				} else {
+					// Only cancel if maxRevision was never set.
+					if maxRevision == 0 {
+						cancel()
+					}
+				}
+			case resp, ok := <-watch:
+				if !ok {
+					t.Logf("Watch channel closed")
+					continue resetWatch
+				}
+				if cfg.requestProgress {
+					c.RequestProgress(ctx)
+				}
+
+				if resp.Err() != nil {
+					if resp.Canceled {
+						if resp.CompactRevision > lastRevision {
+							lastRevision = resp.CompactRevision
+						}
+						continue resetWatch
+					}
+					t.Errorf("Watch stream received error, err %v", resp.Err())
+				}
+				if len(resp.Events) > 0 {
+					lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
+				}
+				if maxRevision != 0 && lastRevision >= maxRevision {
 					cancel()
 				}
-			}
-		case resp := <-watch:
-			if cfg.requestProgress {
-				c.RequestProgress(ctx)
-			}
-			if resp.Err() != nil && !resp.Canceled {
-				t.Errorf("Watch stream received error, err %v", resp.Err())
-			}
-			if len(resp.Events) > 0 {
-				lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
-			}
-			if maxRevision != 0 && lastRevision >= maxRevision {
-				cancel()
 			}
 		}
 	}

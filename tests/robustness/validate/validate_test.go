@@ -49,11 +49,9 @@ func TestDataReports(t *testing.T) {
 			}
 			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
 
-			if t.Failed() {
-				err := visualize(filepath.Join(path, "history.html"))
-				if err != nil {
-					t.Fatal(err)
-				}
+			err = visualize(filepath.Join(path, "history.html"))
+			if err != nil {
+				t.Fatal(err)
 			}
 		})
 	}

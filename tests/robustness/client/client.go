@@ -193,9 +193,13 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 func (c *RecordingClient) Compact(ctx context.Context, rev int64) (*clientv3.CompactResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
+	callTime := time.Since(c.baseTime)
 	resp, err := c.client.Compact(ctx, rev)
+	returnTime := time.Since(c.baseTime)
+	c.kvOperations.AppendCompact(rev, callTime, returnTime, resp, err)
 	return resp, err
 }
+
 func (c *RecordingClient) MemberList(ctx context.Context, opts ...clientv3.OpOption) (*clientv3.MemberListResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
