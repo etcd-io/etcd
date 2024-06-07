@@ -591,21 +591,6 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 				return peers[i].Listener.Close()
 			}
 		}
-<<<<<<< HEAD
-		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
-		peers[i].Listener, err = transport.NewListenerWithOpts(u.Host, u.Scheme,
-			transport.WithTLSInfo(&cfg.PeerTLSInfo),
-			transport.WithSocketOpts(&cfg.SocketOpts),
-			transport.WithTimeout(rafthttp.ConnReadTimeout, rafthttp.ConnWriteTimeout),
-		)
-		if err != nil {
-			cfg.logger.Error("creating peer listener failed", zap.Error(err))
-			return nil, err
-		}
-		// once serve, overwrite with 'http.Server.Shutdown'
-		peers[i].close = func(context.Context) error {
-			return peers[i].Listener.Close()
-=======
 	} else if len(cfg.CustomPeerTLSConfig.Certificates) != 0 {
 		for i, u := range cfg.ListenPeerUrls {
 			if u.Scheme == "http" {
@@ -626,7 +611,6 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			peers[i].close = func(context.Context) error {
 				return peers[i].Listener.Close()
 			}
->>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
 		}
 	}
 
@@ -876,11 +860,7 @@ func (e *Etcd) serveClients() {
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
 		go func(s *serveCtx) {
-<<<<<<< HEAD
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
-=======
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, e.cfg.CustomClientTLSConfig, mux, e.errHandler, e.grpcGatewayDial(splitHttp), splitHttp, gopts...))
->>>>>>> 1e354aafa (etcdembed: allow passing in a *tls.Config object for the embedded ETCD server)
+			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, e.cfg.CustomClientTLSConfig, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
 }
