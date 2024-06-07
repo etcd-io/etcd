@@ -41,7 +41,7 @@ func (t triggerDefrag) Trigger(ctx context.Context, _ *testing.T, member e2e.Etc
 	}
 	defer cc.Close()
 	_, err = cc.Defragment(ctx)
-	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
+	if err != nil && !connectionError(err) {
 		return nil, err
 	}
 	return nil, nil
@@ -77,7 +77,7 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 		time.Sleep(50 * time.Millisecond)
 	}
 	_, err = cc.Compact(ctx, rev)
-	if err != nil && !strings.Contains(err.Error(), "error reading from server: EOF") {
+	if err != nil && !connectionError(err) {
 		return nil, err
 	}
 	return []report.ClientReport{cc.Report()}, nil
@@ -85,4 +85,8 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 
 func (t triggerCompact) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
 	return true
+}
+
+func connectionError(err error) bool {
+	return strings.Contains(err.Error(), "error reading from server: EOF") || strings.HasSuffix(err.Error(), "read: connection reset by peer")
 }
