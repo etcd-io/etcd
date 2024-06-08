@@ -49,9 +49,13 @@ Errors in etcd model could be causing false positives, which makes the ability t
       logger.go:146: 2024-04-08T09:45:27.734+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessExploratory_Etcd_HighTraffic_ClusterOfSize1"}
       ```
 
-   * **For remote runs on CI:** you need to go to the Github Actions page, download one of the Artifacts, extract it locally.
+   * **For remote runs on CI:** you need to go to the [Prow Dashboard](https://prow.k8s.io/job-history/gs/kubernetes-jenkins/logs/ci-etcd-robustness-amd64), go to a build, download one of the Artifacts (`artifacts/results.zip`), and extract it locally.
 
-     ![github actions artifact](./github_actions_artifact.png)
+     ![Prow job run page](./prow_job.png)
+
+     ![Prow job artifacts run page](./prow_job_artifacts_page.png)
+
+     ![Prow job artifacts run page artifacts dir](./prow_job_artifacts_dir_page.png)
 
      Each directory will be prefixed by `TestRobustness` each containing a robustness test report.
 
