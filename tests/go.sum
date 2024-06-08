@@ -138,8 +138,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/bbolt v1.4.0-alpha.1 h1:3yrqQzbRRPFPdOMWS/QQIVxVnzSkAZQYeWlZFv1kbj4=
 go.etcd.io/bbolt v1.4.0-alpha.1/go.mod h1:S/Z/Nm3iuOnyO1W4XuFfPci51Gj6F1Hv0z8hisyYYOw=
-go.etcd.io/gofail v0.1.0 h1:XItAMIhOojXFQMgrxjnd2EIIHun/d5qL0Pf7FzVTkFg=
-go.etcd.io/gofail v0.1.0/go.mod h1:VZBCXYGZhHAinaBiiqYvuDynvahNsAyLFwB3kEHKz1M=
+go.etcd.io/gofail v0.1.1-0.20240517100945-baefa9867390 h1:GGzKGOClkyeDNcshzpNHh7hyou+ErMhThPLYZ1qUhFs=
+go.etcd.io/gofail v0.1.1-0.20240517100945-baefa9867390/go.mod h1:d0hc7ZE3PPyYmNnpCX+sFVBzMUznSvNkmJmzUNDiDaA=
 go.etcd.io/raft/v3 v3.6.0-alpha.0 h1:cMmjAEjCKMGiQPowjSWM43Y5ZnBEeNP8RSYcm3ewtns=
 go.etcd.io/raft/v3 v3.6.0-alpha.0/go.mod h1:QpxpKeYmocQQFHP75LxNrdJTukZmqQig9lotwYLsUJY=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.52.0 h1:vS1Ao/R55RNV4O7TA2Qopok8yN+X0LIP6RVWLFkprck=
