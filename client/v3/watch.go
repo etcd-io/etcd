@@ -765,11 +765,18 @@ func (w *watchGRPCStream) serveWatchClient(wc pb.Watch_WatchClient) {
 	for {
 		resp, err := wc.Recv()
 		if err != nil {
+			fmt.Printf("Adding new error response to watch, err: %s \n", err)
 			select {
 			case w.errc <- err:
 			case <-w.donec:
 			}
 			return
+		}
+
+		if len(resp.Events) > 0 {
+			fmt.Printf("Adding new event response to watch, revs: %d...%d \n", resp.Events[0].Kv.ModRevision, resp.Events[len(resp.Events)-1].Kv.ModRevision)
+		} else {
+			fmt.Printf("Adding response watch: %+v\n", resp)
 		}
 		select {
 		case w.respc <- resp:

@@ -16,6 +16,7 @@ package validate
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -206,7 +207,8 @@ func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 			}
 		}
 		if diff := cmp.Diff(wantEvents, gotEvents, cmpopts.IgnoreFields(model.PersistedEvent{}, "IsCreate")); diff != "" {
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID))
+			fmt.Println(diff)
 			err = errBrokeReliable
 		}
 	}

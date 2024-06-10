@@ -34,18 +34,11 @@ var (
 		leaseTTL:     DefaultLeaseTTL,
 		largePutSize: 32769,
 		requests: []choiceWeight[etcdRequestType]{
-			{choice: Get, weight: 15},
-			{choice: List, weight: 15},
-			{choice: StaleGet, weight: 10},
-			{choice: StaleList, weight: 10},
-			{choice: Delete, weight: 5},
-			{choice: MultiOpTxn, weight: 5},
-			{choice: PutWithLease, weight: 5},
-			{choice: LeaseRevoke, weight: 5},
-			{choice: CompareAndSet, weight: 5},
-			{choice: Put, weight: 15},
-			{choice: LargePut, weight: 5},
-			{choice: Compact, weight: 5},
+			{choice: Get, weight: 25},
+			{choice: List, weight: 25},
+			{choice: Delete, weight: 20},
+			{choice: Put, weight: 20},
+			{choice: Compact, weight: 10},
 		},
 	}
 	EtcdPut = etcdTraffic{
