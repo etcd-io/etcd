@@ -221,11 +221,6 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[Revision]
 		if revIndex != -1 {
 			g.revs = g.revs[revIndex:]
 		}
-		// remove any tombstone
-		if len(g.revs) == 1 && genIdx != len(ki.generations)-1 {
-			delete(available, g.revs[0])
-			genIdx++
-		}
 	}
 
 	// remove the previous generations.
@@ -238,14 +233,7 @@ func (ki *keyIndex) keep(atRev int64, available map[Revision]struct{}) {
 		return
 	}
 
-	genIdx, revIndex := ki.doCompact(atRev, available)
-	g := &ki.generations[genIdx]
-	if !g.isEmpty() {
-		// remove any tombstone
-		if revIndex == len(g.revs)-1 && genIdx != len(ki.generations)-1 {
-			delete(available, g.revs[revIndex])
-		}
-	}
+	ki.doCompact(atRev, available)
 }
 
 func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (genIdx int, revIndex int) {
@@ -262,8 +250,15 @@ func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (gen
 	genIdx, g := 0, &ki.generations[0]
 	// find first generation includes atRev or created after atRev
 	for genIdx < len(ki.generations)-1 {
-		if tomb := g.revs[len(g.revs)-1].Main; tomb > atRev {
-			break
+		// if len(g.revs) == 1, then it means that the generation has
+		// only one tombstone revision, which was kept in last compact
+		// operation. We need to clean it up in this round of compact
+		// operation. Refer to discussion in
+		// https://github.com/etcd-io/etcd/issues/18089.
+		if len(g.revs) > 1 {
+			if tomb := g.revs[len(g.revs)-1].Main; tomb >= atRev {
+				break
+			}
 		}
 		genIdx++
 		g = &ki.generations[genIdx]
