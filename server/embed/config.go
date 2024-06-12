@@ -285,7 +285,10 @@ type Config struct {
 	GRPCKeepAliveTimeout time.Duration `json:"grpc-keepalive-timeout"`
 
 	// GRPCAdditionalServerOptions is the additional server option hook
-	// for changing the default internal gRPC configuration.
+	// for changing the default internal gRPC configuration. Note these
+	// additional configurations take precedence over the existing individual
+	// configurations if present. Please refer to
+	// https://github.com/etcd-io/etcd/pull/14066#issuecomment-1248682996
 	GRPCAdditionalServerOptions []grpc.ServerOption `json:"grpc-additional-server-options"`
 
 	// SocketOpts are socket options passed to listener config.
