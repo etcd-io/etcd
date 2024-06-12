@@ -23,14 +23,37 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
+	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+)
+
+var (
+	snapshotExample = util.Normalize(`
+	# Save snapshot to a given file
+	etcdctl snapshot save /backup/etcd-snapshot.db
+
+	# Get snapshot from given address and save it to file
+	etcdctl snapshot save --endpoints=127.0.0.1:3000 /backup/etcd-snapshot.db 
+	
+	# Get snapshot from given address with certificates
+	etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/etcd.crt --key=/etc/etcd/etcd.key snapshot save /backup/etcd-snapshot.db
+
+	# Get snapshot wih certain user and password
+	etcdctl --user=root --password=password123 snapshot save /backup/etcd-snapshot.db
+
+	# Get snapshot from given address with timeout
+	etcdctl --endpoints=https://127.0.0.1:2379 --dial-timeout=20s snapshot save /backup/etcd-snapshot.db
+
+	# Save snapshot with desirable time format
+	etcdctl snapshot save /mnt/backup/etcd/backup_$(date +%Y%m%d_%H%M%S).db`)
 )
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
 func NewSnapshotCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snapshot <subcommand>",
-		Short: "Manages etcd node snapshots",
+		Use:     "snapshot <subcommand>",
+		Short:   "Manages etcd node snapshots",
+		Example: snapshotExample,
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	return cmd
@@ -38,15 +61,16 @@ func NewSnapshotCommand() *cobra.Command {
 
 func NewSnapshotSaveCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "save <filename>",
-		Short: "Stores an etcd node backend snapshot to a given file",
-		Run:   snapshotSaveCommandFunc,
+		Use:     "save <filename>",
+		Short:   "Stores an etcd node backend snapshot to a given file",
+		Run:     snapshotSaveCommandFunc,
+		Example: snapshotExample,
 	}
 }
 
 func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		err := fmt.Errorf("snapshot save expects one argument")
+		err := fmt.Errorf("snapshot save expects one argument <filename>")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
