@@ -1,9 +1,11 @@
 ---
 name: Coverage
-on: [push]
+on: [push, pull_request]
 permissions: read-all
 jobs:
   coverage:
+    # this is to prevent the job to run at forked projects
+    if: github.repository == 'etcd-io/etcd'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
