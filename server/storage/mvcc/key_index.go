@@ -233,7 +233,14 @@ func (ki *keyIndex) keep(atRev int64, available map[Revision]struct{}) {
 		return
 	}
 
-	ki.doCompact(atRev, available)
+	genIdx, revIndex := ki.doCompact(atRev, available)
+	g := &ki.generations[genIdx]
+	if !g.isEmpty() {
+		// remove any tombstone
+		if revIndex == len(g.revs)-1 && genIdx != len(ki.generations)-1 {
+			delete(available, g.revs[revIndex])
+		}
+	}
 }
 
 func (ki *keyIndex) doCompact(atRev int64, available map[Revision]struct{}) (genIdx int, revIndex int) {
