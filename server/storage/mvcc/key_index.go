@@ -29,7 +29,7 @@ var (
 // keyIndex stores the revisions of a key in the backend.
 // Each keyIndex has at least one key generation.
 // Each generation might have several key versions.
-// Tombstone on a key appends an tombstone version at the end
+// Tombstone on a key appends a tombstone version at the end
 // of the current generation and creates a new empty generation.
 // Each version of a key has an index pointing to the backend.
 //
