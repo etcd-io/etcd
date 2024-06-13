@@ -47,5 +47,6 @@ var (
 
 func init() {
 	prometheus.MustRegister(walFsyncSec)
+	prometheus.MustRegister(walWriteSec)
 	prometheus.MustRegister(walWriteBytes)
 }
