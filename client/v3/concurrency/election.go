@@ -73,7 +73,7 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 	k := fmt.Sprintf("%s%x", e.keyPrefix, s.Lease())
 	txn := client.Txn(ctx).If(v3.Compare(v3.CreateRevision(k), "=", 0))
 	txn = txn.Then(v3.OpPut(k, val, v3.WithLease(s.Lease())))
-	txn = txn.Else(v3.OpGet(k))
+	txn = txn.Else(v3.OpGet(k, v3.WithFirstCreate()...))
 	resp, err := txn.Commit()
 	if err != nil {
 		return err
@@ -195,13 +195,15 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 					return
 				}
 				// only accept puts; a delete will make observe() spin
+				// find the smaller create revision among the puts
 				for _, ev := range wr.Events {
 					if ev.Type == mvccpb.PUT {
-						hdr, kv = &wr.Header, ev.Kv
-						// may have multiple revs; hdr.rev = the last rev
-						// set to kv's rev in case batch has multiple Puts
-						hdr.Revision = kv.ModRevision
-						break
+						if kv == nil || ev.Kv.CreateRevision < kv.CreateRevision {
+							hdr, kv = &wr.Header, ev.Kv
+							// may have multiple revs; hdr.rev = the last rev
+							// set to kv's rev in case batch has multiple Puts
+							hdr.Revision = kv.ModRevision
+						}
 					}
 				}
 			}
