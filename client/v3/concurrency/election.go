@@ -73,7 +73,7 @@ func (e *Election) Campaign(ctx context.Context, val string) error {
 	k := fmt.Sprintf("%s%x", e.keyPrefix, s.Lease())
 	txn := client.Txn(ctx).If(v3.Compare(v3.CreateRevision(k), "=", 0))
 	txn = txn.Then(v3.OpPut(k, val, v3.WithLease(s.Lease())))
-	txn = txn.Else(v3.OpGet(k, v3.WithFirstCreate()...))
+	txn = txn.Else(v3.OpGet(k))
 	resp, err := txn.Commit()
 	if err != nil {
 		return err
