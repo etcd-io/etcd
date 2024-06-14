@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -66,6 +67,7 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		outputPaths, errOutputPaths := make([]string, 0), make([]string, 0)
+		logDirs := make([]string, 0)
 		isJournal := false
 		for _, v := range cfg.LogOutputs {
 			switch v {
@@ -95,6 +97,11 @@ func (cfg *Config) setupLogging() error {
 					}
 				} else {
 					path = v
+
+					logDir := filepath.Dir(path)
+					if logDir != "/" { // no need to mkdir
+						logDirs = append(logDirs, logDir)
+					}
 				}
 				outputPaths = append(outputPaths, path)
 				errOutputPaths = append(errOutputPaths, path)
@@ -132,6 +139,14 @@ func (cfg *Config) setupLogging() error {
 			syncer, lerr := getJournalWriteSyncer()
 			if lerr != nil {
 				return lerr
+			}
+
+			// otherwise, zap log syncer will fail with:
+			// "couldn't open sink"
+			for _, logDir := range logDirs {
+				if err := os.MkdirAll(filepath.Dir(logDir), os.FileMode(0755)); err != nil {
+					return err
+				}
 			}
 
 			lvl := zap.NewAtomicLevelAt(logutil.ConvertToZapLevel(cfg.LogLevel))
