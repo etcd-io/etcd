@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// featuregate package is copied from k8s.io/component-base@v0.30.1 to avoid any potential circular dependency between k8s and etcd.
+// Package featuregate is copied from k8s.io/component-base@v0.30.1 to avoid any potential circular dependency between k8s and etcd.
 package featuregate
 
 import (
-	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -25,9 +24,7 @@ import (
 	"sync/atomic"
 
 	"github.com/spf13/pflag"
-
-	"k8s.io/apimachinery/pkg/util/naming"
-	"k8s.io/klog/v2"
+	"go.uber.org/zap"
 )
 
 type Feature string
@@ -128,6 +125,8 @@ type MutableFeatureGate interface {
 
 // featureGate implements FeatureGate as well as pflag.Value for flag parsing.
 type featureGate struct {
+	lg *zap.Logger
+
 	featureGateName string
 
 	special map[Feature]func(map[Feature]FeatureSpec, map[Feature]bool, bool)
@@ -165,18 +164,15 @@ func setUnsetBetaGates(known map[Feature]FeatureSpec, enabled map[Feature]bool, 
 // Set, String, and Type implement pflag.Value
 var _ pflag.Value = &featureGate{}
 
-// internalPackages are packages that ignored when creating a name for featureGates. These packages are in the common
-// call chains, so they'd be unhelpful as names.
-var internalPackages = []string{"k8s.io/component-base/featuregate/feature_gate.go"}
-
-func NewFeatureGate() *featureGate {
+func New(name string, lg *zap.Logger) *featureGate {
 	known := map[Feature]FeatureSpec{}
 	for k, v := range defaultFeatures {
 		known[k] = v
 	}
 
 	f := &featureGate{
-		featureGateName: naming.GetNameFromCallsite(internalPackages...),
+		lg:              lg,
+		featureGateName: name,
 		special:         specialFeatures,
 	}
 	f.known.Store(known)
@@ -239,9 +235,9 @@ func (f *featureGate) SetFromMap(m map[string]bool) error {
 		}
 
 		if featureSpec.PreRelease == Deprecated {
-			klog.Warningf("Setting deprecated feature gate %s=%t. It will be removed in a future release.", k, v)
+			f.lg.Warn(fmt.Sprintf("Setting deprecated feature gate %s=%t. It will be removed in a future release.", k, v))
 		} else if featureSpec.PreRelease == GA {
-			klog.Warningf("Setting GA feature gate %s=%t. It will be removed in a future release.", k, v)
+			f.lg.Warn(fmt.Sprintf("Setting GA feature gate %s=%t. It will be removed in a future release.", k, v))
 		}
 	}
 
@@ -249,7 +245,7 @@ func (f *featureGate) SetFromMap(m map[string]bool) error {
 	f.known.Store(known)
 	f.enabled.Store(enabled)
 
-	klog.V(1).Infof("feature gates: %v", f.enabled)
+	f.lg.Info(fmt.Sprintf("feature gates: %v", f.enabled))
 	return nil
 }
 
@@ -319,9 +315,9 @@ func (f *featureGate) OverrideDefault(name Feature, override bool) error {
 	case spec.LockToDefault:
 		return fmt.Errorf("cannot override default: feature %q default is locked to %t", name, spec.Default)
 	case spec.PreRelease == Deprecated:
-		klog.Warningf("Overriding default of deprecated feature gate %s=%t. It will be removed in a future release.", name, override)
+		f.lg.Warn(fmt.Sprintf("Overriding default of deprecated feature gate %s=%t. It will be removed in a future release.", name, override))
 	case spec.PreRelease == GA:
-		klog.Warningf("Overriding default of GA feature gate %s=%t. It will be removed in a future release.", name, override)
+		f.lg.Warn(fmt.Sprintf("Overriding default of GA feature gate %s=%t. It will be removed in a future release.", name, override))
 	}
 
 	spec.Default = override
@@ -369,9 +365,7 @@ func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
 }
 
 func (f *featureGate) AddMetrics() {
-	for feature, featureSpec := range f.GetAll() {
-		featuremetrics.RecordFeatureInfo(context.Background(), string(feature), string(featureSpec.PreRelease), f.Enabled(feature))
-	}
+	// TODO(henrybear327): implement this.
 }
 
 // KnownFeatures returns a slice of strings describing the FeatureGate's known features.

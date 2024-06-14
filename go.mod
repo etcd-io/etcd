@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/v3
 
-go 1.22.0
+go 1.22
 
 toolchain go1.22.4
 
@@ -95,6 +95,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240520151616-dc85e6b867a5 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
+	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
