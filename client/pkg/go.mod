@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.17.0
-	golang.org/x/sys v0.0.0-20210403161142-5e06dd20ab57
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 )
 
 require (
