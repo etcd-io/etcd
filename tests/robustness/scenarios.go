@@ -106,8 +106,17 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 		clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithClusterSize(1))
 		// Add LazyFS only for traffic with lower QPS as it uses a lot of CPU lowering minimal QPS.
 		if enableLazyFS && tp.Profile.MinimalQPS <= 100 {
-			clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithLazyFSEnabled(true))
-			name = filepath.Join(name, "LazyFS")
+			// Set CompactionBatchLimit to default when LazyFS is enabled, because frequent compaction uses a lot of CPU too.
+			lazyFSOptions := append(clusterOfSize1Options, e2e.WithLazyFSEnabled(true), e2e.WithCompactionBatchLimit(1000))
+			scenarios = append(scenarios, testScenario{
+				name:    filepath.Join(name, "LazyFS"),
+				traffic: tp.Traffic,
+				profile: tp.Profile,
+				cluster: *e2e.NewConfig(lazyFSOptions...),
+			})
+			// Smaller CompactionBatchLimit without LazyFS to test Compact.
+			clusterOfSize1Options = append(clusterOfSize1Options, options.WithCompactionBatchLimit(10, 100))
+			name = filepath.Join(name, "Compact")
 		}
 		scenarios = append(scenarios, testScenario{
 			name:    name,
