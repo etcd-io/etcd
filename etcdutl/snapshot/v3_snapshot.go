@@ -15,6 +15,7 @@
 package snapshot
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -30,6 +31,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -143,27 +145,41 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		for next, _ := c.First(); next != nil; next, _ = c.Next() {
 			b := tx.Bucket(next)
 			if b == nil {
-				return fmt.Errorf("cannot get hash of bucket %s", next)
+				return fmt.Errorf("nil bucket: %q", string(next))
 			}
-			if _, err = h.Write(next); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", next, err)
+			_, err = h.Write(next)
+			if err != nil {
+				return fmt.Errorf("cannot hash bucket name: %q err: %w", string(next), err)
 			}
-			iskeyb := (string(next) == "key")
+
+			iskeyb := (bytes.Equal(next, schema.Key.Name()))
 			if err = b.ForEach(func(k, v []byte) error {
-				if _, herr := h.Write(k); herr != nil {
-					return fmt.Errorf("cannot write to bucket %s", herr.Error())
+				_, err = h.Write(k)
+				if err != nil {
+					return fmt.Errorf("cannot hash bucket key: %q err: %w", k, err)
 				}
-				if _, herr := h.Write(v); herr != nil {
-					return fmt.Errorf("cannot write to bucket %s", herr.Error())
+				_, err = h.Write(v)
+				if err != nil {
+					return fmt.Errorf("cannot hash bucket key: %q value: %q err: %w", k, v, err)
 				}
 				if iskeyb {
-					rev := mvcc.BytesToRev(k)
+					var rev mvcc.Revision
+					rev, err = bytesToRev(k)
+					if err != nil {
+						return fmt.Errorf("cannot parse revision key: %q err: %w", k, err)
+					}
 					ds.Revision = rev.Main
+
+					var kv mvccpb.KeyValue
+					err = kv.Unmarshal(v)
+					if err != nil {
+						return fmt.Errorf("cannot unmarshal value, key: %q value: %q err: %w", k, v, err)
+					}
 				}
 				ds.TotalKey++
 				return nil
 			}); err != nil {
-				return fmt.Errorf("cannot write bucket %s : %v", next, err)
+				return fmt.Errorf("error during bucket key iteration, name: %q err: %w", string(next), err)
 			}
 		}
 		return nil
@@ -173,6 +189,15 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 
 	ds.Hash = h.Sum32()
 	return ds, nil
+}
+
+func bytesToRev(b []byte) (rev mvcc.Revision, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("%s", r)
+		}
+	}()
+	return mvcc.BytesToRev(b), err
 }
 
 // RestoreConfig configures snapshot restore operation.
