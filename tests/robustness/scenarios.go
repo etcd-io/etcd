@@ -28,24 +28,29 @@ import (
 )
 
 type TrafficProfile struct {
+	Name    string
 	Traffic traffic.Traffic
 	Profile traffic.Profile
 }
 
 var trafficProfiles = []TrafficProfile{
 	{
+		Name:    "EtcdHighTraffic",
 		Traffic: traffic.EtcdPut,
 		Profile: traffic.HighTrafficProfile,
 	},
 	{
+		Name:    "EtcdTrafficDeleteLeases",
 		Traffic: traffic.EtcdPutDeleteLease,
 		Profile: traffic.LowTraffic,
 	},
 	{
+		Name:    "KubernetesHighTraffic",
 		Traffic: traffic.Kubernetes,
 		Profile: traffic.HighTrafficProfile,
 	},
 	{
+		Name:    "KubernetesLowTraffic",
 		Traffic: traffic.Kubernetes,
 		Profile: traffic.LowTraffic,
 	},
@@ -61,7 +66,6 @@ type testScenario struct {
 }
 
 func exploratoryScenarios(_ *testing.T) []testScenario {
-	enableLazyFS := e2e.BinPath.LazyFSAvailable()
 	randomizableOptions := []e2e.EPClusterOption{
 		options.WithClusterOptionGroups(
 			options.ClusterOptions{options.WithTickMs(29), options.WithElectionMs(271)},
@@ -101,23 +105,9 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 	}
 	scenarios := []testScenario{}
 	for _, tp := range trafficProfiles {
-		name := filepath.Join(tp.Traffic.Name(), tp.Profile.Name, "ClusterOfSize1")
+		name := filepath.Join(tp.Name, "ClusterOfSize1")
 		clusterOfSize1Options := baseOptions
 		clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithClusterSize(1))
-		// Add LazyFS only for traffic with lower QPS as it uses a lot of CPU lowering minimal QPS.
-		if enableLazyFS && tp.Profile.MinimalQPS <= 100 {
-			// Set CompactionBatchLimit to default when LazyFS is enabled, because frequent compaction uses a lot of CPU too.
-			lazyFSOptions := append(clusterOfSize1Options, e2e.WithLazyFSEnabled(true), e2e.WithCompactionBatchLimit(1000))
-			scenarios = append(scenarios, testScenario{
-				name:    filepath.Join(name, "LazyFS"),
-				traffic: tp.Traffic,
-				profile: tp.Profile,
-				cluster: *e2e.NewConfig(lazyFSOptions...),
-			})
-			// Smaller CompactionBatchLimit without LazyFS to test Compact.
-			clusterOfSize1Options = append(clusterOfSize1Options, options.WithCompactionBatchLimit(10, 100))
-			name = filepath.Join(name, "Compact")
-		}
 		scenarios = append(scenarios, testScenario{
 			name:    name,
 			traffic: tp.Traffic,
@@ -127,7 +117,7 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 	}
 
 	for _, tp := range trafficProfiles {
-		name := filepath.Join(tp.Traffic.Name(), tp.Profile.Name, "ClusterOfSize3")
+		name := filepath.Join(tp.Name, "ClusterOfSize3")
 		clusterOfSize3Options := baseOptions
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithIsPeerTLS(true))
 		clusterOfSize3Options = append(clusterOfSize3Options, e2e.WithPeerProxy(true))
@@ -140,6 +130,25 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 			profile: tp.Profile,
 			cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
+	}
+	if e2e.BinPath.LazyFSAvailable() {
+		newScenarios := scenarios
+		for _, s := range scenarios {
+			// LazyFS increases the load on CPU, so we run it with more lightweight case.
+			if s.profile.MinimalQPS <= 100 && s.cluster.ClusterSize == 1 {
+				lazyfsCluster := s.cluster
+				lazyfsCluster.LazyFSEnabled = true
+				newScenarios = append(newScenarios, testScenario{
+					name:      filepath.Join(s.name, "LazyFS"),
+					failpoint: s.failpoint,
+					cluster:   lazyfsCluster,
+					traffic:   s.traffic,
+					profile:   s.profile.WithoutCompaction(),
+					watch:     s.watch,
+				})
+			}
+		}
+		scenarios = newScenarios
 	}
 	return scenarios
 }

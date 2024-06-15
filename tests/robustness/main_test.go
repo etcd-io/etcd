@@ -75,7 +75,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer forcestopCluster(r.Cluster)
 
 	if s.failpoint == nil {
-		s.failpoint, err = failpoint.PickRandom(r.Cluster)
+		s.failpoint, err = failpoint.PickRandom(r.Cluster, s.profile)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,7 +107,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 	defer cancel()
 	g := errgroup.Group{}
 	var operationReport, watchReport, failpointClientReport []report.ClientReport
-	failpointInjected := make(chan failpoint.Injection, 1)
+	failpointInjected := make(chan report.FailpointInjection, 1)
 
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
@@ -125,7 +125,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		// Give some time for traffic to reach qps target after injecting failpoint.
 		time.Sleep(time.Second)
 		if fr != nil {
-			failpointInjected <- fr.Injection
+			failpointInjected <- fr.FailpointInjection
 			failpointClientReport = fr.Client
 		}
 		return nil

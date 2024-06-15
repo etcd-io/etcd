@@ -26,6 +26,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 var (
@@ -56,7 +57,7 @@ func (tb triggerBlackhole) Trigger(ctx context.Context, t *testing.T, member e2e
 	return nil, Blackhole(ctx, t, member, clus, tb.waitTillSnapshot)
 }
 
-func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess) bool {
+func (tb triggerBlackhole) Available(config e2e.EtcdProcessClusterConfig, process e2e.EtcdProcess, profile traffic.Profile) bool {
 	// Avoid triggering failpoint if waiting for failpoint would take too long to fit into timeout.
 	// Number of required entries for snapshot depends on etcd configuration.
 	if tb.waitTillSnapshot && (entriesToGuaranteeSnapshot(config) > 200 || !e2e.CouldSetSnapshotCatchupEntries(process.Config().ExecPath)) {
@@ -179,7 +180,7 @@ func (f delayPeerNetworkFailpoint) Name() string {
 	return "delayPeerNetwork"
 }
 
-func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
+func (f delayPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess, profile traffic.Profile) bool {
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
 }
 
@@ -213,6 +214,6 @@ func (f dropPeerNetworkFailpoint) Name() string {
 	return "dropPeerNetwork"
 }
 
-func (f dropPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess) bool {
+func (f dropPeerNetworkFailpoint) Available(config e2e.EtcdProcessClusterConfig, clus e2e.EtcdProcess, profile traffic.Profile) bool {
 	return config.ClusterSize > 1 && clus.PeerProxy() != nil
 }

@@ -25,7 +25,6 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
-	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
@@ -38,14 +37,12 @@ var (
 	MultiOpTxnOpCount       = 4
 
 	LowTraffic = Profile{
-		Name:                           "LowTraffic",
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
 		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	HighTrafficProfile = Profile{
-		Name:                           "HighTraffic",
 		MinimalQPS:                     200,
 		MaximalQPS:                     1000,
 		ClientCount:                    12,
@@ -53,13 +50,17 @@ var (
 	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan failpoint.Injection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan report.FailpointInjection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
+
+	if profile.ForbidCompaction {
+		traffic = traffic.WithoutCompact()
+	}
 
 	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
@@ -92,7 +93,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			mux.Unlock()
 		}(c)
 	}
-	var fr *failpoint.Injection
+	var fr *report.FailpointInjection
 	select {
 	case frp, ok := <-failpointInjected:
 		if !ok {
@@ -165,15 +166,20 @@ func (ts *trafficStats) QPS() float64 {
 }
 
 type Profile struct {
-	Name                           string
 	MinimalQPS                     float64
 	MaximalQPS                     float64
 	MaxNonUniqueRequestConcurrency int
 	ClientCount                    int
+	ForbidCompaction               bool
+}
+
+func (p Profile) WithoutCompaction() Profile {
+	p.ForbidCompaction = true
+	return p
 }
 
 type Traffic interface {
 	Run(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	ExpectUniqueRevision() bool
-	Name() string
+	WithoutCompact() Traffic
 }

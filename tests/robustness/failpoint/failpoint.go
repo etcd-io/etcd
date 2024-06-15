@@ -28,6 +28,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 const (
@@ -54,10 +55,10 @@ var (
 	}
 )
 
-func PickRandom(clus *e2e.EtcdProcessCluster) (Failpoint, error) {
+func PickRandom(clus *e2e.EtcdProcessCluster, profile traffic.Profile) (Failpoint, error) {
 	availableFailpoints := make([]Failpoint, 0, len(allFailpoints))
 	for _, failpoint := range allFailpoints {
-		err := Validate(clus, failpoint)
+		err := Validate(clus, failpoint, profile)
 		if err != nil {
 			continue
 		}
@@ -69,16 +70,16 @@ func PickRandom(clus *e2e.EtcdProcessCluster) (Failpoint, error) {
 	return availableFailpoints[rand.Int()%len(availableFailpoints)], nil
 }
 
-func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint) error {
+func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint, profile traffic.Profile) error {
 	for _, proc := range clus.Procs {
-		if !failpoint.Available(*clus.Cfg, proc) {
+		if !failpoint.Available(*clus.Cfg, proc, profile) {
 			return fmt.Errorf("failpoint %q not available on %s", failpoint.Name(), proc.Config().Name)
 		}
 	}
 	return nil
 }
 
-func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time, ids identity.Provider) (*FailpointReport, error) {
+func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time, ids identity.Provider) (*report.FailpointReport, error) {
 	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
 	defer cancel()
 	var err error
@@ -99,24 +100,14 @@ func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdPro
 	lg.Info("Finished triggering failpoint", zap.String("failpoint", failpoint.Name()))
 	end := time.Since(baseTime)
 
-	return &FailpointReport{
-		Injection: Injection{
+	return &report.FailpointReport{
+		FailpointInjection: report.FailpointInjection{
 			Start: start,
 			End:   end,
 			Name:  failpoint.Name(),
 		},
 		Client: clientReport,
 	}, nil
-}
-
-type FailpointReport struct {
-	Injection
-	Client []report.ClientReport
-}
-
-type Injection struct {
-	Start, End time.Duration
-	Name       string
 }
 
 func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProcessCluster) error {
@@ -154,5 +145,5 @@ type Failpoint interface {
 }
 
 type AvailabilityChecker interface {
-	Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool
+	Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess, traffic.Profile) bool
 }
