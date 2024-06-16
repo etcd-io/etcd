@@ -24,21 +24,21 @@ import (
 	"go.uber.org/zap"
 )
 
-func BenchmarkIndexCompactBase(b *testing.B)          { benchmarkIndexCompact(b, 3, 100) }
-func BenchmarkIndexCompactLongKey(b *testing.B)       { benchmarkIndexCompact(b, 512, 100) }
-func BenchmarkIndexCompactLargeKeySpace(b *testing.B) { benchmarkIndexCompact(b, 3, 100000) }
+//func BenchmarkIndexCompactBase(b *testing.B)          { benchmarkIndexCompact(b, 3, 100) }
+//func BenchmarkIndexCompactLongKey(b *testing.B)       { benchmarkIndexCompact(b, 512, 100) }
+//func BenchmarkIndexCompactLargeKeySpace(b *testing.B) { benchmarkIndexCompact(b, 3, 100000) }
 
-func BenchmarkIndexKeepBase(b *testing.B)          { benchmarkIndexKeep(b, 3, 100) }
-func BenchmarkIndexKeepLongKey(b *testing.B)       { benchmarkIndexKeep(b, 512, 100) }
-func BenchmarkIndexKeepLargeKeySpace(b *testing.B) { benchmarkIndexKeep(b, 3, 100000) }
+//func BenchmarkIndexKeepBase(b *testing.B)          { benchmarkIndexKeep(b, 3, 100) }
+//func BenchmarkIndexKeepLongKey(b *testing.B)       { benchmarkIndexKeep(b, 512, 100) }
+//func BenchmarkIndexKeepLargeKeySpace(b *testing.B) { benchmarkIndexKeep(b, 3, 100000) }
 
 func BenchmarkIndexPutBase(b *testing.B)          { benchmarkIndexPut(b, 3, 100) }
 func BenchmarkIndexPutLongKey(b *testing.B)       { benchmarkIndexPut(b, 512, 100) }
 func BenchmarkIndexPutLargeKeySpace(b *testing.B) { benchmarkIndexPut(b, 3, 100000) }
 
-func BenchmarkIndexTombstoneBase(b *testing.B)          { benchmarkIndexTombstone(b, 3, 100, 25) }
-func BenchmarkIndexTombstoneLongKey(b *testing.B)       { benchmarkIndexTombstone(b, 512, 100, 25) }
-func BenchmarkIndexTombstoneLargeKeySpace(b *testing.B) { benchmarkIndexTombstone(b, 3, 100000, 25) }
+//func BenchmarkIndexTombstoneBase(b *testing.B)          { benchmarkIndexTombstone(b, 3, 100, 25) }
+//func BenchmarkIndexTombstoneLongKey(b *testing.B)       { benchmarkIndexTombstone(b, 512, 100, 25) }
+//func BenchmarkIndexTombstoneLargeKeySpace(b *testing.B) { benchmarkIndexTombstone(b, 3, 100000, 25) }
 
 func BenchmarkIndexGetBase(b *testing.B)          { benchmarkIndexGet(b, 3, 100, 1, 25) }
 func BenchmarkIndexGetRepeatedKeys(b *testing.B)  { benchmarkIndexGet(b, 3, 100, 1000, 25) }
