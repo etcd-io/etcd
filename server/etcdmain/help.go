@@ -238,7 +238,7 @@ Profiling and Monitoring:
   --metrics 'basic'
     Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics.
   --listen-metrics-urls ''
-    List of URLs to listen on for the metrics and health endpoints.
+    List of URLs to listen on for the /metrics and /health endpoints. For https, the client URL TLS info is used.
 
 Logging:
   --logger 'zap'
