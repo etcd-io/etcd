@@ -18,7 +18,7 @@ func TestEmptyClientTLSInfo_createMetricsListener(t *testing.T) {
 		Scheme: "https",
 		Host:   "localhost:8080",
 	}
-	if _, err := e.createMetricsListener(murl); err != errMissingClientTLSInfoForMetricsURL {
-		t.Fatalf("expected error %v, got %v", errMissingClientTLSInfoForMetricsURL, err)
+	if _, err := e.createMetricsListener(murl); err != ErrMissingClientTLSInfoForMetricsURL {
+		t.Fatalf("expected error %v, got %v", ErrMissingClientTLSInfoForMetricsURL, err)
 	}
 }
