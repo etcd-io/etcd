@@ -7,8 +7,8 @@ toolchain go1.22.4
 require (
 	github.com/GoogleCloudPlatform/testgrid v0.0.173
 	github.com/google/go-github/v60 v60.0.0
-	github.com/spf13/cobra v1.8.0
-	google.golang.org/protobuf v1.34.1
+	github.com/spf13/cobra v1.8.1
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
