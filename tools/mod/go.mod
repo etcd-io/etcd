@@ -12,7 +12,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.59.0
 	github.com/google/addlicense v1.1.1
-	github.com/google/yamlfmt v0.11.0
+	github.com/google/yamlfmt v0.12.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	go.etcd.io/gofail v0.1.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
@@ -36,7 +36,6 @@ require (
 	github.com/GaijinEntertainment/go-exhaustruct/v3 v3.2.0 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.0 // indirect
-	github.com/RageCage64/multilinediff v0.2.0 // indirect
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
 	github.com/alecthomas/assert/v2 v2.3.0 // indirect
 	github.com/alecthomas/go-check-sumtype v0.1.4 // indirect

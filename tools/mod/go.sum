@@ -24,8 +24,6 @@ github.com/Masterminds/semver/v3 v3.2.1 h1:RN9w6+7QoMeJVGyfmbcgs28Br8cvmnucEXnY0
 github.com/Masterminds/semver/v3 v3.2.1/go.mod h1:qvl/7zhW3nngYb5+80sSMF+FG2BjYrf8m9wsX0PNOMQ=
 github.com/OpenPeeDeeP/depguard/v2 v2.2.0 h1:vDfG60vDtIuf0MEOhmLlLLSzqaRM8EMcgJPdp74zmpA=
 github.com/OpenPeeDeeP/depguard/v2 v2.2.0/go.mod h1:CIzddKRvLBC4Au5aYP/i3nyaWQ+ClszLIuVocRiCYFQ=
-github.com/RageCage64/multilinediff v0.2.0 h1:yNSpSF5NXIrmo6bRIgO4Q0g7SXqFD4j/WEcBE+BdCFY=
-github.com/RageCage64/multilinediff v0.2.0/go.mod h1:pKr+KLgP0gvRzA+yv0/IUaYQuBYN1ucWysvsL58aMP0=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 h1:bYOD6QJnBJY79MJQR1i9cyQePG5oNDZXDKL2bhN/uvE=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19/go.mod h1:HcqyLXmWoESd/vPSbCPqvgw5l5cMM5PtoqFOnXLjSeM=
 github.com/alecthomas/assert/v2 v2.3.0 h1:mAsH2wmvjsuvyBvAmCtm7zFsBlb8mIHx5ySLVdDZXL0=
@@ -194,8 +192,8 @@ github.com/google/pprof v0.0.0-20240424215950-a892ee059fd6 h1:k7nVchz72niMH6YLQN
 github.com/google/pprof v0.0.0-20240424215950-a892ee059fd6/go.mod h1:kf6iHlnVGwgKolg33glAes7Yg/8iWP8ukqeldJSO7jw=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
-github.com/google/yamlfmt v0.11.0 h1:s/RgLlW0ic6ROOE9XH3e3piHs1VJAHLezbuHlh0LtFU=
-github.com/google/yamlfmt v0.11.0/go.mod h1:uFHKnFl/RKZCifw87KJaNY+ovZAaLcw3vQqS2ut7u4s=
+github.com/google/yamlfmt v0.12.1 h1:55X62ZLOcdBepKlmc1PKhT9yqexR0IdKBbEasfPhps8=
+github.com/google/yamlfmt v0.12.1/go.mod h1:y8JNH/2TqTaCSUjk/zhn0lYlibMvS0R+pbVUDo8oz9o=
 github.com/gordonklaus/ineffassign v0.1.0 h1:y2Gd/9I7MdY1oEIt+n+rowjBNDcLQq3RsH5hwJd0f9s=
 github.com/gordonklaus/ineffassign v0.1.0/go.mod h1:Qcp2HIAYhR7mNUVSIxZww3Guk4it82ghYcEXIAk+QT0=
 github.com/gostaticanalysis/analysisutil v0.7.1 h1:ZMCjoue3DtDWQ5WyU16YbjbQEQ3VuzwxALrpYd+HeKk=
