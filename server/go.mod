@@ -21,7 +21,7 @@ require (
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/client_model v0.6.1
 	github.com/soheilhy/cmux v0.1.5
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
