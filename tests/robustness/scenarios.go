@@ -24,6 +24,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/options"
+	"go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
@@ -69,23 +70,19 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
 	}
 
-	mixedVersionOption := options.WithClusterOptionGroups(
+	mixedVersionOptionChoices := []random.ChoiceWeight[options.ClusterOptions]{
 		// 60% with all members of current version
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
-		options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)},
+		{Choice: options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)}, Weight: 60},
 		// 10% with 2 members of current version, 1 member last version, leader is current version
-		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(0)},
+		{Choice: options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(0)}, Weight: 10},
 		// 10% with 2 members of current version, 1 member last version, leader is last version
-		options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(2)},
+		{Choice: options.ClusterOptions{options.WithVersion(e2e.MinorityLastVersion), options.WithInitialLeaderIndex(2)}, Weight: 10},
 		// 10% with 2 members of last version, 1 member current version, leader is last version
-		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(0)},
+		{Choice: options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(0)}, Weight: 10},
 		// 10% with 2 members of last version, 1 member current version, leader is current version
-		options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(2)},
-	)
+		{Choice: options.ClusterOptions{options.WithVersion(e2e.QuorumLastVersion), options.WithInitialLeaderIndex(2)}, Weight: 10},
+	}
+	mixedVersionOption := options.WithClusterOptionGroups(random.PickRandom[options.ClusterOptions](mixedVersionOptionChoices))
 
 	baseOptions := []e2e.EPClusterOption{
 		options.WithSnapshotCount(50, 100, 1000),

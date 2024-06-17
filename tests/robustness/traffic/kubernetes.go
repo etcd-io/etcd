@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
+	"go.etcd.io/etcd/tests/v3/robustness/random"
 )
 
 var (
@@ -36,11 +37,11 @@ var (
 		averageKeyCount: 10,
 		resource:        "pods",
 		namespace:       "default",
-		writeChoices: []choiceWeight[KubernetesRequestType]{
-			{choice: KubernetesUpdate, weight: 85},
-			{choice: KubernetesDelete, weight: 5},
-			{choice: KubernetesCreate, weight: 5},
-			{choice: KubernetesCompact, weight: 5},
+		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesUpdate, Weight: 85},
+			{Choice: KubernetesDelete, Weight: 5},
+			{Choice: KubernetesCreate, Weight: 5},
+			{Choice: KubernetesCompact, Weight: 5},
 		},
 	}
 )
@@ -49,7 +50,7 @@ type kubernetesTraffic struct {
 	averageKeyCount int
 	resource        string
 	namespace       string
-	writeChoices    []choiceWeight[KubernetesRequestType]
+	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
 }
 
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
@@ -161,7 +162,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 			if shouldReturn = nonUniqueWriteLimiter.Take(); !shouldReturn {
 				choices = filterOutNonUniqueKubernetesWrites(t.writeChoices)
 			}
-			op := pickRandom(choices)
+			op := random.PickRandom(choices)
 			switch op {
 			case KubernetesDelete:
 				_, err = kc.OptimisticDelete(writeCtx, key, rev)
@@ -186,9 +187,9 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 	return nil
 }
 
-func filterOutNonUniqueKubernetesWrites(choices []choiceWeight[KubernetesRequestType]) (resp []choiceWeight[KubernetesRequestType]) {
+func filterOutNonUniqueKubernetesWrites(choices []random.ChoiceWeight[KubernetesRequestType]) (resp []random.ChoiceWeight[KubernetesRequestType]) {
 	for _, choice := range choices {
-		if choice.choice != KubernetesDelete {
+		if choice.Choice != KubernetesDelete {
 			resp = append(resp, choice)
 		}
 	}

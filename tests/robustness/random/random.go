@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package traffic
+package random
 
 import (
 	"math/rand"
 	"strings"
 )
 
-func randString(size int) string {
+func RandString(size int) string {
 	data := strings.Builder{}
 	data.Grow(size)
 	for i := 0; i < size; i++ {
@@ -28,22 +28,22 @@ func randString(size int) string {
 	return data.String()
 }
 
-type choiceWeight[T any] struct {
-	choice T
-	weight int
+type ChoiceWeight[T any] struct {
+	Choice T
+	Weight int
 }
 
-func pickRandom[T any](choices []choiceWeight[T]) T {
+func PickRandom[T any](choices []ChoiceWeight[T]) T {
 	sum := 0
 	for _, op := range choices {
-		sum += op.weight
+		sum += op.Weight
 	}
 	roll := rand.Int() % sum
 	for _, op := range choices {
-		if roll < op.weight {
-			return op.choice
+		if roll < op.Weight {
+			return op.Choice
 		}
-		roll -= op.weight
+		roll -= op.Weight
 	}
 	panic("unexpected")
 }
