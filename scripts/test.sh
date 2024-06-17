@@ -366,6 +366,10 @@ function markdown_marker_pass {
   fi
 }
 
+function govuln_pass {
+  run_for_modules run govulncheck -show verbose
+}
+
 function govet_pass {
   run_for_modules generic_checker run go vet
 }

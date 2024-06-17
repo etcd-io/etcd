@@ -164,6 +164,13 @@ ifeq (, $(shell which yamlfmt))
 endif
 	yamlfmt -conf tools/.yamlfmt .
 
+.PHONY: run-govulncheck
+run-govulncheck:
+ifeq (, $(shell which govulncheck))
+	$(shell go install golang.org/x/vuln/cmd/govulncheck@latest)
+endif
+	PASSES="govuln" ./scripts/test.sh
+
 # Tools
 
 GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
