@@ -208,5 +208,17 @@ func regressionScenarios(t *testing.T) []testScenario {
 			cluster:   *e2e.NewConfig(opts...),
 		})
 	}
+	scenarios = append(scenarios, testScenario{
+		name:      "Issue17780",
+		failpoint: failpoint.AllowBatchCompactBeforeSetFinishedCompactPanic,
+		profile:   traffic.LowTraffic,
+		traffic:   traffic.Issue17780EtcdPutDelete,
+		cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithCompactionBatchLimit(100),
+			e2e.WithSnapshotCount(1000),
+			e2e.WithGoFailEnabled(true),
+		),
+	})
 	return scenarios
 }

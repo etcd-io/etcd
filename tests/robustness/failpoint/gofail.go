@@ -59,6 +59,15 @@ var (
 	BeforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
 	RaftBeforeSaveSleep                      Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
 	RaftAfterSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
+
+	// AllowBatchCompactBeforeSetFinishedCompactPanic is used to trigger
+	// that compactBeforeSetFinishedCompact failpoint only if the current
+	// revision number is higher than that batch limit.
+	AllowBatchCompactBeforeSetFinishedCompactPanic Failpoint = goPanicFailpoint{
+		failpoint: "compactBeforeSetFinishedCompact",
+		trigger:   triggerCompact{multiBatchCompaction: true},
+		target:    AnyMember,
+	}
 )
 
 type goPanicFailpoint struct {

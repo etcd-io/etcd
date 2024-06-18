@@ -63,6 +63,18 @@ var (
 			{choice: Compact, weight: 5},
 		},
 	}
+	// Issue17780EtcdPutDelete is to create high chance to have more delete
+	// requests so that it's likely to compact that revision which is tombstone.
+	Issue17780EtcdPutDelete = etcdTraffic{
+		keyCount:     20,
+		leaseTTL:     DefaultLeaseTTL,
+		largePutSize: 32769,
+		requests: []choiceWeight[etcdRequestType]{
+			{choice: List, weight: 50},
+			{choice: Delete, weight: 20},
+			{choice: Put, weight: 10},
+		},
+	}
 )
 
 type etcdTraffic struct {
