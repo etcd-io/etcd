@@ -34,7 +34,7 @@ import (
 var (
 	DefaultLeaseTTL   int64 = 7200
 	RequestTimeout          = 200 * time.Millisecond
-	WatchTimeout            = 400 * time.Millisecond
+	WatchTimeout            = time.Second
 	MultiOpTxnOpCount       = 4
 
 	LowTraffic = Profile{

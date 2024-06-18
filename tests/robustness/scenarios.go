@@ -191,6 +191,17 @@ func regressionScenarios(t *testing.T) []testScenario {
 			e2e.WithClusterSize(1),
 		),
 	})
+	scenarios = append(scenarios, testScenario{
+		name:      "Issue17529",
+		profile:   traffic.HighTrafficProfile,
+		traffic:   traffic.Kubernetes,
+		failpoint: failpoint.SleepBeforeSendWatchResponse,
+		cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithGoFailEnabled(true),
+			options.WithSnapshotCount(100),
+		),
+	})
 	if v.Compare(version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),

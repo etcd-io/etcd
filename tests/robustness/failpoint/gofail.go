@@ -59,6 +59,7 @@ var (
 	BeforeApplyOneConfChangeSleep            Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
 	RaftBeforeSaveSleep                      Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
 	RaftAfterSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
+	SleepBeforeSendWatchResponse             Failpoint = gofailSleepAndDeactivate{"beforeSendWatchResponse", time.Second}
 )
 
 type goPanicFailpoint struct {
@@ -238,9 +239,6 @@ func (f gofailSleepAndDeactivate) Name() string {
 }
 
 func (f gofailSleepAndDeactivate) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) bool {
-	if config.ClusterSize == 1 {
-		return false
-	}
 	memberFailpoints := member.Failpoints()
 	if memberFailpoints == nil {
 		return false
