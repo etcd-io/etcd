@@ -74,9 +74,9 @@ type etcdTraffic struct {
 }
 
 func (t etcdTraffic) WithoutCompact() Traffic {
-	requests := make([]choiceWeight[etcdRequestType], 0, len(t.requests))
+	requests := make([]random.ChoiceWeight[etcdRequestType], 0, len(t.requests))
 	for _, request := range t.requests {
-		if request.choice != Compact {
+		if request.Choice != Compact {
 			requests = append(requests, request)
 		}
 	}
