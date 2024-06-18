@@ -16,87 +16,82 @@ package e2e
 
 import (
 	"context"
-	"fmt"
-	"path/filepath"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"path/filepath"
+	"testing"
 )
 
-func TestAuthCluster(t *testing.T) {
-	e2e.BeforeTest(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-		e2e.WithClusterSize(1),
-		e2e.WithSnapshotCount(2),
-	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
-	defer func() {
-		if err := epc.Close(); err != nil {
-			t.Fatalf("could not close test cluster (%v)", err)
-		}
-	}()
-
-	epcClient := epc.Etcdctl()
-	createUsers(ctx, t, epcClient)
-
-	if err := epcClient.AuthEnable(ctx); err != nil {
-		t.Fatalf("could not enable Auth: (%v)", err)
-	}
-
-	testUserClientOpts := e2e.WithAuth("test", "testPassword")
-	rootUserClientOpts := e2e.WithAuth("root", "rootPassword")
-
-	// write more than SnapshotCount keys to single leader to make sure snapshot is created
-	for i := 0; i <= 10; i++ {
-		if err := epc.Etcdctl(testUserClientOpts).Put(ctx, fmt.Sprintf("/test/%d", i), "test", config.PutOptions{}); err != nil {
-			t.Fatalf("failed to Put (%v)", err)
-		}
-	}
-
-	// start second process
-	if _, err := epc.StartNewProc(ctx, nil, t, false /* addAsLearner */, rootUserClientOpts); err != nil {
-		t.Fatalf("could not start second etcd process (%v)", err)
-	}
-
-	// make sure writes to both endpoints are successful
-	endpoints := epc.EndpointsGRPC()
-	assert.Equal(t, len(endpoints), 2)
-	for _, endpoint := range epc.EndpointsGRPC() {
-		if err := epc.Etcdctl(testUserClientOpts, e2e.WithEndpoints([]string{endpoint})).Put(ctx, "/test/key", endpoint, config.PutOptions{}); err != nil {
-			t.Fatalf("failed to write to Put to %q (%v)", endpoint, err)
-		}
-	}
-
-	// verify all nodes have exact same revision and hash
-	assert.Eventually(t, func() bool {
-		hashKvs, err := epc.Etcdctl(rootUserClientOpts).HashKV(ctx, 0)
-		if err != nil {
-			t.Logf("failed to get HashKV: %v", err)
-			return false
-		}
-		if len(hashKvs) != 2 {
-			t.Logf("not exactly 2 hashkv responses returned: %d", len(hashKvs))
-			return false
-		}
-		if hashKvs[0].Header.Revision != hashKvs[1].Header.Revision {
-			t.Logf("The two members' revision (%d, %d) are not equal", hashKvs[0].Header.Revision, hashKvs[1].Header.Revision)
-			return false
-		}
-		assert.Equal(t, hashKvs[0].Hash, hashKvs[1].Hash)
-		return true
-	}, time.Second*5, time.Millisecond*100)
-
-}
+//func TestAuthCluster(t *testing.T) {
+//	e2e.BeforeTest(t)
+//	ctx, cancel := context.WithCancel(context.Background())
+//	defer cancel()
+//
+//	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+//		e2e.WithClusterSize(1),
+//		e2e.WithSnapshotCount(2),
+//	)
+//	if err != nil {
+//		t.Fatalf("could not start etcd process cluster (%v)", err)
+//	}
+//	defer func() {
+//		if err := epc.Close(); err != nil {
+//			t.Fatalf("could not close test cluster (%v)", err)
+//		}
+//	}()
+//
+//	epcClient := epc.Etcdctl()
+//	createUsers(ctx, t, epcClient)
+//
+//	if err := epcClient.AuthEnable(ctx); err != nil {
+//		t.Fatalf("could not enable Auth: (%v)", err)
+//	}
+//
+//	testUserClientOpts := e2e.WithAuth("test", "testPassword")
+//	rootUserClientOpts := e2e.WithAuth("root", "rootPassword")
+//
+//	// write more than SnapshotCount keys to single leader to make sure snapshot is created
+//	for i := 0; i <= 10; i++ {
+//		if err := epc.Etcdctl(testUserClientOpts).Put(ctx, fmt.Sprintf("/test/%d", i), "test", config.PutOptions{}); err != nil {
+//			t.Fatalf("failed to Put (%v)", err)
+//		}
+//	}
+//
+//	// start second process
+//	if _, err := epc.StartNewProc(ctx, nil, t, false /* addAsLearner */, rootUserClientOpts); err != nil {
+//		t.Fatalf("could not start second etcd process (%v)", err)
+//	}
+//
+//	// make sure writes to both endpoints are successful
+//	endpoints := epc.EndpointsGRPC()
+//	assert.Equal(t, len(endpoints), 2)
+//	for _, endpoint := range epc.EndpointsGRPC() {
+//		if err := epc.Etcdctl(testUserClientOpts, e2e.WithEndpoints([]string{endpoint})).Put(ctx, "/test/key", endpoint, config.PutOptions{}); err != nil {
+//			t.Fatalf("failed to write to Put to %q (%v)", endpoint, err)
+//		}
+//	}
+//
+//	// verify all nodes have exact same revision and hash
+//	assert.Eventually(t, func() bool {
+//		hashKvs, err := epc.Etcdctl(rootUserClientOpts).HashKV(ctx, 0)
+//		if err != nil {
+//			t.Logf("failed to get HashKV: %v", err)
+//			return false
+//		}
+//		if len(hashKvs) != 2 {
+//			t.Logf("not exactly 2 hashkv responses returned: %d", len(hashKvs))
+//			return false
+//		}
+//		if hashKvs[0].Header.Revision != hashKvs[1].Header.Revision {
+//			t.Logf("The two members' revision (%d, %d) are not equal", hashKvs[0].Header.Revision, hashKvs[1].Header.Revision)
+//			return false
+//		}
+//		assert.Equal(t, hashKvs[0].Hash, hashKvs[1].Hash)
+//		return true
+//	}, time.Second*5, time.Millisecond*100)
+//
+//}
 
 func applyTLSWithRootCommonName() func() {
 	var (

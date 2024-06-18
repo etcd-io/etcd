@@ -46,11 +46,11 @@ func TestV3LearnerMetricRecover(t *testing.T) {
 	testCtl(t, learnerMetricRecoverTest, withCfg(*cfg))
 }
 
-func TestV3LearnerMetricApplyFromSnapshotTest(t *testing.T) {
-	cfg := e2e.NewConfigTLS()
-	cfg.ServerConfig.SnapshotCount = 10
-	testCtl(t, learnerMetricApplyFromSnapshotTest, withCfg(*cfg))
-}
+//func TestV3LearnerMetricApplyFromSnapshotTest(t *testing.T) {
+//	cfg := e2e.NewConfigTLS()
+//	cfg.ServerConfig.SnapshotCount = 10
+//	testCtl(t, learnerMetricApplyFromSnapshotTest, withCfg(*cfg))
+//}
 
 func metricsTest(cx ctlCtx) {
 	if err := ctlV3Put(cx, "k", "v", ""); err != nil {

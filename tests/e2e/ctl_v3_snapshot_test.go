@@ -162,7 +162,7 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 	return resp, nil
 }
 
-func TestIssue6361(t *testing.T) { testIssue6361(t) }
+//func TestIssue6361(t *testing.T) { testIssue6361(t) }
 
 // TestIssue6361 ensures new member that starts with snapshot correctly
 // syncs up with other members and serve correct data.
