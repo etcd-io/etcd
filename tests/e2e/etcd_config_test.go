@@ -166,7 +166,6 @@ func TestEtcdListenMetricsURLsWithMissingClientTLSInfo(t *testing.T) {
 		if err := proc.Stop(); err != nil {
 			t.Error(err)
 		}
-		proc.Wait() // ensure the port has been released
 		_ = proc.Close()
 	}()
 
