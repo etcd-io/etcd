@@ -54,9 +54,9 @@ type kubernetesTraffic struct {
 }
 
 func (t kubernetesTraffic) WithoutCompact() Traffic {
-	wcs := make([]choiceWeight[KubernetesRequestType], 0, len(t.writeChoices))
+	wcs := make([]random.ChoiceWeight[KubernetesRequestType], 0, len(t.writeChoices))
 	for _, wc := range t.writeChoices {
-		if wc.choice != KubernetesCompact {
+		if wc.Choice != KubernetesCompact {
 			wcs = append(wcs, wc)
 		}
 	}
