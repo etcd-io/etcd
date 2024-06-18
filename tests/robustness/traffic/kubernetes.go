@@ -33,7 +33,7 @@ import (
 )
 
 var (
-	Kubernetes = kubernetesTraffic{
+	Kubernetes Traffic = kubernetesTraffic{
 		averageKeyCount: 10,
 		resource:        "pods",
 		namespace:       "default",
@@ -53,12 +53,23 @@ type kubernetesTraffic struct {
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
 }
 
-func (t kubernetesTraffic) ExpectUniqueRevision() bool {
-	return true
+func (t kubernetesTraffic) WithoutCompact() Traffic {
+	wcs := make([]choiceWeight[KubernetesRequestType], 0, len(t.writeChoices))
+	for _, wc := range t.writeChoices {
+		if wc.choice != KubernetesCompact {
+			wcs = append(wcs, wc)
+		}
+	}
+	return kubernetesTraffic{
+		averageKeyCount: t.averageKeyCount,
+		resource:        t.resource,
+		namespace:       t.namespace,
+		writeChoices:    wcs,
+	}
 }
 
-func (t kubernetesTraffic) Name() string {
-	return "Kubernetes"
+func (t kubernetesTraffic) ExpectUniqueRevision() bool {
+	return true
 }
 
 func (t kubernetesTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {

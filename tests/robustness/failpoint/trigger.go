@@ -25,6 +25,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
 type trigger interface {
@@ -47,7 +48,7 @@ func (t triggerDefrag) Trigger(ctx context.Context, _ *testing.T, member e2e.Etc
 	return nil, nil
 }
 
-func (t triggerDefrag) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess) bool {
+func (t triggerDefrag) Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess, traffic.Profile) bool {
 	return true
 }
 
@@ -83,7 +84,10 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 	return []report.ClientReport{cc.Report()}, nil
 }
 
-func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess) bool {
+func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.EtcdProcess, profile traffic.Profile) bool {
+	if profile.ForbidCompaction {
+		return false
+	}
 	// Since introduction of compaction into traffic, injecting compaction failpoints started interfeering with peer proxy.
 	// TODO: Re-enable the peer proxy for compact failpoints when we confirm the root cause.
 	if config.PeerProxy {

@@ -30,7 +30,7 @@ import (
 )
 
 var (
-	EtcdPutDeleteLease = etcdTraffic{
+	EtcdPutDeleteLease Traffic = etcdTraffic{
 		keyCount:     10,
 		leaseTTL:     DefaultLeaseTTL,
 		largePutSize: 32769,
@@ -49,7 +49,7 @@ var (
 			{Choice: Compact, Weight: 5},
 		},
 	}
-	EtcdPut = etcdTraffic{
+	EtcdPut Traffic = etcdTraffic{
 		keyCount:     10,
 		largePutSize: 32769,
 		leaseTTL:     DefaultLeaseTTL,
@@ -71,6 +71,21 @@ type etcdTraffic struct {
 	requests     []random.ChoiceWeight[etcdRequestType]
 	leaseTTL     int64
 	largePutSize int
+}
+
+func (t etcdTraffic) WithoutCompact() Traffic {
+	requests := make([]choiceWeight[etcdRequestType], 0, len(t.requests))
+	for _, request := range t.requests {
+		if request.choice != Compact {
+			requests = append(requests, request)
+		}
+	}
+	return etcdTraffic{
+		keyCount:     t.keyCount,
+		requests:     requests,
+		leaseTTL:     t.leaseTTL,
+		largePutSize: t.largePutSize,
+	}
 }
 
 func (t etcdTraffic) ExpectUniqueRevision() bool {
