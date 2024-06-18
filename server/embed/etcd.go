@@ -822,7 +822,7 @@ func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 	panic("Expect at least one context able to serve grpc")
 }
 
-var ErrMissingClientTLSInfoForMetricsURL = errors.New("client TLS key/cert (--cert-file, --key-file) must be provided for metrics url")
+var ErrMissingClientTLSInfoForMetricsURL = errors.New("client TLS key/cert (--cert-file, --key-file) must be provided for metrics secure url")
 
 func (e *Etcd) createMetricsListener(murl url.URL) (net.Listener, error) {
 	tlsInfo := &e.cfg.ClientTLSInfo
