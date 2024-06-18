@@ -16,6 +16,7 @@ package config
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -71,6 +72,7 @@ type ServerConfig struct {
 	InitialPeerURLsMap  types.URLsMap
 	InitialClusterToken string
 	NewCluster          bool
+	CustomPeerTLSInfo   *tls.Config
 	PeerTLSInfo         transport.TLSInfo
 
 	CORS map[string]struct{}

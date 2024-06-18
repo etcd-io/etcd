@@ -221,10 +221,15 @@ type Config struct {
 	AdvertisePeerUrls, AdvertiseClientUrls                 []url.URL
 	//revive:enable:var-naming
 
-	ClientTLSInfo transport.TLSInfo
-	ClientAutoTLS bool
-	PeerTLSInfo   transport.TLSInfo
-	PeerAutoTLS   bool
+	// CustomClientTLSConfig is especially useful when you want to
+	// programmatically inject certificates instead of referencing file
+	// paths to certificates.
+	CustomClientTLSConfig *tls.Config
+	ClientTLSInfo         transport.TLSInfo
+	ClientAutoTLS         bool
+	CustomPeerTLSConfig   *tls.Config
+	PeerTLSInfo           transport.TLSInfo
+	PeerAutoTLS           bool
 
 	// ExperimentalSetMemberLocalAddr enables using the first specified and
 	// non-loopback local address from initial-advertise-peer-urls as the local
@@ -450,6 +455,11 @@ type Config struct {
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 }
 
+// Interface for different TLS Configs
+type tlsConfigConstraint interface {
+	*tls.Config | *transport.TLSInfo
+}
+
 // configYAML holds the config suitable for yaml parsing
 type configYAML struct {
 	Config
@@ -665,6 +675,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.PreVote, "pre-vote", cfg.PreVote, "Enable the raft Pre-Vote algorithm to prevent disruption when a node that has been partitioned away rejoins the cluster.")
 
 	// security
+	//CustomClientTLSConfig tls.Config
+	//CustomPeerTLSConfig   tls.Config
+
 	fs.StringVar(&cfg.ClientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
 	fs.StringVar(&cfg.ClientTLSInfo.KeyFile, "key-file", "", "Path to the client server TLS key file.")
 	fs.StringVar(&cfg.ClientTLSInfo.ClientCertFile, "client-cert-file", "", "Path to an explicit peer client TLS cert file otherwise cert file will be used when client auth is required.")
@@ -870,8 +883,24 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
-func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
-	if len(tls.CipherSuites) > 0 && len(ss) > 0 {
+func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
+	transportInfo, ok := any(info).(*transport.TLSInfo)
+	if ok {
+		if len(transportInfo.CipherSuites) > 0 && len(ss) > 0 {
+			return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
+		}
+		if len(ss) > 0 {
+			cs, err := tlsutil.GetCipherSuites(ss)
+			if err != nil {
+				return err
+			}
+			transportInfo.CipherSuites = cs
+		}
+		return nil
+	}
+
+	tlsConfig, _ := any(info).(*tls.Config)
+	if len(tlsConfig.CipherSuites) > 0 && len(ss) > 0 {
 		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
 	}
 	if len(ss) > 0 {
@@ -879,18 +908,31 @@ func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 		if err != nil {
 			return err
 		}
-		tls.CipherSuites = cs
+		tlsConfig.CipherSuites = cs
 	}
 	return nil
 }
 
-func updateMinMaxVersions(info *transport.TLSInfo, min, max string) {
+func updateMinMaxVersions[TLS tlsConfigConstraint](info TLS, min, max string) {
 	// Validate() has been called to check the user input, so it should never fail.
+	transportInfo, ok := any(info).(*transport.TLSInfo)
+	if ok {
+		var err error
+		if transportInfo.MinVersion, err = tlsutil.GetTLSVersion(min); err != nil {
+			panic(err)
+		}
+		if transportInfo.MaxVersion, err = tlsutil.GetTLSVersion(max); err != nil {
+			panic(err)
+		}
+		return
+	}
+
+	tlsConfig, _ := any(info).(*tls.Config)
 	var err error
-	if info.MinVersion, err = tlsutil.GetTLSVersion(min); err != nil {
+	if tlsConfig.MinVersion, err = tlsutil.GetTLSVersion(min); err != nil {
 		panic(err)
 	}
-	if info.MaxVersion, err = tlsutil.GetTLSVersion(max); err != nil {
+	if tlsConfig.MaxVersion, err = tlsutil.GetTLSVersion(max); err != nil {
 		panic(err)
 	}
 }
