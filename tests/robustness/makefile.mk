@@ -7,41 +7,41 @@ test-robustness-reports:
 
 .PHONY: test-robustness-main
 test-robustness-main: /tmp/etcd-main-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" make test-robustness
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" $(MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.5
 test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin /tmp/etcd-release-3.4-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin --bin-last-release=/tmp/etcd-release-3.4-failpoints/bin/etcd" make test-robustness
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin --bin-last-release=/tmp/etcd-release-3.4-failpoints/bin/etcd" $(MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.4
 test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.4-failpoints/bin" make test-robustness
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.4-failpoints/bin" $(MAKE) test-robustness
 
 # Reproduce historical issues
 
 .PHONY: test-robustness-issue14370
 test-robustness-issue14370: /tmp/etcd-v3.5.4-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14370 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.4-failpoints/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue13766
 test-robustness-issue13766: /tmp/etcd-v3.5.2-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue13766 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.2-failpoints/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue14685
 test-robustness-issue14685: /tmp/etcd-v3.5.5-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue15271
 test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 .PHONY: test-robustness-issue17529
 test-robustness-issue17529: /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17529 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.12-beforeSendWatchResponse/bin' make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17529 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.12-beforeSendWatchResponse/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
 # Failpoints
@@ -78,16 +78,16 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	mkdir -p /tmp/etcd-main-failpoints/
 	cd /tmp/etcd-main-failpoints/; \
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
-	  make gofail-enable; \
-	  make build;
+	  $(MAKE) gofail-enable; \
+	  $(MAKE) build;
 
 /tmp/etcd-v3.6.0-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.6.0-failpoints/
 	mkdir -p /tmp/etcd-v3.6.0-failpoints/
 	cd /tmp/etcd-v3.6.0-failpoints/; \
 	  git clone --depth 1 --branch main https://github.com/etcd-io/etcd.git .; \
-	  make gofail-enable; \
-	  make build;
+	  $(MAKE) gofail-enable; \
+	  $(MAKE) build;
 
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:
