@@ -39,6 +39,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -454,6 +455,11 @@ func (s *EtcdServer) Logger() *zap.Logger {
 
 func (s *EtcdServer) Config() config.ServerConfig {
 	return s.Cfg
+}
+
+// FeatureEnabled returns true if the feature is enabled by the etcd server, false otherwise.
+func (s *EtcdServer) FeatureEnabled(f featuregate.Feature) bool {
+	return s.Cfg.ServerFeatureGate.Enabled(f)
 }
 
 func tickToDur(ticks int, tickMs uint) string {
