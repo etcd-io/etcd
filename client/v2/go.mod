@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 )
 
 replace (
