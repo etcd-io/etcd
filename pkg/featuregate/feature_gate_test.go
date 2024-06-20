@@ -15,11 +15,11 @@
 package featuregate
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 )
@@ -203,7 +203,7 @@ func TestFeatureGateFlag(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(test.arg, func(t *testing.T) {
-			fs := pflag.NewFlagSet("testfeaturegateflag", pflag.ContinueOnError)
+			fs := flag.NewFlagSet("testfeaturegateflag", flag.ContinueOnError)
 			f := New("test", zaptest.NewLogger(t))
 			f.Add(map[Feature]FeatureSpec{
 				testAlphaGate: {Default: false, PreRelease: Alpha},
@@ -211,7 +211,7 @@ func TestFeatureGateFlag(t *testing.T) {
 			})
 			f.AddFlag(fs)
 
-			err := fs.Parse([]string{fmt.Sprintf("--%s=%s", flagName, test.arg)})
+			err := fs.Parse([]string{fmt.Sprintf("--%s=%s", FlagName, test.arg)})
 			if test.parseError != "" {
 				if !strings.Contains(err.Error(), test.parseError) {
 					t.Errorf("%d: Parse() Expected %v, Got %v", i, test.parseError, err)
@@ -603,7 +603,7 @@ func TestFeatureGateOverrideDefault(t *testing.T) {
 
 	t.Run("returns error if already added to flag set", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		f.AddFlag(fs)
 
 		if err := f.OverrideDefault("TestFeature", true); err == nil {
