@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -31,6 +32,8 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
+	"go.etcd.io/etcd/server/v3/features"
 )
 
 func notFoundErr(service, domain string) error {
@@ -87,6 +90,110 @@ func TestConfigFileOtherFields(t *testing.T) {
 	assert.Equal(t, true, cfg.SocketOpts.ReusePort, "ReusePort does not match")
 
 	assert.Equal(t, false, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
+}
+
+func TestConfigFileFeatureGates(t *testing.T) {
+	testCases := []struct {
+		name                                string
+		serverFeatureGatesJSON              string
+		experimentalStopGRPCServiceOnDefrag string
+		expectErr                           bool
+		expectedFeatures                    map[featuregate.Feature]bool
+	}{
+		{
+			name: "default",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag: false,
+			},
+		},
+		{
+			name:                                "cannot set both experimental flag and feature gate flag",
+			serverFeatureGatesJSON:              "StopGRPCServiceOnDefrag=true",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectErr:                           true,
+		},
+		{
+			name:                                "ok to set different experimental flag and feature gate flag",
+			serverFeatureGatesJSON:              "DistributedTracing=false",
+			experimentalStopGRPCServiceOnDefrag: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag: true,
+			},
+		},
+		{
+			name:                                "can set feature gate to true from experimental flag",
+			experimentalStopGRPCServiceOnDefrag: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+			},
+		},
+		{
+			name:                                "can set feature gate to false from experimental flag",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+			},
+		},
+		{
+			name:                   "can set feature gate to true from feature gate flag",
+			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+			},
+		},
+		{
+			name:                   "can set feature gate to false from feature gate flag",
+			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			yc := struct {
+				ExperimentalStopGRPCServiceOnDefrag *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
+				ServerFeatureGatesJSON              string `json:"server-feature-gates"`
+			}{
+				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
+			}
+
+			if tc.experimentalStopGRPCServiceOnDefrag != "" {
+				experimentalStopGRPCServiceOnDefrag, err := strconv.ParseBool(tc.experimentalStopGRPCServiceOnDefrag)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalStopGRPCServiceOnDefrag = &experimentalStopGRPCServiceOnDefrag
+			}
+			b, err := yaml.Marshal(&yc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tmpfile := mustCreateCfgFile(t, b)
+			defer os.Remove(tmpfile.Name())
+
+			cfg, err := ConfigFromFile(tmpfile.Name())
+			if tc.expectErr {
+				if err == nil {
+					if err == nil {
+						t.Fatal("expect parse error")
+					}
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for k, v := range tc.expectedFeatures {
+				if cfg.ServerFeatureGate.Enabled(k) != v {
+					t.Errorf("expected feature gate %s=%v, got %v", k, v, cfg.ServerFeatureGate.Enabled(k))
+				}
+			}
+		})
+	}
 }
 
 // TestUpdateDefaultClusterFromName ensures that etcd can start with 'etcd --name=abc'.

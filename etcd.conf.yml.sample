@@ -155,3 +155,6 @@ cipher-suites: [
 # Limit etcd to specific TLS protocol versions 
 tls-min-version: 'TLS1.2'
 tls-max-version: 'TLS1.3'
+
+# Comma-separated list of server feature gate enablement in the format of feature=true|false
+server-feature-gates: StopGRPCServiceOnDefrag=false,DistributedTracing=false

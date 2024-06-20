@@ -238,6 +238,19 @@ func (cfg *config) configFromCmdLine() error {
 		cfg.ec.InitialCluster = ""
 	}
 
+	isExperimentalFlagSet := func(expFlag string) bool {
+		foundExperimentalFlag := false
+		cfg.cf.flagSet.Visit(func(f *flag.Flag) {
+			if f.Name == expFlag {
+				foundExperimentalFlag = true
+			}
+		})
+		return foundExperimentalFlag
+	}
+	err = cfg.ec.SetFeatureGatesFromExperimentalFlags(cfg.ec.ServerFeatureGate, isExperimentalFlagSet, embed.ServerFeatureGateFlagName, cfg.cf.flagSet.Lookup(embed.ServerFeatureGateFlagName).Value.String())
+	if err != nil {
+		return err
+	}
 	return cfg.validate()
 }
 

@@ -42,6 +42,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
 	"go.etcd.io/etcd/server/v3/config"
@@ -50,6 +51,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3compactor"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
+	"go.etcd.io/etcd/server/v3/features"
 )
 
 const (
@@ -108,6 +110,8 @@ const (
 	maxElectionMs = 50000
 	// backend freelist map type
 	freelistArrayType = "array"
+
+	ServerFeatureGateFlagName = "server-feature-gates"
 )
 
 var (
@@ -455,6 +459,9 @@ type Config struct {
 
 	// V2Deprecation describes phase of API & Storage V2 support
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
+
+	// ServerFeatureGate is a server level feature gate
+	ServerFeatureGate featuregate.FeatureGate
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -476,6 +483,8 @@ type configJSON struct {
 
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
 	PeerSecurityJSON   securityConfig `json:"peer-transport-security"`
+
+	ServerFeatureGatesJSON string `json:"server-feature-gates"`
 }
 
 type securityConfig struct {
@@ -576,6 +585,7 @@ func NewConfig() *Config {
 		},
 
 		AutoCompactionMode: DefaultAutoCompactionMode,
+		ServerFeatureGate:  features.NewDefaultServerFeatureGate(DefaultName, nil),
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
@@ -762,6 +772,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// unsafe
 	fs.BoolVar(&cfg.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
+
+	// featuregate
+	cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).AddFlag(fs, ServerFeatureGateFlagName)
 }
 
 func ConfigFromFile(path string) (*Config, error) {
@@ -781,6 +794,26 @@ func (cfg *configYAML) configFromFile(path string) error {
 	defaultInitialCluster := cfg.InitialCluster
 
 	err = yaml.Unmarshal(b, cfg)
+	if err != nil {
+		return err
+	}
+
+	if cfg.configJSON.ServerFeatureGatesJSON != "" {
+		err = cfg.Config.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(cfg.configJSON.ServerFeatureGatesJSON)
+		if err != nil {
+			return err
+		}
+	}
+	var cfgMap map[string]interface{}
+	err = yaml.Unmarshal(b, &cfgMap)
+	if err != nil {
+		return err
+	}
+	isExperimentalFlagSet := func(expFlag string) bool {
+		_, ok := cfgMap[expFlag]
+		return ok
+	}
+	err = cfg.SetFeatureGatesFromExperimentalFlags(cfg.ServerFeatureGate, isExperimentalFlagSet, ServerFeatureGateFlagName, cfg.configJSON.ServerFeatureGatesJSON)
 	if err != nil {
 		return err
 	}
@@ -877,6 +910,37 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
+// SetFeatureGatesFromExperimentalFlags sets the feature gate values if the feature gate is not explicitly set
+// while their corresponding experimental flags are explicitly set.
+// TODO: remove after all experimental flags are deprecated.
+func (cfg *Config) SetFeatureGatesFromExperimentalFlags(fg featuregate.FeatureGate, isExperimentalFlagSet func(string) bool, flagName, featureGatesVal string) error {
+	// verify that the feature gate and its experimental flag are not both set at the same time.
+	for expFlagName, featureName := range features.ExperimentalFlagToFeatureMap {
+		if isExperimentalFlagSet(expFlagName) && strings.Contains(featureGatesVal, string(featureName)) {
+			return fmt.Errorf("cannot specify both flags: --%s=(true|false) and --%s=%s=(true|false) at the same time, please just use --%s=%s=(true|false)",
+				expFlagName, flagName, featureName, flagName, featureName)
+		}
+	}
+
+	m := make(map[featuregate.Feature]bool)
+	defaultEc := NewConfig()
+	// if a ExperimentalXX config is different from the default value, that means the experimental flag is explicitly set.
+	// We need to pass that into the feature gate.
+	// This section should include all the experimental flag configs that are still in use.
+	if cfg.ExperimentalStopGRPCServiceOnDefrag != defaultEc.ExperimentalStopGRPCServiceOnDefrag {
+		m[features.StopGRPCServiceOnDefrag] = cfg.ExperimentalStopGRPCServiceOnDefrag
+	}
+	// filter out unknown features for fg
+	allFeatures := fg.(featuregate.MutableFeatureGate).GetAll()
+	mFiltered := make(map[string]bool)
+	for k, v := range m {
+		if _, ok := allFeatures[k]; ok {
+			mFiltered[string(k)] = v
+		}
+	}
+	return fg.(featuregate.MutableFeatureGate).SetFromMap(mFiltered)
+}
+
 func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	if len(tls.CipherSuites) > 0 && len(ss) > 0 {
 		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
@@ -907,6 +971,7 @@ func (cfg *Config) Validate() error {
 	if err := cfg.setupLogging(); err != nil {
 		return err
 	}
+	cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).SetLogger(cfg.logger)
 	if err := checkBindURLs(cfg.ListenPeerUrls); err != nil {
 		return err
 	}
