@@ -761,6 +761,7 @@ func (e *Etcd) serveClients() {
 			Timeout: e.cfg.GRPCKeepAliveTimeout,
 		}))
 	}
+	gopts = append(gopts, e.cfg.GRPCAdditionalServerOptions...)
 
 	splitHTTP := false
 	for _, sctx := range e.sctxs {

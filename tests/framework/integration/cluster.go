@@ -144,14 +144,16 @@ type ClusterConfig struct {
 	QuotaBackendBytes    int64
 	BackendBatchInterval time.Duration
 
-	MaxTxnOps              uint
-	MaxRequestBytes        uint
+	MaxTxnOps       uint
+	MaxRequestBytes uint
+
 	SnapshotCount          uint64
 	SnapshotCatchUpEntries uint64
 
-	GRPCKeepAliveMinTime  time.Duration
-	GRPCKeepAliveInterval time.Duration
-	GRPCKeepAliveTimeout  time.Duration
+	GRPCKeepAliveMinTime        time.Duration
+	GRPCKeepAliveInterval       time.Duration
+	GRPCKeepAliveTimeout        time.Duration
+	GRPCAdditionalServerOptions []grpc.ServerOption
 
 	ClientMaxCallSendMsgSize int
 	ClientMaxCallRecvMsgSize int
@@ -278,6 +280,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			GRPCKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
 			GRPCKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
 			GRPCKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
+			GRPCAdditionalServerOptions:         c.Cfg.GRPCAdditionalServerOptions,
 			ClientMaxCallSendMsgSize:            c.Cfg.ClientMaxCallSendMsgSize,
 			ClientMaxCallRecvMsgSize:            c.Cfg.ClientMaxCallRecvMsgSize,
 			UseIP:                               c.Cfg.UseIP,
@@ -603,6 +606,7 @@ type MemberConfig struct {
 	GRPCKeepAliveMinTime        time.Duration
 	GRPCKeepAliveInterval       time.Duration
 	GRPCKeepAliveTimeout        time.Duration
+	GRPCAdditionalServerOptions []grpc.ServerOption
 	ClientMaxCallSendMsgSize    int
 	ClientMaxCallRecvMsgSize    int
 	UseIP                       bool
@@ -709,6 +713,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 			Timeout: mcfg.GRPCKeepAliveTimeout,
 		}))
 	}
+	m.GRPCServerOpts = append(m.GRPCServerOpts, mcfg.GRPCAdditionalServerOptions...)
 	m.ClientMaxCallSendMsgSize = mcfg.ClientMaxCallSendMsgSize
 	m.ClientMaxCallRecvMsgSize = mcfg.ClientMaxCallRecvMsgSize
 	m.UseIP = mcfg.UseIP
