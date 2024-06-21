@@ -19,7 +19,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
-func UnsafeReadFinishedCompact(tx backend.UnsafeReader) (finishedComact int64, found bool) {
+func UnsafeReadFinishedCompact(tx backend.UnsafeReader) (int64, bool) {
 	_, finishedCompactBytes := tx.UnsafeRange(schema.Meta, schema.FinishedCompactKeyName, nil, 0)
 	if len(finishedCompactBytes) != 0 {
 		return BytesToRev(finishedCompactBytes[0]).Main, true
@@ -27,7 +27,7 @@ func UnsafeReadFinishedCompact(tx backend.UnsafeReader) (finishedComact int64, f
 	return 0, false
 }
 
-func UnsafeReadScheduledCompact(tx backend.UnsafeReader) (scheduledComact int64, found bool) {
+func UnsafeReadScheduledCompact(tx backend.UnsafeReader) (int64, bool) {
 	_, scheduledCompactBytes := tx.UnsafeRange(schema.Meta, schema.ScheduledCompactKeyName, nil, 0)
 	if len(scheduledCompactBytes) != 0 {
 		return BytesToRev(scheduledCompactBytes[0]).Main, true
