@@ -443,15 +443,15 @@ type configJSON struct {
 }
 
 type securityConfig struct {
-	CertFile        string `json:"cert-file"`
-	KeyFile         string `json:"key-file"`
-	ClientCertFile  string `json:"client-cert-file"`
-	ClientKeyFile   string `json:"client-key-file"`
-	CertAuth        bool   `json:"client-cert-auth"`
-	TrustedCAFile   string `json:"trusted-ca-file"`
-	AutoTLS         bool   `json:"auto-tls"`
-	AllowedCN       string `json:"allowed-cn"`
-	AllowedHostname string `json:"allowed-hostname"`
+	CertFile         string   `json:"cert-file"`
+	KeyFile          string   `json:"key-file"`
+	ClientCertFile   string   `json:"client-cert-file"`
+	ClientKeyFile    string   `json:"client-key-file"`
+	CertAuth         bool     `json:"client-cert-auth"`
+	TrustedCAFile    string   `json:"trusted-ca-file"`
+	AutoTLS          bool     `json:"auto-tls"`
+	AllowedCNs       []string `json:"allowed-cn"`
+	AllowedHostnames []string `json:"allowed-hostname"`
 }
 
 // NewConfig creates a new Config populated with default values.
@@ -631,8 +631,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 		tls.ClientKeyFile = ysc.ClientKeyFile
 		tls.ClientCertAuth = ysc.CertAuth
 		tls.TrustedCAFile = ysc.TrustedCAFile
-		tls.AllowedCN = ysc.AllowedCN
-		tls.AllowedHostname = ysc.AllowedHostname
+		tls.AllowedCNs = ysc.AllowedCNs
+		tls.AllowedHostnames = ysc.AllowedHostnames
 	}
 	copySecurityDetails(&cfg.ClientTLSInfo, &cfg.ClientSecurityJSON)
 	copySecurityDetails(&cfg.PeerTLSInfo, &cfg.PeerSecurityJSON)
