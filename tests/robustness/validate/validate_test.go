@@ -1332,6 +1332,34 @@ func TestValidateWatch(t *testing.T) {
 			},
 		},
 		{
+			name: "Reliable - issue #18089 - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+								Revision:   3,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("b", "2", 4, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				deleteRequest("a"),
+				putRequest("b", "2"),
+				compactRequest(3),
+			},
+		},
+		{
 			name: "Resumable - watch revision from middle event - pass",
 			reports: []report.ClientReport{
 				{
@@ -1951,5 +1979,14 @@ func deleteRequest(key string) model.EtcdRequest {
 			OperationsOnFailure: nil,
 		},
 		Defragment: nil,
+	}
+}
+
+func compactRequest(revision int64) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type: model.Compact,
+		Compact: &model.CompactRequest{
+			Revision: revision,
+		},
 	}
 }
