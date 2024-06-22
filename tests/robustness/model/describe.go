@@ -28,8 +28,11 @@ func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) strin
 	if response.ClientError != "" {
 		return fmt.Sprintf("err: %q", response.ClientError)
 	}
-	if response.PartialResponse {
-		return fmt.Sprintf("unknown, rev: %d", response.Revision)
+	if response.Persisted {
+		if response.PersistedRevision != 0 {
+			return fmt.Sprintf("unknown, rev: %d", response.PersistedRevision)
+		}
+		return fmt.Sprintf("unknown")
 	}
 	switch request.Type {
 	case Range:

@@ -123,7 +123,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		if request.Range.Revision < newState.CompactRevision {
 			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
 		}
-		return newState, MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: newState.Revision}}
+		return newState, MaybeEtcdResponse{Persisted: true, PersistedRevision: newState.Revision}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -351,15 +351,17 @@ type LeaseRevokeRequest struct {
 }
 type DefragmentRequest struct{}
 
-// MaybeEtcdResponse extends EtcdResponse to represent partial or failed responses.
-// Possible states:
-// * Normal response. Only EtcdResponse is set.
-// * Partial response. The EtcdResponse.Revision and PartialResponse are set.
-// * Failed response. Only Err is set.
+// MaybeEtcdResponse extends EtcdResponse to include partial information about responses to a request.
+// Possible response state information:
+// * Normal response. Client observed response. Only EtcdResponse is set.
+// * Persisted. Client didn't observe response, but we know it was persisted by etcd. Only Persisted is set
+// * Persisted with Revision. Client didn't observe response, but we know that it was persisted, and it's revision. Both Persisted and PersistedRevision is set.
+// * Error response. Client observed error, but we don't know if it was persisted. Only Error is set.
 type MaybeEtcdResponse struct {
 	EtcdResponse
-	PartialResponse bool
-	Error           string
+	Persisted         bool
+	PersistedRevision int64
+	Error             string
 }
 
 var ErrEtcdFutureRev = errors.New("future rev")
@@ -376,7 +378,15 @@ type EtcdResponse struct {
 }
 
 func Match(r1, r2 MaybeEtcdResponse) bool {
-	return ((r1.PartialResponse || r2.PartialResponse) && (r1.Revision == r2.Revision)) || reflect.DeepEqual(r1, r2)
+	r1Revision := r1.Revision
+	if r1.Persisted {
+		r1Revision = r1.PersistedRevision
+	}
+	r2Revision := r2.Revision
+	if r2.Persisted {
+		r2Revision = r2.PersistedRevision
+	}
+	return (r1.Persisted && r1.PersistedRevision == 0) || (r2.Persisted && r2.PersistedRevision == 0) || ((r1.Persisted || r2.Persisted) && (r1.Error != "" || r2.Error != "" || r1Revision == r2Revision)) || reflect.DeepEqual(r1, r2)
 }
 
 type TxnResponse struct {

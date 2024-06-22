@@ -365,7 +365,7 @@ func failedResponse(err error) MaybeEtcdResponse {
 }
 
 func partialResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{PartialResponse: true, EtcdResponse: EtcdResponse{Revision: revision}}
+	return MaybeEtcdResponse{Persisted: true, PersistedRevision: revision}
 }
 
 func putRequest(key, value string) EtcdRequest {

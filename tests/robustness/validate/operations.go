@@ -83,7 +83,7 @@ func filterSerializableOperations(clients []report.ClientReport) []porcupine.Ope
 }
 
 func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) error {
-	if response.PartialResponse || response.Error != "" {
+	if response.Persisted || response.Error != "" {
 		return nil
 	}
 	state, err := replay.StateForRevision(request.Range.Revision)

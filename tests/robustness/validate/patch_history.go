@@ -76,6 +76,7 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			newOperations = append(newOperations, op)
 			continue
 		}
+		var resourceVersion int64
 		if op.Call <= lastObservedOperation.Call {
 			matchingEvent := matchWatchEvent(request.Txn, watchEvents)
 			if matchingEvent != nil {
@@ -84,7 +85,7 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				if eventTime < op.Return {
 					op.Return = eventTime
 				}
-				op.Output = model.MaybeEtcdResponse{PartialResponse: true, EtcdResponse: model.EtcdResponse{Revision: matchingEvent.Revision}}
+				resourceVersion = matchingEvent.Revision
 			}
 		}
 		persistedReturnTime := matchReturnTime(request, persistedOperations)
@@ -94,9 +95,17 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				op.Return = *persistedReturnTime
 			}
 		}
-		if persistedReturnTime == nil && canBeDiscarded(request.Txn) {
-			// Remove non persisted operations
-			continue
+		if isUniqueTxn(request.Txn) {
+			if persistedReturnTime == nil {
+				// Remove non persisted operations
+				continue
+			} else {
+				if resourceVersion != 0 {
+					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: resourceVersion}
+				} else {
+					op.Output = model.MaybeEtcdResponse{Persisted: true}
+				}
+			}
 		}
 		// Leave operation as it is as we cannot discard it.
 		newOperations = append(newOperations, op)
@@ -137,12 +146,8 @@ func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]clie
 	return nil
 }
 
-func canBeDiscarded(request *model.TxnRequest) bool {
-	return operationsCanBeDiscarded(request.OperationsOnSuccess) && operationsCanBeDiscarded(request.OperationsOnFailure)
-}
-
-func operationsCanBeDiscarded(ops []model.EtcdOperation) bool {
-	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
+func isUniqueTxn(request *model.TxnRequest) bool {
+	return (hasUniqueWriteOperation(request.OperationsOnSuccess) || !hasWriteOperation(request.OperationsOnSuccess)) && (hasUniqueWriteOperation(request.OperationsOnFailure) || !hasWriteOperation(request.OperationsOnFailure))
 }
 
 func hasWriteOperation(ops []model.EtcdOperation) bool {

@@ -58,17 +58,19 @@ func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtc
 	var newStates nonDeterministicState
 	switch {
 	case response.Error != "":
-		newStates = states.stepFailedResponse(request)
-	case response.PartialResponse:
-		newStates = states.applyResponseRevision(request, response.EtcdResponse.Revision)
+		newStates = states.applyFailedRequest(request)
+	case response.Persisted && response.PersistedRevision == 0:
+		newStates = states.applyPersistedRequest(request)
+	case response.Persisted && response.PersistedRevision != 0:
+		newStates = states.applyPersistedRequestWithRevision(request, response.PersistedRevision)
 	default:
-		newStates = states.applySuccessfulResponse(request, response.EtcdResponse)
+		newStates = states.applyRequestWithResponse(request, response.EtcdResponse)
 	}
 	return len(newStates) > 0, newStates
 }
 
-// stepFailedResponse duplicates number of states by considering both cases, request was persisted and request was lost.
-func (states nonDeterministicState) stepFailedResponse(request EtcdRequest) nonDeterministicState {
+// applyFailedRequest returns both the original states and states with applied request. It considers both cases, request was persisted and request was lost.
+func (states nonDeterministicState) applyFailedRequest(request EtcdRequest) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states)*2)
 	for _, s := range states {
 		newStates = append(newStates, s)
@@ -80,8 +82,18 @@ func (states nonDeterministicState) stepFailedResponse(request EtcdRequest) nonD
 	return newStates
 }
 
-// applyResponseRevision filters possible states by leaving ony states that would return proper revision.
-func (states nonDeterministicState) applyResponseRevision(request EtcdRequest, responseRevision int64) nonDeterministicState {
+// applyPersistedRequest applies request to all possible states.
+func (states nonDeterministicState) applyPersistedRequest(request EtcdRequest) nonDeterministicState {
+	newStates := make(nonDeterministicState, 0, len(states))
+	for _, s := range states {
+		newState, _ := s.Step(request)
+		newStates = append(newStates, newState)
+	}
+	return newStates
+}
+
+// applyPersistedRequestWithRevision applies request to all possible states, but leaves only states that would return proper revision.
+func (states nonDeterministicState) applyPersistedRequestWithRevision(request EtcdRequest, responseRevision int64) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
 		newState, modelResponse := s.Step(request)
@@ -92,8 +104,8 @@ func (states nonDeterministicState) applyResponseRevision(request EtcdRequest, r
 	return newStates
 }
 
-// applySuccessfulResponse filters possible states by leaving ony states that would respond correctly.
-func (states nonDeterministicState) applySuccessfulResponse(request EtcdRequest, response EtcdResponse) nonDeterministicState {
+// applyRequestWithResponse applies request to all possible states, but leaves only state that would return proper response.
+func (states nonDeterministicState) applyRequestWithResponse(request EtcdRequest, response EtcdResponse) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
 		newState, modelResponse := s.Step(request)
