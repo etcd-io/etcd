@@ -397,12 +397,30 @@ function release_pass {
 }
 
 function shellcheck_pass {
+	if ! command -v shellcheck >/dev/null; then
+        echo "shellcheck: command not found. Installing ShellCheck..."
+        # Determine the platform and install shellcheck accordingly
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            if command -v apt-get >/dev/null; then
+                sudo apt-get update
+                sudo apt-get install -y shellcheck
+            else
+                echo "Unsupported Linux distribution. Please install ShellCheck manually."
+                return 1
+            fi
+		else
+            echo "Unsupported operating system. Please install ShellCheck manually."
+            return 1
+        fi
+	fi
 	if command -v shellcheck >/dev/null; then
 		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
+	else
+		echo "Skipping shellcheck..."
 	fi
 }
 
