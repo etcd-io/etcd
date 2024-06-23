@@ -75,30 +75,45 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			newOperations = append(newOperations, op)
 			continue
 		}
-		var resourceVersion int64
-		matchingEvent := matchWatchEvent(request.Txn, watchEvents)
-		if matchingEvent != nil {
-			eventTime := matchingEvent.Time.Nanoseconds()
-			// Set revision and time based on watchEvent.
-			if eventTime < op.Return {
-				op.Return = eventTime
-			}
-			resourceVersion = matchingEvent.Revision
-		}
-		persistedReturnTime := matchReturnTime(request, persistedOperations)
-		if persistedReturnTime != nil {
-			// Set return time based on persisted return time.
-			if *persistedReturnTime < op.Return {
-				op.Return = *persistedReturnTime
+		txnPersisted := false
+		var txnRevision int64 = 0
+		for _, operation := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+			switch operation.Type {
+			case model.PutOperation:
+				event, ok := watchEvents[model.Event{
+					Type:  operation.Type,
+					Key:   operation.Put.Key,
+					Value: operation.Put.Value,
+				}]
+				if ok {
+					eventTime := event.Time.Nanoseconds()
+					// Set revision and time based on watchEvent.
+					if eventTime < op.Return {
+						op.Return = eventTime
+					}
+					txnRevision = event.Revision
+				}
+				persistedReturnTime, ok := persistedOperations[operation]
+				if ok {
+					// Set return time based on persisted return time.
+					if persistedReturnTime < op.Return {
+						op.Return = persistedReturnTime
+					}
+					txnPersisted = true
+				}
+			case model.DeleteOperation:
+			case model.RangeOperation:
+			default:
+				panic(fmt.Sprintf("unknown operation type %q", operation.Type))
 			}
 		}
 		if isUniqueTxn(request.Txn) {
-			if persistedReturnTime == nil {
+			if !txnPersisted {
 				// Remove non persisted operations
 				continue
 			} else {
-				if resourceVersion != 0 {
-					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: resourceVersion}
+				if txnRevision != 0 {
+					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
 				} else {
 					op.Output = model.MaybeEtcdResponse{Persisted: true}
 				}
@@ -108,22 +123,6 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		newOperations = append(newOperations, op)
 	}
 	return newOperations
-}
-
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]client.TimedWatchEvent) *client.TimedWatchEvent {
-	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
-		if etcdOp.Type == model.PutOperation {
-			event, ok := watchEvents[model.Event{
-				Type:  etcdOp.Type,
-				Key:   etcdOp.Put.Key,
-				Value: etcdOp.Put.Value,
-			}]
-			if ok {
-				return &event
-			}
-		}
-	}
-	return nil
 }
 
 func isUniqueTxn(request *model.TxnRequest) bool {
@@ -237,16 +236,4 @@ func requestReturnTime(operationTime map[model.EtcdOperation]int64, request mode
 	default:
 		panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 	}
-}
-
-func matchReturnTime(request model.EtcdRequest, persistedOperations map[model.EtcdOperation]int64) *int64 {
-	for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-		if etcdOp.Type != model.PutOperation {
-			continue
-		}
-		if returnTime, found := persistedOperations[etcdOp]; found {
-			return &returnTime
-		}
-	}
-	return nil
 }
