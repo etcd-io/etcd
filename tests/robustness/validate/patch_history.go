@@ -26,9 +26,10 @@ import (
 func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	allOperations := relevantOperations(reports)
 	watchRevision := requestRevision(reports)
+	clientRequestsCount := countClientRequests(reports)
 	returnTime := returnTime(allOperations, reports, persistedRequests)
 	persistedRequestsCount := countPersistedRequests(persistedRequests)
-	return patchOperations(allOperations, watchRevision, returnTime, persistedRequestsCount)
+	return patchOperations(allOperations, clientRequestsCount, watchRevision, returnTime, persistedRequestsCount)
 }
 
 func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
@@ -46,7 +47,7 @@ func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
 	return ops
 }
 
-func patchOperations(operations []porcupine.Operation, watchRevision, returnTime, persistedRequestCount map[keyValue]int64) []porcupine.Operation {
+func patchOperations(operations []porcupine.Operation, clientRequestCount, watchRevision, returnTime, persistedRequestCount map[keyValue]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
@@ -63,14 +64,16 @@ func patchOperations(operations []porcupine.Operation, watchRevision, returnTime
 			switch operation.Type {
 			case model.PutOperation:
 				kv := keyValue{Key: operation.Put.Key, Value: operation.Put.Value}
-				revision, ok := watchRevision[kv]
-				if ok {
-					txnRevision = revision
+				if count := clientRequestCount[kv]; count == 1 {
+					revision, ok := watchRevision[kv]
+					if ok {
+						txnRevision = revision
+					}
+					if t, ok := returnTime[kv]; ok && t < op.Return {
+						op.Return = t
+					}
 				}
-				if t, ok := returnTime[kv]; ok && t < op.Return {
-					op.Return = t
-				}
-				_, ok = persistedRequestCount[kv]
+				_, ok := persistedRequestCount[kv]
 				if ok {
 					txnPersisted = true
 				}
@@ -80,7 +83,7 @@ func patchOperations(operations []porcupine.Operation, watchRevision, returnTime
 				panic(fmt.Sprintf("unknown operation type %q", operation.Type))
 			}
 		}
-		if isUniqueTxn(request.Txn) {
+		if isUniqueTxn(request.Txn, clientRequestCount) {
 			if !txnPersisted {
 				// Remove non persisted operations
 				continue
@@ -98,26 +101,29 @@ func patchOperations(operations []porcupine.Operation, watchRevision, returnTime
 	return newOperations
 }
 
-func isUniqueTxn(request *model.TxnRequest) bool {
-	return (hasUniqueWriteOperation(request.OperationsOnSuccess) || !hasWriteOperation(request.OperationsOnSuccess)) && (hasUniqueWriteOperation(request.OperationsOnFailure) || !hasWriteOperation(request.OperationsOnFailure))
+func isUniqueTxn(request *model.TxnRequest, clientRequestCount map[keyValue]int64) bool {
+	return isUniqueOps(request.OperationsOnSuccess, clientRequestCount) && isUniqueOps(request.OperationsOnFailure, clientRequestCount)
 }
 
-func hasWriteOperation(ops []model.EtcdOperation) bool {
-	for _, etcdOp := range ops {
-		if etcdOp.Type == model.PutOperation || etcdOp.Type == model.DeleteOperation {
-			return true
+func isUniqueOps(ops []model.EtcdOperation, clientRequestCount map[keyValue]int64) bool {
+	hasUniqueWrite := false
+	hasWrite := false
+	for _, operation := range ops {
+		switch operation.Type {
+		case model.PutOperation:
+			hasWrite = true
+			kv := keyValue{Key: operation.Put.Key, Value: operation.Put.Value}
+			if count := clientRequestCount[kv]; count == 1 {
+				hasUniqueWrite = true
+			}
+		case model.DeleteOperation:
+			hasWrite = true
+		case model.RangeOperation:
+		default:
+			panic(fmt.Sprintf("unknown operation type %q", operation.Type))
 		}
 	}
-	return false
-}
-
-func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
-	for _, etcdOp := range ops {
-		if etcdOp.Type == model.PutOperation {
-			return true
-		}
-	}
-	return false
+	return hasUniqueWrite || !hasWrite
 }
 
 func returnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
@@ -132,10 +138,9 @@ func returnTime(allOperations []porcupine.Operation, reports []report.ClientRepo
 					continue
 				}
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				if _, found := earliestReturnTime[kv]; found {
-					panic("Unexpected duplicate event in persisted requests.")
+				if t, ok := earliestReturnTime[kv]; !ok || t > op.Return {
+					earliestReturnTime[kv] = op.Return
 				}
-				earliestReturnTime[kv] = op.Return
 			}
 		case model.Range:
 		case model.LeaseGrant:
@@ -194,6 +199,17 @@ func returnTime(allOperations []porcupine.Operation, reports []report.ClientRepo
 		}
 	}
 	return earliestReturnTime
+}
+
+func countClientRequests(reports []report.ClientReport) map[keyValue]int64 {
+	counter := map[keyValue]int64{}
+	for _, client := range reports {
+		for _, op := range client.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			countRequest(counter, request)
+		}
+	}
+	return counter
 }
 
 func countPersistedRequests(requests []model.EtcdRequest) map[keyValue]int64 {
