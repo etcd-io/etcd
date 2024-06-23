@@ -66,7 +66,6 @@ func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]client.Tim
 
 func patchOperations(operations []porcupine.Operation, watchEvents map[model.Event]client.TimedWatchEvent, persistedOperations map[model.EtcdOperation]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
-	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
 
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
@@ -77,16 +76,14 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			continue
 		}
 		var resourceVersion int64
-		if op.Call <= lastObservedOperation.Call {
-			matchingEvent := matchWatchEvent(request.Txn, watchEvents)
-			if matchingEvent != nil {
-				eventTime := matchingEvent.Time.Nanoseconds()
-				// Set revision and time based on watchEvent.
-				if eventTime < op.Return {
-					op.Return = eventTime
-				}
-				resourceVersion = matchingEvent.Revision
+		matchingEvent := matchWatchEvent(request.Txn, watchEvents)
+		if matchingEvent != nil {
+			eventTime := matchingEvent.Time.Nanoseconds()
+			// Set revision and time based on watchEvent.
+			if eventTime < op.Return {
+				op.Return = eventTime
 			}
+			resourceVersion = matchingEvent.Revision
 		}
 		persistedReturnTime := matchReturnTime(request, persistedOperations)
 		if persistedReturnTime != nil {
@@ -111,23 +108,6 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		newOperations = append(newOperations, op)
 	}
 	return newOperations
-}
-
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.Event]client.TimedWatchEvent) porcupine.Operation {
-	var maxCallTime int64
-	var lastOperation porcupine.Operation
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		if request.Type != model.Txn {
-			continue
-		}
-		event := matchWatchEvent(request.Txn, watchEvents)
-		if event != nil && op.Call > maxCallTime {
-			maxCallTime = op.Call
-			lastOperation = op
-		}
-	}
-	return lastOperation
 }
 
 func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]client.TimedWatchEvent) *client.TimedWatchEvent {
