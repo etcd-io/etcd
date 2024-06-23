@@ -104,7 +104,7 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
 			}
 		}
-		if isUniqueTxn(request.Txn) {
+		if isUniqueTxn(request.Txn, clientPutCount) {
 			if !persisted {
 				// Remove non persisted operations
 				continue
@@ -122,12 +122,12 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 	return newOperations
 }
 
-func isUniqueTxn(request *model.TxnRequest) bool {
-	return isUniqueOps(request.OperationsOnSuccess) && isUniqueOps(request.OperationsOnFailure)
+func isUniqueTxn(request *model.TxnRequest, clientRequestCount map[keyValue]int64) bool {
+	return isUniqueOps(request.OperationsOnSuccess, clientRequestCount) && isUniqueOps(request.OperationsOnFailure, clientRequestCount)
 }
 
-func isUniqueOps(ops []model.EtcdOperation) bool {
-	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
+func isUniqueOps(ops []model.EtcdOperation, clientRequestCount map[keyValue]int64) bool {
+	return hasUniqueWriteOperation(ops, clientRequestCount) || !hasWriteOperation(ops)
 }
 
 func hasWriteOperation(ops []model.EtcdOperation) bool {
@@ -139,10 +139,18 @@ func hasWriteOperation(ops []model.EtcdOperation) bool {
 	return false
 }
 
-func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
-	for _, etcdOp := range ops {
-		if etcdOp.Type == model.PutOperation {
-			return true
+func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[keyValue]int64) bool {
+	for _, operation := range ops {
+		switch operation.Type {
+		case model.PutOperation:
+			kv := keyValue{Key: operation.Put.Key, Value: operation.Put.Value}
+			if count := clientRequestCount[kv]; count == 1 {
+				return true
+			}
+		case model.DeleteOperation:
+		case model.RangeOperation:
+		default:
+			panic(fmt.Sprintf("unknown operation type %q", operation.Type))
 		}
 	}
 	return false
@@ -160,8 +168,8 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					continue
 				}
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				if _, found := earliestReturnTime[kv]; found {
-					panic("Unexpected duplicate event in persisted requests.")
+				if returnTime, ok := earliestReturnTime[kv]; !ok || returnTime > op.Return {
+					earliestReturnTime[kv] = op.Return
 				}
 				earliestReturnTime[kv] = op.Return
 			}
