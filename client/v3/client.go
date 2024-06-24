@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/client/v3/internal/endpoint"
 	"go.etcd.io/etcd/client/v3/internal/resolver"
@@ -194,6 +195,13 @@ func (c *Client) Sync(ctx context.Context) error {
 			eps = append(eps, m.ClientURLs...)
 		}
 	}
+	// The linearizable `MemberList` returned successfully, so the
+	// endpoints shouldn't be empty.
+	verify.Verify(func() {
+		if len(eps) == 0 {
+			panic("empty endpoints returned from etcd cluster")
+		}
+	})
 	c.SetEndpoints(eps...)
 	c.lg.Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
 	return nil
