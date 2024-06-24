@@ -1960,6 +1960,12 @@ func putRequest(key, value string) model.EtcdRequest {
 	}
 }
 
+func putRequestWithLease(key, value string, leaseID int64) model.EtcdRequest {
+	req := putRequest(key, value)
+	req.Txn.OperationsOnSuccess[0].Put.LeaseID = leaseID
+	return req
+}
+
 func deleteRequest(key string) model.EtcdRequest {
 	return model.EtcdRequest{
 		Type:        model.Txn,
