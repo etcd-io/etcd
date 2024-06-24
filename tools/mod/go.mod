@@ -1,9 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.22
-
-toolchain go1.22.4
-
 require (
 	github.com/alexfalkowski/gocovmerge v1.3.8
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
@@ -12,7 +9,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.59.0
 	github.com/google/addlicense v1.1.1
-	github.com/google/yamlfmt v0.12.1
+	github.com/google/yamlfmt v0.13.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
