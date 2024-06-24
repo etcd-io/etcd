@@ -1783,6 +1783,67 @@ func TestValidateWatch(t *testing.T) {
 			expectError: errBrokePrevKV.Error(),
 		},
 		{
+			name: "PrevKV - all previous values, with compaction, followed by a deletion, delete event should have prevKV=nil - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:        "a",
+								WithPrevKV: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEventWithPrevKV("a", "2", 3, false, "1", 2),
+										// < compaction occurs here >
+										deleteWatchEvent("a", 4), // create delete without prevKV because compaction
+										putWatchEvent("a", "4", 5, true),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+				compactRequest(3),
+				deleteRequest("a"),
+				putRequest("a", "4"),
+			},
+		},
+		{
+			name: "PrevKV - no compaction, prevKV is non-nil and event is create event - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								Key:        "a",
+								WithPrevKV: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEventWithPrevKV("a", "2", 3, true, "1", 2),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("a", "2"),
+			},
+			expectError: errBrokePrevKV.Error(),
+		},
+		{
 			name: "Filter - event not matching the watch - fail",
 			reports: []report.ClientReport{
 				{
@@ -1951,5 +2012,14 @@ func deleteRequest(key string) model.EtcdRequest {
 			OperationsOnFailure: nil,
 		},
 		Defragment: nil,
+	}
+}
+
+func compactRequest(rv int64) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type: model.Compact,
+		Compact: &model.CompactRequest{
+			Revision: rv,
+		},
 	}
 }
