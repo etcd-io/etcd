@@ -60,7 +60,7 @@ fi
 PASSES=${PASSES:-"gofmt bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
-SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.8.0"}
+SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
