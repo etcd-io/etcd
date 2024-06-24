@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.15 (TBD)
 
+### etcd server
+- Fix [add prometheus metric registration for metric `etcd_disk_wal_write_duration_seconds`](https://github.com/etcd-io/etcd/pull/18174).
+
 ### Dependencies
 - Compile binaries using [go 1.21.11](https://github.com/etcd-io/etcd/pull/18129).
 - [Fully address CVE-2023-45288 and fix govulncheck CI check](https://github.com/etcd-io/etcd/pull/18170)
