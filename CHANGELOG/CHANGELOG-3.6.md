@@ -77,6 +77,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [quota to endpoint status response](https://github.com/etcd-io/etcd/pull/17877)
 - Add ['etcd --experimental-set-member-localaddr'](https://github.com/etcd-io/etcd/pull/17661) to enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer.
 - Add [Support multiple values for allowed client and peer TLS identities](https://github.com/etcd-io/etcd/pull/18015)
+- Add [`embed.Config.GRPCAdditionalServerOptions`](https://github.com/etcd-io/etcd/pull/14066) to support updating the default internal gRPC configuration for embedded use cases.
 
 ### etcd grpc-proxy
 
