@@ -309,6 +309,7 @@ func (s *store) Restore(b backend.Backend) error {
 	return s.restore()
 }
 
+//nolint:unparam
 func (s *store) restore() error {
 	s.setupMetricsReporter()
 
