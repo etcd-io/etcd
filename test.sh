@@ -50,6 +50,7 @@ source ./build.sh
 
 PASSES=${PASSES:-"fmt bom dep build unit"}
 PKG=${PKG:-}
+SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
@@ -393,9 +394,29 @@ function fmt_pass {
 }
 
 function shellcheck_pass {
-  if tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
-    generic_checker run shellcheck -fgcc build test scripts/*.sh ./*.sh
+  SHELLCHECK=shellcheck
+  
+  if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
+    log_callout "Installing shellcheck $SHELLCHECK_VERSION"
+
+    if [ "$GOARCH" == "amd64" ]; then
+      URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+    elif [[ "$GOARCH" == "arm" || "$GOARCH" == "arm64" ]]; then
+      URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.aarch64.tar.xz"
+    else
+      echo "Unsupported architecture: $GOARCH"
+      exit 1
+    fi
+
+    wget -qO- "$URL" | tar -xJv -C /tmp/ --strip-components=1
+    mkdir -p ./bin
+    mv /tmp/shellcheck ./bin/
+    SHELLCHECK=./bin/shellcheck
   fi
+
+  echo "Running shellcheck with $SHELLCHECK"
+  generic_checker run ${SHELLCHECK} -fgcc build test scripts/*.sh ./*.sh
+
 }
 
 function shellws_pass {
