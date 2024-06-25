@@ -391,7 +391,7 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       getResponse("key", "a", 1, 1),
-			resp2:       partialResponse(0),
+			resp2:       partialResponse(2),
 			expectMatch: false,
 		},
 		{
@@ -416,8 +416,13 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       putResponse(3),
-			resp2:       partialResponse(0),
+			resp2:       partialResponse(1),
 			expectMatch: false,
+		},
+		{
+			resp1:       putResponse(3),
+			resp2:       partialResponse(0),
+			expectMatch: true,
 		},
 		{
 			resp1:       deleteResponse(1, 5),
@@ -446,13 +451,18 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       deleteResponse(0, 5),
-			resp2:       partialResponse(0),
+			resp2:       partialResponse(4),
 			expectMatch: false,
+		},
+		{
+			resp1:       deleteResponse(0, 5),
+			resp2:       partialResponse(0),
+			expectMatch: true,
 		},
 		{
 			resp1:       deleteResponse(1, 5),
 			resp2:       partialResponse(0),
-			expectMatch: false,
+			expectMatch: true,
 		},
 		{
 			resp1:       deleteResponse(0, 5),
@@ -491,12 +501,72 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(true, 7),
-			resp2:       partialResponse(0),
+			resp2:       partialResponse(4),
+			expectMatch: false,
+		},
+		{
+			resp1:       compareRevisionAndPutResponse(false, 7),
+			resp2:       partialResponse(3),
 			expectMatch: false,
 		},
 		{
 			resp1:       compareRevisionAndPutResponse(false, 7),
 			resp2:       partialResponse(0),
+			expectMatch: true,
+		},
+		{
+			resp1:       MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: 1, Txn: &TxnResponse{Failure: false, Results: []EtcdOperationResult{{Deleted: 1}}}}},
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: false,
+		},
+		{
+			resp1:       failedResponse(errors.New("failed request 1")),
+			resp2:       failedResponse(errors.New("failed request 2")),
+			expectMatch: false,
+		},
+		{
+			resp1:       failedResponse(errors.New("failed request")),
+			resp2:       failedResponse(errors.New("failed request")),
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(2),
+			resp2:       MaybeEtcdResponse{Persisted: true},
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(2),
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
+			expectMatch: true,
+		},
+		{
+			resp1:       putResponse(2),
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 3},
+			expectMatch: false,
+		},
+		{
+			resp1:       failedResponse(errors.New("failed request")),
+			resp2:       MaybeEtcdResponse{Persisted: true},
+			expectMatch: true,
+		},
+		{
+			resp1:       failedResponse(errors.New("failed request")),
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
+			expectMatch: true,
+		},
+		{
+			resp1:       MaybeEtcdResponse{Persisted: true},
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
+			expectMatch: true,
+		},
+		{
+			resp1:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
+			expectMatch: true,
+		},
+		{
+			resp1:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 1},
+			resp2:       MaybeEtcdResponse{Persisted: true, PersistedRevision: 2},
 			expectMatch: false,
 		},
 	}
