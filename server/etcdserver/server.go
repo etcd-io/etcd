@@ -2156,23 +2156,23 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
-
-		// When sending a snapshot, etcd will pause compaction.
-		// After receives a snapshot, the slow follower needs to get all the entries right after
-		// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
-		// the snapshot sent might already be compacted. It happens when the snapshot takes long time
-		// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
-		if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
-			lg.Info("skip compaction since there is an inflight snapshot")
-			return
-		}
 	})
 }
 
 func (s *EtcdServer) compactRaftLog(appliedi uint64) {
-	s.GoAttach(func() {
-		lg := s.Logger()
+	lg := s.Logger()
 
+	// When sending a snapshot, etcd will pause compaction.
+	// After receives a snapshot, the slow follower needs to get all the entries right after
+	// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
+	// the snapshot sent might already be compacted. It happens when the snapshot takes long time
+	// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
+	if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
+		lg.Info("skip compaction since there is an inflight snapshot")
+		return
+	}
+
+	s.GoAttach(func() {
 		// keep some in memory log entries for slow followers.
 		compacti := uint64(0)
 		if appliedi > s.Cfg.SnapshotCatchUpEntries {
@@ -2188,7 +2188,7 @@ func (s *EtcdServer) compactRaftLog(appliedi uint64) {
 			}
 			lg.Panic("failed to compact", zap.Error(err))
 		}
-		lg.Info(
+		lg.Debug(
 			"compacted Raft logs",
 			zap.Uint64("compact-index", compacti),
 		)
