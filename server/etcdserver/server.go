@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"expvar"
 	"fmt"
 	"math"
@@ -963,6 +964,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	<-apply.notifyc
 
 	s.triggerSnapshot(ep)
+	s.compactRaftLog(ep.appliedi)
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
@@ -2164,18 +2166,24 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			lg.Info("skip compaction since there is an inflight snapshot")
 			return
 		}
+	})
+}
+
+func (s *EtcdServer) compactRaftLog(appliedi uint64) {
+	s.GoAttach(func() {
+		lg := s.Logger()
 
 		// keep some in memory log entries for slow followers.
-		compacti := uint64(1)
-		if snapi > s.Cfg.SnapshotCatchUpEntries {
-			compacti = snapi - s.Cfg.SnapshotCatchUpEntries
+		compacti := uint64(0)
+		if appliedi > s.Cfg.SnapshotCatchUpEntries {
+			compacti = appliedi - s.Cfg.SnapshotCatchUpEntries
 		}
 
-		err = s.r.raftStorage.Compact(compacti)
+		err := s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.
 			// raft log might already been compact.
-			if err == raft.ErrCompacted {
+			if goerrors.Is(err, raft.ErrCompacted) {
 				return
 			}
 			lg.Panic("failed to compact", zap.Error(err))
