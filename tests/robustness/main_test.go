@@ -43,44 +43,46 @@ func TestMain(m *testing.M) {
 
 func TestRobustnessExploratory(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, scenario := range exploratoryScenarios(t) {
-		t.Run(scenario.name, func(t *testing.T) {
+	for _, s := range exploratoryScenarios(t) {
+		t.Run(s.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			scenario.cluster.Logger = lg
+			s.cluster.Logger = lg
 			ctx := context.Background()
-			testRobustness(ctx, t, lg, scenario)
+			c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer forcestopCluster(c)
+			s.failpoint, err = failpoint.PickRandom(c, s.profile)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Run(s.failpoint.Name(), func(t *testing.T) {
+				testRobustness(ctx, t, lg, s, c)
+			})
 		})
 	}
 }
 
 func TestRobustnessRegression(t *testing.T) {
 	testRunner.BeforeTest(t)
-	for _, scenario := range regressionScenarios(t) {
-		t.Run(scenario.name, func(t *testing.T) {
+	for _, s := range regressionScenarios(t) {
+		t.Run(s.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			scenario.cluster.Logger = lg
+			s.cluster.Logger = lg
 			ctx := context.Background()
-			testRobustness(ctx, t, lg, scenario)
+			c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer forcestopCluster(c)
+			testRobustness(ctx, t, lg, s, c)
 		})
 	}
 }
 
-func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario) {
-	r := report.TestReport{Logger: lg}
-	var err error
-	r.Cluster, err = e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.cluster))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer forcestopCluster(r.Cluster)
-
-	if s.failpoint == nil {
-		s.failpoint, err = failpoint.PickRandom(r.Cluster, s.profile)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-
+func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testScenario, c *e2e.EtcdProcessCluster) {
+	r := report.TestReport{Logger: lg, Cluster: c}
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
@@ -88,13 +90,13 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	defer func() {
 		r.Report(t, panicked)
 	}()
-	r.Client = s.run(ctx, t, lg, r.Cluster)
-	persistedRequests, err := report.PersistedRequestsCluster(lg, r.Cluster)
+	r.Client = s.run(ctx, t, lg, c)
+	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	watchProgressNotifyEnabled := r.Cluster.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
+	watchProgressNotifyEnabled := c.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
 	validateGotAtLeastOneProgressNotify(t, r.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
 	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
