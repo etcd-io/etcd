@@ -93,7 +93,7 @@ func TestPatchHistory(t *testing.T) {
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
 			},
-			watchOperations: watchPutEvent("key", "value", 2, 3),
+			watchOperations: watchResponse(3, putEvent("key", "value", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 3, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
 			},
@@ -183,7 +183,7 @@ func TestPatchHistory(t *testing.T) {
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
 			},
-			watchOperations: watchDeleteEvent("key", 2, 3),
+			watchOperations: watchResponse(3, deleteEvent("key", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 1000000004, Output: model.MaybeEtcdResponse{Error: "failed"}},
 				{Return: 4, Output: putResponse(model.EtcdOperationResult{})},
@@ -325,49 +325,40 @@ func putResponse(result ...model.EtcdOperationResult) model.MaybeEtcdResponse {
 	return model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Txn: &model.TxnResponse{Results: result}}}
 }
 
-func watchPutEvent(key, value string, revision, responseTime int64) []model.WatchOperation {
+func watchResponse(responseTime int64, events ...model.WatchEvent) []model.WatchOperation {
 	return []model.WatchOperation{
 		{
 			Responses: []model.WatchResponse{
 				{
-					Time: time.Duration(responseTime),
-					Events: []model.WatchEvent{
-						{
-							PersistedEvent: model.PersistedEvent{
-								Event: model.Event{
-									Type:  model.PutOperation,
-									Key:   key,
-									Value: model.ToValueOrHash(value),
-								},
-								Revision: revision,
-							},
-						},
-					},
+					Time:   time.Duration(responseTime),
+					Events: events,
 				},
 			},
 		},
 	}
 }
 
-func watchDeleteEvent(key string, revision, responseTime int64) []model.WatchOperation {
-	return []model.WatchOperation{
-		{
-			Responses: []model.WatchResponse{
-				{
-					Time: time.Duration(responseTime),
-					Events: []model.WatchEvent{
-						{
-							PersistedEvent: model.PersistedEvent{
-								Event: model.Event{
-									Type: model.DeleteOperation,
-									Key:  key,
-								},
-								Revision: revision,
-							},
-						},
-					},
-				},
+func putEvent(key, value string, revision int64) model.WatchEvent {
+	return model.WatchEvent{
+		PersistedEvent: model.PersistedEvent{
+			Event: model.Event{
+				Type:  model.PutOperation,
+				Key:   key,
+				Value: model.ToValueOrHash(value),
 			},
+			Revision: revision,
+		},
+	}
+}
+
+func deleteEvent(key string, revision int64) model.WatchEvent {
+	return model.WatchEvent{
+		PersistedEvent: model.PersistedEvent{
+			Event: model.Event{
+				Type: model.DeleteOperation,
+				Key:  key,
+			},
+			Revision: revision,
 		},
 	}
 }
