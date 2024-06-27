@@ -191,8 +191,9 @@ func regressionScenarios(t *testing.T) []testScenario {
 		watch: watchConfig{
 			requestProgress: true,
 		},
-		profile: traffic.LowTraffic,
-		traffic: traffic.EtcdPutDeleteLease,
+		profile:   traffic.LowTraffic,
+		traffic:   traffic.EtcdPutDeleteLease,
+		failpoint: failpoint.KillFailpoint,
 		cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 		),
