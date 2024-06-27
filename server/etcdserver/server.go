@@ -208,6 +208,7 @@ type Server interface {
 type EtcdServer struct {
 	// inflightSnapshots holds count the number of snapshots currently inflight.
 	inflightSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
+	creatingSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
 	appliedIndex      uint64 // must use atomic operations to access; keep 64-bit aligned.
 	committedIndex    uint64 // must use atomic operations to access; keep 64-bit aligned.
 	term              uint64 // must use atomic operations to access; keep 64-bit aligned.
@@ -2128,7 +2129,11 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// the go routine created below.
 	s.KV().Commit()
 
+	atomic.AddInt64(&s.creatingSnapshots, 1)
 	s.GoAttach(func() {
+		defer func() {
+			atomic.AddInt64(&s.creatingSnapshots, -1)
+		}()
 		lg := s.Logger()
 
 		// For backward compatibility, generate v2 snapshot from v3 state.
@@ -2172,6 +2177,14 @@ func (s *EtcdServer) compactRaftLog(appliedi uint64) {
 		return
 	}
 
+	// If there are snapshots being created, skip compaction until they are done.
+	// This ensures `s.r.raftStorage.Compact` does not remove elements from `s.r.raftStorage.Ents`,
+	// preventing `s.r.raftStorage.CreateSnapshot` from causing a panic.
+	if atomic.LoadInt64(&s.creatingSnapshots) != 0 {
+		lg.Info("skip compaction since there are snapshots being created")
+		return
+	}
+
 	s.GoAttach(func() {
 		// keep some in memory log entries for slow followers.
 		compacti := uint64(0)
@@ -2188,7 +2201,7 @@ func (s *EtcdServer) compactRaftLog(appliedi uint64) {
 			}
 			lg.Panic("failed to compact", zap.Error(err))
 		}
-		lg.Debug(
+		lg.Info(
 			"compacted Raft logs",
 			zap.Uint64("compact-index", compacti),
 		)
