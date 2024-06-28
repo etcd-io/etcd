@@ -37,6 +37,7 @@ clean:
 	rm -rf ./release
 	rm -rf ./coverage/*.err ./coverage/*.out
 	rm -rf ./tests/e2e/default.proxy
+	rm -rf ./bin/shellcheck*
 	find ./ -name "127.0.0.1:*" -o -name "localhost:*" -o -name "*.log" -o -name "agent-*" -o -name "*.coverprofile" -o -name "testname-proxy-*" | $(XARGS)
 
 docker-clean:
