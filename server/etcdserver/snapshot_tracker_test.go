@@ -8,7 +8,7 @@ import (
 )
 
 func TestSnapTracker_MinSnapi(t *testing.T) {
-	st := SnapshotTracker{}
+	st := *newSnapshotTracker()
 
 	_, err := st.MinSnapi()
 	assert.NotNil(t, err, "SnapshotTracker should be empty initially")
@@ -30,7 +30,7 @@ func TestSnapTracker_MinSnapi(t *testing.T) {
 }
 
 func TestSnapTracker_Track(t *testing.T) {
-	st := SnapshotTracker{}
+	st := *newSnapshotTracker()
 	st.Track(20)
 	st.Track(10)
 	st.Track(15)
@@ -43,7 +43,7 @@ func TestSnapTracker_Track(t *testing.T) {
 }
 
 func TestSnapTracker_UnTrack(t *testing.T) {
-	st := SnapshotTracker{}
+	st := *newSnapshotTracker()
 	st.Track(20)
 	st.Track(30)
 	st.Track(40)
