@@ -2,8 +2,9 @@ package etcdserver
 
 import (
 	"container/heap"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSnapTracker_MinSnapi(t *testing.T) {
@@ -65,6 +66,7 @@ func TestSnapTracker_UnTrack(t *testing.T) {
 
 	st.UnTrack(20)
 	minSnapi, err = st.MinSnapi()
+	assert.Nil(t, err)
 	assert.Equal(t, uint64(40), minSnapi)
 
 	st.UnTrack(40)
