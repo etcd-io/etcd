@@ -10,7 +10,7 @@ if [ -z "$1" ]; then
 fi
 
 MARKER_URL=https://storage.googleapis.com/etcd/test-binaries/marker-v0.4.0-x86_64-unknown-linux-gnu
-if [ ${ARCH} == "darwin" ]; then
+if [ "${ARCH}" == "darwin" ]; then
     MARKER_URL=https://storage.googleapis.com/etcd/test-binaries/marker-v0.4.0-x86_64-apple-darwin
 fi
 

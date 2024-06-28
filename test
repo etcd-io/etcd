@@ -167,7 +167,7 @@ function unit_pass {
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
-	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu "${TEST_CPUS}" ${RUN_ARG} "$@" "${TEST[@]}"
+	go test "${GO_TEST_FLAG}" -timeout "${USERTIMEOUT}"  "${COVER}" "${RACE}" -cpu "${TEST_CPUS}" "${RUN_ARG}" "$@" "${TEST[@]}"
 }
 
 function integration_pass {
@@ -204,12 +204,12 @@ function integration_pass {
 }
 
 function integration_extra {
-	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
-	go test -timeout 25m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration/..."
+	go test -timeout 1m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
+	go test -timeout 25m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration/..."
 	go test -timeout 1m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/contrib/raftexample"
-	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
-	go test -timeout 5m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/proxy/grpcproxy"
-	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
+	go test -timeout 5m -v "${RACE}" -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
+	go test -timeout 5m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/proxy/grpcproxy"
+	go test -timeout 1m -v "${RACE}" -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
 }
 
 function functional_pass {
@@ -343,7 +343,7 @@ function e2e_pass {
 		USERTIMEOUT="${TIMEOUT}"
 	fi
 
-	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" ${RUN_ARG}  "$@" "${REPO_PATH}/tests/e2e"
+	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
@@ -359,8 +359,8 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
-	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 30m -v "${RACE}" -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+	go test -timeout 30m -v "${RACE}" -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
 	go test -timeout 30m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
