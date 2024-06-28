@@ -11,7 +11,14 @@ import (
 // only compact the raft log up to the minimum snapshot index in the track.
 type SnapshotTracker struct {
 	h  minHeap[uint64]
-	mu sync.Mutex
+	mu *sync.Mutex
+}
+
+func newSnapshotTracker() *SnapshotTracker {
+	return &SnapshotTracker{
+		h:  minHeap[uint64]{},
+		mu: new(sync.Mutex),
+	}
 }
 
 // MinSnapi returns the minimum snapshot index in the track or an error if the tracker is empty.

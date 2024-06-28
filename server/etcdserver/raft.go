@@ -141,7 +141,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		// expect to send a heartbeat within 2 heartbeat intervals.
 		td:              contention.NewTimeoutDetector(2 * cfg.heartbeat),
 		readStateC:      make(chan raft.ReadState, 1),
-		snapshotTracker: SnapshotTracker{},
+		snapshotTracker: *newSnapshotTracker(),
 		msgSnapC:        make(chan raftpb.Message, maxInFlightMsgSnap),
 		applyc:          make(chan toApply),
 		stopped:         make(chan struct{}),
