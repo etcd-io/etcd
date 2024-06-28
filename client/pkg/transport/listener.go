@@ -232,12 +232,10 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	}
 	err = fileutil.TouchDirAll(lg, dirpath)
 	if err != nil {
-		if info.Logger != nil {
-			info.Logger.Warn(
-				"cannot create cert directory",
-				zap.Error(err),
-			)
-		}
+		info.Logger.Warn(
+			"cannot create cert directory",
+			zap.Error(err),
+		)
 		return info, err
 	}
 
@@ -263,12 +261,10 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		if info.Logger != nil {
-			info.Logger.Warn(
-				"cannot generate random number",
-				zap.Error(err),
-			)
-		}
+		info.Logger.Warn(
+			"cannot generate random number",
+			zap.Error(err),
+		)
 		return info, err
 	}
 
@@ -284,12 +280,10 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 		IsCA:                  true,
 	}
 
-	if info.Logger != nil {
-		info.Logger.Warn(
-			"automatically generate certificates",
-			zap.Time("certificate-validity-bound-not-after", tmpl.NotAfter),
-		)
-	}
+	info.Logger.Warn(
+		"automatically generate certificates",
+		zap.Time("certificate-validity-bound-not-after", tmpl.NotAfter),
+	)
 
 	for _, host := range hosts {
 		h, _, _ := net.SplitHostPort(host)
@@ -302,23 +296,19 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 
 	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
-		if info.Logger != nil {
-			info.Logger.Warn(
-				"cannot generate ECDSA key",
-				zap.Error(err),
-			)
-		}
+		info.Logger.Warn(
+			"cannot generate ECDSA key",
+			zap.Error(err),
+		)
 		return info, err
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, &priv.PublicKey, priv)
 	if err != nil {
-		if info.Logger != nil {
-			info.Logger.Warn(
-				"cannot generate x509 certificate",
-				zap.Error(err),
-			)
-		}
+		info.Logger.Warn(
+			"cannot generate x509 certificate",
+			zap.Error(err),
+		)
 		return info, err
 	}
 
@@ -333,9 +323,8 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	certOut.Close()
-	if info.Logger != nil {
-		info.Logger.Info("created cert file", zap.String("path", certPath))
-	}
+
+	info.Logger.Info("created cert file", zap.String("path", certPath))
 
 	b, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
@@ -343,20 +332,16 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	}
 	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		if info.Logger != nil {
-			info.Logger.Warn(
-				"cannot key file",
-				zap.String("path", keyPath),
-				zap.Error(err),
-			)
-		}
+		info.Logger.Warn(
+			"cannot key file",
+			zap.String("path", keyPath),
+			zap.Error(err),
+		)
 		return info, err
 	}
 	pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: b})
 	keyOut.Close()
-	if info.Logger != nil {
-		info.Logger.Info("created key file", zap.String("path", keyPath))
-	}
+	info.Logger.Info("created key file", zap.String("path", keyPath))
 	return SelfCert(lg, dirpath, hosts, selfSignedCertValidity)
 }
 
@@ -489,23 +474,19 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 	cfg.GetCertificate = func(clientHello *tls.ClientHelloInfo) (cert *tls.Certificate, err error) {
 		cert, err = tlsutil.NewCert(info.CertFile, info.KeyFile, info.parseFunc)
 		if os.IsNotExist(err) {
-			if info.Logger != nil {
-				info.Logger.Warn(
-					"failed to find peer cert files",
-					zap.String("cert-file", info.CertFile),
-					zap.String("key-file", info.KeyFile),
-					zap.Error(err),
-				)
-			}
+			info.Logger.Warn(
+				"failed to find peer cert files",
+				zap.String("cert-file", info.CertFile),
+				zap.String("key-file", info.KeyFile),
+				zap.Error(err),
+			)
 		} else if err != nil {
-			if info.Logger != nil {
-				info.Logger.Warn(
-					"failed to create peer certificate",
-					zap.String("cert-file", info.CertFile),
-					zap.String("key-file", info.KeyFile),
-					zap.Error(err),
-				)
-			}
+			info.Logger.Warn(
+				"failed to create peer certificate",
+				zap.String("cert-file", info.CertFile),
+				zap.String("key-file", info.KeyFile),
+				zap.Error(err),
+			)
 		}
 		return cert, err
 	}
@@ -516,23 +497,19 @@ func (info TLSInfo) baseConfig() (*tls.Config, error) {
 		}
 		cert, err = tlsutil.NewCert(certfile, keyfile, info.parseFunc)
 		if os.IsNotExist(err) {
-			if info.Logger != nil {
-				info.Logger.Warn(
-					"failed to find client cert files",
-					zap.String("cert-file", certfile),
-					zap.String("key-file", keyfile),
-					zap.Error(err),
-				)
-			}
+			info.Logger.Warn(
+				"failed to find client cert files",
+				zap.String("cert-file", certfile),
+				zap.String("key-file", keyfile),
+				zap.Error(err),
+			)
 		} else if err != nil {
-			if info.Logger != nil {
-				info.Logger.Warn(
-					"failed to create client certificate",
-					zap.String("cert-file", certfile),
-					zap.String("key-file", keyfile),
-					zap.Error(err),
-				)
-			}
+			info.Logger.Warn(
+				"failed to create client certificate",
+				zap.String("cert-file", certfile),
+				zap.String("key-file", keyfile),
+				zap.Error(err),
+			)
 		}
 		return cert, err
 	}
