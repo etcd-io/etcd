@@ -38,6 +38,7 @@ export ETCD_VERIFY=all
 source ./build
 
 PASSES=${PASSES:-}
+SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
 
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
@@ -397,12 +398,33 @@ function release_pass {
 }
 
 function shellcheck_pass {
-	if command -v shellcheck >/dev/null; then
-		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
+	SHELLCHECK=shellcheck
+
+	if ! command -v $SHELLCHECK >/dev/null; then
+		echo "Installing shellcheck $SHELLCHECK_VERSION"
+		if [ "$GOARCH" == "amd64" ]; then
+			URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+		elif [[ "$GOARCH" == "arm" || "$GOARCH" == "arm64" ]]; then
+			URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.aarch64.tar.xz"
+		else
+			echo "Unsupported architecture: $GOARCH"
+			exit 255
+		fi
+
+		wget -qO- "$URL" | tar -xJv -C /tmp/ --strip-components=1
+		mkdir -p ./bin
+		mv /tmp/shellcheck ./bin/
+		SHELLCHECK=./bin/shellcheck
+	fi
+
+	if command -v $SHELLCHECK >/dev/null; then
+		shellcheckResult=$(${SHELLCHECK} -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
+	else
+		echo "Skipping shellcheck..."
 	fi
 }
 
