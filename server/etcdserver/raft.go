@@ -92,6 +92,9 @@ type raftNode struct {
 	// a chan to send out readState
 	readStateC chan raft.ReadState
 
+	// keep track of snapshots being created
+	snapshotTracker SnapshotTracker
+
 	// utility
 	ticker *time.Ticker
 	// contention detectors for raft heartbeat message
@@ -136,12 +139,13 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		raftNodeConfig: cfg,
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.
-		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
-		readStateC: make(chan raft.ReadState, 1),
-		msgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
-		applyc:     make(chan toApply),
-		stopped:    make(chan struct{}),
-		done:       make(chan struct{}),
+		td:              contention.NewTimeoutDetector(2 * cfg.heartbeat),
+		readStateC:      make(chan raft.ReadState, 1),
+		snapshotTracker: SnapshotTracker{},
+		msgSnapC:        make(chan raftpb.Message, maxInFlightMsgSnap),
+		applyc:          make(chan toApply),
+		stopped:         make(chan struct{}),
+		done:            make(chan struct{}),
 	}
 	if r.heartbeat == 0 {
 		r.ticker = &time.Ticker{}

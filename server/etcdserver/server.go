@@ -208,7 +208,6 @@ type Server interface {
 type EtcdServer struct {
 	// inflightSnapshots holds count the number of snapshots currently inflight.
 	inflightSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
-	creatingSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
 	appliedIndex      uint64 // must use atomic operations to access; keep 64-bit aligned.
 	committedIndex    uint64 // must use atomic operations to access; keep 64-bit aligned.
 	term              uint64 // must use atomic operations to access; keep 64-bit aligned.
@@ -2129,11 +2128,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// the go routine created below.
 	s.KV().Commit()
 
-	atomic.AddInt64(&s.creatingSnapshots, 1)
+	s.r.snapshotTracker.Track(snapi)
+
 	s.GoAttach(func() {
 		defer func() {
-			atomic.AddInt64(&s.creatingSnapshots, -1)
+			s.r.snapshotTracker.UnTrack(snapi)
 		}()
+
 		lg := s.Logger()
 
 		// For backward compatibility, generate v2 snapshot from v3 state.
@@ -2177,21 +2178,23 @@ func (s *EtcdServer) compactRaftLog(appliedi uint64) {
 		return
 	}
 
-	// If there are snapshots being created, skip compaction until they are done.
-	// This ensures `s.r.raftStorage.Compact` does not remove elements from `s.r.raftStorage.Ents`,
-	// preventing `s.r.raftStorage.CreateSnapshot` from causing a panic.
-	if atomic.LoadInt64(&s.creatingSnapshots) != 0 {
-		lg.Info("skip compaction since there are snapshots being created")
+	// keep some in memory log entries for slow followers.
+	compacti := uint64(0)
+	if appliedi > s.Cfg.SnapshotCatchUpEntries {
+		compacti = appliedi - s.Cfg.SnapshotCatchUpEntries
+	}
+
+	// if there are snapshots being created, compact the raft log up to the minimum snapshot index.
+	if minSpani, err := s.r.snapshotTracker.MinSnapi(); err == nil && minSpani < appliedi && minSpani > s.Cfg.SnapshotCatchUpEntries {
+		compacti = minSpani - s.Cfg.SnapshotCatchUpEntries
+	}
+
+	// no need to compact if compacti == 0
+	if compacti == 0 {
 		return
 	}
 
 	s.GoAttach(func() {
-		// keep some in memory log entries for slow followers.
-		compacti := uint64(0)
-		if appliedi > s.Cfg.SnapshotCatchUpEntries {
-			compacti = appliedi - s.Cfg.SnapshotCatchUpEntries
-		}
-
 		err := s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.
