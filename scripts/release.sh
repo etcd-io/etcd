@@ -280,9 +280,6 @@ main() {
 
     log_callout "Pushing container manifest list to gcr.io ${RELEASE_VERSION}"
     maybe_run docker manifest push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
-
-    log_callout "Setting permissions using gsutil..."
-    maybe_run gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
   fi
 
   ### Release validation
