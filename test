@@ -38,6 +38,7 @@ export ETCD_VERIFY=all
 source ./build
 
 PASSES=${PASSES:-}
+SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
 
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
@@ -167,7 +168,7 @@ function unit_pass {
 	else
 		USERTIMEOUT="${TIMEOUT}"
 	fi
-	go test ${GO_TEST_FLAG} -timeout "${USERTIMEOUT}"  "${COVER}" ${RACE} -cpu "${TEST_CPUS}" ${RUN_ARG} "$@" "${TEST[@]}"
+	go test "${GO_TEST_FLAG}" -timeout "${USERTIMEOUT}"  "${COVER}" "${RACE}" -cpu "${TEST_CPUS}" "${RUN_ARG}" "$@" "${TEST[@]}"
 }
 
 function integration_pass {
@@ -204,12 +205,12 @@ function integration_pass {
 }
 
 function integration_extra {
-	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
-	go test -timeout 25m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration/..."
+	go test -timeout 1m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/client/integration"
+	go test -timeout 25m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration/..."
 	go test -timeout 1m -v -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/contrib/raftexample"
-	go test -timeout 5m -v ${RACE} -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
-	go test -timeout 5m -v ${RACE} -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/proxy/grpcproxy"
-	go test -timeout 1m -v ${RACE} -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
+	go test -timeout 5m -v "${RACE}" -tags v2v3 "$@" "${REPO_PATH}/etcdserver/api/v2store"
+	go test -timeout 5m -v "${RACE}" -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/proxy/grpcproxy"
+	go test -timeout 1m -v "${RACE}" -cpu "${TEST_CPUS}" -run=Example "$@" "${TEST[@]}"
 }
 
 function functional_pass {
@@ -343,7 +344,7 @@ function e2e_pass {
 		USERTIMEOUT="${TIMEOUT}"
 	fi
 
-	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" ${RUN_ARG}  "$@" "${REPO_PATH}/tests/e2e"
+	go test -timeout "${USERTIMEOUT}" -v -cpu "${TEST_CPUS}" "${RUN_ARG}"  "$@" "${REPO_PATH}/tests/e2e"
 }
 
 function integration_e2e_pass {
@@ -359,8 +360,8 @@ function integration_e2e_pass {
 }
 
 function grpcproxy_pass {
-	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
-	go test -timeout 30m -v ${RACE} -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
+	go test -timeout 30m -v "${RACE}" -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/integration"
+	go test -timeout 30m -v "${RACE}" -tags cluster_proxy -cpu "${TEST_CPUS}" "$@" "${REPO_PATH}/clientv3/integration"
 	go test -timeout 30m -v -tags cluster_proxy "$@" "${REPO_PATH}/tests/e2e"
 }
 
@@ -397,12 +398,33 @@ function release_pass {
 }
 
 function shellcheck_pass {
-	if command -v shellcheck >/dev/null; then
-		shellcheckResult=$(shellcheck -fgcc build test scripts/*.sh 2>&1 || true)
+	SHELLCHECK=shellcheck
+
+	if ! command -v $SHELLCHECK >/dev/null; then
+		echo "Installing shellcheck $SHELLCHECK_VERSION"
+		if [ "$GOARCH" == "amd64" ]; then
+			URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+		elif [[ "$GOARCH" == "arm" || "$GOARCH" == "arm64" ]]; then
+			URL="https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.aarch64.tar.xz"
+		else
+			echo "Unsupported architecture: $GOARCH"
+			exit 255
+		fi
+
+		wget -qO- "$URL" | tar -xJv -C /tmp/ --strip-components=1
+		mkdir -p ./bin
+		mv /tmp/shellcheck ./bin/
+		SHELLCHECK=./bin/shellcheck
+	fi
+
+	if command -v $SHELLCHECK >/dev/null; then
+		shellcheckResult=$(${SHELLCHECK} -fgcc build test scripts/*.sh 2>&1 || true)
 		if [ -n "${shellcheckResult}" ]; then
 			echo -e "shellcheck checking failed:\\n${shellcheckResult}"
 			exit 255
 		fi
+	else
+		echo "Skipping shellcheck..."
 	fi
 }
 
