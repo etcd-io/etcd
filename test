@@ -39,6 +39,7 @@ source ./build
 
 PASSES=${PASSES:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
+REVIVE_VERSION=${REVIVE_VERSION:-"v1.3.7"}
 
 # build before setting up test GOPATH
 if [[ "${PASSES}" == *"functional"* ]]; then
@@ -543,8 +544,27 @@ function staticcheck_pass {
 }
 
 function revive_pass {
-	if command -v revive >/dev/null; then
-		reviveResult=$(revive -config ./tests/revive.toml -exclude "vendor/..." ./... 2>&1 || true)
+	REVIVE=revive
+
+	if ! command -v $REVIVE >/dev/null; then
+		echo "Installing revive $REVIVE_VERSION"
+		if [ "$GOARCH" == "amd64" ]; then
+			URL="https://github.com/mgechev/revive/releases/download/${REVIVE_VERSION}/revive_linux_amd64.tar.gz"
+		elif [[ "$GOARCH" == "arm" || "$GOARCH" == "arm64" ]]; then
+			URL="https://github.com/mgechev/revive/releases/download/${REVIVE_VERSION}/revive_linux_arm64.tar.gz"
+		else
+			echo "Unsupported architecture: $GOARCH"
+			exit 255
+		fi
+
+		wget -qO- "$URL" | tar -xzv -C /tmp/ > /dev/null
+		mkdir -p ./bin
+		mv /tmp/revive ./bin/
+		REVIVE=./bin/revive
+	fi
+
+	if command -v $REVIVE >/dev/null; then
+		reviveResult=$($REVIVE -config ./tests/revive.toml -exclude "vendor/..." ./... 2>&1 || true)
 		if [ -n "${reviveResult}" ]; then
 			echo -e "revive checking failed:\\n${reviveResult}"
 			exit 255
