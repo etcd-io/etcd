@@ -35,6 +35,7 @@ clean:
 	rm -f ./clientv3/integration/127.0.0.1:* ./clientv3/integration/localhost:*
 	rm -f ./clientv3/ordering/127.0.0.1:* ./clientv3/ordering/localhost:*
 	rm -rf ./bin/shellcheck*
+	rm -rf ./bin/revive*
 
 docker-clean:
 	docker images
