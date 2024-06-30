@@ -275,6 +275,10 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 	onSet(c.lg, c.version)
 
 	for _, m := range c.members {
+		if c.localID == m.ID {
+			setIsLearnerMetric(m)
+		}
+
 		c.lg.Info(
 			"recovered/added member from store",
 			zap.String("cluster-id", c.cid.String()),
@@ -397,6 +401,11 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 			}
 		}
 	}
+
+	if m.ID == c.localID {
+		setIsLearnerMetric(m)
+	}
+	
 	if c.be != nil && shouldApplyV3 {
 		beErr = unsafeSaveMemberToBackend(c.lg, c.be, m)
 		if beErr != nil && !errors.Is(beErr, errMemberAlreadyExist) {
@@ -528,6 +537,11 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	if c.v2store != nil {
 		mustUpdateMemberInStore(c.lg, c.v2store, c.members[id])
 	}
+
+	if id == c.localID {
+		isLearner.Set(0)
+	}
+
 	if c.be != nil && shouldApplyV3 {
 		unsafeSaveMemberToBackend(c.lg, c.be, c.members[id])
 	}
