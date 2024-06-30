@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package verify is analyzing persistent state of etcd to find potential
-// inconsistencies.
-// In particular it covers cross-checking between different aspacts of etcd
-// storage like WAL & Backend.
-package verify
+// Package endpoints provides utilities for managing and watching etcd endpoints,
+// including functions to add, remove, and list endpoints stored in etcd.
+package endpoints
