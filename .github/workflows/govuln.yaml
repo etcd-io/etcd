@@ -18,4 +18,4 @@ jobs:
 
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
-          find -name go.mod -exec /bin/bash -c 'echo scanning $(dirname {}); govulncheck -C $(dirname {}) -show verbose ./...' \;
+          find . -name go.mod | xargs -I'{}' /bin/bash -c 'echo scanning $(dirname {}); govulncheck -C $(dirname {}) -show verbose ./...'
