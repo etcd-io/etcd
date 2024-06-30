@@ -12,8 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package verify is analyzing persistent state of etcd to find potential
-// inconsistencies.
-// In particular it covers cross-checking between different aspacts of etcd
-// storage like WAL & Backend.
-package verify
+// Package confchange provides utilities for managing Raft configuration changes.
+package confchange

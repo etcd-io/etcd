@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package verify is analyzing persistent state of etcd to find potential
-// inconsistencies.
-// In particular it covers cross-checking between different aspacts of etcd
-// storage like WAL & Backend.
-package verify
+// Package tracker provides utilities and data structures for tracking the
+// progress and configuration of nodes within an etcd cluster, including
+// vote tracking and configuration changes.
+package tracker

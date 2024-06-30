@@ -242,7 +242,7 @@ func isCompatibleWithCluster(lg *zap.Logger, cl *membership.RaftCluster, local t
 		Minor: maxV.Minor,
 	}
 	if nextClusterVersionCompatible {
-		maxV.Minor += 1
+		maxV.Minor++
 	}
 	return isCompatibleWithVers(lg, vers, local, minV, maxV)
 }
