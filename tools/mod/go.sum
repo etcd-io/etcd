@@ -225,8 +225,8 @@ github.com/jingyugao/rowserrcheck v1.1.1 h1:zibz55j/MJtLsjP1OF4bSdgXxwL1b+Vn7Tjz
 github.com/jingyugao/rowserrcheck v1.1.1/go.mod h1:4yvlZSDb3IyDTUZJUmpZfm2Hwok+Dtp+nu2qOq+er9c=
 github.com/jirfag/go-printf-func-name v0.0.0-20200119135958-7558a9eaa5af h1:KA9BjwUk7KlCh6S9EAGWBt1oExIUv9WyNCiRz5amv48=
 github.com/jirfag/go-printf-func-name v0.0.0-20200119135958-7558a9eaa5af/go.mod h1:HEWGJkRDzjJY2sqdDwxccsGicWEf9BQOZsq2tV+xzM0=
-github.com/jjti/go-spancheck v0.6.1 h1:ZK/wE5Kyi1VX3PJpUO2oEgeoI4FWOUm7Shb2Gbv5obI=
-github.com/jjti/go-spancheck v0.6.1/go.mod h1:vF1QkOO159prdo6mHRxak2CpzDpHAfKiPUDP/NeRnX8=
+github.com/jjti/go-spancheck v0.6.2 h1:iYtoxqPMzHUPp7St+5yA8+cONdyXD3ug6KK15n7Pklk=
+github.com/jjti/go-spancheck v0.6.2/go.mod h1:+X7lvIrR5ZdUTkxFYqzJ0abr8Sb5LOo80uOhWNqIrYA=
 github.com/jmhodges/clock v1.2.0 h1:eq4kys+NI0PLngzaHEe7AmPT90XMGIEySD1JfV1PDIs=
 github.com/jmhodges/clock v1.2.0/go.mod h1:qKjhA7x7u/lQpPB1XAqX1b1lCI/w3/fNuYpI/ZjLynI=
 github.com/jmoiron/sqlx v1.3.5 h1:vFFPA71p1o5gAeqtEAwLU4dnX2napprKtHr7PYIcN3g=

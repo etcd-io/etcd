@@ -1,9 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.22
-
-toolchain go1.22.4
-
 require (
 	github.com/alexfalkowski/gocovmerge v1.3.8
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
@@ -111,7 +108,7 @@ require (
 	github.com/jgautheron/goconst v1.7.1 // indirect
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jirfag/go-printf-func-name v0.0.0-20200119135958-7558a9eaa5af // indirect
-	github.com/jjti/go-spancheck v0.6.1 // indirect
+	github.com/jjti/go-spancheck v0.6.2 // indirect
 	github.com/jmhodges/clock v1.2.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
 	github.com/julz/importas v0.1.0 // indirect
