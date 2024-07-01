@@ -1,9 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.22
-
-toolchain go1.22.4
-
 require (
 	github.com/alexfalkowski/gocovmerge v1.3.8
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
@@ -140,7 +137,7 @@ require (
 	github.com/mgechev/revive v1.3.7 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/moricho/tparallel v0.3.1 // indirect
+	github.com/moricho/tparallel v0.3.2 // indirect
 	github.com/nakabonne/nestif v0.3.1 // indirect
 	github.com/nishanths/exhaustive v0.12.0 // indirect
 	github.com/nishanths/predeclared v0.2.2 // indirect
