@@ -197,6 +197,11 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	}
 
 	if getMaxCreateRev > 0 {
+                if getMinCreateRev > getMaxCreateRev {
+                        cobrautl.ExitWithError(cobrautl.ExitBadFeature,
+                              fmt.Errorf("getMinCreateRev(=%v) > getMaxCreateRev(=%v)", getMinCreateRev, getMaxCreateRev))
+
+                }
 		opts = append(opts, clientv3.WithMaxCreateRev(getMaxCreateRev))
 	}
 
@@ -205,6 +210,10 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 	}
 
 	if getMaxModRev > 0 {
+                if getMinModRev > getMaxModRev {
+                        cobrautl.ExitWithError(cobrautl.ExitBadFeature,
+                              fmt.Errorf("getMinModRev(=%v) > getMaxModRev(=%v)", getMinModRev, getMaxModRev))
+                }
 		opts = append(opts, clientv3.WithMaxModRev(getMaxModRev))
 	}
 
