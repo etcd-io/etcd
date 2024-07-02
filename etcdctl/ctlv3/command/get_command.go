@@ -25,16 +25,20 @@ import (
 )
 
 var (
-	getConsistency string
-	getLimit       int64
-	getSortOrder   string
-	getSortTarget  string
-	getPrefix      bool
-	getFromKey     bool
-	getRev         int64
-	getKeysOnly    bool
-	getCountOnly   bool
-	printValueOnly bool
+	getConsistency  string
+	getLimit        int64
+	getSortOrder    string
+	getSortTarget   string
+	getPrefix       bool
+	getFromKey      bool
+	getRev          int64
+	getKeysOnly     bool
+	getCountOnly    bool
+	printValueOnly  bool
+	getMinCreateRev int64
+	getMaxCreateRev int64
+	getMinModRev    int64
+	getMaxModRev    int64
 )
 
 // NewGetCommand returns the cobra command for "get".
@@ -55,6 +59,10 @@ func NewGetCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&getKeysOnly, "keys-only", false, "Get only the keys")
 	cmd.Flags().BoolVar(&getCountOnly, "count-only", false, "Get only the count")
 	cmd.Flags().BoolVar(&printValueOnly, "print-value-only", false, `Only write values when using the "simple" output format`)
+	cmd.Flags().Int64Var(&getMinCreateRev, "min-create-rev", 0, "Minimum create revision")
+	cmd.Flags().Int64Var(&getMaxCreateRev, "max-create-rev", 0, "Maximum create revision")
+	cmd.Flags().Int64Var(&getMinModRev, "min-mod-rev", 0, "Minimum modification revision")
+	cmd.Flags().Int64Var(&getMaxModRev, "max-mod-rev", 0, "Maximum modification revision")
 
 	cmd.RegisterFlagCompletionFunc("consistency", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"l", "s"}, cobra.ShellCompDirectiveDefault
@@ -182,6 +190,30 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 
 	if getCountOnly {
 		opts = append(opts, clientv3.WithCountOnly())
+	}
+
+	if getMinCreateRev > 0 {
+		opts = append(opts, clientv3.WithMinCreateRev(getMinCreateRev))
+	}
+
+	if getMaxCreateRev > 0 {
+		if getMinCreateRev > getMaxCreateRev {
+			cobrautl.ExitWithError(cobrautl.ExitBadFeature,
+				fmt.Errorf("getMinCreateRev(=%v) > getMaxCreateRev(=%v)", getMinCreateRev, getMaxCreateRev))
+		}
+		opts = append(opts, clientv3.WithMaxCreateRev(getMaxCreateRev))
+	}
+
+	if getMinModRev > 0 {
+		opts = append(opts, clientv3.WithMinModRev(getMinModRev))
+	}
+
+	if getMaxModRev > 0 {
+		if getMinModRev > getMaxModRev {
+			cobrautl.ExitWithError(cobrautl.ExitBadFeature,
+				fmt.Errorf("getMinModRev(=%v) > getMaxModRev(=%v)", getMinModRev, getMaxModRev))
+		}
+		opts = append(opts, clientv3.WithMaxModRev(getMaxModRev))
 	}
 
 	return key, opts
