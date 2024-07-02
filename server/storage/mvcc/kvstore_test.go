@@ -177,6 +177,110 @@ func TestStorePut(t *testing.T) {
 	}
 }
 
+func TestStorePutWithLeaseDelete(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	key := newTestRevBytes(Revision{2, 0})
+	kv := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 2,
+		ModRevision:    2,
+		Version:        1,
+		Lease:          1,
+	}
+	kvb, err := kv.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := newFakeStore(lg)
+	s.le = lease.NewLessor(lg, s.b, nil, lease.LessorConfig{MinLeaseTTL: 5})
+	b := s.b.(*fakeBackend)
+	fi := s.kvindex.(*fakeIndex)
+
+	l, err := s.le.Grant(1, 10)
+	if err != nil {
+		t.Errorf("failed to grant lease with ttl(10s), err: %v", err)
+	}
+
+	fi.indexGetRespc <- indexGetResp{Revision{}, Revision{}, 0, ErrRevisionNotFound}
+	s.Put([]byte("foo"), []byte("bar"), l.ID)
+
+	if !reflect.DeepEqual(s.le.Lookup(l.ID).Keys(), []string{"foo"}) {
+		t.Errorf("lease %d has keys: %v, expected: %v", l.ID, s.le.Lookup(l.ID).Keys(), []string{"foo"})
+	}
+	if l.ID != s.le.GetLease(lease.LeaseItem{Key: "foo"}) {
+		t.Errorf("key 'foo' has leaseId: %d, expected: %d", s.le.GetLease(lease.LeaseItem{Key: "foo"}), l.ID)
+	}
+
+	fi.indexRangeRespc <- indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{2, 0}}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{key}, [][]byte{kvb}}
+	s.DeleteRange([]byte("foo"), nil)
+
+	if len(s.le.Lookup(l.ID).Keys()) != 0 {
+		t.Errorf("lease %d has keys %v, expect empty", l.ID, s.le.Lookup(l.ID).Keys())
+	}
+	if s.le.GetLease(lease.LeaseItem{Key: "foo"}) != lease.NoLease {
+		t.Errorf("key 'foo' has leaseId: %d, expected: %d", s.le.GetLease(lease.LeaseItem{Key: "foo"}), lease.NoLease)
+	}
+
+	s.Close()
+}
+
+func TestStorePutWithLeaseRevoke(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	key := newTestRevBytes(Revision{2, 0})
+	kv := mvccpb.KeyValue{
+		Key:            []byte("foo"),
+		Value:          []byte("bar"),
+		CreateRevision: 2,
+		ModRevision:    2,
+		Version:        1,
+		Lease:          1,
+	}
+	kvb, err := kv.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := newFakeStore(lg)
+	s.le = lease.NewLessor(lg, s.b, nil, lease.LessorConfig{MinLeaseTTL: 5})
+	s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
+	b := s.b.(*fakeBackend)
+	fi := s.kvindex.(*fakeIndex)
+
+	l, err := s.le.Grant(1, 10)
+	if err != nil {
+		t.Errorf("failed to grant lease with ttl(10s), err: %v", err)
+	}
+
+	fi.indexGetRespc <- indexGetResp{Revision{}, Revision{}, 0, ErrRevisionNotFound}
+	s.Put([]byte("foo"), []byte("bar"), l.ID)
+
+	if !reflect.DeepEqual(s.le.Lookup(l.ID).Keys(), []string{"foo"}) {
+		t.Errorf("lease %d has keys: %v, expected: %v", l.ID, s.le.Lookup(l.ID).Keys(), []string{"foo"})
+	}
+	if l.ID != s.le.GetLease(lease.LeaseItem{Key: "foo"}) {
+		t.Errorf("key 'foo' has leaseId: %d, expected: %d", s.le.GetLease(lease.LeaseItem{Key: "foo"}), l.ID)
+	}
+
+	fi.indexRangeRespc <- indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{2, 0}}}
+	b.tx.rangeRespc <- rangeResp{[][]byte{key}, [][]byte{kvb}}
+	if err := s.le.Revoke(l.ID); err != nil {
+		t.Errorf("failed to revoke lease ID: %d, err: %v", l.ID, err)
+	}
+
+	if s.le.Lookup(l.ID) != nil {
+		t.Errorf("lease %d should not exist in lessor", l.ID)
+	}
+	if s.le.GetLease(lease.LeaseItem{Key: "foo"}) != lease.NoLease {
+		t.Errorf("key 'foo' has leaseId: %d, expected: %d", s.le.GetLease(lease.LeaseItem{Key: "foo"}), lease.NoLease)
+	}
+
+	s.Close()
+
+}
+
 func TestStoreRange(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	key := newTestRevBytes(Revision{Main: 2})
