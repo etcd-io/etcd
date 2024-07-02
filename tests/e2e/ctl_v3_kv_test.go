@@ -37,10 +37,11 @@ func TestCtlV3PutIgnoreLease(t *testing.T) { testCtl(t, putTestIgnoreLease) }
 
 func TestCtlV3GetTimeout(t *testing.T) { testCtl(t, getTest, withDefaultDialTimeout()) }
 
-func TestCtlV3GetFormat(t *testing.T)    { testCtl(t, getFormatTest) }
-func TestCtlV3GetRev(t *testing.T)       { testCtl(t, getRevTest) }
-func TestCtlV3GetKeysOnly(t *testing.T)  { testCtl(t, getKeysOnlyTest) }
-func TestCtlV3GetCountOnly(t *testing.T) { testCtl(t, getCountOnlyTest) }
+func TestCtlV3GetFormat(t *testing.T)             { testCtl(t, getFormatTest) }
+func TestCtlV3GetRev(t *testing.T)                { testCtl(t, getRevTest) }
+func TestCtlV3GetMinMaxCreateModRev(t *testing.T) { testCtl(t, getMinMaxCreateModRevTest) }
+func TestCtlV3GetKeysOnly(t *testing.T)           { testCtl(t, getKeysOnlyTest) }
+func TestCtlV3GetCountOnly(t *testing.T)          { testCtl(t, getCountOnlyTest) }
 
 func TestCtlV3DelTimeout(t *testing.T) { testCtl(t, delTest, withDefaultDialTimeout()) }
 
@@ -212,6 +213,39 @@ func getRevTest(cx ctlCtx) {
 	for i, tt := range tests {
 		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
 			cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
+		}
+	}
+}
+
+func getMinMaxCreateModRevTest(cx ctlCtx) {
+	var (
+		kvs = []kv{ //     revision:   store | key create | key modify
+			{"key1", "val1"}, //     2         2           2
+			{"key2", "val2"}, //     3         3           3
+			{"key1", "val3"}, //     4         2           4
+			{"key4", "val4"}, //     5         5           5
+		}
+	)
+	for i := range kvs {
+		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
+			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
+		}
+	}
+
+	tests := []struct {
+		args []string
+
+		wkv []kv
+	}{
+		{[]string{"key", "--prefix", "--max-create-rev", "3"}, []kv{kvs[1], kvs[2]}},
+		{[]string{"key", "--prefix", "--min-create-rev", "3"}, []kv{kvs[1], kvs[3]}},
+		{[]string{"key", "--prefix", "--max-mod-rev", "3"}, []kv{kvs[1]}},
+		{[]string{"key", "--prefix", "--min-mod-rev", "4"}, kvs[2:]},
+	}
+
+	for i, tt := range tests {
+		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
+			cx.t.Errorf("getMinModRevTest #%d: ctlV3Get error (%v)", i, err)
 		}
 	}
 }
