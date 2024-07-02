@@ -270,6 +270,15 @@
 		]
 	},
 	{
+		"project": "github.com/munnerz/goautoneg",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9794238683127572
+			}
+		]
+	},
+	{
 		"project": "github.com/olekukonko/tablewriter",
 		"licenses": [
 			{
