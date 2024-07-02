@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -202,6 +203,19 @@ func (sctx *serveCtx) serve(
 		}
 
 		if grpcEnabled {
+			// Verify that HTTP2 is available, and if not terminate early
+			var hasH2 bool
+			for _, p := range tlscfg.NextProtos {
+				if p == "h2" {
+					hasH2 = true
+				}
+			}
+			if !hasH2 {
+				grpcStartError := errors.New("GRPC cannot be started without HTTP2 protocol.  Please add at least one of the HTTP2 capable ciphers or set tls-max-version to TLS1.3.")
+				sctx.lg.Error("Configure https server failed", zap.Error(grpcStartError))
+				return grpcStartError
+			}
+
 			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
 			v3lockpb.RegisterLockServer(gs, servLock)
