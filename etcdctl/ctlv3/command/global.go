@@ -89,7 +89,7 @@ func (*discardValue) Set(string) error { return nil }
 func (*discardValue) Type() string     { return "" }
 
 func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, err := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -138,7 +138,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 
 func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 	cc := clientConfigFromCmd(cmd)
-	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, _ := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
@@ -152,7 +152,7 @@ func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 }
 
 func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
-	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, _ := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
