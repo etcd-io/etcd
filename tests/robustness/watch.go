@@ -141,3 +141,27 @@ external:
 		t.Errorf("Progress notify does not match, expect: %v, got: %v", expectProgressNotify, gotProgressNotify)
 	}
 }
+
+func validateWatchSequential(t *testing.T, reports []report.ClientReport) {
+	for _, r := range reports {
+		for _, op := range r.Watch {
+			if op.Request.Revision != 0 {
+				continue
+			}
+			lastEventRevision := make(map[uint64]int64)
+			for _, resp := range op.Responses {
+				if len(resp.Events) == 0 {
+					continue
+				}
+				if _, ok := lastEventRevision[resp.MemberId]; !ok {
+					lastEventRevision[resp.MemberId] = 1
+				}
+				firstEventRevision := resp.Events[0].Revision
+				if firstEventRevision < lastEventRevision[resp.MemberId] {
+					t.Errorf("Error watch sequential, expect: %v or higher, got: %v, member id: %v", lastEventRevision[resp.MemberId], firstEventRevision, resp.MemberId)
+				}
+				lastEventRevision[resp.MemberId] = resp.Events[len(resp.Events)-1].Revision
+			}
+		}
+	}
+}

@@ -316,6 +316,7 @@ func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchRe
 	}
 	resp.IsProgressNotify = r.IsProgressNotify()
 	resp.Revision = r.Header.Revision
+	resp.MemberId = r.Header.MemberId
 	err := r.Err()
 	if err != nil {
 		resp.Error = r.Err().Error()
