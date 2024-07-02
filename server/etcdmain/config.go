@@ -28,6 +28,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -238,6 +239,19 @@ func (cfg *config) configFromCmdLine() error {
 		cfg.ec.InitialCluster = ""
 	}
 
+	isExperimentalFlagSet := func(expFlag string) bool {
+		foundExperimentalFlag := false
+		cfg.cf.flagSet.Visit(func(f *flag.Flag) {
+			if f.Name == expFlag {
+				foundExperimentalFlag = true
+			}
+		})
+		return foundExperimentalFlag
+	}
+	err = cfg.ec.SetFeatureGatesFromExperimentalFlags(isExperimentalFlagSet, cfg.cf.flagSet.Lookup(featuregate.FlagName).Value.String())
+	if err != nil {
+		return err
+	}
 	return cfg.validate()
 }
 

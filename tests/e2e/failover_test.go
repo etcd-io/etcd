@@ -93,6 +93,44 @@ func TestFailoverOnDefrag(t *testing.T) {
 			expectedMinQPS:         20,
 			expectedMinFailureRate: 0.25,
 		},
+		{
+			name: "defrag failover happy case with feature gate",
+			clusterOptions: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithGoFailEnabled(true),
+			},
+			gRPCDialOptions: []grpc.DialOption{
+				grpc.WithDisableServiceConfig(),
+				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
+			},
+			expectedMinQPS:         20,
+			expectedMaxFailureRate: 0.01,
+		},
+		{
+			name: "defrag blocks one-third of requests with StopGRPCServiceOnDefrag feature gate set to false",
+			clusterOptions: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", false),
+				e2e.WithGoFailEnabled(true),
+			},
+			gRPCDialOptions: []grpc.DialOption{
+				grpc.WithDisableServiceConfig(),
+				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
+			},
+			expectedMinQPS:         20,
+			expectedMinFailureRate: 0.25,
+		},
+		{
+			name: "defrag blocks one-third of requests with StopGRPCServiceOnDefrag feature gate set to true and client health check disabled",
+			clusterOptions: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
+				e2e.WithGoFailEnabled(true),
+			},
+			expectedMinQPS:         20,
+			expectedMinFailureRate: 0.25,
+		},
 	}
 
 	for _, tc := range tcs {

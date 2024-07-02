@@ -32,6 +32,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/proxy"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -355,6 +356,14 @@ func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOp
 func WithExperimentalStopGRPCServiceOnDefrag(stopGRPCServiceOnDefrag bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) {
 		c.ServerConfig.ExperimentalStopGRPCServiceOnDefrag = stopGRPCServiceOnDefrag
+	}
+}
+
+func WithServerFeatureGate(featureName string, val bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) {
+		if err := c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("%s=%v", featureName, val)); err != nil {
+			panic(err)
+		}
 	}
 }
 
