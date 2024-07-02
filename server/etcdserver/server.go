@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
+	goerrors "errors"
 	"expvar"
 	"fmt"
 	"math"
@@ -963,6 +964,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	<-apply.notifyc
 
 	s.triggerSnapshot(ep)
+	s.compactRaftLog(ep.appliedi)
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
@@ -2126,7 +2128,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// the go routine created below.
 	s.KV().Commit()
 
+	s.r.snapshotTracker.Track(snapi)
+
 	s.GoAttach(func() {
+		defer func() {
+			s.r.snapshotTracker.UnTrack(snapi)
+		}()
+
 		lg := s.Logger()
 
 		// For backward compatibility, generate v2 snapshot from v3 state.
@@ -2154,28 +2162,44 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 			"saved snapshot",
 			zap.Uint64("snapshot-index", snap.Metadata.Index),
 		)
+	})
+}
 
-		// When sending a snapshot, etcd will pause compaction.
-		// After receives a snapshot, the slow follower needs to get all the entries right after
-		// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
-		// the snapshot sent might already be compacted. It happens when the snapshot takes long time
-		// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
-		if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
-			lg.Info("skip compaction since there is an inflight snapshot")
-			return
-		}
+func (s *EtcdServer) compactRaftLog(appliedi uint64) {
+	lg := s.Logger()
 
-		// keep some in memory log entries for slow followers.
-		compacti := uint64(1)
-		if snapi > s.Cfg.SnapshotCatchUpEntries {
-			compacti = snapi - s.Cfg.SnapshotCatchUpEntries
-		}
+	// When sending a snapshot, etcd will pause compaction.
+	// After receives a snapshot, the slow follower needs to get all the entries right after
+	// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
+	// the snapshot sent might already be compacted. It happens when the snapshot takes long time
+	// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
+	if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
+		lg.Info("skip compaction since there is an inflight snapshot")
+		return
+	}
 
-		err = s.r.raftStorage.Compact(compacti)
+	// keep some in memory log entries for slow followers.
+	compacti := uint64(0)
+	if appliedi > s.Cfg.SnapshotCatchUpEntries {
+		compacti = appliedi - s.Cfg.SnapshotCatchUpEntries
+	}
+
+	// if there are snapshots being created, compact the raft log up to the minimum snapshot index.
+	if minSpani, err := s.r.snapshotTracker.MinSnapi(); err == nil && minSpani < appliedi && minSpani > s.Cfg.SnapshotCatchUpEntries {
+		compacti = minSpani - s.Cfg.SnapshotCatchUpEntries
+	}
+
+	// no need to compact if compacti == 0
+	if compacti == 0 {
+		return
+	}
+
+	s.GoAttach(func() {
+		err := s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.
 			// raft log might already been compact.
-			if err == raft.ErrCompacted {
+			if goerrors.Is(err, raft.ErrCompacted) {
 				return
 			}
 			lg.Panic("failed to compact", zap.Error(err))
