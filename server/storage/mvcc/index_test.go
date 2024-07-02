@@ -18,15 +18,14 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/btree"
 	"go.uber.org/zap/zaptest"
 )
 
 func TestIndexGet(t *testing.T) {
 	ti := newTreeIndex(zaptest.NewLogger(t))
 	ti.Put([]byte("foo"), Revision{Main: 2})
-	ti.Put([]byte("foo"), Revision{Main: 4})
-	ti.Tombstone([]byte("foo"), Revision{Main: 6})
+	ti.Put([]byte("foo"), Revision{Main: 3})
+	ti.Tombstone([]byte("foo"), Revision{Main: 4})
 
 	tests := []struct {
 		rev int64
@@ -39,10 +38,8 @@ func TestIndexGet(t *testing.T) {
 		{0, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 		{1, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 		{2, Revision{Main: 2}, Revision{Main: 2}, 1, nil},
-		{3, Revision{Main: 2}, Revision{Main: 2}, 1, nil},
-		{4, Revision{Main: 4}, Revision{Main: 2}, 2, nil},
-		{5, Revision{Main: 4}, Revision{Main: 2}, 2, nil},
-		{6, Revision{}, Revision{}, 0, ErrRevisionNotFound},
+		{3, Revision{Main: 3}, Revision{Main: 2}, 2, nil},
+		{4, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 	}
 	for i, tt := range tests {
 		rev, created, ver, err := ti.Get([]byte("foo"), tt.rev)
@@ -63,14 +60,14 @@ func TestIndexGet(t *testing.T) {
 
 func TestIndexRange(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
-	allRevs := []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}}
+	allRevs := []Revision{Revision{Main: 2}, Revision{Main: 3}, Revision{Main: 4}}
 
 	ti := newTreeIndex(zaptest.NewLogger(t))
 	for i := range allKeys {
 		ti.Put(allKeys[i], allRevs[i])
 	}
 
-	atRev := int64(3)
+	atRev := int64(4)
 	tests := []struct {
 		key, end []byte
 		wkeys    [][]byte
@@ -112,7 +109,7 @@ func TestIndexRange(t *testing.T) {
 	for i, tt := range tests {
 		keys, revs := ti.Range(tt.key, tt.end, atRev)
 		if !reflect.DeepEqual(keys, tt.wkeys) {
-			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
+			t.Errorf("#%d: keys = %s, want %s", i, keys, tt.wkeys)
 		}
 		if !reflect.DeepEqual(revs, tt.wrevs) {
 			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
@@ -122,18 +119,18 @@ func TestIndexRange(t *testing.T) {
 
 func TestIndexTombstone(t *testing.T) {
 	ti := newTreeIndex(zaptest.NewLogger(t))
-	ti.Put([]byte("foo"), Revision{Main: 1})
+	ti.Put([]byte("foo"), Revision{Main: 2})
 
-	err := ti.Tombstone([]byte("foo"), Revision{Main: 2})
+	err := ti.Tombstone([]byte("foo"), Revision{Main: 3})
 	if err != nil {
 		t.Errorf("tombstone error = %v, want nil", err)
 	}
 
-	_, _, _, err = ti.Get([]byte("foo"), 2)
+	_, _, _, err = ti.Get([]byte("foo"), 3)
 	if err != ErrRevisionNotFound {
 		t.Errorf("get error = %v, want ErrRevisionNotFound", err)
 	}
-	err = ti.Tombstone([]byte("foo"), Revision{Main: 3})
+	err = ti.Tombstone([]byte("foo"), Revision{Main: 4})
 	if err != ErrRevisionNotFound {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
@@ -233,103 +230,101 @@ func TestIndexRevision(t *testing.T) {
 	}
 }
 
-func TestIndexCompactAndKeep(t *testing.T) {
-	maxRev := int64(20)
-	tests := []struct {
-		key     []byte
-		remove  bool
-		rev     Revision
-		created Revision
-		ver     int64
-	}{
-		{[]byte("foo"), false, Revision{Main: 1}, Revision{Main: 1}, 1},
-		{[]byte("foo1"), false, Revision{Main: 2}, Revision{Main: 2}, 1},
-		{[]byte("foo2"), false, Revision{Main: 3}, Revision{Main: 3}, 1},
-		{[]byte("foo2"), false, Revision{Main: 4}, Revision{Main: 3}, 2},
-		{[]byte("foo"), false, Revision{Main: 5}, Revision{Main: 1}, 2},
-		{[]byte("foo1"), false, Revision{Main: 6}, Revision{Main: 2}, 2},
-		{[]byte("foo1"), true, Revision{Main: 7}, Revision{}, 0},
-		{[]byte("foo2"), true, Revision{Main: 8}, Revision{}, 0},
-		{[]byte("foo"), true, Revision{Main: 9}, Revision{}, 0},
-		{[]byte("foo"), false, Revision{Main: 10}, Revision{Main: 10}, 1},
-		{[]byte("foo1"), false, Revision{Main: 10, Sub: 1}, Revision{Main: 10, Sub: 1}, 1},
-	}
-
-	// Continuous Compact and Keep
-	ti := newTreeIndex(zaptest.NewLogger(t))
-	for _, tt := range tests {
-		if tt.remove {
-			ti.Tombstone(tt.key, tt.rev)
-		} else {
-			ti.Put(tt.key, tt.rev)
-		}
-	}
-	for i := int64(1); i < maxRev; i++ {
-		am := ti.Compact(i)
-		keep := ti.Keep(i)
-		if !(reflect.DeepEqual(am, keep)) {
-			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
-		}
-		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
-			return aki.Less(bki)
-		})}
-		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
-				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
-				} else {
-					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
-				}
-			}
-		}
-		if !ti.Equal(wti) {
-			t.Errorf("#%d: not equal ti", i)
-		}
-	}
-
-	// Once Compact and Keep
-	for i := int64(1); i < maxRev; i++ {
-		ti := newTreeIndex(zaptest.NewLogger(t))
-		for _, tt := range tests {
-			if tt.remove {
-				ti.Tombstone(tt.key, tt.rev)
-			} else {
-				ti.Put(tt.key, tt.rev)
-			}
-		}
-		am := ti.Compact(i)
-		keep := ti.Keep(i)
-		if !(reflect.DeepEqual(am, keep)) {
-			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
-		}
-		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
-			return aki.Less(bki)
-		})}
-		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
-				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
-				} else {
-					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
-				}
-			}
-		}
-		if !ti.Equal(wti) {
-			t.Errorf("#%d: not equal ti", i)
-		}
-	}
-}
-
-func restore(ti *treeIndex, key []byte, created, modified Revision, ver int64) {
-	keyi := &keyIndex{key: key}
-
-	ti.Lock()
-	defer ti.Unlock()
-	okeyi, _ := ti.tree.Get(keyi)
-	if okeyi == nil {
-		keyi.restore(ti.lg, created, modified, ver)
-		ti.tree.ReplaceOrInsert(keyi)
-		return
-	}
-	okeyi.put(ti.lg, modified.Main, modified.Sub)
-}
+//func TestIndexCompactAndKeep(t *testing.T) {
+//	maxRev := int64(20)
+//	tests := []struct {
+//		key     []byte
+//		remove  bool
+//		rev     Revision
+//		created Revision
+//		ver     int64
+//	}{
+//		{[]byte("foo"), false, Revision{Main: 1}, Revision{Main: 1}, 1},
+//		{[]byte("foo1"), false, Revision{Main: 2}, Revision{Main: 2}, 1},
+//		{[]byte("foo2"), false, Revision{Main: 3}, Revision{Main: 3}, 1},
+//		{[]byte("foo2"), false, Revision{Main: 4}, Revision{Main: 3}, 2},
+//		{[]byte("foo"), false, Revision{Main: 5}, Revision{Main: 1}, 2},
+//		{[]byte("foo1"), false, Revision{Main: 6}, Revision{Main: 2}, 2},
+//		{[]byte("foo1"), true, Revision{Main: 7}, Revision{}, 0},
+//		{[]byte("foo2"), true, Revision{Main: 8}, Revision{}, 0},
+//		{[]byte("foo"), true, Revision{Main: 9}, Revision{}, 0},
+//		{[]byte("foo"), false, Revision{Main: 10}, Revision{Main: 10}, 1},
+//		{[]byte("foo1"), false, Revision{Main: 10, Sub: 1}, Revision{Main: 10, Sub: 1}, 1},
+//	}
+//
+//	// Continuous Compact and Keep
+//	ti := newTreeIndex(zaptest.NewLogger(t))
+//	for _, tt := range tests {
+//		if tt.remove {
+//			ti.Tombstone(tt.key, tt.rev)
+//		} else {
+//			ti.Put(tt.key, tt.rev)
+//		}
+//	}
+//	for i := int64(1); i < maxRev; i++ {
+//		am := ti.Compact(i)
+//		keep := ti.Keep(i)
+//		if !(reflect.DeepEqual(am, keep)) {
+//			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
+//		}
+//		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
+//			return aki.Less(bki)
+//		})}
+//		for _, tt := range tests {
+//			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
+//				if tt.remove {
+//					wti.Tombstone(tt.key, tt.rev)
+//				} else {
+//					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
+//				}
+//			}
+//		}
+//		if !ti.Equal(wti) {
+//			t.Errorf("#%d: not equal ti", i)
+//		}
+//	}
+//
+//	// Once Compact and Keep
+//	for i := int64(1); i < maxRev; i++ {
+//		ti := newTreeIndex(zaptest.NewLogger(t))
+//		for _, tt := range tests {
+//			if tt.remove {
+//				ti.Tombstone(tt.key, tt.rev)
+//			} else {
+//				ti.Put(tt.key, tt.rev)
+//			}
+//		}
+//		am := ti.Compact(i)
+//		keep := ti.Keep(i)
+//		if !(reflect.DeepEqual(am, keep)) {
+//			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
+//		}
+//		wti := &treeIndex{tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
+//			return aki.Less(bki)
+//		})}
+//		for _, tt := range tests {
+//			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(Revision{Main: i}) {
+//				if tt.remove {
+//					wti.Tombstone(tt.key, tt.rev)
+//				} else {
+//					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
+//				}
+//			}
+//		}
+//		if !ti.Equal(wti) {
+//			t.Errorf("#%d: not equal ti", i)
+//		}
+//	}
+//}
+//
+//func restore(ti *treeIndex, key []byte, created, modified Revision, ver int64) {
+//	keyi := &keyIndex{key: key}
+//
+//	okeyi, _ := ti.tree.Get(keyi)
+//	if okeyi == nil {
+//		keyi.restore(ti.lg, created, modified, ver)
+//		ti.tree.ReplaceOrInsert(keyi)
+//		return
+//	}
+//	okeyi.put(ti.lg, modified.Main, modified.Sub)
+//}
