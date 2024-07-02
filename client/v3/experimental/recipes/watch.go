@@ -29,7 +29,7 @@ func WaitEvents(c *clientv3.Client, key string, rev int64, evs []mvccpb.Event_Ev
 	if wc == nil {
 		return nil, ErrNoWatcher
 	}
-	return waitEvents(wc, evs), nil
+	return waitEvents(wc, evs)
 }
 
 func WaitPrefixEvents(c *clientv3.Client, prefix string, rev int64, evs []mvccpb.Event_EventType) (*clientv3.Event, error) {
@@ -39,20 +39,23 @@ func WaitPrefixEvents(c *clientv3.Client, prefix string, rev int64, evs []mvccpb
 	if wc == nil {
 		return nil, ErrNoWatcher
 	}
-	return waitEvents(wc, evs), nil
+	return waitEvents(wc, evs)
 }
 
-func waitEvents(wc clientv3.WatchChan, evs []mvccpb.Event_EventType) *clientv3.Event {
+func waitEvents(wc clientv3.WatchChan, evs []mvccpb.Event_EventType) (*clientv3.Event, error) {
 	i := 0
 	for wresp := range wc {
+		if wresp.Canceled {
+			return nil, wresp.Err()
+		}
 		for _, ev := range wresp.Events {
 			if ev.Type == evs[i] {
 				i++
 				if i == len(evs) {
-					return ev
+					return ev, nil
 				}
 			}
 		}
 	}
-	return nil
+	return nil, ErrWatchFailed
 }
