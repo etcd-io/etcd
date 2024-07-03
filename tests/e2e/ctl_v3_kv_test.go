@@ -245,7 +245,7 @@ func getMinMaxCreateModRevTest(cx ctlCtx) {
 
 	for i, tt := range tests {
 		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			cx.t.Errorf("getMinModRevTest #%d: ctlV3Get error (%v)", i, err)
+			cx.t.Errorf("getMinMaxCreateModRevTest #%d: ctlV3Get error (%v)", i, err)
 		}
 	}
 }
@@ -387,15 +387,31 @@ type kv struct {
 	key, val string
 }
 
+// returns -1 if no string in ss with prefix is found, or the index of the first occurrence.
+func findWithPrefix(ss []string, prefix string) int {
+	for i, s := range ss {
+		if strings.HasPrefix(s, prefix) {
+			return i
+		}
+	}
+	return -1
+}
+
 func ctlV3Get(cx ctlCtx, args []string, kvs ...kv) error {
-	cmdArgs := append(cx.PrefixArgs(), "get")
+	cmdArgs := append(cx.PrefixArgs(), "get", "--write-out=fields")
 	cmdArgs = append(cmdArgs, args...)
 	if !cx.quorum {
 		cmdArgs = append(cmdArgs, "--consistency", "s")
 	}
 	var lines []expect.ExpectedResponse
 	for _, elem := range kvs {
-		lines = append(lines, expect.ExpectedResponse{Value: elem.key}, expect.ExpectedResponse{Value: elem.val})
+		lines = append(lines,
+			expect.ExpectedResponse{Value: fmt.Sprintf("\"Key\" : \"%s\"", elem.key)},
+			expect.ExpectedResponse{Value: fmt.Sprintf("\"Value\" : \"%s\"", elem.val)},
+		)
+	}
+	if findWithPrefix(args, "--limit") == -1 {
+		lines = append(lines, expect.ExpectedResponse{Value: fmt.Sprintf("\"Count\" : %d", len(kvs))})
 	}
 	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
 }

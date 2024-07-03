@@ -1471,7 +1471,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"rev2", "rev3", "rev4", "rev5", "rev6"},
 			},
 			[]bool{false, false, false, false},
-			[]int64{5, 5, 5, 5},
+			[]int64{4, 2, 3, 5},
 		},
 		{
 			"min/max create rev",
@@ -1503,7 +1503,7 @@ func TestV3RangeRequest(t *testing.T) {
 				{"rev2", "rev3", "rev6"},
 			},
 			[]bool{false, false, false, false},
-			[]int64{3, 3, 3, 3},
+			[]int64{2, 2, 1, 3},
 		},
 	}
 
@@ -1527,24 +1527,24 @@ func TestV3RangeRequest(t *testing.T) {
 					continue
 				}
 				if len(resp.Kvs) != len(tt.wresps[j]) {
-					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
+					t.Errorf("#%d.%d (%s): bad len(resp.Kvs). got = %d, want = %d, ", i, j, tt.name, len(resp.Kvs), len(tt.wresps[j]))
 					continue
 				}
 				for k, wKey := range tt.wresps[j] {
 					respKey := string(resp.Kvs[k].Key)
 					if respKey != wKey {
-						t.Errorf("#%d.%d: key[%d]. got = %v, want = %v, ", i, j, k, respKey, wKey)
+						t.Errorf("#%d.%d (%s): key[%d]. got = %v, want = %v, ", i, j, tt.name, k, respKey, wKey)
 					}
 				}
 				if resp.More != tt.wmores[j] {
-					t.Errorf("#%d.%d: bad more. got = %v, want = %v, ", i, j, resp.More, tt.wmores[j])
+					t.Errorf("#%d.%d (%s): bad more. got = %v, want = %v, ", i, j, tt.name, resp.More, tt.wmores[j])
 				}
 				if resp.GetCount() != tt.wcounts[j] {
-					t.Errorf("#%d.%d: bad count. got = %v, want = %v, ", i, j, resp.GetCount(), tt.wcounts[j])
+					t.Errorf("#%d.%d (%s): bad count. got = %v, want = %v, ", i, j, tt.name, resp.GetCount(), tt.wcounts[j])
 				}
 				wrev := int64(len(tt.putKeys) + 1)
 				if resp.Header.Revision != wrev {
-					t.Errorf("#%d.%d: bad header revision. got = %d. want = %d", i, j, resp.Header.Revision, wrev)
+					t.Errorf("#%d.%d (%s): bad header revision. got = %d. want = %d", i, j, tt.name, resp.Header.Revision, wrev)
 				}
 			}
 		})
