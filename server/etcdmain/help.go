@@ -18,12 +18,14 @@ package etcdmain
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 
 	cconfig "go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/server/v3/features"
 )
 
 var (
@@ -103,6 +105,8 @@ Member:
     Read timeout set on each rafthttp connection
   --raft-write-timeout '` + rafthttp.DefaultConnWriteTimeout.String() + `'
     Write timeout set on each rafthttp connection
+  --feature-gates ''
+    A set of key=value pairs that describe server level feature gates for alpha/experimental features. Options are:` + "\n    " + strings.Join(features.NewDefaultServerFeatureGate("", nil).KnownFeatures(), "\n    ") + `
 
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'

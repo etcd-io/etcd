@@ -16,6 +16,7 @@
 package featuregate
 
 import (
+	"flag"
 	"fmt"
 	"sort"
 	"strconv"
@@ -30,7 +31,7 @@ import (
 type Feature string
 
 const (
-	flagName = "feature-gates"
+	defaultFlagName = "feature-gates"
 
 	// allAlphaGate is a global toggle for alpha features. Per-feature key
 	// values override the default set by allAlphaGate. Examples:
@@ -98,7 +99,7 @@ type MutableFeatureGate interface {
 	FeatureGate
 
 	// AddFlag adds a flag for setting global feature gates to the specified FlagSet.
-	AddFlag(fs *pflag.FlagSet)
+	AddFlag(fs *flag.FlagSet, flagName string)
 	// Set parses and stores flag gates for known features
 	// from a string like feature1=true,feature2=false,...
 	Set(value string) error
@@ -165,6 +166,9 @@ func setUnsetBetaGates(known map[Feature]FeatureSpec, enabled map[Feature]bool, 
 var _ pflag.Value = &featureGate{}
 
 func New(name string, lg *zap.Logger) *featureGate {
+	if lg == nil {
+		lg = zap.NewNop()
+	}
 	known := map[Feature]FeatureSpec{}
 	for k, v := range defaultFeatures {
 		known[k] = v
@@ -349,7 +353,10 @@ func (f *featureGate) Enabled(key Feature) bool {
 }
 
 // AddFlag adds a flag for setting global feature gates to the specified FlagSet.
-func (f *featureGate) AddFlag(fs *pflag.FlagSet) {
+func (f *featureGate) AddFlag(fs *flag.FlagSet, flagName string) {
+	if flagName == "" {
+		flagName = defaultFlagName
+	}
 	f.lock.Lock()
 	// TODO(mtaufen): Shouldn't we just close it on the first Set/SetFromMap instead?
 	// Not all components expose a feature gates flag using this AddFlag method, and
