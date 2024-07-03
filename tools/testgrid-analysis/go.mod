@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tools/testgrid-analysis/v3
 
 go 1.22
 
-toolchain go1.22.4
+toolchain go1.22.5
 
 require (
 	github.com/GoogleCloudPlatform/testgrid v0.0.173
