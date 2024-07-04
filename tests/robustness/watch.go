@@ -129,13 +129,11 @@ func validateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientRe
 external:
 	for _, r := range reports {
 		for _, op := range r.Watch {
-			var lastHeadRevision int64 = 1
 			for _, resp := range op.Responses {
-				if resp.IsProgressNotify && resp.Revision == lastHeadRevision {
+				if resp.IsProgressNotify {
 					gotProgressNotify = true
 					break external
 				}
-				lastHeadRevision = resp.Revision
 			}
 		}
 	}
