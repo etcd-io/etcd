@@ -18,8 +18,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/btree"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestIndexGet(t *testing.T) {
@@ -196,98 +197,445 @@ func TestIndexRangeSince(t *testing.T) {
 
 func TestIndexCompactAndKeep(t *testing.T) {
 	maxRev := int64(20)
-	tests := []struct {
-		key     []byte
-		remove  bool
-		rev     revision
-		created revision
-		ver     int64
-	}{
-		{[]byte("foo"), false, revision{main: 1}, revision{main: 1}, 1},
-		{[]byte("foo1"), false, revision{main: 2}, revision{main: 2}, 1},
-		{[]byte("foo2"), false, revision{main: 3}, revision{main: 3}, 1},
-		{[]byte("foo2"), false, revision{main: 4}, revision{main: 3}, 2},
-		{[]byte("foo"), false, revision{main: 5}, revision{main: 1}, 2},
-		{[]byte("foo1"), false, revision{main: 6}, revision{main: 2}, 2},
-		{[]byte("foo1"), true, revision{main: 7}, revision{}, 0},
-		{[]byte("foo2"), true, revision{main: 8}, revision{}, 0},
-		{[]byte("foo"), true, revision{main: 9}, revision{}, 0},
-		{[]byte("foo"), false, revision{10, 0}, revision{10, 0}, 1},
-		{[]byte("foo1"), false, revision{10, 1}, revision{10, 1}, 1},
+
+	// key: "foo"
+	// modified: 10
+	// generations:
+	//	{{10, 0}}
+	//	{{1, 0}, {5, 0}, {9, 0}(t)}
+	//
+	// key: "foo1"
+	// modified: 10, 1
+	// generations:
+	//	{{10, 1}}
+	//	{{2, 0}, {6, 0}, {7, 0}(t)}
+	//
+	// key: "foo2"
+	// modified: 8
+	// generations:
+	//	{empty}
+	//	{{3, 0}, {4, 0}, {8, 0}(t)}
+	//
+	buildTreeIndex := func() index {
+		ti := newTreeIndex(zaptest.NewLogger(t))
+
+		ti.Put([]byte("foo"), revision{main: 1})
+		ti.Put([]byte("foo1"), revision{main: 2})
+		ti.Put([]byte("foo2"), revision{main: 3})
+		ti.Put([]byte("foo2"), revision{main: 4})
+		ti.Put([]byte("foo"), revision{main: 5})
+		ti.Put([]byte("foo1"), revision{main: 6})
+		require.NoError(t, ti.Tombstone([]byte("foo1"), revision{main: 7}))
+		require.NoError(t, ti.Tombstone([]byte("foo2"), revision{main: 8}))
+		require.NoError(t, ti.Tombstone([]byte("foo"), revision{main: 9}))
+		ti.Put([]byte("foo"), revision{main: 10})
+		ti.Put([]byte("foo1"), revision{main: 10, sub: 1})
+		return ti
 	}
 
-	// Continuous Compact and Keep
-	ti := newTreeIndex(zap.NewExample())
-	for _, tt := range tests {
-		if tt.remove {
-			ti.Tombstone(tt.key, tt.rev)
-		} else {
-			ti.Put(tt.key, tt.rev)
-		}
+	afterCompacts := []struct {
+		atRev      int
+		keyIndexes []keyIndex
+		keep       map[revision]struct{}
+		compacted  map[revision]struct{}
+	}{
+		{
+			atRev: 1,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 1}, revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 2}, revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 3}, revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 1}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 1}: {},
+			},
+		},
+		{
+			atRev: 2,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 1}, revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 2}, revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 3}, revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+			},
+		},
+		{
+			atRev: 3,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 1}, revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 2}, revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 3}, revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+				revision{main: 3}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+				revision{main: 3}: {},
+			},
+		},
+		{
+			atRev: 4,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 1}, revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 2}, revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+				revision{main: 4}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 1}: {},
+				revision{main: 2}: {},
+				revision{main: 4}: {},
+			},
+		},
+		{
+			atRev: 5,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 2}, revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 2}: {},
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 2}: {},
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+		},
+		{
+			atRev: 6,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 6}, revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 6}: {},
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 6}: {},
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+		},
+		{
+			atRev: 7,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 3, created: revision{main: 2}, revs: []revision{revision{main: 7}}},
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 4}, revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 7}: {},
+				revision{main: 4}: {},
+				revision{main: 5}: {},
+			},
+		},
+		{
+			atRev: 8,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 5}, revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+				{
+					key:      []byte("foo2"),
+					modified: revision{main: 8},
+					generations: []generation{
+						{ver: 3, created: revision{main: 3}, revs: []revision{revision{main: 8}}},
+						{},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 5}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 8}: {},
+				revision{main: 5}: {},
+			},
+		},
+		{
+			atRev: 9,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 3, created: revision{main: 1}, revs: []revision{revision{main: 9}}},
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+			},
+			keep: map[revision]struct{}{},
+			compacted: map[revision]struct{}{
+				revision{main: 9}: {},
+			},
+		},
+		{
+			atRev: 10,
+			keyIndexes: []keyIndex{
+				{
+					key:      []byte("foo"),
+					modified: revision{main: 10},
+					generations: []generation{
+						{ver: 1, created: revision{main: 10}, revs: []revision{revision{main: 10}}},
+					},
+				},
+				{
+					key:      []byte("foo1"),
+					modified: revision{main: 10, sub: 1},
+					generations: []generation{
+						{ver: 1, created: revision{main: 10, sub: 1}, revs: []revision{revision{main: 10, sub: 1}}},
+					},
+				},
+			},
+			keep: map[revision]struct{}{
+				revision{main: 10}:         {},
+				revision{main: 10, sub: 1}: {},
+			},
+			compacted: map[revision]struct{}{
+				revision{main: 10}:         {},
+				revision{main: 10, sub: 1}: {},
+			},
+		},
 	}
+
+	ti := buildTreeIndex()
+	// Continuous Compact and Keep
 	for i := int64(1); i < maxRev; i++ {
+		j := i - 1
+		if i >= int64(len(afterCompacts)) {
+			j = int64(len(afterCompacts)) - 1
+		}
+
 		am := ti.Compact(i)
+		require.Equal(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
+
 		keep := ti.Keep(i)
-		if !(reflect.DeepEqual(am, keep)) {
-			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
+		require.Equal(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
+
+		nti := newTreeIndex(zaptest.NewLogger(t)).(*treeIndex)
+		for k := range afterCompacts[j].keyIndexes {
+			ki := afterCompacts[j].keyIndexes[k]
+			nti.tree.ReplaceOrInsert(&ki)
 		}
-		wti := &treeIndex{tree: btree.New(32)}
-		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
-				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
-				} else {
-					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
-				}
-			}
-		}
-		if !ti.Equal(wti) {
-			t.Errorf("#%d: not equal ti", i)
-		}
+		require.True(t, ti.Equal(nti), "#%d: not equal ti", i)
 	}
 
 	// Once Compact and Keep
 	for i := int64(1); i < maxRev; i++ {
-		ti := newTreeIndex(zap.NewExample())
-		for _, tt := range tests {
-			if tt.remove {
-				ti.Tombstone(tt.key, tt.rev)
-			} else {
-				ti.Put(tt.key, tt.rev)
-			}
+		ti := buildTreeIndex()
+
+		j := i - 1
+		if i >= int64(len(afterCompacts)) {
+			j = int64(len(afterCompacts)) - 1
 		}
+
 		am := ti.Compact(i)
+		require.Equal(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
+
 		keep := ti.Keep(i)
-		if !(reflect.DeepEqual(am, keep)) {
-			t.Errorf("#%d: compact keep %v != Keep keep %v", i, am, keep)
-		}
-		wti := &treeIndex{tree: btree.New(32)}
-		for _, tt := range tests {
-			if _, ok := am[tt.rev]; ok || tt.rev.GreaterThan(revision{main: i}) {
-				if tt.remove {
-					wti.Tombstone(tt.key, tt.rev)
-				} else {
-					restore(wti, tt.key, tt.created, tt.rev, tt.ver)
-				}
-			}
-		}
-		if !ti.Equal(wti) {
-			t.Errorf("#%d: not equal ti", i)
-		}
-	}
-}
+		require.Equal(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
 
-func restore(ti *treeIndex, key []byte, created, modified revision, ver int64) {
-	keyi := &keyIndex{key: key}
+		nti := newTreeIndex(zaptest.NewLogger(t)).(*treeIndex)
+		for k := range afterCompacts[j].keyIndexes {
+			ki := afterCompacts[j].keyIndexes[k]
+			nti.tree.ReplaceOrInsert(&ki)
+		}
 
-	ti.Lock()
-	defer ti.Unlock()
-	item := ti.tree.Get(keyi)
-	if item == nil {
-		keyi.restore(ti.lg, created, modified, ver)
-		ti.tree.ReplaceOrInsert(keyi)
-		return
+		require.True(t, ti.Equal(nti), "#%d: not equal ti", i)
 	}
-	okeyi := item.(*keyIndex)
-	okeyi.put(ti.lg, modified.main, modified.sub)
 }
