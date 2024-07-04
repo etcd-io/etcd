@@ -12,7 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [noisy logs from simple auth token expiration by reducing log level to debug](https://github.com/etcd-io/etcd/pull/18245)
 
 ### Dependencies
-- Compile binaries using [go 1.21.11](https://github.com/etcd-io/etcd/pull/18129).
+- Compile binaries using [go 1.21.12](https://github.com/etcd-io/etcd/pull/18271).
 - [Fully address CVE-2023-45288 and fix govulncheck CI check](https://github.com/etcd-io/etcd/pull/18170)
 
 ## v3.5.14 (2024-05-29)
