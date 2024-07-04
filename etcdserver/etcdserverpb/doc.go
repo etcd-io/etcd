@@ -1,4 +1,4 @@
-// Copyright 2021 The etcd Authors
+// Copyright 2024 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package verify is analyzing persistent state of etcd to find potential
-// inconsistencies.
-// In particular it covers cross-checking between different aspacts of etcd
-// storage like WAL & Backend.
-package verify
+// Package etcdserverpb provides protocol buffer types and utilities for etcd
+// server operations, including custom stringers for redacting sensitive
+// information in requests.
+package etcdserverpb
