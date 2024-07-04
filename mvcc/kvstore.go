@@ -228,6 +228,9 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 		if !upper.GreaterThan(kr) {
 			return nil
 		}
+
+		isTombstoneRev := isTombstone(k)
+
 		// skip revisions that are scheduled for deletion
 		// due to compacting; don't skip if there isn't one.
 		if lower.GreaterThan(kr) && len(keep) > 0 {
@@ -235,6 +238,17 @@ func (s *store) HashByRev(rev int64) (hash uint32, currentRev int64, compactRev 
 				return nil
 			}
 		}
+
+		// When performing compaction, if the compacted revision is a
+		// tombstone, older versions (<= 3.5.15 or <= 3.4.33) will delete
+		// the tombstone. But newer versions (> 3.5.15 or > 3.4.33) won't
+		// delete it. So we should skip the tombstone in such cases when
+		// computing the hash to ensure that both older and newer versions
+		// can always generate the same hash values.
+		if kr.main == compactRev && isTombstoneRev {
+			return nil
+		}
+
 		h.Write(k)
 		h.Write(v)
 		return nil
