@@ -155,6 +155,7 @@ func interestingGoroutines() (gs []string) {
 				"rcrypto/internal/boring.(*PublicKeyRSA).finalize",
 				"net.(*netFD).Close(",
 				"testing.(*T).Run",
+				"crypto/tls.(*certCache).evict",
 			}
 			for _, msg := range uninterestingMsgs {
 				if strings.Contains(stack, msg) {
