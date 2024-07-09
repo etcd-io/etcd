@@ -17,12 +17,16 @@ package e2e
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -118,6 +122,58 @@ func TestEtcdUnixPeers(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err = proc.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestEtcdListenMetricsURLsWithMissingClientTLSInfo checks that the HTTPs listen metrics URL
+// but without the client TLS info will fail its verification.
+func TestEtcdListenMetricsURLsWithMissingClientTLSInfo(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	tempDir := t.TempDir()
+	defer os.RemoveAll(tempDir)
+
+	caFile, certFiles, keyFiles, err := generateCertsForIPs(tempDir, []net.IP{net.ParseIP("127.0.0.1")})
+	require.NoError(t, err)
+
+	// non HTTP but metrics URL is HTTPS, invalid when the client TLS info is not provided
+	clientURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort)
+	peerURL := fmt.Sprintf("https://localhost:%d", e2e.EtcdProcessBasePort+1)
+	listenMetricsURL := fmt.Sprintf("https://localhost:%d", e2e.EtcdProcessBasePort+2)
+
+	commonArgs := []string{
+		e2e.BinPath,
+		"--name", "e0",
+		"--data-dir", tempDir,
+
+		"--listen-client-urls", clientURL,
+		"--advertise-client-urls", clientURL,
+
+		"--initial-advertise-peer-urls", peerURL,
+		"--listen-peer-urls", peerURL,
+
+		"--initial-cluster", "e0=" + peerURL,
+
+		"--listen-metrics-urls", listenMetricsURL,
+
+		"--peer-cert-file", certFiles[0],
+		"--peer-key-file", keyFiles[0],
+		"--peer-trusted-ca-file", caFile,
+		"--peer-client-cert-auth",
+	}
+
+	proc, err := e2e.SpawnCmd(commonArgs, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		// Don't check the error returned by Stop(), as we expect the process to exit with an error.
+		_ = proc.Stop()
+		_ = proc.Close()
+	}()
+
+	if err := e2e.WaitReadyExpectProc(proc, []string{embed.ErrMissingClientTLSInfoForMetricsURL.Error()}); err != nil {
 		t.Fatal(err)
 	}
 }
