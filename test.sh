@@ -637,7 +637,14 @@ function dump_deps_of_module() {
 # Checks whether dependencies are consistent across modules
 function dep_pass {
   local all_dependencies
+  local tools_mod_dependencies
   all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
+  # tools/mod is a special case. It is a module that is not included in the
+  # module list from test_lib.sh. However, we need to ensure that the
+  # dependency versions match the rest of the project. Therefore, explicitly
+  # execute the command for tools/mod, and append its dependencies to the list.
+  tools_mod_dependencies=$(run_for_module "tools/mod" dump_deps_of_module "./...") || return 2
+  all_dependencies="${all_dependencies}"$'\n'"${tools_mod_dependencies}"
 
   local duplicates
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
