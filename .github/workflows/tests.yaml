@@ -3,11 +3,6 @@ name: Tests
 on: [push, pull_request]
 permissions: read-all
 jobs:
-  amd64:
-    uses: ./.github/workflows/tests-template.yaml
-    with:
-      arch: amd64
-      runs-on: ubuntu-latest
   arm64:
     uses: ./.github/workflows/tests-template.yaml
     with:
