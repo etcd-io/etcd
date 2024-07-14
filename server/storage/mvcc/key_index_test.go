@@ -27,7 +27,7 @@ func TestKeyIndexGet(t *testing.T) {
 	// modified: 16
 	// generations:
 	//    {empty}
-	//    {{14, 0}[1], {14, 1}[2], {16, 0}(t)[3]}
+	//    {{14, 0}[1], {15, 1}[2], {16, 0}(t)[3]}
 	//    {{8, 0}[1], {10, 0}[2], {12, 0}(t)[3]}
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 	ki := newTestKeyIndex(zaptest.NewLogger(t))
@@ -45,8 +45,8 @@ func TestKeyIndexGet(t *testing.T) {
 		{16, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 
 		// get on generation 3
-		{15, Revision{Main: 14, Sub: 1}, Revision{Main: 14}, 2, nil},
-		{14, Revision{Main: 14, Sub: 1}, Revision{Main: 14}, 2, nil},
+		{15, Revision{Main: 15, Sub: 1}, Revision{Main: 14}, 2, nil},
+		{14, Revision{Main: 14}, Revision{Main: 14}, 1, nil},
 
 		{13, Revision{}, Revision{}, 0, ErrRevisionNotFound},
 		{12, Revision{}, Revision{}, 0, ErrRevisionNotFound},
@@ -97,7 +97,8 @@ func TestKeyIndexSince(t *testing.T) {
 		Revision{Main: 8},
 		Revision{Main: 10},
 		Revision{Main: 12},
-		Revision{Main: 14, Sub: 1},
+		Revision{Main: 14},
+		Revision{Main: 15, Sub: 1},
 		Revision{Main: 16},
 	}
 	tests := []struct {
@@ -106,7 +107,7 @@ func TestKeyIndexSince(t *testing.T) {
 		wrevs []Revision
 	}{
 		{17, nil},
-		{16, allRevs[6:]},
+		{16, allRevs[7:]},
 		{15, allRevs[6:]},
 		{14, allRevs[5:]},
 		{13, allRevs[5:]},
@@ -231,7 +232,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{created: Revision{Main: 2}, ver: 3, revs: []Revision{Revision{Main: 2}, Revision{Main: 4}, Revision{Main: 6}}},
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -245,7 +246,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{created: Revision{Main: 2}, ver: 3, revs: []Revision{Revision{Main: 2}, Revision{Main: 4}, Revision{Main: 6}}},
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -261,7 +262,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{created: Revision{Main: 2}, ver: 3, revs: []Revision{Revision{Main: 2}, Revision{Main: 4}, Revision{Main: 6}}},
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -277,7 +278,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{created: Revision{Main: 2}, ver: 3, revs: []Revision{Revision{Main: 4}, Revision{Main: 6}}},
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -293,7 +294,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				generations: []generation{
 					{created: Revision{Main: 2}, ver: 3, revs: []Revision{Revision{Main: 4}, Revision{Main: 6}}},
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -308,7 +309,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -321,7 +322,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -334,7 +335,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -349,7 +350,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 8}, Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -364,7 +365,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -379,7 +380,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				modified: Revision{Main: 16},
 				generations: []generation{
 					{created: Revision{Main: 8}, ver: 3, revs: []Revision{Revision{Main: 10}, Revision{Main: 12}}},
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -393,7 +394,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: Revision{Main: 16},
 				generations: []generation{
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -405,7 +406,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: Revision{Main: 16},
 				generations: []generation{
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
@@ -417,12 +418,12 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: Revision{Main: 16},
 				generations: []generation{
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14}, Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
 			map[Revision]struct{}{
-				Revision{Main: 14, Sub: 1}: {},
+				Revision{Main: 14}: {},
 			},
 		},
 		{
@@ -431,12 +432,12 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: Revision{Main: 16},
 				generations: []generation{
-					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 14, Sub: 1}, Revision{Main: 16}}},
+					{created: Revision{Main: 14}, ver: 3, revs: []Revision{Revision{Main: 15, Sub: 1}, Revision{Main: 16}}},
 					{},
 				},
 			},
 			map[Revision]struct{}{
-				Revision{Main: 14, Sub: 1}: {},
+				Revision{Main: 15, Sub: 1}: {},
 			},
 		},
 		{
@@ -692,7 +693,7 @@ func newTestKeyIndex(lg *zap.Logger) *keyIndex {
 	// modified: 16
 	// generations:
 	//    {empty}
-	//    {{14, 0}[1], {14, 1}[2], {16, 0}(t)[3]}
+	//    {{14, 0}[1], {15, 1}[2], {16, 0}(t)[3]}
 	//    {{8, 0}[1], {10, 0}[2], {12, 0}(t)[3]}
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 
@@ -704,7 +705,7 @@ func newTestKeyIndex(lg *zap.Logger) *keyIndex {
 	ki.put(lg, 10, 0)
 	ki.tombstone(lg, 12, 0)
 	ki.put(lg, 14, 0)
-	ki.put(lg, 14, 1)
+	ki.put(lg, 15, 1)
 	ki.tombstone(lg, 16, 0)
 	return ki
 }
