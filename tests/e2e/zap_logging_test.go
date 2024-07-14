@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -75,4 +77,85 @@ type logEntry struct {
 	Timestamp string `json:"ts"`
 	Caller    string `json:"caller"`
 	Message   string `json:"msg"`
+}
+
+func TestConnectionRejectMessage(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	testCases := []struct {
+		name           string
+		url            string
+		expectedErrMsg string
+	}{
+		{
+			name:           "reject client connection",
+			url:            "https://127.0.0.1:2379/version",
+			expectedErrMsg: "rejected connection on client endpoint",
+		},
+		{
+			name:           "reject peer connection",
+			url:            "https://127.0.0.1:2380/members",
+			expectedErrMsg: "rejected connection on peer endpoint",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			commonArgs := []string{
+				e2e.BinPath,
+				"--name", "etcd1",
+				"--listen-client-urls", "https://127.0.0.1:2379",
+				"--advertise-client-urls", "https://127.0.0.1:2379",
+				"--cert-file", e2e.CertPath,
+				"--key-file", e2e.PrivateKeyPath,
+				"--trusted-ca-file", e2e.CaPath,
+				"--listen-peer-urls", "https://127.0.0.1:2380",
+				"--initial-advertise-peer-urls", "https://127.0.0.1:2380",
+				"--initial-cluster", "etcd1=https://127.0.0.1:2380",
+				"--peer-cert-file", e2e.CertPath,
+				"--peer-key-file", e2e.PrivateKeyPath,
+				"--peer-trusted-ca-file", e2e.CaPath,
+			}
+
+			t.Log("Starting an etcd process and wait for it to get ready.")
+			p, err := e2e.SpawnCmd(commonArgs, nil)
+			require.NoError(t, err)
+			err = e2e.WaitReadyExpectProc(p, e2e.EtcdServerReadyLines)
+			require.NoError(t, err)
+			defer func() {
+				p.Stop()
+				p.Close()
+			}()
+
+			t.Log("Starting a separate goroutine to verify the expected output.")
+			startedCh := make(chan struct{}, 1)
+			doneCh := make(chan struct{}, 1)
+			go func() {
+				startedCh <- struct{}{}
+				verr := e2e.WaitReadyExpectProc(p, []string{tc.expectedErrMsg})
+				require.NoError(t, verr)
+				doneCh <- struct{}{}
+			}()
+
+			// wait for the goroutine to get started
+			<-startedCh
+
+			t.Log("Running curl command to trigger the corresponding warning message.")
+			curlCmdArgs := []string{"curl", "--connect-timeout", "1", "-k", tc.url}
+			curlCmd, err := e2e.SpawnCmd(curlCmdArgs, nil)
+			require.NoError(t, err)
+
+			defer func() {
+				curlCmd.Stop()
+				curlCmd.Close()
+			}()
+
+			t.Log("Waiting for the result.")
+			select {
+			case <-doneCh:
+			case <-time.After(5 * time.Second):
+				t.Fatal("Timed out waiting for the result")
+			}
+		})
+	}
 }
