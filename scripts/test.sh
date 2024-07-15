@@ -61,6 +61,7 @@ PASSES=${PASSES:-"gofmt bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
+MARKDOWN_MARKER_VERSION=${MARKDOWN_MARKER_VERSION:="v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
@@ -360,10 +361,17 @@ function shellws_pass {
 }
 
 function markdown_marker_pass {
+  local marker="marker"
   # TODO: check other markdown files when marker handles headers with '[]'
-  if tool_exists "marker" "https://crates.io/crates/marker"; then
-    generic_checker run marker --skip-http --allow-absolute-paths --root "${ETCD_ROOT_DIR}" -e ./CHANGELOG -e ./etcdctl -e etcdutl -e ./tools 2>&1
+  if ! tool_exists "$marker" "https://crates.io/crates/marker"; then
+    log_callout "Installing markdown marker $MARKDOWN_MARKER_VERSION"
+    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
+    mkdir -p ./bin
+    mv /tmp/marker ./bin/
+    marker=./bin/marker
   fi
+
+  generic_checker run "${marker}" --skip-http --allow-absolute-paths --root "${ETCD_ROOT_DIR}" -e ./CHANGELOG -e ./etcdctl -e etcdutl -e ./tools 2>&1
 }
 
 function govuln_pass {
