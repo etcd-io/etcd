@@ -31,14 +31,14 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.4
-	go.etcd.io/etcd/api/v3 v3.5.14
-	go.etcd.io/etcd/client/pkg/v3 v3.5.14
-	go.etcd.io/etcd/client/v2 v2.305.14
-	go.etcd.io/etcd/client/v3 v3.5.14
-	go.etcd.io/etcd/etcdutl/v3 v3.5.14
-	go.etcd.io/etcd/pkg/v3 v3.5.14
-	go.etcd.io/etcd/raft/v3 v3.5.14
-	go.etcd.io/etcd/server/v3 v3.5.14
+	go.etcd.io/etcd/api/v3 v3.5.15
+	go.etcd.io/etcd/client/pkg/v3 v3.5.15
+	go.etcd.io/etcd/client/v2 v2.305.15
+	go.etcd.io/etcd/client/v3 v3.5.15
+	go.etcd.io/etcd/etcdutl/v3 v3.5.15
+	go.etcd.io/etcd/pkg/v3 v3.5.15
+	go.etcd.io/etcd/raft/v3 v3.5.15
+	go.etcd.io/etcd/server/v3 v3.5.15
 	go.etcd.io/gofail v0.1.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0
 	go.opentelemetry.io/otel v1.20.0
