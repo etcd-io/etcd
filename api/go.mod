@@ -26,13 +26,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240723171418-e6d459c13d2a // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// Bad imports are sometimes causing attempts to pull that code.
-// This makes the error more explicit.
-replace (
-	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/api/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/pkg/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/tests/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
-)
