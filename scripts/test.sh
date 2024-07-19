@@ -550,7 +550,7 @@ function dump_deps_of_module() {
 function dep_pass {
   local all_dependencies
   local tools_mod_dependencies
-  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
+  all_dependencies=$(run_for_modules dump_deps_of_module) || return 2
   # tools/mod is a special case. It is a module that is not included in the
   # module list from test_lib.sh. However, we need to ensure that the
   # dependency versions match the rest of the project. Therefore, explicitly
