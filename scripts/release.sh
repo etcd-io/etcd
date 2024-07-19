@@ -170,7 +170,7 @@ main() {
       log_callout "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
       log_callout "Tagging release..."
-      REMOTE_REPO="origin" push_mod_tags_cmd
+      TARGET_VERSION="v${VERSION}" REMOTE_REPO="origin" push_mod_tags_cmd
     fi
 
     if [ "${IN_PLACE}" == 0 ]; then
