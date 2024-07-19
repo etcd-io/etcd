@@ -247,9 +247,6 @@ main() {
       log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}${TARGET_ARCH}"
       docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}${TARGET_ARCH}"
     done
-
-    log_callout "Setting permissions using gsutil..."
-    gsutil -m acl ch -u allUsers:R -r gs://artifacts.etcd-development.appspot.com
   fi
 
   ### Release validation
