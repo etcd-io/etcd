@@ -31,7 +31,7 @@ function update_module_version() {
   local v2version="${2}"
   local modules
   run go mod tidy
-  modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  modules=$(run GOWORK=off go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
@@ -102,9 +102,9 @@ function push_mod_tags_cmd {
 
   for module in $(modules); do
     local version
-    version=$(go list -f '{{.Version}}' -m "${module}")
+    version=$(GOWORK=off go list -f '{{.Version}}' -m "${module}")
     local path
-    path=$(go list -f '{{.Path}}' -m "${module}")
+    path=$(GOWORK=off go list -f '{{.Path}}' -m "${module}")
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
