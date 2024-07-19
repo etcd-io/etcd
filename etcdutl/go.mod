@@ -13,14 +13,6 @@ replace (
 	go.etcd.io/etcd/server/v3 => ../server
 )
 
-// Bad imports are sometimes causing attempts to pull that code.
-// This makes the error more explicit.
-replace (
-	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
-)
-
 require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/dustin/go-humanize v1.0.1
