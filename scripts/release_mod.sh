@@ -31,7 +31,9 @@ function update_module_version() {
   local v2version="${2}"
   local modules
   run go mod tidy
-  modules=$(run GOWORK=off go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  export GOWORK=off
+  modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  export GOWORK=
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
