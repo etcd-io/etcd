@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 <hr>
 
-## v3.5.15 (TBD)
+## v3.5.16 (TBC)
+
+<hr>
+
+## v3.5.15 (2024-07-19)
 
 ### etcd server
 - Fix [add prometheus metric registration for metric `etcd_disk_wal_write_duration_seconds`](https://github.com/etcd-io/etcd/pull/18174).
