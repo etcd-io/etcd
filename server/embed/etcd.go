@@ -228,6 +228,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
 		V2Deprecation:                                 cfg.V2DeprecationEffective(),
 		ExperimentalLocalAddress:                      cfg.InferLocalAddr(),
+		ServerFeatureGate:                             cfg.ServerFeatureGate,
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
