@@ -483,6 +483,8 @@ type configJSON struct {
 
 	ClientSecurityJSON securityConfig `json:"client-transport-security"`
 	PeerSecurityJSON   securityConfig `json:"peer-transport-security"`
+
+	ServerFeatureGatesJSON string `json:"feature-gates"`
 }
 
 type securityConfig struct {
@@ -794,6 +796,13 @@ func (cfg *configYAML) configFromFile(path string) error {
 	err = yaml.Unmarshal(b, cfg)
 	if err != nil {
 		return err
+	}
+
+	if cfg.configJSON.ServerFeatureGatesJSON != "" {
+		err = cfg.Config.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(cfg.configJSON.ServerFeatureGatesJSON)
+		if err != nil {
+			return err
+		}
 	}
 
 	if cfg.configJSON.ListenPeerURLs != "" {
