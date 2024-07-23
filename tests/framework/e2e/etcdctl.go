@@ -36,6 +36,7 @@ type EtcdctlV3 struct {
 	cfg        ClientConfig
 	endpoints  []string
 	authConfig clientv3.AuthConfig
+	authToken  string
 }
 
 func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOption) (*EtcdctlV3, error) {
@@ -70,6 +71,17 @@ func WithAuth(userName, password string) config.ClientOption {
 		ctl := c.(*EtcdctlV3)
 		ctl.authConfig.Username = userName
 		ctl.authConfig.Password = password
+	}
+}
+
+func WithAuthToken(token string) config.ClientOption {
+	return func(c any) {
+		switch c := c.(type) {
+		case *EtcdctlV3:
+			c.authToken = token
+		case *clientv3.Config:
+			c.Token = token
+		}
 	}
 }
 
@@ -346,6 +358,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
 	if !ctl.authConfig.Empty() {
 		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
+	}
+	if ctl.authToken != "" {
+		fmap["auth-token"] = ctl.authToken
 	}
 	return fmap
 }

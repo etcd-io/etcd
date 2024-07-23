@@ -25,12 +25,16 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 var tokenTTL = time.Second
+var defaultKeyPath = mustAbsPath("../fixtures/server.key.insecure")
 var defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=%s",
-	mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), tokenTTL)
+	mustAbsPath("../fixtures/server.crt"), defaultKeyPath, tokenTTL)
+var verifyJWTOnlyAuth = fmt.Sprintf("jwt,pub-key=%s,sign-method=RS256,ttl=%s",
+	mustAbsPath("../fixtures/server.crt"), tokenTTL)
 
 const (
 	PermissionDenied      = "etcdserver: permission denied"
@@ -754,6 +758,25 @@ func TestAuthJWTExpire(t *testing.T) {
 
 		// e2e test will generate a new token while
 		// integration test that re-uses the same etcd client will refresh the token on server failure.
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
+	})
+}
+
+func TestAuthJWTOnly(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: verifyJWTOnlyAuth}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
+		require.NoErrorf(t, err, "failed to enable auth")
+
+		token, err := createSignedJWT(defaultKeyPath, testUserName, authRev)
+		require.NoErrorf(t, err, "failed to create test user JWT")
+
+		testUserAuthClient := testutils.MustClient(clus.Client(e2e.WithAuthToken(token)))
 		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
 	})
 }
