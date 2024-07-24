@@ -52,6 +52,12 @@ var (
 		DistributedTracing:      {Default: false, PreRelease: featuregate.Alpha},
 		StopGRPCServiceOnDefrag: {Default: false, PreRelease: featuregate.Alpha},
 	}
+	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
+	// to their corresponding feature gates.
+	// Deprecated: only add existing experimental features here. DO NOT use for new features.
+	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
+		"experimental-stop-grpc-service-on-defrag": StopGRPCServiceOnDefrag,
+	}
 )
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {

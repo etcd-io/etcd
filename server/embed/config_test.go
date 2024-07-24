@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -93,10 +94,11 @@ func TestConfigFileOtherFields(t *testing.T) {
 
 func TestConfigFileFeatureGates(t *testing.T) {
 	testCases := []struct {
-		name                   string
-		serverFeatureGatesJSON string
-		expectErr              bool
-		expectedFeatures       map[featuregate.Feature]bool
+		name                                string
+		serverFeatureGatesJSON              string
+		experimentalStopGRPCServiceOnDefrag string
+		expectErr                           bool
+		expectedFeatures                    map[featuregate.Feature]bool
 	}{
 		{
 			name: "default",
@@ -106,25 +108,51 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			},
 		},
 		{
-			name:                   "set StopGRPCServiceOnDefrag to true",
-			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      false,
-				features.StopGRPCServiceOnDefrag: true,
-			},
+			name:                                "cannot set both experimental flag and feature gate flag",
+			serverFeatureGatesJSON:              "StopGRPCServiceOnDefrag=true",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectErr:                           true,
 		},
 		{
-			name:                   "set both features to true",
-			serverFeatureGatesJSON: "DistributedTracing=true,StopGRPCServiceOnDefrag=true",
+			name:                                "ok to set different experimental flag and feature gate flag",
+			serverFeatureGatesJSON:              "DistributedTracing=true",
+			experimentalStopGRPCServiceOnDefrag: "true",
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.DistributedTracing:      true,
 				features.StopGRPCServiceOnDefrag: true,
 			},
 		},
 		{
-			name:                   "error setting unrecognized feature",
-			serverFeatureGatesJSON: "DistributedTracing=true,StopGRPCServiceOnDefragExp=true",
-			expectErr:              true,
+			name:                                "can set feature gate to true from experimental flag",
+			experimentalStopGRPCServiceOnDefrag: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				features.DistributedTracing:      false,
+			},
+		},
+		{
+			name:                                "can set feature gate to false from experimental flag",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+			},
+		},
+		{
+			name:                   "can set feature gate to true from feature gate flag",
+			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				features.DistributedTracing:      false,
+			},
+		},
+		{
+			name:                   "can set feature gate to false from feature gate flag",
+			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+			},
 		},
 	}
 	for _, tc := range testCases {
@@ -136,6 +164,13 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
 			}
 
+			if tc.experimentalStopGRPCServiceOnDefrag != "" {
+				experimentalStopGRPCServiceOnDefrag, err := strconv.ParseBool(tc.experimentalStopGRPCServiceOnDefrag)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalStopGRPCServiceOnDefrag = &experimentalStopGRPCServiceOnDefrag
+			}
 			b, err := yaml.Marshal(&yc)
 			if err != nil {
 				t.Fatal(err)
@@ -742,4 +777,102 @@ func TestUndefinedAutoCompactionModeValidate(t *testing.T) {
 	cfg.AutoCompactionMode = ""
 	err := cfg.Validate()
 	require.Error(t, err)
+}
+
+func TestSetFeatureGatesFromExperimentalFlags(t *testing.T) {
+	testCases := []struct {
+		name                                string
+		featureGatesFlag                    string
+		experimentalStopGRPCServiceOnDefrag string
+		expectErr                           bool
+		expectedFeatures                    map[featuregate.Feature]bool
+	}{
+		{
+			name: "default",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				"TestAlpha":                      false,
+				"TestBeta":                       true,
+			},
+		},
+		{
+			name:                                "cannot set experimental flag and feature gate to true at the same time",
+			featureGatesFlag:                    "StopGRPCServiceOnDefrag=true",
+			experimentalStopGRPCServiceOnDefrag: "true",
+			expectErr:                           true,
+		},
+		{
+			name:                                "cannot set experimental flag and feature gate to false at the same time",
+			featureGatesFlag:                    "StopGRPCServiceOnDefrag=false",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectErr:                           true,
+		},
+		{
+			name:                                "cannot set experimental flag and feature gate to different values at the same time",
+			featureGatesFlag:                    "StopGRPCServiceOnDefrag=true",
+			experimentalStopGRPCServiceOnDefrag: "false",
+			expectErr:                           true,
+		},
+		{
+			name:                                "can set experimental flag and other feature gates",
+			featureGatesFlag:                    "TestAlpha=true,TestBeta=false",
+			experimentalStopGRPCServiceOnDefrag: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				"TestAlpha":                      true,
+				"TestBeta":                       false,
+			},
+		},
+		{
+			name:             "can set feature gate when its experimental flag is not explicitly set",
+			featureGatesFlag: "TestAlpha=true,StopGRPCServiceOnDefrag=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				"TestAlpha":                      true,
+				"TestBeta":                       true,
+			},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			fg := features.NewDefaultServerFeatureGate("test", nil)
+			err := fg.(featuregate.MutableFeatureGate).Add(
+				map[featuregate.Feature]featuregate.FeatureSpec{
+					"TestAlpha": {Default: false, PreRelease: featuregate.Alpha},
+					"TestBeta":  {Default: true, PreRelease: featuregate.Beta},
+				})
+			require.NoError(t, err)
+
+			fg.(featuregate.MutableFeatureGate).Set(tc.featureGatesFlag)
+			var getExperimentalFlagVal func(flagName string) *bool
+			if tc.experimentalStopGRPCServiceOnDefrag == "" {
+				// experimental flag is not explicitly set
+				getExperimentalFlagVal = func(flagName string) *bool {
+					return nil
+				}
+			} else {
+				// mexperimental flag is explicitly set
+				getExperimentalFlagVal = func(flagName string) *bool {
+					// only the experimental-stop-grpc-service-on-defrag flag can be set in this test.
+					if flagName != "experimental-stop-grpc-service-on-defrag" {
+						return nil
+					}
+					flagVal, parseErr := strconv.ParseBool(tc.experimentalStopGRPCServiceOnDefrag)
+					require.NoError(t, parseErr)
+					return &flagVal
+				}
+			}
+			err = SetFeatureGatesFromExperimentalFlags(fg, getExperimentalFlagVal, tc.featureGatesFlag)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			for k, v := range tc.expectedFeatures {
+				if fg.Enabled(k) != v {
+					t.Errorf("expected feature gate %s=%v, got %v", k, v, fg.Enabled(k))
+				}
+			}
+		})
+	}
 }

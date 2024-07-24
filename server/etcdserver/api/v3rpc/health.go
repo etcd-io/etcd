@@ -20,6 +20,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/features"
 )
 
 const (
@@ -35,7 +36,7 @@ func newHealthNotifier(hs *health.Server, s *etcdserver.EtcdServer) notifier {
 	if hs == nil {
 		panic("unexpected nil gRPC health server")
 	}
-	hc := &healthNotifier{hs: hs, lg: s.Logger(), stopGRPCServiceOnDefrag: s.Cfg.ExperimentalStopGRPCServiceOnDefrag}
+	hc := &healthNotifier{hs: hs, lg: s.Logger(), stopGRPCServiceOnDefrag: s.FeatureEnabled(features.StopGRPCServiceOnDefrag)}
 	// set grpc health server as serving status blindly since
 	// the grpc server will serve iff s.ReadyNotify() is closed.
 	hc.startServe()

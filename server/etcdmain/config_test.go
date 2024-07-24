@@ -407,19 +407,47 @@ func TestParseFeatureGateFlags(t *testing.T) {
 		{
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      false,
 				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
 			},
 		},
 		{
-			name: "can set feature gate flag",
+			name: "cannot set both experimental flag and feature gate flag",
 			args: []string{
 				"--experimental-stop-grpc-service-on-defrag=false",
-				fmt.Sprintf("--%s=DistributedTracing=true,StopGRPCServiceOnDefrag=true", embed.ServerFeatureGateFlagName),
+				"--feature-gates=StopGRPCServiceOnDefrag=true",
+			},
+			expectErr: true,
+		},
+		{
+			name: "ok to set different experimental flag and feature gate flag",
+			args: []string{
+				"--experimental-stop-grpc-service-on-defrag=true",
+				"--feature-gates=DistributedTracing=true",
 			},
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      true,
 				features.StopGRPCServiceOnDefrag: true,
+				features.DistributedTracing:      true,
+			},
+		},
+		{
+			name: "can set feature gate from experimental flag",
+			args: []string{
+				"--experimental-stop-grpc-service-on-defrag=true",
+			},
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				features.DistributedTracing:      false,
+			},
+		},
+		{
+			name: "can set feature gate from feature gate flag",
+			args: []string{
+				"--feature-gates=StopGRPCServiceOnDefrag=true,DistributedTracing=true",
+			},
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: true,
+				features.DistributedTracing:      true,
 			},
 		},
 	}

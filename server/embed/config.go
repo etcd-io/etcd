@@ -805,6 +805,25 @@ func (cfg *configYAML) configFromFile(path string) error {
 		}
 	}
 
+	// parses the yaml bytes to raw map first, then getBoolFlagVal can get the top level bool flag value.
+	var cfgMap map[string]interface{}
+	err = yaml.Unmarshal(b, &cfgMap)
+	if err != nil {
+		return err
+	}
+	getBoolFlagVal := func(flagName string) *bool {
+		flagVal, ok := cfgMap[flagName]
+		if !ok {
+			return nil
+		}
+		boolVal := flagVal.(bool)
+		return &boolVal
+	}
+	err = SetFeatureGatesFromExperimentalFlags(cfg.ServerFeatureGate, getBoolFlagVal, cfg.configJSON.ServerFeatureGatesJSON)
+	if err != nil {
+		return err
+	}
+
 	if cfg.configJSON.ListenPeerURLs != "" {
 		u, err := types.NewURLs(strings.Split(cfg.configJSON.ListenPeerURLs, ","))
 		if err != nil {
@@ -895,6 +914,36 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.SelfSignedCertValidity = 1
 	}
 	return cfg.Validate()
+}
+
+// SetFeatureGatesFromExperimentalFlags sets the feature gate values if the feature gate is not explicitly set
+// while their corresponding experimental flags are explicitly set, for all the features in ExperimentalFlagToFeatureMap.
+// TODO: remove after all experimental flags are deprecated.
+func SetFeatureGatesFromExperimentalFlags(fg featuregate.FeatureGate, getExperimentalFlagVal func(string) *bool, featureGatesVal string) error {
+	m := make(map[featuregate.Feature]bool)
+	// verify that the feature gate and its experimental flag are not both set at the same time.
+	for expFlagName, featureName := range features.ExperimentalFlagToFeatureMap {
+		flagVal := getExperimentalFlagVal(expFlagName)
+		if flagVal == nil {
+			continue
+		}
+		if strings.Contains(featureGatesVal, string(featureName)) {
+			return fmt.Errorf("cannot specify both flags: --%s=%v and --%s=%s=%v at the same time, please just use --%s=%s=%v",
+				expFlagName, *flagVal, ServerFeatureGateFlagName, featureName, fg.Enabled(featureName), ServerFeatureGateFlagName, featureName, fg.Enabled(featureName))
+		}
+		m[featureName] = *flagVal
+	}
+
+	// filter out unknown features for fg, because we could use SetFeatureGatesFromExperimentalFlags both for
+	// server and cluster level feature gates.
+	allFeatures := fg.(featuregate.MutableFeatureGate).GetAll()
+	mFiltered := make(map[string]bool)
+	for k, v := range m {
+		if _, ok := allFeatures[k]; ok {
+			mFiltered[string(k)] = v
+		}
+	}
+	return fg.(featuregate.MutableFeatureGate).SetFromMap(mFiltered)
 }
 
 func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
