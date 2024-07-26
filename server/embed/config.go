@@ -910,6 +910,24 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
+func filterOutInsecureCipherSuitesByID(cs []uint16) []uint16 {
+	insecureCipherSuites := tls.InsecureCipherSuites()
+	insecureCipherSuitesHash := make(map[uint16]string)
+	for _, c := range insecureCipherSuites {
+		insecureCipherSuitesHash[c.ID] = ""
+	}
+
+	filteredCipherSuites := []uint16{}
+	for _, c := range cs {
+		_, ok := insecureCipherSuitesHash[c]
+		if !ok {
+			filteredCipherSuites = append(filteredCipherSuites, c)
+		}
+	}
+
+	return filteredCipherSuites
+}
+
 func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
 	transportInfo, ok := any(info).(*transport.TLSInfo)
 	if ok {
@@ -935,7 +953,8 @@ func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
 		if err != nil {
 			return err
 		}
-		tlsConfig.CipherSuites = cs
+		secureCipherSuites := filterOutInsecureCipherSuitesByID(cs)
+		tlsConfig.CipherSuites = secureCipherSuites
 	}
 	return nil
 }

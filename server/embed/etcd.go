@@ -921,6 +921,17 @@ func (e *Etcd) pickGRPCGatewayServeContext(splitHTTP bool) *serveCtx {
 var ErrMissingClientTLSInfoForMetricsURL = errors.New("client TLS key/cert (--cert-file, --key-file) must be provided for metrics secure url")
 
 func (e *Etcd) createMetricsListener(murl url.URL) (net.Listener, error) {
+	tlsConfig := e.cfg.CustomClientTLSConfig
+	if tlsConfig != nil {
+		if len(tlsConfig.Certificates) != 0 {
+			listener, err := net.Listen("tcp", murl.Host)
+			if err != nil {
+				return nil, err
+			}
+			return tls.NewListener(listener, tlsConfig), nil
+		}
+	}
+
 	tlsInfo := &e.cfg.ClientTLSInfo
 	switch murl.Scheme {
 	case "http":

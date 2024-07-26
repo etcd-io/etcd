@@ -874,8 +874,44 @@ func TestUpdateCipherSuite(t *testing.T) {
 	cfg := NewConfig()
 	cfg.CustomClientTLSConfig = tlsConfig
 
-	expCipherSuites := []uint16{0x2f}
-	err := updateCipherSuites(tlsConfig, []string{"TLS_RSA_WITH_AES_128_CBC_SHA"})
+	expCipherSuites := []uint16{0xc02c}
+	err := updateCipherSuites(tlsConfig, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"})
+	require.NoError(t, err)
+	assert.Equal(t, expCipherSuites, tlsConfig.CipherSuites)
+}
+
+func TestUpdateCipherSuiteWithInsecureCipher(t *testing.T) {
+	t.Parallel()
+
+	caSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	caCert, caPrivateKey := generateCACert(t, caSubject)
+
+	serverSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	expCipherSuites := []uint16{0xc02c}
+	err := updateCipherSuites(tlsConfig, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
 	require.NoError(t, err)
 	assert.Equal(t, expCipherSuites, tlsConfig.CipherSuites)
 }
