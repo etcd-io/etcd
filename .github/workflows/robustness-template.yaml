@@ -44,11 +44,11 @@ jobs:
 
       # Temporary monitoring to compare amd64 and arm64 runner performance
       # Refer: https://actuated.dev/blog/right-sizing-vms-github-actions
-      - uses: alexellis/setup-arkade@master
+      - uses: alexellis/setup-arkade@b1816384b2260cfd2c023c6798d26075786cfc7f # v3
       - name: Install vmmeter
         run: |
           sudo -E arkade oci install ghcr.io/openfaasltd/vmmeter:latest --path /usr/local/bin/
-      - uses: self-actuated/vmmeter-action@master
+      - uses: self-actuated/vmmeter-action@c7e2162e39294a810cab647cacc215ecd68a44f6 #v1
 
       - name: install-lazyfs
         if: ${{ inputs.lazyfsEnabled }}
