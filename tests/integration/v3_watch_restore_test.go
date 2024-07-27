@@ -58,6 +58,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		Size:                   3,
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,
+		RaftLogCompactionStep:  10,
 	})
 	defer clus.Terminate(t)
 

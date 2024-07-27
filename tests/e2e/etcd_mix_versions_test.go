@@ -22,6 +22,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -132,8 +133,8 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 
 	clusterOptions := []e2e.EPClusterOption{
 		e2e.WithConfig(cfg),
-		e2e.WithSnapshotCount(10),
-		e2e.WithSnapshotCatchUpEntries(10),
+		e2e.WithSnapshotCount(etcdserver.DefaultRaftLogCompactionStep),
+		e2e.WithSnapshotCatchUpEntries(etcdserver.DefaultRaftLogCompactionStep),
 	}
 	t.Logf("Create an etcd cluster with %d member", cfg.ClusterSize)
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, clusterOptions...)
@@ -148,8 +149,8 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 	err = toPartitionedMember.Stop()
 	require.NoError(t, err)
 
-	t.Log("Writing 20 keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot)")
-	writeKVs(t, epc.Etcdctl(), 0, 20)
+	t.Log("Writing 2*DefaultRaftLogCompactionStep keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot)")
+	writeKVs(t, epc.Etcdctl(), 0, int(etcdserver.DefaultRaftLogCompactionStep*2))
 
 	t.Log("Verify logs to check leader has saved snapshot")
 	leaderEPC := epc.Procs[epc.WaitLeader(t)]

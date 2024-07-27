@@ -854,6 +854,99 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	}
 }
 
+// TestCompactRaftLog ensures that:
+// 1. raft log gets compacted only when raft log entries size is greater than SnapshotCatchUpEntries
+// 2. after each compaction, raft log entries size equals SnapshotCatchUpEntries
+//
+// More test cases are covered in integration/TestCompactRaftLog_CompactionTimes
+func TestCompactRaftLog(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	n := newNodeConfChangeCommitterRecorder()
+	n.readyc <- raft.Ready{
+		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
+	}
+	rs := raft.NewMemoryStorage()
+
+	cl := newTestCluster(t)
+	cl.SetStore(v2store.New())
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	cl.SetBackend(schema.NewMembershipBackend(lg, be))
+	cl.AddMember(&membership.Member{ID: 1234}, true)
+
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        n,
+		raftStorage: rs,
+		storage:     mockstorage.NewStorageRecorder(""),
+		transport:   newNopTransporter(),
+	})
+
+	snapshotCatchUpEntries := uint64(1333)
+	s := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		Cfg:          config.ServerConfig{Logger: lg, SnapshotCatchUpEntries: snapshotCatchUpEntries},
+		r:            *r,
+		v2store:      v2store.New(),
+		cluster:      cl,
+		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
+		SyncTicker:   &time.Ticker{},
+		consistIndex: cindex.NewFakeConsistentIndex(0),
+		uberApply:    uberApplierMock{},
+		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
+	}
+	s.start()
+	defer s.Stop()
+
+	putFooBar := func(index uint64) {
+		req := &pb.InternalRaftRequest{
+			Header: &pb.RequestHeader{ID: index},
+			Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+		}
+		ents := []raftpb.Entry{{Index: index, Data: pbutil.MustMarshal(req)}}
+		n.readyc <- raft.Ready{Entries: ents}
+		n.readyc <- raft.Ready{CommittedEntries: ents}
+	}
+
+	// get first index, last index and count of raft log entries
+	mustGetEntriesInfo := func() (fi, li, cnt uint64) {
+		fi, err := rs.FirstIndex()
+		if err != nil {
+			t.Fatalf("FirstIndex error: %v", err)
+		}
+		li, err = rs.LastIndex()
+		if err != nil {
+			t.Fatalf("LastIndex error: %v", err)
+		}
+		return fi, li, li - fi + 1
+	}
+
+	currentIndex := uint64(0)
+	for currentIndex < snapshotCatchUpEntries-1 {
+		currentIndex++
+		putFooBar(currentIndex)
+	}
+
+	// wait for put request to complete
+	time.Sleep(time.Second * 5)
+	// no compaction occurred before raft log entries size reaches snapshotCatchUpEntries
+	fi, li, cnt := mustGetEntriesInfo()
+	assert.Equal(t, uint64(1), fi)
+	assert.Equal(t, snapshotCatchUpEntries-1, li)
+	assert.Equal(t, snapshotCatchUpEntries-1, cnt)
+
+	// trigger the first compaction
+	currentIndex++
+	putFooBar(currentIndex)
+	// wait for put request to complete
+	time.Sleep(time.Second * 5)
+	_, li, cnt = mustGetEntriesInfo()
+	assert.Equal(t, currentIndex, li)
+	// after each compaction, raft log entries size should equal snapshotCatchUpEntries
+	assert.Equal(t, snapshotCatchUpEntries, cnt)
+}
+
 // TestAddMember tests AddMember can propose and perform node addition.
 func TestAddMember(t *testing.T) {
 	lg := zaptest.NewLogger(t)

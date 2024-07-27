@@ -24,6 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.uber.org/zap"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -42,8 +43,8 @@ func TestRecoverSnapshotBackend(t *testing.T) {
 		e2e.WithClusterSize(3),
 		e2e.WithKeepDataDir(true),
 		e2e.WithPeerProxy(true),
-		e2e.WithSnapshotCatchUpEntries(50),
-		e2e.WithSnapshotCount(50),
+		e2e.WithSnapshotCatchUpEntries(etcdserver.DefaultRaftLogCompactionStep),
+		e2e.WithSnapshotCount(etcdserver.DefaultRaftLogCompactionStep),
 		e2e.WithGoFailEnabled(true),
 		e2e.WithIsPeerTLS(true),
 	)

@@ -58,6 +58,11 @@ type ServerConfig struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64
 
+	// RaftLogCompactionStep ensures raft log is compacted whenever
+	// applied index is a multiple of RaftLogCompactionStep.
+	// The minimum value is 1, meaning compacting raft log each time applied index increases.
+	RaftLogCompactionStep uint64
+
 	MaxSnapFiles uint
 	MaxWALFiles  uint
 
