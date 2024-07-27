@@ -533,9 +533,6 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			)
 		}
 	} else if len(cfg.CustomPeerTLSConfig.Certificates) != 0 {
-		if err = updateCipherSuites(cfg.CustomPeerTLSConfig, cfg.CipherSuites); err != nil {
-			return nil, err
-		}
 		if err = cfg.PeerSelfCert(); err != nil {
 			cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
 		}
@@ -697,9 +694,6 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			}
 		}
 	} else if len(cfg.CustomClientTLSConfig.Certificates) != 0 {
-		if err = updateCipherSuites(cfg.CustomClientTLSConfig, cfg.CipherSuites); err != nil {
-			return nil, err
-		}
 		if err = cfg.ClientSelfCert(); err != nil {
 			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
 		}

@@ -910,24 +910,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
-func filterOutInsecureCipherSuitesByID(cs []uint16) []uint16 {
-	insecureCipherSuites := tls.InsecureCipherSuites()
-	insecureCipherSuitesHash := make(map[uint16]string)
-	for _, c := range insecureCipherSuites {
-		insecureCipherSuitesHash[c.ID] = ""
-	}
-
-	filteredCipherSuites := []uint16{}
-	for _, c := range cs {
-		_, ok := insecureCipherSuitesHash[c]
-		if !ok {
-			filteredCipherSuites = append(filteredCipherSuites, c)
-		}
-	}
-
-	return filteredCipherSuites
-}
-
 func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
 	transportInfo, ok := any(info).(*transport.TLSInfo)
 	if ok {
@@ -944,19 +926,7 @@ func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
 		return nil
 	}
 
-	tlsConfig, _ := any(info).(*tls.Config)
-	if len(tlsConfig.CipherSuites) > 0 && len(ss) > 0 {
-		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
-	}
-	if len(ss) > 0 {
-		cs, err := tlsutil.GetCipherSuites(ss)
-		if err != nil {
-			return err
-		}
-		secureCipherSuites := filterOutInsecureCipherSuitesByID(cs)
-		tlsConfig.CipherSuites = secureCipherSuites
-	}
-	return nil
+	return fmt.Errorf("tlsConfig.CipherSuites should not be updated, the default is already secure")
 }
 
 func updateMinMaxVersions[TLS tlsConfigConstraint](info TLS, min, max string) {
