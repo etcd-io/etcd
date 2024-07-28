@@ -83,6 +83,10 @@ const (
 	// follower to catch up.
 	DefaultSnapshotCatchUpEntries uint64 = 5000
 
+	// DefaultCompactRaftLogEveryNApplies improves performance by compacting raft log once every N applies.
+	// Minimum value is 1, which means compacting raft log every apply.
+	DefaultCompactRaftLogEveryNApplies uint64 = 100
+
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
 
@@ -108,10 +112,6 @@ const (
 	readyPercentThreshold = 0.9
 
 	DowngradeEnabledPath = "/downgrade/enabled"
-
-	// CompactRaftLogEveryNApplies improves performance by compacting raft log once every N applies.
-	// Minimum value is 1, which means compacting raft log every apply.
-	CompactRaftLogEveryNApplies uint64 = 100
 )
 
 var (
@@ -571,6 +571,14 @@ func (s *EtcdServer) start() {
 			zap.Uint64("updated-snapshot-catchup-entries", DefaultSnapshotCatchUpEntries),
 		)
 		s.Cfg.SnapshotCatchUpEntries = DefaultSnapshotCatchUpEntries
+	}
+	if s.Cfg.CompactRaftLogEveryNApplies == 0 {
+		lg.Info(
+			"updating compact raft log every N applies to default",
+			zap.Uint64("given-compact-raft-log-every-n-applies", s.Cfg.CompactRaftLogEveryNApplies),
+			zap.Uint64("updated-compact-raft-log-every-n-applies", DefaultCompactRaftLogEveryNApplies),
+		)
+		s.Cfg.CompactRaftLogEveryNApplies = DefaultCompactRaftLogEveryNApplies
 	}
 
 	s.w = wait.New()
@@ -2169,7 +2177,7 @@ func (s *EtcdServer) compactRaftLog(appliedi uint64) {
 	}
 	compacti := appliedi - s.Cfg.SnapshotCatchUpEntries
 	//  only compact raft log once every N applies
-	if compacti%CompactRaftLogEveryNApplies != 0 {
+	if compacti%s.Cfg.CompactRaftLogEveryNApplies != 0 {
 		return
 	}
 

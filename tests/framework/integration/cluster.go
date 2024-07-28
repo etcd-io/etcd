@@ -147,8 +147,9 @@ type ClusterConfig struct {
 	MaxTxnOps       uint
 	MaxRequestBytes uint
 
-	SnapshotCount          uint64
-	SnapshotCatchUpEntries uint64
+	SnapshotCount               uint64
+	SnapshotCatchUpEntries      uint64
+	CompactRaftLogEveryNApplies uint64
 
 	GRPCKeepAliveMinTime        time.Duration
 	GRPCKeepAliveInterval       time.Duration
@@ -277,6 +278,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
 			SnapshotCount:                       c.Cfg.SnapshotCount,
 			SnapshotCatchUpEntries:              c.Cfg.SnapshotCatchUpEntries,
+			CompactRaftLogEveryNApplies:         c.Cfg.CompactRaftLogEveryNApplies,
 			GRPCKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
 			GRPCKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
 			GRPCKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
@@ -603,6 +605,7 @@ type MemberConfig struct {
 	MaxRequestBytes             uint
 	SnapshotCount               uint64
 	SnapshotCatchUpEntries      uint64
+	CompactRaftLogEveryNApplies uint64
 	GRPCKeepAliveMinTime        time.Duration
 	GRPCKeepAliveInterval       time.Duration
 	GRPCKeepAliveTimeout        time.Duration
@@ -689,6 +692,10 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
 	if mcfg.SnapshotCatchUpEntries != 0 {
 		m.SnapshotCatchUpEntries = mcfg.SnapshotCatchUpEntries
+	}
+	m.CompactRaftLogEveryNApplies = etcdserver.DefaultCompactRaftLogEveryNApplies
+	if mcfg.CompactRaftLogEveryNApplies != 0 {
+		m.CompactRaftLogEveryNApplies = mcfg.CompactRaftLogEveryNApplies
 	}
 
 	// for the purpose of integration testing, simple token is enough

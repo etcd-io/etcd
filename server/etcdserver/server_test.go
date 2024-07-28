@@ -921,7 +921,7 @@ func TestCompactRaftLog(t *testing.T) {
 	}
 
 	currentIndex := uint64(0)
-	for currentIndex < snapshotCatchUpEntries+CompactRaftLogEveryNApplies-1 {
+	for currentIndex < snapshotCatchUpEntries+DefaultCompactRaftLogEveryNApplies-1 {
 		currentIndex++
 		putFooBar(currentIndex)
 	}
@@ -930,8 +930,8 @@ func TestCompactRaftLog(t *testing.T) {
 	// no compaction occurred before entries size reaches snapshotCatchUpEntries+CompactRaftLogEveryNApplies
 	fi, li, cnt := mustGetEntriesInfo()
 	assert.Equal(t, uint64(1), fi)
-	assert.Equal(t, snapshotCatchUpEntries+CompactRaftLogEveryNApplies-1, li)
-	assert.Equal(t, snapshotCatchUpEntries+CompactRaftLogEveryNApplies-1, cnt)
+	assert.Equal(t, snapshotCatchUpEntries+DefaultCompactRaftLogEveryNApplies-1, li)
+	assert.Equal(t, snapshotCatchUpEntries+DefaultCompactRaftLogEveryNApplies-1, cnt)
 
 	// trigger the first compaction
 	currentIndex++

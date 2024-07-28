@@ -55,9 +55,10 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{
-		Size:                   3,
-		SnapshotCount:          10,
-		SnapshotCatchUpEntries: 5,
+		Size:                        3,
+		SnapshotCount:               10,
+		SnapshotCatchUpEntries:      5,
+		CompactRaftLogEveryNApplies: 1,
 	})
 	defer clus.Terminate(t)
 
@@ -110,7 +111,9 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	//
 	// Since there is no way to confirm server has compacted the log, we
 	// use log monitor to watch and expect "compacted Raft logs" content.
-	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "compacted Raft logs", 2)
+	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "compacted Raft logs", 17)
+	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "\"compact-index\": 6", 1)
+	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "\"compact-index\": 17", 1)
 
 	// After RecoverPartition, leader L will send snapshot to slow F_m0
 	// follower, because F_m0(index:8) is 'out of date' compared to
