@@ -54,10 +54,10 @@ func TestWaitTime(t *testing.T) {
 func TestWaitTestStress(t *testing.T) {
 	chs := make([]<-chan struct{}, 0)
 	wt := NewTimeList()
-	for i := 0; i < 10000; i++ {
+	for i := 0; i <= 10000; i++ {
 		chs = append(chs, wt.Wait(uint64(i)))
 	}
-	wt.Trigger(10000 - 1)
+	wt.Trigger(10000)
 
 	for _, ch := range chs {
 		select {
@@ -78,9 +78,9 @@ func BenchmarkWaitTime(b *testing.B) {
 func BenchmarkTriggerAnd10KWaitTime(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		wt := NewTimeList()
-		for j := 0; j < 10000; j++ {
+		for j := 0; j <= 10000; j++ {
 			wt.Wait(uint64(j))
 		}
-		wt.Trigger(10000 - 1)
+		wt.Trigger(10000)
 	}
 }
