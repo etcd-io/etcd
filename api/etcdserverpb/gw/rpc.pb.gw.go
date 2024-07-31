@@ -1211,6 +1211,7 @@ func local_request_Auth_RoleRevokePermission_0(ctx context.Context, marshaler ru
 // UnaryRPC     :call etcdserverpb.KVServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterKVHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.KVServer) error {
 
 	mux.Handle("POST", pattern_KV_Range_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1345,6 +1346,7 @@ func RegisterKVHandlerServer(ctx context.Context, mux *runtime.ServeMux, server 
 // UnaryRPC     :call etcdserverpb.WatchServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterWatchHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterWatchHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.WatchServer) error {
 
 	mux.Handle("POST", pattern_Watch_Watch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1361,6 +1363,7 @@ func RegisterWatchHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 // UnaryRPC     :call etcdserverpb.LeaseServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterLeaseHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.LeaseServer) error {
 
 	mux.Handle("POST", pattern_Lease_LeaseGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1552,6 +1555,7 @@ func RegisterLeaseHandlerServer(ctx context.Context, mux *runtime.ServeMux, serv
 // UnaryRPC     :call etcdserverpb.ClusterServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterClusterHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.ClusterServer) error {
 
 	mux.Handle("POST", pattern_Cluster_MemberAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1686,6 +1690,7 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 // UnaryRPC     :call etcdserverpb.MaintenanceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterMaintenanceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.MaintenanceServer) error {
 
 	mux.Handle("POST", pattern_Maintenance_Alarm_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -1877,6 +1882,7 @@ func RegisterMaintenanceHandlerServer(ctx context.Context, mux *runtime.ServeMux
 // UnaryRPC     :call etcdserverpb.AuthServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterAuthHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterAuthHandlerServer(ctx context.Context, mux *runtime.ServeMux, server etcdserverpb.AuthServer) error {
 
 	mux.Handle("POST", pattern_Auth_AuthEnable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -2342,7 +2348,7 @@ func RegisterKVHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.Cl
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "KVClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "KVClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "KVClient" to call the correct interceptors.
+// "KVClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterKVHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.KVClient) error {
 
 	mux.Handle("POST", pattern_KV_Range_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -2517,7 +2523,7 @@ func RegisterWatchHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "WatchClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "WatchClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "WatchClient" to call the correct interceptors.
+// "WatchClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterWatchHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.WatchClient) error {
 
 	mux.Handle("POST", pattern_Watch_Watch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -2591,7 +2597,7 @@ func RegisterLeaseHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "LeaseClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "LeaseClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "LeaseClient" to call the correct interceptors.
+// "LeaseClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterLeaseHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.LeaseClient) error {
 
 	mux.Handle("POST", pattern_Lease_LeaseGrant_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -2847,7 +2853,7 @@ func RegisterClusterHandler(ctx context.Context, mux *runtime.ServeMux, conn *gr
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ClusterClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ClusterClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ClusterClient" to call the correct interceptors.
+// "ClusterClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.ClusterClient) error {
 
 	mux.Handle("POST", pattern_Cluster_MemberAdd_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -3022,7 +3028,7 @@ func RegisterMaintenanceHandler(ctx context.Context, mux *runtime.ServeMux, conn
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "MaintenanceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "MaintenanceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "MaintenanceClient" to call the correct interceptors.
+// "MaintenanceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterMaintenanceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.MaintenanceClient) error {
 
 	mux.Handle("POST", pattern_Maintenance_Alarm_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -3278,7 +3284,7 @@ func RegisterAuthHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc.
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "AuthClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "AuthClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "AuthClient" to call the correct interceptors.
+// "AuthClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterAuthHandlerClient(ctx context.Context, mux *runtime.ServeMux, client etcdserverpb.AuthClient) error {
 
 	mux.Handle("POST", pattern_Auth_AuthEnable_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
