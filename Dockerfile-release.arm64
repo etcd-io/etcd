@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 gcr.io/distroless/static-debian11@sha256:6d31326376a7834b106f281b04f67b5d015c31732f594930f2ea81365f99d60c
+FROM --platform=linux/arm64 gcr.io/distroless/static-debian11@sha256:1dbe426d60caed5d19597532a2d74c8056cd7b1674042b88f7328690b5ead8ed
 
 ADD etcd /usr/local/bin/
 ADD etcdctl /usr/local/bin/
