@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -399,7 +400,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		cfg.Logger = zaptest.NewLogger(t)
 	}
 	if cfg.BasePort == 0 {
-		cfg.BasePort = EtcdProcessBasePort
+		cfg.BasePort = EtcdProcessBasePort + rand.Int()%10000
 	}
 	if cfg.ServerConfig.SnapshotCount == 0 {
 		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
@@ -502,12 +503,16 @@ func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServer
 func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i int) *EtcdServerProcessConfig {
 	var curls []string
 	var curl string
-	port := cfg.BasePort + 5*i
+	port := cfg.BasePort + 6*i
 	clientPort := port
 	peerPort := port + 1
 	metricsPort := port + 2
 	peer2Port := port + 3
 	clientHTTPPort := port + 4
+	var gofailPort int
+	if cfg.GoFailEnabled {
+		gofailPort = port + 5
+	}
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -628,9 +633,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	for key, value := range cfg.EnvVars {
 		envVars[key] = value
 	}
-	var gofailPort int
-	if cfg.GoFailEnabled {
-		gofailPort = (i+1)*10000 + 2381
+	if gofailPort != 0 {
 		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
