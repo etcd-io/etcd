@@ -81,6 +81,7 @@ func TestVerifyHashKVAfterCompact(t *testing.T) {
 				// If compaction revision isn't a tombstone, select a revision in the middle of two tombstones.
 				if !compactedOnTombstoneRev {
 					compactedOnRev = (tombstoneRevs[0] + tombstoneRevs[1]) / 2
+					require.Greater(t, compactedOnRev, tombstoneRevs[0])
 					require.Greater(t, tombstoneRevs[1], compactedOnRev)
 				}
 
