@@ -16,7 +16,7 @@ require (
 	github.com/mdempsky/unconvert v0.0.0-20200228143138-95ecdbfc0b5f
 	github.com/mgechev/revive v1.0.2
 	github.com/mikefarah/yq/v3 v3.0.0-20201125113350-f42728eef735
-	go.etcd.io/gofail v0.1.0
+	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
 	honnef.co/go/tools v0.0.1-2019.2.3
 	mvdan.cc/unparam v0.0.0-20200501210554-b37ab49443f7
