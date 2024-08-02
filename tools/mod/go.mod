@@ -6,5 +6,5 @@ toolchain go1.21.12
 
 require (
 	github.com/gogo/protobuf v1.3.2
-	go.etcd.io/gofail v0.1.0
+	go.etcd.io/gofail v0.2.0
 )
