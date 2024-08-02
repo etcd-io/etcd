@@ -18,9 +18,9 @@ package main
 import (
 	"flag"
 
-	_ "github.com/etcd-io/gofail/runtime"
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/tests/v3/functional/tester"
+	_ "go.etcd.io/gofail/runtime"
 	"go.uber.org/zap"
 )
 

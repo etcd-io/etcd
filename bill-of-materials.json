@@ -99,15 +99,6 @@
 		]
 	},
 	{
-		"project": "github.com/etcd-io/gofail/runtime",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/go-logr/logr",
 		"licenses": [
 			{
@@ -523,6 +514,15 @@
 	},
 	{
 		"project": "go.etcd.io/etcd/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/gofail/runtime",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
