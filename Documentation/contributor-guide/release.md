@@ -20,15 +20,15 @@ All release version numbers follow the format of [semantic versioning 2.0.0](htt
 
 ### Major, minor version release, or its pre-release
 
-- Ensure the relevant milestone on GitHub is complete. All referenced issues should be closed or moved elsewhere.
-- Ensure the latest upgrade documentation is available.
+- Ensure the relevant [milestone](https://github.com/etcd-io/etcd/milestones) on GitHub is complete. All referenced issues should be closed or moved elsewhere.
+- Ensure the latest [upgrade documentation](https://etcd.io/docs/next/upgrades) is available.
 - Bump [hardcoded MinClusterVerion in the repository](https://github.com/etcd-io/etcd/blob/v3.4.15/version/version.go#L29), if necessary.
 - Add feature capability maps for the new version, if necessary.
 
 ### Patch version release
 
 - To request a backport, developers submit cherry-pick PRs targeting the release branch. The commits should not include merge commits. The commits should be restricted to bug fixes and security patches.
-- The cherrypick PRs should target the appropriate release branch (`base:release-<major>-<minor>`). `hack/patch/cherrypick.sh` may be used to automatically generate cherrypick PRs.
+- The cherrypick PRs should target the appropriate release branch (`base:release-<major>-<minor>`). The k8s infra cherry pick robot `/cherrypick <branch>` PR chatops command may be used to automatically generate cherrypick PRs.
 - The release patch manager reviews the cherrypick PRs. Please discuss carefully what is backported to the patch release. Each patch release should be strictly better than its predecessor.
 - The release patch manager will cherry-pick these commits starting from the oldest one into stable branch.
 
@@ -66,28 +66,31 @@ which don't need to be executed before releasing each version.
 ### Release steps
 
 1. Raise an issue to publish the release plan, e.g. [issues/17350](https://github.com/etcd-io/etcd/issues/17350).
-2. Verify you can pass the authentication to the image registries,
+2. Raise a `kubernetes/org` pull request to temporarily elevate permissions for the GitHub release team.
+3. Once permissions are elevated, temporarily relax [branch protections](https://github.com/etcd-io/etcd/settings/branches) to allow pushing changes directly to `release-*` branches in GitHub.
+4. Verify you can pass the authentication to the image registries,
    - `docker login gcr.io`
    - `docker login quay.io`
-3. Clone the etcd repository and checkout the target branch,
+5. Clone the etcd repository and checkout the target branch,
    - `git clone git@github.com:etcd-io/etcd.git`
    - `git checkout release-3.X`
-4. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
+6. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
    - `DRY_RUN=false ./scripts/release.sh ${VERSION}`
 
    It generates all release binaries under the directory `./release` and images. Binaries are pushed to the Google Cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
-5. Publish the release page on GitHub
+7. Publish the release page on GitHub
    - Set the release title as the version name
    - Choose the correct release tag (generated from step #4)
    - Follow the format of previous release pages
    - Attach the generated binaries and signature file
    - Select whether it's a pre-release
    - Publish the release
-6. Announce to the etcd-dev googlegroup
+8. Announce to the etcd-dev googlegroup
 
    Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below. After sending out the email, ask one of the mailing list maintainers to approve the email from the pending list.
-```
+
+```text
 Hello,
 
 etcd v3.4.30 is now public!
@@ -98,9 +101,11 @@ Thanks to everyone who contributed to the release!
 
 etcd team
 ```
-7. Update the changelog to reflect the correct release date.
-8. Paste the release link to the issue raised in Step 1 and close the issue.
-9. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+
+9. Update the changelog to reflect the correct release date.
+10. Paste the release link to the issue raised in Step 1 and close the issue.
+11. Restore standard branch protection settings and raise a follow-up `kubernetes/org` pull request to return to least privilege permissions.
+12. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
 
 #### Release known issues
 
