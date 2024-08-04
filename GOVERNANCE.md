@@ -14,7 +14,7 @@ please see [CONTRIBUTING](./CONTRIBUTING.md) guide.
 
 ## Maintainers
 
-[Maintainers](./MAINTAINERS) are first and foremost contributors that have shown they
+[Maintainers](./OWNERS) are first and foremost contributors that have shown they
 are committed to the long term success of a project. Maintainership is about building
 trust with the current maintainers of the project and being a person that they can
 depend on to make decisions in the best interest of the project in a consistent manner.
@@ -48,12 +48,12 @@ of the maintainers and moved to emeritus status.
 Life priorities, interests, and passions can change. If a maintainer needs to step
 down, inform other maintainers about this intention, and if possible, help find someone
 to pick up the related work. At the very least, ensure the related work can be continued.
-Afterward, create a pull request to remove yourself from the [MAINTAINERS](./MAINTAINERS)
+Afterward, create a pull request to remove yourself from the [MAINTAINERS](./OWNERS)
 file.
 
 ## Reviewers
 
-[Reviewers](./MAINTAINERS) are contributors who have demonstrated greater skill in
+[Reviewers](./OWNERS) are contributors who have demonstrated greater skill in
 reviewing the code contribution from other contributors. Their LGTM counts towards
 merging a code change into the project. A reviewer is generally on the ladder towards
 maintainership. New reviewers must be nominated by an existing maintainer and must be
