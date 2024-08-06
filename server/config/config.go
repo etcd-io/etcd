@@ -58,6 +58,10 @@ type ServerConfig struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64
 
+	// CompactRaftLogEveryNApplies improves performance by compacting raft log once every N applies.
+	// Minimum value is 1, which means compacting raft log every apply.
+	CompactRaftLogEveryNApplies uint64
+
 	MaxSnapFiles uint
 	MaxWALFiles  uint
 
