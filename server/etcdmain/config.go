@@ -238,6 +238,21 @@ func (cfg *config) configFromCmdLine() error {
 		cfg.ec.InitialCluster = ""
 	}
 
+	getBoolFlagVal := func(flagName string) *bool {
+		boolVal, parseErr := flags.GetBoolFlagVal(cfg.cf.flagSet, flagName)
+		if parseErr != nil {
+			panic(parseErr)
+		}
+		return boolVal
+	}
+
+	// SetFeatureGatesFromExperimentalFlags validates that cmd line flags for experimental feature and their feature gates are not explicitly set simultaneously,
+	// and passes the values of cmd line flags for experimental feature to the server feature gate.
+	err = embed.SetFeatureGatesFromExperimentalFlags(cfg.ec.ServerFeatureGate, getBoolFlagVal, cfg.cf.flagSet.Lookup(embed.ServerFeatureGateFlagName).Value.String())
+	if err != nil {
+		return err
+	}
+
 	return cfg.validate()
 }
 

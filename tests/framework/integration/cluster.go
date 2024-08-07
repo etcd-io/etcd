@@ -63,6 +63,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock"
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/verify"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -174,8 +175,6 @@ type ClusterConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
-
-	ExperimentalStopGRPCServiceOnDefrag bool
 }
 
 type Cluster struct {
@@ -266,34 +265,33 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                                fmt.Sprintf("m%v", memberNumber),
-			MemberNumber:                        memberNumber,
-			AuthToken:                           c.Cfg.AuthToken,
-			PeerTLS:                             c.Cfg.PeerTLS,
-			ClientTLS:                           c.Cfg.ClientTLS,
-			QuotaBackendBytes:                   c.Cfg.QuotaBackendBytes,
-			BackendBatchInterval:                c.Cfg.BackendBatchInterval,
-			MaxTxnOps:                           c.Cfg.MaxTxnOps,
-			MaxRequestBytes:                     c.Cfg.MaxRequestBytes,
-			SnapshotCount:                       c.Cfg.SnapshotCount,
-			SnapshotCatchUpEntries:              c.Cfg.SnapshotCatchUpEntries,
-			GRPCKeepAliveMinTime:                c.Cfg.GRPCKeepAliveMinTime,
-			GRPCKeepAliveInterval:               c.Cfg.GRPCKeepAliveInterval,
-			GRPCKeepAliveTimeout:                c.Cfg.GRPCKeepAliveTimeout,
-			GRPCAdditionalServerOptions:         c.Cfg.GRPCAdditionalServerOptions,
-			ClientMaxCallSendMsgSize:            c.Cfg.ClientMaxCallSendMsgSize,
-			ClientMaxCallRecvMsgSize:            c.Cfg.ClientMaxCallRecvMsgSize,
-			UseIP:                               c.Cfg.UseIP,
-			UseBridge:                           c.Cfg.UseBridge,
-			UseTCP:                              c.Cfg.UseTCP,
-			EnableLeaseCheckpoint:               c.Cfg.EnableLeaseCheckpoint,
-			LeaseCheckpointInterval:             c.Cfg.LeaseCheckpointInterval,
-			LeaseCheckpointPersist:              c.Cfg.LeaseCheckpointPersist,
-			WatchProgressNotifyInterval:         c.Cfg.WatchProgressNotifyInterval,
-			ExperimentalMaxLearners:             c.Cfg.ExperimentalMaxLearners,
-			DisableStrictReconfigCheck:          c.Cfg.DisableStrictReconfigCheck,
-			CorruptCheckTime:                    c.Cfg.CorruptCheckTime,
-			ExperimentalStopGRPCServiceOnDefrag: c.Cfg.ExperimentalStopGRPCServiceOnDefrag,
+			Name:                        fmt.Sprintf("m%v", memberNumber),
+			MemberNumber:                memberNumber,
+			AuthToken:                   c.Cfg.AuthToken,
+			PeerTLS:                     c.Cfg.PeerTLS,
+			ClientTLS:                   c.Cfg.ClientTLS,
+			QuotaBackendBytes:           c.Cfg.QuotaBackendBytes,
+			BackendBatchInterval:        c.Cfg.BackendBatchInterval,
+			MaxTxnOps:                   c.Cfg.MaxTxnOps,
+			MaxRequestBytes:             c.Cfg.MaxRequestBytes,
+			SnapshotCount:               c.Cfg.SnapshotCount,
+			SnapshotCatchUpEntries:      c.Cfg.SnapshotCatchUpEntries,
+			GRPCKeepAliveMinTime:        c.Cfg.GRPCKeepAliveMinTime,
+			GRPCKeepAliveInterval:       c.Cfg.GRPCKeepAliveInterval,
+			GRPCKeepAliveTimeout:        c.Cfg.GRPCKeepAliveTimeout,
+			GRPCAdditionalServerOptions: c.Cfg.GRPCAdditionalServerOptions,
+			ClientMaxCallSendMsgSize:    c.Cfg.ClientMaxCallSendMsgSize,
+			ClientMaxCallRecvMsgSize:    c.Cfg.ClientMaxCallRecvMsgSize,
+			UseIP:                       c.Cfg.UseIP,
+			UseBridge:                   c.Cfg.UseBridge,
+			UseTCP:                      c.Cfg.UseTCP,
+			EnableLeaseCheckpoint:       c.Cfg.EnableLeaseCheckpoint,
+			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
+			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
+			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
+			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
+			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
+			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	return m
@@ -619,8 +617,6 @@ type MemberConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
-
-	ExperimentalStopGRPCServiceOnDefrag bool
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -729,7 +725,6 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	if mcfg.CorruptCheckTime > time.Duration(0) {
 		m.CorruptCheckTime = mcfg.CorruptCheckTime
 	}
-	m.ExperimentalStopGRPCServiceOnDefrag = mcfg.ExperimentalStopGRPCServiceOnDefrag
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
 	m.ExperimentalMaxLearners = membership.DefaultMaxLearners
@@ -740,6 +735,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
+	m.ServerFeatureGate = features.NewDefaultServerFeatureGate(m.Name, m.Logger)
 
 	m.StrictReconfigCheck = !mcfg.DisableStrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
