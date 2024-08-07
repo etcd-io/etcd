@@ -155,7 +155,7 @@ verify-govet-shadow:
 verify-markdown-marker:
 	PASSES="markdown_marker" ./scripts/test.sh
 
-YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
+YAMLFMT_VERSION = $(shell cd go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 
 .PHONY: fix-yamllint
 fix-yamllint:
@@ -173,7 +173,7 @@ endif
 
 # Tools
 
-GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
+GOLANGCI_LINT_VERSION = $(shell go list -m -f {{.Version}} github.com/golangci/golangci-lint)
 .PHONY: install-golangci-lint
 install-golangci-lint:
 ifeq (, $(shell which golangci-lint))

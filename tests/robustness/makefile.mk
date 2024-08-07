@@ -47,7 +47,7 @@ test-robustness-issue17529: /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
-GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
+GOFAIL_VERSION = $(shell go list -m -f {{.Version}} go.etcd.io/gofail)
 
 .PHONY:install-gofail
 install-gofail: $(GOPATH)/bin/gofail
