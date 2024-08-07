@@ -196,6 +196,17 @@ function modules() {
   echo "${modules[@]}"
 }
 
+function workspace_modules() {
+  local modules
+  mapfile -t modules < <(go work edit -json | jq -r '.Use[].DiskPath + "/..."')
+  for m in "${modules[@]}"; do
+    if [[ "$m" =~ ^\./tools ]]; then
+      modules=("${modules[@]/$m}")
+    fi
+  done
+  echo "${modules[@]}"
+}
+
 function modules_exp() {
   for m in $(modules); do
     echo -n "${m}/... "
@@ -208,23 +219,9 @@ function modules_exp() {
 function run_for_modules {
   KEEP_GOING_MODULE=${KEEP_GOING_MODULE:-false}
   local pkg="${PKG:-./...}"
-  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
-    for m in $(module_dirs); do
-      if run_for_module "${m}" "$@" "${pkg}"; then
-        continue
-      else
-        if [ "$KEEP_GOING_MODULE" = false ]; then
-          log_error "There was a Failure in module ${m}, aborting..."
-          return 1
-        fi
-        log_error "There was a Failure in module ${m}, keep going..."
-        fail_mod=true
-      fi
-    done
-    if [ "$fail_mod" = true ]; then
-      return 1
-    fi
+    # shellcheck disable=SC2046
+    "$@" $(workspace_modules)
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
