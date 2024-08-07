@@ -380,14 +380,10 @@ function tool_exists {
 function tool_get_bin {
   local tool="$1"
   local pkg_part="$1"
-  if [[ "$tool" == *"@"* ]]; then
-    pkg_part=$(echo "${tool}" | cut -d'@' -f1)
-    # shellcheck disable=SC2086
-    run go install ${GOBINARGS:-} "${tool}" || return 2
-  else
-    # shellcheck disable=SC2086
-    run_for_module ./tools/mod run go install ${GOBINARGS:-} "${tool}" || return 2
-  fi
+
+  pkg_part=$(echo "${tool}" | cut -d'@' -f1)
+  # shellcheck disable=SC2086
+  run go install ${GOBINARGS:-} "${tool}" || return 2
 
   # remove the version suffix, such as removing "/v3" from "go.etcd.io/etcd/v3".
   local cmd_base_name
@@ -396,13 +392,13 @@ function tool_get_bin {
     pkg_part=$(dirname "${pkg_part}")
   fi
 
-  run_for_module ./tools/mod go list -f '{{.Target}}' "${pkg_part}"
+  go list -f '{{.Target}}' "${pkg_part}"
 }
 
 # tool_pkg_dir [pkg] - returns absolute path to a directory that stores given pkg.
 # The pkg versions must be defined in ./tools/mod directory.
 function tool_pkg_dir {
-  run_for_module ./tools/mod run go list -f '{{.Dir}}' "${1}"
+  run go list -f '{{.Dir}}' "${1}"
 }
 
 # tool_get_bin [tool]
