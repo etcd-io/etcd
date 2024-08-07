@@ -67,7 +67,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-receiver-name verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions
+	verify-govet-shadow verify-markdown-marker verify-go-versions verify-import-boss
 
 .PHONY: fix
 fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
@@ -155,6 +155,10 @@ verify-govet-shadow:
 verify-markdown-marker:
 	PASSES="markdown_marker" ./scripts/test.sh
 
+.PHONY: verify-import-boss
+verify-import-boss: install-import-boss
+	PASSES="import_boss" ./scripts/test.sh
+
 YAMLFMT_VERSION = $(shell cd go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 
 .PHONY: fix-yamllint
@@ -179,6 +183,14 @@ install-golangci-lint:
 ifeq (, $(shell which golangci-lint))
 	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
 endif
+
+.PHONY: install-import-boss
+install-import-boss:
+ifeq (, $(shell which import-boss))
+	# TODO: This is versionless until v1.31.0 is released
+	$(shell go install k8s.io/kubernetes/cmd/import-boss)
+endif
+
 
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs

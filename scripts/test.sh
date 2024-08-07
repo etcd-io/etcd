@@ -431,6 +431,10 @@ function lint_fix_pass {
   run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
+function import_boss_pass {
+  run_for_modules generic_checker run import-boss
+}
+
 function license_header_per_module {
   # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
   local gofiles=()

@@ -1,0 +1,6 @@
+rules:
+  # prevent import of go.etcd.io/etcd
+  - selectorRegexp: go[.]etcd[.]io/etcd
+    allowedPrefixes:
+      - go.etcd.io/etcd/client/pkg/v3
+      - go.etcd.io/etcd/pkg/v3
