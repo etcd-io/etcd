@@ -196,6 +196,17 @@ function modules() {
   echo "${modules[@]}"
 }
 
+function workspace_modules() {
+  local modules
+  mapfile -t modules < <(go work edit -json | jq -r '.Use[].DiskPath + "/..."')
+  for m in "${modules[@]}"; do
+    if [[ "$m" =~ ^\./tools ]]; then
+      modules=("${modules[@]/$m}")
+    fi
+  done
+  echo "${modules[@]}"
+}
+
 function modules_exp() {
   for m in $(modules); do
     echo -n "${m}/... "
@@ -208,23 +219,9 @@ function modules_exp() {
 function run_for_modules {
   KEEP_GOING_MODULE=${KEEP_GOING_MODULE:-false}
   local pkg="${PKG:-./...}"
-  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
-    for m in $(module_dirs); do
-      if run_for_module "${m}" "$@" "${pkg}"; then
-        continue
-      else
-        if [ "$KEEP_GOING_MODULE" = false ]; then
-          log_error "There was a Failure in module ${m}, aborting..."
-          return 1
-        fi
-        log_error "There was a Failure in module ${m}, keep going..."
-        fail_mod=true
-      fi
-    done
-    if [ "$fail_mod" = true ]; then
-      return 1
-    fi
+    # shellcheck disable=SC2046
+    "$@" $(workspace_modules)
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
@@ -380,14 +377,10 @@ function tool_exists {
 function tool_get_bin {
   local tool="$1"
   local pkg_part="$1"
-  if [[ "$tool" == *"@"* ]]; then
-    pkg_part=$(echo "${tool}" | cut -d'@' -f1)
-    # shellcheck disable=SC2086
-    run go install ${GOBINARGS:-} "${tool}" || return 2
-  else
-    # shellcheck disable=SC2086
-    run_for_module ./tools/mod run go install ${GOBINARGS:-} "${tool}" || return 2
-  fi
+
+  pkg_part=$(echo "${tool}" | cut -d'@' -f1)
+  # shellcheck disable=SC2086
+  run go install ${GOBINARGS:-} "${tool}" || return 2
 
   # remove the version suffix, such as removing "/v3" from "go.etcd.io/etcd/v3".
   local cmd_base_name
@@ -396,13 +389,13 @@ function tool_get_bin {
     pkg_part=$(dirname "${pkg_part}")
   fi
 
-  run_for_module ./tools/mod go list -f '{{.Target}}' "${pkg_part}"
+  go list -f '{{.Target}}' "${pkg_part}"
 }
 
 # tool_pkg_dir [pkg] - returns absolute path to a directory that stores given pkg.
 # The pkg versions must be defined in ./tools/mod directory.
 function tool_pkg_dir {
-  run_for_module ./tools/mod run go list -f '{{.Dir}}' "${1}"
+  run go list -f '{{.Dir}}' "${1}"
 }
 
 # tool_get_bin [tool]

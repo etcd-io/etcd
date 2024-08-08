@@ -31,7 +31,9 @@ function update_module_version() {
   local v2version="${2}"
   local modules
   run go mod tidy
+  export GOWORK=off
   modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  export GOWORK=
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
@@ -96,22 +98,20 @@ function push_mod_tags_cmd {
   log_info "REMOTE_REPO:  ${REMOTE_REPO}"
 
   # Any module ccan be used for this
-  local main_version
-  main_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
 
   for module in $(modules); do
     local version
-    version=$(go list -f '{{.Version}}' -m "${module}")
+    version=$(GOWORK=off go list -f '{{.Version}}' -m "${module}")
     local path
-    path=$(go list -f '{{.Path}}' -m "${module}")
+    path=$(GOWORK=off go list -f '{{.Path}}' -m "${module}")
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
-      tag="${main_version}"
-      version="${main_version}"
+      tag="${TARGET_VERSION}"
+      version="${TARGET_VERSION}"
     else
       tag="${subdir///v[23]/}/${version}"
     fi

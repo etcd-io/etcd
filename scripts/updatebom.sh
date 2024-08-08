@@ -14,7 +14,7 @@ function bom_fixlet {
   # shellcheck disable=SC2207
   modules=($(modules_exp))
 
-  if GOFLAGS=-mod=mod run_go_tool "github.com/appscodelabs/license-bill-of-materials" \
+  if run_go_tool "github.com/appscodelabs/license-bill-of-materials" \
       --override-file ./bill-of-materials.override.json \
       "${modules[@]}" > ./bill-of-materials.json.tmp; then
     cp ./bill-of-materials.json.tmp ./bill-of-materials.json

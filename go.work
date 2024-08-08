@@ -1,0 +1,17 @@
+go 1.22.5
+
+use (
+	.
+	./api
+	./client/internal/v2
+	./client/pkg
+	./client/v3
+	./etcdctl
+	./etcdutl
+	./pkg
+	./server
+	./tests
+	./tools/mod
+	./tools/rw-heatmaps
+	./tools/testgrid-analysis
+)
