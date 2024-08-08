@@ -2,7 +2,7 @@ module go.etcd.io/etcd/v3
 
 go 1.21
 
-toolchain go1.21.12
+toolchain go1.21.13
 
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
