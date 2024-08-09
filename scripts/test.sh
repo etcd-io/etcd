@@ -515,6 +515,10 @@ function bom_pass {
   # shellcheck disable=SC2207
   modules=($(modules_exp))
 
+  # Download modules cache before running bom tool (it fails reading the output
+  # if it downloads the dependencies while running the check).
+  run go mod download
+
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
