@@ -144,6 +144,15 @@
 		]
 	},
 	{
+		"project": "github.com/golang-jwt/jwt",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
 		"project": "github.com/golang-jwt/jwt/v4",
 		"licenses": [
 			{
