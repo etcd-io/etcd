@@ -438,23 +438,19 @@ function import_boss_pass {
   run_go_tool "k8s.io/kubernetes/cmd/import-boss"
 }
 
-function license_header_per_module {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
-}
-
 function license_header_pass {
-  run_for_modules generic_checker license_header_per_module
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_source_files)
+  local go_files=()
+  while IFS= read -r line; do go_files+=("$line"); done < <(go_source_files)
+  run_go_tool "github.com/google/addlicense" --check "${go_files[@]}"
 }
 
-function receiver_name_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
+function receiver_name_pass {
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_source_files)
+  local go_files=()
+  while IFS= read -r line; do go_files+=("$line"); done < <(go_source_files)
 
-  recvs=$(grep 'func ([^*]' "${gofiles[@]}"  | tr  ':' ' ' |  \
+  recvs=$(grep 'func ([^*]' "${go_files[@]}"  | tr  ':' ' ' |  \
     awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\\.]*go//g" |  sort  | uniq  | \
     grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
   if [ -n "${recvs}" ]; then
@@ -462,7 +458,7 @@ function receiver_name_for_package {
     recvs=($recvs)
     for recv in "${recvs[@]}"; do
       log_error "Mismatched receiver for $recv..."
-      grep "$recv" "${gofiles[@]}" | grep 'func ('
+      grep "$recv" "${go_files[@]}" | grep 'func ('
     done
     return 255
   fi
