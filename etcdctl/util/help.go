@@ -14,7 +14,7 @@
 
 // copied from https://github.com/rkt/rkt/blob/master/rkt/help.go
 
-package cobrautl
+package util
 
 import (
 	"fmt"
