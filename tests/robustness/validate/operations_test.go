@@ -46,56 +46,56 @@ func TestValidateSerializableOperations(t *testing.T) {
 				},
 				{
 					Input:  rangeRequest("a", "z", 2, 0),
-					Output: rangeResponse(1, keyValue("a", "1", 2)),
+					Output: rangeResponse(1, keyValueRevision("a", "1", 2)),
 				},
 				{
 					Input: rangeRequest("a", "z", 3, 0),
 					Output: rangeResponse(2,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
 					),
 				},
 				{
 					Input: rangeRequest("a", "z", 4, 0),
 					Output: rangeResponse(3,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
-						keyValue("c", "3", 4),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
+						keyValueRevision("c", "3", 4),
 					),
 				},
 				{
 					Input: rangeRequest("a", "z", 4, 3),
 					Output: rangeResponse(3,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
-						keyValue("c", "3", 4),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
+						keyValueRevision("c", "3", 4),
 					),
 				},
 				{
 					Input: rangeRequest("a", "z", 4, 4),
 					Output: rangeResponse(3,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
-						keyValue("c", "3", 4),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
+						keyValueRevision("c", "3", 4),
 					),
 				},
 				{
 					Input: rangeRequest("a", "z", 4, 2),
 					Output: rangeResponse(3,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
 					),
 				},
 				{
 					Input: rangeRequest("b\x00", "z", 4, 2),
 					Output: rangeResponse(1,
-						keyValue("c", "3", 4),
+						keyValueRevision("c", "3", 4),
 					),
 				},
 				{
 					Input: rangeRequest("b", "", 4, 0),
 					Output: rangeResponse(1,
-						keyValue("b", "2", 3),
+						keyValueRevision("b", "2", 3),
 					),
 				},
 				{
@@ -115,9 +115,9 @@ func TestValidateSerializableOperations(t *testing.T) {
 				{
 					Input: rangeRequest("a", "z", 4, 0),
 					Output: rangeResponse(3,
-						keyValue("c", "3", 4),
-						keyValue("b", "2", 3),
-						keyValue("a", "1", 2),
+						keyValueRevision("c", "3", 4),
+						keyValueRevision("b", "2", 3),
+						keyValueRevision("a", "1", 2),
 					),
 				},
 			},
@@ -149,7 +149,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 				{
 					Input: rangeRequest("a", "z", 2, 0),
 					Output: rangeResponse(3,
-						keyValue("b", "2", 3),
+						keyValueRevision("b", "2", 3),
 					),
 				},
 			},
@@ -166,8 +166,8 @@ func TestValidateSerializableOperations(t *testing.T) {
 				{
 					Input: rangeRequest("a", "z", 2, 0),
 					Output: rangeResponse(3,
-						keyValue("a", "1", 2),
-						keyValue("b", "2", 3),
+						keyValueRevision("a", "1", 2),
+						keyValueRevision("b", "2", 3),
 					),
 				},
 			},
@@ -284,7 +284,7 @@ func errorResponse(err error) model.MaybeEtcdResponse {
 	}
 }
 
-func keyValue(key, value string, rev int64) model.KeyValue {
+func keyValueRevision(key, value string, rev int64) model.KeyValue {
 	return model.KeyValue{
 		Key: key,
 		ValueRevision: model.ValueRevision{
