@@ -196,9 +196,22 @@ function modules() {
   echo "${modules[@]}"
 }
 
+function modules_exp() {
+  for m in $(modules); do
+    echo -n "${m}/... "
+  done
+}
+
+# returns all workspace modules.
+function workspace_all_modules() {
+  go work edit -json | jq -r '.Use[].DiskPath + "/..."'
+}
+
+# returns the list of the workspace modules, not including the tools, as they
+# are not considered to be added to the bill of materials.
 function workspace_modules() {
-  local modules
-  mapfile -t modules < <(go work edit -json | jq -r '.Use[].DiskPath + "/..."')
+  local modules=()
+  while IFS= read -r line; do modules+=("$line"); done < <(workspace_all_modules)
   for m in "${modules[@]}"; do
     if [[ "$m" =~ ^\./tools ]]; then
       modules=("${modules[@]/$m}")
@@ -207,10 +220,14 @@ function workspace_modules() {
   echo "${modules[@]}"
 }
 
-function modules_exp() {
-  for m in $(modules); do
-    echo -n "${m}/... "
-  done
+# returns all the go files from the repository.
+function go_source_files {
+  find . -not \(\
+    -wholename './.git' -prune\
+  \) -and -not \(\
+    -name '*.pb.go' \
+    -or -name '*.pb.gw.go'\
+  \) -and -name '*.go'
 }
 
 #  run_for_modules [cmd]

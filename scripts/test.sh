@@ -432,7 +432,10 @@ function lint_fix_pass {
 }
 
 function import_boss_pass {
-  run_for_modules generic_checker go run k8s.io/kubernetes/cmd/import-boss
+  local import_boss
+  import_boss=$(tool_get_bin "k8s.io/kubernetes")
+  log_callout $import_boss
+  run_go_tool "k8s.io/kubernetes/cmd/import-boss"
 }
 
 function license_header_per_module {
@@ -465,53 +468,30 @@ function receiver_name_for_package {
   fi
 }
 
-function receiver_name_pass {
-  run_for_modules receiver_name_for_package
-}
+function goword_pass {
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_source_files)
+  local go_files=()
+  while IFS= read -r line; do go_files+=("$line"); done < <(go_source_files)
 
-# goword_for_package package
-# checks spelling and comments in the 'package' in the current module
-#
-function goword_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  
-  local gowordRes
+  local goword_res
 
   # spellchecking can be enabled with GOBINARGS="--tags=spell"
   # but it requires heavy dependencies installation, like:
   # apt-get install libaspell-dev libhunspell-dev hunspell-en-us aspell-en
 
   # only check for broke exported godocs
-  if gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${gofiles[@]}" | grep godoc-export | sort); then
-    log_error -e "goword checking failed:\\n${gowordRes}"
+  if goword_res=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${go_files[@]}" | grep godoc-export | sort); then
+    log_error -e "goword checking failed:\\n${goword_res}"
     return 255
   fi
-  if [ -n "$gowordRes" ]; then
-    log_error -e "goword checking returned output:\\n${gowordRes}"
+  if [ -n "$goword_res" ]; then
+    log_error -e "goword checking returned output:\\n${goword_res}"
     return 255
   fi
-}
-
-
-function goword_pass {
-  run_for_modules goword_for_package || return 255
-}
-
-function go_fmt_files {
-  find . -not \
-    \( \
-      -wholename './git' -prune -and \( \
-        -name '*.pb.go' \
-        -or -name '*.pb.gw.go' \
-      \) \
-    \) \
-  -name '*.go'
 }
 
 function gofmt_pass {
-  run go_fmt_files | generic_checker xargs gofmt -d
+  run go_source_files | generic_checker xargs gofmt -d
 }
 
 function bom_pass {

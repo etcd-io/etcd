@@ -14,6 +14,6 @@
 
 //go:build cluster_proxy
 
-// The purpose of this (empty) package is too keep following test working:
+// Package embed_test is empty, kept for the following tests to work:
 // #  go test -tags=cluster_proxy ./integration/embed
 package embed_test
