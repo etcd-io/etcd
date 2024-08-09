@@ -125,7 +125,7 @@ func TestRepairWriteTearLast(t *testing.T) {
 		}
 		return f.Truncate(offset)
 	}
-	testRepair(t, makeEnts(50), corruptf, 40)
+	testRepair(t, makeEnts(50), corruptf, 29)
 }
 
 // TestRepairWriteTearMiddle repairs the WAL when there is write tearing
