@@ -37,15 +37,14 @@ func hasChecksum(n int64) bool {
 	return (n % 512) == sha256.Size
 }
 
-// SaveWithVersion fetches snapshot from remote etcd server, saves data
+// WriteSnapshotWithVersion fetches snapshot from remote etcd server, saves data
 // to target path and returns server version. If the context "ctx" is canceled or timed out,
 // snapshot save stream will error out (e.g. context.Canceled,
 // context.DeadlineExceeded). Make sure to specify only one endpoint
 // in client configuration. Snapshot API must be requested to a
 // selected node, and saved snapshot is the point-in-time state of
-// the selected node.
-// Etcd <v3.6 will return "" as version.
-func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) (string, error) {
+// the selected node. Nota bene: etcd < v3.6 will return "" as version.
+func WriteSnapshotWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, f *os.File) (string, error) {
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
 		return "", fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
@@ -56,21 +55,12 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	}
 	defer cli.Close()
 
-	partpath := dbPath + ".part"
-	defer os.RemoveAll(partpath)
-
-	var f *os.File
-	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
-	if err != nil {
-		return "", fmt.Errorf("could not open %s (%v)", partpath, err)
-	}
-	lg.Info("created temporary db file", zap.String("path", partpath))
-
 	start := time.Now()
 	resp, err := cli.SnapshotWithVersion(ctx)
 	if err != nil {
 		return "", err
 	}
+
 	defer resp.Snapshot.Close()
 	lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
 	var size int64
@@ -93,10 +83,32 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 		zap.Duration("took", time.Since(start)),
 		zap.String("etcd-version", resp.Version),
 	)
+	return resp.Version, nil
+}
 
-	if err = os.Rename(partpath, dbPath); err != nil {
-		return resp.Version, fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
+func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) (string, error) {
+	partPath := dbPath + ".part"
+	f, err := os.OpenFile(partPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
+	if err != nil {
+		return "", fmt.Errorf("could not open %s (%v)", partPath, err)
+	}
+	lg.Info("created temporary db file", zap.String("path", partPath))
+
+	defer os.RemoveAll(partPath)
+	defer f.Close()
+
+	var version string
+	version, err = WriteSnapshotWithVersion(ctx, lg, cfg, f)
+	if err != nil {
+		return version, err
+	}
+	if err = os.Rename(partPath, dbPath); err != nil {
+		return version, fmt.Errorf("could not rename %s to %s (%v)", partPath, dbPath, err)
 	}
 	lg.Info("saved", zap.String("path", dbPath))
-	return resp.Version, nil
+	return version, nil
+}
+
+func PipeWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config) (string, error) {
+	return WriteSnapshotWithVersion(ctx, lg, cfg, os.Stdout)
 }
