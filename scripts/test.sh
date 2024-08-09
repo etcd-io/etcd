@@ -432,7 +432,7 @@ function lint_fix_pass {
 }
 
 function import_boss_pass {
-  run_for_modules generic_checker run import-boss
+  run_for_modules generic_checker go run k8s.io/kubernetes/cmd/import-boss
 }
 
 function license_header_per_module {
