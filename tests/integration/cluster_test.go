@@ -25,10 +25,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 func init() {
@@ -516,5 +520,93 @@ func TestSpeedyTerminate(t *testing.T) {
 	case <-time.After(10 * time.Second):
 		t.Fatalf("Cluster took too long to terminate")
 	case <-donec:
+	}
+}
+
+// TestCreationTimeout checks that the option WithCreationTimeout
+// sets a timeout for the creation of new sessions in case the cluster
+// shuts down
+func TestCreationTimeout(t *testing.T) {
+	integration.BeforeTest(t)
+
+	// create new cluster
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// create new client
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "123"})
+	if err != nil {
+		clus.Terminate(t)
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	// ensure the connection is established.
+	clientv3test.MustWaitPinReady(t, cli)
+
+	// terminating the cluster
+	clus.Terminate(t)
+
+	// override the grpc logger
+	logOb := integration.ClientGRPCLoggerObserver(t)
+
+	_, err = concurrency.NewSession(cli, concurrency.WithCreationTimeout(3000*time.Millisecond))
+	assert.Equal(t, err, context.DeadlineExceeded)
+
+	_, err = logOb.Expect(context.Background(), "Subchannel Connectivity change to TRANSIENT_FAILURE", 3)
+	assert.Nil(t, err)
+}
+
+// TestTimeoutDoesntAffectSubsequentConnections checks that the option WithCreationTimeout
+// is only used when Session is created
+func TestTimeoutDoesntAffectSubsequentConnections(t *testing.T) {
+	integration.BeforeTest(t)
+
+	// create new cluster
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+	clus.Members[0].KeepDataDirTerminate = true
+
+	// create new client
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "123"})
+	if err != nil {
+		clus.Terminate(t)
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	// ensure the connection is established.
+	clientv3test.MustWaitPinReady(t, cli)
+
+	s, _ := concurrency.NewSession(cli, concurrency.WithCreationTimeout(1*time.Second))
+
+	// terminating the cluster
+	clus.Members[0].Terminate(t)
+
+	errorc := make(chan error)
+	defer close(errorc)
+	go func() {
+		_, err := cli.Put(s.Ctx(), "sample_key", "sample_value", clientv3.WithLease(s.Lease()))
+		errorc <- err
+	}()
+
+	select {
+	case err := <-errorc:
+		t.Fatalf("Operation put should be blocked forever when the server is unreachable: %v", err)
+	// if Put operation is blocked beyond the timeout specified using WithCreationTimeout,
+	// that timeout is not used by the Put operation
+	case <-time.After(2 * time.Second):
+	}
+
+	// restarting and ensuring that the Put operation will eventually succeed
+	clus.Members[0].Restart(t)
+	clus.Members[0].WaitOK(t)
+	select {
+	case err := <-errorc:
+		if err != nil {
+			t.Errorf("Put failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Put function hung even after restarting cluster")
 	}
 }
