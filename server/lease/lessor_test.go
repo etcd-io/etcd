@@ -208,6 +208,47 @@ func TestLessorRevoke(t *testing.T) {
 	}
 }
 
+func TestLessorGrantAttachRevoke(t *testing.T) {
+	lg := zap.NewNop()
+	_, be := NewTestBackend(t)
+	defer be.Close()
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer le.Stop()
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
+
+	// grant a lease with long term (100 seconds) to
+	// avoid early termination during the test.
+	l, err := le.Grant(1, 100)
+	if err != nil {
+		t.Fatalf("could not grant lease for 100s ttl (%v)", err)
+	}
+
+	items := []LeaseItem{
+		{"foo"},
+		{"bar"},
+	}
+
+	if err := le.Attach(l.ID, items); err != nil {
+		t.Fatalf("failed to attach items to the lease: %v", err)
+	}
+
+	// before Revoke, should call Detach because fakeDeleter never call Detach
+	if err := le.Detach(l.ID, items); err != nil {
+		t.Fatalf("failed to detach items to the lease: %v", err)
+	}
+	if err := le.Revoke(l.ID); err != nil {
+		t.Fatalf("failed to revoke lease: %v", err)
+	}
+
+	if len(le.leaseMap) != 0 {
+		t.Errorf("le.leaseMap's length is %d, expected: 0", len(le.leaseMap))
+	}
+	if len(le.itemMap) != 0 {
+		t.Errorf("le.itemMap's length is %d, expected: 0", len(le.itemMap))
+	}
+}
+
 func renew(t *testing.T, le *lessor, id LeaseID) int64 {
 	ch := make(chan int64, 1)
 	errch := make(chan error, 1)
