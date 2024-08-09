@@ -432,9 +432,7 @@ function lint_fix_pass {
 }
 
 function import_boss_pass {
-  local import_boss
-  import_boss=$(tool_get_bin "k8s.io/kubernetes")
-  log_callout $import_boss
+  tool_get_bin "k8s.io/kubernetes"
   run_go_tool "k8s.io/kubernetes/cmd/import-boss"
 }
 
