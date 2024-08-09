@@ -26,5 +26,6 @@ type WatchResponse struct {
 	IsProgressNotify bool
 	Revision         int64
 	Time             time.Duration
+	MemberId         uint64
 	Error            string
 }

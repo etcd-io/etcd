@@ -16,6 +16,7 @@ package robustness
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -139,5 +140,60 @@ external:
 	}
 	if gotProgressNotify != expectProgressNotify {
 		t.Errorf("Progress notify does not match, expect: %v, got: %v", expectProgressNotify, gotProgressNotify)
+	}
+}
+
+type timeLastRevision struct {
+	time         time.Duration
+	lastRevision int64
+}
+
+func combineWatchResponses(reports []report.ClientReport) map[uint64][]timeLastRevision {
+	result := make(map[uint64][]timeLastRevision)
+	for _, r := range reports {
+		for _, op := range r.Watch {
+			for _, resp := range op.Responses {
+				if len(resp.Events) == 0 {
+					continue
+				}
+				result[resp.MemberId] = append(result[resp.MemberId], timeLastRevision{time: resp.Time, lastRevision: resp.Events[len(resp.Events)-1].Revision})
+			}
+		}
+	}
+	for memberId, structs := range result {
+		sort.Slice(structs, func(i, j int) bool {
+			return structs[i].time < structs[j].time
+		})
+		result[memberId] = structs
+	}
+	return result
+}
+
+func validateWatchSequential(t *testing.T, reports []report.ClientReport) {
+	combinedWatchResponses := combineWatchResponses(reports)
+	for _, r := range reports {
+		for _, op := range r.Watch {
+			if op.Request.Revision != 0 {
+				continue
+			}
+			for _, resp := range op.Responses {
+				if len(resp.Events) == 0 {
+					continue
+				}
+				var lastMemberWatchRevision int64
+				for i, c := range combinedWatchResponses[resp.MemberId] {
+					// Reports are sorted by time, find first greater or equal and use previous one.
+					if resp.Time >= c.time {
+						if i == 0 {
+							continue
+						}
+						lastMemberWatchRevision = combinedWatchResponses[resp.MemberId][i-1].lastRevision
+					}
+				}
+				if resp.Events[0].Revision < lastMemberWatchRevision {
+					t.Errorf("Error watch is not sequential, expect: %v or higher, got: %v, member id: %v", lastMemberWatchRevision, resp.Events[0].Revision, resp.MemberId)
+				}
+			}
+		}
 	}
 }
