@@ -159,7 +159,7 @@ verify-markdown-marker:
 verify-import-boss:
 	PASSES="import_boss" ./scripts/test.sh
 
-YAMLFMT_VERSION = $(shell cd go list -m -f '{{.Version}}' github.com/google/yamlfmt)
+YAMLFMT_VERSION = $(shell go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 
 .PHONY: fix-yamllint
 fix-yamllint:
