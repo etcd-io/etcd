@@ -531,15 +531,11 @@ function dump_deps_of_module() {
   for module in "${modules[@]}"; do
     local module_file
     local module_name
-    local module_deps
     module_file="${module/.../go.mod}"
     if ! module_name=$(go mod edit -json "$module_file" | jq -r '.Module.Path'); then
       return 255
     fi
-    mapfile -t module_deps < <(go mod edit -json "$module_file" | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module_name}"'"')
-go mod edit -json "$module_file" | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module_name}"'"' >> depsl.txt
-    echo "${module_deps[@]}" > deps.txt
-    deps+=("${module_deps[@]}")
+    while IFS= read -r line; do deps+=("$line"); done < <(go mod edit -json "$module_file" | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module_name}"'"')
   done
   echo "${deps[@]}"
 }
