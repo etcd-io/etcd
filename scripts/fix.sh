@@ -32,7 +32,7 @@ function bash_ws_fix {
 log_callout -e "\\nFixing etcd code for you...\n"
 
 run_for_modules mod_tidy_fix || exit 2
-run_for_modules run ${GO_CMD} fmt || exit 2
+run go_source_files | xargs gofmt -w || exit 2
 run_for_module tests bom_fix || exit 2
 bash_ws_fix || exit 2
 
