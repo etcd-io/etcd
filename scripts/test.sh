@@ -496,7 +496,7 @@ function bom_pass {
 
   # Download modules cache before running bom tool (it fails reading the output
   # if it downloads the dependencies while running the check).
-  run go mod download
+  go mod download 2>/dev/null || return 2
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
