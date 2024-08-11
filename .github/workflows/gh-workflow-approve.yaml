@@ -1,5 +1,6 @@
 ---
 name: Approve GitHub Workflows
+permissions: read-all
 
 on:
   pull_request_target:
