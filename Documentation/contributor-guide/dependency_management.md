@@ -72,6 +72,21 @@ Please close the related PRs which were automatically opened by dependabot.
 When you bump multiple dependencies in one PR, it's recommended to create a separate commit for each dependency. But it isn't a must; for example,
 you can get all dependencies bumping for the module `go.etcd.io/etcd/tools/v3` included in one commit.
 
+#### Troubleshooting 
+
+In an event of bumping the version of protoc, protoc plugins or grpc-gateway, it might change `*.proto` file which can result in the following error:
+
+```bash
+[0;31mFAIL: 'genproto' FAILED at Wed Jul 31 07:09:08 UTC 2024
+make: *** [Makefile:134: verify-genproto] Error 255
+
+
+To fix the above error, run the following script from the root of etcd repository:
+
+```bash
+./scripts/genproto.sh
+```
+
 ### Indirect dependencies
 
 Usually, we don't bump a dependency if all modules just indirectly depend on it, such as `github.com/go-logr/logr`.
