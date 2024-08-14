@@ -98,8 +98,8 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - Add [`etcd_server_range_duration_seconds`](https://github.com/etcd-io/etcd/pull/17983).
 
 ### Go
-- Require [Go 1.22+](https://github.com/etcd-io/etcd/pull/16594).
-- Compile with [Go 1.22+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
+- Require [Go 1.23+](https://github.com/etcd-io/etcd/pull/16594).
+- Compile with [Go 1.23+](https://go.dev/doc/devel/release#go1.21.minor). Please refer to [gc-guide](https://go.dev/doc/gc-guide) to configure `GOGC` and `GOMEMLIMIT` properly. 
 
 ### Other
 

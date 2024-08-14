@@ -1,8 +1,8 @@
 module go.etcd.io/etcd/client/v2
 
-go 1.22
+go 1.23
 
-toolchain go1.22.7
+toolchain go1.23.1
 
 require (
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
