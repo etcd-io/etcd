@@ -34,6 +34,7 @@ var (
 		keyCount:     10,
 		leaseTTL:     DefaultLeaseTTL,
 		largePutSize: 32769,
+		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
 			{Choice: List, Weight: 15},
@@ -44,15 +45,16 @@ var (
 			{Choice: PutWithLease, Weight: 5},
 			{Choice: LeaseRevoke, Weight: 5},
 			{Choice: CompareAndSet, Weight: 5},
-			{Choice: Put, Weight: 15},
+			{Choice: Put, Weight: 18},
 			{Choice: LargePut, Weight: 5},
-			{Choice: Compact, Weight: 5},
+			{Choice: Compact, Weight: 2},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
 		keyCount:     10,
 		largePutSize: 32769,
 		leaseTTL:     DefaultLeaseTTL,
+		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
 			{Choice: List, Weight: 15},
@@ -60,8 +62,7 @@ var (
 			{Choice: StaleList, Weight: 10},
 			{Choice: MultiOpTxn, Weight: 5},
 			{Choice: LargePut, Weight: 5},
-			{Choice: Put, Weight: 35},
-			{Choice: Compact, Weight: 5},
+			{Choice: Put, Weight: 40},
 		},
 	}
 )

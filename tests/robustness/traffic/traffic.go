@@ -45,7 +45,7 @@ var (
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     200,
 		MaximalQPS:                     1000,
-		ClientCount:                    10,
+		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 )
