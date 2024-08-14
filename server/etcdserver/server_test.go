@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -2160,5 +2161,47 @@ func TestWaitAppliedIndex(t *testing.T) {
 				t.Errorf("Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
 			}
 		})
+	}
+}
+
+func TestIsActive(t *testing.T) {
+	cases := []struct {
+		name                  string
+		tickMs                uint
+		durationSinceLastTick time.Duration
+		expectActive          bool
+	}{
+		{
+			name:                  "1.5*tickMs,active",
+			tickMs:                100,
+			durationSinceLastTick: 150 * time.Millisecond,
+			expectActive:          true,
+		},
+		{
+			name:                  "2*tickMs,active",
+			tickMs:                200,
+			durationSinceLastTick: 400 * time.Millisecond,
+			expectActive:          true,
+		},
+		{
+			name:                  "4*tickMs,not active",
+			tickMs:                150,
+			durationSinceLastTick: 600 * time.Millisecond,
+			expectActive:          false,
+		},
+	}
+
+	for _, tc := range cases {
+		s := EtcdServer{
+			Cfg: config.ServerConfig{
+				TickMs: tc.tickMs,
+			},
+			r: raftNode{
+				tickMu:       new(sync.RWMutex),
+				latestTickTs: time.Now().Add(-tc.durationSinceLastTick),
+			},
+		}
+
+		require.Equal(t, tc.expectActive, s.isActive())
 	}
 }
