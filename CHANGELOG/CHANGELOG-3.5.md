@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.16 (TBC)
 
+### etcd server
+- Fix [performance regression issue caused by the `ensureLeadership` in lease renew](https://github.com/etcd-io/etcd/pull/18439).
+
 ### Dependencies
 - Compile binaries using [go 1.21.13](https://github.com/etcd-io/etcd/pull/18421).
 
