@@ -449,10 +449,10 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 			// cache miss, fetch from tree index if there
 			if !ok {
 				ki = &keyIndex{key: rkv.kv.Key}
-				if idxKey := idx.KeyIndex(ki); idxKey != nil {
-					kiCache[rkv.kstr], ki = idxKey, idxKey
-					ok = true
-				}
+				//if idxKey := idx.KeyIndex(ki); idxKey != nil {
+				//	kiCache[rkv.kstr], ki = idxKey, idxKey
+				//	ok = true
+				//}
 			}
 
 			rev := BytesToRev(rkv.key)
@@ -473,7 +473,7 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 				ki.put(lg, rev.Main, rev.Sub)
 			} else if !isTombstone(rkv.key) {
 				ki.restore(lg, Revision{Main: rkv.kv.CreateRevision}, rev, rkv.kv.Version)
-				idx.Insert(ki)
+				//idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}
 		}
