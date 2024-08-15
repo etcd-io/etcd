@@ -37,11 +37,12 @@ var (
 		averageKeyCount: 10,
 		resource:        "pods",
 		namespace:       "default",
+		// Please keep the sum of weights equal 1000.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-			{Choice: KubernetesUpdate, Weight: 85},
-			{Choice: KubernetesDelete, Weight: 5},
-			{Choice: KubernetesCreate, Weight: 5},
-			{Choice: KubernetesCompact, Weight: 5},
+			{Choice: KubernetesUpdate, Weight: 875},
+			{Choice: KubernetesDelete, Weight: 50},
+			{Choice: KubernetesCreate, Weight: 50},
+			{Choice: KubernetesCompact, Weight: 25},
 		},
 	}
 )
