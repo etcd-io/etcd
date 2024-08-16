@@ -63,6 +63,9 @@ func (h *kvHasher) WriteKeyValue(k, v []byte) {
 	if !upper.GreaterThan(kr) {
 		return
 	}
+
+	isTombstone := BytesToBucketKey(k).tombstone
+
 	lower := Revision{Main: h.compactRevision + 1}
 	// skip revisions that are scheduled for deletion
 	// due to compacting; don't skip if there isn't one.
@@ -71,6 +74,17 @@ func (h *kvHasher) WriteKeyValue(k, v []byte) {
 			return
 		}
 	}
+
+	// When performing compaction, if the compacted revision is a
+	// tombstone, older versions (<= 3.5.15 or <= 3.4.33) will delete
+	// the tombstone. But newer versions (> 3.5.15 or > 3.4.33) won't
+	// delete it. So we should skip the tombstone in such cases when
+	// computing the hash to ensure that both older and newer versions
+	// can always generate the same hash values.
+	if kr.Main == h.compactRevision && isTombstone {
+		return
+	}
+
 	h.hash.Write(k)
 	h.hash.Write(v)
 }
