@@ -36,7 +36,7 @@ func PProfHandlers() map[string]http.Handler {
 	m[HTTPPrefixPProf+"/profile"] = http.HandlerFunc(pprof.Profile)
 	m[HTTPPrefixPProf+"/symbol"] = http.HandlerFunc(pprof.Symbol)
 	m[HTTPPrefixPProf+"/cmdline"] = http.HandlerFunc(pprof.Cmdline)
-	m[HTTPPrefixPProf+"/trace "] = http.HandlerFunc(pprof.Trace)
+	m[HTTPPrefixPProf+"/trace"] = http.HandlerFunc(pprof.Trace)
 	m[HTTPPrefixPProf+"/heap"] = pprof.Handler("heap")
 	m[HTTPPrefixPProf+"/goroutine"] = pprof.Handler("goroutine")
 	m[HTTPPrefixPProf+"/threadcreate"] = pprof.Handler("threadcreate")
