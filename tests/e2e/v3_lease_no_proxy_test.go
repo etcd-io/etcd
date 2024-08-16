@@ -31,24 +31,34 @@ import (
 // by old leader.
 // See the case 1 in https://github.com/etcd-io/etcd/issues/15247#issuecomment-1777862093.
 func TestLeaseRevoke_IgnoreOldLeader(t *testing.T) {
-	testLeaseRevokeIssue(t, true)
+	t.Run("3 members", func(t *testing.T) {
+		testLeaseRevokeIssue(t, 3, true)
+	})
+	t.Run("5 members", func(t *testing.T) {
+		testLeaseRevokeIssue(t, 5, true)
+	})
 }
 
 // TestLeaseRevoke_ClientSwitchToOtherMember verifies that leases shouldn't
 // be revoked by new leader.
 // See the case 2 in https://github.com/etcd-io/etcd/issues/15247#issuecomment-1777862093.
 func TestLeaseRevoke_ClientSwitchToOtherMember(t *testing.T) {
-	testLeaseRevokeIssue(t, false)
+	t.Run("3 members", func(t *testing.T) {
+		testLeaseRevokeIssue(t, 3, false)
+	})
+	t.Run("5 members", func(t *testing.T) {
+		testLeaseRevokeIssue(t, 5, false)
+	})
 }
 
-func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
+func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bool) {
 	defer testutil.AfterTest(t)
 
 	ctx := context.Background()
 
 	t.Log("Starting a new etcd cluster")
 	epc, err := newEtcdProcessCluster(t, &etcdProcessClusterConfig{
-		clusterSize:         3,
+		clusterSize:         clusterSize,
 		goFailEnabled:       true,
 		goFailClientTimeout: 40 * time.Second,
 	})
@@ -62,7 +72,7 @@ func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
 	leaderIdx := epc.WaitLeader(t)
 	t.Logf("Leader index: %d", leaderIdx)
 
-	epsForNormalOperations := epc.procs[(leaderIdx+2)%3].EndpointsGRPC()
+	epsForNormalOperations := epc.procs[(leaderIdx+2)%clusterSize].EndpointsGRPC()
 	t.Logf("Creating a client for normal operations: %v", epsForNormalOperations)
 	client, err := clientv3.New(clientv3.Config{Endpoints: epsForNormalOperations, DialTimeout: 3 * time.Second})
 	require.NoError(t, err)
@@ -70,7 +80,7 @@ func testLeaseRevokeIssue(t *testing.T, connectToOneFollower bool) {
 
 	var epsForLeaseKeepAlive []string
 	if connectToOneFollower {
-		epsForLeaseKeepAlive = epc.procs[(leaderIdx+1)%3].EndpointsGRPC()
+		epsForLeaseKeepAlive = epc.procs[(leaderIdx+1)%clusterSize].EndpointsGRPC()
 	} else {
 		epsForLeaseKeepAlive = epc.EndpointsGRPC()
 	}
