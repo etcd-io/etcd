@@ -16,7 +16,7 @@ The following table lists etcd support status for common architectures and opera
 | 386          | Linux            | Unstable     |                             |
 | ppc64le      | Linux            | Stable       | etcd maintainers, @mkumatag |
 
-* etcd-maintainers are listed in https://github.com/etcd-io/etcd/blob/master/MAINTAINERS.
+* etcd-maintainers are listed in https://github.com/etcd-io/etcd/blob/master/OWNERS.
 
 Experimental platforms appear to work in practice and have some platform specific code in etcd, but do not fully conform to the stable support policy. Unstable platforms have been lightly tested, but less than experimental. Unlisted architecture and operating system pairs are currently unsupported; caveat emptor.
 
