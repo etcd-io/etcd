@@ -86,7 +86,7 @@ const (
 	// DefaultRaftLogCompactionStep ensures raft log is compacted whenever
 	// applied index is a multiple of DefaultRaftLogCompactionStep.
 	// The minimum value is 1, meaning compacting raft log each time applied index increases.
-	DefaultRaftLogCompactionStep uint64 = 100
+	DefaultRaftLogCompactionStep uint64 = 10
 
 	StoreClusterPrefix = "/0"
 	StoreKeysPrefix    = "/1"
