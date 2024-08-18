@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -175,10 +176,10 @@ func expectMemberLogExactCount(t *testing.T, m *integration.Member, timeout time
 	// make sure at MOST `count` log entries contain `s`
 	lines, err := m.LogObserver.Expect(ctx2, s, count+1)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			t.Fatalf("failed to expect (log:%s, count:%v): %v", s, count, err)
+		} else {
+			return
 		}
 	}
 
