@@ -40,6 +40,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add command to generate [shell completion](https://github.com/etcd-io/etcd/pull/13142).
 - Add `migrate` command for downgrading/upgrading etcd data dir files.
 - Add [optional --bump-revision and --mark-compacted flag to etcdutl snapshot restore operation](https://github.com/etcd-io/etcd/pull/16029).
+- Add [hashkv](https://github.com/etcd-io/etcd/pull/15965) command to print hash of keys and values up to given revision
 - Removed [legacy etcdutl backup](https://github.com/etcd-io/etcd/pull/16662)
 
 ### Package `clientv3`
