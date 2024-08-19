@@ -1070,11 +1070,11 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if !cfg.ExperimentalEnableLeaseCheckpointPersist && cfg.ExperimentalEnableLeaseCheckpoint {
+	if !cfg.ServerFeatureGate.Enabled(features.EnableLeaseCheckpointPersist) && cfg.ServerFeatureGate.Enabled(features.EnableLeaseCheckpoint) {
 		cfg.logger.Warn("Detected that checkpointing is enabled without persistence. Consider enabling experimental-enable-lease-checkpoint-persist")
 	}
 
-	if cfg.ExperimentalEnableLeaseCheckpointPersist && !cfg.ExperimentalEnableLeaseCheckpoint {
+	if cfg.ServerFeatureGate.Enabled(features.EnableLeaseCheckpointPersist) && !cfg.ServerFeatureGate.Enabled(features.EnableLeaseCheckpoint) {
 		return fmt.Errorf("setting experimental-enable-lease-checkpoint-persist requires experimental-enable-lease-checkpoint")
 	}
 

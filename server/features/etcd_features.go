@@ -45,18 +45,35 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/18279
 	StopGRPCServiceOnDefrag featuregate.Feature = "StopGRPCServiceOnDefrag"
+
+	// EnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
+	// owner: @
+	// alpha: v3.6
+	EnableLeaseCheckpoint featuregate.Feature = "EnableLeaseCheckpoint"
+	// EnableLeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
+	// Requires EnableLeaseCheckpoint featuragate to be enabled.
+	// Deprecated in v3.6.
+	// TODO: Delete in v3.7
+	// owner: @serathius
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/13508
+	EnableLeaseCheckpointPersist featuregate.Feature = "EnableLeaseCheckpointPersist"
 )
 
 var (
 	DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-		DistributedTracing:      {Default: false, PreRelease: featuregate.Alpha},
-		StopGRPCServiceOnDefrag: {Default: false, PreRelease: featuregate.Alpha},
+		DistributedTracing:           {Default: false, PreRelease: featuregate.Alpha},
+		StopGRPCServiceOnDefrag:      {Default: false, PreRelease: featuregate.Alpha},
+		EnableLeaseCheckpoint:        {Default: false, PreRelease: featuregate.Alpha},
+		EnableLeaseCheckpointPersist: {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
 	// Deprecated: only add existing experimental features here. DO NOT use for new features.
 	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
-		"experimental-stop-grpc-service-on-defrag": StopGRPCServiceOnDefrag,
+		"experimental-stop-grpc-service-on-defrag":     StopGRPCServiceOnDefrag,
+		"experimental-enable-lease-checkpoint":         EnableLeaseCheckpoint,
+		"experimental-enable-lease-checkpoint-persist": EnableLeaseCheckpointPersist,
 	}
 )
 
