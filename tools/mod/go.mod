@@ -1,7 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.22
-
 toolchain go1.22.6
 
 require (
@@ -19,7 +18,7 @@ require (
 	go.etcd.io/raft/v3 v3.6.0-alpha.0
 	gotest.tools/gotestsum v1.12.0
 	gotest.tools/v3 v3.5.1
-	honnef.co/go/tools v0.4.7
+	honnef.co/go/tools v0.5.1
 )
 
 require (
@@ -30,7 +29,7 @@ require (
 	github.com/Antonboom/errname v0.1.13 // indirect
 	github.com/Antonboom/nilnil v0.1.9 // indirect
 	github.com/Antonboom/testifylint v1.3.1 // indirect
-	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
 	github.com/Crocmagnon/fatcontext v0.2.2 // indirect
 	github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 // indirect
 	github.com/GaijinEntertainment/go-exhaustruct/v3 v3.2.0 // indirect
