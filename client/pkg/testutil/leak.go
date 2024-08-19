@@ -148,7 +148,8 @@ func interestingGoroutines() (gs []string) {
 			strings.Contains(stack, "runtime.MHeap_Scavenger") ||
 			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") ||
 			strings.Contains(stack, "net.(*netFD).Close(") ||
-			strings.Contains(stack, "testing.(*T).Run") {
+			strings.Contains(stack, "testing.(*T).Run") ||
+			strings.Contains(stack, "crypto/tls.(*certCache).evict") {
 			continue
 		}
 		gs = append(gs, stack)
