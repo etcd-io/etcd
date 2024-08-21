@@ -205,11 +205,6 @@ func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 				gotEvents = append(gotEvents, event.PersistedEvent)
 			}
 		}
-		// TODO(https://github.com/etcd-io/etcd/issues/18089): Remove when bug is fixed
-		detected, newWantEvents := checkIssue18089(lg, report.ClientID, wantEvents, gotEvents, replay)
-		if detected {
-			wantEvents = newWantEvents
-		}
 		if diff := cmp.Diff(wantEvents, gotEvents, cmpopts.IgnoreFields(model.PersistedEvent{}, "IsCreate")); diff != "" {
 			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
 			err = errBrokeReliable
@@ -223,22 +218,18 @@ func validateResumable(lg *zap.Logger, replay *model.EtcdReplay, report report.C
 		if watch.Request.Revision == 0 {
 			continue
 		}
-		wantEvents := replay.EventsForWatch(watch.Request)
+		events := replay.EventsForWatch(watch.Request)
 		index := 0
-		for index < len(wantEvents) && (wantEvents[index].Revision < watch.Request.Revision || !wantEvents[index].Match(watch.Request)) {
+		for index < len(events) && (events[index].Revision < watch.Request.Revision || !events[index].Match(watch.Request)) {
 			index++
 		}
-		if index == len(wantEvents) {
+		if index == len(events) {
 			continue
 		}
-		gotFirstEvent := firstWatchEvent(watch)
+		firstEvent := firstWatchEvent(watch)
 		// If watch is resumable, first event it gets should the first event that happened after the requested revision.
-		if gotFirstEvent != nil && wantEvents[index] != gotFirstEvent.PersistedEvent {
-			// TODO(https://github.com/etcd-io/etcd/issues/18089): Remove when bug is fixed
-			if detected, _ := checkIssue18089(lg, report.ClientID, wantEvents, []model.PersistedEvent{gotFirstEvent.PersistedEvent}, replay); detected {
-				continue
-			}
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "resumable"), zap.Int("client", report.ClientID), zap.Any("request", watch.Request), zap.Any("got-event", *gotFirstEvent), zap.Any("want-event", wantEvents[index]))
+		if firstEvent != nil && events[index] != firstEvent.PersistedEvent {
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "resumable"), zap.Int("client", report.ClientID), zap.Any("request", watch.Request), zap.Any("got-event", *firstEvent), zap.Any("want-event", events[index]))
 			err = errBrokeResumable
 		}
 	}
@@ -340,42 +331,4 @@ func firstWatchEvent(op model.WatchOperation) *model.WatchEvent {
 		}
 	}
 	return nil
-}
-
-func checkIssue18089(lg *zap.Logger, clientID int, want, got []model.PersistedEvent, replay *model.EtcdReplay) (bool, []model.PersistedEvent) {
-	type keyRevision struct {
-		Key      string
-		Revision int64
-	}
-	gotKeyRevision := map[keyRevision]struct{}{}
-	for _, event := range got {
-		gotKeyRevision[keyRevision{
-			Key:      event.Key,
-			Revision: event.Revision,
-		}] = struct{}{}
-	}
-	newWant := []model.PersistedEvent{}
-	issueDetected := false
-	for _, event := range want {
-		_, found := gotKeyRevision[keyRevision{
-			Key:      event.Key,
-			Revision: event.Revision,
-		}]
-		if !found && event.Type == model.DeleteOperation && matchingCompaction(event.Revision, replay) {
-			issueDetected = true
-			lg.Info("Detected issue 18089 still present, missing delete watch event for a compacted revision", zap.Int("client", clientID), zap.Any("missing-event", event))
-			continue
-		}
-		newWant = append(newWant, event)
-	}
-	return issueDetected, newWant
-}
-
-func matchingCompaction(revision int64, replay *model.EtcdReplay) bool {
-	for _, req := range replay.Requests {
-		if req.Type == model.Compact && req.Compact.Revision == revision {
-			return true
-		}
-	}
-	return false
 }

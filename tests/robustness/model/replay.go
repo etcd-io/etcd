@@ -36,16 +36,14 @@ func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
 		state = newState
 	}
 	return &EtcdReplay{
-		Requests:            persistedRequests,
 		revisionToEtcdState: revisionToEtcdState,
-		events:              events,
+		Events:              events,
 	}
 }
 
 type EtcdReplay struct {
-	Requests            []EtcdRequest
 	revisionToEtcdState []EtcdState
-	events              []PersistedEvent
+	Events              []PersistedEvent
 }
 
 func (r *EtcdReplay) StateForRevision(revision int64) (EtcdState, error) {
@@ -56,7 +54,7 @@ func (r *EtcdReplay) StateForRevision(revision int64) (EtcdState, error) {
 }
 
 func (r *EtcdReplay) EventsForWatch(watch WatchRequest) (events []PersistedEvent) {
-	for _, e := range r.events {
+	for _, e := range r.Events {
 		if e.Revision < watch.Revision || !e.Match(watch) {
 			continue
 		}
