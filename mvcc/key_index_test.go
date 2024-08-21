@@ -18,6 +18,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
 
@@ -298,12 +299,15 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: revision{16, 0},
 				generations: []generation{
+					{created: revision{main: 2}, ver: 3, revs: []revision{{main: 6}}},
 					{created: revision{8, 0}, ver: 3, revs: []revision{{main: 8}, {main: 10}, {main: 12}}},
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 15, sub: 1}, {main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[revision]struct{}{
+				{main: 6}: {},
+			},
 		},
 		{
 			7,
@@ -384,11 +388,14 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				key:      []byte("foo"),
 				modified: revision{16, 0},
 				generations: []generation{
+					{created: revision{main: 8}, ver: 3, revs: []revision{{main: 12}}},
 					{created: revision{14, 0}, ver: 3, revs: []revision{{main: 14}, {main: 15, sub: 1}, {main: 16}}},
 					{},
 				},
 			},
-			map[revision]struct{}{},
+			map[revision]struct{}{
+				{main: 12}: {},
+			},
 		},
 		{
 			13,
@@ -434,7 +441,21 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			16,
 			&keyIndex{
 				key:      []byte("foo"),
-				modified: revision{16, 0},
+				modified: revision{main: 16},
+				generations: []generation{
+					{created: revision{main: 14}, ver: 3, revs: []revision{{main: 16}}},
+					{},
+				},
+			},
+			map[revision]struct{}{
+				{main: 16}: {},
+			},
+		},
+		{
+			17,
+			&keyIndex{
+				key:      []byte("foo"),
+				modified: revision{main: 16},
 				generations: []generation{
 					{},
 				},
@@ -443,18 +464,36 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		},
 	}
 
+	isTombstoneRevFn := func(ki *keyIndex, rev int64) bool {
+		for i := 0; i < len(ki.generations)-1; i++ {
+			g := ki.generations[i]
+
+			if l := len(g.revs); l > 0 && g.revs[l-1].main == rev {
+				return true
+			}
+		}
+		return false
+	}
+
 	// Continuous Compaction and finding Keep
 	ki := newTestKeyIndex()
 	for i, tt := range tests {
+		isTombstone := isTombstoneRevFn(ki, tt.compact)
+
 		am := make(map[revision]struct{})
 		kiclone := cloneKeyIndex(ki)
 		ki.keep(tt.compact, am)
 		if !reflect.DeepEqual(ki, kiclone) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiclone)
 		}
-		if !reflect.DeepEqual(am, tt.wam) {
-			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+
+		if isTombstone {
+			assert.Equal(t, 0, len(am), "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
+		} else {
+			assert.Equal(t, tt.wam, am,
+				"#%d: ki = %d, compact keep should be equal to keep keep if it's not tombstone", i, ki)
 		}
+
 		am = make(map[revision]struct{})
 		ki.compact(zap.NewExample(), tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
@@ -468,7 +507,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	// Jump Compaction and finding Keep
 	ki = newTestKeyIndex()
 	for i, tt := range tests {
-		if (i%2 == 0 && i < 6) || (i%2 == 1 && i > 6) {
+		if !isTombstoneRevFn(ki, tt.compact) {
 			am := make(map[revision]struct{})
 			kiclone := cloneKeyIndex(ki)
 			ki.keep(tt.compact, am)
@@ -498,9 +537,14 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		if !reflect.DeepEqual(ki, kiClone) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiClone)
 		}
-		if !reflect.DeepEqual(am, tt.wam) {
-			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+
+		if isTombstoneRevFn(ki, tt.compact) {
+			assert.Equal(t, 0, len(am), "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
+		} else {
+			assert.Equal(t, tt.wam, am,
+				"#%d: ki = %d, compact keep should be equal to keep keep if it's not tombstone", i, ki)
 		}
+
 		am = make(map[revision]struct{})
 		ki.compact(zap.NewExample(), tt.compact, am)
 		if !reflect.DeepEqual(ki, tt.wki) {
