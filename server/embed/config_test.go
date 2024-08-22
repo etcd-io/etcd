@@ -97,6 +97,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		name                                string
 		serverFeatureGatesJSON              string
 		experimentalStopGRPCServiceOnDefrag string
+		experimentalInitialCorruptCheck     string
 		expectErr                           bool
 		expectedFeatures                    map[featuregate.Feature]bool
 	}{
@@ -105,6 +106,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.DistributedTracing:      false,
 				features.StopGRPCServiceOnDefrag: false,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 		{
@@ -114,12 +116,19 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectErr:                           true,
 		},
 		{
+			name:                            "cannot set both experimental flag and feature gate flag for InitialCorruptCheck",
+			serverFeatureGatesJSON:          "InitialCorruptCheck=true",
+			experimentalInitialCorruptCheck: "false",
+			expectErr:                       true,
+		},
+		{
 			name:                                "ok to set different experimental flag and feature gate flag",
 			serverFeatureGatesJSON:              "DistributedTracing=true",
 			experimentalStopGRPCServiceOnDefrag: "true",
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.DistributedTracing:      true,
 				features.StopGRPCServiceOnDefrag: true,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 		{
@@ -128,6 +137,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: true,
 				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 		{
@@ -136,14 +146,43 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 		{
-			name:                   "can set feature gate to true from feature gate flag",
+			name:                            "can set feature gate experimentalInitialCorruptCheck to true from experimental flag",
+			experimentalInitialCorruptCheck: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     true,
+			},
+		},
+		{
+			name:                            "can set feature gate experimentalInitialCorruptCheck to false from experimental flag",
+			experimentalInitialCorruptCheck: "false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
+			},
+		},
+		{
+			name:                   "can set feature gate StopGRPCServiceOnDefrag to true from feature gate flag",
 			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: true,
 				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
+			},
+		},
+		{
+			name:                   "can set feature gate InitialCorruptCheck to true from feature gate flag",
+			serverFeatureGatesJSON: "InitialCorruptCheck=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     true,
 			},
 		},
 		{
@@ -152,6 +191,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 	}
@@ -159,9 +199,18 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			yc := struct {
 				ExperimentalStopGRPCServiceOnDefrag *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
+				ExperimentalInitialCorruptCheck     *bool  `json:"experimental-initial-corrupt-check,omitempty"`
 				ServerFeatureGatesJSON              string `json:"feature-gates"`
 			}{
 				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
+			}
+
+			if tc.experimentalInitialCorruptCheck != "" {
+				experimentalInitialCorruptCheck, err := strconv.ParseBool(tc.experimentalInitialCorruptCheck)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalInitialCorruptCheck = &experimentalInitialCorruptCheck
 			}
 
 			if tc.experimentalStopGRPCServiceOnDefrag != "" {
@@ -171,6 +220,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				}
 				yc.ExperimentalStopGRPCServiceOnDefrag = &experimentalStopGRPCServiceOnDefrag
 			}
+
 			b, err := yaml.Marshal(&yc)
 			if err != nil {
 				t.Fatal(err)

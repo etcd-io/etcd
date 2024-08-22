@@ -273,7 +273,7 @@ Experimental distributed tracing:
     Number of samples to collect per million spans for distributed tracing. Disabled by default.
 
 Experimental feature:
-  --experimental-initial-corrupt-check 'false'
+  --experimental-initial-corrupt-check 'false'. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=InitialCorruptCheck=true' instead.
     Enable to check data corruption before serving any client/peer traffic.
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
