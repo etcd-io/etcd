@@ -502,11 +502,14 @@ func (s *EtcdServer) AuthDisable(ctx context.Context, r *pb.AuthDisableRequest) 
 }
 
 func (s *EtcdServer) AuthStatus(ctx context.Context, r *pb.AuthStatusRequest) (*pb.AuthStatusResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthStatus: r})
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthStatusResponse), nil
+	resp := s.uberApply.Apply(&pb.InternalRaftRequest{AuthStatus: r})
+	if resp.Err != nil {
+		return nil, resp.Err
+	}
+	return resp.Resp.(*pb.AuthStatusResponse), nil
 }
 
 func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest) (*pb.AuthenticateResponse, error) {
@@ -614,19 +617,25 @@ func (s *EtcdServer) UserGrantRole(ctx context.Context, r *pb.AuthUserGrantRoleR
 }
 
 func (s *EtcdServer) UserGet(ctx context.Context, r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserGet: r})
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserGetResponse), nil
+	resp := s.uberApply.Apply(&pb.InternalRaftRequest{AuthUserGet: r})
+	if resp.Err != nil {
+		return nil, resp.Err
+	}
+	return resp.Resp.(*pb.AuthUserGetResponse), nil
 }
 
 func (s *EtcdServer) UserList(ctx context.Context, r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthUserList: r})
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthUserListResponse), nil
+	resp := s.uberApply.Apply(&pb.InternalRaftRequest{AuthUserList: r})
+	if resp.Err != nil {
+		return nil, resp.Err
+	}
+	return resp.Resp.(*pb.AuthUserListResponse), nil
 }
 
 func (s *EtcdServer) UserRevokeRole(ctx context.Context, r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
@@ -654,19 +663,25 @@ func (s *EtcdServer) RoleGrantPermission(ctx context.Context, r *pb.AuthRoleGran
 }
 
 func (s *EtcdServer) RoleGet(ctx context.Context, r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleGet: r})
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleGetResponse), nil
+	resp := s.uberApply.Apply(&pb.InternalRaftRequest{AuthRoleGet: r})
+	if resp.Err != nil {
+		return nil, resp.Err
+	}
+	return resp.Resp.(*pb.AuthRoleGetResponse), nil
 }
 
 func (s *EtcdServer) RoleList(ctx context.Context, r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{AuthRoleList: r})
-	if err != nil {
+	if err := s.linearizableReadNotify(ctx); err != nil {
 		return nil, err
 	}
-	return resp.(*pb.AuthRoleListResponse), nil
+	resp := s.uberApply.Apply(&pb.InternalRaftRequest{AuthRoleList: r})
+	if resp.Err != nil {
+		return nil, resp.Err
+	}
+	return resp.Resp.(*pb.AuthRoleListResponse), nil
 }
 
 func (s *EtcdServer) RoleRevokePermission(ctx context.Context, r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
