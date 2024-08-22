@@ -63,6 +63,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
@@ -350,7 +351,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.lessor = lease.NewLessor(srv.Logger(), srv.be, srv.cluster, lease.LessorConfig{
 		MinLeaseTTL:                int64(math.Ceil(minTTL.Seconds())),
 		CheckpointInterval:         cfg.LeaseCheckpointInterval,
-		CheckpointPersist:          cfg.LeaseCheckpointPersist,
+		CheckpointPersist:          cfg.ServerFeatureGate.Enabled(features.EnableLeaseCheckpointPersist),
 		ExpiredLeasesRetryInterval: srv.Cfg.ReqTimeout(),
 	})
 
@@ -395,7 +396,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	}
 	srv.uberApply = srv.NewUberApplier()
 
-	if srv.Cfg.EnableLeaseCheckpoint {
+	if srv.FeatureEnabled(features.EnableLeaseCheckpoint) {
 		// setting checkpointer enables lease checkpoint feature.
 		srv.lessor.SetCheckpointer(func(ctx context.Context, cp *pb.LeaseCheckpointRequest) error {
 			if !srv.ensureLeadership() {

@@ -103,8 +103,10 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		{
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      false,
-				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:           false,
+				features.StopGRPCServiceOnDefrag:      false,
+				features.EnableLeaseCheckpoint:        false,
+				features.EnableLeaseCheckpointPersist: false,
 			},
 		},
 		{
@@ -126,32 +128,40 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			name:                                "can set feature gate to true from experimental flag",
 			experimentalStopGRPCServiceOnDefrag: "true",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag:      true,
+				features.DistributedTracing:           false,
+				features.EnableLeaseCheckpoint:        false,
+				features.EnableLeaseCheckpointPersist: false,
 			},
 		},
 		{
 			name:                                "can set feature gate to false from experimental flag",
 			experimentalStopGRPCServiceOnDefrag: "false",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag:      false,
+				features.DistributedTracing:           false,
+				features.EnableLeaseCheckpoint:        false,
+				features.EnableLeaseCheckpointPersist: false,
 			},
 		},
 		{
 			name:                   "can set feature gate to true from feature gate flag",
 			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag:      true,
+				features.DistributedTracing:           false,
+				features.EnableLeaseCheckpoint:        false,
+				features.EnableLeaseCheckpointPersist: false,
 			},
 		},
 		{
 			name:                   "can set feature gate to false from feature gate flag",
 			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=false",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
+				features.StopGRPCServiceOnDefrag:      false,
+				features.DistributedTracing:           false,
+				features.EnableLeaseCheckpoint:        false,
+				features.EnableLeaseCheckpointPersist: false,
 			},
 		},
 	}
@@ -563,6 +573,12 @@ func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 	}
 }
 
+func SetFeatureGateDuringTest(cfg Config, fgname string, value bool) {
+	if err := cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("%s=%v", fgname, true)); err != nil {
+		panic(err)
+	}
+}
+
 func TestLeaseCheckpointValidate(t *testing.T) {
 	tcs := []struct {
 		name        string
@@ -573,6 +589,14 @@ func TestLeaseCheckpointValidate(t *testing.T) {
 			name: "Default config should pass",
 			configFunc: func() Config {
 				return *NewConfig()
+			},
+		},
+		{
+			name: "Enabling checkpoint leases with feature gate should pass",
+			configFunc: func() Config {
+				cfg := *NewConfig()
+				SetFeatureGateDuringTest(cfg, "EnableLeaseCheckpoint", true)
+				return cfg
 			},
 		},
 		{
@@ -589,6 +613,15 @@ func TestLeaseCheckpointValidate(t *testing.T) {
 				cfg := *NewConfig()
 				cfg.ExperimentalEnableLeaseCheckpoint = true
 				cfg.ExperimentalEnableLeaseCheckpointPersist = true
+				return cfg
+			},
+		},
+		{
+			name: "Enabling checkpoint leases and persist with feature gate should pass",
+			configFunc: func() Config {
+				cfg := *NewConfig()
+				SetFeatureGateDuringTest(cfg, "EnableLeaseCheckpoint", true)
+				SetFeatureGateDuringTest(cfg, "EnableLeaseCheckpointPersist", true)
 				return cfg
 			},
 		},
