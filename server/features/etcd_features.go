@@ -45,18 +45,25 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/18279
 	StopGRPCServiceOnDefrag featuregate.Feature = "StopGRPCServiceOnDefrag"
+	// InitialCorruptCheck enable to check data corruption before serving any client/peer traffic.
+	// owner: @serathius
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/10524
+	InitialCorruptCheck featuregate.Feature = "InitialCorruptCheck"
 )
 
 var (
 	DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
 		DistributedTracing:      {Default: false, PreRelease: featuregate.Alpha},
 		StopGRPCServiceOnDefrag: {Default: false, PreRelease: featuregate.Alpha},
+		InitialCorruptCheck:     {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
 	// Deprecated: only add existing experimental features here. DO NOT use for new features.
 	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
 		"experimental-stop-grpc-service-on-defrag": StopGRPCServiceOnDefrag,
+		"experimental-initial-corrupt-check":       InitialCorruptCheck,
 	}
 )
 

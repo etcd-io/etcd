@@ -48,6 +48,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/etcdhttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/verify"
 )
@@ -203,7 +204,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		TokenTTL:                                 cfg.AuthTokenTTL,
 		CORS:                                     cfg.CORS,
 		HostWhitelist:                            cfg.HostWhitelist,
-		InitialCorruptCheck:                      cfg.ExperimentalInitialCorruptCheck,
 		CorruptCheckTime:                         cfg.ExperimentalCorruptCheckTime,
 		CompactHashCheckEnabled:                  cfg.ExperimentalCompactHashCheckEnabled,
 		CompactHashCheckTime:                     cfg.ExperimentalCompactHashCheckTime,
@@ -259,7 +259,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	// newly started member ("memberInitialized==false")
 	// does not need corruption check
-	if memberInitialized && srvcfg.InitialCorruptCheck {
+	if memberInitialized && srvcfg.ServerFeatureGate.Enabled(features.InitialCorruptCheck) {
 		if err = e.Server.CorruptionChecker().InitialCheck(); err != nil {
 			// set "EtcdServer" to nil, so that it does not block on "EtcdServer.Close()"
 			// (nothing to close since rafthttp transports have not been started)
