@@ -14,8 +14,8 @@ github.com/Antonboom/testifylint v1.3.1 h1:Uam4q1Q+2b6H7gvk9RQFw6jyVDdpzIirFOOrb
 github.com/Antonboom/testifylint v1.3.1/go.mod h1:NV0hTlteCkViPW9mSR4wEMfwp+Hs1T3dY60bkvSfhpM=
 github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c h1:pxW6RcqyfI9/kWtOwnv/G+AzdKuy2ZrqINhenH4HyNs=
 github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Crocmagnon/fatcontext v0.2.2 h1:OrFlsDdOj9hW/oBEJBNSuH7QWf+E9WPVHw+x52bXVbk=
-github.com/Crocmagnon/fatcontext v0.2.2/go.mod h1:WSn/c/+MMNiD8Pri0ahRj0o9jVpeowzavOQplBJw6u0=
+github.com/Crocmagnon/fatcontext v0.5.1 h1:N+WQG/3Twyit6KBoI2juzy3+zSrSwyQHxa5259B+Rs0=
+github.com/Crocmagnon/fatcontext v0.5.1/go.mod h1:DaynlgROW+0NkIlG9WkgMKI6yRRJ05fTudBmbUgdWKE=
 github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 h1:sHglBQTwgx+rWPdisA5ynNEsoARbiCBOyGcJM4/OzsM=
 github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24/go.mod h1:4UJr5HIiMZrwgkSPdsjy2uOQExX/WEILpIrO9UPGuXs=
 github.com/GaijinEntertainment/go-exhaustruct/v3 v3.2.0 h1:sATXp1x6/axKxz2Gjxv8MALP0bXaNRfQinEwyfMcx8c=
