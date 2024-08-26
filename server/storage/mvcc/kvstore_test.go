@@ -917,7 +917,7 @@ func newFakeStore(lg *zap.Logger) *store {
 	s := &store{
 		cfg: StoreConfig{
 			CompactionBatchLimit:    10000,
-			CompactionSleepInterval: minimumBatchInterval,
+			CompactionSleepInterval: defaultCompactionSleepInterval,
 		},
 		b:              b,
 		le:             &lease.FakeLessor{},
