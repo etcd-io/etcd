@@ -16,6 +16,9 @@ package testutils
 
 import (
 	"errors"
+	"fmt"
+	"net"
+	"net/url"
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -68,4 +71,15 @@ func MustClient(c intf.Client, err error) intf.Client {
 		panic(err)
 	}
 	return c
+}
+
+func ListenURL(addr *url.URL) (net.Listener, error) {
+	switch addr.Scheme {
+	case "http", "https":
+		return net.Listen("tcp", addr.Host)
+	case "unix", "unixs":
+		return net.Listen("unix", addr.Path)
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %s", addr.Scheme)
+	}
 }

@@ -1693,5 +1693,20 @@ func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse)
 	}
 	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
 	c.Members = append(c.Members, m)
+
+	// Override PeerURLs and PeerListeners set by mustNewMember
+	urls := types.MustNewURLs(resp.Member.PeerURLs)
+	m.PeerURLs = urls
+
+	var listeners []net.Listener
+	for _, url := range urls {
+		l, err := testutils.ListenURL(&url)
+		if err != nil {
+			t.Fatal("failed to listen on %v: %v", url, err)
+		}
+		listeners = append(listeners, l)
+	}
+	m.PeerListeners = listeners
+
 	return m
 }
