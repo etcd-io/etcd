@@ -90,7 +90,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(1)).KV
 
 	// to trigger snapshot from the leader to the stopped follower
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 17; i++ {
 		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 		if err != nil {
 			t.Errorf("#%d: couldn't put key (%v)", i, err)
@@ -99,14 +99,15 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	// NOTE: When starting a new cluster with 3 members, each member will
 	// apply 3 ConfChange directly at the beginning before a leader is
-	// elected. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
+	// elected. Also, a snapshot of raft log is created, setting the snap
+	// index to 3. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
 	// changes. So member 0 has index 8 in raft log before network
 	// partition. We need to trigger EtcdServer.snapshot() at least twice.
 	//
 	// SnapshotCount: 10, SnapshotCatchUpEntries: 5
 	//
-	// T1: L(snapshot-index: 11, compacted-index:  6), F_m0(index:8)
-	// T2: L(snapshot-index: 22, compacted-index: 17), F_m0(index:8, out of date)
+	// T1: L(snapshot-index: 14, compacted-index:  9), F_m0(index:8, out of date)
+	// T2: L(snapshot-index: 25, compacted-index: 20), F_m0(index:8, out of date)
 	//
 	// Since there is no way to confirm server has compacted the log, we
 	// use log monitor to watch and expect "compacted Raft logs" content.
@@ -156,9 +157,9 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 			errc <- cerr
 			return
 		}
-		// from start revision 5 to latest revision 16
-		if len(cresp.Events) != 12 {
-			errc <- fmt.Errorf("expected 12 events, got %+v", cresp.Events)
+		// from start revision 5 to latest revision 18
+		if len(cresp.Events) != 14 {
+			errc <- fmt.Errorf("expected 14 events, got %+v", cresp.Events)
 			return
 		}
 		errc <- nil
