@@ -2184,24 +2184,24 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	}
 
 	// keep some in memory log entries for slow followers.
-	compacti := uint64(1)
 	if snapi > s.Cfg.SnapshotCatchUpEntries {
-		compacti = snapi - s.Cfg.SnapshotCatchUpEntries
-	}
-
-	err = s.r.raftStorage.Compact(compacti)
-	if err != nil {
-		// the compaction was done asynchronously with the progress of raft.
-		// raft log might already been compact.
-		if err == raft.ErrCompacted {
-			return
+		compacti := snapi - s.Cfg.SnapshotCatchUpEntries
+		// After calling s.r.raftStorage.Compact, compacti becomes the first (dummy) entry.
+		// Therefore, compacti must be less than appliedi (snapi).
+		err = s.r.raftStorage.Compact(compacti)
+		if err != nil {
+			// the compaction was done asynchronously with the progress of raft.
+			// raft log might already been compact.
+			if err == raft.ErrCompacted {
+				return
+			}
+			lg.Panic("failed to compact", zap.Error(err))
 		}
-		lg.Panic("failed to compact", zap.Error(err))
+		lg.Info(
+			"compacted Raft logs",
+			zap.Uint64("compact-index", compacti),
+		)
 	}
-	lg.Info(
-		"compacted Raft logs",
-		zap.Uint64("compact-index", compacti),
-	)
 }
 
 // CutPeer drops messages to the specified peer.
