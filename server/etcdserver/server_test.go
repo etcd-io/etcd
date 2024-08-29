@@ -107,9 +107,9 @@ func TestApplyRepeat(t *testing.T) {
 		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
 	}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
-	n.readyc <- raft.Ready{CommittedEntries: ents}
+	n.readyc <- raft.Ready{Entries: ents, CommittedEntries: ents}
 	// dup msg
-	n.readyc <- raft.Ready{CommittedEntries: ents}
+	n.readyc <- raft.Ready{Entries: ents, CommittedEntries: ents}
 
 	// use a conf change to block until dup msgs are all processed
 	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
@@ -135,7 +135,7 @@ func TestApplyRepeat(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(act) == 0 {
-		t.Fatalf("expected len(act)=0, got %d", len(act))
+		t.Fatalf("expected len(act)>0, got 0")
 	}
 
 	if err = <-stopc; err != nil {
