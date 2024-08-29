@@ -886,8 +886,12 @@ func TestAddMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
+
+	n.readyc <- createDummyReady()
+
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
 	_, err := s.AddMember(context.Background(), m)
 	gaction := n.Action()
@@ -993,8 +997,12 @@ func TestRemoveMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
+
+	n.readyc <- createDummyReady()
+
 	_, err := s.RemoveMember(context.Background(), 1234)
 	gaction := n.Action()
 	s.Stop()
@@ -1042,8 +1050,12 @@ func TestUpdateMember(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
+		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
+
+	n.readyc <- createDummyReady()
+
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
 	_, err := s.UpdateMember(context.Background(), wm)
 	gaction := n.Action()
@@ -1581,4 +1593,15 @@ func TestIsActive(t *testing.T) {
 
 		require.Equal(t, tc.expectActive, s.isActive())
 	}
+}
+
+// createDummyReady creates a raft Ready that can be sent to readyc to prevent crashes during snapshots.
+func createDummyReady() raft.Ready {
+	req := &pb.InternalRaftRequest{
+		Header: &pb.RequestHeader{ID: 1},
+		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+	}
+	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
+
+	return raft.Ready{Entries: ents}
 }
