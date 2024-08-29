@@ -99,6 +99,7 @@ func TestApplyRepeat(t *testing.T) {
 		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		uberApply:    uberApplierMock{},
+		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
 	req := &pb.InternalRaftRequest{
