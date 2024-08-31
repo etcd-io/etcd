@@ -99,7 +99,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	// NOTE: When starting a new cluster with 3 members, each member will
 	// apply 3 ConfChange directly at the beginning before a leader is
-	// elected. Also, a snapshot of raft log is created, setting the snap
+	// elected. A snapshot of raft log is created, setting the snap
 	// index to 3. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
 	// changes. So member 0 has index 8 in raft log before network
 	// partition. We need to trigger EtcdServer.snapshot() at least twice.

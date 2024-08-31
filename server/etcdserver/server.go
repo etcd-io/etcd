@@ -1212,7 +1212,7 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 func (s *EtcdServer) shouldSnapshot(ep *etcdProgress) bool {
 	return (s.forceSnapshot && ep.appliedi != ep.snapi) ||
 		(ep.appliedi-ep.snapi > s.Cfg.SnapshotCount) ||
-		// ensures a non-empty snapshot always exists
+		// make sure a non-empty snapshot always exists
 		(ep.snapi == 0 && ep.appliedi > ep.snapi)
 }
 

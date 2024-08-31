@@ -786,7 +786,7 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 	}
 
 	memberRemoved := false
-	for i := 0; i < 15; i++ {
+	for i := 0; i < 10; i++ {
 		_, err := memberCtl.MemberRemove(ctx, memberID)
 		if err != nil && strings.Contains(err.Error(), "member not found") {
 			memberRemoved = true

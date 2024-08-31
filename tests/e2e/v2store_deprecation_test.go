@@ -156,9 +156,11 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.NotEmpty(t, firstFiles)
+	assert.NotEmpty(t, secondFiles)
 
 	if lastVer.LessThan(version.V3_6) && (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) {
-		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should creates an additional raft log snapshot on startup")
+		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should create a snapshot of raft log snapshot on startup")
 		t.Skipf("raft log snapshots of %v are supposed to differ from of %v", currVer, lastVer)
 	}
 
@@ -263,8 +265,6 @@ func filterSnapshotFiles(path string) bool {
 
 func assertSnapshotsMatch(t testing.TB, firstFiles, secondFiles []string, patch func([]byte) []byte) {
 	lg := zaptest.NewLogger(t)
-	assert.NotEmpty(t, firstFiles)
-	assert.NotEmpty(t, secondFiles)
 	assert.Equal(t, len(firstFiles), len(secondFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)

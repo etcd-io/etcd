@@ -20,11 +20,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-// TestRaftLogSnapshotExistsPostStartUp ensures a non-empty raft log snapshot exists after startup
+// TestRaftLogSnapshotExistsPostStartUp ensures a non-empty raft log
+// snapshot is present after the server starts up. It also checks that
+// subsequent snapshots work as they used to.
 func TestRaftLogSnapshotExistsPostStartUp(t *testing.T) {
 	integration.BeforeTest(t)
 
@@ -40,18 +44,20 @@ func TestRaftLogSnapshotExistsPostStartUp(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 
-	_, err := m.LogObserver.Expect(ctx, "saved snapshot", 1)
+	lines, err := m.LogObserver.Expect(ctx, "saved snapshot", 1)
+	t.Logf("[expected line]: %v", lines[0])
+
 	if err != nil {
 		t.Fatalf("failed to expect (log:%s, count:%v): %v", "saved snapshot", 1, err)
 	}
 
-	kvc := integration.ToGRPC(clus.RandClient()).KV
+	// NOTE: When starting a new cluster with 1 member, the member will
+	// apply 1 ConfChange directly at the beginning, setting the applied index to 1.
+	assert.Contains(t, lines[0], "{\"snapshot-index\": 1}")
 
 	// In order to trigger another snapshot, we should increase applied index from 1 to 102.
-	//
-	// NOTE: When starting a new cluster with 1 member, the member will
-	// apply 3 ConfChange directly at the beginning, setting the applied index to 4.
-	for i := 0; i < 102-4; i++ {
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+	for i := 0; i < 102; i++ {
 		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 		if err != nil {
 			t.Fatalf("#%d: couldn't put key (%v)", i, err)
@@ -74,4 +80,36 @@ func TestRaftLogSnapshotExistsPostStartUp(t *testing.T) {
 	if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("unexpected error, max snapshots allowed is %d: %v", 2, err)
 	}
+}
+
+// TestRaftLogSnapshotIndexInCluster ensures a non-empty raft log
+// snapshot is present after the cluster starts up, and checks if
+// the snapshot index is as expected.
+func TestRaftLogSnapshotIndexInCluster(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:                   3,
+		SnapshotCount:          100,
+		SnapshotCatchUpEntries: 10,
+	})
+	defer clus.Terminate(t)
+
+	m := clus.Members[0]
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	defer cancel()
+
+	lines, err := m.LogObserver.Expect(ctx, "saved snapshot", 1)
+	t.Logf("[expected line]: %v", lines[0])
+
+	if err != nil {
+		t.Fatalf("failed to expect (log:%s, count:%v): %v", "saved snapshot", 1, err)
+	}
+
+	// NOTE: When starting a new cluster with 3 members, each member will
+	// apply 3 ConfChange directly at the beginning before a leader is
+	// elected. A snapshot of raft log is created, setting the snap
+	// index to 3.
+	assert.Contains(t, lines[0], "{\"snapshot-index\": 3}")
 }

@@ -102,14 +102,17 @@ func TestApplyRepeat(t *testing.T) {
 		kv:           mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{}),
 	}
 	s.start()
+
+	n.readyc <- newDummyPutReqReady()
+
 	req := &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{ID: 1},
 		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
 	}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
-	n.readyc <- raft.Ready{Entries: ents, CommittedEntries: ents}
+	n.readyc <- raft.Ready{CommittedEntries: ents}
 	// dup msg
-	n.readyc <- raft.Ready{Entries: ents, CommittedEntries: ents}
+	n.readyc <- raft.Ready{CommittedEntries: ents}
 
 	// use a conf change to block until dup msgs are all processed
 	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
@@ -890,7 +893,7 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 
-	n.readyc <- createDummyReady()
+	n.readyc <- newDummyPutReqReady()
 
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
 	_, err := s.AddMember(context.Background(), m)
@@ -1001,7 +1004,7 @@ func TestRemoveMember(t *testing.T) {
 	}
 	s.start()
 
-	n.readyc <- createDummyReady()
+	n.readyc <- newDummyPutReqReady()
 
 	_, err := s.RemoveMember(context.Background(), 1234)
 	gaction := n.Action()
@@ -1054,7 +1057,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 	s.start()
 
-	n.readyc <- createDummyReady()
+	n.readyc <- newDummyPutReqReady()
 
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
 	_, err := s.UpdateMember(context.Background(), wm)
@@ -1595,11 +1598,14 @@ func TestIsActive(t *testing.T) {
 	}
 }
 
-// createDummyReady creates a raft Ready that can be sent to readyc to prevent crashes during snapshots.
-func createDummyReady() raft.Ready {
+// newDummyPutReqReady is useful in unit tests with a partially functional raft.Node
+// (nodeConfChangeCommitterRecorder) that doesn't always append raft log entries properly.
+// When this happens, it can crash when creating a raft log snapshot due to missing entries.
+// To prevent this crash, you can send put requests to raft.Node's readyc after the server starts.
+func newDummyPutReqReady() raft.Ready {
 	req := &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{ID: 1},
-		Put:    &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")},
+		Put:    &pb.PutRequest{Key: []byte("newDummyPutReqReady"), Value: []byte("bar")},
 	}
 	ents := []raftpb.Entry{{Index: 1, Data: pbutil.MustMarshal(req)}}
 
