@@ -407,7 +407,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 		t.Fatal("le.Revoke took too long")
 	case errMsg := <-errMsgCh:
 		if errMsg != "" {
-			t.Fatalf(errMsg)
+			t.Fatalf("%v", errMsg)
 		}
 	}
 }
