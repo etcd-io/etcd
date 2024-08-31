@@ -1601,7 +1601,7 @@ func TestIsActive(t *testing.T) {
 // newDummyPutReqReady is useful in unit tests with a partially functional raft.Node
 // (nodeConfChangeCommitterRecorder) that doesn't always append raft log entries properly.
 // When this happens, it can crash when creating a raft log snapshot due to missing entries.
-// To prevent this crash, you can send put requests to raft.Node's readyc after the server starts.
+// To prevent this crash, we can send put requests to raft.Node's readyc after the server starts.
 func newDummyPutReqReady() raft.Ready {
 	req := &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{ID: 1},
