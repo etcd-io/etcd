@@ -52,7 +52,7 @@ func TestRaftLogSnapshotExistsPostStartUp(t *testing.T) {
 	// NOTE: When starting a new cluster with 1 member, the member will
 	// apply 3 ConfChange directly at the beginning, setting the applied index to 4.
 	for i := 0; i < 102-4; i++ {
-		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 		if err != nil {
 			t.Fatalf("#%d: couldn't put key (%v)", i, err)
 		}
