@@ -2186,8 +2186,8 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	// keep some in memory log entries for slow followers.
 	if snapi > s.Cfg.SnapshotCatchUpEntries {
 		compacti := snapi - s.Cfg.SnapshotCatchUpEntries
-		// After calling s.r.raftStorage.Compact, compacti becomes the first (dummy) entry.
-		// Therefore, compacti must be less than appliedi (snapi).
+		// if a compaction occurs, the index value of the first entry(dummy) in raft log
+		// will be `compacti`. So, `compacti` must be less than `appliedi` (`snapi`).
 		err = s.r.raftStorage.Compact(compacti)
 		if err != nil {
 			// the compaction was done asynchronously with the progress of raft.

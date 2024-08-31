@@ -160,7 +160,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	assert.NotEmpty(t, secondFiles)
 
 	if lastVer.LessThan(version.V3_6) && (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) {
-		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should create a snapshot of raft log snapshot on startup")
+		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should create a snapshot of raft log on startup")
 		t.Skipf("raft log snapshots of %v are supposed to differ from of %v", currVer, lastVer)
 	}
 
