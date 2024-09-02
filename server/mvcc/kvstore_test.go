@@ -910,7 +910,10 @@ func newFakeStore() *store {
 		Recorder:   &testutil.RecorderBuffered{},
 		rangeRespc: make(chan rangeResp, 5)}}
 	s := &store{
-		cfg:            StoreConfig{CompactionBatchLimit: 10000},
+		cfg: StoreConfig{
+			CompactionBatchLimit:    10000,
+			CompactionSleepInterval: defaultCompactionSleepInterval,
+		},
 		b:              b,
 		le:             &lease.FakeLessor{},
 		kvindex:        newFakeIndex(),
