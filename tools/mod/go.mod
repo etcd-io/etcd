@@ -1,7 +1,6 @@
 module go.etcd.io/etcd/tools/v3
 
 go 1.22
-
 toolchain go1.22.6
 
 require (
@@ -34,7 +33,7 @@ require (
 	github.com/Crocmagnon/fatcontext v0.4.0 // indirect
 	github.com/Djarvur/go-err113 v0.0.0-20210108212216-aea10b59be24 // indirect
 	github.com/GaijinEntertainment/go-exhaustruct/v3 v3.3.0 // indirect
-	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/OpenPeeDeeP/depguard/v2 v2.2.0 // indirect
 	github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 // indirect
 	github.com/alecthomas/assert/v2 v2.3.0 // indirect
