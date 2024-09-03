@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -64,7 +65,7 @@ func IsClientTimeout(err error) bool {
 	if err == nil {
 		return false
 	}
-	if err == context.DeadlineExceeded {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
 	}
 	ev, ok := status.FromError(err)
@@ -79,7 +80,7 @@ func IsCanceled(err error) bool {
 	if err == nil {
 		return false
 	}
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		return true
 	}
 	ev, ok := status.FromError(err)
@@ -94,7 +95,7 @@ func IsUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		return true
 	}
 	ev, ok := status.FromError(err)

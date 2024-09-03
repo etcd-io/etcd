@@ -192,7 +192,7 @@ func newDiscovery(lg *zap.Logger, dcfg *DiscoveryConfig, id types.ID) (*discover
 func (d *discovery) getCluster() (string, error) {
 	cls, clusterSize, rev, err := d.checkCluster()
 	if err != nil {
-		if err == ErrFullCluster {
+		if errors.Is(err, ErrFullCluster) {
 			return cls.getInitClusterStr(clusterSize)
 		}
 		return "", err
@@ -303,7 +303,7 @@ func (d *discovery) checkClusterRetry() (*clusterInfo, int, int64, error) {
 func (d *discovery) checkCluster() (*clusterInfo, int, int64, error) {
 	clusterSize, err := d.getClusterSize()
 	if err != nil {
-		if err == ErrSizeNotFound || err == ErrBadSizeKey {
+		if errors.Is(err, ErrSizeNotFound) || errors.Is(err, ErrBadSizeKey) {
 			return nil, 0, 0, err
 		}
 

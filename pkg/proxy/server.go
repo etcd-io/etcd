@@ -16,6 +16,7 @@ package proxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -427,7 +428,7 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 	for {
 		nr1, err := src.Read(buf)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 			// connection already closed
@@ -545,7 +546,7 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 		var nw int
 		nw, err = dst.Write(data)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 			select {
