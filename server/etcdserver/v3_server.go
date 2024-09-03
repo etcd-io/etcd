@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/binary"
+	errorspkg "errors"
 	"strconv"
 	"time"
 
@@ -296,7 +297,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		if err == nil { // already requested to primary lessor(leader)
 			return ttl, nil
 		}
-		if err != lease.ErrNotPrimary {
+		if !errorspkg.Is(err, lease.ErrNotPrimary) {
 			return -1, err
 		}
 	}
@@ -313,7 +314,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		for _, url := range leader.PeerURLs {
 			lurl := url + leasehttp.LeasePrefix
 			ttl, err := leasehttp.RenewHTTP(cctx, id, lurl, s.peerRt)
-			if err == nil || err == lease.ErrLeaseNotFound {
+			if err == nil || errorspkg.Is(err, lease.ErrLeaseNotFound) {
 				return ttl, err
 			}
 		}
@@ -321,7 +322,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		time.Sleep(50 * time.Millisecond)
 	}
 
-	if cctx.Err() == context.DeadlineExceeded {
+	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
 		return -1, errors.ErrTimeout
 	}
 	return -1, errors.ErrCanceled
@@ -402,13 +403,13 @@ func (s *EtcdServer) leaseTimeToLive(ctx context.Context, r *pb.LeaseTimeToLiveR
 			if err == nil {
 				return resp.LeaseTimeToLiveResponse, nil
 			}
-			if err == lease.ErrLeaseNotFound {
+			if errorspkg.Is(err, lease.ErrLeaseNotFound) {
 				return nil, err
 			}
 		}
 	}
 
-	if cctx.Err() == context.DeadlineExceeded {
+	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
 		return nil, errors.ErrTimeout
 	}
 	return nil, errors.ErrCanceled
@@ -527,7 +528,7 @@ func (s *EtcdServer) Authenticate(ctx context.Context, r *pb.AuthenticateRequest
 	for {
 		checkedRevision, err := s.AuthStore().CheckPassword(r.Name, r.Password)
 		if err != nil {
-			if err != auth.ErrAuthNotEnabled {
+			if !errorspkg.Is(err, auth.ErrAuthNotEnabled) {
 				lg.Warn(
 					"invalid authentication was requested",
 					zap.String("user", r.Name),
@@ -854,7 +855,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 }
 
 func isStopped(err error) bool {
-	return err == raft.ErrStopped || err == errors.ErrStopped
+	return errorspkg.Is(err, raft.ErrStopped) || errorspkg.Is(err, errors.ErrStopped)
 }
 
 func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, requestID uint64) (uint64, error) {
@@ -942,7 +943,7 @@ func (s *EtcdServer) sendReadIndex(requestIndex uint64) error {
 	cctx, cancel := context.WithTimeout(context.Background(), s.Cfg.ReqTimeout())
 	err := s.r.ReadIndex(cctx, ctxToSend)
 	cancel()
-	if err == raft.ErrStopped {
+	if errorspkg.Is(err, raft.ErrStopped) {
 		return err
 	}
 	if err != nil {
