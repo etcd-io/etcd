@@ -165,7 +165,7 @@ type Config struct {
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
-	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catchup-entries"`
 
 	MaxSnapFiles uint `json:"max-snapshots"`
 	//revive:disable-next-line:var-naming

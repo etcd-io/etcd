@@ -62,7 +62,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 		MaxWALFiles            uint   `json:"max-wals"`
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
-		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catchup-entries"`
 		ListenPeerURLs         string `json:"listen-peer-urls"`
 		ListenClientURLs       string `json:"listen-client-urls"`
 		ListenClientHTTPURLs   string `json:"listen-client-http-urls"`
