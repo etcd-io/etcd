@@ -88,9 +88,9 @@ func lockFile(fd windows.Handle, flags uint32) error {
 	err := windows.LockFileEx(fd, flags|windows.LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &windows.Overlapped{})
 	if err == nil {
 		return nil
-	} else if err.Error() == errLocked.Error() {
+	} else if errors.Is(err, errLocked) {
 		return ErrLocked
-	} else if err != windows.ERROR_LOCK_VIOLATION {
+	} else if !errors.Is(err, windows.ERROR_LOCK_VIOLATION) {
 		return err
 	}
 	return nil

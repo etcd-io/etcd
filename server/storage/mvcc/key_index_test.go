@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -73,7 +74,7 @@ func TestKeyIndexGet(t *testing.T) {
 
 	for i, tt := range tests {
 		mod, creat, ver, err := ki.get(zaptest.NewLogger(t), tt.rev)
-		if err != tt.werr {
+		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
 		if mod != tt.wmod {
@@ -213,7 +214,7 @@ func TestKeyIndexTombstone(t *testing.T) {
 	}
 
 	err = ki.tombstone(zaptest.NewLogger(t), 16, 0)
-	if err != ErrRevisionNotFound {
+	if !errors.Is(err, ErrRevisionNotFound) {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
 }

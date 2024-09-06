@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -392,7 +393,7 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
 	}
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
-		if err != raft.ErrCompacted {
+		if !errors.Is(err, raft.ErrCompacted) {
 			panic(err)
 		}
 	} else {

@@ -15,6 +15,7 @@
 package mvcc
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestIndexGet(t *testing.T) {
 	}
 	for i, tt := range tests {
 		rev, created, ver, err := ti.Get([]byte("foo"), tt.rev)
-		if err != tt.werr {
+		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
 		}
 		if rev != tt.wrev {
@@ -130,11 +131,11 @@ func TestIndexTombstone(t *testing.T) {
 	}
 
 	_, _, _, err = ti.Get([]byte("foo"), 2)
-	if err != ErrRevisionNotFound {
+	if !errors.Is(err, ErrRevisionNotFound) {
 		t.Errorf("get error = %v, want ErrRevisionNotFound", err)
 	}
 	err = ti.Tombstone([]byte("foo"), Revision{Main: 3})
-	if err != ErrRevisionNotFound {
+	if !errors.Is(err, ErrRevisionNotFound) {
 		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
 	}
 }

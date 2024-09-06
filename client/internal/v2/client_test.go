@@ -169,7 +169,7 @@ func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
 	tr.errchan <- errors.New("fixture")
 
 	_, _, err := c.Do(context.Background(), &nilAction{})
-	if err != ErrNoRequest {
+	if !errors.Is(err, ErrNoRequest) {
 		t.Fatalf("expected non-nil error, got nil")
 	}
 }
@@ -256,7 +256,7 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosedWithBlockingBody(t *te
 	}()
 
 	_, _, err := c.Do(ctx, &fakeAction{})
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected %+v, got %+v", context.Canceled, err)
 	}
 
@@ -478,7 +478,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		if err != context.DeadlineExceeded {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("err = %+v, want %+v", err, context.DeadlineExceeded)
 		}
 	case <-time.After(time.Second):
@@ -528,7 +528,7 @@ func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		if err != errFakeCancelContext {
+		if !errors.Is(err, errFakeCancelContext) {
 			t.Errorf("err = %+v, want %+v", err, errFakeCancelContext)
 		}
 	case <-time.After(time.Second):
@@ -881,7 +881,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 	cancel()
 
 	err = hc.AutoSync(ctx, time.Hour)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("incorrect error value: want=%v got=%v", context.Canceled, err)
 	}
 }

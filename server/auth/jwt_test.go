@@ -16,6 +16,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -139,7 +140,7 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 			}
 
 			_, aerr := verify.assign(ctx, "abc", 123)
-			if aerr != ErrVerifyOnly {
+			if !errors.Is(aerr, ErrVerifyOnly) {
 				t.Fatalf("unexpected error when attempting to sign with public key: %v", aerr)
 			}
 

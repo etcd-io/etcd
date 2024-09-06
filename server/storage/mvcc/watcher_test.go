@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -108,7 +109,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	for i, tcase := range tt {
 		id, err := w.Watch(tcase.givenID, []byte("foo"), nil, 0)
 		if tcase.expectedErr != nil || err != nil {
-			if err != tcase.expectedErr {
+			if !errors.Is(err, tcase.expectedErr) {
 				t.Errorf("expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
 			}
 		} else if tcase.expectedID != id {
@@ -201,10 +202,10 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	if _, err := w.Watch(0, []byte("foa"), []byte("foa"), 1); err != ErrEmptyWatcherRange {
+	if _, err := w.Watch(0, []byte("foa"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
 		t.Fatalf("key == end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
-	if _, err := w.Watch(0, []byte("fob"), []byte("foa"), 1); err != ErrEmptyWatcherRange {
+	if _, err := w.Watch(0, []byte("fob"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
 		t.Fatalf("key > end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	}
 	// watch request with 'WithFromKey' has empty-byte range end
@@ -278,7 +279,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	for i, tt := range tests {
 		gerr := w.Cancel(tt.cancelID)
 
-		if gerr != tt.werr {
+		if !errors.Is(gerr, tt.werr) {
 			t.Errorf("#%d: err = %v, want %v", i, gerr, tt.werr)
 		}
 	}

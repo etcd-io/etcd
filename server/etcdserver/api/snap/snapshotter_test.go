@@ -15,6 +15,7 @@
 package snap
 
 import (
+	"errors"
 	"fmt"
 	"hash/crc32"
 	"os"
@@ -80,7 +81,7 @@ func TestBadCRC(t *testing.T) {
 	crcTable = crc32.MakeTable(crc32.Koopman)
 
 	_, err = Read(zaptest.NewLogger(t), filepath.Join(dir, fmt.Sprintf("%016x-%016x.snap", 1, 1)))
-	if err == nil || err != ErrCRCMismatch {
+	if err == nil || !errors.Is(err, ErrCRCMismatch) {
 		t.Errorf("err = %v, want %v", err, ErrCRCMismatch)
 	}
 }
@@ -221,7 +222,7 @@ func TestNoSnapshot(t *testing.T) {
 	defer os.RemoveAll(dir)
 	ss := New(zaptest.NewLogger(t), dir)
 	_, err = ss.Load()
-	if err != ErrNoSnapshot {
+	if !errors.Is(err, ErrNoSnapshot) {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
 }
@@ -240,7 +241,7 @@ func TestEmptySnapshot(t *testing.T) {
 	}
 
 	_, err = Read(zaptest.NewLogger(t), filepath.Join(dir, "1.snap"))
-	if err != ErrEmptySnapshot {
+	if !errors.Is(err, ErrEmptySnapshot) {
 		t.Errorf("err = %v, want %v", err, ErrEmptySnapshot)
 	}
 }
@@ -262,7 +263,7 @@ func TestAllSnapshotBroken(t *testing.T) {
 
 	ss := New(zaptest.NewLogger(t), dir)
 	_, err = ss.Load()
-	if err != ErrNoSnapshot {
+	if !errors.Is(err, ErrNoSnapshot) {
 		t.Errorf("err = %v, want %v", err, ErrNoSnapshot)
 	}
 }

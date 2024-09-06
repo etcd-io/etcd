@@ -17,6 +17,7 @@
 package fileutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -64,7 +65,7 @@ func ofdTryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error
 	flock := wrlck
 	if err = syscall.FcntlFlock(f.Fd(), unix.F_OFD_SETLK, &flock); err != nil {
 		f.Close()
-		if err == syscall.EWOULDBLOCK {
+		if errors.Is(err, syscall.EWOULDBLOCK) {
 			err = ErrLocked
 		}
 		return nil, err

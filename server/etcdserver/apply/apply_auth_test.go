@@ -16,6 +16,7 @@ package apply
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -387,8 +388,8 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 				tc.request.Header = &pb.RequestHeader{Username: userReadOnly}
 			}
 			result := authApplier.Apply(ctx, tc.request, dummyApplyFunc)
-			require.Equal(t, result.Err == auth.ErrPermissionDenied, tc.adminPermissionNeeded,
-				"Admin permission needed: got %v, expect: %v", result.Err == auth.ErrPermissionDenied, tc.adminPermissionNeeded)
+			require.Equal(t, errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded,
+				"Admin permission needed: got %v, expect: %v", errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded)
 		})
 	}
 }
