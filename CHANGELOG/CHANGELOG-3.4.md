@@ -14,9 +14,8 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - [Print gRPC metadata in guaranteed order using the official go fmt pkg](https://github.com/etcd-io/etcd/pull/18311).
 
 ### Dependencies
-- Compile binaries using go [1.21.13](https://github.com/etcd-io/etcd/pull/18422).
+- Compile binaries using [go 1.22.7](https://github.com/etcd-io/etcd/pull/18549).
 - Upgrade [bbolt to 1.3.11](https://github.com/etcd-io/etcd/pull/18488).
-
 
 <hr>
 
