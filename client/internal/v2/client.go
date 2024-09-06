@@ -365,10 +365,10 @@ func (c *httpClusterClient) Do(ctx context.Context, act httpAction) (*http.Respo
 		resp, body, err = hc.Do(ctx, action)
 		if err != nil {
 			cerr.Errors = append(cerr.Errors, err)
-			if err == ctx.Err() {
+			if errors.Is(err, ctx.Err()) {
 				return nil, nil, ctx.Err()
 			}
-			if err == context.Canceled || err == context.DeadlineExceeded {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil, nil, err
 			}
 		} else if resp.StatusCode/100 == 5 {

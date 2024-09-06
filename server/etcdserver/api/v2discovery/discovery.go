@@ -187,7 +187,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 func (d *discovery) getCluster() (string, error) {
 	nodes, size, index, err := d.checkCluster()
 	if err != nil {
-		if err == ErrFullCluster {
+		if errors.Is(err, ErrFullCluster) {
 			return nodesToCluster(nodes, size)
 		}
 		return "", err
@@ -227,7 +227,7 @@ func (d *discovery) checkCluster() ([]*client.Node, uint64, uint64, error) {
 		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeKeyNotFound {
 			return nil, 0, 0, ErrSizeNotFound
 		}
-		if err == client.ErrInvalidJSON {
+		if errors.Is(err, client.ErrInvalidJSON) {
 			return nil, 0, 0, ErrBadDiscoveryEndpoint
 		}
 		if ce, ok := err.(*client.ClusterError); ok {

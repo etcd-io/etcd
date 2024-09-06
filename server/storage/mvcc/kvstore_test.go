@@ -19,6 +19,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 	mrand "math/rand"
@@ -518,7 +519,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 			// wait for scheduled compaction to be finished
 			time.Sleep(100 * time.Millisecond)
 
-			if _, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{Rev: 1}); err != ErrCompacted {
+			if _, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{Rev: 1}); !errors.Is(err, ErrCompacted) {
 				t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
 			}
 			// check the key in backend is deleted

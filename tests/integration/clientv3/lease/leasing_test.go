@@ -16,6 +16,7 @@ package lease_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -895,7 +896,7 @@ func TestLeasingTxnCancel(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		cancel()
 	}()
-	if _, err := lkv2.Txn(ctx).Then(clientv3.OpPut("k", "v")).Commit(); err != context.Canceled {
+	if _, err := lkv2.Txn(ctx).Then(clientv3.OpPut("k", "v")).Commit(); !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected %v, got %v", context.Canceled, err)
 	}
 }
@@ -2017,7 +2018,7 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 
 			select {
 			case err := <-errc:
-				if err != ctx.Err() {
+				if !errors.Is(err, ctx.Err()) {
 					t.Errorf("#%d: expected %v of server unavailable, got %v", i, ctx.Err(), err)
 				}
 			case <-time.After(5 * time.Second):
@@ -2048,7 +2049,7 @@ func waitForExpireAck(t *testing.T, kv clientv3.KV) {
 		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 		_, err := kv.Get(ctx, "abc")
 		cancel()
-		if err == ctx.Err() {
+		if errors.Is(err, ctx.Err()) {
 			return
 		} else if err != nil {
 			t.Logf("current error: %v", err)

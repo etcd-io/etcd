@@ -17,6 +17,7 @@
 package fileutil
 
 import (
+	"errors"
 	"os"
 	"syscall"
 )
@@ -35,7 +36,7 @@ func TryLockFile(path string, flag int, perm os.FileMode) (*LockedFile, error) {
 	}
 	if err := syscall.FcntlFlock(f.Fd(), syscall.F_SETLK, &lock); err != nil {
 		f.Close()
-		if err == syscall.EAGAIN {
+		if errors.Is(err, syscall.EAGAIN) {
 			err = ErrLocked
 		}
 		return nil, err

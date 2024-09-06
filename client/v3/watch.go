@@ -395,7 +395,7 @@ func (w *watcher) Close() (err error) {
 		}
 	}
 	// Consider context.Canceled as a successful close
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		err = nil
 	}
 	return err

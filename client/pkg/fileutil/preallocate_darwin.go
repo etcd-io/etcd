@@ -17,6 +17,7 @@
 package fileutil
 
 import (
+	"errors"
 	"os"
 	"syscall"
 
@@ -44,7 +45,7 @@ func preallocFixed(f *os.File, sizeInBytes int64) error {
 	}
 
 	// wrong argument to fallocate syscall
-	if err == unix.EINVAL {
+	if errors.Is(err, unix.EINVAL) {
 		// filesystem "st_blocks" are allocated in the units of
 		// "Allocation Block Size" (run "diskutil info /" command)
 		var stat syscall.Stat_t

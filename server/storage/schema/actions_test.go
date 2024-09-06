@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -135,7 +136,7 @@ func TestActionListRevert(t *testing.T) {
 
 			UnsafeCreateMetaBucket(tx)
 			err := tc.actions.unsafeExecute(lg, tx)
-			if err != tc.expectError {
+			if !errors.Is(err, tc.expectError) {
 				t.Errorf("Unexpected error or lack thereof, expected: %v, got: %v", tc.expectError, err)
 			}
 			assertBucketState(t, tx, Meta, tc.expectState)

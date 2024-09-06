@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	errorspkg "errors"
 	"strings"
 
 	"google.golang.org/grpc/codes"
@@ -95,7 +96,7 @@ var toGRPCErrorMap = map[error]error{
 
 func togRPCError(err error) error {
 	// let gRPC server convert to codes.Canceled, codes.DeadlineExceeded
-	if err == context.Canceled || err == context.DeadlineExceeded {
+	if errorspkg.Is(err, context.Canceled) || errorspkg.Is(err, context.DeadlineExceeded) {
 		return err
 	}
 	grpcErr, ok := toGRPCErrorMap[err]
