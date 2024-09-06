@@ -11,9 +11,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Keep the tombstone during compaction if it happens to be the compaction revision](https://github.com/etcd-io/etcd/pull/18474)
 
 ### Dependencies
-- Compile binaries using [go 1.21.13](https://github.com/etcd-io/etcd/pull/18421).
+- Compile binaries using [go 1.22.7](https://github.com/etcd-io/etcd/pull/18550).
 - Upgrade [bbolt to v1.3.11](https://github.com/etcd-io/etcd/pull/18489).
-
 
 <hr>
 
