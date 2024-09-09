@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,11 @@ var (
 		Short: "iterate-bucket lists key-value pairs in reverse order.",
 		Run:   iterateBucketCommandFunc,
 	}
+	scanKeySpaceCommand = &cobra.Command{
+		Use:   "scan-keys [data dir or db file path] [start revision]",
+		Short: "scan-keys scans all the key-value pairs starting from a specific revision in the key space.",
+		Run:   scanKeysCommandFunc,
+	}
 	getHashCommand = &cobra.Command{
 		Use:   "hash [data dir or db file path]",
 		Short: "hash computes the hash of db file.",
@@ -58,6 +64,7 @@ func init() {
 
 	rootCommand.AddCommand(listBucketCommand)
 	rootCommand.AddCommand(iterateBucketCommand)
+	rootCommand.AddCommand(scanKeySpaceCommand)
 	rootCommand.AddCommand(getHashCommand)
 }
 
@@ -102,6 +109,27 @@ func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
 	}
 	bucket := args[1]
 	err := iterateBucket(dp, bucket, iterateBucketLimit, iterateBucketDecode)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func scanKeysCommandFunc(_ *cobra.Command, args []string) {
+	if len(args) != 2 {
+		log.Fatalf("Must provide 2 arguments (got %v)", args)
+	}
+	dp := args[0]
+	if !strings.HasSuffix(dp, "db") {
+		dp = filepath.Join(snapDir(dp), "db")
+	}
+	if !existFileOrDir(dp) {
+		log.Fatalf("%q does not exist", dp)
+	}
+	startRev, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = scanKeys(dp, startRev)
 	if err != nil {
 		log.Fatal(err)
 	}
