@@ -9,6 +9,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 - Fix [performance regression issue caused by the `ensureLeadership` in lease renew](https://github.com/etcd-io/etcd/pull/18439).
 - [Keep the tombstone during compaction if it happens to be the compaction revision](https://github.com/etcd-io/etcd/pull/18474)
+- Add [`etcd --experimental-compaction-sleep-interval`](https://github.com/etcd-io/etcd/pull/18514) flag to control the sleep interval between each compaction batch.
+
 
 ### Dependencies
 - Compile binaries using [go 1.22.7](https://github.com/etcd-io/etcd/pull/18550).
