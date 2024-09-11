@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.34 (TBD)
+## v3.4.35 (TBC)
+
+<hr>
+
+## v3.4.34 (2024-09-11)
 
 ### etcd server
 - Fix [performance regression issue caused by the `ensureLeadership` in lease renew](https://github.com/etcd-io/etcd/pull/18440).
