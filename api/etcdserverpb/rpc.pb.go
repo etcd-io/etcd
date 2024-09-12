@@ -2199,7 +2199,8 @@ type WatchResponse struct {
 	// the created watcher from the same stream.
 	// All events sent to the created watcher will attach with the same watch_id.
 	Created bool `protobuf:"varint,3,opt,name=created,proto3" json:"created,omitempty"`
-	// canceled is set to true if the response is for a cancel watch request.
+	// canceled is set to true if the response is for a cancel watch request
+	// or if the start_revision has already been compacted.
 	// No further events will be sent to the canceled watcher.
 	Canceled bool `protobuf:"varint,4,opt,name=canceled,proto3" json:"canceled,omitempty"`
 	// compact_revision is set to the minimum index if a watcher tries to watch
