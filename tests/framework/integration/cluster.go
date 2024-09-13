@@ -1682,7 +1682,8 @@ func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
 func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // MustNewMember creates a new member instance based on the response of V3 Member Add API.
-func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *Member {
+// Pass nil for tlsinfo if the member's PeerURLs don't use HTTPS.
+func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse, tlsinfo *transport.TLSInfo) *Member {
 	m := c.mustNewMember(t)
 	m.IsLearner = resp.Member.IsLearner
 	m.NewCluster = false
@@ -1700,7 +1701,7 @@ func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse)
 	m.PeerURLs = urls
 	var listeners []net.Listener
 	for _, url := range urls {
-		l, err := transport.NewListener(url.Host, url.Scheme, nil)
+		l, err := transport.NewListener(url.Host, url.Scheme, tlsinfo)
 		if err != nil {
 			t.Fatal("failed to listen on %v: %v", url, err)
 		}

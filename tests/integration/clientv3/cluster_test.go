@@ -264,7 +264,7 @@ func TestMemberPromote(t *testing.T) {
 
 	// create and launch learner member based on the response of V3 Member Add API.
 	// (the response has information on peer urls of the existing members in cluster)
-	learnerMember := clus.MustNewMember(t, memberAddResp)
+	learnerMember := clus.MustNewMember(t, memberAddResp, nil)
 
 	if err = learnerMember.Launch(); err != nil {
 		t.Fatal(err)
