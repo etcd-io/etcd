@@ -1598,11 +1598,14 @@ func TestIsActive(t *testing.T) {
 	}
 }
 
-// newDummyPutReqReady creates a dummy raft.Ready.
+// newDummyPutReqReady creates a raft.Ready.
 //
-// In unit tests, EtcdServer doesn't append raft log entries upon start like the full-featured etcd does.
-// This can crash the program when creating a raft log snapshot due to no available entries.
-// To append raft log entries, we can send a newDummyPutReqReady() to raft.Node's readyc after the server starts.
+// In unit tests, a manually created EtcdServer doesn't append raft log
+// entries on startup like the full-featured etcd does in bootstrap.
+// This can crash the program when creating a raft log snapshot if there
+// are no available entries.
+// To work around this, we can send a newDummyPutReqReady() to raft.Node's readyc
+// after the server starts to ensure the entries are appended.
 func newDummyPutReqReady() raft.Ready {
 	req := &pb.InternalRaftRequest{
 		Header: &pb.RequestHeader{ID: 1},
