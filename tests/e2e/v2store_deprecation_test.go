@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -138,7 +139,33 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	assert.NoError(t, epc.Close())
 
-	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
+	lastVer, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
+	if err != nil {
+		t.Fatal(err)
+	}
+	currVer, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	firstFiles, err := fileutil.ListFiles(oldMemberDataDir, filterSnapshotFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondFiles, err := fileutil.ListFiles(newMemberDataDir, filterSnapshotFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEmpty(t, firstFiles)
+	assert.NotEmpty(t, secondFiles)
+
+	// v3.6 creates a raft log snapshot on server startup, but v3.5 doesn't
+	if lastVer.LessThan(version.V3_6) && (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) {
+		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should create a snapshot of raft log on startup")
+		t.Skipf("raft log snapshots of %v are supposed to differ from of %v", currVer, lastVer)
+	}
+
+	assertSnapshotsMatch(t, firstFiles, secondFiles, func(data []byte) []byte {
 		// Patch members ids
 		for i, mid := range members1 {
 			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
@@ -237,18 +264,8 @@ func filterSnapshotFiles(path string) bool {
 	return strings.HasSuffix(path, ".snap")
 }
 
-func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patch func([]byte) []byte) {
+func assertSnapshotsMatch(t testing.TB, firstFiles, secondFiles []string, patch func([]byte) []byte) {
 	lg := zaptest.NewLogger(t)
-	firstFiles, err := fileutil.ListFiles(firstDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondFiles, err := fileutil.ListFiles(secondDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotEmpty(t, firstFiles)
-	assert.NotEmpty(t, secondFiles)
 	assert.Equal(t, len(firstFiles), len(secondFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
