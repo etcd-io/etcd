@@ -250,7 +250,6 @@ func assertSnapshotsMatch(t testing.TB, oldMemberDataDir, newMemberDataDir strin
 	}
 	assert.NotEmpty(t, oldMemberSnapshots)
 	assert.NotEmpty(t, newMemberSnapshots)
-
 	sort.Strings(oldMemberSnapshots)
 	sort.Strings(newMemberSnapshots)
 
