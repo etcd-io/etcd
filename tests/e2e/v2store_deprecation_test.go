@@ -139,33 +139,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	assert.NoError(t, epc.Close())
 
-	lastVer, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
-	if err != nil {
-		t.Fatal(err)
-	}
-	currVer, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	firstFiles, err := fileutil.ListFiles(oldMemberDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
-	secondFiles, err := fileutil.ListFiles(newMemberDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
-	assert.NotEmpty(t, firstFiles)
-	assert.NotEmpty(t, secondFiles)
-
-	// v3.6 creates a raft log snapshot on server startup, but v3.5 doesn't
-	if lastVer.LessThan(version.V3_6) && (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) {
-		assert.Equal(t, len(firstFiles)+1, len(secondFiles), "etcd v3.6 should create a snapshot of raft log on startup")
-		t.Skipf("raft log snapshots of %v are supposed to differ from of %v", currVer, lastVer)
-	}
-
-	assertSnapshotsMatch(t, firstFiles, secondFiles, func(data []byte) []byte {
+	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch members ids
 		for i, mid := range members1 {
 			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
@@ -264,17 +238,39 @@ func filterSnapshotFiles(path string) bool {
 	return strings.HasSuffix(path, ".snap")
 }
 
-func assertSnapshotsMatch(t testing.TB, firstFiles, secondFiles []string, patch func([]byte) []byte) {
+func assertSnapshotsMatch(t testing.TB, oldMemberDataDir, newMemberDataDir string, patch func([]byte) []byte) {
 	lg := zaptest.NewLogger(t)
-	assert.Equal(t, len(firstFiles), len(secondFiles))
-	sort.Strings(firstFiles)
-	sort.Strings(secondFiles)
-	for i := 0; i < len(firstFiles); i++ {
-		firstSnapshot, err := snap.Read(lg, firstFiles[i])
+	oldMemberSnapshots, err := fileutil.ListFiles(oldMemberDataDir, filterSnapshotFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newMemberSnapshots, err := fileutil.ListFiles(newMemberDataDir, filterSnapshotFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert.NotEmpty(t, oldMemberSnapshots)
+	assert.NotEmpty(t, newMemberSnapshots)
+
+	currVer, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Starting from v3.6, etcd might create an extra snapshot file (appliedIndex == 1) on server startup.
+	// Except for this, other snapshot files should be the same as in old versions.
+	if (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) && len(oldMemberSnapshots) < len(newMemberSnapshots) {
+		newMemberSnapshots = newMemberSnapshots[1:]
+	}
+
+	assert.Equal(t, len(oldMemberSnapshots), len(newMemberSnapshots))
+	sort.Strings(oldMemberSnapshots)
+	sort.Strings(newMemberSnapshots)
+	for i := 0; i < len(oldMemberSnapshots); i++ {
+		firstSnapshot, err := snap.Read(lg, oldMemberSnapshots[i])
 		if err != nil {
 			t.Fatal(err)
 		}
-		secondSnapshot, err := snap.Read(lg, secondFiles[i])
+		secondSnapshot, err := snap.Read(lg, newMemberSnapshots[i])
 		if err != nil {
 			t.Fatal(err)
 		}
