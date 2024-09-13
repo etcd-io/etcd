@@ -1693,5 +1693,30 @@ func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse)
 	}
 	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
 	c.Members = append(c.Members, m)
+
+	// c.mustNewMember(t) creates a new member without using resp.Member.PeerURLs.
+	// We should override PeerURLs and PeerListeners set by mustNewMember.
+	urls := types.MustNewURLs(resp.Member.PeerURLs)
+	m.PeerURLs = urls
+	var listeners []net.Listener
+	for _, url := range urls {
+		var l net.Listener
+		var err error
+		switch url.Scheme {
+		case "http", "https":
+			l, err = net.Listen("tcp", url.Host)
+		case "unix", "unixs":
+			l, err = net.Listen("unix", url.Host)
+		default:
+			err = fmt.Errorf("unsupported scheme: %s", url.Scheme)
+		}
+
+		if err != nil {
+			t.Fatal("failed to listen on %v: %v", url, err)
+		}
+		listeners = append(listeners, l)
+	}
+	m.PeerListeners = listeners
+
 	return m
 }
