@@ -251,6 +251,9 @@ func assertSnapshotsMatch(t testing.TB, oldMemberDataDir, newMemberDataDir strin
 	assert.NotEmpty(t, oldMemberSnapshots)
 	assert.NotEmpty(t, newMemberSnapshots)
 
+	sort.Strings(oldMemberSnapshots)
+	sort.Strings(newMemberSnapshots)
+
 	currVer, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
 	if err != nil {
 		t.Fatal(err)
@@ -259,12 +262,11 @@ func assertSnapshotsMatch(t testing.TB, oldMemberDataDir, newMemberDataDir strin
 	// Starting from v3.6, etcd might create an extra snapshot file (appliedIndex == 1) on server startup.
 	// Except for this, other snapshot files should be the same as in old versions.
 	if (version.V3_6.Equal(*currVer) || version.V3_6.LessThan(*currVer)) && len(oldMemberSnapshots) < len(newMemberSnapshots) {
+		// Remove the extra snapshot file
 		newMemberSnapshots = newMemberSnapshots[1:]
 	}
 
 	assert.Equal(t, len(oldMemberSnapshots), len(newMemberSnapshots))
-	sort.Strings(oldMemberSnapshots)
-	sort.Strings(newMemberSnapshots)
 	for i := 0; i < len(oldMemberSnapshots); i++ {
 		firstSnapshot, err := snap.Read(lg, oldMemberSnapshots[i])
 		if err != nil {
