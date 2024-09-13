@@ -1700,17 +1700,7 @@ func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse)
 	m.PeerURLs = urls
 	var listeners []net.Listener
 	for _, url := range urls {
-		var l net.Listener
-		var err error
-		switch url.Scheme {
-		case "http", "https":
-			l, err = net.Listen("tcp", url.Host)
-		case "unix", "unixs":
-			l, err = net.Listen("unix", url.Host)
-		default:
-			err = fmt.Errorf("unsupported scheme: %s", url.Scheme)
-		}
-
+		l, err := transport.NewListener(url.Host, url.Scheme, nil)
 		if err != nil {
 			t.Fatal("failed to listen on %v: %v", url, err)
 		}
