@@ -71,7 +71,7 @@ import (
 )
 
 const (
-	DefaultSnapshotCount = 100000
+	DefaultSnapshotCount = 10000
 
 	// DefaultSnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
