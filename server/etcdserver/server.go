@@ -979,6 +979,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	<-apply.notifyc
 
 	s.triggerSnapshot(ep)
+	s.maybeCompactRaftLog(ep.appliedi)
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
@@ -2169,6 +2170,10 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		"saved snapshot",
 		zap.Uint64("snapshot-index", snap.Metadata.Index),
 	)
+}
+
+func (s *EtcdServer) maybeCompactRaftLog(appliedi uint64) {
+	lg := s.Logger()
 
 	// When sending a snapshot, etcd will pause compaction.
 	// After receives a snapshot, the slow follower needs to get all the entries right after
@@ -2180,13 +2185,13 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		return
 	}
 
-	// keep some in memory log entries for slow followers.
-	compacti := uint64(1)
-	if snapi > s.Cfg.SnapshotCatchUpEntries {
-		compacti = snapi - s.Cfg.SnapshotCatchUpEntries
+	if appliedi <= s.Cfg.SnapshotCatchUpEntries {
+		return
 	}
 
-	err = s.r.raftStorage.Compact(compacti)
+	compacti := appliedi - s.Cfg.SnapshotCatchUpEntries
+
+	err := s.r.raftStorage.Compact(compacti)
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
 		// raft log might already been compact.
