@@ -42,7 +42,7 @@ func TestMustPanic(t *testing.T) {
 	t.Logf("elected lead: %v", clus.Members[lead].Server.MemberID())
 	time.Sleep(2 * time.Second)
 
-	// send 500 put request to [member-1, member 2], resulting at least 400 compaction in raft log
+	// send 500 put request to [member-1, member 2], resulting at least 400 compactions in raft log
 	for i := 0; i < 500; i++ {
 		_, err := clus.Client(1).Put(context.TODO(), "foo", "bar")
 		if err != nil {
@@ -53,7 +53,7 @@ func TestMustPanic(t *testing.T) {
 	expectMemberLog(t, clus.Members[lead], 5*time.Second, "compacted Raft logs", 400)
 	expectMemberLog(t, clus.Members[lead], 5*time.Second, "\"compact-index\": 400", 1)
 
-	// member-0 rejoins the cluster. Since its appliedIndex is very low (less than 10),
+	// member-0 rejoins the cluster. Since its appliedIndex is very low (less than 10, not in leader raft log's range),
 	// the leader decides to send a snapshot to member-0.
 	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
 
@@ -93,8 +93,9 @@ func TestMustNotPanic(t *testing.T) {
 	_, err := clus.Members[lead].LogObserver.Expect(ctx, "compacted Raft logs", 1)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 
-	// member-0 rejoins the cluster. Since its appliedIndex is within the leader raft log's range,
-	// no snapshot should be sent
+	// member-0 rejoins the cluster.
+	// Since member-0's appliedIndex is within the leader raft log's range,
+	// the leader won't send a snapshot. So, no panic should happen here.
 	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
 
 	// No errors should occur during this wait
