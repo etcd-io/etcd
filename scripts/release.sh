@@ -154,7 +154,7 @@ main() {
       # shellcheck disable=SC2038,SC2046
       run git add $(find . -name go.mod ! -path './release/*'| xargs)
       run git diff --staged | cat
-      run git commit -m "version: bump up to ${VERSION}"
+      run git commit --signoff --message "version: bump up to ${VERSION}"
       run git diff --staged | cat
     fi
 
