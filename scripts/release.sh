@@ -70,7 +70,7 @@ main() {
     git checkout "${BRANCH}" || exit 2
     git pull origin
   fi
-  
+
   # If a release version tag already exists, use it.
   log_callout "Checking tag: ${RELEASE_VERSION}"
   local remote_tag_exists
@@ -125,7 +125,7 @@ main() {
 
     # Push the version change if it's not already been pushed.
     if [ "$DRY_RUN" != "true" ] && [ "$(git rev-list --count "origin/${BRANCH}..${BRANCH}")" -gt 0 ]; then
-      read -p "Push version bump up to ${VERSION} to github.com/etcd-io/etcd [y/N]? " -r confirm
+      read -p "Push version bump up to ${VERSION} to ${REPOSITORY} [y/N]? " -r confirm
       [[ "${confirm,,}" == "y" ]] || exit 1
       git push
     fi
@@ -142,6 +142,12 @@ main() {
         exit 1
       fi
       git tag --local-user "${KEYID}" --sign "${RELEASE_VERSION}" --message "${RELEASE_VERSION}"
+
+      if [ "$DRY_RUN" != "true" ]; then
+        read -p "Push tag ${RELEASE_VERSION} to ${REPOSITORY} [y/N]? " -r confirm
+        [[ "${confirm,,}" == "y" ]] || exit 1
+        git push origin "${RELEASE_VERSION}"
+      fi
     fi
 
     # Verify the latest commit has the version tag
@@ -185,7 +191,6 @@ main() {
     log_error "Error: Expected clean working tree, but 'git diff --stat' reported: ${diff}"
     exit 1
   fi
-  
 
   # Build release.
   # TODO: check the release directory for all required build artifacts.
