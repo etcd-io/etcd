@@ -13,21 +13,51 @@ set -euo pipefail
 
 source ./scripts/test_lib.sh
 
+if [ "$#" -ne 2 ]; then
+    echo "Illegal number of parameters"
+    exit 1
+fi
+
 mod="$1"
 ver="$2"
 
-function maybe_update_module {
+function print_current_dep_version {
+  echo "${mod} version in all go mod files"
+  grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*$" | grep -v sum
+  printf "\n\n"
+}
+
+function is_fully_indirect {
+  # check if all lines end with "// indirect"
+  # if grep found nothing, the error code will be non-zero
+  ALL=$(grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*$" | grep -v sum | wc -l)
+  ONLY_INDIRECT=$(grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*// indirect$" | grep -v sum | wc -l)
+  if  [[ "$ALL" == "$ONLY_INDIRECT" ]]; then 
+      echo "Fully indirect, we will terminate the script"
+      exit 1
+  else
+      echo "Not fully indirect, we will perform dependency bump"
+  fi
+}
+
+function update_module {
   run go mod tidy
 
-  deps=$(go list -f '{{if not .Indirect}}{{if .Version}}{{.Path}},{{.Version}}{{end}}{{end}}' -m all)
+  deps=$(go list -f '{{if .Version}}{{.Path}},{{.Version}}{{end}}' -m all)
   if [[ "$deps" == *"${mod}"* ]]; then
     if [ -z "${ver}" ]; then
-      run go get "${mod}"
+      run go get -u "${mod}"
     else
       run go get "${mod}@${ver}"
     fi
   fi
- }
+}
 
-go mod tidy
-run_for_modules maybe_update_module
+print_current_dep_version
+is_fully_indirect
+run_for_modules update_module
+
+./scripts/fix.sh
+PASSES="dep" ./scripts/test.sh
+
+print_current_dep_version
