@@ -129,6 +129,13 @@ type backend struct {
 	lg *zap.Logger
 }
 
+type BackendType string
+
+const (
+	BackendTypeBoltDB BackendType = "boltdb"
+	BackendTypeMySQL  BackendType = "mysql"
+)
+
 type BackendConfig struct {
 	// Path is the file path to the backend file.
 	Path string
@@ -149,6 +156,9 @@ type BackendConfig struct {
 
 	// Hooks are getting executed during lifecycle of Backend's transactions.
 	Hooks Hooks
+
+	BackendType BackendType
+	MySQLDSN    string // MySQL Data Source Name
 }
 
 type BackendConfigOption func(*BackendConfig)
@@ -159,11 +169,25 @@ func DefaultBackendConfig(lg *zap.Logger) BackendConfig {
 		BatchLimit:    defaultBatchLimit,
 		MmapSize:      InitialMmapSize,
 		Logger:        lg,
+		BackendType:   BackendTypeMySQL, // Change this to MySQL
+		MySQLDSN:      "root:password@tcp(localhost:3306)/etcd", // Default MySQL DSN
 	}
 }
 
 func New(bcfg BackendConfig) Backend {
-	return newBackend(bcfg)
+	switch bcfg.BackendType {
+	case BackendTypeBoltDB:
+		return newBackend(bcfg)
+	case BackendTypeMySQL:
+		be, err := newMySQLBackend(bcfg)
+		if err != nil {
+			bcfg.Logger.Panic("failed to create MySQL backend", zap.Error(err))
+		}
+		return be
+	default:
+		bcfg.Logger.Panic("unknown backend type", zap.String("type", string(bcfg.BackendType)))
+		return nil
+	}
 }
 
 func WithMmapSize(size uint64) BackendConfigOption {

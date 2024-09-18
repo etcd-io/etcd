@@ -30,6 +30,7 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 type dirType string

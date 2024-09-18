@@ -65,6 +65,8 @@ type config struct {
 	configFile   string
 	printVersion bool
 	ignored      []string
+	BackendType string `json:"backend-type"`
+	MySQLDSN    string `json:"mysql-dsn"`
 }
 
 // configFlags has the set of flags used for command line parsing a Config

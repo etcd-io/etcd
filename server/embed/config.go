@@ -330,6 +330,23 @@ type Config struct {
 	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
 	// - https://github.com/transmission/transmission/pull/468
 	// - https://github.com/etcd-io/etcd/issues/9353
+	//
+	// 1. If client connection is secure via HTTPS, allow any hostnames.
+	// 2. If client connection is not secure and "HostWhitelist" is not empty,
+	//    only allow HTTP requests whose Host field is listed in whitelist.
+	//
+	// Note that the client origin policy is enforced whether authentication
+	// is enabled or not, for tighter controls.
+	//
+	// By default, "HostWhitelist" is "*", which allows any hostnames.
+	// Note that when specifying hostnames, loopback addresses are not added
+	// automatically. To allow loopback interfaces, leave it empty or set it "*",
+	// or add them to whitelist manually (e.g. "localhost", "127.0.0.1", etc.).
+	//
+	// CVE-2018-5702 reference:
+	// - https://bugs.chromium.org/p/project-zero/issues/detail?id=1447#c2
+	// - https://github.com/transmission/transmission/pull/468
+	// - https://github.com/etcd-io/etcd/issues/9353
 	HostWhitelist map[string]struct{}
 
 	// UserHandlers is for registering users handlers and only used for
@@ -462,6 +479,11 @@ type Config struct {
 
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
+
+	// BackendType specifies the type of backend storage to use
+	BackendType string `json:"backend-type"`
+	// MySQLDSN is the Data Source Name for the MySQL backend
+	MySQLDSN string `json:"mysql-dsn"`
 }
 
 // configYAML holds the config suitable for yaml parsing
@@ -586,6 +608,9 @@ func NewConfig() *Config {
 
 		AutoCompactionMode: DefaultAutoCompactionMode,
 		ServerFeatureGate:  features.NewDefaultServerFeatureGate(DefaultName, nil),
+
+		BackendType: "mysql",
+		MySQLDSN:    "root:password@tcp(localhost:3306)/etcd",
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
