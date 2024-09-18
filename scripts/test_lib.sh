@@ -372,7 +372,7 @@ function git_assert_branch_in_sync {
   if [ -n "${branch}" ]; then
     ref_local=$(run git rev-parse "${branch}")
     ref_origin=$(run git rev-parse "origin/${branch}")
-    if [ "x${ref_local}" != "x${ref_origin}" ]; then
+    if [ "${ref_local}" != "${ref_origin}" ]; then
       log_error "In workspace '$(pwd)' the branch: ${branch} diverges from the origin."
       log_error "Consider cleaning up / renaming this directory or (cd $(pwd) && git reset --hard origin/${branch})"
       return 2
