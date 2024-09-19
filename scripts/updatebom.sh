@@ -12,7 +12,7 @@ function bom_fixlet {
 
   local modules
   # shellcheck disable=SC2207
-  modules=($(modules_exp))
+  modules=($(modules_for_bom))
 
   if GOFLAGS=-mod=mod run_go_tool "github.com/appscodelabs/license-bill-of-materials" \
       --override-file ./bill-of-materials.override.json \

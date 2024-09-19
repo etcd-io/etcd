@@ -509,7 +509,7 @@ function bom_pass {
   log_callout "Checking bill of materials..."
   # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
   # shellcheck disable=SC2207
-  modules=($(modules_exp))
+  modules=($(modules_for_bom))
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2

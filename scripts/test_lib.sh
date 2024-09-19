@@ -196,7 +196,7 @@ function modules() {
   echo "${modules[@]}"
 }
 
-function modules_exp() {
+function modules_for_bom() {
   for m in $(modules); do
     echo -n "${m}/... "
   done
