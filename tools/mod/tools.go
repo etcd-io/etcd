@@ -18,7 +18,7 @@
 // https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
 // for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
 
-package tools
+package mod
 
 import (
 	_ "github.com/alexfalkowski/gocovmerge"
