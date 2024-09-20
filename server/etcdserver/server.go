@@ -17,6 +17,7 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
+	errorspkg "errors"
 	"expvar"
 	"fmt"
 	"math"
@@ -1445,7 +1446,7 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 		learnerPromoteSucceed.Inc()
 		return resp, nil
 	}
-	if err != errors.ErrNotLeader {
+	if !errorspkg.Is(err, errors.ErrNotLeader) {
 		learnerPromoteFailed.WithLabelValues(err.Error()).Inc()
 		return resp, err
 	}
@@ -1464,13 +1465,13 @@ func (s *EtcdServer) PromoteMember(ctx context.Context, id uint64) ([]*membershi
 				return resp, nil
 			}
 			// If member promotion failed, return early. Otherwise keep retry.
-			if err == errors.ErrLearnerNotReady || err == membership.ErrIDNotFound || err == membership.ErrMemberNotLearner {
+			if errorspkg.Is(err, errors.ErrLearnerNotReady) || errorspkg.Is(err, membership.ErrIDNotFound) || errorspkg.Is(err, membership.ErrMemberNotLearner) {
 				return nil, err
 			}
 		}
 	}
 
-	if cctx.Err() == context.DeadlineExceeded {
+	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
 		return nil, errors.ErrTimeout
 	}
 	return nil, errors.ErrCanceled
@@ -1980,7 +1981,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		return
 	}
 
-	if ar.Err != errors.ErrNoSpace || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
+	if !errorspkg.Is(ar.Err, errors.ErrNoSpace) || len(s.alarmStore.Get(pb.AlarmType_NOSPACE)) > 0 {
 		s.w.Trigger(id, ar)
 		return
 	}
@@ -2149,7 +2150,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
-		if err == raft.ErrSnapOutOfDate {
+		if errorspkg.Is(err, raft.ErrSnapOutOfDate) {
 			return
 		}
 		lg.Panic("failed to create snapshot", zap.Error(err))
@@ -2190,7 +2191,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
 		// raft log might already been compact.
-		if err == raft.ErrCompacted {
+		if errorspkg.Is(err, raft.ErrCompacted) {
 			return
 		}
 		lg.Panic("failed to compact", zap.Error(err))

@@ -16,6 +16,7 @@ package lease_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -38,7 +39,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 	kv := clus.RandClient()
 
 	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
-	if err != rpctypes.ErrLeaseNotFound {
+	if !errors.Is(err, rpctypes.ErrLeaseNotFound) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
 }
@@ -54,7 +55,7 @@ func TestLeaseGrant(t *testing.T) {
 	kv := clus.RandClient()
 
 	_, merr := lapi.Grant(context.Background(), clientv3.MaxLeaseTTL+1)
-	if merr != rpctypes.ErrLeaseTTLTooLarge {
+	if !errors.Is(merr, rpctypes.ErrLeaseTTLTooLarge) {
 		t.Fatalf("err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
 	}
 
@@ -90,7 +91,7 @@ func TestLeaseRevoke(t *testing.T) {
 	}
 
 	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
-	if err != rpctypes.ErrLeaseNotFound {
+	if !errors.Is(err, rpctypes.ErrLeaseNotFound) {
 		t.Fatalf("err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
 	}
 }
@@ -114,7 +115,7 @@ func TestLeaseKeepAliveOnce(t *testing.T) {
 	}
 
 	_, err = lapi.KeepAliveOnce(context.Background(), clientv3.LeaseID(0))
-	if err != rpctypes.ErrLeaseNotFound {
+	if !errors.Is(err, rpctypes.ErrLeaseNotFound) {
 		t.Errorf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 	}
 }
@@ -761,7 +762,7 @@ func TestV3LeaseFailureOverlap(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				err := updown(n)
-				if err == nil || err == rpctypes.ErrTimeoutDueToConnectionLost {
+				if err == nil || errors.Is(err, rpctypes.ErrTimeoutDueToConnectionLost) {
 					return
 				}
 				t.Error(err)

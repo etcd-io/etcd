@@ -16,6 +16,7 @@ package v3compactor
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -139,7 +140,7 @@ func (pc *Periodic) Run() {
 			)
 			startTime := pc.clock.Now()
 			_, err := pc.c.Compact(pc.ctx, &pb.CompactionRequest{Revision: rev})
-			if err == nil || err == mvcc.ErrCompacted {
+			if err == nil || errors.Is(err, mvcc.ErrCompacted) {
 				pc.lg.Info(
 					"completed auto periodic compaction",
 					zap.Int64("revision", rev),
