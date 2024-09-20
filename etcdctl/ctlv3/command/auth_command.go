@@ -15,7 +15,6 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -83,7 +82,7 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 		if _, err = cli.AuthEnable(ctx); err == nil {
 			break
 		}
-		if errors.Is(err, rpctypes.ErrRootRoleNotExist) {
+		if err == rpctypes.ErrRootRoleNotExist {
 			if _, err = cli.RoleAdd(ctx, "root"); err != nil {
 				break
 			}

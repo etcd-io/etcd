@@ -16,7 +16,6 @@ package wal
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"hash"
 	"io"
@@ -115,7 +114,7 @@ func (d *decoder) decodeRecord(rec *walpb.Record) error {
 	if _, err = io.ReadFull(fileBufReader, data); err != nil {
 		// ReadFull returns io.EOF only if no bytes were read
 		// the decoder should treat this as an ErrUnexpectedEOF instead.
-		if errors.Is(err, io.EOF) {
+		if err == io.EOF {
 			err = io.ErrUnexpectedEOF
 		}
 		return err
