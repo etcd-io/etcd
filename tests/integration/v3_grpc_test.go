@@ -17,7 +17,6 @@ package integration
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -115,7 +114,7 @@ func TestV3PutRestart(t *testing.T) {
 	defer cancel()
 	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 	_, err := kvc.Put(ctx, reqput)
-	if err != nil && errors.Is(err, ctx.Err()) {
+	if err != nil && err == ctx.Err() {
 		t.Fatalf("expected grpc error, got local ctx error (%v)", err)
 	}
 }
@@ -1600,7 +1599,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	if client != nil || err == nil {
 		client.Close()
 		t.Fatalf("expected no client")
-	} else if !errors.Is(err, context.DeadlineExceeded) {
+	} else if err != context.DeadlineExceeded {
 		t.Fatalf("unexpected error (%v)", err)
 	}
 }
@@ -1777,7 +1776,7 @@ func testTLSReload(
 	// 5. expect dial time-out when loading expired certs
 	select {
 	case gerr := <-errc:
-		if !errors.Is(gerr, context.DeadlineExceeded) {
+		if gerr != context.DeadlineExceeded {
 			t.Fatalf("expected %v, got %v", context.DeadlineExceeded, gerr)
 		}
 	case <-time.After(5 * time.Second):

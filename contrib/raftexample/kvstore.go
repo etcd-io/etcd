@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"errors"
 	"log"
 	"strings"
 	"sync"
@@ -114,7 +113,7 @@ func (s *kvstore) getSnapshot() ([]byte, error) {
 
 func (s *kvstore) loadSnapshot() (*raftpb.Snapshot, error) {
 	snapshot, err := s.snapshotter.Load()
-	if errors.Is(err, snap.ErrNoSnapshot) {
+	if err == snap.ErrNoSnapshot {
 		return nil, nil
 	}
 	if err != nil {

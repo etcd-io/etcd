@@ -16,7 +16,6 @@ package membership
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path"
 	"reflect"
@@ -459,7 +458,7 @@ func TestClusterValidateConfigurationChangeV2(t *testing.T) {
 	}
 	for i, tt := range tests {
 		err := cl.ValidateConfigurationChange(tt.cc)
-		if !errors.Is(err, tt.werr) {
+		if err != tt.werr {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
 	}

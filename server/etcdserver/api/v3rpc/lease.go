@@ -16,7 +16,6 @@ package v3rpc
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"go.uber.org/zap"
@@ -62,10 +61,10 @@ func (ls *LeaseServer) LeaseRevoke(ctx context.Context, rr *pb.LeaseRevokeReques
 
 func (ls *LeaseServer) LeaseTimeToLive(ctx context.Context, rr *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
 	resp, err := ls.le.LeaseTimeToLive(ctx, rr)
-	if err != nil && !errors.Is(err, lease.ErrLeaseNotFound) {
+	if err != nil && err != lease.ErrLeaseNotFound {
 		return nil, togRPCError(err)
 	}
-	if errors.Is(err, lease.ErrLeaseNotFound) {
+	if err == lease.ErrLeaseNotFound {
 		resp = &pb.LeaseTimeToLiveResponse{
 			Header: &pb.ResponseHeader{},
 			ID:     rr.ID,
@@ -81,7 +80,7 @@ func (ls *LeaseServer) LeaseLeases(ctx context.Context, rr *pb.LeaseLeasesReques
 	if err != nil && err != lease.ErrLeaseNotFound {
 		return nil, togRPCError(err)
 	}
-	if errors.Is(err, lease.ErrLeaseNotFound) {
+	if err == lease.ErrLeaseNotFound {
 		resp = &pb.LeaseLeasesResponse{
 			Header: &pb.ResponseHeader{},
 			Leases: []*pb.LeaseStatus{},
@@ -101,7 +100,7 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) (err
 	case <-stream.Context().Done():
 		// the only server-side cancellation is noleader for now.
 		err = stream.Context().Err()
-		if errors.Is(err, context.Canceled) {
+		if err == context.Canceled {
 			err = rpctypes.ErrGRPCNoLeader
 		}
 	}
@@ -111,7 +110,7 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) (err
 func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) error {
 	for {
 		req, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
+		if err == io.EOF {
 			return nil
 		}
 		if err != nil {
@@ -134,7 +133,7 @@ func (ls *LeaseServer) leaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) erro
 		ls.hdr.fill(resp.Header)
 
 		ttl, err := ls.le.LeaseRenew(stream.Context(), lease.LeaseID(req.ID))
-		if errors.Is(err, lease.ErrLeaseNotFound) {
+		if err == lease.ErrLeaseNotFound {
 			err = nil
 			ttl = 0
 		}

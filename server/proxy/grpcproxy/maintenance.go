@@ -16,7 +16,6 @@ package grpcproxy
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -51,7 +50,7 @@ func (mp *maintenanceProxy) Snapshot(sr *pb.SnapshotRequest, stream pb.Maintenan
 	for {
 		rr, err := sc.Recv()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return nil
 			}
 			return err

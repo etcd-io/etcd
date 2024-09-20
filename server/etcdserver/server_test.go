@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
-	errorspkg "errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -389,7 +388,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			cluster: cl,
 		}
 		_, err := srv.applyConfChange(tt.cc, nil, true)
-		if !errorspkg.Is(err, tt.werr) {
+		if err != tt.werr {
 			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		}
 		cc := raftpb.ConfChange{Type: tt.cc.Type, NodeID: raft.None, Context: tt.cc.Context}
@@ -1534,7 +1533,7 @@ func TestWaitAppliedIndex(t *testing.T) {
 
 			err := s.waitAppliedIndex()
 
-			if !errorspkg.Is(err, tc.ExpectedError) {
+			if err != tc.ExpectedError {
 				t.Errorf("Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
 			}
 		})

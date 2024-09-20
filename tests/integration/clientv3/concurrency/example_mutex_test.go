@@ -16,7 +16,6 @@ package concurrency_test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 
@@ -65,7 +64,7 @@ func ExampleMutex_TryLock() {
 			if err = m2.TryLock(context.TODO()); err == nil {
 				log.Fatal("should not acquire lock")
 			}
-			if errors.Is(err, concurrency.ErrLocked) {
+			if err == concurrency.ErrLocked {
 				fmt.Println("cannot acquire lock for s2, as already locked in another session")
 			}
 

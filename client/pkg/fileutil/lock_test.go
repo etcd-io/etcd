@@ -15,7 +15,6 @@
 package fileutil
 
 import (
-	"errors"
 	"os"
 	"testing"
 	"time"
@@ -41,7 +40,7 @@ func TestLockAndUnlock(t *testing.T) {
 	}
 
 	// try lock a locked file
-	if _, err = TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode); !errors.Is(err, ErrLocked) {
+	if _, err = TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode); err != ErrLocked {
 		t.Fatal(err)
 	}
 
