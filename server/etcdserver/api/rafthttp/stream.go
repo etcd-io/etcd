@@ -16,7 +16,6 @@ package rafthttp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -404,7 +403,7 @@ func (cr *streamReader) run() {
 	for {
 		rc, err := cr.dial(t)
 		if err != nil {
-			if !errors.Is(err, errUnsupportedStreamType) {
+			if err != errUnsupportedStreamType {
 				cr.status.deactivate(failureType{source: t.String(), action: "dial"}, err.Error())
 			}
 		} else {
@@ -429,7 +428,7 @@ func (cr *streamReader) run() {
 			}
 			switch {
 			// all data is read out
-			case errors.Is(err, io.EOF):
+			case err == io.EOF:
 			// connection is closed by the remote
 			case transport.IsClosedConnError(err):
 			default:

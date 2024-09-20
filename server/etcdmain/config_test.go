@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net/url"
@@ -225,7 +224,7 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 
 	for i, tt := range conflictArgs {
 		cfg := newConfig()
-		if err := cfg.parse(tt); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
+		if err := cfg.parse(tt); err != embed.ErrConflictBootstrapFlags {
 			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
 		}
 	}
@@ -268,7 +267,7 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
+		if err := cfg.parse(args); err != embed.ErrConflictBootstrapFlags {
 			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
 		}
 	}
@@ -311,7 +310,7 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
+		if err := cfg.parse(tt.args); err != tt.werr {
 			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
 		}
 	}

@@ -165,13 +165,13 @@ func TestUserAdd(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
-	if !errors.Is(err, ErrUserAlreadyExist) {
+	if err != ErrUserAlreadyExist {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
 
 	ua = &pb.AuthUserAddRequest{Name: "", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a user with empty name
-	if !errors.Is(err, ErrUserEmpty) {
+	if err != ErrUserEmpty {
 		t.Fatal(err)
 	}
 
@@ -227,7 +227,7 @@ func TestCheckPassword(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
-	if !errors.Is(err, ErrAuthFailed) {
+	if err != ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 
@@ -242,7 +242,7 @@ func TestCheckPassword(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
-	if !errors.Is(err, ErrAuthFailed) {
+	if err != ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 }
@@ -264,7 +264,7 @@ func TestUserDelete(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
@@ -288,7 +288,7 @@ func TestUserDeleteAndPermCache(t *testing.T) {
 
 	// delete a non-existing user
 	_, err = as.UserDelete(ud)
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
@@ -336,7 +336,7 @@ func TestUserChangePassword(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
@@ -359,7 +359,7 @@ func TestRoleAdd(t *testing.T) {
 
 	// add a role with empty name
 	_, err = as.RoleAdd(&pb.AuthRoleAddRequest{Name: ""})
-	if !errors.Is(err, ErrRoleEmpty) {
+	if err != ErrRoleEmpty {
 		t.Fatal(err)
 	}
 }
@@ -379,7 +379,7 @@ func TestUserGrant(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }
@@ -455,7 +455,7 @@ func TestIsOpPermitted(t *testing.T) {
 	as.rangePermCacheMu.Lock()
 	delete(as.rangePermCache, "foo")
 	as.rangePermCacheMu.Unlock()
-	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); !errors.Is(err, ErrPermissionDenied) {
+	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); err != ErrPermissionDenied {
 		t.Fatal(err)
 	}
 
@@ -545,7 +545,7 @@ func TestRoleGrantPermission(t *testing.T) {
 		Name: "role-test-1",
 	})
 
-	if !errors.Is(err, ErrPermissionNotGiven) {
+	if err != ErrPermissionNotGiven {
 		t.Error(err)
 	}
 
@@ -887,13 +887,13 @@ func TestAuthInfoFromCtx(t *testing.T) {
 
 	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
-	if !errors.Is(err, ErrInvalidAuthToken) {
+	if err != ErrInvalidAuthToken {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
 	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid.Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
-	if !errors.Is(err, ErrInvalidAuthToken) {
+	if err != ErrInvalidAuthToken {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
@@ -914,14 +914,14 @@ func TestAuthDisable(t *testing.T) {
 	as.AuthDisable()
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err := as.Authenticate(ctx, "foo", "bar")
-	if !errors.Is(err, ErrAuthNotEnabled) {
+	if err != ErrAuthNotEnabled {
 		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
 	}
 
 	// Disabling disabled auth to make sure it can return safely if store is already disabled.
 	as.AuthDisable()
 	_, err = as.Authenticate(ctx, "foo", "bar")
-	if !errors.Is(err, ErrAuthNotEnabled) {
+	if err != ErrAuthNotEnabled {
 		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
 	}
 }
@@ -980,19 +980,19 @@ func TestIsAdminPermitted(t *testing.T) {
 
 	// invalid user
 	err = as.IsAdminPermitted(&AuthInfo{Username: "rooti", Revision: 1})
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Errorf("expected %v, got %v", ErrUserNotFound, err)
 	}
 
 	// empty user
 	err = as.IsAdminPermitted(&AuthInfo{Username: "", Revision: 1})
-	if !errors.Is(err, ErrUserEmpty) {
+	if err != ErrUserEmpty {
 		t.Errorf("expected %v, got %v", ErrUserEmpty, err)
 	}
 
 	// non-admin user
 	err = as.IsAdminPermitted(&AuthInfo{Username: "foo", Revision: 1})
-	if !errors.Is(err, ErrPermissionDenied) {
+	if err != ErrPermissionDenied {
 		t.Errorf("expected %v, got %v", ErrPermissionDenied, err)
 	}
 
@@ -1013,13 +1013,13 @@ func TestRecoverFromSnapshot(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
-	if !errors.Is(err, ErrUserAlreadyExist) {
+	if err != ErrUserAlreadyExist {
 		t.Fatalf("expected %v, got %v", ErrUserAlreadyExist, err)
 	}
 
 	ua = &pb.AuthUserAddRequest{Name: "", Options: &authpb.UserAddOptions{NoPassword: false}}
 	_, err = as.UserAdd(ua) // add a user with empty name
-	if !errors.Is(err, ErrUserEmpty) {
+	if err != ErrUserEmpty {
 		t.Fatal(err)
 	}
 
@@ -1195,7 +1195,7 @@ func TestUserNoPasswordAdd(t *testing.T) {
 
 	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err = as.Authenticate(ctx, username, "")
-	if !errors.Is(err, ErrAuthFailed) {
+	if err != ErrAuthFailed {
 		t.Fatalf("expected %v, got %v", ErrAuthFailed, err)
 	}
 }
@@ -1237,7 +1237,7 @@ func TestUserChangePasswordWithOldLog(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
-	if !errors.Is(err, ErrUserNotFound) {
+	if err != ErrUserNotFound {
 		t.Fatalf("expected %v, got %v", ErrUserNotFound, err)
 	}
 }

@@ -91,7 +91,7 @@ func TestGetClusterSize(t *testing.T) {
 				clusterToken: "fakeToken",
 			}
 
-			if cs, err := d.getClusterSize(); !errors.Is(err, tc.expectedErr) {
+			if cs, err := d.getClusterSize(); err != tc.expectedErr {
 				t.Errorf("Unexpected error, expected: %v got: %v", tc.expectedErr, err)
 			} else {
 				if err == nil && cs != tc.expectedSize {
@@ -387,7 +387,7 @@ func TestCheckCluster(t *testing.T) {
 			}
 
 			clsInfo, _, _, err := d.checkCluster()
-			if !errors.Is(err, tc.expectedError) {
+			if err != tc.expectedError {
 				t.Errorf("Unexpected error, expected: %v, got: %v", tc.expectedError, err)
 			}
 
@@ -724,7 +724,7 @@ func TestGetInitClusterStr(t *testing.T) {
 			}
 
 			retStr, err := clsInfo.getInitClusterStr(tc.clusterSize)
-			if !errors.Is(err, tc.expectedError) {
+			if err != tc.expectedError {
 				t.Errorf("Unexpected error, expected: %v, got: %v", tc.expectedError, err)
 			}
 

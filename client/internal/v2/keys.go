@@ -459,7 +459,7 @@ func (hw *httpWatcher) Next(ctx context.Context) (*Response, error) {
 
 		resp, err := unmarshalHTTPResponse(httpresp.StatusCode, httpresp.Header, body)
 		if err != nil {
-			if errors.Is(err, ErrEmptyBody) {
+			if err == ErrEmptyBody {
 				continue
 			}
 			return nil, err

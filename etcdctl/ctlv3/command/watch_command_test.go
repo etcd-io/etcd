@@ -15,7 +15,6 @@
 package command
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 )
@@ -535,7 +534,7 @@ func Test_parseWatchArgs(t *testing.T) {
 	}
 	for i, ts := range tt {
 		watchArgs, execArgs, err := parseWatchArgs(ts.osArgs, ts.commandArgs, ts.envKey, ts.envRange, ts.interactive)
-		if !errors.Is(err, ts.err) {
+		if err != ts.err {
 			t.Fatalf("#%d: error expected %v, got %v", i, ts.err, err)
 		}
 		if !reflect.DeepEqual(watchArgs, ts.watchArgs) {

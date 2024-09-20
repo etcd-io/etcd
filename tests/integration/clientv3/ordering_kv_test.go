@@ -89,7 +89,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	t.Logf("Quering m2 after restart")
 	v, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
 	t.Logf("Quering m2 returned: v:%v err:%v ", v, err)
-	if !errors.Is(err, errOrderViolation) {
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got err:%v v:%v", errOrderViolation, err, v)
 	}
 }
@@ -155,7 +155,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if !errors.Is(err, errOrderViolation) {
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 	orderingTxn = orderingKv.Txn(ctx)
@@ -164,7 +164,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	).Then(
 		clientv3.OpGet("foo", clientv3.WithSerializable()),
 	).Commit()
-	if !errors.Is(err, errOrderViolation) {
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 }
