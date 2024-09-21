@@ -17,6 +17,7 @@ package clientv3test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -50,12 +51,12 @@ func TestKVPutError(t *testing.T) {
 	ctx := context.TODO()
 
 	_, err := kv.Put(ctx, "", "bar")
-	if err != rpctypes.ErrEmptyKey {
+	if !errors.Is(err, rpctypes.ErrEmptyKey) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrEmptyKey, err)
 	}
 
 	_, err = kv.Put(ctx, "key", strings.Repeat("a", int(maxReqBytes+100)))
-	if err != rpctypes.ErrRequestTooLarge {
+	if !errors.Is(err, rpctypes.ErrRequestTooLarge) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRequestTooLarge, err)
 	}
 
@@ -67,7 +68,7 @@ func TestKVPutError(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for commit
 
 	_, err = kv.Put(ctx, "foo2", strings.Repeat("a", int(maxReqBytes-50)))
-	if err != rpctypes.ErrNoSpace { // over quota
+	if !errors.Is(err, rpctypes.ErrNoSpace) { // over quota
 		t.Fatalf("expected %v, got %v", rpctypes.ErrNoSpace, err)
 	}
 }
@@ -118,7 +119,7 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 	kv := clus.RandClient()
 
 	_, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
-	if err != rpctypes.ErrKeyNotFound {
+	if !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
@@ -157,7 +158,7 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); err != rpctypes.ErrKeyNotFound {
+	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
@@ -199,7 +200,7 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 
 	kv := clus.Client(0)
 	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
-	if err != rpctypes.ErrNoLeader {
+	if !errors.Is(err, rpctypes.ErrNoLeader) {
 		t.Fatal(err)
 	}
 
@@ -413,12 +414,12 @@ func TestKVCompactError(t *testing.T) {
 	}
 
 	_, err = kv.Compact(ctx, 6)
-	if err != rpctypes.ErrCompacted {
+	if !errors.Is(err, rpctypes.ErrCompacted) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrCompacted, err)
 	}
 
 	_, err = kv.Compact(ctx, 100)
-	if err != rpctypes.ErrFutureRev {
+	if !errors.Is(err, rpctypes.ErrFutureRev) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrFutureRev, err)
 	}
 }
@@ -443,7 +444,7 @@ func TestKVCompact(t *testing.T) {
 		t.Fatalf("couldn't compact kv space (%v)", err)
 	}
 	_, err = kv.Compact(ctx, 7)
-	if err == nil || err != rpctypes.ErrCompacted {
+	if err == nil || !errors.Is(err, rpctypes.ErrCompacted) {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrCompacted)
 	}
 
@@ -472,7 +473,7 @@ func TestKVCompact(t *testing.T) {
 	}
 
 	_, err = kv.Compact(ctx, 1000)
-	if err == nil || err != rpctypes.ErrFutureRev {
+	if err == nil || !errors.Is(err, rpctypes.ErrFutureRev) {
 		t.Fatalf("error got %v, want %v", err, rpctypes.ErrFutureRev)
 	}
 }
@@ -750,7 +751,7 @@ func TestKVLargeRequests(t *testing.T) {
 		_, err := cli.Put(context.TODO(), "foo", strings.Repeat("a", test.valueSize))
 
 		if _, ok := err.(rpctypes.EtcdError); ok {
-			if err != test.expectError {
+			if !errors.Is(err, test.expectError) {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}
 		} else if err != nil && !strings.HasPrefix(err.Error(), test.expectError.Error()) {

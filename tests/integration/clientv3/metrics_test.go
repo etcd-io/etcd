@@ -17,6 +17,7 @@ package clientv3test
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -165,7 +166,7 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			} else {
 				t.Fatalf("error reading: %v", err)

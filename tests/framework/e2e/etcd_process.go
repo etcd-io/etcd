@@ -307,7 +307,7 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 	}
 
 	exitCode, err := ep.proc.ExitCode()
-	if err == expect.ErrProcessRunning {
+	if errors.Is(err, expect.ErrProcessRunning) {
 		return true
 	}
 

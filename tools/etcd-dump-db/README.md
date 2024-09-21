@@ -102,3 +102,13 @@ key="\x00\x00\x00\x00\x005@x_\x00\x00\x00\x00\x00\x00\x00\tt", value="\n\x153640
 key="\x00\x00\x00\x00\x005@x_\x00\x00\x00\x00\x00\x00\x00\bt", value="\n\x153640412599896088633_8"
 key="\x00\x00\x00\x00\x005@x_\x00\x00\x00\x00\x00\x00\x00\at", value="\n\x153640412599896088633_7"
 ```
+
+#### scan-keys [data dir or db file path]
+
+Scans all the key-value pairs starting from a specific revision in the key space. It works even the db is corrupted.
+
+```
+$ ./etcd-dump-db scan-keys ~/tmp/etcd/778/db.db 16589739 2>/dev/null | grep "/registry/configmaps/istio-system/istio-namespace-controller-election"
+pageID=1306, index=5/5, rev={Revision:{Main:16589739 Sub:0} tombstone:false}, value=[key "/registry/configmaps/istio-system/istio-namespace-controller-election" | val "k8s\x00\n\x0f\n\x02v1\x12\tConfigMap\x12\xeb\x03\n\xe8\x03\n#istio-namespace-controller-election\x12\x00\x1a\fistio-system\"\x00*$bb696087-260d-4167-bf06-17d3361f9b5f2\x008\x00B\b\b\x9e\xbe\xed\xb5\x06\x10\x00b\xe6\x01\n(control-plane.alpha.kubernetes.io/leader\x12\xb9\x01{\"holderIdentity\":\"istiod-d56968787-txq2d\",\"holderKey\":\"default\",\"leaseDurationSeconds\":30,\"acquireTime\":\"2024-08-13T13:26:54Z\",\"renewTime\":\"2024-08-27T06:16:13Z\",\"leaderTransitions\":0}\x8a\x01\x90\x01\n\x0fpilot-discovery\x12\x06Update\x1a\x02v1\"\b\b\xad\u07b5\xb6\x06\x10\x002\bFieldsV1:[\nY{\"f:metadata\":{\"f:annotations\":{\".\":{},\"f:control-plane.alpha.kubernetes.io/leader\":{}}}}B\x00\x1a\x00\"\x00" | created 9612546 | mod 16589739 | ver 157604]
+pageID=4737, index=4/4, rev={Revision:{Main:16589786 Sub:0} tombstone:false}, value=[key "/registry/configmaps/istio-system/istio-namespace-controller-election" | val "k8s\x00\n\x0f\n\x02v1\x12\tConfigMap\x12\xeb\x03\n\xe8\x03\n#istio-namespace-controller-election\x12\x00\x1a\fistio-system\"\x00*$bb696087-260d-4167-bf06-17d3361f9b5f2\x008\x00B\b\b\x9e\xbe\xed\xb5\x06\x10\x00b\xe6\x01\n(control-plane.alpha.kubernetes.io/leader\x12\xb9\x01{\"holderIdentity\":\"istiod-d56968787-txq2d\",\"holderKey\":\"default\",\"leaseDurationSeconds\":30,\"acquireTime\":\"2024-08-13T13:26:54Z\",\"renewTime\":\"2024-08-27T06:16:21Z\",\"leaderTransitions\":0}\x8a\x01\x90\x01\n\x0fpilot-discovery\x12\x06Update\x1a\x02v1\"\b\b\xb5\u07b5\xb6\x06\x10\x002\bFieldsV1:[\nY{\"f:metadata\":{\"f:annotations\":{\".\":{},\"f:control-plane.alpha.kubernetes.io/leader\":{}}}}B\x00\x1a\x00\"\x00" | created 9612546 | mod 16589786 | ver 157605]
+```

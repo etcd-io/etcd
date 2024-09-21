@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2024 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build libs
+package main
 
-// This file implements that pattern:
-// https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-// for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
+import "unsafe"
 
-package libs
+const magic uint32 = 0xED0CDAED
 
-import (
-	_ "github.com/gogo/protobuf/proto"
-)
+type inBucket struct {
+	root     uint64 // page id of the bucket's root-level page
+	sequence uint64 // monotonically incrementing, used by NextSequence()
+}
+
+type meta struct {
+	magic    uint32
+	version  uint32
+	pageSize uint32
+	flags    uint32
+	root     inBucket
+	freelist uint64
+	pgid     uint64
+	txid     uint64
+	checksum uint64
+}
+
+func loadPageMeta(buf []byte) *meta {
+	return (*meta)(unsafe.Pointer(&buf[pageHeaderSize]))
+}

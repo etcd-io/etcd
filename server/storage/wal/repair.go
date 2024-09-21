@@ -67,7 +67,7 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 
 		case errors.Is(err, io.ErrUnexpectedEOF):
 			brokenName := f.Name() + ".broken"
-			bf, bferr := os.Create(brokenName)
+			bf, bferr := os.OpenFile(brokenName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 			if bferr != nil {
 				lg.Warn("failed to create backup file", zap.String("path", brokenName), zap.Error(bferr))
 				return false

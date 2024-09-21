@@ -72,23 +72,25 @@ which don't need to be executed before releasing each version.
    - `docker login gcr.io`
    - `docker login quay.io`
 5. Clone the etcd repository and checkout the target branch,
-   - `git clone git@github.com:etcd-io/etcd.git`
-   - `git checkout release-3.X`
+   - `git clone --branch release-3.X git@github.com:etcd-io/etcd.git`
 6. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
    - `DRY_RUN=false ./scripts/release.sh ${VERSION}`
 
-   It generates all release binaries under the directory `./release` and images. Binaries are pushed to the Google Cloud bucket
+   It generates all release binaries under the directory `/tmp/etcd-release-${VERSION}/etcd/release/` and images. Binaries are pushed to the Google Cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
+
+   **Remove the `quay.io` login entry from `~/.docker/config.json` after pushing Docker images.**
 7. Publish the release page on GitHub
    - Set the release title as the version name
    - Choose the correct release tag (generated from step #4)
    - Follow the format of previous release pages
    - Attach the generated binaries and signature file
+   - Verify the historical binary size for each architecture. If there's a big difference, verify that it works for that architecture
    - Select whether it's a pre-release
    - Publish the release
 8. Announce to the etcd-dev googlegroup
 
-   Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below. After sending out the email, ask one of the mailing list maintainers to approve the email from the pending list.
+   Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below. After sending out the email, ask one of the mailing list maintainers to approve the email from the pending list. Additionally, label the release email as `Release`.
 
 ```text
 Hello,

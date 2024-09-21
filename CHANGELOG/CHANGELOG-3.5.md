@@ -1,19 +1,22 @@
 
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
+<hr>
+
+## v3.5.17 (TBC)
 
 <hr>
 
-## v3.5.16 (TBC)
+## v3.5.16 (2024-09-10)
 
 ### etcd server
 - Fix [performance regression issue caused by the `ensureLeadership` in lease renew](https://github.com/etcd-io/etcd/pull/18439).
 - [Keep the tombstone during compaction if it happens to be the compaction revision](https://github.com/etcd-io/etcd/pull/18474)
+- Add [`etcd --experimental-compaction-sleep-interval`](https://github.com/etcd-io/etcd/pull/18514) flag to control the sleep interval between each compaction batch.
 
 ### Dependencies
-- Compile binaries using [go 1.21.13](https://github.com/etcd-io/etcd/pull/18421).
+- Compile binaries using [go 1.22.7](https://github.com/etcd-io/etcd/pull/18550).
 - Upgrade [bbolt to v1.3.11](https://github.com/etcd-io/etcd/pull/18489).
-
 
 <hr>
 
