@@ -62,6 +62,8 @@ which don't need to be executed before releasing each version.
 4. Authenticate the image registry, refer to [Authentication methods](https://cloud.google.com/container-registry/docs/advanced-authentication).
    - `gcloud auth login`
    - `gcloud auth configure-docker`
+5. Install gh, refer to [GitHub's documentation](https://github.com/cli/cli#installation). Ensure that running
+   `gh auth login` succeeds for the GitHub account you use to contribute to etcd.
 
 ### Release steps
 
@@ -81,13 +83,8 @@ which don't need to be executed before releasing each version.
 
    **Remove the `quay.io` login entry from `~/.docker/config.json` after pushing Docker images.**
 7. Publish the release page on GitHub
-   - Set the release title as the version name
-   - Choose the correct release tag (generated from step #4)
-   - Follow the format of previous release pages
-   - Attach the generated binaries and signature file
-   - Verify the historical binary size for each architecture. If there's a big difference, verify that it works for that architecture
-   - Select whether it's a pre-release
-   - Publish the release
+   - Open the **draft** release URL shown by the release script
+   - Review that it looks correct, then publish the release
 8. Announce to the etcd-dev googlegroup
 
    Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below. After sending out the email, ask one of the mailing list maintainers to approve the email from the pending list. Additionally, label the release email as `Release`.
