@@ -220,7 +220,7 @@ func (c *Client) autoSync() {
 			ctx, cancel := context.WithTimeout(c.ctx, 5*time.Second)
 			err := c.Sync(ctx)
 			cancel()
-			if err != nil && err != c.ctx.Err() {
+			if err != nil && !errors.Is(err, c.ctx.Err()) {
 				c.lg.Info("Auto sync endpoints failed.", zap.Error(err))
 			}
 		}
