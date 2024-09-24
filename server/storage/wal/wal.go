@@ -126,7 +126,7 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	p := filepath.Join(tmpdirpath, walName(0, 0))
-	f, err := fileutil.LockFile(p, os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
+	f, err := createNewWALFile[*fileutil.LockedFile](p, false)
 	if err != nil {
 		lg.Warn(
 			"failed to flock an initial WAL file",
@@ -231,6 +231,31 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 	}
 
 	return w, nil
+}
+
+// createNewWALFile creates a WAL file.
+// To create a locked file, use *fileutil.LockedFile type parameter.
+// To create a standard file, use *os.File type parameter.
+// If forceNew is true, the file will be truncated if it already exists.
+func createNewWALFile[T *os.File | *fileutil.LockedFile](path string, forceNew bool) (T, error) {
+	flag := os.O_WRONLY | os.O_CREATE
+	if forceNew {
+		flag |= os.O_TRUNC
+	}
+
+	if _, isLockedFile := any(T(nil)).(*fileutil.LockedFile); isLockedFile {
+		lockedFile, err := fileutil.LockFile(path, flag, fileutil.PrivateFileMode)
+		if err != nil {
+			return nil, err
+		}
+		return any(lockedFile).(T), nil
+	}
+
+	file, err := os.OpenFile(path, flag, fileutil.PrivateFileMode)
+	if err != nil {
+		return nil, err
+	}
+	return any(file).(T), nil
 }
 
 func (w *WAL) Reopen(lg *zap.Logger, snap walpb.Snapshot) (*WAL, error) {
