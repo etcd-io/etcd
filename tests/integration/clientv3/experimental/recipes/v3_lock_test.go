@@ -16,6 +16,7 @@ package recipes_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -139,7 +140,7 @@ func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.C
 				case <-ctx.Done():
 					t.Errorf("Thread: %v, Context failed: %v", i, err)
 				}
-			} else if err == concurrency.ErrLocked {
+			} else if errors.Is(err, concurrency.ErrLocked) {
 				select {
 				case notlockedC <- m:
 				case <-ctx.Done():

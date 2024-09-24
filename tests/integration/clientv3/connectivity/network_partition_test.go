@@ -35,7 +35,7 @@ var errExpected = errors.New("expected error")
 
 func isErrorExpected(err error) bool {
 	return clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) ||
-		err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail
+		errors.Is(err, rpctypes.ErrTimeout) || errors.Is(err, rpctypes.ErrTimeoutDueToLeaderFail)
 }
 
 // TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
@@ -322,7 +322,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 		_, err = kvc.Get(ctx, "a")
 		cancel()
 		if err != nil {
-			if err == rpctypes.ErrTimeout {
+			if errors.Is(err, rpctypes.ErrTimeout) {
 				<-time.After(time.Second)
 				i++
 				continue

@@ -115,7 +115,7 @@ func TestV3PutRestart(t *testing.T) {
 	defer cancel()
 	reqput := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 	_, err := kvc.Put(ctx, reqput)
-	if err != nil && err == ctx.Err() {
+	if err != nil && errors.Is(err, ctx.Err()) {
 		t.Fatalf("expected grpc error, got local ctx error (%v)", err)
 	}
 }
