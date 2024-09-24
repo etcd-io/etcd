@@ -2181,7 +2181,6 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 		return
 	}
 
-	// make sure compacti > 0, because s.r.raftStorage.Compact(compacti) returns ErrCompacted if compacti = 0
 	compacti := ep.snapi - s.Cfg.SnapshotCatchUpEntries
 
 	lg := s.Logger()
