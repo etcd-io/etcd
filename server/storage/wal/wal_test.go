@@ -96,6 +96,75 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestCreateNewWALFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		fileType interface{}
+		forceNew bool
+	}{
+		{
+			name:     "creating standard file should succeed and not truncate file",
+			fileType: &os.File{},
+			forceNew: false,
+		},
+		{
+			name:     "creating locked file should succeed and not truncate file",
+			fileType: &fileutil.LockedFile{},
+			forceNew: false,
+		},
+		{
+			name:     "creating standard file with forceNew should truncate file",
+			fileType: &os.File{},
+			forceNew: true,
+		},
+		{
+			name:     "creating locked file with forceNew should truncate file",
+			fileType: &fileutil.LockedFile{},
+			forceNew: true,
+		},
+	}
+
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), walName(0, uint64(i)))
+
+			// create initial file with some data to verify truncate behavior
+			err := os.WriteFile(p, []byte("test data"), fileutil.PrivateFileMode)
+			require.NoError(t, err)
+
+			var f interface{}
+			switch tt.fileType.(type) {
+			case *os.File:
+				f, err = createNewWALFile[*os.File](p, tt.forceNew)
+				require.IsType(t, &os.File{}, f)
+			case *fileutil.LockedFile:
+				f, err = createNewWALFile[*fileutil.LockedFile](p, tt.forceNew)
+				require.IsType(t, &fileutil.LockedFile{}, f)
+			default:
+				panic("unknown file type")
+			}
+
+			require.NoError(t, err)
+
+			// validate the file permissions
+			fi, err := os.Stat(p)
+			require.NoError(t, err)
+			expectedPerms := fmt.Sprintf("%o", os.FileMode(fileutil.PrivateFileMode))
+			actualPerms := fmt.Sprintf("%o", fi.Mode().Perm())
+			require.Equal(t, expectedPerms, actualPerms, "unexpected file permissions on %q", p)
+
+			content, err := os.ReadFile(p)
+			require.NoError(t, err)
+
+			if tt.forceNew {
+				require.Empty(t, string(content), "file content should be truncated but it wasn't")
+			} else {
+				require.Equal(t, "test data", string(content), "file content should not be truncated but it was")
+			}
+		})
+	}
+}
+
 func TestCreateFailFromPollutedDir(t *testing.T) {
 	p := t.TempDir()
 	os.WriteFile(filepath.Join(p, "test.wal"), []byte("data"), os.ModeTemporary)
