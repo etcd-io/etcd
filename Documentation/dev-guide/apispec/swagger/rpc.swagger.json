@@ -2982,7 +2982,7 @@
         },
         "canceled": {
           "type": "boolean",
-          "description": "canceled is set to true if the response is for a cancel watch request.\nNo further events will be sent to the canceled watcher."
+          "description": "canceled is set to true if the response is for a cancel watch request\nor if the start_revision has already been compacted.\nNo further events will be sent to the canceled watcher."
         },
         "compact_revision": {
           "type": "string",

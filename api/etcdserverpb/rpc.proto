@@ -836,7 +836,8 @@ message WatchResponse {
   // All events sent to the created watcher will attach with the same watch_id.
   bool created = 3;
 
-  // canceled is set to true if the response is for a cancel watch request.
+  // canceled is set to true if the response is for a cancel watch request
+  // or if the start_revision has already been compacted.
   // No further events will be sent to the canceled watcher.
   bool canceled = 4;
 
