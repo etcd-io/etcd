@@ -2177,12 +2177,11 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 	// Retain all log entries up to the latest snapshot index to ensure any member can recover from that snapshot.
 	// Beyond the snapshot index, preserve the most recent s.Cfg.SnapshotCatchUpEntries entries in memory.
 	// This allows slow followers to catch up by synchronizing entries instead of requiring a full snapshot transfer.
-	// Only compact raft log once every N applies
 	if ep.snapi <= s.Cfg.SnapshotCatchUpEntries  {
 		return
 	}
 
-	// make sure compacti >= 0, because s.r.raftStorage.Compact(compacti) always returns ErrCompacted if compacti <= 0
+	// make sure compacti > 0, because s.r.raftStorage.Compact(compacti) returns ErrCompacted if compacti = 0
 	compacti := ep.snapi - s.Cfg.SnapshotCatchUpEntries
 
 	lg := s.Logger()
