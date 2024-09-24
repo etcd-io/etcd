@@ -267,7 +267,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 		if len(ev.Events) != 0 {
 			t.Fatal("expected no event")
 		}
-		if err = ev.Err(); err != rpctypes.ErrNoLeader {
+		if err = ev.Err(); !errors.Is(err, rpctypes.ErrNoLeader) {
 			t.Fatalf("expected %v, got %v", rpctypes.ErrNoLeader, err)
 		}
 	case <-time.After(integration2.RequestWaitTimeout): // enough time to detect leader lost
@@ -313,7 +313,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()
-	if err != rpctypes.ErrLeaderChanged {
+	if !errors.Is(err, rpctypes.ErrLeaderChanged) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaderChanged, err)
 	}
 

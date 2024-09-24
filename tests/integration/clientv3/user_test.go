@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -41,17 +42,17 @@ func TestUserError(t *testing.T) {
 	}
 
 	_, err = authapi.UserAdd(context.TODO(), "foo", "bar")
-	if err != rpctypes.ErrUserAlreadyExist {
+	if !errors.Is(err, rpctypes.ErrUserAlreadyExist) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
 	}
 
 	_, err = authapi.UserDelete(context.TODO(), "not-exist-user")
-	if err != rpctypes.ErrUserNotFound {
+	if !errors.Is(err, rpctypes.ErrUserNotFound) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
 	}
 
 	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
-	if err != rpctypes.ErrRoleNotFound {
+	if !errors.Is(err, rpctypes.ErrRoleNotFound) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 	}
 }

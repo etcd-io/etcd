@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -135,7 +136,7 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 
 	cli := clus.Client(targetIdx)
 	_, err := cli.MoveLeader(context.Background(), target)
-	if err != rpctypes.ErrNotLeader {
+	if !errors.Is(err, rpctypes.ErrNotLeader) {
 		t.Fatalf("error expected %v, got %v", rpctypes.ErrNotLeader, err)
 	}
 
