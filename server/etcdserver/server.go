@@ -745,6 +745,7 @@ type etcdProgress struct {
 	snapi     uint64
 	appliedt  uint64
 	appliedi  uint64
+	compacti  uint64
 }
 
 // raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
@@ -763,6 +764,10 @@ func (s *EtcdServer) run() {
 	sn, err := s.r.raftStorage.Snapshot()
 	if err != nil {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
+	}
+	fi, err := s.r.raftStorage.FirstIndex()
+	if err != nil {
+		lg.Panic("failed to get first index from Raft storage", zap.Error(err))
 	}
 
 	// asynchronously accept toApply packets, dispatch progress in-order
@@ -813,6 +818,7 @@ func (s *EtcdServer) run() {
 		snapi:     sn.Metadata.Index,
 		appliedt:  sn.Metadata.Term,
 		appliedi:  sn.Metadata.Index,
+		compacti:  fi - 1,
 	}
 
 	defer func() {
@@ -2177,11 +2183,14 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 	// Retain all log entries up to the latest snapshot index to ensure any member can recover from that snapshot.
 	// Beyond the snapshot index, preserve the most recent s.Cfg.SnapshotCatchUpEntries entries in memory.
 	// This allows slow followers to catch up by synchronizing entries instead of requiring a full snapshot transfer.
-	if ep.snapi <= s.Cfg.SnapshotCatchUpEntries  {
+	if ep.snapi <= s.Cfg.SnapshotCatchUpEntries {
 		return
 	}
 
 	compacti := ep.snapi - s.Cfg.SnapshotCatchUpEntries
+	if compacti <= ep.compacti {
+		return
+	}
 
 	lg := s.Logger()
 
@@ -2196,6 +2205,7 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 	}
 
 	err := s.r.raftStorage.Compact(compacti)
+	ep.compacti = compacti
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
 		// raft log might already been compact.
