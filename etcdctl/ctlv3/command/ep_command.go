@@ -15,6 +15,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -137,7 +138,7 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 			_, err = cli.Get(ctx, "health")
 			eh := epHealth{Ep: ep, Health: false, Took: time.Since(st).String()}
 			// permission denied is OK since proposal goes through consensus to get it
-			if err == nil || err == rpctypes.ErrPermissionDenied {
+			if err == nil || errors.Is(err, rpctypes.ErrPermissionDenied) {
 				eh.Health = true
 			} else {
 				eh.Error = err.Error()
