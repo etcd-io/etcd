@@ -145,7 +145,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		if err == nil {
 			break
 		}
-		if err != errExpected {
+		if !errors.Is(err, errExpected) {
 			t.Errorf("#%d: expected '%v', got '%v'", i, errExpected, err)
 		}
 		// give enough time for endpoint switch

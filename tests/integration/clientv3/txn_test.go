@@ -46,7 +46,7 @@ func TestTxnError(t *testing.T) {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
 	_, err = kv.Txn(ctx).Then(ops...).Commit()
-	if err != rpctypes.ErrTooManyOps {
+	if !errors.Is(err, rpctypes.ErrTooManyOps) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrTooManyOps, err)
 	}
 }

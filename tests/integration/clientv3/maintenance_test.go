@@ -187,7 +187,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 
 	cancel()
 	_, err = io.Copy(io.Discard, rc1)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
 }

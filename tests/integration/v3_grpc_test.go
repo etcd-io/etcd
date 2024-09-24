@@ -17,6 +17,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -1599,7 +1600,7 @@ func TestTLSGRPCRejectSecureClient(t *testing.T) {
 	if client != nil || err == nil {
 		client.Close()
 		t.Fatalf("expected no client")
-	} else if err != context.DeadlineExceeded {
+	} else if !errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("unexpected error (%v)", err)
 	}
 }
@@ -1776,7 +1777,7 @@ func testTLSReload(
 	// 5. expect dial time-out when loading expired certs
 	select {
 	case gerr := <-errc:
-		if gerr != context.DeadlineExceeded {
+		if !errors.Is(gerr, context.DeadlineExceeded) {
 			t.Fatalf("expected %v, got %v", context.DeadlineExceeded, gerr)
 		}
 	case <-time.After(5 * time.Second):
