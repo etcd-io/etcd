@@ -59,8 +59,6 @@ type Server interface {
 	// Close closes listener and transport.
 	Close() error
 
-	LatencyAccept() time.Duration
-
 	// DelayTx adds latency ± random variable for "outgoing" traffic
 	// in "sending" layer.
 	DelayTx(latency, rv time.Duration)
@@ -141,9 +139,6 @@ type server struct {
 
 	listenerMu sync.RWMutex
 	listener   net.Listener
-
-	latencyAcceptMu sync.RWMutex
-	latencyAccept   time.Duration
 
 	modifyTxMu sync.RWMutex
 	modifyTx   func(data []byte) []byte
@@ -263,17 +258,6 @@ func (s *server) listenAndServe() {
 	close(s.readyc)
 
 	for {
-		s.latencyAcceptMu.RLock()
-		lat := s.latencyAccept
-		s.latencyAcceptMu.RUnlock()
-		if lat > 0 {
-			select {
-			case <-time.After(lat):
-			case <-s.donec:
-				return
-			}
-		}
-
 		s.listenerMu.RLock()
 		ln := s.listener
 		s.listenerMu.RUnlock()
@@ -607,13 +591,6 @@ func (s *server) Close() (err error) {
 	})
 	s.closeWg.Wait()
 	return err
-}
-
-func (s *server) LatencyAccept() time.Duration {
-	s.latencyAcceptMu.RLock()
-	d := s.latencyAccept
-	s.latencyAcceptMu.RUnlock()
-	return d
 }
 
 func (s *server) DelayTx(latency, rv time.Duration) {
