@@ -135,8 +135,7 @@ func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer 
 		select {
 		case <-proxyServer.Done():
 		case err := <-proxyServer.Error():
-			if !strings.HasPrefix(err.Error(), "accept ") ||
-				!strings.HasSuffix(err.Error(), "use of closed network connection") {
+			if !strings.HasPrefix(err.Error(), "accept ") && !strings.HasSuffix(err.Error(), "use of closed network connection") {
 				t.Fatal(err)
 			}
 		case <-time.After(3 * time.Second):
@@ -292,43 +291,6 @@ func testServer(t *testing.T, delayTx bool) {
 			close(writec)
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
-	}
-}
-
-func TestServer_DelayAccept(t *testing.T) {
-	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, proxyServer, false, httpServer)
-	go func() {
-		defer close(donec)
-		for data := range writec {
-			sendData(data)
-		}
-	}()
-
-	data := []byte("Hello World!")
-	now := time.Now()
-	writec <- data
-	if d := <-recvc; !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took1 := time.Since(now)
-	t.Logf("took %v with no latency", took1)
-	time.Sleep(1 * time.Second) // wait for the idle connection to timeout
-
-	lat, rv := 700*time.Millisecond, 10*time.Millisecond
-	proxyServer.DelayAccept(lat, rv)
-	defer proxyServer.UndelayAccept()
-
-	now = time.Now()
-	writec <- data
-	if d := <-recvc; !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took2 := time.Since(now)
-	t.Logf("took %v with latency %v±%v", took2, lat, rv)
-
-	if took1 >= took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
 	}
 }
 

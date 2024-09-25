@@ -68,15 +68,6 @@ type Server interface {
 	// Close closes listener and transport.
 	Close() error
 
-	// DelayAccept adds latency ± random variable to accepting
-	// new incoming connections.
-	DelayAccept(latency, rv time.Duration)
-	// UndelayAccept removes sending latencies.
-	UndelayAccept()
-	// LatencyAccept returns current latency on accepting
-	// new incoming connections.
-	LatencyAccept() time.Duration
-
 	// DelayTx adds latency ± random variable for "outgoing" traffic
 	// in "sending" layer.
 	DelayTx(latency, rv time.Duration)
@@ -151,10 +142,7 @@ type server struct {
 	closeHijackedConn sync.WaitGroup
 
 	listenerMu sync.RWMutex
-	listener   *customListener
-
-	latencyAcceptMu sync.RWMutex
-	latencyAccept   time.Duration
+	listener   *net.Listener
 
 	modifyTxMu sync.RWMutex
 	modifyTx   func(data []byte) []byte
@@ -242,10 +230,7 @@ func NewServer(cfg ServerConfig) Server {
 		return nil
 	}
 
-	s.listener = &customListener{
-		s: s,
-		l: &ln,
-	}
+	s.listener = &ln
 
 	go func() {
 		defer s.closeWg.Done()
@@ -256,7 +241,7 @@ func NewServer(cfg ServerConfig) Server {
 
 		s.lg.Info("proxy is listening on", zap.String("listen on", s.Listen()))
 		close(s.readyc)
-		if err := s.httpServer.Serve(s.listener); err != http.ErrServerClosed {
+		if err := s.httpServer.Serve(*s.listener); err != http.ErrServerClosed {
 			// always returns error. ErrServerClosed on graceful close
 			panic(fmt.Sprintf("startHTTPServer Serve(): %v", err))
 		}
@@ -264,74 +249,6 @@ func NewServer(cfg ServerConfig) Server {
 
 	s.lg.Info("started proxying", zap.String("listen on", s.Listen()))
 	return s
-}
-
-// Because we are implementing L7 proxy, but would like to keep the L4 features,
-// thus, we need to encapsulate the L4 functionalities in our custom Listener
-type customListener struct {
-	s *server
-	l *net.Listener
-}
-
-func (c *customListener) Accept() (net.Conn, error) {
-	// we implement the L4 features here
-	c.s.latencyAcceptMu.RLock()
-	lat := c.s.latencyAccept
-	c.s.lg.Info(
-		"get accept latency",
-		zap.Duration("latency", lat),
-	)
-	c.s.latencyAcceptMu.RUnlock()
-	if lat > 0 {
-		select {
-		case <-time.After(lat):
-		case <-c.s.donec:
-			return nil, fmt.Errorf("listener is closed")
-		}
-	}
-
-	c.s.listenerMu.RLock()
-	conn, err := (*c.l).Accept()
-	c.s.listenerMu.RUnlock()
-	if err != nil {
-		select {
-		case c.s.errc <- err:
-			select {
-			case <-c.s.donec:
-				return nil, err
-			default:
-			}
-		case <-c.s.donec:
-			return nil, err
-		}
-		c.s.lg.Debug("listener accept error", zap.Error(err))
-
-		if strings.HasSuffix(err.Error(), "use of closed network connection") {
-			select {
-			case <-time.After(c.s.retryInterval):
-			case <-c.s.donec:
-				return nil, err
-			}
-			c.s.lg.Debug("listener is closed")
-		}
-	}
-
-	return conn, err
-}
-
-// Close closes the listener.
-// Any blocked Accept operations will be unblocked and return errors.
-func (c *customListener) Close() error {
-	c.s.listenerMu.RLock()
-	defer c.s.listenerMu.RUnlock()
-	return (*c.l).Close()
-}
-
-// Addr returns the listener's network address.
-func (c *customListener) Addr() net.Addr {
-	c.s.listenerMu.RLock()
-	defer c.s.listenerMu.RUnlock()
-	return (*c.l).Addr()
 }
 
 type serverHandler struct {
@@ -511,7 +428,7 @@ func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 		}
 		data := buf[:nr1]
 
-		// alters/corrupts/drops data
+		// drops data
 		switch ptype {
 		case proxyTx:
 			s.modifyTxMu.RLock()
@@ -550,7 +467,7 @@ func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 		switch ptype {
 		case proxyTx:
 			s.lg.Debug(
-				"modified tx",
+				"proxyTx",
 				zap.String("data-received", humanize.Bytes(uint64(nr1))),
 				zap.String("data-modified", humanize.Bytes(uint64(nr2))),
 				zap.String("proxy listening on", s.Listen()),
@@ -558,7 +475,7 @@ func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 			)
 		case proxyRx:
 			s.lg.Debug(
-				"modified rx",
+				"proxyRx",
 				zap.String("data-received", humanize.Bytes(uint64(nr1))),
 				zap.String("data-modified", humanize.Bytes(uint64(nr2))),
 				zap.String("proxy listening on", s.Listen()),
@@ -704,44 +621,6 @@ func (s *server) Close() (err error) {
 	// s.closeWg.Wait()
 
 	return err
-}
-
-func (s *server) DelayAccept(latency, rv time.Duration) {
-	if latency <= 0 {
-		return
-	}
-	d := computeLatency(latency, rv)
-	s.latencyAcceptMu.Lock()
-	s.latencyAccept = d
-	s.latencyAcceptMu.Unlock()
-
-	s.lg.Info(
-		"set accept latency",
-		zap.Duration("latency", d),
-		zap.Duration("given-latency", latency),
-		zap.Duration("given-latency-random-variable", rv),
-		zap.String("proxy listening on", s.Listen()),
-	)
-}
-
-func (s *server) UndelayAccept() {
-	s.latencyAcceptMu.Lock()
-	d := s.latencyAccept
-	s.latencyAccept = 0
-	s.latencyAcceptMu.Unlock()
-
-	s.lg.Info(
-		"removed accept latency",
-		zap.Duration("latency", d),
-		zap.String("proxy listening on", s.Listen()),
-	)
-}
-
-func (s *server) LatencyAccept() time.Duration {
-	s.latencyAcceptMu.RLock()
-	d := s.latencyAccept
-	s.latencyAcceptMu.RUnlock()
-	return d
 }
 
 func (s *server) DelayTx(latency, rv time.Duration) {
