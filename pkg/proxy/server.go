@@ -59,13 +59,6 @@ type Server interface {
 	// Close closes listener and transport.
 	Close() error
 
-	// DelayAccept adds latency ± random variable to accepting
-	// new incoming connections.
-	DelayAccept(latency, rv time.Duration)
-	// UndelayAccept removes sending latencies.
-	UndelayAccept()
-	// LatencyAccept returns current latency on accepting
-	// new incoming connections.
 	LatencyAccept() time.Duration
 
 	// DelayTx adds latency ± random variable for "outgoing" traffic
@@ -614,39 +607,6 @@ func (s *server) Close() (err error) {
 	})
 	s.closeWg.Wait()
 	return err
-}
-
-func (s *server) DelayAccept(latency, rv time.Duration) {
-	if latency <= 0 {
-		return
-	}
-	d := computeLatency(latency, rv)
-	s.latencyAcceptMu.Lock()
-	s.latencyAccept = d
-	s.latencyAcceptMu.Unlock()
-
-	s.lg.Info(
-		"set accept latency",
-		zap.Duration("latency", d),
-		zap.Duration("given-latency", latency),
-		zap.Duration("given-latency-random-variable", rv),
-		zap.String("from", s.From()),
-		zap.String("to", s.To()),
-	)
-}
-
-func (s *server) UndelayAccept() {
-	s.latencyAcceptMu.Lock()
-	d := s.latencyAccept
-	s.latencyAccept = 0
-	s.latencyAcceptMu.Unlock()
-
-	s.lg.Info(
-		"removed accept latency",
-		zap.Duration("latency", d),
-		zap.String("from", s.From()),
-		zap.String("to", s.To()),
-	)
 }
 
 func (s *server) LatencyAccept() time.Duration {
