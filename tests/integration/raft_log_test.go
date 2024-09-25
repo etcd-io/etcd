@@ -61,7 +61,7 @@ func TestRaftLogCompaction(t *testing.T) {
 			t.Errorf("#%d: couldn't put key (%v)", appliedi, err)
 		}
 	}
-	// The first snapshot and compaction shouldn't happen because the index is less than 11
+	// The first snapshot and compaction shouldn't happen because applied index is less than 11
 	logOccurredAtMostNTimes(t, mem, 5*time.Second, "saved snapshot", 0)
 	logOccurredAtMostNTimes(t, mem, time.Second, "compacted Raft logs", 0)
 
@@ -72,7 +72,7 @@ func TestRaftLogCompaction(t *testing.T) {
 			t.Errorf("#%d: couldn't put key (%v)", appliedi, err)
 		}
 	}
-	// The first snapshot and compaction should happen because the index is 11
+	// The first snapshot and compaction should happen because applied index is 11
 	logOccurredAtMostNTimes(t, mem, 5*time.Second, "saved snapshot", 1)
 	logOccurredAtMostNTimes(t, mem, time.Second, "compacted Raft logs", 1)
 	expectMemberLog(t, mem, time.Second, "\"compact-index\": 6", 1)
