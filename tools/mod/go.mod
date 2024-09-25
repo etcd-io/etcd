@@ -73,7 +73,7 @@ require (
 	github.com/firefart/nonamedreturns v1.0.5 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fzipp/gocyclo v0.6.0 // indirect
-	github.com/ghostiam/protogetter v0.3.6 // indirect
+	github.com/ghostiam/protogetter v0.3.8 // indirect
 	github.com/go-critic/go-critic v0.11.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-sql-driver/mysql v1.7.1 // indirect
@@ -218,7 +218,7 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/term v0.24.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
-	golang.org/x/tools v0.24.0 // indirect
+	golang.org/x/tools v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240924160255-9d4c2d233b61 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240924160255-9d4c2d233b61 // indirect
 	google.golang.org/grpc v1.67.0 // indirect
