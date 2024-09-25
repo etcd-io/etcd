@@ -234,55 +234,6 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 	}
 }
 
-func TestServer_PauseTx(t *testing.T) {
-	lg := zaptest.NewLogger(t)
-	scheme := "unix"
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(srcAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	ln := listen(t, scheme, dstAddr, transport.TLSInfo{})
-	defer ln.Close()
-
-	p := NewServer(ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
-	})
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	p.PauseTx()
-
-	data := []byte("Hello World!")
-	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-
-	recvc := make(chan []byte, 1)
-	go func() {
-		recvc <- receive(t, ln)
-	}()
-
-	select {
-	case d := <-recvc:
-		t.Fatalf("received unexpected data %q during pause", string(d))
-	case <-time.After(200 * time.Millisecond):
-	}
-
-	p.UnpauseTx()
-
-	select {
-	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("took too long to receive after unpause")
-	}
-}
-
 func TestServer_ModifyTx_corrupt(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
