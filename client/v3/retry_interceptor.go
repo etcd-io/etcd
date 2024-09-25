@@ -146,14 +146,14 @@ func (c *Client) streamClientInterceptor(optFuncs ...retryOption) grpc.StreamCli
 // shouldRefreshToken checks whether there's a need to refresh the token based on the error and callOptions,
 // and returns a boolean value.
 func (c *Client) shouldRefreshToken(err error, callOpts *options) bool {
-	if rpctypes.Error(err) == rpctypes.ErrUserEmpty {
+	if errors.Is(rpctypes.Error(err), rpctypes.ErrUserEmpty) {
 		// refresh the token when username, password is present but the server returns ErrUserEmpty
 		// which is possible when the client token is cleared somehow
 		return c.authTokenBundle != nil // equal to c.Username != "" && c.Password != ""
 	}
 
 	return callOpts.retryAuth &&
-		(rpctypes.Error(err) == rpctypes.ErrInvalidAuthToken || rpctypes.Error(err) == rpctypes.ErrAuthOldRevision)
+		(errors.Is(rpctypes.Error(err), rpctypes.ErrInvalidAuthToken) || errors.Is(rpctypes.Error(err), rpctypes.ErrAuthOldRevision))
 }
 
 func (c *Client) refreshToken(ctx context.Context) error {
@@ -254,7 +254,7 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool,
 	wasGood := s.receivedGood
 	s.mu.RUnlock()
 	err := s.getStream().RecvMsg(m)
-	if err == nil || err == io.EOF {
+	if err == nil || errors.Is(err, io.EOF) {
 		s.mu.Lock()
 		s.receivedGood = true
 		s.mu.Unlock()

@@ -88,11 +88,12 @@ if err != nil {
 kapi := client.NewKeysAPI(c)
 resp, err := kapi.Set(ctx, "test", "bar", nil)
 if err != nil {
-	if err == context.Canceled {
+	var cerr *client.ClusterError
+	if errors.Is(err, context.Canceled) {
 		// ctx is canceled by another routine
-	} else if err == context.DeadlineExceeded {
+	} else if errors.Is(err, context.DeadlineExceeded) {
 		// ctx is attached with a deadline and it exceeded
-	} else if cerr, ok := err.(*client.ClusterError); ok {
+	} else if errors.As(err, &cerr) {
 		// process (cerr.Errors)
 	} else {
 		// bad cluster endpoints, which are not etcd servers
