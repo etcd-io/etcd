@@ -765,7 +765,7 @@ func (s *EtcdServer) run() {
 	if err != nil {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
 	}
-	firstIndex, err := s.r.raftStorage.FirstIndex()
+	firstRaftIndex, err := s.r.raftStorage.FirstIndex()
 	if err != nil {
 		lg.Panic("failed to get first index from Raft storage", zap.Error(err))
 	}
@@ -824,7 +824,7 @@ func (s *EtcdServer) run() {
 		// After calling raftStorage.Compact(compacti) without errors, the dummy entry of
 		// raftStorage becomes {Index: compacti}, and raftStorage.FirstIndex() returns
 		// (compacti+1, nil). This is validated by TestMemoryStorageCompaction.
-		compacti:  firstIndex - 1,
+		compacti: firstRaftIndex - 1,
 	}
 
 	defer func() {
