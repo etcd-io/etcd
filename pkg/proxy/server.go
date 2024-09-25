@@ -504,11 +504,27 @@ func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 			panic("unknown proxy type")
 		}
 		if lat > 0 {
+			s.lg.Debug(
+				"before delay TX/RX",
+				zap.String("data-received", humanize.Bytes(uint64(nr1))),
+				zap.String("data-modified", humanize.Bytes(uint64(nr2))),
+				zap.String("proxy listening on", s.Listen()),
+				zap.Int("to peer port", peerPort),
+				zap.Duration("latency", lat),
+			)
 			select {
 			case <-time.After(lat):
 			case <-s.donec:
 				return
 			}
+			s.lg.Debug(
+				"after delay TX/RX",
+				zap.String("data-received", humanize.Bytes(uint64(nr1))),
+				zap.String("data-modified", humanize.Bytes(uint64(nr2))),
+				zap.String("proxy listening on", s.Listen()),
+				zap.Int("to peer port", peerPort),
+				zap.Duration("latency", lat),
+			)
 		}
 
 		// now forward packets to target

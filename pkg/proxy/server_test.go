@@ -50,7 +50,7 @@ func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Requ
 	}
 }
 
-func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, chan []byte, Server, *http.Server, func(data []byte)) {
+func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, Server, *http.Server, func(data []byte)) {
 	lg := zaptest.NewLogger(t)
 	scheme := "tcp"
 	L7Scheme := "http"
@@ -86,7 +86,7 @@ func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, cha
 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", proxyURL.String())
 	t.Logf("Proxy URL %s", proxyURL.String())
 
-	donec, writec := make(chan struct{}), make(chan []byte)
+	donec := make(chan struct{})
 
 	var tp *http.Transport
 	var err error
@@ -104,11 +104,10 @@ func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, cha
 		send(tp, t, data, scheme, dstAddr, tlsInfo, serverIsClosed)
 	}
 
-	return recvc, donec, writec, proxyServer, httpServer, sendData
+	return recvc, donec, proxyServer, httpServer, sendData
 }
 
-func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer Server, serverIsClosed bool, httpServer *http.Server) {
-	close(writec)
+func destroy(t *testing.T, donec chan struct{}, proxyServer Server, serverIsClosed bool, httpServer *http.Server) {
 	if err := httpServer.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +123,9 @@ func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer 
 		case <-proxyServer.Done():
 			t.Fatal("unexpected done")
 		case err := <-proxyServer.Error():
-			t.Fatal(err)
+			if !strings.HasSuffix(err.Error(), "use of closed network connection") {
+				t.Fatal(err)
+			}
 		default:
 		}
 
@@ -135,7 +136,7 @@ func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer 
 		select {
 		case <-proxyServer.Done():
 		case err := <-proxyServer.Error():
-			if !strings.HasPrefix(err.Error(), "accept ") && !strings.HasSuffix(err.Error(), "use of closed network connection") {
+			if !strings.HasSuffix(err.Error(), "use of closed network connection") {
 				t.Fatal(err)
 			}
 		case <-time.After(3 * time.Second):
@@ -246,20 +247,16 @@ func waitForServer(t *testing.T, s Server) {
 	}
 }
 
-func TestServer_TCP(t *testing.T)         { testServer(t, false) }
-func TestServer_TCP_DelayTx(t *testing.T) { testServer(t, true) }
-func testServer(t *testing.T, delayTx bool) {
-	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, proxyServer, false, httpServer)
-	go func() {
-		defer close(donec)
-		for data := range writec {
-			sendData(data)
-		}
-	}()
+func TestServer_TCP(t *testing.T)         { testServer(t, false, false) }
+func TestServer_TCP_DelayTx(t *testing.T) { testServer(t, true, false) }
+func TestServer_TCP_DelayRx(t *testing.T) { testServer(t, false, true) }
+func testServer(t *testing.T, delayTx bool, delayRx bool) {
+	recvc, donec, proxyServer, httpServer, sendData := prepare(t, false)
+	defer destroy(t, donec, proxyServer, false, httpServer)
+	defer close(donec)
 
 	data1 := []byte("Hello World!")
-	writec <- data1
+	sendData(data1)
 	now := time.Now()
 	if d := <-recvc; !bytes.Equal(data1, d) {
 		t.Fatalf("expected %q, got %q", string(data1), string(d))
@@ -271,10 +268,13 @@ func testServer(t *testing.T, delayTx bool) {
 	if delayTx {
 		proxyServer.DelayTx(lat, rv)
 	}
+	if delayRx {
+		proxyServer.DelayRx(lat, rv)
+	}
 
 	data2 := []byte("new data")
-	writec <- data2
 	now = time.Now()
+	sendData(data2)
 	if d := <-recvc; !bytes.Equal(data2, d) {
 		t.Fatalf("expected %q, got %q", string(data2), string(d))
 	}
@@ -288,27 +288,25 @@ func testServer(t *testing.T, delayTx bool) {
 	if delayTx {
 		proxyServer.UndelayTx()
 		if took2 < lat-rv {
-			close(writec)
-			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
+			t.Fatalf("[delayTx] expected took2 %v (with latency) > delay: %v", took2, lat-rv)
+		}
+	}
+	if delayRx {
+		proxyServer.UndelayRx()
+		if took2 < lat-rv {
+			t.Fatalf("[delayRx] expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
 	}
 }
 
 func TestServer_BlackholeTx(t *testing.T) {
-	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, proxyServer, false, httpServer)
-	// the sendData function must be in a goroutine
-	// otherwise, the pauseTx will cause the sendData to block
-	go func() {
-		defer close(donec)
-		for data := range writec {
-			sendData(data)
-		}
-	}()
+	recvc, donec, proxyServer, httpServer, sendData := prepare(t, false)
+	defer destroy(t, donec, proxyServer, false, httpServer)
+	defer close(donec)
 
 	// before enabling blacklhole
 	data := []byte("Hello World!")
-	writec <- data
+	sendData(data)
 	if d := <-recvc; !bytes.Equal(data, d) {
 		t.Fatalf("expected %q, got %q", string(data), string(d))
 	}
@@ -319,7 +317,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	// blocking call thus we need to wait for ssl handshake to timeout
 	proxyServer.BlackholeTx()
 
-	writec <- data
+	sendData(data)
 	select {
 	case d := <-recvc:
 		t.Fatalf("unexpected data receive %q during blackhole", string(d))
@@ -333,7 +331,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	// expect different data, old data dropped
 	data[0]++
-	writec <- data
+	sendData(data)
 	select {
 	case d := <-recvc:
 		if !bytes.Equal(data, d) {
@@ -345,14 +343,9 @@ func TestServer_BlackholeTx(t *testing.T) {
 }
 
 func TestServer_Shutdown(t *testing.T) {
-	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, true)
-	defer destroy(t, writec, donec, proxyServer, true, httpServer)
-	go func() {
-		defer close(donec)
-		for data := range writec {
-			sendData(data)
-		}
-	}()
+	recvc, donec, proxyServer, httpServer, sendData := prepare(t, true)
+	defer destroy(t, donec, proxyServer, true, httpServer)
+	defer close(donec)
 
 	s, _ := proxyServer.(*server)
 	if err := s.Close(); err != nil {
