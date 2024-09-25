@@ -765,7 +765,7 @@ func (s *EtcdServer) run() {
 	if err != nil {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
 	}
-	fi, err := s.r.raftStorage.FirstIndex()
+	firstIndex, err := s.r.raftStorage.FirstIndex()
 	if err != nil {
 		lg.Panic("failed to get first index from Raft storage", zap.Error(err))
 	}
@@ -818,7 +818,13 @@ func (s *EtcdServer) run() {
 		snapi:     sn.Metadata.Index,
 		appliedt:  sn.Metadata.Term,
 		appliedi:  sn.Metadata.Index,
-		compacti:  fi - 1,
+		// compacti is the index from the last time raftStorage.Compact was called
+		// without errors.
+		//
+		// After calling raftStorage.Compact(compacti) without errors, the dummy entry of
+		// raftStorage becomes {Index: compacti}, and raftStorage.FirstIndex() returns
+		// (compacti+1, nil). This is validated by TestMemoryStorageCompaction.
+		compacti:  firstIndex - 1,
 	}
 
 	defer func() {
@@ -2205,7 +2211,6 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 	}
 
 	err := s.r.raftStorage.Compact(compacti)
-	ep.compacti = compacti
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
 		// raft log might already been compact.
@@ -2214,6 +2219,7 @@ func (s *EtcdServer) maybeCompactRaftLog(ep *etcdProgress) {
 		}
 		lg.Panic("failed to compact", zap.Error(err))
 	}
+	ep.compacti = compacti
 	lg.Info(
 		"compacted Raft logs",
 		zap.Uint64("compact-index", compacti),
