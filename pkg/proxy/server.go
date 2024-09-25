@@ -53,7 +53,8 @@ var (
 //
 // Also, because we are forced to use TLS to communicate with the proxy server
 // and using well-formed header to talk to the destination server,
-// we can't do random modification on the data on-the-fly anymore.
+// so in the L7 forward proxy design we drop features such as random packet
+// modification, etc.
 type Server interface {
 	// Listen returns proxy listen address in "scheme://host:port" format.
 	Listen() string
@@ -66,11 +67,6 @@ type Server interface {
 	Error() <-chan error
 	// Close closes listener and transport.
 	Close() error
-
-	// PauseAccept stops accepting new connections.
-	PauseAccept()
-	// UnpauseAccept removes pause operation on accepting new connections.
-	UnpauseAccept()
 
 	// DelayAccept adds latency ± random variable to accepting
 	// new incoming connections.
@@ -132,16 +128,6 @@ type Server interface {
 	BlackholePeerRx(peer url.URL)
 	// UnblackholePeerRx removes blackhole operation on "receiving".
 	UnblackholePeerRx(peer url.URL)
-
-	// PauseTx stops "forwarding" packets; "outgoing" traffic blocks.
-	PauseTx()
-	// UnpauseTx removes "forwarding" pause operation.
-	UnpauseTx()
-
-	// PauseRx stops "receiving" packets; "incoming" traffic blocks.
-	PauseRx()
-	// UnpauseRx removes "receiving" pause operation.
-	UnpauseRx()
 }
 
 // ServerConfig defines proxy server configuration.
@@ -183,9 +169,6 @@ type server struct {
 	listenerMu sync.RWMutex
 	listener   *customListener
 
-	pauseAcceptMu sync.Mutex
-	pauseAcceptc  chan struct{}
-
 	latencyAcceptMu sync.RWMutex
 	latencyAccept   time.Duration
 
@@ -194,12 +177,6 @@ type server struct {
 
 	modifyRxMu sync.RWMutex
 	modifyRx   func(data []byte) []byte
-
-	pauseTxMu sync.Mutex
-	pauseTxc  chan struct{}
-
-	pauseRxMu sync.Mutex
-	pauseRxc  chan struct{}
 
 	latencyTxMu sync.RWMutex
 	latencyTx   time.Duration
@@ -231,10 +208,6 @@ func NewServer(cfg ServerConfig) Server {
 		donec:  make(chan struct{}),
 		errc:   make(chan error, 16),
 
-		pauseAcceptc: make(chan struct{}),
-		pauseTxc:     make(chan struct{}),
-		pauseRxc:     make(chan struct{}),
-
 		blackholePeerMap: make(map[int]uint8),
 	}
 
@@ -250,10 +223,6 @@ func NewServer(cfg ServerConfig) Server {
 	if s.retryInterval == 0 {
 		s.retryInterval = defaultRetryInterval
 	}
-
-	close(s.pauseAcceptc)
-	close(s.pauseTxc)
-	close(s.pauseRxc)
 
 	// L7 is http (scheme), L4 is tcp (network listener)
 	addr := ""
@@ -321,16 +290,7 @@ type customListener struct {
 }
 
 func (c *customListener) Accept() (net.Conn, error) {
-	// we implement the L4 features here (pause / latency accept)
-	c.s.pauseAcceptMu.Lock()
-	pausec := c.s.pauseAcceptc
-	c.s.pauseAcceptMu.Unlock()
-	select {
-	case <-pausec:
-	case <-c.s.donec:
-		return nil, fmt.Errorf("listener is closed")
-	}
-
+	// we implement the L4 features here
 	c.s.latencyAcceptMu.RLock()
 	lat := c.s.latencyAccept
 	c.s.lg.Info(
@@ -624,27 +584,6 @@ func (s *server) ioCopy(dst, src net.Conn, ptype proxyType, peerPort int) {
 			panic("unknown proxy type")
 		}
 
-		// pause before packet dropping, blocking, and forwarding
-		var pausec chan struct{}
-		switch ptype {
-		case proxyTx:
-			s.pauseTxMu.Lock()
-			pausec = s.pauseTxc
-			s.pauseTxMu.Unlock()
-		case proxyRx:
-			s.pauseRxMu.Lock()
-			pausec = s.pauseRxc
-			s.pauseRxMu.Unlock()
-		default:
-			panic("unknown proxy type")
-		}
-		select {
-		case <-pausec:
-		case <-s.donec:
-			return
-		}
-
-		// pause first, and then drop packets
 		if nr2 == 0 {
 			continue
 		}
@@ -781,35 +720,6 @@ func (s *server) Close() (err error) {
 	// s.closeWg.Wait()
 
 	return err
-}
-
-func (s *server) PauseAccept() {
-	s.pauseAcceptMu.Lock()
-	s.pauseAcceptc = make(chan struct{})
-	s.pauseAcceptMu.Unlock()
-
-	s.lg.Info(
-		"paused accept",
-		zap.String("proxy listen on", s.Listen()),
-	)
-}
-
-func (s *server) UnpauseAccept() {
-	s.pauseAcceptMu.Lock()
-	select {
-	case <-s.pauseAcceptc: // already unpaused
-	case <-s.donec:
-		s.pauseAcceptMu.Unlock()
-		return
-	default:
-		close(s.pauseAcceptc)
-	}
-	s.pauseAcceptMu.Unlock()
-
-	s.lg.Info(
-		"unpaused accept",
-		zap.String("proxy listen on", s.Listen()),
-	)
 }
 
 func (s *server) DelayAccept(latency, rv time.Duration) {
@@ -1078,62 +988,4 @@ func (s *server) UnblackholePeerRx(peer url.URL) {
 		val &= bits.Reverse8(blackholePeerTypeRx)
 		s.blackholePeerMap[port] = val
 	}
-}
-
-func (s *server) PauseTx() {
-	s.pauseTxMu.Lock()
-	s.pauseTxc = make(chan struct{})
-	s.pauseTxMu.Unlock()
-
-	s.lg.Info(
-		"paused tx",
-		zap.String("proxy listen on", s.Listen()),
-	)
-}
-
-func (s *server) UnpauseTx() {
-	s.pauseTxMu.Lock()
-	select {
-	case <-s.pauseTxc: // already unpaused
-	case <-s.donec:
-		s.pauseTxMu.Unlock()
-		return
-	default:
-		close(s.pauseTxc)
-	}
-	s.pauseTxMu.Unlock()
-
-	s.lg.Info(
-		"unpaused tx",
-		zap.String("proxy listen on", s.Listen()),
-	)
-}
-
-func (s *server) PauseRx() {
-	s.pauseRxMu.Lock()
-	s.pauseRxc = make(chan struct{})
-	s.pauseRxMu.Unlock()
-
-	s.lg.Info(
-		"paused rx",
-		zap.String("proxy listen on", s.Listen()),
-	)
-}
-
-func (s *server) UnpauseRx() {
-	s.pauseRxMu.Lock()
-	select {
-	case <-s.pauseRxc: // already unpaused
-	case <-s.donec:
-		s.pauseRxMu.Unlock()
-		return
-	default:
-		close(s.pauseRxc)
-	}
-	s.pauseRxMu.Unlock()
-
-	s.lg.Info(
-		"unpaused rx",
-		zap.String("proxy listen on", s.Listen()),
-	)
 }

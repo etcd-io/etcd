@@ -334,41 +334,6 @@ func TestServer_DelayAccept(t *testing.T) {
 	}
 }
 
-func TestServer_PauseTx(t *testing.T) {
-	recvc, donec, writec, p, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, p, false, httpServer)
-	// the sendData function must be in a goroutine
-	// otherwise, the pauseTx will cause the sendData to block
-	go func() {
-		defer close(donec)
-		for data := range writec {
-			sendData(data)
-		}
-	}()
-
-	data := []byte("Hello World!")
-
-	p.PauseTx()
-
-	writec <- data
-	select {
-	case d := <-recvc:
-		t.Fatalf("received unexpected data %q during pause", string(d))
-	case <-time.After(200 * time.Millisecond):
-	}
-
-	p.UnpauseTx()
-
-	select {
-	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("took too long to receive after unpause")
-	}
-}
-
 func TestServer_BlackholeTx(t *testing.T) {
 	recvc, donec, writec, p, httpServer, sendData := prepare(t, false)
 	defer destroy(t, writec, donec, p, false, httpServer)
