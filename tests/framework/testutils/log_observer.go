@@ -46,8 +46,8 @@ func NewLogObserver(level zapcore.LevelEnabler) (zapcore.Core, *LogObserver) {
 	}
 }
 
-// Expect returns the first N lines containing the given string.
-func (logOb *LogObserver) Expect(ctx context.Context, s string, count int) ([]string, error) {
+// ExpectAtLeastNTimes returns the first N lines containing the given string.
+func (logOb *LogObserver) ExpectAtLeastNTimes(ctx context.Context, s string, count int) ([]string, error) {
 	return logOb.ExpectFunc(ctx, func(log string) bool { return strings.Contains(log, s) }, count)
 }
 
@@ -80,6 +80,60 @@ func (logOb *LogObserver) ExpectFunc(ctx context.Context, filter func(string) bo
 
 			if len(res) >= count {
 				return res, nil
+			}
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// ExpectExactNTimes returns all lines that satisfy the filter if there are
+// exactly `count` of them when the duration ends. Otherwise, it returns an error.
+// Make sure ctx has a timeout longer than duration for ExpectExactNTimes to work properly.
+func (logOb *LogObserver) ExpectExactNTimes(ctx context.Context, s string, count int, duration time.Duration) ([]string, error) {
+	return logOb.ExpectExactNTimesFunc(ctx, func(log string) bool { return strings.Contains(log, s) }, count, duration)
+}
+
+// ExpectExactNTimesFunc returns all lines that satisfy the filter if there are
+// exactly `count` of them when the duration ends. Otherwise, it returns an error.
+// Make sure ctx has a timeout longer than duration for ExpectExactNTimesFunc to work properly.
+func (logOb *LogObserver) ExpectExactNTimesFunc(ctx context.Context, filter func(string) bool, count int, duration time.Duration) ([]string, error) {
+	timer := time.NewTimer(duration)
+	defer timer.Stop()
+
+	i := 0
+	res := make([]string, 0, count)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+			if len(res) == count {
+				return res, nil
+			} else {
+				return nil, fmt.Errorf("failed to expect, expected: %d, got: %d", count, len(res))
+			}
+		default:
+		}
+
+		entries := logOb.syncLogs()
+
+		// The order of entries won't be changed because of append-only.
+		// It's safe to skip scanned entries by reusing `i`.
+		for ; i < len(entries); i++ {
+			buf, err := logOb.enc.EncodeEntry(entries[i].Entry, entries[i].Context)
+			if err != nil {
+				return nil, fmt.Errorf("failed to encode entry: %w", err)
+			}
+
+			logInStr := buf.String()
+			if filter(logInStr) {
+				res = append(res, logInStr)
+			}
+
+			if len(res) > count {
+				return nil, fmt.Errorf("failed to expect; too many occurrences; expected: %d, got:%d", count, len(res))
 			}
 		}
 
