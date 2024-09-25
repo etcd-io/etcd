@@ -17,7 +17,6 @@ package proxy
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -33,13 +32,13 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
-/* Helper functions */
+/* dummyServerHandler is a helper struct */
 type dummyServerHandler struct {
 	t      *testing.T
 	output chan<- []byte
 }
 
-// reads the request body and write back to the response object
+// ServeHTTP read the request body and write back to the response object
 func (sh *dummyServerHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	resp.WriteHeader(200)
@@ -181,7 +180,7 @@ func startHTTPServer(scheme, addr string, tlsInfo transport.TLSInfo, httpServer 
 	log.Println("HTTP Server started on", addr)
 	if err := httpServer.ServeTLS(ln, tlsInfo.CertFile, tlsInfo.KeyFile); err != http.ErrServerClosed {
 		// always returns error. ErrServerClosed on graceful close
-		log.Fatalf(fmt.Sprintf("startHTTPServer ServeTLS(): %v", err))
+		log.Fatalf("startHTTPServer ServeTLS(): %v", err)
 	}
 }
 
@@ -248,7 +247,6 @@ func waitForServer(t *testing.T, s Server) {
 	}
 }
 
-/* Unit tests */
 func TestServer_TCP(t *testing.T)         { testServer(t, false) }
 func TestServer_TCP_DelayTx(t *testing.T) { testServer(t, true) }
 func testServer(t *testing.T, delayTx bool) {
@@ -398,7 +396,6 @@ func TestServer_Shutdown(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
-	p = nil
 	time.Sleep(200 * time.Millisecond)
 
 	data := []byte("Hello World!")
