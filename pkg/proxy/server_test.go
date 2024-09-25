@@ -135,7 +135,7 @@ func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer 
 		select {
 		case <-proxyServer.Done():
 		case err := <-proxyServer.Error():
-			if !strings.HasPrefix(err.Error(), "accept ") &&
+			if !strings.HasPrefix(err.Error(), "accept ") ||
 				!strings.HasSuffix(err.Error(), "use of closed network connection") {
 				t.Fatal(err)
 			}
