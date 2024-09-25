@@ -818,12 +818,9 @@ func (s *EtcdServer) run() {
 		snapi:     sn.Metadata.Index,
 		appliedt:  sn.Metadata.Term,
 		appliedi:  sn.Metadata.Index,
-		// compacti is the index from the last time raftStorage.Compact was called
-		// without errors.
-		//
-		// After calling raftStorage.Compact(compacti) without errors, the dummy entry of
-		// raftStorage becomes {Index: compacti}, and raftStorage.FirstIndex() returns
-		// (compacti+1, nil). This is validated by TestMemoryStorageCompaction.
+		// Compaction is inclusive, meaning compact index should be lower by one
+		// than the first index after compaction.
+		// This is validated by TestMemoryStorageCompaction.
 		compacti: firstRaftIndex - 1,
 	}
 

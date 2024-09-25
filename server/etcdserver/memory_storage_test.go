@@ -23,10 +23,9 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-// TestMemoryStorageCompaction tests that after calling raftStorage.Compact(compacti)
-// without errors, the dummy entry becomes {Index: compacti} and
-// raftStorage.FirstIndex() returns (compacti+1, nil).
-func TestMemoryStorageCompaction(t *testing.T) {
+// TestMemoryStorageCompactInclusive tests that compacting is inclusive,
+// meaning the first index after compaction is larger by one than compacted index.
+func TestMemoryStorageCompactInclusive(t *testing.T) {
 	// entries: [ {Index: 0} ]
 	raftStorage := raft.NewMemoryStorage()
 
@@ -57,11 +56,12 @@ func TestMemoryStorageCompaction(t *testing.T) {
 
 	// after compacting, entries should be:
 	// [ {Index: 3}, {Index: 4}, {Index: 5} ]
-	err = raftStorage.Compact(3)
+	compacti := uint64(3)
+	err = raftStorage.Compact(compacti)
 	assert.NoError(t, err)
 
 
 	firstIndex, err = raftStorage.FirstIndex()
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(3+1), firstIndex)
+	assert.Equal(t, compacti+1, firstIndex)
 }
