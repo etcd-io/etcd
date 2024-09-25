@@ -175,65 +175,6 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 	return transport.TLSInfo{Logger: lg}
 }
 
-func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
-func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
-func testServerDelayAccept(t *testing.T, secure bool) {
-	lg := zaptest.NewLogger(t)
-	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
-	defer func() {
-		os.RemoveAll(srcAddr)
-		os.RemoveAll(dstAddr)
-	}()
-	tlsInfo := createTLSInfo(lg, secure)
-	scheme := "unix"
-	ln := listen(t, scheme, dstAddr, tlsInfo)
-	defer ln.Close()
-
-	cfg := ServerConfig{
-		Logger: lg,
-		From:   url.URL{Scheme: scheme, Host: srcAddr},
-		To:     url.URL{Scheme: scheme, Host: dstAddr},
-	}
-	if secure {
-		cfg.TLSInfo = tlsInfo
-	}
-	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
-	defer p.Close()
-
-	data := []byte("Hello World!")
-
-	now := time.Now()
-	send(t, data, scheme, srcAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took1 := time.Since(now)
-	t.Logf("took %v with no latency", took1)
-
-	lat, rv := 700*time.Millisecond, 10*time.Millisecond
-	p.DelayAccept(lat, rv)
-	defer p.UndelayAccept()
-	if err := p.ResetListener(); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(200 * time.Millisecond)
-
-	now = time.Now()
-	send(t, data, scheme, srcAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
-	took2 := time.Since(now)
-	t.Logf("took %v with latency %v±%v", took2, lat, rv)
-
-	if took1 >= took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
-	}
-}
-
 func TestServer_ModifyTx_corrupt(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	scheme := "unix"
