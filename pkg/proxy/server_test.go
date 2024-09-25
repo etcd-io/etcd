@@ -79,8 +79,8 @@ func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, cha
 		Logger: lg,
 		Listen: proxyURL,
 	}
-	p := NewServer(cfg)
-	waitForServer(t, p)
+	proxyServer := NewServer(cfg)
+	waitForServer(t, proxyServer)
 
 	// setup forward proxy
 	t.Setenv("E2E_TEST_FORWARD_PROXY_IP", proxyURL.String())
@@ -104,10 +104,10 @@ func prepare(t *testing.T, serverIsClosed bool) (chan []byte, chan struct{}, cha
 		send(tp, t, data, scheme, dstAddr, tlsInfo, serverIsClosed)
 	}
 
-	return recvc, donec, writec, p, httpServer, sendData
+	return recvc, donec, writec, proxyServer, httpServer, sendData
 }
 
-func destroy(t *testing.T, writec chan []byte, donec chan struct{}, p Server, serverIsClosed bool, httpServer *http.Server) {
+func destroy(t *testing.T, writec chan []byte, donec chan struct{}, proxyServer Server, serverIsClosed bool, httpServer *http.Server) {
 	close(writec)
 	if err := httpServer.Shutdown(context.Background()); err != nil {
 		t.Fatal(err)
@@ -121,20 +121,20 @@ func destroy(t *testing.T, writec chan []byte, donec chan struct{}, p Server, se
 
 	if !serverIsClosed {
 		select {
-		case <-p.Done():
+		case <-proxyServer.Done():
 			t.Fatal("unexpected done")
-		case err := <-p.Error():
+		case err := <-proxyServer.Error():
 			t.Fatal(err)
 		default:
 		}
 
-		if err := p.Close(); err != nil {
+		if err := proxyServer.Close(); err != nil {
 			t.Fatal(err)
 		}
 
 		select {
-		case <-p.Done():
-		case err := <-p.Error():
+		case <-proxyServer.Done():
+		case err := <-proxyServer.Error():
 			if !strings.HasPrefix(err.Error(), "accept ") &&
 				!strings.HasSuffix(err.Error(), "use of closed network connection") {
 				t.Fatal(err)
@@ -250,8 +250,8 @@ func waitForServer(t *testing.T, s Server) {
 func TestServer_TCP(t *testing.T)         { testServer(t, false) }
 func TestServer_TCP_DelayTx(t *testing.T) { testServer(t, true) }
 func testServer(t *testing.T, delayTx bool) {
-	recvc, donec, writec, p, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, p, false, httpServer)
+	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
+	defer destroy(t, writec, donec, proxyServer, false, httpServer)
 	go func() {
 		defer close(donec)
 		for data := range writec {
@@ -270,7 +270,7 @@ func testServer(t *testing.T, delayTx bool) {
 
 	lat, rv := 50*time.Millisecond, 5*time.Millisecond
 	if delayTx {
-		p.DelayTx(lat, rv)
+		proxyServer.DelayTx(lat, rv)
 	}
 
 	data2 := []byte("new data")
@@ -287,7 +287,7 @@ func testServer(t *testing.T, delayTx bool) {
 	}
 
 	if delayTx {
-		p.UndelayTx()
+		proxyServer.UndelayTx()
 		if took2 < lat-rv {
 			close(writec)
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
@@ -296,8 +296,8 @@ func testServer(t *testing.T, delayTx bool) {
 }
 
 func TestServer_DelayAccept(t *testing.T) {
-	recvc, donec, writec, p, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, p, false, httpServer)
+	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
+	defer destroy(t, writec, donec, proxyServer, false, httpServer)
 	go func() {
 		defer close(donec)
 		for data := range writec {
@@ -316,8 +316,8 @@ func TestServer_DelayAccept(t *testing.T) {
 	time.Sleep(1 * time.Second) // wait for the idle connection to timeout
 
 	lat, rv := 700*time.Millisecond, 10*time.Millisecond
-	p.DelayAccept(lat, rv)
-	defer p.UndelayAccept()
+	proxyServer.DelayAccept(lat, rv)
+	defer proxyServer.UndelayAccept()
 
 	now = time.Now()
 	writec <- data
@@ -333,8 +333,8 @@ func TestServer_DelayAccept(t *testing.T) {
 }
 
 func TestServer_BlackholeTx(t *testing.T) {
-	recvc, donec, writec, p, httpServer, sendData := prepare(t, false)
-	defer destroy(t, writec, donec, p, false, httpServer)
+	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, false)
+	defer destroy(t, writec, donec, proxyServer, false, httpServer)
 	// the sendData function must be in a goroutine
 	// otherwise, the pauseTx will cause the sendData to block
 	go func() {
@@ -355,7 +355,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	// note that the transport is set to use 10s for TLSHandshakeTimeout, so
 	// this test will require at least 10s to execute, since send() is a
 	// blocking call thus we need to wait for ssl handshake to timeout
-	p.BlackholeTx()
+	proxyServer.BlackholeTx()
 
 	writec <- data
 	select {
@@ -364,7 +364,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 	}
 
-	p.UnblackholeTx()
+	proxyServer.UnblackholeTx()
 
 	// disable blackhole
 	// TODO: figure out why HTTPS won't attempt to reconnect when the blackhole is disabled
@@ -383,8 +383,8 @@ func TestServer_BlackholeTx(t *testing.T) {
 }
 
 func TestServer_Shutdown(t *testing.T) {
-	recvc, donec, writec, p, httpServer, sendData := prepare(t, true)
-	defer destroy(t, writec, donec, p, true, httpServer)
+	recvc, donec, writec, proxyServer, httpServer, sendData := prepare(t, true)
+	defer destroy(t, writec, donec, proxyServer, true, httpServer)
 	go func() {
 		defer close(donec)
 		for data := range writec {
@@ -392,7 +392,7 @@ func TestServer_Shutdown(t *testing.T) {
 		}
 	}()
 
-	s, _ := p.(*server)
+	s, _ := proxyServer.(*server)
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
