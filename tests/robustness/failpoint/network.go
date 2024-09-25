@@ -187,21 +187,20 @@ func (f dropPeerNetworkFailpoint) Inject(ctx context.Context, t *testing.T, lg *
 	member := clus.Procs[rand.Int()%len(clus.Procs)]
 	forwardProxy := member.PeerForwardProxy()
 
-	forwardProxy.ModifyRx(f.modifyPacket)
-	forwardProxy.ModifyTx(f.modifyPacket)
-	lg.Info("Dropping traffic from and to member", zap.String("member", member.Config().Name), zap.Int("probability", f.dropProbabilityPercent))
-	time.Sleep(f.duration)
-	lg.Info("Traffic drop removed", zap.String("member", member.Config().Name))
-	forwardProxy.UnmodifyRx()
-	forwardProxy.UnmodifyTx()
+	if f.shouldDropPacket() {
+		forwardProxy.BlackholeRx()
+		forwardProxy.BlackholeTx()
+		lg.Info("Dropping traffic from and to member", zap.String("member", member.Config().Name), zap.Int("probability", f.dropProbabilityPercent))
+		time.Sleep(f.duration)
+		lg.Info("Traffic drop removed", zap.String("member", member.Config().Name))
+		forwardProxy.UnblackholeRx()
+		forwardProxy.UnblackholeTx()
+	}
 	return nil, nil
 }
 
-func (f dropPeerNetworkFailpoint) modifyPacket(data []byte) []byte {
-	if rand.Intn(100) < f.dropProbabilityPercent {
-		return nil
-	}
-	return data
+func (f dropPeerNetworkFailpoint) shouldDropPacket() bool {
+	return rand.Intn(100) < f.dropProbabilityPercent
 }
 
 func (f dropPeerNetworkFailpoint) Name() string {
