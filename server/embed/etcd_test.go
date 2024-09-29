@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"errors"
 	"net/url"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestEmptyClientTLSInfo_createMetricsListener(t *testing.T) {
 		Scheme: "https",
 		Host:   "localhost:8080",
 	}
-	if _, err := e.createMetricsListener(murl); err != ErrMissingClientTLSInfoForMetricsURL {
+	if _, err := e.createMetricsListener(murl); !errors.Is(err, ErrMissingClientTLSInfoForMetricsURL) {
 		t.Fatalf("expected error %v, got %v", ErrMissingClientTLSInfoForMetricsURL, err)
 	}
 }

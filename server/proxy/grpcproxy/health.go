@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -52,7 +53,7 @@ func checkHealth(c *clientv3.Client) etcdhttp.Health {
 	ctx, cancel := context.WithTimeout(c.Ctx(), time.Second)
 	_, err := c.Get(ctx, "a")
 	cancel()
-	if err == nil || err == rpctypes.ErrPermissionDenied {
+	if err == nil || errors.Is(err, rpctypes.ErrPermissionDenied) {
 		h.Health = "true"
 	} else {
 		h.Reason = fmt.Sprintf("GET ERROR:%s", err)

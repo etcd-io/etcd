@@ -16,6 +16,7 @@ package v3compactor
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -89,7 +90,7 @@ func (rc *Revision) Run() {
 				zap.Int64("revision-compaction-retention", rc.retention),
 			)
 			_, err := rc.c.Compact(rc.ctx, &pb.CompactionRequest{Revision: rev})
-			if err == nil || err == mvcc.ErrCompacted {
+			if err == nil || errors.Is(err, mvcc.ErrCompacted) {
 				prev = rev
 				rc.lg.Info(
 					"completed auto revision compaction",

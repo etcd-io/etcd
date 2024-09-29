@@ -16,6 +16,7 @@ package lease
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -454,7 +455,7 @@ func TestLessorExpire(t *testing.T) {
 	donec := make(chan struct{}, 1)
 	go func() {
 		// expired lease cannot be renewed
-		if _, err := le.Renew(l.ID); err != ErrLeaseNotFound {
+		if _, err := le.Renew(l.ID); !errors.Is(err, ErrLeaseNotFound) {
 			t.Errorf("unexpected renew")
 		}
 		donec <- struct{}{}
@@ -507,7 +508,7 @@ func TestLessorExpireAndDemote(t *testing.T) {
 	donec := make(chan struct{}, 1)
 	go func() {
 		// expired lease cannot be renewed
-		if _, err := le.Renew(l.ID); err != ErrNotPrimary {
+		if _, err := le.Renew(l.ID); !errors.Is(err, ErrNotPrimary) {
 			t.Errorf("unexpected renew: %v", err)
 		}
 		donec <- struct{}{}
@@ -539,7 +540,7 @@ func TestLessorMaxTTL(t *testing.T) {
 	defer le.Stop()
 
 	_, err := le.Grant(1, MaxLeaseTTL+1)
-	if err != ErrLeaseTTLTooLarge {
+	if !errors.Is(err, ErrLeaseTTLTooLarge) {
 		t.Fatalf("grant unexpectedly succeeded")
 	}
 }

@@ -15,6 +15,7 @@
 package embed
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -43,7 +44,7 @@ func TestStartEtcdWrongToken(t *testing.T) {
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
 
-	if _, err := StartEtcd(cfg); err != auth.ErrInvalidAuthOpts {
+	if _, err := StartEtcd(cfg); !errors.Is(err, auth.ErrInvalidAuthOpts) {
 		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 	}
 }

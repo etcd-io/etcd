@@ -170,7 +170,7 @@ func TestCreateFailFromPollutedDir(t *testing.T) {
 	os.WriteFile(filepath.Join(p, "test.wal"), []byte("data"), os.ModeTemporary)
 
 	_, err := Create(zaptest.NewLogger(t), p, []byte("data"))
-	if err != os.ErrExist {
+	if !errors.Is(err, os.ErrExist) {
 		t.Fatalf("expected %v, got %v", os.ErrExist, err)
 	}
 }
@@ -221,7 +221,7 @@ func TestNewForInitedDir(t *testing.T) {
 	p := t.TempDir()
 
 	os.Create(filepath.Join(p, walName(0, 0)))
-	if _, err := Create(zaptest.NewLogger(t), p, nil); err == nil || err != os.ErrExist {
+	if _, err := Create(zaptest.NewLogger(t), p, nil); err == nil || !errors.Is(err, os.ErrExist) {
 		t.Errorf("err = %v, want %v", err, os.ErrExist)
 	}
 }
@@ -732,7 +732,7 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	defer w2.Close()
 
 	_, _, _, err = w2.ReadAll()
-	if err != ErrSliceOutOfRange {
+	if !errors.Is(err, ErrSliceOutOfRange) {
 		t.Fatalf("err = %v, want ErrSliceOutOfRange", err)
 	}
 }
@@ -922,7 +922,7 @@ func TestOpenOnTornWrite(t *testing.T) {
 	p := t.TempDir()
 	w, err := Create(zaptest.NewLogger(t), p, nil)
 	defer func() {
-		if err = w.Close(); err != nil && err != os.ErrInvalid {
+		if err = w.Close(); err != nil && !errors.Is(err, os.ErrInvalid) {
 			t.Fatal(err)
 		}
 	}()
@@ -1033,7 +1033,7 @@ func TestReadAllFail(t *testing.T) {
 	f.Close()
 	// try to read without opening the WAL
 	_, _, _, err = f.ReadAll()
-	if err == nil || err != ErrDecoderNotFound {
+	if err == nil || !errors.Is(err, ErrDecoderNotFound) {
 		t.Fatalf("err = %v, want ErrDecoderNotFound", err)
 	}
 }

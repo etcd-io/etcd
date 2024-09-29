@@ -17,6 +17,7 @@ package v3rpc
 import (
 	"context"
 	"crypto/sha256"
+	errorspkg "errors"
 	"io"
 	"time"
 
@@ -163,7 +164,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		buf := make([]byte, snapshotSendBufferSize)
 
 		n, err := io.ReadFull(pr, buf)
-		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+		if err != nil && !errorspkg.Is(err, io.EOF) && !errorspkg.Is(err, io.ErrUnexpectedEOF) {
 			return togRPCError(err)
 		}
 		sent += int64(n)

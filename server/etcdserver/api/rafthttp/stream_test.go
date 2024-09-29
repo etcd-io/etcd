@@ -256,7 +256,7 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 		}
 
 		_, err := sr.dial(typ)
-		if err != errUnsupportedStreamType {
+		if !errors.Is(err, errUnsupportedStreamType) {
 			t.Errorf("#%d: error = %v, want %v", i, err, errUnsupportedStreamType)
 		}
 	}

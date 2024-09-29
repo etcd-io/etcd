@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	"errors"
 	"io"
 	"math/rand"
 	"sync"
@@ -211,13 +212,13 @@ func (ws *watchServer) Watch(stream pb.Watch_WatchServer) (err error) {
 	// revisited.
 	select {
 	case err = <-errc:
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			err = rpctypes.ErrGRPCWatchCanceled
 		}
 		close(sws.ctrlStream)
 	case <-stream.Context().Done():
 		err = stream.Context().Err()
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			err = rpctypes.ErrGRPCWatchCanceled
 		}
 	}
@@ -241,7 +242,7 @@ func (sws *serverWatchStream) isWatchPermitted(wcr *pb.WatchCreateRequest) error
 func (sws *serverWatchStream) recvLoop() error {
 	for {
 		req, err := sws.gRPCStream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -280,7 +281,7 @@ func (sws *serverWatchStream) recvLoop() error {
 				case auth.ErrUserEmpty:
 					cancelReason = rpctypes.ErrGRPCUserEmpty.Error()
 				default:
-					if err != auth.ErrPermissionDenied {
+					if !errors.Is(err, auth.ErrPermissionDenied) {
 						sws.lg.Error("unexpected error code", zap.Error(err))
 					}
 					cancelReason = rpctypes.ErrGRPCPermissionDenied.Error()

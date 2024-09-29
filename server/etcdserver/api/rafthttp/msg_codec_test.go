@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"bytes"
+	"errors"
 	"reflect"
 	"testing"
 
@@ -77,13 +78,13 @@ func TestMessage(t *testing.T) {
 	for i, tt := range tests {
 		b := &bytes.Buffer{}
 		enc := &messageEncoder{w: b}
-		if err := enc.encode(&tt.msg); err != tt.encodeErr {
+		if err := enc.encode(&tt.msg); !errors.Is(err, tt.encodeErr) {
 			t.Errorf("#%d: encode message error expected %v, got %v", i, tt.encodeErr, err)
 			continue
 		}
 		dec := &messageDecoder{r: b}
 		m, err := dec.decode()
-		if err != tt.decodeErr {
+		if !errors.Is(err, tt.decodeErr) {
 			t.Errorf("#%d: decode message error expected %v, got %v", i, tt.decodeErr, err)
 			continue
 		}

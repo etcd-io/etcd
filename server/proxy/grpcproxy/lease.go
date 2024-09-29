@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -245,7 +246,7 @@ type leaseProxyStream struct {
 func (lps *leaseProxyStream) recvLoop() error {
 	for {
 		rr, err := lps.stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {

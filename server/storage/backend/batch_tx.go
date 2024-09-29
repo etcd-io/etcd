@@ -16,6 +16,7 @@ package backend
 
 import (
 	"bytes"
+	"errors"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -125,7 +126,7 @@ func (t *batchTx) UnsafeCreateBucket(bucket Bucket) {
 
 func (t *batchTx) UnsafeDeleteBucket(bucket Bucket) {
 	err := t.tx.DeleteBucket(bucket.Name())
-	if err != nil && err != bolterrors.ErrBucketNotFound {
+	if err != nil && !errors.Is(err, bolterrors.ErrBucketNotFound) {
 		t.backend.lg.Fatal(
 			"failed to delete a bucket",
 			zap.Stringer("bucket-name", bucket),

@@ -16,6 +16,7 @@ package apply
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -123,7 +124,7 @@ func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest) *
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
-		success := ar.Err == nil || ar.Err == mvcc.ErrCompacted
+		success := ar.Err == nil || errors.Is(ar.Err, mvcc.ErrCompacted)
 		txn.ApplySecObserve(v3Version, op, success, time.Since(start))
 		txn.WarnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
 		if !success {
