@@ -518,3 +518,51 @@ func TestSpeedyTerminate(t *testing.T) {
 	case <-donec:
 	}
 }
+
+// TestConcurrentRemoveMember demonstrated a panic in mayRemoveMember with
+// concurrent calls to MemberRemove. To reliably reproduce the panic, a delay
+// needed to be injected in IsMemberExist, which is done using a failpoint.
+// After fixing the bug, IsMemberExist is no longer called by mayRemoveMember.
+func TestConcurrentRemoveMember(t *testing.T) {
+	integration.BeforeTest(t, integration.WithFailpoint("afterIsMemberExist", `sleep("1s")`))
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer c.Terminate(t)
+
+	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	removeID := addResp.Member.ID
+	done := make(chan struct{})
+	go func() {
+		time.Sleep(time.Second / 2)
+		c.Members[0].Client.MemberRemove(context.Background(), removeID)
+		close(done)
+	}()
+	if _, err := c.Members[0].Client.MemberRemove(context.Background(), removeID); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+}
+
+func TestConcurrentMoveLeader(t *testing.T) {
+	integration.BeforeTest(t, integration.WithFailpoint("afterIsMemberExist", `sleep("1s")`))
+	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer c.Terminate(t)
+
+	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	removeID := addResp.Member.ID
+	done := make(chan struct{})
+	go func() {
+		time.Sleep(time.Second / 2)
+		c.Members[0].Client.MoveLeader(context.Background(), removeID)
+		close(done)
+	}()
+	if _, err := c.Members[0].Client.MemberRemove(context.Background(), removeID); err != nil {
+		t.Fatal(err)
+	}
+	<-done
+}

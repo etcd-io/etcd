@@ -817,8 +817,10 @@ func (c *RaftCluster) SetDowngradeInfo(d *serverversion.DowngradeInfo, shouldApp
 // IsMemberExist returns if the member with the given id exists in cluster.
 func (c *RaftCluster) IsMemberExist(id types.ID) bool {
 	c.Lock()
-	defer c.Unlock()
 	_, ok := c.members[id]
+	c.Unlock()
+
+	// gofail: var afterIsMemberExist struct{}
 	return ok
 }
 

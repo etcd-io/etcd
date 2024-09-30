@@ -1224,7 +1224,8 @@ func (s *EtcdServer) isLeader() bool {
 
 // MoveLeader transfers the leader to the given transferee.
 func (s *EtcdServer) MoveLeader(ctx context.Context, lead, transferee uint64) error {
-	if !s.cluster.IsMemberExist(types.ID(transferee)) || s.cluster.Member(types.ID(transferee)).IsLearner {
+	member := s.cluster.Member(types.ID(transferee))
+	if member == nil || member.IsLearner {
 		return errors.ErrBadLeaderTransferee
 	}
 
@@ -1593,9 +1594,9 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	lg := s.Logger()
-	isLearner := s.cluster.IsMemberExist(id) && s.cluster.Member(id).IsLearner
+	member := s.cluster.Member(id)
 	// no need to check quorum when removing non-voting member
-	if isLearner {
+	if member != nil && member.IsLearner {
 		return nil
 	}
 
