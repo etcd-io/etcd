@@ -62,14 +62,16 @@ For more, because etcd uses Kubernetes' prow infrastructure to run CI jobs, the 
 If you find any flaky tests on testgrid, please
 
 1. Check [existing issues](https://github.com/etcd-io/etcd/issues?q=is%3Aissue+is%3Aopen+label%3Atype%2Fflake) to see if an issue has already been opened for this test. If not, open an issue with the `type/flake` label.
-2. Try to reproduce the flaky test on your machine via `stress`, for example, to reproduce the failure of `TestPeriodicSkipRevNotChange`:
+2. Try to reproduce the flaky test on your machine via [`stress`](https://pkg.go.dev/golang.org/x/tools/cmd/stress), for example, to reproduce the failure of `TestPeriodicSkipRevNotChange`:
 
 ```bash
+# install the stress utility
+go install golang.org/x/tools/cmd/stress@latest
 cd server/etcdserver/api/v3compactor
 # compile the test
-go test -v -c -count 1 -run "^TestPeriodicSkipRevNotChange$"
+go test -v -c -count 1
 # run the compiled test file using stress
-stress -p=8 ./v3compactor.test
+stress -p=8 ./v3compactor.test -test.run “^TestPeriodicSkipRevNotChange$”
 ```
 3. Fix it.
 
