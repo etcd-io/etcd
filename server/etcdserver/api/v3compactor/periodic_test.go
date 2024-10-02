@@ -180,7 +180,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 
 	fc := clockwork.NewFakeClock()
 	rg := &fakeRevGetter{testutil.NewRecorderStreamWithWaitTimout(0), 0}
-	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(10 * time.Millisecond)}
+	compactable := &fakeCompactable{testutil.NewRecorderStreamWithWaitTimout(20 * time.Millisecond)}
 	tb := newPeriodic(zaptest.NewLogger(t), fc, retentionDuration, rg, compactable)
 
 	tb.Run()
