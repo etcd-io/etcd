@@ -111,6 +111,7 @@ func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
 	assert.NoError(t, err)
+	defer proc.Close()
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
 	assert.NoError(t, err)
