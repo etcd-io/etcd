@@ -64,6 +64,11 @@ jobs:
           severity: 'CRITICAL,HIGH'
           format: 'sarif'
           output: 'trivy-results-${{ matrix.platforms }}.sarif'
+        env:
+          # Use AWS' ECR mirror for the trivy-db image, as GitHub's Container
+          # Registry is returning a TOOMANYREQUESTS error.
+          # Ref: https://github.com/aquasecurity/trivy-action/issues/389
+          TRIVY_DB_REPOSITORY: 'public.ecr.aws/aquasecurity/trivy-db:2'
       - name: upload scan results
         uses: github/codeql-action/upload-sarif@956f09c2ef1926b580554b9014cfb8a51abf89dd # v2.16.6
         with:
