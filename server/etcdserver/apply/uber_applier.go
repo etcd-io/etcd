@@ -115,6 +115,11 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
 	// then dispatch() unpacks the request to a specific method (like Put),
 	// that gets executed down the hierarchy again:
 	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
+	//
+	// CAUTION: The context below should NOT be changed to a bounded value without
+	// first addressing the risk of a transaction's operations being only partially
+	// applied when some operations timeout. More details here:
+	// https://github.com/etcd-io/etcd/issues/18667#issuecomment-2392286839
 	return a.applyV3.Apply(context.TODO(), r, a.dispatch)
 }
 
