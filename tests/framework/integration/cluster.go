@@ -1478,6 +1478,13 @@ func WithAuth(userName, password string) framecfg.ClientOption {
 	}
 }
 
+func WithAuthToken(token string) framecfg.ClientOption {
+	return func(c any) {
+		cfg := c.(*clientv3.Config)
+		cfg.Token = token
+	}
+}
+
 func WithEndpoints(endpoints []string) framecfg.ClientOption {
 	return func(c any) {
 		cfg := c.(*clientv3.Config)

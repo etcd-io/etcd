@@ -55,6 +55,7 @@ func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOptio
 			DialOptions: []grpc.DialOption{grpc.WithBlock()},
 			Username:    ctl.authConfig.Username,
 			Password:    ctl.authConfig.Password,
+			Token:       ctl.authConfig.Token,
 		})
 		if err != nil {
 			return nil, err
@@ -70,6 +71,13 @@ func WithAuth(userName, password string) config.ClientOption {
 		ctl := c.(*EtcdctlV3)
 		ctl.authConfig.Username = userName
 		ctl.authConfig.Password = password
+	}
+}
+
+func WithAuthToken(token string) config.ClientOption {
+	return func(c any) {
+		ctl := c.(*EtcdctlV3)
+		ctl.authConfig.Token = token
 	}
 }
 
@@ -344,7 +352,9 @@ func (ctl *EtcdctlV3) flags() map[string]string {
 		}
 	}
 	fmap["endpoints"] = strings.Join(ctl.endpoints, ",")
-	if !ctl.authConfig.Empty() {
+	if ctl.authConfig.Token != "" {
+		fmap["auth-jwt-token"] = ctl.authConfig.Token
+	} else if !ctl.authConfig.Empty() {
 		fmap["user"] = ctl.authConfig.Username + ":" + ctl.authConfig.Password
 	}
 	return fmap

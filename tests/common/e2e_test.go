@@ -78,6 +78,10 @@ func WithAuth(userName, password string) config.ClientOption {
 	return e2e.WithAuth(userName, password)
 }
 
+func WithAuthToken(token string) config.ClientOption {
+	return e2e.WithAuthToken(token)
+}
+
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return e2e.WithEndpoints(endpoints)
 }
