@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -203,7 +204,7 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	}
 	for i, tt := range tests {
 		_, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Rev: tt.rev})
-		if err != tt.werr {
+		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
 		}
 	}
@@ -626,7 +627,7 @@ func TestKVCompactBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		_, err := s.Compact(traceutil.TODO(), tt.rev)
-		if err != tt.werr {
+		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: compact error = %v, want %v", i, err, tt.werr)
 		}
 	}

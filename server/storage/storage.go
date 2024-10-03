@@ -15,6 +15,7 @@
 package storage
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/coreos/go-semver/semver"
@@ -112,7 +113,7 @@ func (st *storage) MinimalEtcdVersion() *semver.Version {
 	walsnap := walpb.Snapshot{}
 
 	sn, err := st.s.Load()
-	if err != nil && err != snap.ErrNoSnapshot {
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 		panic(err)
 	}
 	if sn != nil {

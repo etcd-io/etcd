@@ -187,7 +187,7 @@ func (d *discovery) joinCluster(config string) (string, error) {
 func (d *discovery) getCluster() (string, error) {
 	nodes, size, index, err := d.checkCluster()
 	if err != nil {
-		if err == ErrFullCluster {
+		if errors.Is(err, ErrFullCluster) {
 			return nodesToCluster(nodes, size)
 		}
 		return "", err
@@ -205,7 +205,8 @@ func (d *discovery) createSelf(contents string) error {
 	resp, err := d.c.Create(ctx, d.selfKey(), contents)
 	cancel()
 	if err != nil {
-		if eerr, ok := err.(client.Error); ok && eerr.Code == client.ErrorCodeNodeExist {
+		var eerr client.Error
+		if errors.As(err, &eerr) && eerr.Code == client.ErrorCodeNodeExist {
 			return ErrDuplicateID
 		}
 		return err
@@ -224,13 +225,15 @@ func (d *discovery) checkCluster() ([]*client.Node, uint64, uint64, error) {
 	resp, err := d.c.Get(ctx, path.Join(configKey, "size"), nil)
 	cancel()
 	if err != nil {
-		if eerr, ok := err.(*client.Error); ok && eerr.Code == client.ErrorCodeKeyNotFound {
+		var eerr *client.Error
+		if errors.As(err, &eerr) && eerr.Code == client.ErrorCodeKeyNotFound {
 			return nil, 0, 0, ErrSizeNotFound
 		}
-		if err == client.ErrInvalidJSON {
+		if errors.Is(err, client.ErrInvalidJSON) {
 			return nil, 0, 0, ErrBadDiscoveryEndpoint
 		}
-		if ce, ok := err.(*client.ClusterError); ok {
+		var ce *client.ClusterError
+		if errors.As(err, &ce) {
 			d.lg.Warn(
 				"failed to get from discovery server",
 				zap.String("discovery-url", d.url.String()),
@@ -251,7 +254,8 @@ func (d *discovery) checkCluster() ([]*client.Node, uint64, uint64, error) {
 	resp, err = d.c.Get(ctx, d.cluster, nil)
 	cancel()
 	if err != nil {
-		if ce, ok := err.(*client.ClusterError); ok {
+		var ce *client.ClusterError
+		if errors.As(err, &ce) {
 			d.lg.Warn(
 				"failed to get from discovery server",
 				zap.String("discovery-url", d.url.String()),

@@ -15,6 +15,7 @@
 package wal
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -202,7 +203,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, _, err = w.ReadAll()
-	if err != io.ErrUnexpectedEOF {
+	if !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Fatalf("err = %v, want error %v", err, io.ErrUnexpectedEOF)
 	}
 	w.Close()
