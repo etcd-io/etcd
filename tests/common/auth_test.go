@@ -28,7 +28,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-var tokenTTL = time.Second
+var tokenTTL = time.Second * 3
 var defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=%s",
 	mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), tokenTTL)
 
