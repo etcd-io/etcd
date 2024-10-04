@@ -15,7 +15,6 @@
 package apply
 
 import (
-	"context"
 	"errors"
 	"time"
 
@@ -121,7 +120,6 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
 func (a *uberApplier) dispatch(r *pb.InternalRaftRequest) *Result {
-	ctx := context.TODO()
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
@@ -136,16 +134,16 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest) *Result {
 	switch {
 	case r.Range != nil:
 		op = "Range"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Range(ctx, r.Range)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Range(r.Range)
 	case r.Put != nil:
 		op = "Put"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Put(ctx, r.Put)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Put(r.Put)
 	case r.DeleteRange != nil:
 		op = "DeleteRange"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.DeleteRange(ctx, r.DeleteRange)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.DeleteRange(r.DeleteRange)
 	case r.Txn != nil:
 		op = "Txn"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(ctx, r.Txn)
+		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn)
 	case r.Compaction != nil:
 		op = "Compaction"
 		ar.Resp, ar.Physc, ar.Trace, ar.Err = a.applyV3.Compaction(r.Compaction)
