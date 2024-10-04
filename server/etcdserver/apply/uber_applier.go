@@ -120,7 +120,8 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
 
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
-func (a *uberApplier) dispatch(ctx context.Context, r *pb.InternalRaftRequest) *Result {
+func (a *uberApplier) dispatch(r *pb.InternalRaftRequest) *Result {
+	ctx := context.TODO()
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
