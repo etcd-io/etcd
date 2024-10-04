@@ -70,10 +70,10 @@ type applierV3 interface {
 	// delegates the actual execution to the applyFunc method.
 	Apply(r *pb.InternalRaftRequest, applyFunc applyFunc) *Result
 
-	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
-	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
-	DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
+	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
+	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
+	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
+	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
 	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
@@ -150,20 +150,20 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc)
 	return applyFunc(r)
 }
 
-func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(ctx, a.lg, a.lessor, a.kv, p)
+func (a *applierV3backend) Put(p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
+	return mvcctxn.Put(context.TODO(), a.lg, a.lessor, a.kv, p)
 }
 
-func (a *applierV3backend) DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.DeleteRange(ctx, a.lg, a.kv, dr)
+func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+	return mvcctxn.DeleteRange(context.TODO(), a.lg, a.kv, dr)
 }
 
-func (a *applierV3backend) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(ctx, a.lg, a.kv, r)
+func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
+	return mvcctxn.Range(context.TODO(), a.lg, a.kv, r)
 }
 
-func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(ctx, a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
+func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+	return mvcctxn.Txn(context.TODO(), a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
@@ -248,15 +248,15 @@ type applierV3Capped struct {
 // with Puts so that the number of keys in the store is capped.
 func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
 
-func (a *applierV3Capped) Put(_ context.Context, _ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Put(_ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	return nil, nil, errors.ErrNoSpace
 }
 
-func (a *applierV3Capped) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	if a.q.Cost(r) > 0 {
 		return nil, nil, errors.ErrNoSpace
 	}
-	return a.applierV3.Txn(ctx, r)
+	return a.applierV3.Txn(r)
 }
 
 func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
@@ -454,18 +454,18 @@ func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Ba
 	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
 }
 
-func (a *quotaApplierV3) Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
 	ok := a.q.Available(p)
-	resp, trace, err := a.applierV3.Put(ctx, p)
+	resp, trace, err := a.applierV3.Put(p)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
 	return resp, trace, err
 }
 
-func (a *quotaApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
 	ok := a.q.Available(rt)
-	resp, trace, err := a.applierV3.Txn(ctx, rt)
+	resp, trace, err := a.applierV3.Txn(rt)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
