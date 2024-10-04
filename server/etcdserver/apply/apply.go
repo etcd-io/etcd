@@ -68,7 +68,7 @@ type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest) *Result
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
 	// delegates the actual execution to the applyFunc method.
-	Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result
+	Apply(r *pb.InternalRaftRequest, applyFunc applyFunc) *Result
 
 	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
@@ -146,8 +146,8 @@ func newApplierV3Backend(
 		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
 }
 
-func (a *applierV3backend) Apply(ctx context.Context, r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
-	return applyFunc(ctx, r)
+func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
+	return applyFunc(context.TODO(), r)
 }
 
 func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {

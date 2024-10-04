@@ -212,11 +212,9 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 
 	authApplier := defaultAuthApplierV3(t)
 	mustCreateRolesAndEnableAuth(t, authApplier)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result := authApplier.Apply(ctx, tc.request, dummyApplyFunc)
+			result := authApplier.Apply(tc.request, dummyApplyFunc)
 			require.Equalf(t, result, tc.expectResult, "Apply: got %v, expect: %v", result, tc.expectResult)
 		})
 	}
@@ -380,14 +378,12 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 		}
 	authApplier := defaultAuthApplierV3(t)
 	mustCreateRolesAndEnableAuth(t, authApplier)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.adminPermissionNeeded {
 				tc.request.Header = &pb.RequestHeader{Username: userReadOnly}
 			}
-			result := authApplier.Apply(ctx, tc.request, dummyApplyFunc)
+			result := authApplier.Apply(tc.request, dummyApplyFunc)
 			require.Equal(t, errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded,
 				"Admin permission needed: got %v, expect: %v", errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded)
 		})

@@ -115,7 +115,7 @@ func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
 	// then dispatch() unpacks the request to a specific method (like Put),
 	// that gets executed down the hierarchy again:
 	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
-	return a.applyV3.Apply(context.TODO(), r, a.dispatch)
+	return a.applyV3.Apply(r, a.dispatch)
 }
 
 // dispatch translates the request (r) into appropriate call (like Put) on
