@@ -62,7 +62,7 @@ type Result struct {
 	Trace *traceutil.Trace
 }
 
-type applyFunc func(ctx context.Context, r *pb.InternalRaftRequest) *Result
+type applyFunc func(r *pb.InternalRaftRequest) *Result
 
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
@@ -147,7 +147,7 @@ func newApplierV3Backend(
 }
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
-	return applyFunc(context.TODO(), r)
+	return applyFunc(r)
 }
 
 func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {

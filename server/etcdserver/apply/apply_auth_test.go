@@ -45,7 +45,7 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
-func dummyApplyFunc(_ context.Context, _ *pb.InternalRaftRequest) *Result {
+func dummyApplyFunc(_ *pb.InternalRaftRequest) *Result {
 	return &Result{}
 }
 
