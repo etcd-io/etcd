@@ -32,7 +32,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
+func Put(lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
+	ctx := context.Background()
 	trace = traceutil.Get(ctx)
 	// create put tracing if the trace in context is empty
 	if trace.IsEmpty() {
@@ -94,7 +95,8 @@ func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *p
 	return resp, nil
 }
 
-func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
+func DeleteRange(lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
+	ctx := context.Background()
 	trace = traceutil.Get(ctx)
 	// create delete tracing if the trace in context is empty
 	if trace.IsEmpty() {
@@ -133,7 +135,8 @@ func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRange
 	return resp, nil
 }
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+func Range(lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+	ctx := context.Background()
 	trace = traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("range", lg)
@@ -249,7 +252,8 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	return resp, nil
 }
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (*pb.TxnResponse, *traceutil.Trace, error) {
+func Txn(lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (*pb.TxnResponse, *traceutil.Trace, error) {
+	ctx := context.Background()
 	trace := traceutil.Get(ctx)
 	if trace.IsEmpty() {
 		trace = traceutil.New("transaction", lg)

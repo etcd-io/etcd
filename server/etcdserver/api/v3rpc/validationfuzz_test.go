@@ -15,7 +15,6 @@
 package v3rpc
 
 import (
-	"context"
 	"testing"
 
 	"go.uber.org/zap/zaptest"
@@ -167,15 +166,11 @@ func execTransaction(t *testing.T, req *pb.RequestOp) {
 	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	defer s.Close()
 
-	// setup cancelled context
-	ctx, cancel := context.WithCancel(context.TODO())
-	cancel()
-
 	request := &pb.TxnRequest{
 		Success: []*pb.RequestOp{req},
 	}
 
-	_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
+	_, _, err := txn.Txn(zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
 	if err != nil {
 		t.Skipf("Application erroring. %s", err.Error())
 	}

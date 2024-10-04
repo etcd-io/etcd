@@ -151,19 +151,19 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc)
 }
 
 func (a *applierV3backend) Put(p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(context.TODO(), a.lg, a.lessor, a.kv, p)
+	return mvcctxn.Put(a.lg, a.lessor, a.kv, p)
 }
 
 func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.DeleteRange(context.TODO(), a.lg, a.kv, dr)
+	return mvcctxn.DeleteRange(a.lg, a.kv, dr)
 }
 
 func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.lg, a.kv, r)
+	return mvcctxn.Range(a.lg, a.kv, r)
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
+	return mvcctxn.Txn(a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
