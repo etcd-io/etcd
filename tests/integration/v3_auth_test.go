@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -454,7 +456,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 		watchStartCh <- struct{}{}
 		watchResponse := <-wChan
 		t.Logf("watch response from k1: %v", watchResponse)
-		testutil.AssertTrue(t, len(watchResponse.Events) != 0)
+		assert.True(t, len(watchResponse.Events) != 0)
 		watchEndCh <- struct{}{}
 	}()
 
