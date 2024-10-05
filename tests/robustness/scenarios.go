@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/random"
@@ -63,7 +64,7 @@ type testScenario struct {
 	cluster   e2e.EtcdProcessClusterConfig
 	traffic   traffic.Traffic
 	profile   traffic.Profile
-	watch     watchConfig
+	watch     client.WatchConfig
 }
 
 func exploratoryScenarios(_ *testing.T) []testScenario {
@@ -188,8 +189,8 @@ func regressionScenarios(t *testing.T) []testScenario {
 	})
 	scenarios = append(scenarios, testScenario{
 		name: "Issue15220",
-		watch: watchConfig{
-			requestProgress: true,
+		watch: client.WatchConfig{
+			RequestProgress: true,
 		},
 		profile:   traffic.LowTraffic,
 		traffic:   traffic.EtcdPutDeleteLease,

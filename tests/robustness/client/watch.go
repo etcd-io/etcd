@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package robustness
+package client
 
 import (
 	"context"
@@ -21,25 +21,24 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg watchConfig, baseTime time.Time, ids identity.Provider) []report.ClientReport {
+func CollectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg WatchConfig, baseTime time.Time, ids identity.Provider) []report.ClientReport {
 	mux := sync.Mutex{}
 	var wg sync.WaitGroup
 	reports := make([]report.ClientReport, len(clus.Procs))
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
-		c, err := client.NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
+		c, err := NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
 		if err != nil {
 			t.Fatal(err)
 		}
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		wg.Add(1)
-		go func(i int, c *client.RecordingClient) {
+		go func(i int, c *RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 			watchUntilRevision(ctx, t, c, memberMaxRevisionChan, cfg)
@@ -60,12 +59,12 @@ func collectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	return reports
 }
 
-type watchConfig struct {
-	requestProgress bool
+type WatchConfig struct {
+	RequestProgress bool
 }
 
 // watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, t *testing.T, c *client.RecordingClient, maxRevisionChan <-chan int64, cfg watchConfig) {
+func watchUntilRevision(ctx context.Context, t *testing.T, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) {
 	var maxRevision int64
 	var lastRevision int64 = 1
 	ctx, cancel := context.WithCancel(ctx)
@@ -100,7 +99,7 @@ resetWatch:
 					t.Logf("Watch channel closed")
 					continue resetWatch
 				}
-				if cfg.requestProgress {
+				if cfg.RequestProgress {
 					c.RequestProgress(ctx)
 				}
 
@@ -124,7 +123,7 @@ resetWatch:
 	}
 }
 
-func validateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
+func ValidateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
 	var gotProgressNotify = false
 external:
 	for _, r := range reports {

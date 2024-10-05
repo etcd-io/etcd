@@ -26,6 +26,7 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -99,7 +100,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s testSce
 	failpointImpactingWatch := s.failpoint == failpoint.SleepBeforeSendWatchResponse
 	if !failpointImpactingWatch {
 		watchProgressNotifyEnabled := c.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
-		validateGotAtLeastOneProgressNotify(t, r.Client, s.watch.requestProgress || watchProgressNotifyEnabled)
+		client.ValidateGotAtLeastOneProgressNotify(t, r.Client, s.watch.RequestProgress || watchProgressNotifyEnabled)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: s.traffic.ExpectUniqueRevision()}
 	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
@@ -145,7 +146,7 @@ func (s testScenario) run(ctx context.Context, t *testing.T, lg *zap.Logger, clu
 		return nil
 	})
 	g.Go(func() error {
-		watchReport = collectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime, ids)
+		watchReport = client.CollectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.watch, baseTime, ids)
 		return nil
 	})
 	g.Wait()
