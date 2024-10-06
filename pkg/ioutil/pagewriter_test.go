@@ -146,7 +146,7 @@ func TestPageWriterPageBytes(t *testing.T) {
 				}, "expected panic when pageBytes is %d", tc.pageBytes)
 			} else {
 				pw := NewPageWriter(cw, tc.pageBytes, 0)
-				assert.NotEqual(t, pw, nil)
+				assert.NotNil(t, pw)
 			}
 		})
 	}

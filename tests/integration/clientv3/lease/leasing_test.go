@@ -25,7 +25,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/leasing"
@@ -39,15 +38,15 @@ func TestLeasingPutGet(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lKV1, closeLKV1, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV1()
 
 	lKV2, closeLKV2, err := leasing.NewKV(clus.Client(1), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV2()
 
 	lKV3, closeLKV3, err := leasing.NewKV(clus.Client(2), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV3()
 
 	resp, err := lKV1.Get(context.TODO(), "abc")
@@ -97,7 +96,7 @@ func TestLeasingInterval(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	keys := []string{"abc/a", "abc/b", "abc/a/a"}
@@ -136,7 +135,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
@@ -170,7 +169,7 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 	}
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
@@ -200,17 +199,17 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	lresp, err := clus.Client(0).Grant(context.TODO(), 60)
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	_, err = clus.Client(0).Put(context.TODO(), "k", "v", clientv3.WithLease(lresp.ID))
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	gresp, err := lkv.Get(context.TODO(), "k")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	assert.Len(t, gresp.Kvs, 1)
 
 	clus.Members[0].Stop(t)
@@ -229,7 +228,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "cached", "abc"); err != nil {
@@ -269,7 +268,7 @@ func TestLeasingPrevKey(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -295,7 +294,7 @@ func TestLeasingRevGet(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	putResp, err := clus.Client(0).Put(context.TODO(), "k", "abc")
@@ -331,7 +330,7 @@ func TestLeasingGetWithOpts(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -376,7 +375,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	// force key into leasing key cache
@@ -423,7 +422,7 @@ func TestLeasingDisconnectedGet(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "cached", "abc"); err != nil {
@@ -452,7 +451,7 @@ func TestLeasingDeleteOwner(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -486,11 +485,11 @@ func TestLeasingDeleteNonOwner(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV1()
 
 	lkv2, closeLKV2, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV2()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -521,7 +520,7 @@ func TestLeasingOverwriteResponse(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -555,7 +554,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -593,7 +592,7 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	keyCount := rand.Intn(10) + 1
@@ -624,7 +623,7 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	client := clus.Client(0)
 
 	lkv, closeLKV, err := leasing.NewKV(client, "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	defer func() {
 		// In '--tags cluster_proxy' mode the client need to be closed before
@@ -708,7 +707,7 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	keyCount := rand.Intn(10) + 1
@@ -747,7 +746,7 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -778,7 +777,7 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -872,11 +871,11 @@ func TestLeasingTxnCancel(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV1()
 
 	lkv2, closeLKV2, err := leasing.NewKV(clus.Client(1), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV2()
 
 	// acquire lease but disconnect so no revoke in time
@@ -906,11 +905,11 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	lkv2, closeLKV2, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV2()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
@@ -984,11 +983,11 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err1)
+	assert.Nil(t, err1)
 	defer closeLKV1()
 
 	lkv2, closeLKV2, err2 := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err2)
+	assert.Nil(t, err2)
 	defer closeLKV2()
 
 	keyCount := 16
@@ -1090,7 +1089,7 @@ func TestLeasingOwnerPutError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
@@ -1111,7 +1110,7 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
@@ -1132,7 +1131,7 @@ func TestLeasingNonOwnerPutError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	clus.Members[0].Stop(t)
@@ -1157,7 +1156,7 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "0/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	for i := 0; i < 8; i++ {
@@ -1206,11 +1205,11 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 	defer clus.Terminate(t)
 
 	delkv, closeDelKV, err := leasing.NewKV(clus.Client(0), "0/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeDelKV()
 
 	getkv, closeGetKv, err := leasing.NewKV(clus.Client(0), "0/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeGetKv()
 
 	for _, k := range []string{"j", "m"} {
@@ -1264,11 +1263,11 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 	defer clus.Terminate(t)
 
 	delkv, closeDelKV, err := leasing.NewKV(clus.Client(0), "0/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeDelKV()
 
 	putkv, closePutKV, err := leasing.NewKV(clus.Client(0), "0/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closePutKV()
 
 	const maxKey = 8
@@ -1329,7 +1328,7 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 	lkvs := make([]clientv3.KV, 16)
 	for i := range lkvs {
 		lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
-		testutil.AssertNil(t, err)
+		assert.Nil(t, err)
 		defer closeLKV()
 		lkvs[i] = lkv
 	}
@@ -1386,11 +1385,11 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err1)
+	assert.Nil(t, err1)
 	defer closeLKV1()
 
 	lkv2, closeLKV2, err2 := leasing.NewKV(clus.Client(1), "foo/")
-	testutil.AssertNil(t, err2)
+	assert.Nil(t, err2)
 	defer closeLKV2()
 
 	if _, err := lkv1.Get(context.TODO(), "k"); err != nil {
@@ -1447,11 +1446,11 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv1, closeLKV1, err1 := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err1)
+	assert.Nil(t, err1)
 	defer closeLKV1()
 
 	lkv2, closeLKV2, err2 := leasing.NewKV(clus.Client(1), "foo/")
-	testutil.AssertNil(t, err2)
+	assert.Nil(t, err2)
 	defer closeLKV2()
 
 	if _, err := lkv1.Get(context.TODO(), "k"); err != nil {
@@ -1501,7 +1500,7 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
 	defer closeLKV()
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	if _, err = lkv.Put(context.TODO(), "k", "x"); err != nil {
 		t.Fatal(err)
@@ -1574,7 +1573,7 @@ func TestLeasingTxnAtomicCache(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	puts, gets := make([]clientv3.Op, 16), make([]clientv3.Op, 16)
@@ -1660,7 +1659,7 @@ func TestLeasingReconnectTxn(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
@@ -1696,7 +1695,7 @@ func TestLeasingReconnectNonOwnerGet(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	// populate a few keys so some leasing gets have keys
@@ -1747,7 +1746,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	if _, err = clus.Client(0).Put(context.TODO(), "k", "a"); err != nil {
@@ -1782,7 +1781,7 @@ func TestLeasingDo(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	ops := []clientv3.Op{
@@ -1824,7 +1823,7 @@ func TestLeasingTxnOwnerPutBranch(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	n := 0
@@ -1918,11 +1917,11 @@ func TestLeasingSessionExpire(t *testing.T) {
 	defer clus.Terminate(t)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV()
 
 	lkv2, closeLKV2, err := leasing.NewKV(clus.Client(0), "foo/")
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	defer closeLKV2()
 
 	// acquire lease on abc
@@ -1994,7 +1993,7 @@ func TestLeasingSessionExpireCancel(t *testing.T) {
 			defer clus.Terminate(t)
 
 			lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "foo/", concurrency.WithTTL(1))
-			testutil.AssertNil(t, err)
+			assert.Nil(t, err)
 			defer closeLKV()
 
 			if _, err = lkv.Get(context.TODO(), "abc"); err != nil {

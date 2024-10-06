@@ -21,12 +21,12 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -66,7 +66,7 @@ func testCurlV3Auth(cx ctlCtx) {
 	// create users
 	for i := 0; i < len(usernames); i++ {
 		user, err := json.Marshal(&pb.AuthUserAddRequest{Name: usernames[i], Password: pwds[i], Options: options[i]})
-		testutil.AssertNil(cx.t, err)
+		assert.Nil(cx.t, err)
 
 		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/auth/user/add",
@@ -79,7 +79,7 @@ func testCurlV3Auth(cx ctlCtx) {
 
 	// create root role
 	rolereq, err := json.Marshal(&pb.AuthRoleAddRequest{Name: "root"})
-	testutil.AssertNil(cx.t, err)
+	assert.Nil(cx.t, err)
 
 	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/auth/role/add",
@@ -92,7 +92,7 @@ func testCurlV3Auth(cx ctlCtx) {
 	//grant root role
 	for i := 0; i < len(usernames); i++ {
 		grantroleroot, merr := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
-		testutil.AssertNil(cx.t, merr)
+		assert.Nil(cx.t, merr)
 
 		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
 			Endpoint: "/v3/auth/user/grant",
@@ -115,7 +115,7 @@ func testCurlV3Auth(cx ctlCtx) {
 	for i := 0; i < len(usernames); i++ {
 		// put "bar[i]" into "foo[i]"
 		putreq, err := json.Marshal(&pb.PutRequest{Key: []byte(fmt.Sprintf("foo%d", i)), Value: []byte(fmt.Sprintf("bar%d", i))})
-		testutil.AssertNil(cx.t, err)
+		assert.Nil(cx.t, err)
 
 		// fail put no auth
 		if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
@@ -128,7 +128,7 @@ func testCurlV3Auth(cx ctlCtx) {
 
 		// auth request
 		authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: usernames[i], Password: pwds[i]})
-		testutil.AssertNil(cx.t, err)
+		assert.Nil(cx.t, err)
 
 		var (
 			authHeader string
@@ -141,14 +141,14 @@ func testCurlV3Auth(cx ctlCtx) {
 			Value:    string(authreq),
 		})
 		proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-		testutil.AssertNil(cx.t, err)
+		assert.Nil(cx.t, err)
 		defer proc.Close()
 
 		cURLRes, err := proc.ExpectFunc(context.Background(), lineFunc)
-		testutil.AssertNil(cx.t, err)
+		assert.Nil(cx.t, err)
 
 		authRes := make(map[string]any)
-		testutil.AssertNil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
+		assert.Nil(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
 
 		token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
 		if !ok {
