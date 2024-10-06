@@ -46,9 +46,9 @@ func TestAddRemoveMember(t *testing.T) {
 	c2.Recover(func(*zap.Logger, *semver.Version) {})
 	assert.Equal(t, []*Member{{ID: types.ID(19),
 		Attributes: Attributes{Name: "node19"}}}, c2.Members())
-	assert.Equal(t, true, c2.IsIDRemoved(17))
-	assert.Equal(t, true, c2.IsIDRemoved(18))
-	assert.Equal(t, false, c2.IsIDRemoved(19))
+	assert.True(t, c2.IsIDRemoved(17))
+	assert.True(t, c2.IsIDRemoved(18))
+	assert.False(t, c2.IsIDRemoved(19))
 }
 
 type backendMock struct {

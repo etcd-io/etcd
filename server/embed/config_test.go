@@ -85,11 +85,11 @@ func TestConfigFileOtherFields(t *testing.T) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
 	}
 
-	assert.Equal(t, true, cfg.ForceNewCluster, "ForceNewCluster does not match")
+	assert.True(t, cfg.ForceNewCluster, "ForceNewCluster does not match")
 
-	assert.Equal(t, true, cfg.SocketOpts.ReusePort, "ReusePort does not match")
+	assert.True(t, cfg.SocketOpts.ReusePort, "ReusePort does not match")
 
-	assert.Equal(t, false, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
+	assert.False(t, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
 func TestConfigFileFeatureGates(t *testing.T) {

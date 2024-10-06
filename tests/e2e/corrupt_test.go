@@ -220,7 +220,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
-	assert.Equal(t, found, true, "member not found")
+	assert.True(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
@@ -260,7 +260,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	}
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
 	assert.NoError(t, err, "error on member list")
-	assert.Equal(t, found, true, "member not found")
+	assert.True(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))

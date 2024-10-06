@@ -199,61 +199,51 @@ func TestBackoffJitterFraction(t *testing.T) {
 }
 
 func TestIsHaltErr(t *testing.T) {
-	assert.Equal(t,
+	assert.True(t,
 		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
-		true,
 		"error created by errors.New should be unavailable error",
 	)
-	assert.Equal(t,
+	assert.False(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
-		false,
 		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped),
 	)
-	assert.Equal(t,
+	assert.False(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
-		false,
 		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader),
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
-	assert.Equal(t,
+	assert.False(t,
 		isHaltErr(ctx, nil),
-		false,
 		"no error and active context should be halt error",
 	)
 	cancel()
-	assert.Equal(t,
+	assert.True(t,
 		isHaltErr(ctx, nil),
-		true,
 		"cancel on context should be halte error",
 	)
 }
 
 func TestIsUnavailableErr(t *testing.T) {
-	assert.Equal(t,
+	assert.False(t,
 		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
-		false,
 		"error created by errors.New should not be unavailable error",
 	)
-	assert.Equal(t,
+	assert.True(t,
 		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
-		true,
 		fmt.Sprintf(`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped),
 	)
-	assert.Equal(t,
+	assert.False(t,
 		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCNotCapable),
-		false,
 		fmt.Sprintf("error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable),
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
-	assert.Equal(t,
+	assert.False(t,
 		isUnavailableErr(ctx, nil),
-		false,
 		"no error and active context should not be unavailable error",
 	)
 	cancel()
-	assert.Equal(t,
+	assert.False(t,
 		isUnavailableErr(ctx, nil),
-		false,
 		"cancel on context should not be unavailable error",
 	)
 }

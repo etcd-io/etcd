@@ -31,7 +31,7 @@ func TestMinExpireTime(t *testing.T) {
 	fc := clockwork.NewFakeClockAt(time.Date(1984, time.April, 4, 0, 0, 0, 0, time.UTC))
 	s.clock = fc
 	// FakeClock starts at 0, so minExpireTime should be far in the future.. but just in case
-	testutil.AssertTrue(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")
+	assert.True(t, minExpireTime.After(fc.Now()), "minExpireTime should be ahead of FakeClock!")
 	s.Create("/foo", false, "Y", false, TTLOptionSet{ExpireTime: fc.Now().Add(3 * time.Second)})
 	fc.Advance(5 * time.Second)
 	// Ensure it hasn't expired
@@ -70,9 +70,9 @@ func TestStoreGetDirectory(t *testing.T) {
 		switch node.Key {
 		case "/foo/bar":
 			assert.Equal(t, *node.Value, "X")
-			assert.Equal(t, node.Dir, false)
+			assert.False(t, node.Dir)
 		case "/foo/baz":
-			assert.Equal(t, node.Dir, true)
+			assert.True(t, node.Dir)
 			assert.Equal(t, len(node.Nodes), 2)
 			bazNodes = node.Nodes
 		default:
@@ -83,10 +83,10 @@ func TestStoreGetDirectory(t *testing.T) {
 		switch node.Key {
 		case "/foo/baz/bat":
 			assert.Equal(t, *node.Value, "Y")
-			assert.Equal(t, node.Dir, false)
+			assert.False(t, node.Dir)
 		case "/foo/baz/ttl":
 			assert.Equal(t, *node.Value, "Y")
-			assert.Equal(t, node.Dir, false)
+			assert.False(t, node.Dir)
 			assert.Equal(t, node.TTL, int64(3))
 		default:
 			t.Errorf("key = %s, not matched", node.Key)
@@ -127,7 +127,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	testutil.AssertNil(t, err)
 	e, err := s.Update("/foo/bar", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	testutil.AssertNil(t, err)
-	assert.Equal(t, e.Node.Dir, false)
+	assert.False(t, e.Node.Dir)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	e, _ = s.Get("/foo/bar", false, false)
 	assert.Equal(t, *e.Node.Value, "")
@@ -175,7 +175,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "expire")
 	assert.Equal(t, e.Node.Key, "/foodir")
-	assert.Equal(t, e.Node.Dir, true)
+	assert.True(t, e.Node.Dir)
 }
 
 // TestStoreWatchExpireRefresh ensures that the store can watch for key expiration when refreshing.

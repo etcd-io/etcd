@@ -24,6 +24,7 @@ linters:
     - revive
     - staticcheck
     - stylecheck
+    - testifylint
     - unconvert # Remove unnecessary type conversions
     - unparam
     - unused
@@ -106,3 +107,18 @@ linters-settings: # please keep this alphabetized
   stylecheck:
     checks:
       - ST1019 # Importing the same package multiple times.
+  testifylint:
+    disable:
+      - compares
+      - empty
+      - error-is-as
+      - error-nil
+      - expected-actual
+      - float-compare
+      - formatter
+      - go-require
+      - len
+      - negative-positive
+      - nil-compare
+      - require-error
+    enable-all: true

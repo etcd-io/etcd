@@ -34,10 +34,10 @@ func AssertNotNil(t *testing.T, v any) {
 
 func AssertTrue(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	assert.Equal(t, true, v, msg)
+	assert.True(t, v, msg)
 }
 
 func AssertFalse(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	assert.Equal(t, false, v, msg)
+	assert.False(t, v, msg)
 }
