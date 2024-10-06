@@ -22,11 +22,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/authpb"
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -397,7 +397,7 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		Username:    "root",
 		Password:    "123",
 	})
-	testutil.AssertNil(t, cerr)
+	assert.Nil(t, cerr)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -405,13 +405,13 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		defer wg.Done()
 		role, user := fmt.Sprintf("test-role-%d", i), fmt.Sprintf("test-user-%d", i)
 		_, err := c.RoleAdd(context.TODO(), role)
-		testutil.AssertNil(t, err)
+		assert.Nil(t, err)
 		_, err = c.RoleGrantPermission(context.TODO(), role, "\x00", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
-		testutil.AssertNil(t, err)
+		assert.Nil(t, err)
 		_, err = c.UserAdd(context.TODO(), user, "123")
-		testutil.AssertNil(t, err)
+		assert.Nil(t, err)
 		_, err = c.Put(context.TODO(), "a", "b")
-		testutil.AssertNil(t, err)
+		assert.Nil(t, err)
 	}
 	// needs concurrency to trigger
 	numRoles := 2
@@ -466,7 +466,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 
 	wChan := c.Watch(ctx, "non-allowed-key", clientv3.WithRev(1))
 	watchResponse := <-wChan
-	testutil.AssertNotNil(t, watchResponse.Err()) // permission denied
+	require.NotNil(t, watchResponse.Err()) // permission denied
 
 	_, err := c.Put(ctx, "k1", "val")
 	if err != nil {
