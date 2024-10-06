@@ -397,7 +397,7 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		Username:    "root",
 		Password:    "123",
 	})
-	assert.Nil(t, cerr)
+	assert.NoError(t, cerr)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -405,13 +405,13 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		defer wg.Done()
 		role, user := fmt.Sprintf("test-role-%d", i), fmt.Sprintf("test-user-%d", i)
 		_, err := c.RoleAdd(context.TODO(), role)
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		_, err = c.RoleGrantPermission(context.TODO(), role, "\x00", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		_, err = c.UserAdd(context.TODO(), user, "123")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 		_, err = c.Put(context.TODO(), "a", "b")
-		assert.Nil(t, err)
+		assert.NoError(t, err)
 	}
 	// needs concurrency to trigger
 	numRoles := 2
@@ -466,7 +466,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 
 	wChan := c.Watch(ctx, "non-allowed-key", clientv3.WithRev(1))
 	watchResponse := <-wChan
-	require.NotNil(t, watchResponse.Err()) // permission denied
+	require.Error(t, watchResponse.Err()) // permission denied
 
 	_, err := c.Put(ctx, "k1", "val")
 	if err != nil {

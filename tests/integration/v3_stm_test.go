@@ -281,7 +281,7 @@ func TestSTMSerializableSnapshotPut(t *testing.T) {
 	cli := clus.Client(0)
 	// key with lower create/mod revision than keys being updated
 	_, err := cli.Put(context.TODO(), "a", "0")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	tries := 0
 	applyf := func(stm concurrency.STM) error {
@@ -296,12 +296,12 @@ func TestSTMSerializableSnapshotPut(t *testing.T) {
 
 	iso := concurrency.WithIsolation(concurrency.SerializableSnapshot)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 
 	resp, err := cli.Get(context.TODO(), "b")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	if resp.Kvs[0].Version != 2 {
 		t.Fatalf("bad version. got %+v, expected version 2", resp)
 	}

@@ -35,9 +35,9 @@ func TestNewStoreWithNamespaces(t *testing.T) {
 	s := v2store.New("/0", "/1")
 
 	_, err := s.Get("/0", false, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	_, err = s.Get("/1", false, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 // TestStoreGetValue ensures that the store can retrieve an existing value.
@@ -47,7 +47,7 @@ func TestStoreGetValue(t *testing.T) {
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	var eidx uint64 = 1
 	e, err := s.Get("/foo", false, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "get")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -66,7 +66,7 @@ func TestStoreGetSorted(t *testing.T) {
 	s.Create("/foo/y/b", false, "0", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	var eidx uint64 = 6
 	e, err := s.Get("/foo", true, true)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 
 	var yNodes v2store.NodeExterns
@@ -96,7 +96,7 @@ func TestSet(t *testing.T) {
 	// Set /foo=""
 	var eidx uint64 = 1
 	e, err := s.Set("/foo", false, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "set")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -110,7 +110,7 @@ func TestSet(t *testing.T) {
 	// Set /foo="bar"
 	eidx = 2
 	e, err = s.Set("/foo", false, "bar", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "set")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -128,7 +128,7 @@ func TestSet(t *testing.T) {
 	// Set /foo="baz" (for testing prevNode)
 	eidx = 3
 	e, err = s.Set("/foo", false, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "set")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -147,7 +147,7 @@ func TestSet(t *testing.T) {
 	// Set /a/b/c/d="efg"
 	eidx = 4
 	e, err = s.Set("/a/b/c/d", false, "efg", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Node.Key, "/a/b/c/d")
 	assert.False(t, e.Node.Dir)
@@ -160,7 +160,7 @@ func TestSet(t *testing.T) {
 	// Set /dir as a directory
 	eidx = 5
 	e, err = s.Set("/dir", true, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "set")
 	assert.Equal(t, e.Node.Key, "/dir")
@@ -179,7 +179,7 @@ func TestStoreCreateValue(t *testing.T) {
 	// Create /foo=bar
 	var eidx uint64 = 1
 	e, err := s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "create")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -193,7 +193,7 @@ func TestStoreCreateValue(t *testing.T) {
 	// Create /empty=""
 	eidx = 2
 	e, err = s.Create("/empty", false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "create")
 	assert.Equal(t, e.Node.Key, "/empty")
@@ -211,7 +211,7 @@ func TestStoreCreateDirectory(t *testing.T) {
 
 	var eidx uint64 = 1
 	e, err := s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "create")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -244,7 +244,7 @@ func TestStoreUpdateValue(t *testing.T) {
 	// update /foo="bzr"
 	var eidx uint64 = 2
 	e, err := s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "update")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -265,7 +265,7 @@ func TestStoreUpdateValue(t *testing.T) {
 	// update /foo=""
 	eidx = 3
 	e, err = s.Update("/foo", "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "update")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -304,7 +304,7 @@ func TestStoreDeleteValue(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.Delete("/foo", false, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "delete")
 	// check prevNode
@@ -323,7 +323,7 @@ func TestStoreDeleteDirectory(t *testing.T) {
 	// delete /foo with dir = true and recursive = false
 	// this should succeed, since the directory is empty
 	e, err := s.Delete("/foo", true, false)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "delete")
 	// check prevNode
@@ -333,18 +333,18 @@ func TestStoreDeleteDirectory(t *testing.T) {
 
 	// create directory /foo and directory /foo/bar
 	_, err = s.Create("/foo/bar", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	// delete /foo with dir = true and recursive = false
 	// this should fail, since the directory is not empty
 	_, err = s.Delete("/foo", true, false)
-	require.NotNil(t, err)
+	require.Error(t, err)
 
 	// delete /foo with dir=false and recursive = true
 	// this should succeed, since recursive implies dir=true
 	// and recursively delete should be able to delete all
 	// items under the given directory
 	e, err = s.Delete("/foo", false, true)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.Action, "delete")
 }
 
@@ -366,19 +366,19 @@ func TestRootRdOnly(t *testing.T) {
 
 	for _, tt := range []string{"/", "/0"} {
 		_, err := s.Set(tt, true, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		_, err = s.Delete(tt, true, true)
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		_, err = s.Create(tt, true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		_, err = s.Update(tt, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-		require.NotNil(t, err)
+		require.Error(t, err)
 
 		_, err = s.CompareAndSwap(tt, "", 0, "", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-		require.NotNil(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -388,7 +388,7 @@ func TestStoreCompareAndDeletePrevValue(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndDelete("/foo", "bar", 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "compareAndDelete")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -422,7 +422,7 @@ func TestStoreCompareAndDeletePrevIndex(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndDelete("/foo", "", 1)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "compareAndDelete")
 	// check prevNode
@@ -439,7 +439,7 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndDelete("/foo", "", 100)
-	require.NotNil(t, _err)
+	require.Error(t, _err)
 	err := _err.(*v2error.Error)
 	assert.Equal(t, err.ErrorCode, v2error.EcodeTestFailed)
 	assert.Equal(t, err.Message, "Compare failed")
@@ -455,7 +455,7 @@ func TestStoreCompareAndDeleteDirectoryFail(t *testing.T) {
 
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	_, _err := s.CompareAndDelete("/foo", "", 0)
-	require.NotNil(t, _err)
+	require.Error(t, _err)
 	err := _err.(*v2error.Error)
 	assert.Equal(t, err.ErrorCode, v2error.EcodeNotFile)
 }
@@ -468,7 +468,7 @@ func TestStoreCompareAndSwapPrevValue(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndSwap("/foo", "bar", 0, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "compareAndSwap")
 	assert.Equal(t, *e.Node.Value, "baz")
@@ -506,7 +506,7 @@ func TestStoreCompareAndSwapPrevIndex(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, err := s.CompareAndSwap("/foo", "", 1, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "compareAndSwap")
 	assert.Equal(t, *e.Node.Value, "baz")
@@ -564,7 +564,7 @@ func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := v2store.New()
 	var eidx uint64
 	w, err := s.Watch("/foo", true, false, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, w.StartIndex(), eidx)
 	eidx = 1
 	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
@@ -595,7 +595,7 @@ func TestStoreWatchRecursiveUpdate(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	w, err := s.Watch("/foo", true, false, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Update("/foo/bar", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
@@ -626,7 +626,7 @@ func TestStoreWatchRecursiveDelete(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo/bar", false, "baz", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	w, err := s.Watch("/foo", true, false, 0)
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, w.StartIndex(), eidx)
 	eidx = 2
 	s.Delete("/foo/bar", false, false)

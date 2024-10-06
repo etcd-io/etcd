@@ -111,7 +111,6 @@ linters-settings: # please keep this alphabetized
       - ST1019 # Importing the same package multiple times.
   testifylint:
     disable:
-      - error-nil
       - expected-actual
       - float-compare
       - formatter

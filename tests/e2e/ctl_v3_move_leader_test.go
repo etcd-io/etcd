@@ -140,7 +140,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		if tc.expectErr {
 			require.ErrorContains(t, err, tc.expect)
 		} else {
-			require.Nilf(t, err, "#%d: %v", i, err)
+			require.NoErrorf(t, err, "#%d: %v", i, err)
 		}
 	}
 }
