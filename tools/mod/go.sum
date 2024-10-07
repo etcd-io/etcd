@@ -398,8 +398,8 @@ github.com/sivchari/containedctx v1.0.3 h1:x+etemjbsh2fB5ewm5FeLNi5bUjK0V8n0RB+W
 github.com/sivchari/containedctx v1.0.3/go.mod h1:c1RDvCbnJLtH4lLcYD/GqwiBSSf4F5Qk0xld2rBqzJ4=
 github.com/sivchari/tenv v1.10.0 h1:g/hzMA+dBCKqGXgW8AV/1xIWhAvDrx0zFKNR48NFMg0=
 github.com/sivchari/tenv v1.10.0/go.mod h1:tdY24masnVoZFxYrHv/nD6Tc8FbkEtAQEEziXpyMgqY=
-github.com/sonatard/noctx v0.0.2 h1:L7Dz4De2zDQhW8S0t+KUjY0MAQJd6SgVwhzNIc4ok00=
-github.com/sonatard/noctx v0.0.2/go.mod h1:kzFz+CzWSjQ2OzIm46uJZoXuBpa2+0y3T36U18dWqIo=
+github.com/sonatard/noctx v0.1.0 h1:JjqOc2WN16ISWAjAk8M5ej0RfExEXtkEyExl2hLW+OM=
+github.com/sonatard/noctx v0.1.0/go.mod h1:0RvBxqY8D4j9cTTTWE8ylt2vqj2EPI8fHmrxHdsaZ2c=
 github.com/sourcegraph/go-diff v0.7.0 h1:9uLlrd5T46OXs5qpp8L/MTltk0zikUGi0sNNyCpA8G0=
 github.com/sourcegraph/go-diff v0.7.0/go.mod h1:iBszgVvyxdc8SFZ7gm69go2KDdt3ag071iBaWPF6cjs=
 github.com/spf13/afero v1.11.0 h1:WJQKhtpdm3v2IzqG8VMqrr6Rf3UYpEF239Jy9wNepM8=
