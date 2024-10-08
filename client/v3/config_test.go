@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -138,9 +139,7 @@ func TestNewClientConfig(t *testing.T) {
 			lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 
 			cfg, err := NewClientConfig(&tc.spec, lg)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
+			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedConf, *cfg)
 		})
@@ -149,9 +148,7 @@ func TestNewClientConfig(t *testing.T) {
 
 func TestNewClientConfigWithSecureCfg(t *testing.T) {
 	tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 
 	scfg := &SecureConfig{
 		Cert:   tls.CertFile,
@@ -166,7 +163,8 @@ func TestNewClientConfigWithSecureCfg(t *testing.T) {
 		KeepAliveTimeout: 5 * time.Second,
 		Secure:           scfg,
 	}, nil)
-	if err != nil || cfg == nil || cfg.TLS == nil {
+	require.NoErrorf(t, err, "Unexpected result client config")
+	if cfg == nil || cfg.TLS == nil {
 		t.Fatalf("Unexpected result client config: %v", err)
 	}
 }

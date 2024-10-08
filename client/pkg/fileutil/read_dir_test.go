@@ -19,6 +19,9 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadDir(t *testing.T) {
@@ -29,9 +32,7 @@ func TestReadDir(t *testing.T) {
 		writeFunc(t, filepath.Join(tmpdir, f))
 	}
 	fs, err := ReadDir(tmpdir)
-	if err != nil {
-		t.Fatalf("error calling ReadDir: %v", err)
-	}
+	require.NoErrorf(t, err, "error calling ReadDir")
 	wfs := []string{"abc", "def", "ghi", "xyz"}
 	if !reflect.DeepEqual(fs, wfs) {
 		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
@@ -42,9 +43,7 @@ func TestReadDir(t *testing.T) {
 		writeFunc(t, filepath.Join(tmpdir, f))
 	}
 	fs, err = ReadDir(tmpdir, WithExt(".wal"))
-	if err != nil {
-		t.Fatalf("error calling ReadDir: %v", err)
-	}
+	require.NoErrorf(t, err, "error calling ReadDir")
 	wfs = []string{"abc.wal", "def.wal", "ghi.wal", "xyz.wal"}
 	if !reflect.DeepEqual(fs, wfs) {
 		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
@@ -53,10 +52,6 @@ func TestReadDir(t *testing.T) {
 
 func writeFunc(t *testing.T, path string) {
 	fh, err := os.Create(path)
-	if err != nil {
-		t.Fatalf("error creating file: %v", err)
-	}
-	if err = fh.Close(); err != nil {
-		t.Fatalf("error closing file: %v", err)
-	}
+	require.NoErrorf(t, err, "error creating file")
+	assert.NoErrorf(t, fh.Close(), "error closing file")
 }

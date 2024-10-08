@@ -49,9 +49,7 @@ func TestDialCancel(t *testing.T) {
 
 	// accept first connection so client is created with dial timeout
 	ln, err := net.Listen("unix", "dialcancel:12345")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer ln.Close()
 
 	ep := "unix://dialcancel:12345"
@@ -59,9 +57,7 @@ func TestDialCancel(t *testing.T) {
 		Endpoints:   []string{ep},
 		DialTimeout: 30 * time.Second}
 	c, err := NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// connect to ipv4 black hole so dial blocks
 	c.SetEndpoints("http://254.0.0.1:12345")
@@ -150,9 +146,10 @@ func TestDialTimeout(t *testing.T) {
 func TestDialNoTimeout(t *testing.T) {
 	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
 	c, err := NewClient(t, cfg)
-	if c == nil || err != nil {
+	if c == nil {
 		t.Fatalf("new client with DialNoWait should succeed, got %v", err)
 	}
+	require.NoErrorf(t, err, "new client with DialNoWait should succeed")
 	c.Close()
 }
 
@@ -289,9 +286,7 @@ func TestAuthTokenBundleNoOverwrite(t *testing.T) {
 
 	// Create a mock AuthServer to handle Authenticate RPCs.
 	lis, err := net.Listen("unix", "etcd-auth-test:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer lis.Close()
 	addr := "unix://" + lis.Addr().String()
 	srv := grpc.NewServer()
@@ -307,18 +302,14 @@ func TestAuthTokenBundleNoOverwrite(t *testing.T) {
 		Username:    "foo",
 		Password:    "bar",
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer c.Close()
 	oldTokenBundle := c.authTokenBundle
 
 	// Call the public Dial again, which should preserve the original
 	// authTokenBundle.
 	gc, err := c.Dial(addr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer gc.Close()
 	newTokenBundle := c.authTokenBundle
 

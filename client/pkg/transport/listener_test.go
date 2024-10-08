@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -56,17 +57,13 @@ func fakeCertificateParserFunc(err error) func(certPEMBlock, keyPEMBlock []byte)
 // a TLS listener that accepts TLS connections.
 func TestNewListenerTLSInfo(t *testing.T) {
 	tlsInfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 	testNewListenerTLSInfoAccept(t, *tlsInfo)
 }
 
 func TestNewListenerWithOpts(t *testing.T) {
 	tlsInfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := map[string]struct {
 		opts        []ListenerOption
@@ -125,9 +122,7 @@ func TestNewListenerWithOpts(t *testing.T) {
 
 func TestNewListenerWithSocketOpts(t *testing.T) {
 	tlsInfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := map[string]struct {
 		opts        []ListenerOption
@@ -197,9 +192,7 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 	for testName, test := range tests {
 		t.Run(testName, func(t *testing.T) {
 			ln, err := NewListenerWithOpts("127.0.0.1:0", test.scheme, test.opts...)
-			if err != nil {
-				t.Fatalf("unexpected NewListenerWithSocketOpts error: %v", err)
-			}
+			require.NoErrorf(t, err, "unexpected NewListenerWithSocketOpts error")
 			defer ln.Close()
 			ln2, err := NewListenerWithOpts(ln.Addr().String(), test.scheme, test.opts...)
 			if ln2 != nil {
@@ -226,9 +219,7 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 
 func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 	ln, err := NewListener("127.0.0.1:0", "https", &tlsInfo)
-	if err != nil {
-		t.Fatalf("unexpected NewListener error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected NewListener error")
 	defer ln.Close()
 
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
@@ -236,9 +227,7 @@ func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
 	go cli.Get("https://" + ln.Addr().String())
 
 	conn, err := ln.Accept()
-	if err != nil {
-		t.Fatalf("unexpected Accept error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected Accept error")
 	defer conn.Close()
 	if _, ok := conn.(*tls.Conn); !ok {
 		t.Error("failed to accept *tls.Conn")
@@ -266,33 +255,25 @@ func TestNewListenerTLSInfoSkipClientSANVerify(t *testing.T) {
 
 func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodClientHost, acceptExpected bool) {
 	tlsInfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	host := "127.0.0.222"
 	if goodClientHost {
 		host = "127.0.0.1"
 	}
 	clientTLSInfo, err := createSelfCertEx(t, host, x509.ExtKeyUsageClientAuth)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tlsInfo.SkipClientSANVerify = skipClientSANVerify
 	tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
 
 	rootCAs := x509.NewCertPool()
 	loaded, err := os.ReadFile(tlsInfo.CertFile)
-	if err != nil {
-		t.Fatalf("unexpected missing certfile: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected missing certfile")
 	rootCAs.AppendCertsFromPEM(loaded)
 
 	clientCert, err := tls.LoadX509KeyPair(clientTLSInfo.CertFile, clientTLSInfo.KeyFile)
-	if err != nil {
-		t.Fatalf("unable to create peer cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create peer cert")
 
 	tlsConfig := &tls.Config{}
 	tlsConfig.InsecureSkipVerify = false
@@ -300,9 +281,7 @@ func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodCl
 	tlsConfig.RootCAs = rootCAs
 
 	ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
-	if err != nil {
-		t.Fatalf("unexpected NewListener error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected NewListener error")
 	defer ln.Close()
 
 	tr := &http.Transport{TLSClientConfig: tlsConfig}
@@ -351,9 +330,7 @@ func TestNewListenerTLSEmptyInfo(t *testing.T) {
 
 func TestNewTransportTLSInfo(t *testing.T) {
 	tlsinfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := []TLSInfo{
 		{},
@@ -374,9 +351,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 	for i, tt := range tests {
 		tt.parseFunc = fakeCertificateParserFunc(nil)
 		trans, err := NewTransport(tt, time.Second)
-		if err != nil {
-			t.Fatalf("Received unexpected error from NewTransport: %v", err)
-		}
+		require.NoErrorf(t, err, "Received unexpected error from NewTransport")
 
 		if trans.TLSClientConfig == nil {
 			t.Fatalf("#%d: want non-nil TLSClientConfig", i)
@@ -422,9 +397,7 @@ func TestTLSInfoEmpty(t *testing.T) {
 
 func TestTLSInfoMissingFields(t *testing.T) {
 	tlsinfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := []TLSInfo{
 		{CertFile: tlsinfo.CertFile},
@@ -446,9 +419,7 @@ func TestTLSInfoMissingFields(t *testing.T) {
 
 func TestTLSInfoParseFuncError(t *testing.T) {
 	tlsinfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := []struct {
 		info TLSInfo
@@ -478,9 +449,7 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 func TestTLSInfoConfigFuncs(t *testing.T) {
 	ln := zaptest.NewLogger(t)
 	tlsinfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	tests := []struct {
 		info       TLSInfo
@@ -536,9 +505,7 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	tmpdir := t.TempDir()
 
 	tlsinfo, err := SelfCert(zaptest.NewLogger(t), tmpdir, []string{"127.0.0.1"}, 1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if tlsinfo.Empty() {
 		t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
 	}
@@ -582,23 +549,17 @@ func TestSocktOptsEmpty(t *testing.T) {
 // TestNewListenerWithACRLFile tests when a revocation list is present.
 func TestNewListenerWithACRLFile(t *testing.T) {
 	clientTLSInfo, err := createSelfCertEx(t, "127.0.0.1", x509.ExtKeyUsageClientAuth)
-	if err != nil {
-		t.Fatalf("unable to create client cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create client cert")
 
 	loadFileAsPEM := func(fileName string) []byte {
 		loaded, readErr := os.ReadFile(fileName)
-		if readErr != nil {
-			t.Fatalf("unable to read file %q: %v", fileName, readErr)
-		}
+		require.NoErrorf(t, readErr, "unable to read file %q", fileName)
 		block, _ := pem.Decode(loaded)
 		return block.Bytes
 	}
 
 	clientCert, err := x509.ParseCertificate(loadFileAsPEM(clientTLSInfo.CertFile))
-	if err != nil {
-		t.Fatalf("unable to parse client cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to parse client cert")
 
 	tests := map[string]struct {
 		expectHandshakeError      bool
@@ -627,21 +588,15 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			tmpdir := t.TempDir()
 			tlsInfo, err := createSelfCert(t)
-			if err != nil {
-				t.Fatalf("unable to create server cert: %v", err)
-			}
+			require.NoErrorf(t, err, "unable to create server cert")
 			tlsInfo.TrustedCAFile = clientTLSInfo.CertFile
 			tlsInfo.CRLFile = filepath.Join(tmpdir, "revoked.r0")
 
 			cert, err := x509.ParseCertificate(loadFileAsPEM(tlsInfo.CertFile))
-			if err != nil {
-				t.Fatalf("unable to decode server cert: %v", err)
-			}
+			require.NoErrorf(t, err, "unable to decode server cert")
 
 			key, err := x509.ParseECPrivateKey(loadFileAsPEM(tlsInfo.KeyFile))
-			if err != nil {
-				t.Fatalf("unable to parse server key: %v", err)
-			}
+			require.NoErrorf(t, err, "unable to parse server key")
 
 			revocationListContents := test.revocationListContents
 			if len(revocationListContents) == 0 {
@@ -652,14 +607,11 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 					Number:                    big.NewInt(1),
 				}
 				revocationListContents, err = x509.CreateRevocationList(rand.Reader, tmpl, cert, key)
-				if err != nil {
-					t.Fatalf("unable to create revocation list: %v", err)
-				}
+				require.NoErrorf(t, err, "unable to create revocation list")
 			}
 
-			if err = os.WriteFile(tlsInfo.CRLFile, revocationListContents, 0600); err != nil {
-				t.Fatalf("unable to write revocation list: %v", err)
-			}
+			err = os.WriteFile(tlsInfo.CRLFile, revocationListContents, 0600)
+			require.NoErrorf(t, err, "unable to write revocation list")
 
 			chHandshakeFailure := make(chan error, 1)
 			tlsInfo.HandshakeFailure = func(_ *tls.Conn, err error) {
@@ -672,14 +624,10 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 			rootCAs.AddCert(cert)
 
 			clientCert, err := tls.LoadX509KeyPair(clientTLSInfo.CertFile, clientTLSInfo.KeyFile)
-			if err != nil {
-				t.Fatalf("unable to create peer cert: %v", err)
-			}
+			require.NoErrorf(t, err, "unable to create peer cert")
 
 			ln, err := NewListener("127.0.0.1:0", "https", tlsInfo)
-			if err != nil {
-				t.Fatalf("unable to start listener: %v", err)
-			}
+			require.NoErrorf(t, err, "unable to start listener")
 
 			tlsConfig := &tls.Config{}
 			tlsConfig.InsecureSkipVerify = false

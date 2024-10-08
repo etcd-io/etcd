@@ -23,6 +23,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
@@ -312,9 +314,7 @@ func TestMemberCreateRequestMarshal(t *testing.T) {
 	want := []byte(`{"peerURLs":["http://127.0.0.1:8081","https://127.0.0.1:8080"]}`)
 
 	got, err := json.Marshal(&req)
-	if err != nil {
-		t.Fatalf("Marshal returned unexpected err=%v", err)
-	}
+	require.NoErrorf(t, err, "Marshal returned unexpected err")
 
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("Failed to marshal memberCreateRequest: want=%s, got=%s", want, got)

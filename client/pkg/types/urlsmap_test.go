@@ -18,14 +18,14 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestParseInitialCluster(t *testing.T) {
 	c, err := NewURLsMap("mem1=http://10.0.0.1:2379,mem1=http://128.193.4.20:2379,mem2=http://10.0.0.2:2379,default=http://127.0.0.1:2379")
-	if err != nil {
-		t.Fatalf("unexpected parse error: %v", err)
-	}
+	require.NoError(t, err)
 	wc := URLsMap(map[string]URLs{
 		"mem1":    testutil.MustNewURLs(t, []string{"http://10.0.0.1:2379", "http://128.193.4.20:2379"}),
 		"mem2":    testutil.MustNewURLs(t, []string{"http://10.0.0.2:2379"}),
@@ -102,9 +102,7 @@ func TestParse(t *testing.T) {
 // URI (https://github.com/golang/go/issues/6530).
 func TestNewURLsMapIPV6(t *testing.T) {
 	c, err := NewURLsMap("mem1=http://[2001:db8::1]:2380,mem1=http://[fe80::6e40:8ff:feb1:58e4%25en0]:2380,mem2=http://[fe80::92e2:baff:fe7c:3224%25ext0]:2380")
-	if err != nil {
-		t.Fatalf("unexpected parse error: %v", err)
-	}
+	require.NoError(t, err)
 	wc := URLsMap(map[string]URLs{
 		"mem1": testutil.MustNewURLs(t, []string{"http://[2001:db8::1]:2380", "http://[fe80::6e40:8ff:feb1:58e4%25en0]:2380"}),
 		"mem2": testutil.MustNewURLs(t, []string{"http://[fe80::92e2:baff:fe7c:3224%25ext0]:2380"}),
