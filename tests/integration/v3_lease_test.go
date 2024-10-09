@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -37,6 +38,142 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 	gofail "go.etcd.io/gofail/runtime"
 )
+
+// TestV3LeaseMetrics
+func TestV3LeaseMetrics(t *testing.T) {
+	integration.BeforeTest(t)
+
+	clusterSize := 1
+
+	clus := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:                  clusterSize,
+		EnableLeaseCheckpoint: true,
+	})
+	defer clus.Terminate(t)
+	clus.WaitLeader(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	lc := integration.ToGRPC(clus.RandClient()).Lease
+	kvc := integration.ToGRPC(clus.RandClient()).KV
+
+	// lease grant op
+	lresp, err := lc.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: fiveMinTTL})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// lease grant stats
+	v, err := clus.Members[0].Metric("etcd_debugging_lease_granted_total")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err)
+	}
+	if v != strconv.Itoa(clusterSize) {
+		t.Errorf("expected: %d, got %s", clusterSize, v)
+	}
+
+	// attach the keys to the lease
+	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("test"), Lease: lresp.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// lease attach stats
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_attach_total")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err)
+	}
+	if v != strconv.Itoa(clusterSize) {
+		t.Errorf("expected: %d, got %s", clusterSize, v)
+	}
+
+	// lease revoke op
+	_, err = lc.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// list all leases
+	llresp, err := lc.LeaseLeases(context.TODO(), &pb.LeaseLeasesRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(llresp.Leases) != 0 {
+		t.Errorf("expected no leases, got %d", len(llresp.Leases))
+	}
+
+	// lease revoke stats
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_revoked_total")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err)
+	}
+	if v != strconv.Itoa(clusterSize) {
+		t.Errorf("expected: %d, got %s", clusterSize, v)
+	}
+
+	// lease detach stats
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_detach_total")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err)
+	}
+	if v != strconv.Itoa(clusterSize) {
+		t.Errorf("expected: %d, got %s", clusterSize, v)
+	}
+
+	_, err = lc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 4327842798472398})
+	if err == nil || !errors.Is(err, rpctypes.ErrGRPCLeaseTTLTooLarge) {
+		t.Errorf("expected: %+v, got %+v", rpctypes.ErrGRPCLeaseTTLTooLarge, err)
+	}
+
+	_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID + 1})
+	if err == nil && !errors.Is(err, rpctypes.ErrLeaseNotFound) {
+		t.Errorf("expected: %+v, got %+v", clusterSize, err)
+	}
+
+	// lease errors - grant
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_grant_errors")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err.Error())
+	}
+	if v == "" {
+		t.Errorf("expected: %s, got %s", "", v)
+	}
+
+	// lease errors - revoke
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_revoke_errors")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err.Error())
+	}
+	if v == "" {
+		t.Errorf("expected: %s, got %s", "", v)
+	}
+
+	// restart instance
+	clus.Members[0].Stop(t)
+	err = clus.Members[0].Restart(t)
+	if err != nil {
+		t.Fatalf("error while restarting etcd member %d, %+v", 0, err)
+	}
+	clus.Members[0].WaitOK(t)
+
+	// lease initial count
+	leasesResp, err := lc.LeaseLeases(ctx, &pb.LeaseLeasesRequest{})
+	if err != nil {
+		t.Fatalf("error while fetch leases, %+v", err)
+	}
+	if len(leasesResp.Leases) != 1 {
+		t.Errorf("expected lease count: %d, got: %d", 1, len(leasesResp.Leases))
+	}
+
+	v, err = clus.Members[0].Metric("etcd_debugging_lease_initial_lease_count")
+	if err != nil {
+		t.Errorf("expected to get metric, error %s", err.Error())
+	}
+	if v == "" {
+		t.Errorf("expected: %s, got %s", "1", v)
+	}
+}
 
 // TestV3LeasePromote ensures the newly elected leader can promote itself
 // to the primary lessor, refresh the leases and start to manage leases.
