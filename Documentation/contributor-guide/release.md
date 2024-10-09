@@ -71,6 +71,12 @@ which don't need to be executed before releasing each version.
 4. Verify you can pass the authentication to the image registries,
    - `docker login gcr.io`
    - `docker login quay.io`
+     - If the release person doesn't have access to 1password, one of the owners (@ahrtr, @ivanvc, @jmhbnz, @serathius) needs to share the password with them per [this guide](https://support.1password.com/share-items/). See rough steps below,
+       - [Sign in](https://team-etcd.1password.com/home) to your account on 1password.com.
+       - Click `Your Vault Items` on the right side.
+       - Select `Password of quay.io`.
+       - Click `Share` on the top right, and set expiration as `1 hour` and only available to the release person using his/her email.
+       - Click `Copy Link` then send the link to the release person via slack or email.
 5. Clone the etcd repository and checkout the target branch,
    - `git clone --branch release-3.X git@github.com:etcd-io/etcd.git`
 6. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
@@ -78,8 +84,6 @@ which don't need to be executed before releasing each version.
 
    It generates all release binaries under the directory `/tmp/etcd-release-${VERSION}/etcd/release/` and images. Binaries are pushed to the Google Cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
-
-   **Remove the `quay.io` login entry from `~/.docker/config.json` after pushing Docker images.**
 7. Publish the release page on GitHub
    - Set the release title as the version name
    - Choose the correct release tag (generated from step #4)
@@ -108,6 +112,7 @@ etcd team
 10. Paste the release link to the issue raised in Step 1 and close the issue.
 11. Restore standard branch protection settings and raise a follow-up `kubernetes/org` pull request to return to least privilege permissions.
 12. Crease a new stable branch through `git push origin release-${VERSION_MAJOR}.${VERSION_MINOR}` if this is a new major or minor stable release.
+13. Re-generate a new password for quay.io if needed (e.g. shared to a contributor who isn't in the release team, and we should rotate the password at least once every 3 months).
 
 #### Release known issues
 
