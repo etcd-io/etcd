@@ -1,0 +1,77 @@
+---
+name: Release
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - name: release
+        run: |
+          set -euo pipefail
+
+          git config --global user.email "github-action@etcd.io"
+          git config --global user.name "Github Action"
+          gpg --batch --gen-key <<EOF
+          %no-protection
+          Key-Type: 1
+          Key-Length: 2048
+          Subkey-Type: 1
+          Subkey-Length: 2048
+          Name-Real: Github Action
+          Name-Email: github-action@etcd.io
+          Expire-Date: 0
+          EOF
+          DRY_RUN=true ./scripts/release.sh --no-upload --no-docker-push --in-place 3.6.99
+      - name: test-image
+        run: |
+          VERSION=3.6.99 ./scripts/test_images.sh
+      - name: save-image
+        run: |
+          docker image save -o /tmp/etcd-img.tar gcr.io/etcd-development/etcd
+      - name: upload-image
+        uses: actions/upload-artifact@604373da6381bf24206979c74d06a550515601b9 # v4.4.1
+        with:
+          name: etcd-img
+          path: /tmp/etcd-img.tar
+          retention-days: 1
+  trivy-scan:
+    needs: main
+    strategy:
+      fail-fast: false
+      matrix:
+        platforms: [amd64, arm64, ppc64le, s390x]
+    permissions:
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+    runs-on: ubuntu-latest
+    steps:
+      - name: get-image
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        with:
+          name: etcd-img
+          path: /tmp
+      - name: load-image
+        run: |
+          docker load < /tmp/etcd-img.tar
+      - name: trivy-scan
+        uses: aquasecurity/trivy-action@6e7b7d1fd3e4fef0c5fa8cce1229c54b2c9bd0d8 # v0.24.0
+        with:
+          image-ref: 'gcr.io/etcd-development/etcd:v3.6.99-${{ matrix.platforms }}'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.platforms }}.sarif'
+        env:
+          # Use AWS' ECR mirror for the trivy-db image, as GitHub's Container
+          # Registry is returning a TOOMANYREQUESTS error.
+          # Ref: https://github.com/aquasecurity/trivy-action/issues/389
+          TRIVY_DB_REPOSITORY: 'public.ecr.aws/aquasecurity/trivy-db:2'
+      - name: upload scan results
+        uses: github/codeql-action/upload-sarif@c36620d31ac7c881962c3d9dd939c40ec9434f2b # v3.26.12
+        with:
+          sarif_file: 'trivy-results-${{ matrix.platforms }}.sarif'

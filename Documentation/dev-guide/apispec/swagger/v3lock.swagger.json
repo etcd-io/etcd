@@ -1,0 +1,187 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "server/etcdserver/api/v3lock/v3lockpb/v3lock.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "Lock"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v3/lock/lock": {
+      "post": {
+        "summary": "Lock acquires a distributed shared lock on a given named lock.\nOn success, it will return a unique key that exists so long as the\nlock is held by the caller. This key can be used in conjunction with\ntransactions to safely ensure updates to etcd only occur while holding\nlock ownership. The lock is held until Unlock is called on the key or the\nlease associate with the owner expires.",
+        "operationId": "Lock_Lock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3lockpbLockResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3lockpbLockRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lock"
+        ]
+      }
+    },
+    "/v3/lock/unlock": {
+      "post": {
+        "summary": "Unlock takes a key returned by Lock and releases the hold on lock. The\nnext Lock caller waiting for the lock will then be woken up and given\nownership of the lock.",
+        "operationId": "Lock_Unlock",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v3lockpbUnlockResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v3lockpbUnlockRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lock"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "etcdserverpbResponseHeader": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "cluster_id is the ID of the cluster which sent the response."
+        },
+        "member_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "member_id is the ID of the member which sent the response."
+        },
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the key-value store revision when the request was applied, and it's\nunset (so 0) in case of calls not interacting with key-value store.\nFor watch progress responses, the header.revision indicates progress. All future events\nreceived in this stream are guaranteed to have a higher revision number than the\nheader.revision number."
+        },
+        "raft_term": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raft_term is the raft term when the request was applied."
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v3lockpbLockRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "format": "byte",
+          "description": "name is the identifier for the distributed shared lock to be acquired."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the ID of the lease that will be attached to ownership of the\nlock. If the lease expires or is revoked and currently holds the lock,\nthe lock is automatically released. Calls to Lock with the same lease will\nbe treated as a single acquisition; locking twice with the same lease is a\nno-op."
+        }
+      }
+    },
+    "v3lockpbLockResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is a key that will exist on etcd for the duration that the Lock caller\nowns the lock. Users should not modify this key or the lock may exhibit\nundefined behavior."
+        }
+      }
+    },
+    "v3lockpbUnlockRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the lock ownership key granted by Lock."
+        }
+      }
+    },
+    "v3lockpbUnlockResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,3102 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "api/etcdserverpb/rpc.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "KV"
+    },
+    {
+      "name": "Watch"
+    },
+    {
+      "name": "Lease"
+    },
+    {
+      "name": "Cluster"
+    },
+    {
+      "name": "Maintenance"
+    },
+    {
+      "name": "Auth"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v3/auth/authenticate": {
+      "post": {
+        "summary": "Authenticate processes an authenticate request.",
+        "operationId": "Auth_Authenticate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthenticateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthenticateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/disable": {
+      "post": {
+        "summary": "AuthDisable disables authentication.",
+        "operationId": "Auth_AuthDisable",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthDisableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthDisableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/enable": {
+      "post": {
+        "summary": "AuthEnable enables authentication.",
+        "operationId": "Auth_AuthEnable",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthEnableResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthEnableRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/add": {
+      "post": {
+        "summary": "RoleAdd adds a new role. Role name cannot be empty.",
+        "operationId": "Auth_RoleAdd",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleAddResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/delete": {
+      "post": {
+        "summary": "RoleDelete deletes a specified role.",
+        "operationId": "Auth_RoleDelete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleDeleteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleDeleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/get": {
+      "post": {
+        "summary": "RoleGet gets detailed role information.",
+        "operationId": "Auth_RoleGet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/grant": {
+      "post": {
+        "summary": "RoleGrantPermission grants a permission of a specified key or range to a specified role.",
+        "operationId": "Auth_RoleGrantPermission",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleGrantPermissionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/list": {
+      "post": {
+        "summary": "RoleList gets lists of all roles.",
+        "operationId": "Auth_RoleList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/role/revoke": {
+      "post": {
+        "summary": "RoleRevokePermission revokes a key or range permission of a specified role.",
+        "operationId": "Auth_RoleRevokePermission",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthRoleRevokePermissionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/status": {
+      "post": {
+        "summary": "AuthStatus displays authentication status.",
+        "operationId": "Auth_AuthStatus",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthStatusRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/add": {
+      "post": {
+        "summary": "UserAdd adds a new user. User name cannot be empty.",
+        "operationId": "Auth_UserAdd",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserAddResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/changepw": {
+      "post": {
+        "summary": "UserChangePassword changes the password of a specified user.",
+        "operationId": "Auth_UserChangePassword",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserChangePasswordRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/delete": {
+      "post": {
+        "summary": "UserDelete deletes a specified user.",
+        "operationId": "Auth_UserDelete",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserDeleteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserDeleteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/get": {
+      "post": {
+        "summary": "UserGet gets detailed user information.",
+        "operationId": "Auth_UserGet",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGetResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGetRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/grant": {
+      "post": {
+        "summary": "UserGrant grants a role to a specified user.",
+        "operationId": "Auth_UserGrantRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserGrantRoleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/list": {
+      "post": {
+        "summary": "UserList gets a list of all users.",
+        "operationId": "Auth_UserList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/auth/user/revoke": {
+      "post": {
+        "summary": "UserRevokeRole revokes a role of specified user.",
+        "operationId": "Auth_UserRevokeRole",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAuthUserRevokeRoleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/v3/cluster/member/add": {
+      "post": {
+        "summary": "MemberAdd adds a member into the cluster.",
+        "operationId": "Cluster_MemberAdd",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberAddResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberAddRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3/cluster/member/list": {
+      "post": {
+        "summary": "MemberList lists all the members in the cluster.",
+        "operationId": "Cluster_MemberList",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberListResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberListRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3/cluster/member/promote": {
+      "post": {
+        "summary": "MemberPromote promotes a member from raft learner (non-voting) to raft voting member.",
+        "operationId": "Cluster_MemberPromote",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberPromoteResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberPromoteRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3/cluster/member/remove": {
+      "post": {
+        "summary": "MemberRemove removes an existing member from the cluster.",
+        "operationId": "Cluster_MemberRemove",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberRemoveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberRemoveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3/cluster/member/update": {
+      "post": {
+        "summary": "MemberUpdate updates the member configuration.",
+        "operationId": "Cluster_MemberUpdate",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberUpdateResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberUpdateRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
+    "/v3/kv/compaction": {
+      "post": {
+        "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
+        "operationId": "KV_Compact",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbCompactionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "CompactionRequest compacts the key-value store up to a given revision. All superseded keys\nwith a revision less than the compaction revision will be removed.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbCompactionRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3/kv/deleterange": {
+      "post": {
+        "summary": "DeleteRange deletes the given range from the key-value store.\nA delete request increments the revision of the key-value store\nand generates a delete event in the event history for every deleted key.",
+        "operationId": "KV_DeleteRange",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDeleteRangeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3/kv/lease/leases": {
+      "post": {
+        "summary": "LeaseLeases lists all existing leases.",
+        "operationId": "Lease_LeaseLeases2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/kv/lease/revoke": {
+      "post": {
+        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "operationId": "Lease_LeaseRevoke2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/kv/lease/timetolive": {
+      "post": {
+        "summary": "LeaseTimeToLive retrieves lease information.",
+        "operationId": "Lease_LeaseTimeToLive2",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/kv/put": {
+      "post": {
+        "summary": "Put puts the given key into the key-value store.\nA put request increments the revision of the key-value store\nand generates one event in the event history.",
+        "operationId": "KV_Put",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbPutResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbPutRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3/kv/range": {
+      "post": {
+        "summary": "Range gets the keys in the range from the key-value store.",
+        "operationId": "KV_Range",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbRangeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbRangeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3/kv/txn": {
+      "post": {
+        "summary": "Txn processes multiple requests in a single transaction.\nA txn request increments the revision of the key-value store\nand generates events with the same revision for every completed request.\nIt is not allowed to modify the same key several times within one txn.",
+        "operationId": "KV_Txn",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbTxnResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "From google paxosdb paper:\nOur implementation hinges around a powerful primitive which we call MultiOp. All other database\noperations except for iteration are implemented as a single call to MultiOp. A MultiOp is applied atomically\nand consists of three components:\n1. A list of tests called guard. Each test in guard checks a single entry in the database. It may check\nfor the absence or presence of a value, or compare with a given value. Two different tests in the guard\nmay apply to the same or different entries in the database. All tests in the guard are applied and\nMultiOp returns the results. If all tests are true, MultiOp executes t op (see item 2 below), otherwise\nit executes f op (see item 3 below).\n2. A list of database operations called t op. Each operation in the list is either an insert, delete, or\nlookup operation, and applies to a single database entry. Two different operations in the list may apply\nto the same or different entries in the database. These operations are executed\nif guard evaluates to\ntrue.\n3. A list of database operations called f op. Like t op, but executed if guard evaluates to false.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbTxnRequest"
+            }
+          }
+        ],
+        "tags": [
+          "KV"
+        ]
+      }
+    },
+    "/v3/lease/grant": {
+      "post": {
+        "summary": "LeaseGrant creates a lease which expires if the server does not receive a keepAlive\nwithin a given time to live period. All keys attached to the lease will be expired and\ndeleted if the lease expires. Each expired key generates a delete event in the event history.",
+        "operationId": "Lease_LeaseGrant",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseGrantResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseGrantRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/lease/keepalive": {
+      "post": {
+        "summary": "LeaseKeepAlive keeps the lease alive by streaming keep alive requests from the client\nto the server and streaming keep alive responses from the server to the client.",
+        "operationId": "Lease_LeaseKeepAlive",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbLeaseKeepAliveResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/googlerpcStatus"
+                }
+              },
+              "title": "Stream result of etcdserverpbLeaseKeepAliveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseKeepAliveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/lease/leases": {
+      "post": {
+        "summary": "LeaseLeases lists all existing leases.",
+        "operationId": "Lease_LeaseLeases",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseLeasesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/lease/revoke": {
+      "post": {
+        "summary": "LeaseRevoke revokes a lease. All keys attached to the lease will expire and be deleted.",
+        "operationId": "Lease_LeaseRevoke",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseRevokeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/lease/timetolive": {
+      "post": {
+        "summary": "LeaseTimeToLive retrieves lease information.",
+        "operationId": "Lease_LeaseTimeToLive",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbLeaseTimeToLiveRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Lease"
+        ]
+      }
+    },
+    "/v3/maintenance/alarm": {
+      "post": {
+        "summary": "Alarm activates, deactivates, and queries alarms regarding cluster health.",
+        "operationId": "Maintenance_Alarm",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAlarmResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbAlarmRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/defragment": {
+      "post": {
+        "summary": "Defragment defragments a member's backend database to recover storage space.",
+        "operationId": "Maintenance_Defragment",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDefragmentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDefragmentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/downgrade": {
+      "post": {
+        "summary": "Downgrade requests downgrades, verifies feasibility or cancels downgrade\non the cluster version.\nSupported since etcd 3.5.",
+        "operationId": "Maintenance_Downgrade",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/hash": {
+      "post": {
+        "summary": "Hash computes the hash of whole backend keyspace,\nincluding key, lease, and other buckets in storage.\nThis is designed for testing ONLY!\nDo not rely on this in production with ongoing transactions,\nsince Hash operation does not hold MVCC locks.\nUse \"HashKV\" API instead for \"key\" bucket consistency checks.",
+        "operationId": "Maintenance_Hash",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/hashkv": {
+      "post": {
+        "summary": "HashKV computes the hash of all MVCC keys up to a given revision.\nIt only iterates \"key\" bucket in backend storage.",
+        "operationId": "Maintenance_HashKV",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashKVResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbHashKVRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/snapshot": {
+      "post": {
+        "summary": "Snapshot sends a snapshot of the entire backend from a member over a stream to a client.",
+        "operationId": "Maintenance_Snapshot",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbSnapshotResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/googlerpcStatus"
+                }
+              },
+              "title": "Stream result of etcdserverpbSnapshotResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbSnapshotRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/status": {
+      "post": {
+        "summary": "Status gets the status of the member.",
+        "operationId": "Maintenance_Status",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbStatusResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbStatusRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/maintenance/transfer-leadership": {
+      "post": {
+        "summary": "MoveLeader requests current leader node to transfer its leadership to transferee.",
+        "operationId": "Maintenance_MoveLeader",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMoveLeaderResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMoveLeaderRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
+    "/v3/watch": {
+      "post": {
+        "summary": "Watch watches for events happening or that have happened. Both input and output\nare streams; the input stream is for creating and canceling watchers and the output\nstream sends events. One watch RPC can watch on multiple key ranges, streaming events\nfor several watches at once. The entire event history can be watched starting from the\nlast compaction revision.",
+        "operationId": "Watch_Watch",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbWatchResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/googlerpcStatus"
+                }
+              },
+              "title": "Stream result of etcdserverpbWatchResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": " (streaming inputs)",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbWatchRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Watch"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "AlarmRequestAlarmAction": {
+      "type": "string",
+      "enum": [
+        "GET",
+        "ACTIVATE",
+        "DEACTIVATE"
+      ],
+      "default": "GET"
+    },
+    "CompareCompareResult": {
+      "type": "string",
+      "enum": [
+        "EQUAL",
+        "GREATER",
+        "LESS",
+        "NOT_EQUAL"
+      ],
+      "default": "EQUAL"
+    },
+    "CompareCompareTarget": {
+      "type": "string",
+      "enum": [
+        "VERSION",
+        "CREATE",
+        "MOD",
+        "VALUE",
+        "LEASE"
+      ],
+      "default": "VERSION"
+    },
+    "DowngradeRequestDowngradeAction": {
+      "type": "string",
+      "enum": [
+        "VALIDATE",
+        "ENABLE",
+        "CANCEL"
+      ],
+      "default": "VALIDATE"
+    },
+    "EventEventType": {
+      "type": "string",
+      "enum": [
+        "PUT",
+        "DELETE"
+      ],
+      "default": "PUT"
+    },
+    "RangeRequestSortOrder": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "ASCEND",
+        "DESCEND"
+      ],
+      "default": "NONE",
+      "title": "- NONE: default, no sorting\n - ASCEND: lowest target value first\n - DESCEND: highest target value first"
+    },
+    "RangeRequestSortTarget": {
+      "type": "string",
+      "enum": [
+        "KEY",
+        "VERSION",
+        "CREATE",
+        "MOD",
+        "VALUE"
+      ],
+      "default": "KEY"
+    },
+    "WatchCreateRequestFilterType": {
+      "type": "string",
+      "enum": [
+        "NOPUT",
+        "NODELETE"
+      ],
+      "default": "NOPUT",
+      "description": " - NOPUT: filter out put event.\n - NODELETE: filter out delete event."
+    },
+    "authpbPermission": {
+      "type": "object",
+      "properties": {
+        "permType": {
+          "$ref": "#/definitions/authpbPermissionType"
+        },
+        "key": {
+          "type": "string",
+          "format": "byte"
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte"
+        }
+      },
+      "title": "Permission is a single entity"
+    },
+    "authpbPermissionType": {
+      "type": "string",
+      "enum": [
+        "READ",
+        "WRITE",
+        "READWRITE"
+      ],
+      "default": "READ"
+    },
+    "authpbUserAddOptions": {
+      "type": "object",
+      "properties": {
+        "no_password": {
+          "type": "boolean"
+        }
+      }
+    },
+    "etcdserverpbAlarmMember": {
+      "type": "object",
+      "properties": {
+        "memberID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "memberID is the ID of the member associated with the raised alarm."
+        },
+        "alarm": {
+          "$ref": "#/definitions/etcdserverpbAlarmType",
+          "description": "alarm is the type of alarm which has been raised."
+        }
+      }
+    },
+    "etcdserverpbAlarmRequest": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/AlarmRequestAlarmAction",
+          "description": "action is the kind of alarm request to issue. The action\nmay GET alarm statuses, ACTIVATE an alarm, or DEACTIVATE a\nraised alarm."
+        },
+        "memberID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "memberID is the ID of the member associated with the alarm. If memberID is 0, the\nalarm request covers all members."
+        },
+        "alarm": {
+          "$ref": "#/definitions/etcdserverpbAlarmType",
+          "description": "alarm is the type of alarm to consider for this request."
+        }
+      }
+    },
+    "etcdserverpbAlarmResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "alarms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbAlarmMember"
+          },
+          "description": "alarms is a list of alarms associated with the alarm request."
+        }
+      }
+    },
+    "etcdserverpbAlarmType": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "NOSPACE",
+        "CORRUPT"
+      ],
+      "default": "NONE",
+      "title": "- NONE: default, used to query if any alarm is active\n - NOSPACE: space quota is exhausted\n - CORRUPT: kv store corruption detected"
+    },
+    "etcdserverpbAuthDisableRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthDisableResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthEnableRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthEnableResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleAddRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "name is the name of the role to add to the authentication system."
+        }
+      }
+    },
+    "etcdserverpbAuthRoleAddResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleDeleteRequest": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleGetRequest": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleGetResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "perm": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/authpbPermission"
+          }
+        }
+      }
+    },
+    "etcdserverpbAuthRoleGrantPermissionRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "name is the name of the role which will be granted the permission."
+        },
+        "perm": {
+          "$ref": "#/definitions/authpbPermission",
+          "description": "perm is the permission to grant to the role."
+        }
+      }
+    },
+    "etcdserverpbAuthRoleGrantPermissionResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleListRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthRoleListResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "etcdserverpbAuthRoleRevokePermissionRequest": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string",
+          "format": "byte"
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "etcdserverpbAuthRoleRevokePermissionResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthStatusRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthStatusResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "authRevision": {
+          "type": "string",
+          "format": "uint64",
+          "title": "authRevision is the current revision of auth store"
+        }
+      }
+    },
+    "etcdserverpbAuthUserAddRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "options": {
+          "$ref": "#/definitions/authpbUserAddOptions"
+        },
+        "hashedPassword": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthUserAddResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthUserChangePasswordRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "name is the name of the user whose password is being changed."
+        },
+        "password": {
+          "type": "string",
+          "description": "password is the new password for the user. Note that this field will be removed in the API layer."
+        },
+        "hashedPassword": {
+          "type": "string",
+          "description": "hashedPassword is the new password for the user. Note that this field will be initialized in the API layer."
+        }
+      }
+    },
+    "etcdserverpbAuthUserChangePasswordResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthUserDeleteRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "name is the name of the user to delete."
+        }
+      }
+    },
+    "etcdserverpbAuthUserDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthUserGetRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthUserGetResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "etcdserverpbAuthUserGrantRoleRequest": {
+      "type": "object",
+      "properties": {
+        "user": {
+          "type": "string",
+          "description": "user is the name of the user which should be granted a given role."
+        },
+        "role": {
+          "type": "string",
+          "description": "role is the name of the role to grant to the user."
+        }
+      }
+    },
+    "etcdserverpbAuthUserGrantRoleResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthUserListRequest": {
+      "type": "object"
+    },
+    "etcdserverpbAuthUserListResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "etcdserverpbAuthUserRevokeRoleRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthUserRevokeRoleResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbAuthenticateRequest": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbAuthenticateResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "token": {
+          "type": "string",
+          "title": "token is an authorized token that can be used in succeeding RPCs"
+        }
+      }
+    },
+    "etcdserverpbCompactionRequest": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the key-value store revision for the compaction operation."
+        },
+        "physical": {
+          "type": "boolean",
+          "description": "physical is set so the RPC will wait until the compaction is physically\napplied to the local database such that compacted entries are totally\nremoved from the backend database."
+        }
+      },
+      "description": "CompactionRequest compacts the key-value store up to a given revision. All superseded keys\nwith a revision less than the compaction revision will be removed."
+    },
+    "etcdserverpbCompactionResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbCompare": {
+      "type": "object",
+      "properties": {
+        "result": {
+          "$ref": "#/definitions/CompareCompareResult",
+          "description": "result is logical comparison operation for this comparison."
+        },
+        "target": {
+          "$ref": "#/definitions/CompareCompareTarget",
+          "description": "target is the key-value field to inspect for the comparison."
+        },
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the subject key for the comparison operation."
+        },
+        "version": {
+          "type": "string",
+          "format": "int64",
+          "title": "version is the version of the given key"
+        },
+        "create_revision": {
+          "type": "string",
+          "format": "int64",
+          "title": "create_revision is the creation revision of the given key"
+        },
+        "mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "mod_revision is the last modified revision of the given key."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value of the given key, in bytes."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the lease id of the given key.\n\nleave room for more target_union field tags, jump to 64"
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte",
+          "description": "range_end compares the given target to all keys in the range [key, range_end).\nSee RangeRequest for more details on key ranges.\n\nTODO: fill out with most of the rest of RangeRequest fields when needed."
+        }
+      }
+    },
+    "etcdserverpbDefragmentRequest": {
+      "type": "object"
+    },
+    "etcdserverpbDefragmentResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbDeleteRangeRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the first key to delete in the range."
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte",
+          "description": "range_end is the key following the last key to delete for the range [key, range_end).\nIf range_end is not given, the range is defined to contain only the key argument.\nIf range_end is one bit larger than the given key, then the range is all the keys\nwith the prefix (the given key).\nIf range_end is '\\0', the range is all keys greater than or equal to the key argument."
+        },
+        "prev_kv": {
+          "type": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pairs before deleting it.\nThe previous key-value pairs will be returned in the delete response."
+        }
+      }
+    },
+    "etcdserverpbDeleteRangeResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "deleted": {
+          "type": "string",
+          "format": "int64",
+          "description": "deleted is the number of keys deleted by the delete range request."
+        },
+        "prev_kvs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/mvccpbKeyValue"
+          },
+          "description": "if prev_kv is set in the request, the previous key-value pairs will be returned."
+        }
+      }
+    },
+    "etcdserverpbDowngradeRequest": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "$ref": "#/definitions/DowngradeRequestDowngradeAction",
+          "description": "action is the kind of downgrade request to issue. The action may\nVALIDATE the target version, DOWNGRADE the cluster version,\nor CANCEL the current downgrading job."
+        },
+        "version": {
+          "type": "string",
+          "description": "version is the target version to downgrade."
+        }
+      }
+    },
+    "etcdserverpbDowngradeResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "version": {
+          "type": "string",
+          "description": "version is the current cluster version."
+        }
+      }
+    },
+    "etcdserverpbHashKVRequest": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the key-value store revision for the hash operation."
+        }
+      }
+    },
+    "etcdserverpbHashKVResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "hash": {
+          "type": "integer",
+          "format": "int64",
+          "description": "hash is the hash value computed from the responding member's MVCC keys up to a given revision."
+        },
+        "compact_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "compact_revision is the compacted revision of key-value store when hash begins."
+        },
+        "hash_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "hash_revision is the revision up to which the hash is calculated."
+        }
+      }
+    },
+    "etcdserverpbHashRequest": {
+      "type": "object"
+    },
+    "etcdserverpbHashResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "hash": {
+          "type": "integer",
+          "format": "int64",
+          "description": "hash is the hash value computed from the responding member's KV's backend."
+        }
+      }
+    },
+    "etcdserverpbLeaseGrantRequest": {
+      "type": "object",
+      "properties": {
+        "TTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "TTL is the advisory time-to-live in seconds. Expired lease will return -1."
+        },
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the requested ID for the lease. If ID is set to 0, the lessor chooses an ID."
+        }
+      }
+    },
+    "etcdserverpbLeaseGrantResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID for the granted lease."
+        },
+        "TTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "TTL is the server chosen lease time-to-live in seconds."
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbLeaseKeepAliveRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID for the lease to keep alive."
+        }
+      }
+    },
+    "etcdserverpbLeaseKeepAliveResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID from the keep alive request."
+        },
+        "TTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "TTL is the new time-to-live for the lease."
+        }
+      }
+    },
+    "etcdserverpbLeaseLeasesRequest": {
+      "type": "object"
+    },
+    "etcdserverpbLeaseLeasesResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "leases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbLeaseStatus"
+          }
+        }
+      }
+    },
+    "etcdserverpbLeaseRevokeRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID to revoke. When the ID is revoked, all associated keys will be deleted."
+        }
+      }
+    },
+    "etcdserverpbLeaseRevokeResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbLeaseStatus": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "title": "TODO: int64 TTL = 2;"
+        }
+      }
+    },
+    "etcdserverpbLeaseTimeToLiveRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID for the lease."
+        },
+        "keys": {
+          "type": "boolean",
+          "description": "keys is true to query all the keys attached to this lease."
+        }
+      }
+    },
+    "etcdserverpbLeaseTimeToLiveResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "ID": {
+          "type": "string",
+          "format": "int64",
+          "description": "ID is the lease ID from the keep alive request."
+        },
+        "TTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "TTL is the remaining TTL in seconds for the lease; the lease will expire in under TTL+1 seconds."
+        },
+        "grantedTTL": {
+          "type": "string",
+          "format": "int64",
+          "description": "GrantedTTL is the initial granted time in seconds upon lease creation/renewal."
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "byte"
+          },
+          "description": "Keys is the list of keys attached to this lease."
+        }
+      }
+    },
+    "etcdserverpbMember": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "ID is the member ID for this member."
+        },
+        "name": {
+          "type": "string",
+          "description": "name is the human-readable name of the member. If the member is not started, the name will be an empty string."
+        },
+        "peerURLs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "peerURLs is the list of URLs the member exposes to the cluster for communication."
+        },
+        "clientURLs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "clientURLs is the list of URLs the member exposes to clients for communication. If the member is not started, clientURLs will be empty."
+        },
+        "isLearner": {
+          "type": "boolean",
+          "description": "isLearner indicates if the member is raft learner."
+        }
+      }
+    },
+    "etcdserverpbMemberAddRequest": {
+      "type": "object",
+      "properties": {
+        "peerURLs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "peerURLs is the list of URLs the added member will use to communicate with the cluster."
+        },
+        "isLearner": {
+          "type": "boolean",
+          "description": "isLearner indicates if the added member is raft learner."
+        }
+      }
+    },
+    "etcdserverpbMemberAddResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "member": {
+          "$ref": "#/definitions/etcdserverpbMember",
+          "description": "member is the member information for the added member."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after adding the new member."
+        }
+      }
+    },
+    "etcdserverpbMemberListRequest": {
+      "type": "object",
+      "properties": {
+        "linearizable": {
+          "type": "boolean"
+        }
+      }
+    },
+    "etcdserverpbMemberListResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members associated with the cluster."
+        }
+      }
+    },
+    "etcdserverpbMemberPromoteRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "ID is the member ID of the member to promote."
+        }
+      }
+    },
+    "etcdserverpbMemberPromoteResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after promoting the member."
+        }
+      }
+    },
+    "etcdserverpbMemberRemoveRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "ID is the member ID of the member to remove."
+        }
+      }
+    },
+    "etcdserverpbMemberRemoveResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after removing the member."
+        }
+      }
+    },
+    "etcdserverpbMemberUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "ID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "ID is the member ID of the member to update."
+        },
+        "peerURLs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "peerURLs is the new list of URLs the member will use to communicate with the cluster."
+        }
+      }
+    },
+    "etcdserverpbMemberUpdateResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is a list of all members after updating the member."
+        }
+      }
+    },
+    "etcdserverpbMoveLeaderRequest": {
+      "type": "object",
+      "properties": {
+        "targetID": {
+          "type": "string",
+          "format": "uint64",
+          "description": "targetID is the node ID for the new leader."
+        }
+      }
+    },
+    "etcdserverpbMoveLeaderResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        }
+      }
+    },
+    "etcdserverpbPutRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the key, in bytes, to put into the key-value store."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value, in bytes, to associate with the key in the key-value store."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the lease ID to associate with the key in the key-value store. A lease\nvalue of 0 indicates no lease."
+        },
+        "prev_kv": {
+          "type": "boolean",
+          "description": "If prev_kv is set, etcd gets the previous key-value pair before changing it.\nThe previous key-value pair will be returned in the put response."
+        },
+        "ignore_value": {
+          "type": "boolean",
+          "description": "If ignore_value is set, etcd updates the key using its current value.\nReturns an error if the key does not exist."
+        },
+        "ignore_lease": {
+          "type": "boolean",
+          "description": "If ignore_lease is set, etcd updates the key using its current lease.\nReturns an error if the key does not exist."
+        }
+      }
+    },
+    "etcdserverpbPutResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "prev_kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "if prev_kv is set in the request, the previous key-value pair will be returned."
+        }
+      }
+    },
+    "etcdserverpbRangeRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the first key for the range. If range_end is not given, the request only looks up key."
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte",
+          "description": "range_end is the upper bound on the requested range [key, range_end).\nIf range_end is '\\0', the range is all keys \u003e= key.\nIf range_end is key plus one (e.g., \"aa\"+1 == \"ab\", \"a\\xff\"+1 == \"b\"),\nthen the range request gets all keys prefixed with key.\nIf both key and range_end are '\\0', then the range request returns all keys."
+        },
+        "limit": {
+          "type": "string",
+          "format": "int64",
+          "description": "limit is a limit on the number of keys returned for the request. When limit is set to 0,\nit is treated as no limit."
+        },
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the point-in-time of the key-value store to use for the range.\nIf revision is less or equal to zero, the range is over the newest key-value store.\nIf the revision has been compacted, ErrCompacted is returned as a response."
+        },
+        "sort_order": {
+          "$ref": "#/definitions/RangeRequestSortOrder",
+          "description": "sort_order is the order for returned sorted results."
+        },
+        "sort_target": {
+          "$ref": "#/definitions/RangeRequestSortTarget",
+          "description": "sort_target is the key-value field to use for sorting."
+        },
+        "serializable": {
+          "type": "boolean",
+          "description": "serializable sets the range request to use serializable member-local reads.\nRange requests are linearizable by default; linearizable requests have higher\nlatency and lower throughput than serializable requests but reflect the current\nconsensus of the cluster. For better performance, in exchange for possible stale reads,\na serializable range request is served locally without needing to reach consensus\nwith other nodes in the cluster."
+        },
+        "keys_only": {
+          "type": "boolean",
+          "description": "keys_only when set returns only the keys and not the values."
+        },
+        "count_only": {
+          "type": "boolean",
+          "description": "count_only when set returns only the count of the keys in the range."
+        },
+        "min_mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "min_mod_revision is the lower bound for returned key mod revisions; all keys with\nlesser mod revisions will be filtered away."
+        },
+        "max_mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "max_mod_revision is the upper bound for returned key mod revisions; all keys with\ngreater mod revisions will be filtered away."
+        },
+        "min_create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "min_create_revision is the lower bound for returned key create revisions; all keys with\nlesser create revisions will be filtered away."
+        },
+        "max_create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "max_create_revision is the upper bound for returned key create revisions; all keys with\ngreater create revisions will be filtered away."
+        }
+      }
+    },
+    "etcdserverpbRangeResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "kvs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/mvccpbKeyValue"
+          },
+          "description": "kvs is the list of key-value pairs matched by the range request.\nkvs is empty when count is requested."
+        },
+        "more": {
+          "type": "boolean",
+          "description": "more indicates if there are more keys to return in the requested range."
+        },
+        "count": {
+          "type": "string",
+          "format": "int64",
+          "description": "count is set to the number of keys within the range when requested."
+        }
+      }
+    },
+    "etcdserverpbRequestOp": {
+      "type": "object",
+      "properties": {
+        "request_range": {
+          "$ref": "#/definitions/etcdserverpbRangeRequest"
+        },
+        "request_put": {
+          "$ref": "#/definitions/etcdserverpbPutRequest"
+        },
+        "request_delete_range": {
+          "$ref": "#/definitions/etcdserverpbDeleteRangeRequest"
+        },
+        "request_txn": {
+          "$ref": "#/definitions/etcdserverpbTxnRequest"
+        }
+      }
+    },
+    "etcdserverpbResponseHeader": {
+      "type": "object",
+      "properties": {
+        "cluster_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "cluster_id is the ID of the cluster which sent the response."
+        },
+        "member_id": {
+          "type": "string",
+          "format": "uint64",
+          "description": "member_id is the ID of the member which sent the response."
+        },
+        "revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "revision is the key-value store revision when the request was applied, and it's\nunset (so 0) in case of calls not interacting with key-value store.\nFor watch progress responses, the header.revision indicates progress. All future events\nreceived in this stream are guaranteed to have a higher revision number than the\nheader.revision number."
+        },
+        "raft_term": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raft_term is the raft term when the request was applied."
+        }
+      }
+    },
+    "etcdserverpbResponseOp": {
+      "type": "object",
+      "properties": {
+        "response_range": {
+          "$ref": "#/definitions/etcdserverpbRangeResponse"
+        },
+        "response_put": {
+          "$ref": "#/definitions/etcdserverpbPutResponse"
+        },
+        "response_delete_range": {
+          "$ref": "#/definitions/etcdserverpbDeleteRangeResponse"
+        },
+        "response_txn": {
+          "$ref": "#/definitions/etcdserverpbTxnResponse"
+        }
+      }
+    },
+    "etcdserverpbSnapshotRequest": {
+      "type": "object"
+    },
+    "etcdserverpbSnapshotResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader",
+          "description": "header has the current key-value store information. The first header in the snapshot\nstream indicates the point in time of the snapshot."
+        },
+        "remaining_bytes": {
+          "type": "string",
+          "format": "uint64",
+          "title": "remaining_bytes is the number of blob bytes to be sent after this message"
+        },
+        "blob": {
+          "type": "string",
+          "format": "byte",
+          "description": "blob contains the next chunk of the snapshot in the snapshot stream."
+        },
+        "version": {
+          "type": "string",
+          "description": "local version of server that created the snapshot.\nIn cluster with binaries with different version, each cluster can return different result.\nInforms which etcd server version should be used when restoring the snapshot."
+        }
+      }
+    },
+    "etcdserverpbStatusRequest": {
+      "type": "object"
+    },
+    "etcdserverpbStatusResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "version": {
+          "type": "string",
+          "description": "version is the cluster protocol version used by the responding member."
+        },
+        "dbSize": {
+          "type": "string",
+          "format": "int64",
+          "description": "dbSize is the size of the backend database physically allocated, in bytes, of the responding member."
+        },
+        "leader": {
+          "type": "string",
+          "format": "uint64",
+          "description": "leader is the member ID which the responding member believes is the current leader."
+        },
+        "raftIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raftIndex is the current raft committed index of the responding member."
+        },
+        "raftTerm": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raftTerm is the current raft term of the responding member."
+        },
+        "raftAppliedIndex": {
+          "type": "string",
+          "format": "uint64",
+          "description": "raftAppliedIndex is the current raft applied index of the responding member."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "errors contains alarm/health information and status."
+        },
+        "dbSizeInUse": {
+          "type": "string",
+          "format": "int64",
+          "description": "dbSizeInUse is the size of the backend database logically in use, in bytes, of the responding member."
+        },
+        "isLearner": {
+          "type": "boolean",
+          "description": "isLearner indicates if the member is raft learner."
+        },
+        "storageVersion": {
+          "type": "string",
+          "description": "storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version."
+        },
+        "dbSizeQuota": {
+          "type": "string",
+          "format": "int64",
+          "title": "dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)"
+        }
+      }
+    },
+    "etcdserverpbTxnRequest": {
+      "type": "object",
+      "properties": {
+        "compare": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbCompare"
+          },
+          "description": "compare is a list of predicates representing a conjunction of terms.\nIf the comparisons succeed, then the success requests will be processed in order,\nand the response will contain their respective responses in order.\nIf the comparisons fail, then the failure requests will be processed in order,\nand the response will contain their respective responses in order."
+        },
+        "success": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbRequestOp"
+          },
+          "description": "success is a list of requests which will be applied when compare evaluates to true."
+        },
+        "failure": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbRequestOp"
+          },
+          "description": "failure is a list of requests which will be applied when compare evaluates to false."
+        }
+      },
+      "description": "From google paxosdb paper:\nOur implementation hinges around a powerful primitive which we call MultiOp. All other database\noperations except for iteration are implemented as a single call to MultiOp. A MultiOp is applied atomically\nand consists of three components:\n1. A list of tests called guard. Each test in guard checks a single entry in the database. It may check\nfor the absence or presence of a value, or compare with a given value. Two different tests in the guard\nmay apply to the same or different entries in the database. All tests in the guard are applied and\nMultiOp returns the results. If all tests are true, MultiOp executes t op (see item 2 below), otherwise\nit executes f op (see item 3 below).\n2. A list of database operations called t op. Each operation in the list is either an insert, delete, or\nlookup operation, and applies to a single database entry. Two different operations in the list may apply\nto the same or different entries in the database. These operations are executed\nif guard evaluates to\ntrue.\n3. A list of database operations called f op. Like t op, but executed if guard evaluates to false."
+    },
+    "etcdserverpbTxnResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "succeeded": {
+          "type": "boolean",
+          "description": "succeeded is set to true if the compare evaluated to true or false otherwise."
+        },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbResponseOp"
+          },
+          "description": "responses is a list of responses corresponding to the results from applying\nsuccess if succeeded is true or failure if succeeded is false."
+        }
+      }
+    },
+    "etcdserverpbWatchCancelRequest": {
+      "type": "object",
+      "properties": {
+        "watch_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "watch_id is the watcher id to cancel so that no more events are transmitted."
+        }
+      }
+    },
+    "etcdserverpbWatchCreateRequest": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the key to register for watching."
+        },
+        "range_end": {
+          "type": "string",
+          "format": "byte",
+          "description": "range_end is the end of the range [key, range_end) to watch. If range_end is not given,\nonly the key argument is watched. If range_end is equal to '\\0', all keys greater than\nor equal to the key argument are watched.\nIf the range_end is one bit larger than the given key,\nthen all keys with the prefix (the given key) will be watched."
+        },
+        "start_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "start_revision is an optional revision to watch from (inclusive). No start_revision is \"now\"."
+        },
+        "progress_notify": {
+          "type": "boolean",
+          "description": "progress_notify is set so that the etcd server will periodically send a WatchResponse with\nno events to the new watcher if there are no recent events. It is useful when clients\nwish to recover a disconnected watcher starting from a recent known revision.\nThe etcd server may decide how often it will send notifications based on current load."
+        },
+        "filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/WatchCreateRequestFilterType"
+          },
+          "description": "filters filter the events at server side before it sends back to the watcher."
+        },
+        "prev_kv": {
+          "type": "boolean",
+          "description": "If prev_kv is set, created watcher gets the previous KV before the event happens.\nIf the previous KV is already compacted, nothing will be returned."
+        },
+        "watch_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "If watch_id is provided and non-zero, it will be assigned to this watcher.\nSince creating a watcher in etcd is not a synchronous operation,\nthis can be used ensure that ordering is correct when creating multiple\nwatchers on the same stream. Creating a watcher with an ID already in\nuse on the stream will cause an error to be returned."
+        },
+        "fragment": {
+          "type": "boolean",
+          "description": "fragment enables splitting large revisions into multiple watch responses."
+        }
+      }
+    },
+    "etcdserverpbWatchProgressRequest": {
+      "type": "object",
+      "description": "Requests the a watch stream progress status be sent in the watch response stream as soon as\npossible."
+    },
+    "etcdserverpbWatchRequest": {
+      "type": "object",
+      "properties": {
+        "create_request": {
+          "$ref": "#/definitions/etcdserverpbWatchCreateRequest"
+        },
+        "cancel_request": {
+          "$ref": "#/definitions/etcdserverpbWatchCancelRequest"
+        },
+        "progress_request": {
+          "$ref": "#/definitions/etcdserverpbWatchProgressRequest"
+        }
+      }
+    },
+    "etcdserverpbWatchResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "watch_id": {
+          "type": "string",
+          "format": "int64",
+          "description": "watch_id is the ID of the watcher that corresponds to the response."
+        },
+        "created": {
+          "type": "boolean",
+          "description": "created is set to true if the response is for a create watch request.\nThe client should record the watch_id and expect to receive events for\nthe created watcher from the same stream.\nAll events sent to the created watcher will attach with the same watch_id."
+        },
+        "canceled": {
+          "type": "boolean",
+          "description": "canceled is set to true if the response is for a cancel watch request\nor if the start_revision has already been compacted.\nNo further events will be sent to the canceled watcher."
+        },
+        "compact_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "compact_revision is set to the minimum index if a watcher tries to watch\nat a compacted index.\n\nThis happens when creating a watcher at a compacted revision or the watcher cannot\ncatch up with the progress of the key-value store.\n\nThe client should treat the watcher as canceled and should not try to create any\nwatcher with the same start_revision again."
+        },
+        "cancel_reason": {
+          "type": "string",
+          "description": "cancel_reason indicates the reason for canceling the watcher."
+        },
+        "fragment": {
+          "type": "boolean",
+          "description": "framgment is true if large watch response was split over multiple responses."
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/mvccpbEvent"
+          }
+        }
+      }
+    },
+    "googlerpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "mvccpbEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/EventEventType",
+          "description": "type is the kind of event. If type is a PUT, it indicates\nnew data has been stored to the key. If type is a DELETE,\nit indicates the key was deleted."
+        },
+        "kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "kv holds the KeyValue for the event.\nA PUT event contains current kv pair.\nA PUT event with kv.Version=1 indicates the creation of a key.\nA DELETE/EXPIRE event contains the deleted key with\nits modification revision set to the revision of deletion."
+        },
+        "prev_kv": {
+          "$ref": "#/definitions/mvccpbKeyValue",
+          "description": "prev_kv holds the key-value pair before the event happens."
+        }
+      }
+    },
+    "mvccpbKeyValue": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "format": "byte",
+          "description": "key is the key in bytes. An empty key is not allowed."
+        },
+        "create_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "create_revision is the revision of last creation on this key."
+        },
+        "mod_revision": {
+          "type": "string",
+          "format": "int64",
+          "description": "mod_revision is the revision of last modification on this key."
+        },
+        "version": {
+          "type": "string",
+          "format": "int64",
+          "description": "version is the version of the key. A deletion resets\nthe version to zero and any modification of the key\nincreases its version."
+        },
+        "value": {
+          "type": "string",
+          "format": "byte",
+          "description": "value is the value held by the key, in bytes."
+        },
+        "lease": {
+          "type": "string",
+          "format": "int64",
+          "description": "lease is the ID of the lease that attached to key.\nWhen the attached lease expires, the key will be deleted.\nIf lease is 0, then no lease is attached to the key."
+        }
+      }
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    }
+  },
+  "securityDefinitions": {
+    "ApiKey": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header"
+    }
+  },
+  "security": [
+    {
+      "ApiKey": []
+    }
+  ]
+}

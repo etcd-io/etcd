@@ -1,0 +1,10 @@
+---
+name: Tests
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  arm64:
+    uses: ./.github/workflows/tests-template.yaml
+    with:
+      arch: arm64
+      runs-on: actuated-arm64-8cpu-8gb
