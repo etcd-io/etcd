@@ -74,7 +74,7 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, err := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
