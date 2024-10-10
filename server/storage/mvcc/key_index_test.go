@@ -499,7 +499,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		if isTombstone {
-			assert.Equal(t, 0, len(am), "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
+			assert.Empty(t, am, "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
 		} else {
 			assert.Equal(t, tt.wam, am,
 				"#%d: ki = %d, compact keep should be equal to keep keep if it's not tombstone", i, ki)
@@ -550,7 +550,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		if isTombstoneRevFn(ki, tt.compact) {
-			assert.Equal(t, 0, len(am), "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
+			assert.Empty(t, am, "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
 		} else {
 			assert.Equal(t, tt.wam, am,
 				"#%d: ki = %d, compact keep should be equal to keep keep if it's not tombstone", i, ki)

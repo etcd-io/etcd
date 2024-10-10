@@ -134,7 +134,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			}
 
 			count++
-			require.Equal(t, 1, len(mresp.Members))
+			require.Len(t, mresp.Members, 1)
 		}
 	}()
 
@@ -152,7 +152,7 @@ func memberListTest(cx ctlCtx) {
 func memberListSerializableTest(cx ctlCtx) {
 	resp, err := getMemberList(cx, false)
 	require.NoError(cx.t, err)
-	require.Equal(cx.t, 1, len(resp.Members))
+	require.Len(cx.t, resp.Members, 1)
 
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
 	err = ctlV3MemberAdd(cx, peerURL, false)
@@ -160,7 +160,7 @@ func memberListSerializableTest(cx ctlCtx) {
 
 	resp, err = getMemberList(cx, true)
 	require.NoError(cx.t, err)
-	require.Equal(cx.t, 2, len(resp.Members))
+	require.Len(cx.t, resp.Members, 2)
 }
 
 func ctlV3MemberList(cx ctlCtx) error {

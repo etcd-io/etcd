@@ -183,6 +183,6 @@ func TestEtcdEndpointManager(t *testing.T) {
 	assert.NoError(t, err)
 	eptsOther, err := emOther.List(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, len(epts), 1)
-	assert.Equal(t, len(eptsOther), 1)
+	assert.Len(t, epts, 1)
+	assert.Len(t, eptsOther, 1)
 }

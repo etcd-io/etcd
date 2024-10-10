@@ -53,6 +53,6 @@ func TestEncodeTimePrecisionToMicroSeconds(t *testing.T) {
 	regex := `\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.(\d+)(Z|[+-]\d{4})`
 	re := regexp.MustCompile(regex)
 	matches := re.FindStringSubmatch(fields.Timestamp)
-	require.Equal(t, 3, len(matches))
-	require.Equalf(t, fractionSecondsPrecision, len(matches[1]), "unexpected timestamp %s", fields.Timestamp)
+	require.Len(t, matches, 3)
+	require.Lenf(t, matches[1], fractionSecondsPrecision, "unexpected timestamp %s", fields.Timestamp)
 }
