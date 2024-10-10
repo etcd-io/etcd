@@ -18,36 +18,28 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestLockAndUnlock(t *testing.T) {
 	f, err := os.CreateTemp("", "lock")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 	defer func() {
-		err = os.Remove(f.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, os.Remove(f.Name()))
 	}()
 
 	// lock the file
 	l, err := LockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// try lock a locked file
-	if _, err = TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode); err != ErrLocked {
-		t.Fatal(err)
-	}
+	_, err = TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
+	require.ErrorIs(t, err, ErrLocked)
 
 	// unlock the file
-	if err = l.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, l.Close())
 
 	// try lock the unlocked file
 	dupl, err := TryLockFile(f.Name(), os.O_WRONLY, PrivateFileMode)
@@ -75,9 +67,7 @@ func TestLockAndUnlock(t *testing.T) {
 	}
 
 	// unlock
-	if err = dupl.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, dupl.Close())
 
 	// the previously blocked routine should be unblocked
 	select {

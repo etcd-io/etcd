@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -31,9 +32,7 @@ func TestPurgeFile(t *testing.T) {
 	// minimal file set
 	for i := 0; i < 3; i++ {
 		f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
-		if ferr != nil {
-			t.Fatal(ferr)
-		}
+		require.NoError(t, ferr)
 		f.Close()
 	}
 
@@ -68,9 +67,7 @@ func TestPurgeFile(t *testing.T) {
 	}
 
 	fnames, rerr := ReadDir(dir)
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	wnames := []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
@@ -93,18 +90,14 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		var f *os.File
 		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		f.Close()
 	}
 
 	// create a purge barrier at 5
 	p := filepath.Join(dir, fmt.Sprintf("%d.test", 5))
 	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	stop, purgec := make(chan struct{}), make(chan string, 10)
 	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil, true)
@@ -118,9 +111,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	fnames, rerr := ReadDir(dir)
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 
 	wnames := []string{"5.test", "6.test", "7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
@@ -136,9 +127,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	// remove the purge barrier
-	if err = l.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, l.Close())
 
 	// wait for rest of purges (5, 6)
 	for i := 0; i < 2; i++ {
@@ -150,9 +139,7 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	fnames, rerr = ReadDir(dir)
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	wnames = []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)

@@ -19,13 +19,13 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateSecureEndpoints(t *testing.T) {
 	tlsInfo, err := createSelfCert(t)
-	if err != nil {
-		t.Fatalf("unable to create cert: %v", err)
-	}
+	require.NoErrorf(t, err, "unable to create cert")
 
 	remoteAddr := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.RemoteAddr))

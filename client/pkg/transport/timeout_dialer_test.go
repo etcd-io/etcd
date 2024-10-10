@@ -18,15 +18,15 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadWriteTimeoutDialer(t *testing.T) {
 	stop := make(chan struct{})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("unexpected listen error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected listen error")
 	defer func() {
 		stop <- struct{}{}
 	}()
@@ -38,9 +38,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 		rdtimeoutd: 10 * time.Millisecond,
 	}
 	conn, err := d.Dial("tcp", ln.Addr().String())
-	if err != nil {
-		t.Fatalf("unexpected dial error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected dial error")
 	defer conn.Close()
 
 	// fill the socket buffer
@@ -64,9 +62,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 	}
 
 	conn, err = d.Dial("tcp", ln.Addr().String())
-	if err != nil {
-		t.Fatalf("unexpected dial error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected dial error")
 	defer conn.Close()
 
 	buf := make([]byte, 10)

@@ -18,15 +18,15 @@ import (
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestNewTimeoutListener tests that NewTimeoutListener returns a
 // rwTimeoutListener struct with timeouts set.
 func TestNewTimeoutListener(t *testing.T) {
 	l, err := NewTimeoutListener("127.0.0.1:0", "http", nil, time.Hour, time.Hour)
-	if err != nil {
-		t.Fatalf("unexpected NewTimeoutListener error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected NewTimeoutListener error")
 	defer l.Close()
 	tln := l.(*rwTimeoutListener)
 	if tln.readTimeout != time.Hour {
@@ -39,9 +39,7 @@ func TestNewTimeoutListener(t *testing.T) {
 
 func TestWriteReadTimeoutListener(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("unexpected listen error: %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected listen error")
 	wln := rwTimeoutListener{
 		Listener:     ln,
 		writeTimeout: 10 * time.Millisecond,
