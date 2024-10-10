@@ -66,7 +66,6 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 			case donec <- struct{}{}:
 			case <-stopc:
 			}
-
 		}()
 	}
 

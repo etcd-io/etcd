@@ -238,7 +238,6 @@ func main() {
 				log.Fatal(err)
 			}
 			l = newListener
-
 		}
 		acceptFaults = append(acceptFaults, f)
 	}

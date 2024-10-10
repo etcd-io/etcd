@@ -277,7 +277,6 @@ func (n *node) Repr(recursive, sorted bool, clock clockwork.Clock) *NodeExtern {
 		i := 0
 
 		for _, child := range children {
-
 			if child.IsHidden() { // get will not list hidden node
 				continue
 			}

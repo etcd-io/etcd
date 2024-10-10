@@ -532,7 +532,6 @@ func (ivt *intervalTree) Insert(ivl Interval, val any) {
 func (ivt *intervalTree) insertFixup(z *intervalNode) {
 	for z.parent.color(ivt.sentinel) == red {
 		if z.parent == z.parent.parent.left { // line 3-15
-
 			y := z.parent.parent.right
 			if y.color(ivt.sentinel) == red {
 				y.c = black

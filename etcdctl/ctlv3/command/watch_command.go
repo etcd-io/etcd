@@ -134,7 +134,6 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 			fmt.Fprintf(os.Stderr, "Invalid command %s (only support watch)\n", l)
 			continue
 		}
-
 	}
 }
 

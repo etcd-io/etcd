@@ -97,5 +97,4 @@ func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
 	}
 	buffer.WriteString("}")
 	fmt.Println(buffer.String())
-
 }

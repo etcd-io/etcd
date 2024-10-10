@@ -1899,7 +1899,6 @@ func randCmps(pfx string, dat []*clientv3.PutResponse) (cmps []clientv3.Cmp, the
 			cmp = clientv3.Compare(clientv3.CreateRevision(k), "=", rev)
 		case 3:
 			cmp = clientv3.Compare(clientv3.CreateRevision(k), "!=", rev+1)
-
 		}
 		cmps = append(cmps, cmp)
 	}

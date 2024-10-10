@@ -369,7 +369,6 @@ func TestWatchRestore(t *testing.T) {
 			if events[0].Kv.ModRevision != wantRev {
 				t.Errorf("Expected revision to match, got %d, want %d", events[0].Kv.ModRevision, wantRev)
 			}
-
 		}
 	}
 

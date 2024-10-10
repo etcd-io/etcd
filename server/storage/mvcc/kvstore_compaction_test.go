@@ -29,7 +29,7 @@ import (
 )
 
 func TestScheduleCompaction(t *testing.T) {
-	revs := []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}}
+	revs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}}
 
 	tests := []struct {
 		rev   int64

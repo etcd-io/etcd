@@ -46,5 +46,4 @@ func TestErrorWriteTo(t *testing.T) {
 			t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
 		}
 	}
-
 }

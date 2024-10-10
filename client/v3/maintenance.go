@@ -217,7 +217,6 @@ func (m *maintenance) Status(ctx context.Context, endpoint string) (*StatusRespo
 func (m *maintenance) HashKV(ctx context.Context, endpoint string, rev int64) (*HashKVResponse, error) {
 	remote, cancel, err := m.dial(endpoint)
 	if err != nil {
-
 		return nil, ContextError(ctx, err)
 	}
 	defer cancel()
