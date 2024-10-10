@@ -377,7 +377,7 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 
 	checksumInBytes, err := io.ReadAll(snapFile)
 	require.NoError(t, err)
-	require.Equal(t, int(checksumSize), len(checksumInBytes))
+	require.Len(t, checksumInBytes, int(checksumSize))
 
 	// remove the checksum part and rehash
 	err = snapFile.Truncate(snapSize - checksumSize)

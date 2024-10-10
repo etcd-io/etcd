@@ -53,7 +53,7 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	// list members and get the new member's ID
 	cx.t.Log("Listing members after adding a member")
 	members := mustListMembers(cx)
-	require.Equal(cx.t, 2, len(members))
+	require.Len(cx.t, members, 2)
 	cx.t.Logf("members: %+v", members)
 
 	var newMemberIDStr string
@@ -107,7 +107,7 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	// list members again after deleting a member
 	cx.t.Log("Listing members again after deleting a member")
 	members = mustListMembers(cx)
-	require.Equal(cx.t, 1, len(members))
+	require.Len(cx.t, members, 1)
 }
 
 func mustListMembers(cx ctlCtx) []any {

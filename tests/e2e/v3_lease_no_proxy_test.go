@@ -159,7 +159,7 @@ func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bo
 	t.Log("Confirming the lease isn't revoked")
 	leases, err := client.Leases(ctx)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(leases.Leases))
+	require.Len(t, leases.Leases, 1)
 
 	t.Log("Waiting for the keepAlive goroutine to exit")
 	close(stopC)

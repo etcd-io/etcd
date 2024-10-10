@@ -63,7 +63,7 @@ func TestEndpointHashKV(t *testing.T) {
 		resp, err := cc.HashKV(ctx, 0)
 		require.NoError(t, err, "failed to get endpoint hashkv: %v", err)
 
-		require.Equal(t, 3, len(resp))
+		require.Len(t, resp, 3)
 		if resp[0].HashRevision == resp[1].HashRevision && resp[0].HashRevision == resp[2].HashRevision {
 			require.Equal(t, resp[0].Hash, resp[1].Hash)
 			require.Equal(t, resp[0].Hash, resp[2].Hash)

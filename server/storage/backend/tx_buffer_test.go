@@ -29,7 +29,7 @@ func Test_bucketBuffer_CopyUsed_After_Add(t *testing.T) {
 		bb.add([]byte(k), []byte(v))
 		bbCopy := bb.CopyUsed()
 		assert.Equal(t, bb.used, bbCopy.used)
-		assert.Equal(t, bbCopy.used, len(bbCopy.buf))
+		assert.Len(t, bbCopy.buf, bbCopy.used)
 		assert.GreaterOrEqual(t, len(bb.buf), len(bbCopy.buf))
 	}
 }
@@ -85,7 +85,7 @@ func Test_bucketBuffer_CopyUsed(t *testing.T) {
 			} else {
 				bbCopy := bb.CopyUsed()
 				assert.Equal(t, tt.wantUsed, bbCopy.used)
-				assert.Equal(t, tt.wantBufLen, len(bbCopy.buf))
+				assert.Len(t, bbCopy.buf, tt.wantBufLen)
 			}
 		})
 	}
@@ -132,7 +132,7 @@ func TestDedupe(t *testing.T) {
 				bb.add([]byte(tt.keys[i]), []byte(tt.vals[i]))
 			}
 			bb.dedupe()
-			assert.Equal(t, bb.used, len(tt.expectedKeys))
+			assert.Len(t, tt.expectedKeys, bb.used)
 			for i := 0; i < bb.used; i++ {
 				assert.Equal(t, bb.buf[i].key, []byte(tt.expectedKeys[i]))
 				assert.Equal(t, bb.buf[i].val, []byte(tt.expectedVals[i]))

@@ -64,7 +64,7 @@ func TestStoreGetDirectory(t *testing.T) {
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "get")
 	assert.Equal(t, e.Node.Key, "/foo")
-	assert.Equal(t, len(e.Node.Nodes), 2)
+	assert.Len(t, e.Node.Nodes, 2)
 	var bazNodes NodeExterns
 	for _, node := range e.Node.Nodes {
 		switch node.Key {
@@ -73,7 +73,7 @@ func TestStoreGetDirectory(t *testing.T) {
 			assert.False(t, node.Dir)
 		case "/foo/baz":
 			assert.True(t, node.Dir)
-			assert.Equal(t, len(node.Nodes), 2)
+			assert.Len(t, node.Nodes, 2)
 			bazNodes = node.Nodes
 		default:
 			t.Errorf("key = %s, not matched", node.Key)

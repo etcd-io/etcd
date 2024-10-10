@@ -243,7 +243,7 @@ func testCurlV3AuthUserBasicOperations(cx ctlCtx) {
 	users, ok := resp["users"]
 	require.True(cx.t, ok)
 	userSlice := users.([]any)
-	require.Equal(cx.t, 2, len(userSlice))
+	require.Len(cx.t, userSlice, 2)
 	require.Equal(cx.t, "user1", userSlice[0])
 	require.Equal(cx.t, "user3", userSlice[1])
 }
@@ -372,7 +372,7 @@ func testCurlV3AuthRoleBasicOperations(cx ctlCtx) {
 	roles, ok := resp["roles"]
 	require.True(cx.t, ok)
 	roleSlice := roles.([]any)
-	require.Equal(cx.t, 2, len(roleSlice))
+	require.Len(cx.t, roleSlice, 2)
 	require.Equal(cx.t, "role1", roleSlice[0])
 	require.Equal(cx.t, "role3", roleSlice[1])
 }

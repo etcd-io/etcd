@@ -211,7 +211,7 @@ func TestLeasingGetNoLeaseTTL(t *testing.T) {
 
 	gresp, err := lkv.Get(context.TODO(), "k")
 	testutil.AssertNil(t, err)
-	assert.Equal(t, len(gresp.Kvs), 1)
+	assert.Len(t, gresp.Kvs, 1)
 
 	clus.Members[0].Stop(t)
 
