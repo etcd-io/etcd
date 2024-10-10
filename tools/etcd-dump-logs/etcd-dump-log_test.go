@@ -93,7 +93,6 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 			assert.EqualValues(t, strings.ReplaceAll(string(expected), " ", "_"), strings.ReplaceAll(string(actual), " ", "_"))
 		})
 	}
-
 }
 
 func mustCreateWALLog(t *testing.T, path string) {

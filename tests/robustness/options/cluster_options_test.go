@@ -43,12 +43,12 @@ func TestWithClusterOptionGroups(t *testing.T) {
 	}
 
 	expectedServerConfigs := []embed.Config{
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
-		embed.Config{SnapshotCount: 100, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
-		embed.Config{SnapshotCount: 150, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
+		{SnapshotCount: 100, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 101, ElectionMs: 1001},
+		{SnapshotCount: 150, SnapshotCatchUpEntries: 100, TickMs: 202, ElectionMs: 2002},
 	}
 	for i, tt := range expectedServerConfigs {
 		cluster := *e2e.NewConfig(opts...)
@@ -77,20 +77,20 @@ func TestWithOptionsSubset(t *testing.T) {
 	}
 
 	expectedServerConfigs := []embed.Config{
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
 		// both SnapshotCount and TickMs&ElectionMs are not default values.
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
 		// only TickMs&ElectionMs are not default values.
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
 		// both SnapshotCount and TickMs&ElectionMs are not default values.
-		embed.Config{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
+		{SnapshotCount: 200, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
 		// both SnapshotCount and TickMs&ElectionMs are not default values.
-		embed.Config{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
+		{SnapshotCount: 10000, SnapshotCatchUpEntries: 100, TickMs: 50, ElectionMs: 500},
 		// only SnapshotCount is not default value.
-		embed.Config{SnapshotCount: 100, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
+		{SnapshotCount: 100, SnapshotCatchUpEntries: 100, TickMs: 100, ElectionMs: 1000},
 	}
 	for i, tt := range expectedServerConfigs {
 		cluster := *e2e.NewConfig(opts...)

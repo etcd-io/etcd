@@ -294,7 +294,6 @@ func authTestWatch(cx ctlCtx) {
 
 		<-donec
 	}
-
 }
 
 func authTestSnapshot(cx ctlCtx) {

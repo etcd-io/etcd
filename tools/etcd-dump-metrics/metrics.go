@@ -207,7 +207,6 @@ func parse(lines []string) (mss []metric) {
 			mss[i].grpcCodes = sortMap(codes)
 			mss[i].metrics = sortMap(metrics)
 		}
-
 	}
 	return mss
 }

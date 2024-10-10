@@ -63,7 +63,6 @@ func benchmarkResponseUnmarshalling(b *testing.B, children, size int) {
 		if newResponse, err = unmarshalSuccessfulKeysResponse(header, body); err != nil {
 			b.Errorf("error unmarshalling response (%v)", err)
 		}
-
 	}
 	if !reflect.DeepEqual(response.Node, newResponse.Node) {
 		b.Errorf("Unexpected difference in a parsed response: \n%+v\n%+v", response, newResponse)

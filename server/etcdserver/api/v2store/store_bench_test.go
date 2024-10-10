@@ -156,7 +156,6 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		<-watchers[i].EventChan()
 	}
-
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {

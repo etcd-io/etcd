@@ -732,7 +732,6 @@ func (w *watchGRPCStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 	}
 
 	return w.unicastResponse(wr, pbresp.WatchId)
-
 }
 
 // broadcastResponse send a watch response to all watch substreams.

@@ -434,9 +434,7 @@ func TestClientRejectOldCluster(t *testing.T) {
 				t.Errorf("heckVersion err:%v", err)
 			}
 		})
-
 	}
-
 }
 
 type mockMaintenance struct {

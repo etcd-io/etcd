@@ -129,7 +129,6 @@ func TestVersionSnapshot(t *testing.T) {
 			}
 
 			assert.Equal(t, tc.expectVersion, ver.String())
-
 		})
 	}
 }

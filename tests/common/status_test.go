@@ -24,7 +24,6 @@ import (
 )
 
 func TestStatus(t *testing.T) {
-
 	testRunner.BeforeTest(t)
 
 	for _, tc := range clusterTestCases() {

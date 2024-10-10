@@ -64,7 +64,7 @@ func TestIndexGet(t *testing.T) {
 
 func TestIndexRange(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2")}
-	allRevs := []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}}
 
 	ti := newTreeIndex(zaptest.NewLogger(t))
 	for i := range allKeys {
@@ -142,7 +142,7 @@ func TestIndexTombstone(t *testing.T) {
 
 func TestIndexRevision(t *testing.T) {
 	allKeys := [][]byte{[]byte("foo"), []byte("foo1"), []byte("foo2"), []byte("foo2"), []byte("foo1"), []byte("foo")}
-	allRevs := []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}, Revision{Main: 4}, Revision{Main: 5}, Revision{Main: 6}}
+	allRevs := []Revision{{Main: 1}, {Main: 2}, {Main: 3}, {Main: 4}, {Main: 5}, {Main: 6}}
 
 	ti := newTreeIndex(zaptest.NewLogger(t))
 	for i := range allKeys {
@@ -162,23 +162,23 @@ func TestIndexRevision(t *testing.T) {
 		},
 		// single key that found
 		{
-			[]byte("foo"), nil, 6, 0, []Revision{Revision{Main: 6}}, 1,
+			[]byte("foo"), nil, 6, 0, []Revision{{Main: 6}}, 1,
 		},
 		// various range keys, fixed atRev, unlimited
 		{
-			[]byte("foo"), []byte("foo1"), 6, 0, []Revision{Revision{Main: 6}}, 1,
+			[]byte("foo"), []byte("foo1"), 6, 0, []Revision{{Main: 6}}, 1,
 		},
 		{
-			[]byte("foo"), []byte("foo2"), 6, 0, []Revision{Revision{Main: 6}, Revision{Main: 5}}, 2,
+			[]byte("foo"), []byte("foo2"), 6, 0, []Revision{{Main: 6}, {Main: 5}}, 2,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 6, 0, []Revision{Revision{Main: 6}, Revision{Main: 5}, Revision{Main: 4}}, 3,
+			[]byte("foo"), []byte("fop"), 6, 0, []Revision{{Main: 6}, {Main: 5}, {Main: 4}}, 3,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 6, 0, []Revision{Revision{Main: 5}, Revision{Main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 6, 0, []Revision{{Main: 5}, {Main: 4}}, 2,
 		},
 		{
-			[]byte("foo2"), []byte("fop"), 6, 0, []Revision{Revision{Main: 4}}, 1,
+			[]byte("foo2"), []byte("fop"), 6, 0, []Revision{{Main: 4}}, 1,
 		},
 		{
 			[]byte("foo3"), []byte("fop"), 6, 0, nil, 0,
@@ -188,38 +188,38 @@ func TestIndexRevision(t *testing.T) {
 			[]byte("foo1"), []byte("fop"), 1, 0, nil, 0,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 2, 0, []Revision{Revision{Main: 2}}, 1,
+			[]byte("foo1"), []byte("fop"), 2, 0, []Revision{{Main: 2}}, 1,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 3, 0, []Revision{Revision{Main: 2}, Revision{Main: 3}}, 2,
+			[]byte("foo1"), []byte("fop"), 3, 0, []Revision{{Main: 2}, {Main: 3}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 4, 0, []Revision{Revision{Main: 2}, Revision{Main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 4, 0, []Revision{{Main: 2}, {Main: 4}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 5, 0, []Revision{Revision{Main: 5}, Revision{Main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 5, 0, []Revision{{Main: 5}, {Main: 4}}, 2,
 		},
 		{
-			[]byte("foo1"), []byte("fop"), 6, 0, []Revision{Revision{Main: 5}, Revision{Main: 4}}, 2,
+			[]byte("foo1"), []byte("fop"), 6, 0, []Revision{{Main: 5}, {Main: 4}}, 2,
 		},
 		// fixed range keys, fixed atRev, various limit
 		{
-			[]byte("foo"), []byte("fop"), 6, 1, []Revision{Revision{Main: 6}}, 3,
+			[]byte("foo"), []byte("fop"), 6, 1, []Revision{{Main: 6}}, 3,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 6, 2, []Revision{Revision{Main: 6}, Revision{Main: 5}}, 3,
+			[]byte("foo"), []byte("fop"), 6, 2, []Revision{{Main: 6}, {Main: 5}}, 3,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 6, 3, []Revision{Revision{Main: 6}, Revision{Main: 5}, Revision{Main: 4}}, 3,
+			[]byte("foo"), []byte("fop"), 6, 3, []Revision{{Main: 6}, {Main: 5}, {Main: 4}}, 3,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 3, 1, []Revision{Revision{Main: 1}}, 3,
+			[]byte("foo"), []byte("fop"), 3, 1, []Revision{{Main: 1}}, 3,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 3, 2, []Revision{Revision{Main: 1}, Revision{Main: 2}}, 3,
+			[]byte("foo"), []byte("fop"), 3, 2, []Revision{{Main: 1}, {Main: 2}}, 3,
 		},
 		{
-			[]byte("foo"), []byte("fop"), 3, 3, []Revision{Revision{Main: 1}, Revision{Main: 2}, Revision{Main: 3}}, 3,
+			[]byte("foo"), []byte("fop"), 3, 3, []Revision{{Main: 1}, {Main: 2}, {Main: 3}}, 3,
 		},
 	}
 	for i, tt := range tests {
@@ -285,32 +285,32 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 1}, Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 1}, {Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 2}, Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 2}, {Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 3}, Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 3}, {Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 1}: {},
+				{Main: 1}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 1}: {},
+				{Main: 1}: {},
 			},
 		},
 		{
@@ -320,34 +320,34 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 1}, Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 1}, {Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 2}, Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 2}, {Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 3}, Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 3}, {Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
 			},
 		},
 		{
@@ -357,36 +357,36 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 1}, Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 1}, {Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 2}, Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 2}, {Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 3}, Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 3}, {Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
-				Revision{Main: 3}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
+				{Main: 3}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
-				Revision{Main: 3}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
+				{Main: 3}: {},
 			},
 		},
 		{
@@ -396,36 +396,36 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 1}, Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 1}, {Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 2}, Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 2}, {Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
-				Revision{Main: 4}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
+				{Main: 4}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 1}: {},
-				Revision{Main: 2}: {},
-				Revision{Main: 4}: {},
+				{Main: 1}: {},
+				{Main: 2}: {},
+				{Main: 4}: {},
 			},
 		},
 		{
@@ -435,36 +435,36 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 2}, Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 2}, {Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 2}: {},
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 2}: {},
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 		},
 		{
@@ -474,36 +474,36 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 6}, Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 6}, {Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 6}: {},
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 6}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 6}: {},
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 6}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 		},
 		{
@@ -513,35 +513,35 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 2}, revs: []Revision{Revision{Main: 7}}},
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 3, created: Revision{Main: 2}, revs: []Revision{{Main: 7}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 4}, Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 4}, {Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 7}: {},
-				Revision{Main: 4}: {},
-				Revision{Main: 5}: {},
+				{Main: 7}: {},
+				{Main: 4}: {},
+				{Main: 5}: {},
 			},
 		},
 		{
@@ -551,32 +551,32 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 5}, Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 5}, {Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 				{
 					key:      []byte("foo2"),
 					modified: Revision{Main: 8},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 3}, revs: []Revision{Revision{Main: 8}}},
+						{ver: 3, created: Revision{Main: 3}, revs: []Revision{{Main: 8}}},
 						{},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 5}: {},
+				{Main: 5}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 8}: {},
-				Revision{Main: 5}: {},
+				{Main: 8}: {},
+				{Main: 5}: {},
 			},
 		},
 		{
@@ -586,21 +586,21 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 3, created: Revision{Main: 1}, revs: []Revision{Revision{Main: 9}}},
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 3, created: Revision{Main: 1}, revs: []Revision{{Main: 9}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 9}: {},
+				{Main: 9}: {},
 			},
 		},
 		{
@@ -610,24 +610,24 @@ func TestIndexCompactAndKeep(t *testing.T) {
 					key:      []byte("foo"),
 					modified: Revision{Main: 10},
 					generations: []generation{
-						{ver: 1, created: Revision{Main: 10}, revs: []Revision{Revision{Main: 10}}},
+						{ver: 1, created: Revision{Main: 10}, revs: []Revision{{Main: 10}}},
 					},
 				},
 				{
 					key:      []byte("foo1"),
 					modified: Revision{Main: 10, Sub: 1},
 					generations: []generation{
-						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{Revision{Main: 10, Sub: 1}}},
+						{ver: 1, created: Revision{Main: 10, Sub: 1}, revs: []Revision{{Main: 10, Sub: 1}}},
 					},
 				},
 			},
 			keep: map[Revision]struct{}{
-				Revision{Main: 10}:         {},
-				Revision{Main: 10, Sub: 1}: {},
+				{Main: 10}:         {},
+				{Main: 10, Sub: 1}: {},
 			},
 			compacted: map[Revision]struct{}{
-				Revision{Main: 10}:         {},
-				Revision{Main: 10, Sub: 1}: {},
+				{Main: 10}:         {},
+				{Main: 10, Sub: 1}: {},
 			},
 		},
 	}
