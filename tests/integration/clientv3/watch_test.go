@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -809,7 +810,7 @@ func TestWatchAfterClose(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		cli.Watch(context.TODO(), "foo")
-		if err := cli.Close(); err != nil && err != context.Canceled {
+		if err := cli.Close(); err != nil && !errors.Is(err, context.Canceled) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)

@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -78,7 +79,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(1 * time.Second) // give enough time for the operation
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if err != ordering.ErrNoGreaterRev {
+	if !errors.Is(err, ordering.ErrNoGreaterRev) {
 		t.Fatal("While speaking to partitioned leader, we should get ErrNoGreaterRev error")
 	}
 
@@ -156,7 +157,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if err != ordering.ErrNoGreaterRev {
+	if !errors.Is(err, ordering.ErrNoGreaterRev) {
 		t.Fatalf("expected %v, got %v", ordering.ErrNoGreaterRev, err)
 	}
 }
