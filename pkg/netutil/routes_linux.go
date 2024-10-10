@@ -152,7 +152,6 @@ func getIfaceAddr(idx uint32, family uint8) (*syscall.NetlinkMessage, error) {
 	}
 
 	return nil, fmt.Errorf("could not find address for interface index %v", idx)
-
 }
 
 // Used to get a name of interface.

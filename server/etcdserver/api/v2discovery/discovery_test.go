@@ -86,7 +86,6 @@ func TestNewProxyFunc(t *testing.T) {
 		if g.String() != w {
 			t.Errorf("%s: proxyURL=%q, want %q", in, g, w)
 		}
-
 	}
 }
 

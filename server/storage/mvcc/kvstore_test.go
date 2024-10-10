@@ -199,11 +199,11 @@ func TestStoreRange(t *testing.T) {
 		r    rangeResp
 	}{
 		{
-			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{Revision{Main: 2}}},
+			indexRangeResp{[][]byte{[]byte("foo")}, []Revision{{Main: 2}}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 		{
-			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []Revision{Revision{Main: 2}, Revision{Main: 3}}},
+			indexRangeResp{[][]byte{[]byte("foo"), []byte("foo1")}, []Revision{{Main: 2}, {Main: 3}}},
 			rangeResp{[][]byte{key}, [][]byte{kvb}},
 		},
 	}
@@ -335,7 +335,7 @@ func TestStoreCompact(t *testing.T) {
 	fi := s.kvindex.(*fakeIndex)
 
 	s.currentRev = 3
-	fi.indexCompactRespc <- map[Revision]struct{}{Revision{Main: 1}: {}}
+	fi.indexCompactRespc <- map[Revision]struct{}{{Main: 1}: {}}
 	key1 := newTestRevBytes(Revision{Main: 1})
 	key2 := newTestRevBytes(Revision{Main: 2})
 	b.tx.rangeRespc <- rangeResp{[][]byte{}, [][]byte{}}
@@ -420,7 +420,7 @@ func TestStoreRestore(t *testing.T) {
 	}
 
 	gens := []generation{
-		{created: Revision{Main: 4}, ver: 2, revs: []Revision{Revision{Main: 3}, Revision{Main: 5}}},
+		{created: Revision{Main: 4}, ver: 2, revs: []Revision{{Main: 3}, {Main: 5}}},
 		{created: Revision{Main: 0}, ver: 0, revs: nil},
 	}
 	ki := &keyIndex{key: []byte("foo"), modified: Revision{Main: 5}, generations: gens}

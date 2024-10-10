@@ -441,7 +441,6 @@ func TestInferLocalAddr(t *testing.T) {
 			require.Equal(t, tt.expectedLocalAddr, cfg.InferLocalAddr())
 		})
 	}
-
 }
 
 func (s *securityConfig) equals(t *transport.TLSInfo) bool {

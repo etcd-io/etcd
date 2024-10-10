@@ -137,7 +137,6 @@ func driveSetTests(t *testing.T, s Set) {
 	} {
 		if tt.got != tt.want {
 			t.Fatalf("case %d: want %t, got %t", i, tt.want, tt.got)
-
 		}
 	}
 

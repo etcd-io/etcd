@@ -749,7 +749,6 @@ func (as *authStore) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDelete
 		}
 
 		tx.UnsafePutUser(updatedUser)
-
 	}
 
 	as.commitRevision(tx)
@@ -1114,7 +1113,6 @@ func decomposeOpts(lg *zap.Logger, optstr string) (string, map[string]string, er
 	}
 
 	return tokenType, typeSpecificOpts, nil
-
 }
 
 // NewTokenProvider creates a new token provider.

@@ -115,7 +115,6 @@ func mustCreateConn() *clientv3.Client {
 		}
 		cfg.Username = username
 		cfg.Password = password
-
 	}
 
 	client, err := clientv3.New(cfg)
