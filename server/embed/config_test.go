@@ -533,6 +533,35 @@ func TestAutoCompactionModeParse(t *testing.T) {
 	}
 }
 
+func TestAutoCompactionIntervalParse(t *testing.T) {
+	tests := []struct {
+		interval string
+		werr     bool
+		wdur     time.Duration
+	}{
+		{"", false, 0},
+		{"1", true, 0},
+		{"1h", false, time.Hour},
+		{"1s", false, time.Second},
+		{"a", true, 0},
+		{"-1", true, 0},
+	}
+
+	hasErr := func(err error) bool {
+		return err != nil
+	}
+
+	for i, tt := range tests {
+		dur, err := parseCompactionInterval(tt.interval)
+		if hasErr(err) != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if dur != tt.wdur {
+			t.Errorf("#%d: duration = %s, want %s", i, dur, tt.wdur)
+		}
+	}
+}
+
 func TestPeerURLsMapAndTokenFromSRV(t *testing.T) {
 	defer func() { getCluster = srv.GetCluster }()
 

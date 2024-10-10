@@ -165,6 +165,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		return e, err
 	}
 
+	autoCompactionInterval, err := parseCompactionInterval(cfg.AutoCompactionInterval)
+	if err != nil {
+		return e, err
+	}
+
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
 	srvcfg := config.ServerConfig{
@@ -189,6 +194,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		InitialElectionTickAdvance:               cfg.InitialElectionTickAdvance,
 		AutoCompactionRetention:                  autoCompactionRetention,
 		AutoCompactionMode:                       cfg.AutoCompactionMode,
+		AutoCompactionInterval:                   autoCompactionInterval,
 		QuotaBackendBytes:                        cfg.QuotaBackendBytes,
 		BackendBatchLimit:                        cfg.BackendBatchLimit,
 		BackendFreelistType:                      backendFreelistType,
@@ -890,6 +896,13 @@ func (e *Etcd) GetLogger() *zap.Logger {
 	l := e.cfg.logger
 	e.cfg.loggerMu.RUnlock()
 	return l
+}
+
+func parseCompactionInterval(interval string) (ret time.Duration, err error) {
+	if interval == "" {
+		return ret, nil
+	}
+	return time.ParseDuration(interval)
 }
 
 func parseCompactionRetention(mode, retention string) (ret time.Duration, err error) {
