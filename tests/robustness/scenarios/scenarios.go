@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package robustness
+package scenarios
 
 import (
 	"path/filepath"
@@ -22,6 +22,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/random"
@@ -57,16 +58,16 @@ var trafficProfiles = []TrafficProfile{
 	},
 }
 
-type testScenario struct {
-	name      string
-	failpoint failpoint.Failpoint
-	cluster   e2e.EtcdProcessClusterConfig
-	traffic   traffic.Traffic
-	profile   traffic.Profile
-	watch     watchConfig
+type TestScenario struct {
+	Name      string
+	Failpoint failpoint.Failpoint
+	Cluster   e2e.EtcdProcessClusterConfig
+	Traffic   traffic.Traffic
+	Profile   traffic.Profile
+	Watch     client.WatchConfig
 }
 
-func exploratoryScenarios(_ *testing.T) []testScenario {
+func Exploratory(_ *testing.T) []TestScenario {
 	randomizableOptions := []e2e.EPClusterOption{
 		options.WithClusterOptionGroups(
 			options.ClusterOptions{options.WithTickMs(29), options.WithElectionMs(271)},
@@ -100,16 +101,16 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
 		baseOptions = append(baseOptions, e2e.WithSnapshotCatchUpEntries(100))
 	}
-	scenarios := []testScenario{}
+	scenarios := []TestScenario{}
 	for _, tp := range trafficProfiles {
 		name := filepath.Join(tp.Name, "ClusterOfSize1")
 		clusterOfSize1Options := baseOptions
 		clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithClusterSize(1))
-		scenarios = append(scenarios, testScenario{
-			name:    name,
-			traffic: tp.Traffic,
-			profile: tp.Profile,
-			cluster: *e2e.NewConfig(clusterOfSize1Options...),
+		scenarios = append(scenarios, TestScenario{
+			Name:    name,
+			Traffic: tp.Traffic,
+			Profile: tp.Profile,
+			Cluster: *e2e.NewConfig(clusterOfSize1Options...),
 		})
 	}
 
@@ -121,27 +122,27 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 		if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 			clusterOfSize3Options = append(clusterOfSize3Options, mixedVersionOption)
 		}
-		scenarios = append(scenarios, testScenario{
-			name:    name,
-			traffic: tp.Traffic,
-			profile: tp.Profile,
-			cluster: *e2e.NewConfig(clusterOfSize3Options...),
+		scenarios = append(scenarios, TestScenario{
+			Name:    name,
+			Traffic: tp.Traffic,
+			Profile: tp.Profile,
+			Cluster: *e2e.NewConfig(clusterOfSize3Options...),
 		})
 	}
 	if e2e.BinPath.LazyFSAvailable() {
 		newScenarios := scenarios
 		for _, s := range scenarios {
 			// LazyFS increases the load on CPU, so we run it with more lightweight case.
-			if s.profile.MinimalQPS <= 100 && s.cluster.ClusterSize == 1 {
-				lazyfsCluster := s.cluster
+			if s.Profile.MinimalQPS <= 100 && s.Cluster.ClusterSize == 1 {
+				lazyfsCluster := s.Cluster
 				lazyfsCluster.LazyFSEnabled = true
-				newScenarios = append(newScenarios, testScenario{
-					name:      filepath.Join(s.name, "LazyFS"),
-					failpoint: s.failpoint,
-					cluster:   lazyfsCluster,
-					traffic:   s.traffic,
-					profile:   s.profile.WithoutCompaction(),
-					watch:     s.watch,
+				newScenarios = append(newScenarios, TestScenario{
+					Name:      filepath.Join(s.Name, "LazyFS"),
+					Failpoint: s.Failpoint,
+					Cluster:   lazyfsCluster,
+					Traffic:   s.Traffic,
+					Profile:   s.Profile.WithoutCompaction(),
+					Watch:     s.Watch,
 				})
 			}
 		}
@@ -150,60 +151,60 @@ func exploratoryScenarios(_ *testing.T) []testScenario {
 	return scenarios
 }
 
-func regressionScenarios(t *testing.T) []testScenario {
+func Regression(t *testing.T) []TestScenario {
 	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
 	if err != nil {
 		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
 	}
 
-	scenarios := []testScenario{}
-	scenarios = append(scenarios, testScenario{
-		name:      "Issue14370",
-		failpoint: failpoint.RaftBeforeSavePanic,
-		profile:   traffic.LowTraffic,
-		traffic:   traffic.EtcdPutDeleteLease,
-		cluster: *e2e.NewConfig(
+	scenarios := []TestScenario{}
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue14370",
+		Failpoint: failpoint.RaftBeforeSavePanic,
+		Profile:   traffic.LowTraffic,
+		Traffic:   traffic.EtcdPutDeleteLease,
+		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
 	})
-	scenarios = append(scenarios, testScenario{
-		name:      "Issue14685",
-		failpoint: failpoint.DefragBeforeCopyPanic,
-		profile:   traffic.LowTraffic,
-		traffic:   traffic.EtcdPutDeleteLease,
-		cluster: *e2e.NewConfig(
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue14685",
+		Failpoint: failpoint.DefragBeforeCopyPanic,
+		Profile:   traffic.LowTraffic,
+		Traffic:   traffic.EtcdPutDeleteLease,
+		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 		),
 	})
-	scenarios = append(scenarios, testScenario{
-		name:      "Issue13766",
-		failpoint: failpoint.KillFailpoint,
-		profile:   traffic.HighTrafficProfile,
-		traffic:   traffic.EtcdPut,
-		cluster: *e2e.NewConfig(
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue13766",
+		Failpoint: failpoint.KillFailpoint,
+		Profile:   traffic.HighTrafficProfile,
+		Traffic:   traffic.EtcdPut,
+		Cluster: *e2e.NewConfig(
 			e2e.WithSnapshotCount(100),
 		),
 	})
-	scenarios = append(scenarios, testScenario{
-		name: "Issue15220",
-		watch: watchConfig{
-			requestProgress: true,
+	scenarios = append(scenarios, TestScenario{
+		Name: "Issue15220",
+		Watch: client.WatchConfig{
+			RequestProgress: true,
 		},
-		profile:   traffic.LowTraffic,
-		traffic:   traffic.EtcdPutDeleteLease,
-		failpoint: failpoint.KillFailpoint,
-		cluster: *e2e.NewConfig(
+		Profile:   traffic.LowTraffic,
+		Traffic:   traffic.EtcdPutDeleteLease,
+		Failpoint: failpoint.KillFailpoint,
+		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 		),
 	})
-	scenarios = append(scenarios, testScenario{
-		name:      "Issue17529",
-		profile:   traffic.HighTrafficProfile,
-		traffic:   traffic.Kubernetes,
-		failpoint: failpoint.SleepBeforeSendWatchResponse,
-		cluster: *e2e.NewConfig(
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue17529",
+		Profile:   traffic.HighTrafficProfile,
+		Traffic:   traffic.Kubernetes,
+		Failpoint: failpoint.SleepBeforeSendWatchResponse,
+		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
 			e2e.WithGoFailEnabled(true),
 			options.WithSnapshotCount(100),
@@ -218,12 +219,12 @@ func regressionScenarios(t *testing.T) []testScenario {
 		if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
 			opts = append(opts, e2e.WithSnapshotCatchUpEntries(100))
 		}
-		scenarios = append(scenarios, testScenario{
-			name:      "Issue15271",
-			failpoint: failpoint.BlackholeUntilSnapshot,
-			profile:   traffic.HighTrafficProfile,
-			traffic:   traffic.EtcdPut,
-			cluster:   *e2e.NewConfig(opts...),
+		scenarios = append(scenarios, TestScenario{
+			Name:      "Issue15271",
+			Failpoint: failpoint.BlackholeUntilSnapshot,
+			Profile:   traffic.HighTrafficProfile,
+			Traffic:   traffic.EtcdPut,
+			Cluster:   *e2e.NewConfig(opts...),
 		})
 	}
 	return scenarios
