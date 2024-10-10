@@ -279,11 +279,16 @@ func (le *lessor) SetCheckpointer(cp Checkpointer) {
 }
 
 func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
+	defer func(start time.Time) {
+		leaseGrantDurationSeconds.Observe(time.Since(start).Seconds())
+	}(time.Now())
 	if id == NoLease {
+		leaseGrantError.WithLabelValues(ErrLeaseNotFound.Error()).Inc()
 		return nil, ErrLeaseNotFound
 	}
 
 	if ttl > MaxLeaseTTL {
+		leaseGrantError.WithLabelValues(ErrLeaseExists.Error()).Inc()
 		return nil, ErrLeaseTTLTooLarge
 	}
 
@@ -324,11 +329,15 @@ func (le *lessor) Grant(id LeaseID, ttl int64) (*Lease, error) {
 }
 
 func (le *lessor) Revoke(id LeaseID) error {
+	defer func(start time.Time) {
+		leaseRevokeDurationSeconds.Observe(time.Since(start).Seconds())
+	}(time.Now())
 	le.mu.Lock()
 
 	l := le.leaseMap[id]
 	if l == nil {
 		le.mu.Unlock()
+		leaseRevokeError.WithLabelValues(ErrLeaseNotFound.Error()).Inc()
 		return ErrLeaseNotFound
 	}
 
@@ -394,6 +403,9 @@ func greaterOrEqual(first, second semver.Version) bool {
 // Renew renews an existing lease. If the given lease does not exist or
 // has expired, an error will be returned.
 func (le *lessor) Renew(id LeaseID) (int64, error) {
+	defer func(start time.Time) {
+		leaseRenewDurationSeconds.Observe(time.Since(start).Seconds())
+	}(time.Now())
 	le.mu.RLock()
 	if !le.isPrimary() {
 		// forward renew request to primary instead of returning error.
@@ -418,12 +430,15 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 		// quorum to be revoked. To be accurate, renew request must wait for the
 		// deletion to complete.
 		case <-l.revokec:
+			leaseRenewError.WithLabelValues(ErrLeaseNotFound.Error()).Inc()
 			return -1, ErrLeaseNotFound
 		// The expired lease might fail to be revoked if the primary changes.
 		// The caller will retry on ErrNotPrimary.
 		case <-demotec:
+			leaseRenewError.WithLabelValues(ErrNotPrimary.Error()).Inc()
 			return -1, ErrNotPrimary
 		case <-le.stopC:
+			leaseRenewError.WithLabelValues(ErrNotPrimary.Error()).Inc()
 			return -1, ErrNotPrimary
 		}
 	}
@@ -433,6 +448,7 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	// of RAFT entries written per lease to a max of 2 per checkpoint interval.
 	if clearRemainingTTL {
 		if err := le.cp(context.Background(), &pb.LeaseCheckpointRequest{Checkpoints: []*pb.LeaseCheckpoint{{ID: int64(l.ID), Remaining_TTL: 0}}}); err != nil {
+			leaseRenewError.WithLabelValues(err.Error()).Inc()
 			return -1, err
 		}
 	}
@@ -555,6 +571,7 @@ func (le *lessor) Attach(id LeaseID, items []LeaseItem) error {
 
 	l.mu.Lock()
 	for _, it := range items {
+		leaseAttached.Inc()
 		l.itemSet[it] = struct{}{}
 		le.itemMap[it] = id
 	}
@@ -582,6 +599,7 @@ func (le *lessor) Detach(id LeaseID, items []LeaseItem) error {
 
 	l.mu.Lock()
 	for _, it := range items {
+		leaseDetached.Inc()
 		delete(l.itemSet, it)
 		delete(le.itemMap, it)
 	}
@@ -821,6 +839,7 @@ func (le *lessor) initAndRecover() {
 		}
 	}
 	le.leaseExpiredNotifier.Init()
+	initLeaseCount.Add(float64(len(lpbs)))
 	heap.Init(&le.leaseCheckpointHeap)
 
 	le.b.ForceCommit()
