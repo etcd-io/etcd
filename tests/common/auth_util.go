@@ -108,13 +108,13 @@ func setupAuth(c interfaces.Client, roles []authRole, users []authUser) error {
 }
 
 func requireRolePermissionEqual(t *testing.T, expectRole authRole, actual []*authpb.Permission) {
-	require.Equal(t, 1, len(actual))
+	require.Len(t, actual, 1)
 	require.Equal(t, expectRole.permission, clientv3.PermissionType(actual[0].PermType))
 	require.Equal(t, expectRole.key, string(actual[0].Key))
 	require.Equal(t, expectRole.keyEnd, string(actual[0].RangeEnd))
 }
 
 func requireUserRolesEqual(t *testing.T, expectUser authUser, actual []string) {
-	require.Equal(t, 1, len(actual))
+	require.Len(t, actual, 1)
 	require.Equal(t, expectUser.role, actual[0])
 }

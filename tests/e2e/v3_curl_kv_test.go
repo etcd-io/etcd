@@ -164,7 +164,7 @@ func testCurlV3KVTxn(cx ctlCtx) {
 
 	succeeded, responses := mustExecuteTxn(cx, string(jsonDat))
 	require.True(cx.t, succeeded)
-	require.Equal(cx.t, 1, len(responses))
+	require.Len(cx.t, responses, 1)
 	putResponse := responses[0].(map[string]any)
 	_, ok := putResponse["response_put"]
 	require.True(cx.t, ok)

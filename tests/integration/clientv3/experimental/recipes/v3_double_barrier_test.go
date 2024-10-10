@@ -158,7 +158,7 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	// Make sure the extra `b.Enter()` did not create a new ephemeral key
-	assert.Equal(t, waiters, len(resp.Kvs))
+	assert.Len(t, resp.Kvs, waiters)
 	close(donec)
 
 	wgDone.Wait()
