@@ -119,6 +119,5 @@ linters-settings: # please keep this alphabetized
       - go-require
       - len
       - negative-positive
-      - nil-compare
       - require-error
     enable-all: true

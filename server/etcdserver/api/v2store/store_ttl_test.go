@@ -20,8 +20,8 @@ import (
 
 	"github.com/jonboulle/clockwork"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 )
 
@@ -38,7 +38,7 @@ func TestMinExpireTime(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 	var eidx uint64 = 1
 	e, err := s.Get("/foo", true, false)
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "get")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -60,7 +60,7 @@ func TestStoreGetDirectory(t *testing.T) {
 	s.Create("/foo/baz/ttl", false, "Y", false, TTLOptionSet{ExpireTime: fc.Now().Add(time.Second * 3)})
 	var eidx uint64 = 7
 	e, err := s.Get("/foo", true, false)
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, e.Action, "get")
 	assert.Equal(t, e.Node.Key, "/foo")
@@ -103,14 +103,14 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	var eidx uint64 = 2
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	_, err := s.Update("/foo", "baz", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	e, _ := s.Get("/foo", false, false)
 	assert.Equal(t, *e.Node.Value, "baz")
 	assert.Equal(t, e.EtcdIndex, eidx)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo", false, false)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	assert.Equal(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
@@ -122,11 +122,11 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 
 	var eidx uint64 = 3
 	_, err := s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	_, err = s.Create("/foo/bar", false, "baz", false, TTLOptionSet{ExpireTime: Permanent})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	e, err := s.Update("/foo/bar", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	assert.False(t, e.Node.Dir)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	e, _ = s.Get("/foo/bar", false, false)
@@ -136,7 +136,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo/bar", false, false)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	assert.Equal(t, err.(*v2error.Error).ErrorCode, v2error.EcodeKeyNotFound)
 }
 
@@ -155,7 +155,7 @@ func TestStoreWatchExpire(t *testing.T) {
 	assert.Equal(t, w.StartIndex(), eidx)
 	c := w.EventChan()
 	e := nbselect(c)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	eidx = 4
@@ -193,7 +193,7 @@ func TestStoreWatchExpireRefresh(t *testing.T) {
 	assert.Equal(t, w.StartIndex(), eidx)
 	c := w.EventChan()
 	e := nbselect(c)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	eidx = 3
@@ -275,16 +275,16 @@ func TestStoreRefresh(t *testing.T) {
 	s.Create("/bar", true, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	s.Create("/bar/z", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
 	_, err := s.Update("/foo", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	_, err = s.Set("/foo", false, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	_, err = s.Update("/bar/z", "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	_, err = s.CompareAndSwap("/foo", "bar", 0, "", TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond), Refresh: true})
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 }
 
 // TestStoreRecoverWithExpiration ensures that the store can recover from a previously saved state that includes an expiring key.
@@ -299,7 +299,7 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	s.Create("/foo/x", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Create("/foo/y", false, "baz", false, TTLOptionSet{ExpireTime: fc.Now().Add(5 * time.Millisecond)})
 	b, err := s.Save()
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 
 	time.Sleep(10 * time.Millisecond)
 
@@ -312,13 +312,13 @@ func TestStoreRecoverWithExpiration(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 
 	e, err := s.Get("/foo/x", false, false)
-	testutil.AssertNil(t, err)
+	assert.Nil(t, err)
 	assert.Equal(t, e.EtcdIndex, eidx)
 	assert.Equal(t, *e.Node.Value, "bar")
 
 	e, err = s.Get("/foo/y", false, false)
-	testutil.AssertNotNil(t, err)
-	testutil.AssertNil(t, e)
+	require.NotNil(t, err)
+	assert.Nil(t, e)
 }
 
 // TestStoreWatchExpireWithHiddenKey ensures that the store doesn't see expirations of hidden keys.
@@ -333,11 +333,11 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 	w, _ := s.Watch("/", true, false, 0)
 	c := w.EventChan()
 	e := nbselect(c)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
-	testutil.AssertNil(t, e)
+	assert.Nil(t, e)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
 	e = nbselect(c)
