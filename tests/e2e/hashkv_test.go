@@ -225,7 +225,7 @@ func verifyConsistentHashKVAcrossAllMembers(t *testing.T, cli *e2e.EtcdctlV3, ha
 	require.NoError(t, err)
 
 	require.Greater(t, len(resp), 1)
-	require.True(t, resp[0].Hash != 0)
+	require.NotEqual(t, resp[0].Hash, 0)
 	t.Logf("One Hash value is %d", resp[0].Hash)
 
 	for i := 1; i < len(resp); i++ {

@@ -449,7 +449,7 @@ func hasKVs(t *testing.T, ctl *e2e.EtcdctlV3, kvs []testutils.KV, currentRev int
 		require.Equal(t, int64(baseRev+i), v.Kvs[0].CreateRevision)
 		require.Equal(t, int64(baseRev+i), v.Kvs[0].ModRevision)
 		require.Equal(t, int64(1), v.Kvs[0].Version)
-		require.True(t, int64(currentRev) >= v.Kvs[0].ModRevision)
+		require.GreaterOrEqual(t, int64(currentRev), v.Kvs[0].ModRevision)
 	}
 }
 

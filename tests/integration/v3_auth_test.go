@@ -456,7 +456,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 		watchStartCh <- struct{}{}
 		watchResponse := <-wChan
 		t.Logf("watch response from k1: %v", watchResponse)
-		assert.True(t, len(watchResponse.Events) != 0)
+		assert.NotEmpty(t, watchResponse.Events)
 		watchEndCh <- struct{}{}
 	}()
 
