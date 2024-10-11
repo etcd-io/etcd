@@ -203,7 +203,6 @@ func TestStoreCreateValue(t *testing.T) {
 	testutil.AssertNil(t, e.Node.Expiration)
 	assert.Equal(t, e.Node.TTL, int64(0))
 	assert.Equal(t, e.Node.ModifiedIndex, uint64(2))
-
 }
 
 // TestStoreCreateDirectory ensures that the store can create a new directory if it doesn't already exist.
@@ -347,7 +346,6 @@ func TestStoreDeleteDirectory(t *testing.T) {
 	e, err = s.Delete("/foo", false, true)
 	testutil.AssertNil(t, err)
 	assert.Equal(t, e.Action, "delete")
-
 }
 
 // TestStoreDeleteDirectoryFailsIfNonRecursiveAndDir ensures that the

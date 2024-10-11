@@ -91,7 +91,6 @@ func mustDeleteMemberFromStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 }
 
 func mustAddToRemovedMembersInStore(lg *zap.Logger, s v2store.Store, id types.ID) {
-
 	if _, err := s.Create(RemovedMemberStoreKey(id), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
 		lg.Panic(
 			"failed to create removedMember",

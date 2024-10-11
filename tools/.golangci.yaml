@@ -18,6 +18,7 @@ linters:
     # - deadcode
     # - structcheck
     # - varcheck
+    - gofmt
     - goimports
     - ineffassign
     - nakedret
@@ -28,6 +29,7 @@ linters:
     - unconvert # Remove unnecessary type conversions
     - unparam
     - unused
+    - whitespace
 linters-settings: # please keep this alphabetized
   goimports:
     local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.

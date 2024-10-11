@@ -27,7 +27,6 @@ import (
 )
 
 func TestCompact(t *testing.T) {
-
 	testRunner.BeforeTest(t)
 	tcs := []struct {
 		name    string

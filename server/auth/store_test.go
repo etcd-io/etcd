@@ -177,7 +177,6 @@ func TestUserAdd(t *testing.T) {
 
 	if _, ok := as.rangePermCache[userName]; !ok {
 		t.Fatalf("user %s should be added but it doesn't exist in rangePermCache", userName)
-
 	}
 }
 
@@ -270,7 +269,6 @@ func TestUserDelete(t *testing.T) {
 
 	if _, ok := as.rangePermCache[userName]; ok {
 		t.Fatalf("user %s should be deleted but it exists in rangePermCache", userName)
-
 	}
 }
 
@@ -306,7 +304,6 @@ func TestUserDeleteAndPermCache(t *testing.T) {
 
 	if _, ok := as.rangePermCache[newUser]; !ok {
 		t.Fatalf("user %s should exist but it doesn't exist in rangePermCache", deletedUserName)
-
 	}
 }
 
@@ -458,7 +455,6 @@ func TestIsOpPermitted(t *testing.T) {
 	if err := as.isOpPermitted("foo", as.Revision(), perm.Key, perm.RangeEnd, perm.PermType); !errors.Is(err, ErrPermissionDenied) {
 		t.Fatal(err)
 	}
-
 }
 
 func TestGetUser(t *testing.T) {

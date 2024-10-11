@@ -277,7 +277,6 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool,
 			return false, err // return the original error for simplicity
 		}
 		return true, err
-
 	}
 	return isSafeRetry(s.client, err, s.callOpts), err
 }

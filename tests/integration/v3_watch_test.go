@@ -1408,7 +1408,6 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 // TestV3WatchProgressWaitsForSync checks that progress notifications
 // don't get sent until the watcher is synchronised
 func TestV3WatchProgressWaitsForSync(t *testing.T) {
-
 	// Disable for gRPC proxy, as it does not support requesting
 	// progress notifications
 	if integration.ThroughProxy {

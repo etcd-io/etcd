@@ -217,7 +217,6 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 			require.Equalf(t, result, tc.expectResult, "Apply: got %v, expect: %v", result, tc.expectResult)
 		})
 	}
-
 }
 
 // TestAuthApplierV3_AdminPermission ensures the admin permission is checked for certain
@@ -823,5 +822,4 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
 	assert.NoError(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
-
 }

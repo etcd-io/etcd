@@ -95,7 +95,6 @@ func TestAuthCluster(t *testing.T) {
 		assert.Equal(t, hashKvs[0].Hash, hashKvs[1].Hash)
 		return true
 	}, time.Second*5, time.Millisecond*100)
-
 }
 
 func applyTLSWithRootCommonName() func() {

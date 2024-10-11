@@ -41,7 +41,6 @@ func TestHeapPushPop(t *testing.T) {
 		}
 		min = node.ExpireTime
 	}
-
 }
 
 func TestHeapUpdate(t *testing.T) {
@@ -88,7 +87,5 @@ func TestHeapUpdate(t *testing.T) {
 				t.Fatal("heap sort wrong!")
 			}
 		}
-
 	}
-
 }

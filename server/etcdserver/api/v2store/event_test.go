@@ -24,7 +24,6 @@ import (
 // Add 200 events into that queue, and test if the
 // previous 100 events have been swapped out.
 func TestEventQueue(t *testing.T) {
-
 	eh := newEventHistory(100)
 
 	// Add
@@ -114,7 +113,6 @@ func TestEventIndexHistoryCleared(t *testing.T) {
 // Add 1000 events into that queue, and test if scanning
 // works still for previous events.
 func TestFullEventQueue(t *testing.T) {
-
 	eh := newEventHistory(10)
 
 	// Add

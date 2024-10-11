@@ -262,7 +262,6 @@ func (c *RecordingClient) Watch(ctx context.Context, key string, rev int64, with
 		WithPrevKV:         withPrevKV,
 	}
 	return c.watch(ctx, request)
-
 }
 
 func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest) clientv3.WatchChan {

@@ -254,7 +254,6 @@ func TestResponseMatchRegularExpr(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-
 			ep, err := NewExpect("echo", "-n", tc.mockOutput)
 			require.NoError(t, err)
 
