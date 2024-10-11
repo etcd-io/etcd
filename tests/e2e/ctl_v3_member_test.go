@@ -139,7 +139,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 	}()
 
 	wg.Wait()
-	assert.Greater(t, count, 0)
+	assert.Positive(t, count)
 	t.Logf("Checked the member list %d times", count)
 }
 

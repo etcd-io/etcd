@@ -66,7 +66,7 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 			break
 		}
 	}
-	require.True(cx.t, len(newMemberIDStr) > 0)
+	require.Positive(cx.t, newMemberIDStr)
 
 	// update member
 	cx.t.Logf("Update peerURL from %q to %q for member %q", peerURL, updatedPeerURL, newMemberIDStr)

@@ -443,6 +443,6 @@ func testCtlV3ReadAfterWrite(t *testing.T, ops ...clientv3.OpOption) {
 	stopc <- struct{}{}
 
 	<-donec
-	assert.Greater(t, count, 0)
+	assert.Positive(t, count)
 	t.Logf("Checked the key/value %d times", count)
 }
