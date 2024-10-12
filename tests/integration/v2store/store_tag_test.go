@@ -39,14 +39,14 @@ func TestStoreRecover(t *testing.T) {
 	s2.Recovery(b)
 
 	e, err := s.Get("/foo/x", false, false)
-	assert.Equal(t, e.Node.CreatedIndex, uint64(2))
-	assert.Equal(t, e.Node.ModifiedIndex, uint64(3))
-	assert.Equal(t, e.EtcdIndex, eidx)
+	assert.Equal(t, uint64(2), e.Node.CreatedIndex)
+	assert.Equal(t, uint64(3), e.Node.ModifiedIndex)
+	assert.Equal(t, eidx, e.EtcdIndex)
 	assert.NoError(t, err)
-	assert.Equal(t, *e.Node.Value, "barbar")
+	assert.Equal(t, "barbar", *e.Node.Value)
 
 	e, err = s.Get("/foo/y", false, false)
-	assert.Equal(t, e.EtcdIndex, eidx)
+	assert.Equal(t, eidx, e.EtcdIndex)
 	assert.NoError(t, err)
-	assert.Equal(t, *e.Node.Value, "baz")
+	assert.Equal(t, "baz", *e.Node.Value)
 }

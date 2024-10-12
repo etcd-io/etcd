@@ -56,15 +56,15 @@ func TestNodeExternClone(t *testing.T) {
 
 	gNode := eNode.Clone()
 	// Check the clone is as expected
-	assert.Equal(t, gNode.Key, key)
-	assert.Equal(t, gNode.TTL, ttl)
-	assert.Equal(t, gNode.CreatedIndex, ci)
-	assert.Equal(t, gNode.ModifiedIndex, mi)
+	assert.Equal(t, key, gNode.Key)
+	assert.Equal(t, ttl, gNode.TTL)
+	assert.Equal(t, ci, gNode.CreatedIndex)
+	assert.Equal(t, mi, gNode.ModifiedIndex)
 	// values should be the same
-	assert.Equal(t, *gNode.Value, val)
-	assert.Equal(t, *gNode.Expiration, exp)
-	assert.Equal(t, len(gNode.Nodes), len(childs))
-	assert.Equal(t, *gNode.Nodes[0], child)
+	assert.Equal(t, val, *gNode.Value)
+	assert.Equal(t, exp, *gNode.Expiration)
+	assert.Len(t, gNode.Nodes, len(childs))
+	assert.Equal(t, child, *gNode.Nodes[0])
 	// but pointers should differ
 	if gNode.Value == eNode.Value {
 		t.Fatalf("expected value pointers to differ, but got same!")
@@ -76,12 +76,12 @@ func TestNodeExternClone(t *testing.T) {
 		t.Fatalf("expected nodes pointers to differ, but got same!")
 	}
 	// Original should be the same
-	assert.Equal(t, eNode.Key, key)
-	assert.Equal(t, eNode.TTL, ttl)
-	assert.Equal(t, eNode.CreatedIndex, ci)
-	assert.Equal(t, eNode.ModifiedIndex, mi)
-	assert.Equal(t, eNode.Value, valp)
-	assert.Equal(t, eNode.Expiration, expp)
+	assert.Equal(t, key, eNode.Key)
+	assert.Equal(t, ttl, eNode.TTL)
+	assert.Equal(t, ci, eNode.CreatedIndex)
+	assert.Equal(t, mi, eNode.ModifiedIndex)
+	assert.Equal(t, valp, eNode.Value)
+	assert.Equal(t, expp, eNode.Expiration)
 	if !sameSlice(eNode.Nodes, childs) {
 		t.Fatalf("expected nodes pointer to same, but got different!")
 	}
@@ -89,15 +89,15 @@ func TestNodeExternClone(t *testing.T) {
 	gNode.Key = "/baz"
 	gNode.TTL = 0
 	gNode.Nodes[0].Key = "uno"
-	assert.Equal(t, eNode.Key, key)
-	assert.Equal(t, eNode.TTL, ttl)
-	assert.Equal(t, eNode.CreatedIndex, ci)
-	assert.Equal(t, eNode.ModifiedIndex, mi)
-	assert.Equal(t, *eNode.Nodes[0], child)
+	assert.Equal(t, key, eNode.Key)
+	assert.Equal(t, ttl, eNode.TTL)
+	assert.Equal(t, ci, eNode.CreatedIndex)
+	assert.Equal(t, mi, eNode.ModifiedIndex)
+	assert.Equal(t, child, *eNode.Nodes[0])
 	// Change the original and ensure the clone is not affected
 	eNode.Key = "/wuf"
-	assert.Equal(t, eNode.Key, "/wuf")
-	assert.Equal(t, gNode.Key, "/baz")
+	assert.Equal(t, "/wuf", eNode.Key)
+	assert.Equal(t, "/baz", gNode.Key)
 }
 
 func sameSlice(a, b []*NodeExtern) bool {

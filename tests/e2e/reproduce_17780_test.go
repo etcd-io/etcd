@@ -88,7 +88,7 @@ func TestReproduce17780(t *testing.T) {
 	// Revision 4 should be deleted by compaction.
 	resp, err = cli.Get(ctx, fmt.Sprintf("%d", 4))
 	require.NoError(t, err)
-	require.Equal(t, resp.Count, int64(0))
+	require.Equal(t, int64(0), resp.Count)
 
 	next := 20
 	for i := 12; i <= next; i++ {

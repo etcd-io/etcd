@@ -62,7 +62,7 @@ func TestUint32Value(t *testing.T) {
 				if err != nil {
 					t.Errorf("Unexpected error when parsing %s: %v", tc.s, err)
 				}
-				assert.Equal(t, uint32(val), tc.expectedVal)
+				assert.Equal(t, tc.expectedVal, uint32(val))
 			}
 		})
 	}
@@ -105,7 +105,7 @@ func TestUint32FromFlag(t *testing.T) {
 				t.Fatalf("Unexpected error: %v\n", err)
 			}
 			actualMaxStream := Uint32FromFlag(fs, flagName)
-			assert.Equal(t, actualMaxStream, tc.expectedVal)
+			assert.Equal(t, tc.expectedVal, actualMaxStream)
 		})
 	}
 }
