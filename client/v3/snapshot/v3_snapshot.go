@@ -62,7 +62,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	var f *os.File
 	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 	if err != nil {
-		return "", fmt.Errorf("could not open %s (%v)", partpath, err)
+		return "", fmt.Errorf("could not open %s (%w)", partpath, err)
 	}
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
@@ -95,7 +95,7 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	)
 
 	if err = os.Rename(partpath, dbPath); err != nil {
-		return resp.Version, fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
+		return resp.Version, fmt.Errorf("could not rename %s to %s (%w)", partpath, dbPath, err)
 	}
 	lg.Info("saved", zap.String("path", dbPath))
 	return resp.Version, nil

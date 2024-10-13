@@ -108,7 +108,7 @@ func setFlagFromEnv(lg *zap.Logger, fs flagSetter, prefix, fname string, usedEnv
 		if val != "" {
 			usedEnvKey[key] = true
 			if serr := fs.Set(fname, val); serr != nil {
-				return fmt.Errorf("invalid value %q for %s: %v", val, key, serr)
+				return fmt.Errorf("invalid value %q for %s: %w", val, key, serr)
 			}
 			if log && lg != nil {
 				lg.Info(
