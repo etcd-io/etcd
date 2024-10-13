@@ -20,11 +20,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// AssertNil
+// Deprecated: use github.com/stretchr/testify/assert.Nil instead.
 func AssertNil(t *testing.T, v any) {
 	t.Helper()
 	assert.Nil(t, v)
 }
 
+// AssertNotNil
+// Deprecated: use github.com/stretchr/testify/require.NotNil instead.
 func AssertNotNil(t *testing.T, v any) {
 	t.Helper()
 	if v == nil {
@@ -32,11 +36,15 @@ func AssertNotNil(t *testing.T, v any) {
 	}
 }
 
+// AssertTrue
+// Deprecated: use github.com/stretchr/testify/assert.True instead.
 func AssertTrue(t *testing.T, v bool, msg ...string) {
 	t.Helper()
 	assert.True(t, v, msg)
 }
 
+// AssertFalse
+// Deprecated: use github.com/stretchr/testify/assert.False instead.
 func AssertFalse(t *testing.T, v bool, msg ...string) {
 	t.Helper()
 	assert.False(t, v, msg)
