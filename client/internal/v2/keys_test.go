@@ -830,9 +830,10 @@ func TestUnmarshalFailedKeysResponse(t *testing.T) {
 
 func TestUnmarshalFailedKeysResponseBadJSON(t *testing.T) {
 	err := unmarshalFailedKeysResponse([]byte(`{"er`))
+	var cErr Error
 	if err == nil {
 		t.Errorf("got nil error")
-	} else if _, ok := err.(Error); ok {
+	} else if errors.As(err, &cErr) {
 		t.Errorf("error is of incorrect type *Error: %#v", err)
 	}
 }

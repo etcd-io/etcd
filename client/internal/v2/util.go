@@ -15,6 +15,7 @@
 package client
 
 import (
+	"errors"
 	"regexp"
 )
 
@@ -30,24 +31,18 @@ func init() {
 
 // IsKeyNotFound returns true if the error code is ErrorCodeKeyNotFound.
 func IsKeyNotFound(err error) bool {
-	if cErr, ok := err.(Error); ok {
-		return cErr.Code == ErrorCodeKeyNotFound
-	}
-	return false
+	var cErr Error
+	return errors.As(err, &cErr) && cErr.Code == ErrorCodeKeyNotFound
 }
 
 // IsRoleNotFound returns true if the error means role not found of v2 API.
 func IsRoleNotFound(err error) bool {
-	if ae, ok := err.(authError); ok {
-		return roleNotFoundRegExp.MatchString(ae.Message)
-	}
-	return false
+	var ae authError
+	return errors.As(err, &ae) && roleNotFoundRegExp.MatchString(ae.Message)
 }
 
 // IsUserNotFound returns true if the error means user not found of v2 API.
 func IsUserNotFound(err error) bool {
-	if ae, ok := err.(authError); ok {
-		return userNotFoundRegExp.MatchString(ae.Message)
-	}
-	return false
+	var ae authError
+	return errors.As(err, &ae) && userNotFoundRegExp.MatchString(ae.Message)
 }

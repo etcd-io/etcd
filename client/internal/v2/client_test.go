@@ -167,7 +167,7 @@ func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
 	tr.errchan <- errors.New("fixture")
 
 	_, _, err := c.Do(context.Background(), &nilAction{})
-	if err != ErrNoRequest {
+	if !errors.Is(err, ErrNoRequest) {
 		t.Fatalf("expected non-nil error, got nil")
 	}
 }
@@ -250,7 +250,7 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosedWithBlockingBody(t *te
 	}()
 
 	_, _, err := c.Do(ctx, &fakeAction{})
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("expected %+v, got %+v", context.Canceled, err)
 	}
 
@@ -430,7 +430,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 			tt.ctx = context.Background()
 		}
 		resp, _, err := tt.client.Do(tt.ctx, nil)
-		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
+		if (tt.wantErr == nil && !errors.Is(err, tt.wantErr)) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
@@ -470,7 +470,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		if err != context.DeadlineExceeded {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			t.Errorf("err = %+v, want %+v", err, context.DeadlineExceeded)
 		}
 	case <-time.After(time.Second):
@@ -520,7 +520,7 @@ func TestHTTPClusterClientDoCanceledContext(t *testing.T) {
 
 	select {
 	case err := <-errc:
-		if err != errFakeCancelContext {
+		if !errors.Is(err, errFakeCancelContext) {
 			t.Errorf("err = %+v, want %+v", err, errFakeCancelContext)
 		}
 	case <-time.After(time.Second):
@@ -736,7 +736,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 	for i, tt := range tests {
 		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
 		resp, _, err := client.Do(context.Background(), nil)
-		if (tt.wantErr == nil && tt.wantErr != err) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
+		if (tt.wantErr == nil && !errors.Is(err, tt.wantErr)) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
 		}
@@ -866,7 +866,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 	cancel()
 
 	err = hc.AutoSync(ctx, time.Hour)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("incorrect error value: want=%v got=%v", context.Canceled, err)
 	}
 }
