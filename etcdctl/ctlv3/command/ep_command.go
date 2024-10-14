@@ -97,21 +97,13 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	flags.SetPflagsFromEnv(lg, "ETCDCTL", cmd.InheritedFlags())
 	initDisplayFromCmd(cmd)
 
-	sec := secureCfgFromCmd(cmd)
-	dt := dialTimeoutFromCmd(cmd)
-	ka := keepAliveTimeFromCmd(cmd)
-	kat := keepAliveTimeoutFromCmd(cmd)
-	auth := authCfgFromCmd(cmd)
+	cfgSpec := clientConfigFromCmd(cmd)
+
 	var cfgs []*clientv3.Config
 	for _, ep := range endpointsFromCluster(cmd) {
-		cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
-			Endpoints:        []string{ep},
-			DialTimeout:      dt,
-			KeepAliveTime:    ka,
-			KeepAliveTimeout: kat,
-			Secure:           sec,
-			Auth:             auth,
-		}, lg)
+		cloneCfgSpec := cfgSpec.Clone()
+		cloneCfgSpec.Endpoints = []string{ep}
+		cfg, err := clientv3.NewClientConfig(cloneCfgSpec, lg)
 		if err != nil {
 			cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 		}
