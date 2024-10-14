@@ -51,15 +51,15 @@ Errors in etcd model could be causing false positives, which makes the ability t
 
    * **For remote runs on CI:** you need to go to the [Prow Dashboard](https://prow.k8s.io/job-history/gs/kubernetes-jenkins/logs/ci-etcd-robustness-amd64), go to a build, download one of the Artifacts (`artifacts/results.zip`), and extract it locally.
 
-     ![Prow job run page](./prow_job.png)
+     ![Prow job run page](readme-images/prow_job.png)
 
-     ![Prow job artifacts run page](./prow_job_artifacts_page.png)
+     ![Prow job artifacts run page](readme-images/prow_job_artifacts_page.png)
 
-     ![Prow job artifacts run page artifacts dir](./prow_job_artifacts_dir_page.png)
+     ![Prow job artifacts run page artifacts dir](readme-images/prow_job_artifacts_dir_page.png)
 
      Each directory will be prefixed by `TestRobustness` each containing a robustness test report.
 
-     ![artifact archive](./artifact_archive.png)
+     ![artifact archive](readme-images/artifact_archive.png)
 
      Pick one of the directories within the archive corresponding to the failed test scenario.
      The largest directory by size usually corresponds to the failed scenario.
@@ -134,7 +134,7 @@ Open `/tmp/TestRobustnessRegression_Issue14370/1715157774429416550/history.html`
 Jump to the error in linearization by clicking `[ jump to first error ]` on the top of the page.
 
 You should see a graph similar to the one on the image below.
-![issue14370](./issue14370.png)
+![issue14370](readme-images/issue14370.png)
 
 Last correct request (connected with grey line) is a `Put` request that succeeded and got revision `168`.
 All following requests are invalid (connected with red line) as they have revision `167`. 
