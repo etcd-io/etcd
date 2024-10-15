@@ -90,7 +90,7 @@ type epHealth struct {
 
 // epHealthCommandFunc executes the "endpoint-health" command.
 func epHealthCommandFunc(cmd *cobra.Command, args []string) {
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, err := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -260,7 +260,7 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
-	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, _ := logutil.CreateUtilZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
 		Endpoints:        eps,
 		DialTimeout:      dt,
