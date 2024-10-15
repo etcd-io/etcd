@@ -700,7 +700,7 @@ func TestEtcdTLSVersion(t *testing.T) {
 		}, nil,
 	)
 	assert.NoError(t, err)
-	assert.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoErrorf(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
 	assert.NoError(t, proc.Stop())
 
 	proc.Wait() // ensure the port has been released

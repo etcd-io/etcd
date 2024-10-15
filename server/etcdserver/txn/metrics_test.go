@@ -58,5 +58,5 @@ etcd_server_range_duration_seconds_count{success="true"} 1
 `
 
 	err := testutil.CollectAndCompare(rangeSec, strings.NewReader(expected))
-	require.NoError(t, err, "Collected metrics did not match expected metrics: %v", err)
+	require.NoErrorf(t, err, "Collected metrics did not match expected metrics")
 }

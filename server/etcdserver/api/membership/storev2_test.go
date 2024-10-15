@@ -30,26 +30,26 @@ func TestIsMetaStoreOnly(t *testing.T) {
 
 	metaOnly, err := IsMetaStoreOnly(s)
 	assert.NoError(t, err)
-	assert.True(t, metaOnly, "Just created v2store should be meta-only")
+	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	mustSaveClusterVersionToStore(lg, s, semver.New("3.5.17"))
 	metaOnly, err = IsMetaStoreOnly(s)
 	assert.NoError(t, err)
-	assert.True(t, metaOnly, "Just created v2store should be meta-only")
+	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	mustSaveMemberToStore(lg, s, &Member{ID: 0x00abcd})
 	metaOnly, err = IsMetaStoreOnly(s)
 	assert.NoError(t, err)
-	assert.True(t, metaOnly, "Just created v2store should be meta-only")
+	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	_, err = s.Create("/1/foo", false, "v1", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	assert.NoError(t, err)
 	metaOnly, err = IsMetaStoreOnly(s)
 	assert.NoError(t, err)
-	assert.False(t, metaOnly, "Just created v2store should be meta-only")
+	assert.Falsef(t, metaOnly, "Just created v2store should be meta-only")
 
 	_, err = s.Delete("/1/foo", false, false)
 	assert.NoError(t, err)
 	assert.NoError(t, err)
-	assert.False(t, metaOnly, "Just created v2store should be meta-only")
+	assert.Falsef(t, metaOnly, "Just created v2store should be meta-only")
 }

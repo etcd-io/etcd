@@ -171,6 +171,6 @@ func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.Etcd
 		}
 		expectAuthority := strings.ReplaceAll(expectAuthorityPattern, "${MEMBER_PORT}", u.Port())
 		expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAuthority)
-		assert.True(t, strings.HasSuffix(line, expectLine), fmt.Sprintf("Got %q expected suffix %q", line, expectLine))
+		assert.Truef(t, strings.HasSuffix(line, expectLine), "Got %q expected suffix %q", line, expectLine)
 	}
 }

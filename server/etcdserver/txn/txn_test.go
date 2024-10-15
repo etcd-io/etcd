@@ -367,7 +367,7 @@ func TestWriteTxnPanic(t *testing.T) {
 		},
 	}
 
-	assert.Panics(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
+	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
 }
 
 func TestCheckTxnAuth(t *testing.T) {

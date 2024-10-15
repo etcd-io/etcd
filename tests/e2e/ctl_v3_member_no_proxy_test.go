@@ -52,7 +52,7 @@ func TestMemberReplace(t *testing.T) {
 
 	memberID, found, err := getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
-	require.True(t, found, "Member not found")
+	require.Truef(t, found, "Member not found")
 
 	// Need to wait health interval for cluster to accept member changes
 	time.Sleep(etcdserver.HealthInterval)
@@ -62,7 +62,7 @@ func TestMemberReplace(t *testing.T) {
 	require.NoError(t, err)
 	_, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
-	require.False(t, found, "Expected member to be removed")
+	require.Falsef(t, found, "Expected member to be removed")
 	for member.IsRunning() {
 		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
@@ -119,7 +119,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 
 	memberID, found, err := getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
-	require.True(t, found, "Member not found")
+	require.Truef(t, found, "Member not found")
 
 	// Need to wait health interval for cluster to accept member changes
 	time.Sleep(etcdserver.HealthInterval)
@@ -129,7 +129,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	require.NoError(t, err)
 	_, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
-	require.False(t, found, "Expected member to be removed")
+	require.Falsef(t, found, "Expected member to be removed")
 	for member.IsRunning() {
 		err = member.Wait(ctx)
 		if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
@@ -169,7 +169,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 
 	learnMemberID, found, err = getMemberIDByName(ctx, cc, memberName)
 	require.NoError(t, err)
-	require.True(t, found, "Member not found")
+	require.Truef(t, found, "Member not found")
 
 	_, err = cc.MemberPromote(ctx, learnMemberID)
 	require.NoError(t, err)

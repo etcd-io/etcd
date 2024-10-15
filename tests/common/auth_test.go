@@ -623,7 +623,7 @@ func TestAuthMemberRemove(t *testing.T) {
 				break
 			}
 		}
-		require.False(t, found, "expect removed member not found in member remove response")
+		require.Falsef(t, found, "expect removed member not found in member remove response")
 	})
 }
 

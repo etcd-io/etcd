@@ -17,7 +17,6 @@ package clientv3
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -196,50 +195,50 @@ func TestBackoffJitterFraction(t *testing.T) {
 }
 
 func TestIsHaltErr(t *testing.T) {
-	assert.True(t,
+	assert.Truef(t,
 		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should be unavailable error",
 	)
-	assert.False(t,
+	assert.Falsef(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
-		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped),
+		`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped,
 	)
-	assert.False(t,
+	assert.Falsef(t,
 		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
-		fmt.Sprintf(`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader),
+		`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader,
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
-	assert.False(t,
+	assert.Falsef(t,
 		isHaltErr(ctx, nil),
 		"no error and active context should be halt error",
 	)
 	cancel()
-	assert.True(t,
+	assert.Truef(t,
 		isHaltErr(ctx, nil),
-		"cancel on context should be halte error",
+		"cancel on context should be halt error",
 	)
 }
 
 func TestIsUnavailableErr(t *testing.T) {
-	assert.False(t,
+	assert.Falsef(t,
 		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should not be unavailable error",
 	)
-	assert.True(t,
+	assert.Truef(t,
 		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
-		fmt.Sprintf(`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped),
+		`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped,
 	)
-	assert.False(t,
+	assert.Falsef(t,
 		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCNotCapable),
-		fmt.Sprintf("error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable),
+		"error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable,
 	)
 	ctx, cancel := context.WithCancel(context.TODO())
-	assert.False(t,
+	assert.Falsef(t,
 		isUnavailableErr(ctx, nil),
 		"no error and active context should not be unavailable error",
 	)
 	cancel()
-	assert.False(t,
+	assert.Falsef(t,
 		isUnavailableErr(ctx, nil),
 		"cancel on context should not be unavailable error",
 	)
