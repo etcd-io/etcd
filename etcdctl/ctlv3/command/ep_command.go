@@ -251,23 +251,10 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		return endpoints
 	}
 
-	sec := secureCfgFromCmd(cmd)
-	dt := dialTimeoutFromCmd(cmd)
-	ka := keepAliveTimeFromCmd(cmd)
-	kat := keepAliveTimeoutFromCmd(cmd)
-	eps, err := endpointsFromCmd(cmd)
-	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitError, err)
-	}
+	cfgSpec := clientConfigFromCmd(cmd)
 	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
 	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
-	cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
-		Endpoints:        eps,
-		DialTimeout:      dt,
-		KeepAliveTime:    ka,
-		KeepAliveTimeout: kat,
-		Secure:           sec,
-	}, lg)
+	cfg, err := clientv3.NewClientConfig(cfgSpec, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
