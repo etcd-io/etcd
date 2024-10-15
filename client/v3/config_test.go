@@ -16,6 +16,8 @@ package clientv3
 
 import (
 	"crypto/tls"
+	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
@@ -166,5 +168,135 @@ func TestNewClientConfigWithSecureCfg(t *testing.T) {
 	require.NoErrorf(t, err, "Unexpected result client config")
 	if cfg == nil || cfg.TLS == nil {
 		t.Fatalf("Unexpected result client config: %v", err)
+	}
+}
+
+func TestConfigSpecClone(t *testing.T) {
+	cfgSpec := &ConfigSpec{
+		Endpoints:        []string{"ep1", "ep2", "ep3"},
+		RequestTimeout:   10 * time.Second,
+		DialTimeout:      2 * time.Second,
+		KeepAliveTime:    5 * time.Second,
+		KeepAliveTimeout: 2 * time.Second,
+
+		Secure: &SecureConfig{
+			Cert:               "path/2/cert",
+			Key:                "path/2/key",
+			Cacert:             "path/2/cacert",
+			InsecureTransport:  true,
+			InsecureSkipVerify: false,
+		},
+
+		Auth: &AuthConfig{
+			Username: "foo",
+			Password: "changeme",
+		},
+	}
+
+	testCases := []struct {
+		name          string
+		cs            *ConfigSpec
+		newEp         []string
+		newSecure     *SecureConfig
+		newAuth       *AuthConfig
+		expectedEqual bool
+	}{
+		{
+			name:          "normal case",
+			cs:            cfgSpec,
+			expectedEqual: true,
+		},
+		{
+			name:          "point to a new slice of endpoint, but with the same data",
+			cs:            cfgSpec,
+			newEp:         []string{"ep1", "ep2", "ep3"},
+			expectedEqual: true,
+		},
+		{
+			name:          "update endpoint",
+			cs:            cfgSpec,
+			newEp:         []string{"ep1", "newep2", "ep3"},
+			expectedEqual: false,
+		},
+		{
+			name: "point to a new secureConfig, but with the same data",
+			cs:   cfgSpec,
+			newSecure: &SecureConfig{
+				Cert:               "path/2/cert",
+				Key:                "path/2/key",
+				Cacert:             "path/2/cacert",
+				InsecureTransport:  true,
+				InsecureSkipVerify: false,
+			},
+			expectedEqual: true,
+		},
+		{
+			name: "update key in secureConfig",
+			cs:   cfgSpec,
+			newSecure: &SecureConfig{
+				Cert:               "path/2/cert",
+				Key:                "newPath/2/key",
+				Cacert:             "path/2/cacert",
+				InsecureTransport:  true,
+				InsecureSkipVerify: false,
+			},
+			expectedEqual: false,
+		},
+		{
+			name: "update bool values in secureConfig",
+			cs:   cfgSpec,
+			newSecure: &SecureConfig{
+				Cert:               "path/2/cert",
+				Key:                "path/2/key",
+				Cacert:             "path/2/cacert",
+				InsecureTransport:  false,
+				InsecureSkipVerify: true,
+			},
+			expectedEqual: false,
+		},
+		{
+			name: "point to a new authConfig, but with the same data",
+			cs:   cfgSpec,
+			newAuth: &AuthConfig{
+				Username: "foo",
+				Password: "changeme",
+			},
+			expectedEqual: true,
+		},
+		{
+			name: "update authConfig",
+			cs:   cfgSpec,
+			newAuth: &AuthConfig{
+				Username: "newUser",
+				Password: "newPassword",
+			},
+			expectedEqual: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			dataBeforeTest, err := json.Marshal(tc.cs)
+			require.NoError(t, err)
+
+			clonedCfgSpec := tc.cs.Clone()
+			if len(tc.newEp) > 0 {
+				clonedCfgSpec.Endpoints = tc.newEp
+			}
+			if tc.newSecure != nil {
+				clonedCfgSpec.Secure = tc.newSecure
+			}
+			if tc.newAuth != nil {
+				clonedCfgSpec.Auth = tc.newAuth
+			}
+
+			actualEqual := reflect.DeepEqual(tc.cs, clonedCfgSpec)
+			require.Equal(t, tc.expectedEqual, actualEqual)
+
+			// double-check the original ConfigSpec isn't updated
+			dataAfterTest, err := json.Marshal(tc.cs)
+			require.NoError(t, err)
+			require.True(t, reflect.DeepEqual(dataBeforeTest, dataAfterTest))
+		})
 	}
 }

@@ -130,6 +130,30 @@ type AuthConfig struct {
 	Password string `json:"password"`
 }
 
+func (cs *ConfigSpec) Clone() *ConfigSpec {
+	if cs == nil {
+		return nil
+	}
+
+	clone := *cs
+
+	if len(cs.Endpoints) > 0 {
+		clone.Endpoints = make([]string, len(cs.Endpoints))
+		copy(clone.Endpoints, cs.Endpoints)
+	}
+
+	if cs.Secure != nil {
+		clone.Secure = &SecureConfig{}
+		*clone.Secure = *cs.Secure
+	}
+	if cs.Auth != nil {
+		clone.Auth = &AuthConfig{}
+		*clone.Auth = *cs.Auth
+	}
+
+	return &clone
+}
+
 func (cfg AuthConfig) Empty() bool {
 	return cfg.Username == "" && cfg.Password == ""
 }
