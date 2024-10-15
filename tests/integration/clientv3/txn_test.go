@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -36,7 +37,7 @@ func TestTxnError(t *testing.T) {
 	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
-	if err != rpctypes.ErrDuplicateKey {
+	if !errors.Is(err, rpctypes.ErrDuplicateKey) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
@@ -45,7 +46,7 @@ func TestTxnError(t *testing.T) {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
 	_, err = kv.Txn(ctx).Then(ops...).Commit()
-	if err != rpctypes.ErrTooManyOps {
+	if !errors.Is(err, rpctypes.ErrTooManyOps) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrTooManyOps, err)
 	}
 }
