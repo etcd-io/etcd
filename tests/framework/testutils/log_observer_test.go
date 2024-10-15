@@ -16,7 +16,6 @@ package testutils
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -36,7 +35,7 @@ func TestLogObserver_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	_, err := logOb.Expect(ctx, "unknown", 1)
 	cancel()
-	assert.True(t, errors.Is(err, context.DeadlineExceeded))
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 
 	assert.Len(t, logOb.entries, 1)
 }
