@@ -193,7 +193,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 
 		select {
 		case <-ctx.Done():
-			return "", fmt.Errorf("context done before matching log found")
+			return "", fmt.Errorf("context done before matching log found: %w", ctx.Err())
 		case <-time.After(time.Millisecond * 10):
 			// continue loop
 		}

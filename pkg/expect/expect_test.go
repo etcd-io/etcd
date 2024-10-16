@@ -64,7 +64,7 @@ func TestExpectFuncTimeout(t *testing.T) {
 
 	_, err = ep.ExpectFunc(ctx, func(a string) bool { return false })
 
-	require.ErrorAs(t, err, &context.DeadlineExceeded)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 
 	if err = ep.Stop(); err != nil {
 		t.Fatal(err)
