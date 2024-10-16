@@ -27,6 +27,7 @@ func TestGetCipherSuite_not_existing(t *testing.T) {
 }
 
 func CipherSuiteExpectedToExist(tb testing.TB, cipher string, expectedID uint16) {
+	tb.Helper()
 	vid, ok := GetCipherSuite(cipher)
 	if !ok {
 		tb.Errorf("Expected %v cipher to exist", cipher)
