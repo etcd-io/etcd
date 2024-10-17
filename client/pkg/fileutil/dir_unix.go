@@ -20,7 +20,7 @@ import "os"
 
 const (
 	// PrivateDirMode grants owner to make/remove files inside the directory.
-	PrivateDirMode = 0700
+	PrivateDirMode = 0o700
 )
 
 // OpenDir opens a directory for syncing.

@@ -135,7 +135,7 @@ func interestingGoroutines() (gs []string) {
 		}
 
 		shouldSkip := func() bool {
-			var uninterestingMsgs = [...]string{
+			uninterestingMsgs := [...]string{
 				"sync.(*WaitGroup).Done",
 				"os.(*file).close",
 				"os.(*Process).Release",

@@ -55,7 +55,8 @@ func TestDialCancel(t *testing.T) {
 	ep := "unix://dialcancel:12345"
 	cfg := Config{
 		Endpoints:   []string{ep},
-		DialTimeout: 30 * time.Second}
+		DialTimeout: 30 * time.Second,
+	}
 	c, err := NewClient(t, cfg)
 	require.NoError(t, err)
 
@@ -338,7 +339,7 @@ func TestSyncFiltersMembers(t *testing.T) {
 
 func TestMinSupportedVersion(t *testing.T) {
 	testutil.BeforeTest(t)
-	var tests = []struct {
+	tests := []struct {
 		name                string
 		currentVersion      semver.Version
 		minSupportedVersion semver.Version
@@ -379,7 +380,7 @@ func TestMinSupportedVersion(t *testing.T) {
 
 func TestClientRejectOldCluster(t *testing.T) {
 	testutil.BeforeTest(t)
-	var tests = []struct {
+	tests := []struct {
 		name          string
 		endpoints     []string
 		versions      []string
