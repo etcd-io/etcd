@@ -413,12 +413,12 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 	}
 
 	cancelResult, ok := <-watchCh
-	require.True(t, ok, "watchChannel should be open")
+	require.Truef(t, ok, "watchChannel should be open")
 	require.Equal(t, v3rpc.ErrCompacted, cancelResult.Err())
 	require.Truef(t, cancelResult.Canceled, "expected ongoing watch to be cancelled after restoring with --mark-compacted")
 	require.Equal(t, int64(bumpAmount+currentRev), cancelResult.CompactRevision)
 	_, ok = <-watchCh
-	require.False(t, ok, "watchChannel should be closed after restoring with --mark-compacted")
+	require.Falsef(t, ok, "watchChannel should be closed after restoring with --mark-compacted")
 
 	// clients might restart the watch at the old base revision, that should not yield any new data
 	// everything up until bumpAmount+currentRev should return "already compacted"

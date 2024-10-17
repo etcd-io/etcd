@@ -641,17 +641,17 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am := ti.Compact(i)
-		require.Equal(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
+		require.Equalf(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
 
 		keep := ti.Keep(i)
-		require.Equal(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
+		require.Equalf(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
 
 		nti := newTreeIndex(zaptest.NewLogger(t)).(*treeIndex)
 		for k := range afterCompacts[j].keyIndexes {
 			ki := afterCompacts[j].keyIndexes[k]
 			nti.tree.ReplaceOrInsert(&ki)
 		}
-		require.True(t, ti.Equal(nti), "#%d: not equal ti", i)
+		require.Truef(t, ti.Equal(nti), "#%d: not equal ti", i)
 	}
 
 	// Once Compact and Keep
@@ -664,10 +664,10 @@ func TestIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am := ti.Compact(i)
-		require.Equal(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
+		require.Equalf(t, afterCompacts[j].compacted, am, "#%d: compact(%d) != expected", i, i)
 
 		keep := ti.Keep(i)
-		require.Equal(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
+		require.Equalf(t, afterCompacts[j].keep, keep, "#%d: keep(%d) != expected", i, i)
 
 		nti := newTreeIndex(zaptest.NewLogger(t)).(*treeIndex)
 		for k := range afterCompacts[j].keyIndexes {
@@ -675,6 +675,6 @@ func TestIndexCompactAndKeep(t *testing.T) {
 			nti.tree.ReplaceOrInsert(&ki)
 		}
 
-		require.True(t, ti.Equal(nti), "#%d: not equal ti", i)
+		require.Truef(t, ti.Equal(nti), "#%d: not equal ti", i)
 	}
 }

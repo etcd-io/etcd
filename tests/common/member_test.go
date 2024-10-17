@@ -139,7 +139,7 @@ func TestMemberAdd(t *testing.T) {
 							// whether strictReconfigCheck or whether waitForQuorum
 							require.ErrorContains(t, err, "etcdserver: unhealthy cluster")
 						} else {
-							require.NoError(t, err, "MemberAdd failed")
+							require.NoErrorf(t, err, "MemberAdd failed")
 							if addResp.Member == nil {
 								t.Fatalf("MemberAdd failed, expected: member != nil, got: member == nil")
 							}
@@ -224,7 +224,7 @@ func TestMemberRemove(t *testing.T) {
 						return
 					}
 
-					require.NoError(t, err, "MemberRemove failed")
+					require.NoErrorf(t, err, "MemberRemove failed")
 					t.Logf("removeResp.Members:%v", removeResp.Members)
 					if removeResp.Header.ClusterId != clusterID {
 						t.Fatalf("MemberRemove failed, expected ClusterID: %d, got: %d", clusterID, removeResp.Header.ClusterId)

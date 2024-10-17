@@ -151,15 +151,15 @@ func TestCreateNewWALFile(t *testing.T) {
 			require.NoError(t, err)
 			expectedPerms := fmt.Sprintf("%o", os.FileMode(fileutil.PrivateFileMode))
 			actualPerms := fmt.Sprintf("%o", fi.Mode().Perm())
-			require.Equal(t, expectedPerms, actualPerms, "unexpected file permissions on %q", p)
+			require.Equalf(t, expectedPerms, actualPerms, "unexpected file permissions on %q", p)
 
 			content, err := os.ReadFile(p)
 			require.NoError(t, err)
 
 			if tt.forceNew {
-				require.Empty(t, string(content), "file content should be truncated but it wasn't")
+				require.Emptyf(t, string(content), "file content should be truncated but it wasn't")
 			} else {
-				require.Equal(t, "test data", string(content), "file content should not be truncated but it was")
+				require.Equalf(t, "test data", string(content), "file content should not be truncated but it was")
 			}
 		})
 	}

@@ -116,7 +116,7 @@ func TestConsistentIndexDecrease(t *testing.T) {
 				tx.Lock()
 				defer tx.Unlock()
 				if tc.panicExpected {
-					assert.Panics(t, func() { ci.UnsafeSave(tx) }, "Should refuse to decrease cindex")
+					assert.Panicsf(t, func() { ci.UnsafeSave(tx) }, "Should refuse to decrease cindex")
 					return
 				}
 				ci.UnsafeSave(tx)

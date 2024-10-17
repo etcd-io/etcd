@@ -43,7 +43,7 @@ func TestWarningApplyDuration(t *testing.T) {
 
 	cc := epc.Etcdctl()
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
-	assert.NoError(t, err, "error on put")
+	assert.NoErrorf(t, err, "error on put")
 
 	// verify warning
 	e2e.AssertProcessLogs(t, epc.Procs[0], "request stats")
@@ -70,7 +70,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 
 	cc := epc.Etcdctl()
 	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
-	assert.NoError(t, err, "error on put")
+	assert.NoErrorf(t, err, "error on put")
 
 	// verify warning
 	e2e.AssertProcessLogs(t, epc.Procs[0], "request stats")

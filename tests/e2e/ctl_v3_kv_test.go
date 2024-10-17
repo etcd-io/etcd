@@ -264,7 +264,7 @@ func getKeysOnlyTest(cx ctlCtx) {
 
 	lines, err := e2e.SpawnWithExpectLines(ctx, cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "key"})
 	require.NoError(cx.t, err)
-	require.NotContains(cx.t, lines, "val", "got value but passed --keys-only")
+	require.NotContainsf(cx.t, lines, "val", "got value but passed --keys-only")
 }
 
 func getCountOnlyTest(cx ctlCtx) {
