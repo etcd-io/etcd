@@ -54,13 +54,29 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	if err != nil {
 		return "", err
 	}
-	defer cli.Close()
+	defer func(cli *clientv3.Client) {
+		err = cli.Close()
+		if err != nil {
+			lg.Error("failed to close etcd client", zap.Error(err))
+		}
+	}(cli)
 
 	partpath := dbPath + ".part"
-	defer os.RemoveAll(partpath)
+	defer func(path string) {
+		err = os.RemoveAll(path)
+		if err != nil {
+			lg.Error("failed to remove path", zap.String("path", path), zap.Error(err))
+		}
+	}(partpath)
 
 	var f *os.File
 	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
+	defer func(f *os.File) {
+		err = f.Close()
+		if err != nil {
+			lg.Error("failed to close file", zap.Error(err))
+		}
+	}(f)
 	if err != nil {
 		return "", fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
@@ -82,9 +98,6 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 		return resp.Version, fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
-		return resp.Version, err
-	}
-	if err = f.Close(); err != nil {
 		return resp.Version, err
 	}
 	lg.Info("fetched snapshot",
