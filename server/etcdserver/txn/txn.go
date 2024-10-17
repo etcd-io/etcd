@@ -152,9 +152,6 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	trace := traceutil.Get(ctx)
 
-	resp := &pb.RangeResponse{}
-	resp.Header = &pb.ResponseHeader{}
-
 	limit := r.Limit
 	if r.SortOrder != pb.RangeRequest_NONE ||
 		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
@@ -167,17 +164,52 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		limit = limit + 1
 	}
 
+	// Combining r.CountOnly and any of { r.MaxModRevision, r.MinModRevision, r.MaxCreateRevision, r.MinCreateRevision }
+	// means "give me the count for the result of the filtering I asked for".
+	filtering := r.MaxModRevision != 0 || r.MinModRevision != 0 || r.MaxCreateRevision != 0 || r.MinCreateRevision != 0
+	var noKvsToProcess bool
+	var readLimit int64
+	if filtering {
+		// if we are doing filtering, we can't limit our read;
+		// otherwise we can't calculate what the total count would be.
+		readLimit = 0
+		noKvsToProcess = false
+	} else {
+		readLimit = limit
+		noKvsToProcess = r.CountOnly
+	}
+
 	ro := mvcc.RangeOptions{
-		Limit: limit,
+		Limit: readLimit,
 		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Count: noKvsToProcess,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
 	if err != nil {
 		return nil, err
 	}
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{Revision: rr.Rev}}
 
+	if noKvsToProcess {
+		resp.Count = int64(rr.Count)
+		resp.Kvs = make([]*mvccpb.KeyValue, 0)
+	} else {
+		processKvsInRange(r, rr, resp, trace, lg)
+	}
+	// No more pruning after this point; we can count now.
+	if filtering {
+		resp.Count = int64(len(rr.KVs))
+	} else {
+		resp.Count = int64(rr.Count)
+	}
+
+	trace.Step("assemble the response")
+	return resp, nil
+}
+
+func processKvsInRange(r *pb.RangeRequest, rr *mvcc.RangeResult, resp *pb.RangeResponse, trace *traceutil.Trace, lg *zap.Logger) {
+	trace.Step("filter and sort the key-value pairs")
 	if r.MaxModRevision != 0 {
 		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }
 		pruneKVs(rr, f)
@@ -193,6 +225,14 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	if r.MinCreateRevision != 0 {
 		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision }
 		pruneKVs(rr, f)
+	}
+
+	// If r.CountOnly was specified:
+	//   * r.SortOrder is useless and ignored.
+	//   * r.Limit is useless and ignored.
+	if r.CountOnly {
+		resp.Kvs = make([]*mvccpb.KeyValue, 0)
+		return
 	}
 
 	sortOrder := r.SortOrder
@@ -235,9 +275,6 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
-	trace.Step("filter and sort the key-value pairs")
-	resp.Header.Revision = rr.Rev
-	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
 	for i := range rr.KVs {
 		if r.KeysOnly {
@@ -245,8 +282,6 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
-	trace.Step("assemble the response")
-	return resp, nil
 }
 
 func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (*pb.TxnResponse, *traceutil.Trace, error) {
