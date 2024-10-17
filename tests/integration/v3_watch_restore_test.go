@@ -177,7 +177,7 @@ func expectMemberLog(t *testing.T, m *integration.Member, timeout time.Duration,
 	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 	defer cancel()
 
-	lines, err := m.LogObserver.Expect(ctx, s, count)
+	lines, err := m.LogObserver.ExpectAtLeastNTimes(ctx, s, count)
 	if err != nil {
 		t.Fatalf("failed to expect (log:%s, count:%v): %v", s, count, err)
 	}
