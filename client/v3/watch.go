@@ -221,8 +221,7 @@ type watchRequest struct {
 }
 
 // progressRequest is issued by the subscriber to request watch progress
-type progressRequest struct {
-}
+type progressRequest struct{}
 
 // watcherStream represents a registered watcher
 type watcherStream struct {
@@ -261,8 +260,10 @@ func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 }
 
 // never closes
-var valCtxCh = make(chan struct{})
-var zeroTime = time.Unix(0, 0)
+var (
+	valCtxCh = make(chan struct{})
+	zeroTime = time.Unix(0, 0)
+)
 
 // ctx with only the values; never Done
 type valCtx struct{ context.Context }
