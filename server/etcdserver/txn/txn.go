@@ -307,10 +307,11 @@ func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.Txn
 	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp)
 	if err != nil {
 		if isWrite {
-			// end txn to release locks before panic
-			txnWrite.End()
-			// When txn with write operations starts it has to be successful
-			// We don't have a way to recover state in case of write failure
+			// CAUTION: When a txn performing write operations starts, we always expect it to be successful.
+			// If a write failure is seen we SHOULD NOT try to recover the server, but crash with a panic to make the failure explicit.
+			// Trying to silently recover (e.g by ignoring the failed txn or calling txn.End() early) poses serious risks:
+			// - violation of transaction atomicity if some write operations have been partially executed
+			// - data inconsistency across different etcd members if they applied the txn asymmetrically
 			lg.Panic("unexpected error during txn with writes", zap.Error(err))
 		} else {
 			lg.Error("unexpected error during readonly txn", zap.Error(err))
