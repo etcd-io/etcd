@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -464,7 +465,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 						return err
 					}
 
-					if ContextError(l.stopCtx, err) == rpctypes.ErrNoLeader {
+					if errors.Is(ContextError(l.stopCtx, err), rpctypes.ErrNoLeader) {
 						l.closeRequireLeader()
 					}
 					break

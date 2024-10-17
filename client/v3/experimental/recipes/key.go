@@ -16,6 +16,7 @@ package recipe
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -51,7 +52,7 @@ func newUniqueKV(kv v3.KV, prefix string, val string) (*RemoteKV, error) {
 		if err == nil {
 			return &RemoteKV{kv, newKey, rev, val}, nil
 		}
-		if err != ErrKeyExists {
+		if !errors.Is(err, ErrKeyExists) {
 			return nil, err
 		}
 	}
@@ -155,7 +156,7 @@ func newUniqueEphemeralKV(s *concurrency.Session, prefix, val string) (ek *Ephem
 	for {
 		newKey := fmt.Sprintf("%s/%v", prefix, time.Now().UnixNano())
 		ek, err = newEphemeralKV(s, newKey, val)
-		if err == nil || err != ErrKeyExists {
+		if err == nil || !errors.Is(err, ErrKeyExists) {
 			break
 		}
 	}

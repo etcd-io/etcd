@@ -63,7 +63,7 @@ func (ss *StubServer) Start(sopts []grpc.ServerOption, dopts ...grpc.DialOption)
 
 	lis, err := net.Listen(ss.Network, ss.Address)
 	if err != nil {
-		return fmt.Errorf("net.Listen(%q, %q) = %v", ss.Network, ss.Address, err)
+		return fmt.Errorf("net.Listen(%q, %q) = %w", ss.Network, ss.Address, err)
 	}
 	ss.Address = lis.Addr().String()
 	ss.cleanups = append(ss.cleanups, func() { lis.Close() })
