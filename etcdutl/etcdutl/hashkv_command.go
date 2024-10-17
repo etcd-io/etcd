@@ -23,9 +23,7 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-var (
-	hashKVRevision int64
-)
+var hashKVRevision int64
 
 // NewHashKVCommand returns the cobra command for "hashkv".
 func NewHashKVCommand() *cobra.Command {

@@ -32,8 +32,10 @@ import (
 	"go.etcd.io/etcd/pkg/v3/flags"
 )
 
-var epClusterEndpoints bool
-var epHashKVRev int64
+var (
+	epClusterEndpoints bool
+	epHashKVRev        int64
+)
 
 // NewEndpointCommand returns the cobra command for "endpoint".
 func NewEndpointCommand() *cobra.Command {

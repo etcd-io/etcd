@@ -120,7 +120,8 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	initialMmapSize uint64,
 	revisionBump uint64,
 	markCompacted bool,
-	args []string) {
+	args []string,
+) {
 	if len(args) != 1 {
 		err := fmt.Errorf("snapshot restore requires exactly one argument")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)

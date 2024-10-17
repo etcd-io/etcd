@@ -139,7 +139,7 @@ func NewCheckPerfCommand() *cobra.Command {
 
 // newCheckPerfCommand executes the "check perf" command.
 func newCheckPerfCommand(cmd *cobra.Command, args []string) {
-	var checkPerfAlias = map[string]string{
+	checkPerfAlias := map[string]string{
 		"s": "s", "small": "s",
 		"m": "m", "medium": "m",
 		"l": "l", "large": "l",
@@ -312,7 +312,7 @@ func NewCheckDatascaleCommand() *cobra.Command {
 
 // newCheckDatascaleCommand executes the "check datascale" command.
 func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
-	var checkDatascaleAlias = map[string]string{
+	checkDatascaleAlias := map[string]string{
 		"s": "s", "small": "s",
 		"m": "m", "medium": "m",
 		"l": "l", "large": "l",
