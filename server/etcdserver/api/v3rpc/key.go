@@ -182,6 +182,7 @@ func checkTxnRequest(r *pb.TxnRequest, maxTxnOps int) error {
 // there is an overlap, returns an error. If no overlap, return put and delete
 // sets for recursive evaluation.
 func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree, error) {
+	puts := make(map[string]struct{})
 	dels := adt.NewIntervalTree()
 
 	// collect deletes from this level; build first to check lower level overlapped puts
@@ -203,8 +204,13 @@ func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree
 		dels.Insert(iv, struct{}{})
 	}
 
-	// collect children puts/deletes
-	puts := make(map[string]struct{})
+	type Txn struct {
+		Puts map[string]struct{}
+		Dels adt.IntervalTree
+	}
+	var txns []Txn
+
+	// for each txn, collect all puts and deletes of children level
 	for _, req := range reqs {
 		tv, ok := req.Request.(*pb.RequestOp_RequestTxn)
 		if !ok {
@@ -218,33 +224,53 @@ func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree
 		if err != nil {
 			return nil, dels, err
 		}
-		for k := range putsThen {
-			if _, ok := puts[k]; ok {
-				return nil, dels, rpctypes.ErrGRPCDuplicateKey
-			}
-			if dels.Intersects(adt.NewStringAffinePoint(k)) {
-				return nil, dels, rpctypes.ErrGRPCDuplicateKey
-			}
-			puts[k] = struct{}{}
-		}
+
+		delsThen.Union(delsElse, adt.NewStringAffineInterval("\x00", ""))
 		for k := range putsElse {
-			if _, ok := puts[k]; ok {
-				// if key is from putsThen, overlap is OK since
-				// either then/else are mutually exclusive
-				if _, isSafe := putsThen[k]; !isSafe {
+			putsThen[k] = struct{}{}
+		}
+		txns = append(txns, Txn{Puts: putsThen, Dels: delsThen})
+	}
+
+	// 1. puts in a txn's children level should not overlap with deletes in another txn's children level
+	//
+	// Note: This operation is necessary despite the relatively high time complexity.
+	// The rationale behind this is that for a single txn, its success and failure branches can safely overlap,
+	// which means that we cannot simply test overlapping using a union all deletes.
+	for i, txn_x := range txns {
+		for _, txn_y := range txns[i+1:] {
+			for k := range txn_x.Puts {
+				if txn_y.Dels.Intersects(adt.NewStringAffinePoint(k)) {
 					return nil, dels, rpctypes.ErrGRPCDuplicateKey
 				}
 			}
+			for k := range txn_y.Puts {
+				if txn_x.Dels.Intersects(adt.NewStringAffinePoint(k)) {
+					return nil, dels, rpctypes.ErrGRPCDuplicateKey
+				}
+			}
+		}
+	}
+
+	// 2. puts in a txn's children level also should not overlap with deletes in current level
+	for _, txn := range txns {
+		for k := range txn.Puts {
+			if _, ok := puts[k]; ok {
+				return nil, dels, rpctypes.ErrGRPCDuplicateKey
+			}
 			if dels.Intersects(adt.NewStringAffinePoint(k)) {
 				return nil, dels, rpctypes.ErrGRPCDuplicateKey
 			}
 			puts[k] = struct{}{}
 		}
-		dels.Union(delsThen, adt.NewStringAffineInterval("\x00", ""))
-		dels.Union(delsElse, adt.NewStringAffineInterval("\x00", ""))
 	}
 
-	// collect and check this level's puts
+	for _, txn := range txns {
+		dels.Union(txn.Dels, adt.NewStringAffineInterval("\x00", ""))
+	}
+
+	// 3. puts in current level should not overlap with deletes in current level and deletes
+	// in all txn children levels
 	for _, req := range reqs {
 		tv, ok := req.Request.(*pb.RequestOp_RequestPut)
 		if !ok || tv.RequestPut == nil {
@@ -259,6 +285,7 @@ func checkIntervals(reqs []*pb.RequestOp) (map[string]struct{}, adt.IntervalTree
 		}
 		puts[k] = struct{}{}
 	}
+
 	return puts, dels, nil
 }
 
