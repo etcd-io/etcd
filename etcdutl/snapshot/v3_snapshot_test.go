@@ -52,7 +52,7 @@ func TestSnapshotStatus(t *testing.T) {
 func TestSnapshotStatusCorruptRevision(t *testing.T) {
 	dbpath := createDB(t, insertKeys(t, 1, 0))
 
-	db, err := bbolt.Open(dbpath, 0600, nil)
+	db, err := bbolt.Open(dbpath, 0o600, nil)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -74,7 +74,7 @@ func TestSnapshotStatusCorruptRevision(t *testing.T) {
 func TestSnapshotStatusNegativeRevisionMain(t *testing.T) {
 	dbpath := createDB(t, insertKeys(t, 1, 0))
 
-	db, err := bbolt.Open(dbpath, 0666, nil)
+	db, err := bbolt.Open(dbpath, 0o666, nil)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -98,7 +98,7 @@ func TestSnapshotStatusNegativeRevisionMain(t *testing.T) {
 func TestSnapshotStatusNegativeRevisionSub(t *testing.T) {
 	dbpath := createDB(t, insertKeys(t, 1, 0))
 
-	db, err := bbolt.Open(dbpath, 0666, nil)
+	db, err := bbolt.Open(dbpath, 0o666, nil)
 	require.NoError(t, err)
 	defer db.Close()
 

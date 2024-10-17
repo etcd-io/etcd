@@ -119,7 +119,7 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		return ds, err
 	}
 
-	db, err := bolt.Open(dbPath, 0400, &bolt.Options{ReadOnly: true})
+	db, err := bolt.Open(dbPath, 0o400, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return ds, err
 	}
@@ -449,7 +449,7 @@ func (s *v3Manager) copyAndVerifyDB() error {
 
 	outDbPath := s.outDbPath()
 
-	db, dberr := os.OpenFile(outDbPath, os.O_RDWR|os.O_CREATE, 0600)
+	db, dberr := os.OpenFile(outDbPath, os.O_RDWR|os.O_CREATE, 0o600)
 	if dberr != nil {
 		return dberr
 	}

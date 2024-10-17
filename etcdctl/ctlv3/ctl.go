@@ -38,10 +38,7 @@ const (
 
 var (
 	globalFlags = command.GlobalFlags{}
-)
-
-var (
-	rootCmd = &cobra.Command{
+	rootCmd     = &cobra.Command{
 		Use:        cliName,
 		Short:      cliDescription,
 		SuggestFor: []string{"etcdctl"},
