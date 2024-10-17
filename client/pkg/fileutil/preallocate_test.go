@@ -23,16 +23,23 @@ import (
 
 func TestPreallocateExtend(t *testing.T) {
 	pf := func(f *os.File, sz int64) error { return Preallocate(f, sz, true) }
-	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, pf) }
+	tf := func(t *testing.T, f *os.File) {
+		t.Helper()
+		testPreallocateExtend(t, f, pf)
+	}
 	runPreallocTest(t, tf)
 }
 
 func TestPreallocateExtendTrunc(t *testing.T) {
-	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, preallocExtendTrunc) }
+	tf := func(t *testing.T, f *os.File) {
+		t.Helper()
+		testPreallocateExtend(t, f, preallocExtendTrunc)
+	}
 	runPreallocTest(t, tf)
 }
 
 func testPreallocateExtend(t *testing.T, f *os.File, pf func(*os.File, int64) error) {
+	t.Helper()
 	size := int64(64 * 1000)
 	require.NoError(t, pf(f, size))
 
@@ -45,6 +52,7 @@ func testPreallocateExtend(t *testing.T, f *os.File, pf func(*os.File, int64) er
 
 func TestPreallocateFixed(t *testing.T) { runPreallocTest(t, testPreallocateFixed) }
 func testPreallocateFixed(t *testing.T, f *os.File) {
+	t.Helper()
 	size := int64(64 * 1000)
 	require.NoError(t, Preallocate(f, size, false))
 
@@ -56,6 +64,7 @@ func testPreallocateFixed(t *testing.T, f *os.File) {
 }
 
 func runPreallocTest(t *testing.T, test func(*testing.T, *os.File)) {
+	t.Helper()
 	p := t.TempDir()
 
 	f, err := os.CreateTemp(p, "")

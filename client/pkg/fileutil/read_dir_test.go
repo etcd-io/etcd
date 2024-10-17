@@ -51,6 +51,7 @@ func TestReadDir(t *testing.T) {
 }
 
 func writeFunc(t *testing.T, path string) {
+	t.Helper()
 	fh, err := os.Create(path)
 	require.NoErrorf(t, err, "error creating file")
 	assert.NoErrorf(t, fh.Close(), "error closing file")

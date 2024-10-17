@@ -38,6 +38,7 @@ func equal(a, b []string) bool {
 }
 
 func driveSetTests(t *testing.T, s Set) {
+	t.Helper()
 	// Verify operations on an empty set
 	values := s.Values()
 	if len(values) != 0 {
