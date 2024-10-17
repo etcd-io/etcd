@@ -34,6 +34,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Add [`--max-txn-ops`](https://github.com/etcd-io/etcd/pull/14340) flag to make-mirror command.
 - Add [`--consistency`](https://github.com/etcd-io/etcd/pull/15261) flag to member list command.
 - Display [field `hash_revision`](https://github.com/etcd-io/etcd/pull/14812) for `etcdctl endpoint hash` command.
+- Add [`--max-request-bytes` and `--max-recv-bytes`](https://github.com/etcd-io/etcd/pull/18718) global flags.
 
 ### etcdutl v3
 
