@@ -83,7 +83,7 @@ func tryShutdownLeader(ctx context.Context, t *testing.T, members []interfaces.M
 		time.Sleep(500 * time.Millisecond)
 		resps, err := followers[0].Client().Status(ctx)
 		require.NoError(t, err)
-		require.NotEqual(t, leaderID, raft.None)
+		require.NotEqual(t, raft.None, leaderID)
 		require.Equal(t, resps[0].RaftTerm, term+1)
 		require.NotEqualf(t, resps[0].Leader, leaderID, "expect old leaderID %x changed to new leader ID %x", leaderID, resps[0].Leader)
 

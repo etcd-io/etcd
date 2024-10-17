@@ -206,7 +206,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 	srv := newServer(t, n)
 	defer srv.Cleanup()
 
-	assert.Equal(t, srv.consistIndex.ConsistentIndex(), uint64(0))
+	assert.Equal(t, uint64(0), srv.consistIndex.ConsistentIndex())
 
 	var nodeID uint64 = 1
 	memberData, err := json.Marshal(&membership.Member{ID: types.ID(nodeID), RaftAttributes: membership.RaftAttributes{PeerURLs: []string{""}}})
