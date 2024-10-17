@@ -17,6 +17,7 @@ package integration
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	if cli != nil {
 		cli.Close()
 	}
-	if !valid && cerr != context.DeadlineExceeded {
+	if !valid && !errors.Is(cerr, context.DeadlineExceeded) {
 		t.Fatalf("expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, cerr)
 	}
 	if valid && cerr != nil {

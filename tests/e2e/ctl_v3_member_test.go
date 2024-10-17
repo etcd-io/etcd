@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
@@ -193,7 +194,7 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 
 	resp := etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&resp); err == io.EOF {
+	if err := dec.Decode(&resp); errors.Is(err, io.EOF) {
 		return etcdserverpb.MemberListResponse{}, err
 	}
 	return resp, nil
@@ -221,7 +222,7 @@ func memberListWithHexTest(cx ctlCtx) {
 	}
 	hexResp := etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&hexResp); err == io.EOF {
+	if err := dec.Decode(&hexResp); errors.Is(err, io.EOF) {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
 	num := len(resp.Members)
