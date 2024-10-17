@@ -384,7 +384,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
+		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, cfg.AutoCompactionInterval, srv.kv, srv)
 		if err != nil {
 			return nil, err
 		}
