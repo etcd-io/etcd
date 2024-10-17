@@ -45,6 +45,10 @@ var defaultCompactionSleepInterval = 10 * time.Millisecond
 type StoreConfig struct {
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
+	// CompactionNotifyThreshold is used to guarantee that a notification
+	// is sent only after configured number of write transactions have
+	// occured since previsious compaction.
+	CompactionNotifyThreshold int64
 }
 
 type store struct {
@@ -69,6 +73,9 @@ type store struct {
 	currentRev int64
 	// compactMainRev is the main revision of the last compaction.
 	compactMainRev int64
+	// compactNotifyCh is used to notify the compactor that it's time to
+	// compact.
+	compactNotifyCh chan struct{}
 
 	fifoSched schedule.Scheduler
 
@@ -97,8 +104,9 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 
 		le: le,
 
-		currentRev:     1,
-		compactMainRev: -1,
+		currentRev:      1,
+		compactMainRev:  -1,
+		compactNotifyCh: make(chan struct{}, 1),
 
 		fifoSched: schedule.NewFIFOScheduler(lg),
 
@@ -501,6 +509,9 @@ func restoreChunk(lg *zap.Logger, kvc chan<- revKeyValue, keys, vals [][]byte, k
 
 func (s *store) Close() error {
 	close(s.stopc)
+	if s.compactNotifyCh != nil {
+		close(s.compactNotifyCh)
+	}
 	s.fifoSched.Stop()
 	return nil
 }
@@ -534,4 +545,23 @@ func (s *store) setupMetricsReporter() {
 
 func (s *store) HashStorage() HashStorage {
 	return s.hashes
+}
+
+func (s *store) CompactNotify() chan struct{} {
+	return s.compactNotifyCh
+}
+
+func (s *store) doCompactNotify() {
+	threshold := s.cfg.CompactionNotifyThreshold
+
+	if threshold <= 0 {
+		return
+	}
+
+	if s.currentRev-s.compactMainRev > threshold {
+		select {
+		case s.compactNotifyCh <- struct{}{}:
+		default:
+		}
+	}
 }
