@@ -215,7 +215,7 @@ func (s *watchableStore) Restore(b backend.Backend) error {
 func (s *watchableStore) syncWatchersLoop() {
 	defer s.wg.Done()
 
-	waitDuration := 100 * time.Millisecond
+	waitDuration := time.Second
 	delayTicker := time.NewTicker(waitDuration)
 	defer delayTicker.Stop()
 
