@@ -49,6 +49,75 @@ var (
 			// 1 second -> 3 months
 			Buckets: prometheus.ExponentialBuckets(1, 2, 24),
 		})
+
+	leaseAttached = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "attach_total",
+		Help:      "The number of leases that are attached to a lease item.",
+	})
+
+	leaseDetached = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "detach_total",
+		Help:      "The number of leases that are detached from a lease item.",
+	})
+
+	initLeaseCount = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "initial_lease_count",
+		Help:      "Reports an initial lease count.",
+	})
+
+	leaseGrantDurationSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "grant_duration_seconds",
+		Help:      "The time taken to grant a lease (seconds).",
+		// 1 second -> 3 months
+		Buckets: prometheus.ExponentialBuckets(1, 2, 24),
+	})
+
+	leaseRevokeDurationSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "revoke_duration_seconds",
+		Help:      "The time taken to revoke a lease (seconds).",
+		// 1 second -> 3 months
+		Buckets: prometheus.ExponentialBuckets(1, 2, 24),
+	})
+
+	leaseRenewDurationSeconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "renew_duration_seconds",
+		Help:      "The time taken to renew a lease (seconds).",
+		// 1 second -> 3 months
+		Buckets: prometheus.ExponentialBuckets(1, 2, 24),
+	})
+
+	leaseGrantError = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "grant_errors",
+		Help:      "Error count by type to count for lease grants.",
+	}, []string{"error"})
+
+	leaseRevokeError = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "revoke_errors",
+		Help:      "Error count by type to count for lease revokes.",
+	}, []string{"error"})
+
+	leaseRenewError = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "renew_errors",
+		Help:      "Error count by type to count for lease renewals.",
+	}, []string{"error"})
 )
 
 func init() {
@@ -56,4 +125,12 @@ func init() {
 	prometheus.MustRegister(leaseRevoked)
 	prometheus.MustRegister(leaseRenewed)
 	prometheus.MustRegister(leaseTotalTTLs)
+	prometheus.MustRegister(leaseAttached)
+	prometheus.MustRegister(leaseDetached)
+	prometheus.MustRegister(leaseGrantDurationSeconds)
+	prometheus.MustRegister(leaseRevokeDurationSeconds)
+	prometheus.MustRegister(leaseRenewDurationSeconds)
+	prometheus.MustRegister(leaseGrantError)
+	prometheus.MustRegister(leaseRevokeError)
+	prometheus.MustRegister(leaseRenewError)
 }
