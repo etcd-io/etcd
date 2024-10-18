@@ -1,16 +1,71 @@
 # etcd Robustness Testing
 
-Purpose of etcd robustness tests is to validate that etcd upholds
-[KV API guarantees] and [watch API guarantees] under any condition or failure.
-
-Robustness tests achieve that comparing etcd cluster behavior against a simplified model.
-Multiple test encompass different etcd cluster setups, client traffic types and failures experienced by cluster.
-During a single test we create a cluster and inject failures while sending and recording client traffic.
-Correctness is validated by running collected history of client operations against the etcd model and a set of validators.
-Upon failure tests generate a report that can be used to attribute whether failure was caused by bug in etcd or test framework. 
+This document describes the robustness testing framework for etcd, a distributed key-value store.
+The purpose of these tests is to rigorously validate that etcd maintains its [KV API guarantees] and [watch API guarantees] under a wide range of conditions and failures.
 
 [KV API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#kv-apis
 [watch API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
+
+## How Robustness Tests Work
+
+Robustness tests compare etcd cluster behavior against a simplified model of its expected behavior.
+These tests cover various scenarios, including:
+
+* **Different etcd cluster setups:** Cluster sizes, configurations, and deployment topologies.
+* **Client traffic types:**  Variety of key-value operations (puts, ranges, transactions) and watch patterns.
+* **Failures:** Network partitions, node crashes, disk failures, and other disruptions.
+
+**Test Procedure:**
+
+1. **Cluster Creation:**  A new etcd cluster is created with the specified configuration.
+2. **Traffic and Failures:** Client traffic is generated and sent to the cluster while failures are injected.
+3. **History Collection:** All client operations and their results are recorded.
+4. **Validation:** The collected history is validated against the etcd model and a set of validators to ensure consistency and correctness.
+5. **Report Generation:**  If a failure is detected, a detailed report is generated to help diagnose the issue.
+   This report includes information about the client operations, etcd data directories.
+
+## Key Concepts
+
+### Distributed System Terminology
+
+*   **Consensus:** A process where nodes in a distributed system agree on a single data value. Etcd uses the Raft algorithm to achieve consensus.
+*   **Strict vs Eventual consistency:**
+    *   **Strict Consistency:** All components see the same data at the same time after an update.
+    *   **Eventual Consistency:** Components may temporarily see different data after an update but converge to the same view eventually.
+*   **Consistency Models (https://jepsen.io/consistency)**
+    *   **Single-Object Consistency Models:**
+        *   **Sequential Consistency:** A strong single-object model. Operations appear to take place in some total order, consistent with the order of operations on each individual process.
+        *   **Linearizable Consistency:** The strongest single-object model. Operations appear to happen instantly and in order, consistent with real-time ordering.
+    *   **Transactional Consistency Models**
+        *   **Serializable Consistency:** A transactional model guaranteeing that transactions appear to occur in some total order. Operations within a transaction are atomic and do not interleave with other transactions. It's a multi-object property, applying to the entire system, not just individual objects.
+        *   **Strict Serializable Consistency:** The strongest transactional model. Combines the total order of serializability with the real-time ordering constraints of linearizability.
+
+Etcd provides strict serializability for KV operations and eventual consistency for Watch.
+
+**Etcd Guarantees**
+
+*   **Key-value API operations**
+    *   **Durability:** Completed KV operations are permanently stored and will not be lost.
+    *   **Strict Serializability:** KV operations are atomic (all or nothing) and occur in total order, consistent with their real-time order, providing the strongest isolation guarantee.
+    *   **Revision:** A unique, increasing number assigned to each change in the key-value store, serving as a logical clock.
+    *   **Linearizability (Default):** From the client's perspective, operations appear to happen instantly at some point between their invocation and response.
+    *   **Serializable Consistency (Optional):** Clients can configure read requests to be "serializable" for lower latency, potentially accessing stale data but improving performance.
+*   **Watch API guarantees**
+    *   **Ordered:** Watch events are delivered in order of their revision.
+    *   **Unique:** Each event is delivered only once.
+    *   **Reliable:** No subsequence of events within the available history window will be dropped.
+    *   **Atomic:** Events within the same revision are not split across multiple watch responses.
+    *   **Resumable:** A broken watch can be resumed from the last received revision.
+    *   **Bookmarkable:** Progress notifications guarantee that all events up to a certain revision have been delivered.
+
+### Kubernetes Integration
+
+*   **[Implicit Kubernetes-ETCD Contract]:**  Defines how Kubernetes uses etcd to store cluster state.
+*   **ResourceVersion:**  A string used by Kubernetes to track resource versions, corresponding to etcd revisions.
+*   **Sharding resource types:** Kubernetes treats each resource type as a totally independent entity.
+    It allows sharding each resource type into a separate etcd cluster.
+
+[Implicit Kubernetes-ETCD Contract]: https://docs.google.com/document/d/1NUZDiJeiIH5vo_FMaTWf0JtrQKCx0kpEaIIuPoj9P6A/edit?usp=sharing
 
 ## Running locally 
 
