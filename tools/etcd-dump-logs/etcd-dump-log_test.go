@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/authpb"
@@ -36,9 +37,7 @@ import (
 func TestEtcdDumpLogEntryType(t *testing.T) {
 	// directory where the command is
 	binDir, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// TODO(ptabor): The test does not run by default from ./scripts/test.sh.
 	dumpLogsBinary := path.Join(binDir + "/etcd-dump-logs")
@@ -79,13 +78,9 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 		t.Run(argtest.name, func(t *testing.T) {
 			cmd := exec.Command(dumpLogsBinary, argtest.args...)
 			actual, err := cmd.CombinedOutput()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			expected, err := os.ReadFile(path.Join(binDir, argtest.fileExpected))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			assert.EqualValues(t, string(expected), string(actual))
 			// The output files contains a lot of trailing whitespaces... difficult to diagnose without printing them explicitly.
@@ -98,21 +93,15 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 func mustCreateWALLog(t *testing.T, path string) {
 	memberdir := filepath.Join(path, "member")
 	err := os.Mkdir(memberdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	waldir := walDir(path)
 	snapdir := snapDir(path)
 
 	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	err = os.Mkdir(snapdir, 0744)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ents := make([]raftpb.Entry, 0)
 
@@ -124,9 +113,7 @@ func mustCreateWALLog(t *testing.T, path string) {
 
 	// force commit newly appended entries
 	err = w.Save(raftpb.HardState{}, ents)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	w.Close()
 }
 
