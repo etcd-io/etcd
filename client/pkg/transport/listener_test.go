@@ -35,10 +35,12 @@ import (
 )
 
 func createSelfCert(t *testing.T) (*TLSInfo, error) {
+	t.Helper()
 	return createSelfCertEx(t, "127.0.0.1")
 }
 
 func createSelfCertEx(t *testing.T, host string, additionalUsages ...x509.ExtKeyUsage) (*TLSInfo, error) {
+	t.Helper()
 	d := t.TempDir()
 	info, err := SelfCert(zaptest.NewLogger(t), d, []string{host + ":0"}, 1, additionalUsages...)
 	if err != nil {
@@ -218,6 +220,7 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 }
 
 func testNewListenerTLSInfoAccept(t *testing.T, tlsInfo TLSInfo) {
+	t.Helper()
 	ln, err := NewListener("127.0.0.1:0", "https", &tlsInfo)
 	require.NoErrorf(t, err, "unexpected NewListener error")
 	defer ln.Close()
@@ -254,6 +257,7 @@ func TestNewListenerTLSInfoSkipClientSANVerify(t *testing.T) {
 }
 
 func testNewListenerTLSInfoClientCheck(t *testing.T, skipClientSANVerify, goodClientHost, acceptExpected bool) {
+	t.Helper()
 	tlsInfo, err := createSelfCert(t)
 	require.NoErrorf(t, err, "unable to create cert")
 

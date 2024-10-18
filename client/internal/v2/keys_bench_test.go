@@ -49,6 +49,7 @@ func createTestResponse(children, size int) *Response {
 }
 
 func benchmarkResponseUnmarshalling(b *testing.B, children, size int) {
+	b.Helper()
 	header := http.Header{}
 	header.Add("X-Etcd-Index", "123456")
 	response := createTestResponse(children, size)

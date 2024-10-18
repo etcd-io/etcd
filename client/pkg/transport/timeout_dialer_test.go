@@ -89,6 +89,7 @@ type testBlockingServer struct {
 }
 
 func (ts *testBlockingServer) Start(t *testing.T) {
+	t.Helper()
 	for i := 0; i < ts.n; i++ {
 		conn, err := ts.ln.Accept()
 		if err != nil {
