@@ -430,8 +430,8 @@ func TestClientRejectOldCluster(t *testing.T) {
 				},
 			}
 
-			if err := c.checkVersion(); err != tt.expectedError {
-				t.Errorf("heckVersion err:%v", err)
+			if err := c.checkVersion(); !errors.Is(err, tt.expectedError) {
+				t.Errorf("checkVersion err:%v", err)
 			}
 		})
 	}

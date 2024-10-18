@@ -294,7 +294,7 @@ func (c *Client) getToken(ctx context.Context) error {
 
 	resp, err := c.Auth.Authenticate(ctx, c.Username, c.Password)
 	if err != nil {
-		if err == rpctypes.ErrAuthNotEnabled {
+		if errors.Is(err, rpctypes.ErrAuthNotEnabled) {
 			c.authTokenBundle.UpdateAuthToken("")
 			return nil
 		}
@@ -605,7 +605,8 @@ func ContextError(ctx context.Context, err error) error {
 		return nil
 	}
 	err = rpctypes.Error(err)
-	if _, ok := err.(rpctypes.EtcdError); ok {
+	var serverErr rpctypes.EtcdError
+	if errors.As(err, &serverErr) {
 		return err
 	}
 	if ev, ok := status.FromError(err); ok {
@@ -627,7 +628,7 @@ func canceledByCaller(stopCtx context.Context, err error) bool {
 		return false
 	}
 
-	return err == context.Canceled || err == context.DeadlineExceeded
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
 }
 
 // IsConnCanceled returns true, if error is from a closed gRPC connection.
@@ -645,7 +646,7 @@ func IsConnCanceled(err error) bool {
 	}
 
 	// >= gRPC v1.10.x
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		return true
 	}
 

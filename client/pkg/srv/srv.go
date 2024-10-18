@@ -87,7 +87,7 @@ func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]
 
 	err := updateNodeMap(service, serviceScheme)
 	if err != nil {
-		return nil, fmt.Errorf("error querying DNS SRV records for _%s %s", service, err)
+		return nil, fmt.Errorf("error querying DNS SRV records for _%s %w", service, err)
 	}
 	return stringParts, nil
 }
@@ -123,7 +123,7 @@ func GetClient(service, domain string, serviceName string) (*SRVClients, error) 
 	errHTTP := updateURLs(GetSRVService(service, serviceName, "http"), "http")
 
 	if errHTTPS != nil && errHTTP != nil {
-		return nil, fmt.Errorf("dns lookup errors: %s and %s", errHTTPS, errHTTP)
+		return nil, fmt.Errorf("dns lookup errors: %w and %w", errHTTPS, errHTTP)
 	}
 
 	endpoints := make([]string, len(urls))

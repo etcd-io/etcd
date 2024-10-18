@@ -16,6 +16,7 @@ package ioutil
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 )
@@ -28,7 +29,7 @@ func (rc *readerNilCloser) Close() error { return nil }
 func TestExactReadCloserExpectEOF(t *testing.T) {
 	buf := bytes.NewBuffer(make([]byte, 10))
 	rc := NewExactReadCloser(&readerNilCloser{buf}, 1)
-	if _, err := rc.Read(make([]byte, 10)); err != ErrExpectEOF {
+	if _, err := rc.Read(make([]byte, 10)); !errors.Is(err, ErrExpectEOF) {
 		t.Fatalf("expected %v, got %v", ErrExpectEOF, err)
 	}
 }
@@ -40,7 +41,7 @@ func TestExactReadCloserShort(t *testing.T) {
 	if _, err := rc.Read(make([]byte, 10)); err != nil {
 		t.Fatalf("Read expected nil err, got %v", err)
 	}
-	if err := rc.Close(); err != ErrShortRead {
+	if err := rc.Close(); !errors.Is(err, ErrShortRead) {
 		t.Fatalf("Close expected %v, got %v", ErrShortRead, err)
 	}
 }
