@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -320,5 +321,76 @@ func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Errorf("*raftNode.stop() is blocked !")
 		}
+	}
+}
+
+func TestTrySendDummyEvent(t *testing.T) {
+	testCases := []struct {
+		name          string
+		drainApply    bool
+		stopped       bool
+		expectBlocked bool
+	}{
+		{
+			name:          "normal case",
+			drainApply:    true,
+			stopped:       false,
+			expectBlocked: false,
+		},
+		{
+			name:          "blocked on apply",
+			drainApply:    false,
+			stopped:       false,
+			expectBlocked: true,
+		},
+		{
+			name:          "not blocked due to stopped",
+			drainApply:    false,
+			stopped:       true,
+			expectBlocked: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			n := newNopReadyNode()
+
+			r := newRaftNode(raftNodeConfig{
+				lg:          zaptest.NewLogger(t),
+				Node:        n,
+				storage:     mockstorage.NewStorageRecorder(""),
+				raftStorage: raft.NewMemoryStorage(),
+				transport:   newNopTransporter(),
+			})
+			srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
+
+			leadershipC := make(chan struct{}, 1)
+			srv.r.start(&raftReadyHandler{
+				getLead:    func() uint64 { return 0 },
+				updateLead: func(uint64) {},
+				updateLeadership: func(bool) {
+					leadershipC <- struct{}{}
+				},
+			})
+			defer srv.r.Stop()
+
+			n.readyc <- raft.Ready{
+				SoftState: &raft.SoftState{RaftState: raft.StateFollower},
+				Entries:   []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+			}
+			<-leadershipC // ensure the raft loop is already in progress of processing the event
+
+			if tc.drainApply {
+				_ = <-srv.r.applyc
+			}
+
+			if tc.stopped {
+				close(r.done)
+			}
+
+			err := r.trySendDummyEvent(2 * time.Second)
+			assert.Equal(t, tc.expectBlocked, err != nil, err)
+		})
 	}
 }
