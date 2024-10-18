@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -135,7 +136,7 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 
 	cli := clus.Client(targetIdx)
 	_, err := cli.MoveLeader(context.Background(), target)
-	if err != rpctypes.ErrNotLeader {
+	if !errors.Is(err, rpctypes.ErrNotLeader) {
 		t.Fatalf("error expected %v, got %v", rpctypes.ErrNotLeader, err)
 	}
 
@@ -186,7 +187,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 
 	cancel()
 	_, err = io.Copy(io.Discard, rc1)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
 }
@@ -303,7 +304,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 		close(donec)
 	}()
 	_, err = io.Copy(io.Discard, rc1)
-	if err != nil && err != context.Canceled {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		t.Errorf("expected %v, got %v", context.Canceled, err)
 	}
 	<-donec
