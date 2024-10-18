@@ -34,7 +34,7 @@ import (
 func TestIsDirWriteable(t *testing.T) {
 	tmpdir := t.TempDir()
 	require.NoErrorf(t, IsDirWriteable(tmpdir), "unexpected IsDirWriteable error")
-	require.NoErrorf(t, os.Chmod(tmpdir, 0444), "unexpected os.Chmod error")
+	require.NoErrorf(t, os.Chmod(tmpdir, 0o444), "unexpected os.Chmod error")
 	me, err := user.Current()
 	if err != nil {
 		// err can be non-nil when cross compiled
@@ -68,7 +68,7 @@ func TestCreateDirAll(t *testing.T) {
 func TestExist(t *testing.T) {
 	fdir := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()+rand.Int63n(1000)))
 	os.RemoveAll(fdir)
-	if err := os.Mkdir(fdir, 0666); err != nil {
+	if err := os.Mkdir(fdir, 0o666); err != nil {
 		t.Skip(err)
 	}
 	defer os.RemoveAll(fdir)
@@ -150,7 +150,7 @@ func TestDirPermission(t *testing.T) {
 	// create a new dir with 0700
 	require.NoError(t, CreateDirAll(zaptest.NewLogger(t), tmpdir2))
 	// check dir permission with mode different than created dir
-	if err := CheckDirPermission(tmpdir2, 0600); err == nil {
+	if err := CheckDirPermission(tmpdir2, 0o600); err == nil {
 		t.Errorf("expected error, got nil")
 	}
 }
