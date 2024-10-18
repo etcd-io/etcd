@@ -664,7 +664,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			sctx = newServeCtx(cfg.logger)
 			sctxs[addr] = sctx
 		} else if !sctx.httpOnly {
-			return nil, fmt.Errorf("cannot bind both --client-listen-urls and --client-listen-http-urls on the same url %s", u.String())
+			return nil, fmt.Errorf("cannot bind both --listen-client-urls and --listen-client-http-urls on the same url %s", u.String())
 		}
 		sctx.secure = sctx.secure || secure
 		sctx.insecure = sctx.insecure || !secure
