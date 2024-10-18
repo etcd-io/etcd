@@ -132,7 +132,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	assert.NoError(t, err)
 	for i := 0; i < 10; i++ {
 		err = oldCc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoError(t, err, "error on put")
+		assert.NoErrorf(t, err, "error on put")
 	}
 
 	// Create a new cluster config, but with the same port numbers. In this way the new servers can stay in
@@ -185,7 +185,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	t.Log("new cluster started.")
 
 	alarmResponse, err := newCc.AlarmList(ctx)
-	assert.NoError(t, err, "error on alarm list")
+	assert.NoErrorf(t, err, "error on alarm list")
 	for _, alarm := range alarmResponse.Alarms {
 		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
 			t.Fatalf("there is no corruption after in-place recovery, but corruption reported.")
@@ -215,12 +215,12 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoError(t, err, "error on put")
+		assert.NoErrorf(t, err, "error on put")
 	}
 
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
-	assert.NoError(t, err, "error on member list")
-	assert.True(t, found, "member not found")
+	assert.NoErrorf(t, err, "error on member list")
+	assert.Truef(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
@@ -230,7 +230,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoError(t, err, "error on alarm list")
+	assert.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }
 
@@ -256,11 +256,11 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoError(t, err, "error on put")
+		assert.NoErrorf(t, err, "error on put")
 	}
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
-	assert.NoError(t, err, "error on member list")
-	assert.True(t, found, "member not found")
+	assert.NoErrorf(t, err, "error on member list")
+	assert.Truef(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
@@ -272,7 +272,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	assert.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoError(t, err, "error on alarm list")
+	assert.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }
 
@@ -320,7 +320,7 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err = cc.Put(ctx, "key", fmt.Sprint(i), config.PutOptions{})
-		require.NoError(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	t.Log("compaction started...")
@@ -339,14 +339,14 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 
 	// Wait until the node finished compaction and the leader finished compaction hash check
 	_, err = epc.Procs[slowCompactionNodeIndex].Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "finished scheduled compaction"})
-	require.NoError(t, err, "can't get log indicating finished scheduled compaction")
+	require.NoErrorf(t, err, "can't get log indicating finished scheduled compaction")
 
 	leaderIndex := epc.WaitLeader(t)
 	_, err = epc.Procs[leaderIndex].Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "finished compaction hash check"})
-	require.NoError(t, err, "can't get log indicating finished compaction hash check")
+	require.NoErrorf(t, err, "can't get log indicating finished compaction hash check")
 
 	alarmResponse, err := cc.AlarmList(ctx)
-	require.NoError(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	for _, alarm := range alarmResponse.Alarms {
 		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
 			t.Fatal("there should be no corruption after resuming the compaction, but corruption detected")
@@ -372,10 +372,10 @@ func testCtlV3ReadAfterWrite(t *testing.T, ops ...clientv3.OpOption) {
 		e2e.WithClusterSize(1),
 		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `raftBeforeSave=sleep("200ms");beforeCommit=sleep("200ms")`}),
 	)
-	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+	require.NoErrorf(t, err, "failed to start etcd cluster")
 	defer func() {
 		derr := epc.Close()
-		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+		require.NoErrorf(t, derr, "failed to close etcd cluster")
 	}()
 
 	cc, err := clientv3.New(clientv3.Config{

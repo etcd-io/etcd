@@ -26,7 +26,7 @@ func TestStoreStatsGetSuccess(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Get("/foo", false, false)
-	assert.Equal(t, uint64(1), s.Stats.GetSuccess, "")
+	assert.Equal(t, uint64(1), s.Stats.GetSuccess)
 }
 
 // TestStoreStatsGetFail ensures that a failed Get is recorded in the stats.
@@ -34,14 +34,14 @@ func TestStoreStatsGetFail(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Get("/no_such_key", false, false)
-	assert.Equal(t, uint64(1), s.Stats.GetFail, "")
+	assert.Equal(t, uint64(1), s.Stats.GetFail)
 }
 
 // TestStoreStatsCreateSuccess ensures that a successful Create is recorded in the stats.
 func TestStoreStatsCreateSuccess(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.CreateSuccess, "")
+	assert.Equal(t, uint64(1), s.Stats.CreateSuccess)
 }
 
 // TestStoreStatsCreateFail ensures that a failed Create is recorded in the stats.
@@ -49,7 +49,7 @@ func TestStoreStatsCreateFail(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", true, "", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.CreateFail, "")
+	assert.Equal(t, uint64(1), s.Stats.CreateFail)
 }
 
 // TestStoreStatsUpdateSuccess ensures that a successful Update is recorded in the stats.
@@ -57,14 +57,14 @@ func TestStoreStatsUpdateSuccess(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Update("/foo", "baz", TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.UpdateSuccess, "")
+	assert.Equal(t, uint64(1), s.Stats.UpdateSuccess)
 }
 
 // TestStoreStatsUpdateFail ensures that a failed Update is recorded in the stats.
 func TestStoreStatsUpdateFail(t *testing.T) {
 	s := newStore()
 	s.Update("/foo", "bar", TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.UpdateFail, "")
+	assert.Equal(t, uint64(1), s.Stats.UpdateFail)
 }
 
 // TestStoreStatsCompareAndSwapSuccess ensures that a successful CAS is recorded in the stats.
@@ -72,7 +72,7 @@ func TestStoreStatsCompareAndSwapSuccess(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.CompareAndSwap("/foo", "bar", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapSuccess, "")
+	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapSuccess)
 }
 
 // TestStoreStatsCompareAndSwapFail ensures that a failed CAS is recorded in the stats.
@@ -80,7 +80,7 @@ func TestStoreStatsCompareAndSwapFail(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.CompareAndSwap("/foo", "wrong_value", 0, "baz", TTLOptionSet{ExpireTime: Permanent})
-	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapFail, "")
+	assert.Equal(t, uint64(1), s.Stats.CompareAndSwapFail)
 }
 
 // TestStoreStatsDeleteSuccess ensures that a successful Delete is recorded in the stats.
@@ -88,14 +88,14 @@ func TestStoreStatsDeleteSuccess(t *testing.T) {
 	s := newStore()
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: Permanent})
 	s.Delete("/foo", false, false)
-	assert.Equal(t, uint64(1), s.Stats.DeleteSuccess, "")
+	assert.Equal(t, uint64(1), s.Stats.DeleteSuccess)
 }
 
 // TestStoreStatsDeleteFail ensures that a failed Delete is recorded in the stats.
 func TestStoreStatsDeleteFail(t *testing.T) {
 	s := newStore()
 	s.Delete("/foo", false, false)
-	assert.Equal(t, uint64(1), s.Stats.DeleteFail, "")
+	assert.Equal(t, uint64(1), s.Stats.DeleteFail)
 }
 
 // TestStoreStatsExpireCount ensures that the number of expirations is recorded in the stats.
@@ -105,8 +105,8 @@ func TestStoreStatsExpireCount(t *testing.T) {
 	s.clock = fc
 
 	s.Create("/foo", false, "bar", false, TTLOptionSet{ExpireTime: fc.Now().Add(500 * time.Millisecond)})
-	assert.Equal(t, uint64(0), s.Stats.ExpireCount, "")
+	assert.Equal(t, uint64(0), s.Stats.ExpireCount)
 	fc.Advance(600 * time.Millisecond)
 	s.DeleteExpiredKeys(fc.Now())
-	assert.Equal(t, uint64(1), s.Stats.ExpireCount, "")
+	assert.Equal(t, uint64(1), s.Stats.ExpireCount)
 }

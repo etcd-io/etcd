@@ -85,11 +85,11 @@ func TestConfigFileOtherFields(t *testing.T) {
 		t.Errorf("PeerTLS = %v, want %v", cfg.PeerTLSInfo, ptls)
 	}
 
-	assert.True(t, cfg.ForceNewCluster, "ForceNewCluster does not match")
+	assert.Truef(t, cfg.ForceNewCluster, "ForceNewCluster does not match")
 
-	assert.True(t, cfg.SocketOpts.ReusePort, "ReusePort does not match")
+	assert.Truef(t, cfg.SocketOpts.ReusePort, "ReusePort does not match")
 
-	assert.False(t, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
+	assert.Falsef(t, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
 func TestConfigFileFeatureGates(t *testing.T) {
@@ -806,7 +806,7 @@ func TestTLSVersionMinMax(t *testing.T) {
 
 			err := cfg.Validate()
 			if err != nil {
-				assert.True(t, tt.expectError, "Validate() returned error while expecting success: %v", err)
+				assert.Truef(t, tt.expectError, "Validate() returned error while expecting success: %v", err)
 				return
 			}
 

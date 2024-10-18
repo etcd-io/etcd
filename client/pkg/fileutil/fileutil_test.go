@@ -190,7 +190,7 @@ func TestRemoveMatchFile(t *testing.T) {
 
 func TestTouchDirAll(t *testing.T) {
 	tmpdir := t.TempDir()
-	assert.Panics(t, func() {
+	assert.Panicsf(t, func() {
 		TouchDirAll(nil, tmpdir)
 	}, "expected panic with nil log")
 

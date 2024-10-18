@@ -571,6 +571,6 @@ func TestModelResponseMatch(t *testing.T) {
 		},
 	}
 	for i, tc := range tcs {
-		assert.Equal(t, tc.expectMatch, Match(tc.resp1, tc.resp2), "%d %+v %+v", i, tc.resp1, tc.resp2)
+		assert.Equalf(t, tc.expectMatch, Match(tc.resp1, tc.resp2), "%d %+v %+v", i, tc.resp1, tc.resp2)
 	}
 }

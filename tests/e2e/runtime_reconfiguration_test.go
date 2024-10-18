@@ -67,7 +67,7 @@ func TestRuntimeReconfigGrowClusterSize(t *testing.T) {
 			require.NoError(t, epc.Procs[0].Etcdctl().Health(ctx))
 			defer func() {
 				err := epc.Close()
-				require.NoError(t, err, "failed to close etcd cluster: %v", err)
+				require.NoErrorf(t, err, "failed to close etcd cluster")
 			}()
 
 			for i := 0; i < 2; i++ {
@@ -109,7 +109,7 @@ func TestRuntimeReconfigDecreaseClusterSize(t *testing.T) {
 			require.NoError(t, epc.Procs[0].Etcdctl().Health(ctx))
 			defer func() {
 				err := epc.Close()
-				require.NoError(t, err, "failed to close etcd cluster: %v", err)
+				require.NoErrorf(t, err, "failed to close etcd cluster")
 			}()
 
 			for i := 0; i < 2; i++ {
@@ -147,7 +147,7 @@ func TestRuntimeReconfigRollingUpgrade(t *testing.T) {
 			require.NoError(t, epc.Procs[0].Etcdctl().Health(ctx))
 			defer func() {
 				err := epc.Close()
-				require.NoError(t, err, "failed to close etcd cluster: %v", err)
+				require.NoErrorf(t, err, "failed to close etcd cluster")
 			}()
 
 			for i := 0; i < 2; i++ {

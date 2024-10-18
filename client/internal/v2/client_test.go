@@ -1053,7 +1053,7 @@ func TestHTTPClusterClientResetPinRandom(t *testing.T) {
 	for i := 0; i < round; i++ {
 		hc := &httpClusterClient{rand: rand.New(rand.NewSource(int64(i)))}
 		err := hc.SetEndpoints([]string{"http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"})
-		require.NoErrorf(t, err, "#%d: reset error (%v)", i)
+		require.NoErrorf(t, err, "#%d: reset error", i)
 		if hc.endpoints[hc.pinned].String() == "http://127.0.0.1:4001" {
 			pinNum++
 		}

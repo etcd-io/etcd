@@ -124,9 +124,9 @@ func testHashByRev(t *testing.T, s *store, rev int64) KeyValueHash {
 		rev = s.Rev()
 	}
 	hash, _, err := s.hashByRev(rev)
-	assert.NoError(t, err, "error on rev %v", rev)
+	assert.NoErrorf(t, err, "error on rev %v", rev)
 	_, err = s.Compact(traceutil.TODO(), rev)
-	assert.NoError(t, err, "error on compact %v", rev)
+	assert.NoErrorf(t, err, "error on compact %v", rev)
 	return hash
 }
 

@@ -54,7 +54,7 @@ func TestGetVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetTLSVersion(tt.version)
 			if err != nil {
-				assert.True(t, tt.expectError, "GetTLSVersion() returned error while expecting success: %v", err)
+				assert.Truef(t, tt.expectError, "GetTLSVersion() returned error while expecting success: %v", err)
 				return
 			}
 			assert.Equal(t, tt.want, got)
