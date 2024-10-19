@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -45,17 +46,11 @@ func testResultsDirectory(t *testing.T) string {
 	}
 	path, err := filepath.Abs(filepath.Join(
 		resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_"), fmt.Sprintf("%v", time.Now().UnixNano())))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = os.RemoveAll(path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	err = os.MkdirAll(path, 0700)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return path
 }
 
@@ -84,9 +79,7 @@ func (r *TestReport) Report(t *testing.T, force bool) {
 func persistMemberDataDir(t *testing.T, lg *zap.Logger, member e2e.EtcdProcess, path string) {
 	lg.Info("Saving member data dir", zap.String("member", member.Config().Name), zap.String("path", path))
 	err := os.Rename(memberDataDir(member), path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func memberDataDir(member e2e.EtcdProcess) string {

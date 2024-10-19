@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -30,9 +31,7 @@ import (
 // ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
 	err := checkValidationAssumptions(reports, persistedRequests)
-	if err != nil {
-		t.Fatalf("Broken validation assumptions: %s", err)
-	}
+	require.NoErrorf(t, err, "Broken validation assumptions")
 	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
 	serializableOperations := filterSerializableOperations(reports)
 
