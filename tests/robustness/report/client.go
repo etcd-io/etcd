@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -53,9 +54,7 @@ func persistClientReports(t *testing.T, lg *zap.Logger, path string, reports []C
 	for _, r := range reports {
 		clientDir := filepath.Join(path, fmt.Sprintf("client-%d", r.ClientID))
 		err := os.MkdirAll(clientDir, 0700)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if len(r.Watch) != 0 {
 			persistWatchOperations(t, lg, filepath.Join(clientDir, "watch.json"), r.Watch)
 		} else {

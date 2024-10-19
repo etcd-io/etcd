@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
@@ -32,9 +34,7 @@ func CollectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.Etcd
 	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
 	for i, member := range clus.Procs {
 		c, err := NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		wg.Add(1)
