@@ -50,18 +50,16 @@ func TestMaintenanceHashKV(t *testing.T) {
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
-		if _, err := clus.RandClient().Put(context.Background(), "foo", "bar"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := clus.RandClient().Put(context.Background(), "foo", "bar")
+		require.NoError(t, err)
 	}
 
 	var hv uint32
 	for i := 0; i < 3; i++ {
 		cli := clus.Client(i)
 		// ensure writes are replicated
-		if _, err := cli.Get(context.TODO(), "foo"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := cli.Get(context.TODO(), "foo")
+		require.NoError(t, err)
 		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL, 0)
 		if err != nil {
 			t.Fatal(err)

@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	etcd "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -101,16 +103,12 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 	err = em.Update(context.TODO(), []*endpoints.UpdateWithOpts{
 		endpoints.NewAddUpdateOpts("foo/host", endpoints.Endpoint{Addr: "127.0.0.1:2000"}),
 		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"})})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx, watchCancel := context.WithCancel(context.Background())
 	defer watchCancel()
 	w, err := em.NewWatchChannel(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	updates := <-w
 	if len(updates) != 2 {
@@ -118,9 +116,7 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 	}
 
 	_, err = c.Txn(context.TODO()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	updates = <-w
 	if len(updates) != 2 || (updates[0].Op != endpoints.Delete && updates[1].Op != endpoints.Delete) {

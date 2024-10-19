@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -489,9 +490,8 @@ func TestV3TxnCmpHeaderRev(t *testing.T) {
 		}
 
 		prev := <-revc
-		if err := <-errCh; err != nil {
-			t.Fatal(err)
-		}
+		err = <-errCh
+		require.NoError(t, err)
 		// put followed txn; should eval to false
 		if prev > tresp.Header.Revision && !tresp.Succeeded {
 			t.Errorf("#%d: got else but put rev %d followed txn rev (%+v)", i, prev, tresp)
@@ -511,9 +511,8 @@ func TestV3TxnRangeCompare(t *testing.T) {
 
 	// put keys, named by expected revision
 	for _, k := range []string{"/a/2", "/a/3", "/a/4", "/f/5"} {
-		if _, err := clus.Client(0).Put(context.TODO(), k, "x"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := clus.Client(0).Put(context.TODO(), k, "x")
+		require.NoError(t, err)
 	}
 
 	tests := []struct {
@@ -1640,33 +1639,27 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 		if terr != nil {
 			t.Fatal(terr)
 		}
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp); err != nil {
-			t.Fatal(err)
-		}
+		_, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp)
+		require.NoError(t, err)
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if err := os.Rename(certsDir, tmpDir); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Rename(certsDirExp, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		err := os.Rename(certsDir, tmpDir)
+		require.NoError(t, err)
+		err = os.Rename(certsDirExp, certsDir)
+		require.NoError(t, err)
 		// after rename,
 		// 'certsDir' contains expired certs
 		// 'tmpDir' contains valid certs
 		// 'certsDirExp' does not exist
 	}
 	revertFunc := func() {
-		if err := os.Rename(tmpDir, certsDirExp); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Rename(certsDir, tmpDir); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.Rename(certsDirExp, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		err := os.Rename(tmpDir, certsDirExp)
+		require.NoError(t, err)
+		err = os.Rename(certsDir, tmpDir)
+		require.NoError(t, err)
+		err = os.Rename(certsDirExp, certsDir)
+		require.NoError(t, err)
 	}
 	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
@@ -1685,14 +1678,12 @@ func TestTLSReloadCopy(t *testing.T) {
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		_, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDir)
+		require.NoError(t, err)
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfo, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		_, err := copyTLSFiles(integration.TestTLSInfo, certsDir)
+		require.NoError(t, err)
 	}
 	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, false)
 }
@@ -1711,14 +1702,12 @@ func TestTLSReloadCopyIPOnly(t *testing.T) {
 		return tlsInfo
 	}
 	replaceFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		_, err := copyTLSFiles(integration.TestTLSInfoExpiredIP, certsDir)
+		require.NoError(t, err)
 	}
 	revertFunc := func() {
-		if _, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir); err != nil {
-			t.Fatal(err)
-		}
+		_, err := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
+		require.NoError(t, err)
 	}
 	testTLSReload(t, cloneFunc, replaceFunc, revertFunc, true)
 }

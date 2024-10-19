@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/sync/errgroup"
@@ -51,14 +52,10 @@ func TestRobustnessExploratory(t *testing.T) {
 			s.Cluster.Logger = lg
 			ctx := context.Background()
 			c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.Cluster))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			defer forcestopCluster(c)
 			s.Failpoint, err = failpoint.PickRandom(c, s.Profile)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			t.Run(s.Failpoint.Name(), func(t *testing.T) {
 				testRobustness(ctx, t, lg, s, c)
 			})
@@ -74,9 +71,7 @@ func TestRobustnessRegression(t *testing.T) {
 			s.Cluster.Logger = lg
 			ctx := context.Background()
 			c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.Cluster))
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			defer forcestopCluster(c)
 			testRobustness(ctx, t, lg, s, c)
 		})
@@ -94,9 +89,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	}()
 	r.Client = runScenario(ctx, t, s, lg, c)
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	failpointImpactingWatch := s.Failpoint == failpoint.SleepBeforeSendWatchResponse
 	if !failpointImpactingWatch {

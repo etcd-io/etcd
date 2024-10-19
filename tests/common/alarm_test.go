@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -103,9 +105,8 @@ func TestAlarm(t *testing.T) {
 		}
 
 		// put one more key below quota
-		if err := cc.Put(ctx, "4th_test", smallbuf, config.PutOptions{}); err != nil {
-			t.Fatal(err)
-		}
+		err = cc.Put(ctx, "4th_test", smallbuf, config.PutOptions{})
+		require.NoError(t, err)
 	})
 }
 

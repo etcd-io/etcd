@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -148,9 +149,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
 
 	e, err := embed.StartEtcd(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	<-e.Server.ReadyNotify() // wait for e.Server to join the cluster
 
 	clientCfg := clientv3.Config{
@@ -158,14 +157,10 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	}
 	if secure {
 		clientCfg.TLS, err = testTLSInfo.ClientConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	cli, err := integration2.NewClient(t, clientCfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// open watch connection
@@ -182,9 +177,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 		t.Fatalf("took too long to close server")
 	}
 	err = <-e.Err()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func newEmbedURLs(secure bool, n int) (urls []url.URL) {

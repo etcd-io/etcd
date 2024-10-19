@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 )
@@ -335,9 +336,7 @@ func TestModelNonDeterministic(t *testing.T) {
 					t.Errorf("Unexpected operation result, expect: %v, got: %v, operation: %s", !op.expectFailure, ok, NonDeterministicModel.DescribeOperation(op.req, op.resp))
 					var loadedState nonDeterministicState
 					err := json.Unmarshal([]byte(state.(string)), &loadedState)
-					if err != nil {
-						t.Fatalf("Failed to load state: %v", err)
-					}
+					require.NoErrorf(t, err, "Failed to load state")
 					for i, s := range loadedState {
 						_, resp := s.Step(op.req)
 						t.Errorf("For state %d, response diff: %s", i, cmp.Diff(op.resp, resp))

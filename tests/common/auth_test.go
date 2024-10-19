@@ -378,14 +378,12 @@ func TestAuthTxn(t *testing.T) {
 				// keys with 2 suffix are granted to test-user, see Line 399
 				grantedKeys := []string{"c2", "s2", "f2"}
 				for _, key := range keys {
-					if err := cc.Put(ctx, key, "v", config.PutOptions{}); err != nil {
-						t.Fatal(err)
-					}
+					err := cc.Put(ctx, key, "v", config.PutOptions{})
+					require.NoError(t, err)
 				}
 				for _, key := range grantedKeys {
-					if err := cc.Put(ctx, key, "v", config.PutOptions{}); err != nil {
-						t.Fatal(err)
-					}
+					err := cc.Put(ctx, key, "v", config.PutOptions{})
+					require.NoError(t, err)
 				}
 
 				require.NoErrorf(t, setupAuth(cc, []authRole{testRole}, []authUser{rootUser, testUser}), "failed to enable auth")
@@ -394,9 +392,8 @@ func TestAuthTxn(t *testing.T) {
 
 				// grant keys to test-user
 				for _, key := range grantedKeys {
-					if _, err := rootAuthClient.RoleGrantPermission(ctx, testRoleName, key, "", clientv3.PermissionType(clientv3.PermReadWrite)); err != nil {
-						t.Fatal(err)
-					}
+					_, err := rootAuthClient.RoleGrantPermission(ctx, testRoleName, key, "", clientv3.PermissionType(clientv3.PermReadWrite))
+					require.NoError(t, err)
 				}
 				for _, req := range reqs {
 					resp, err := testUserAuthClient.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{

@@ -543,9 +543,8 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 	}
 
 	for i := 0; i < 300; i++ {
-		if err := <-errc; err != nil {
-			t.Fatal(err)
-		}
+		err := <-errc
+		require.NoError(t, err)
 	}
 }
 
@@ -640,9 +639,8 @@ func TestV3GetNonExistLease(t *testing.T) {
 
 	for _, m := range clus.Members {
 		// quorum-read to ensure revoke completes before TimeToLive
-		if _, err := integration.ToGRPC(m.Client).KV.Range(ctx, &pb.RangeRequest{Key: []byte("_")}); err != nil {
-			t.Fatal(err)
-		}
+		_, err := integration.ToGRPC(m.Client).KV.Range(ctx, &pb.RangeRequest{Key: []byte("_")})
+		require.NoError(t, err)
 		resp, err := integration.ToGRPC(m.Client).Lease.LeaseTimeToLive(ctx, leaseTTLr)
 		if err != nil {
 			t.Fatalf("expected non nil error, but go %v", err)

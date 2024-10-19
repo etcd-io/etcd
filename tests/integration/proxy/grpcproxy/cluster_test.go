@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
@@ -132,17 +133,13 @@ func newClusterProxyServer(lg *zap.Logger, endpoints []string, prefix string, t 
 		DialTimeout: 5 * time.Second,
 	}
 	client, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cts := &clusterproxyTestServer{
 		c: client,
 	}
 	cts.l, err = net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var opts []grpc.ServerOption
 	cts.server = grpc.NewServer(opts...)
 	servec := make(chan struct{})

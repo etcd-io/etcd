@@ -197,9 +197,8 @@ func testIssue6361(t *testing.T) {
 	t.Log("Writing some keys...")
 	kvs := []kv{{"foo1", "val1"}, {"foo2", "val2"}, {"foo3", "val3"}}
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), expect.ExpectedResponse{Value: "OK"}); err != nil {
-			t.Fatal(err)
-		}
+		err = e2e.SpawnWithExpect(append(prefixArgs, "put", kvs[i].key, kvs[i].val), expect.ExpectedResponse{Value: "OK"})
+		require.NoError(t, err)
 	}
 
 	fpath := filepath.Join(t.TempDir(), "test.snapshot")
@@ -244,9 +243,8 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring the restored member has the correct data...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
-			t.Fatal(err)
-		}
+		err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val})
+		require.NoError(t, err)
 	}
 
 	t.Log("Adding new member into the cluster")
@@ -281,9 +279,8 @@ func testIssue6361(t *testing.T) {
 
 	t.Log("Ensuring added member has data from incoming snapshot...")
 	for i := range kvs {
-		if err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val}); err != nil {
-			t.Fatal(err)
-		}
+		err = e2e.SpawnWithExpect(append(prefixArgs, "get", kvs[i].key), expect.ExpectedResponse{Value: kvs[i].val})
+		require.NoError(t, err)
 	}
 
 	t.Log("Stopping the second member")
