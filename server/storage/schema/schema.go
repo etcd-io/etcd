@@ -64,11 +64,11 @@ func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Ver
 func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
-		return fmt.Errorf("cannot detect storage schema version: %v", err)
+		return fmt.Errorf("cannot detect storage schema version: %w", err)
 	}
 	plan, err := newPlan(lg, current, target)
 	if err != nil {
-		return fmt.Errorf("cannot create migration plan: %v", err)
+		return fmt.Errorf("cannot create migration plan: %w", err)
 	}
 	if target.LessThan(current) {
 		minVersion := w.MinimalEtcdVersion()

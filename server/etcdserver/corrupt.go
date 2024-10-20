@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -95,7 +96,7 @@ func (cm *corruptionChecker) InitialCheck() error {
 
 	h, _, err := cm.hasher.HashByRev(0)
 	if err != nil {
-		return fmt.Errorf("%s failed to fetch hash (%v)", cm.hasher.MemberID(), err)
+		return fmt.Errorf("%s failed to fetch hash (%w)", cm.hasher.MemberID(), err)
 	}
 	peers := cm.hasher.PeerHashByRev(h.Revision)
 	mismatch := 0
@@ -127,8 +128,8 @@ func (cm *corruptionChecker) InitialCheck() error {
 		}
 
 		if p.err != nil {
-			switch p.err {
-			case rpctypes.ErrFutureRev:
+			switch {
+			case errors.Is(p.err, rpctypes.ErrFutureRev):
 				cm.lg.Warn(
 					"cannot fetch hash from slow remote peer",
 					zap.String("local-member-id", cm.hasher.MemberID().String()),
@@ -139,7 +140,7 @@ func (cm *corruptionChecker) InitialCheck() error {
 					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(err),
 				)
-			case rpctypes.ErrCompacted:
+			case errors.Is(p.err, rpctypes.ErrCompacted):
 				cm.lg.Warn(
 					"cannot fetch hash from remote peer; local member is behind",
 					zap.String("local-member-id", cm.hasher.MemberID().String()),
@@ -150,7 +151,7 @@ func (cm *corruptionChecker) InitialCheck() error {
 					zap.Strings("remote-peer-endpoints", p.eps),
 					zap.Error(err),
 				)
-			case rpctypes.ErrClusterIDMismatch:
+			case errors.Is(p.err, rpctypes.ErrClusterIDMismatch):
 				cm.lg.Warn(
 					"cluster ID mismatch",
 					zap.String("local-member-id", cm.hasher.MemberID().String()),

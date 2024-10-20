@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"errors"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -40,11 +41,11 @@ func NewKvProxy(c *clientv3.Client) (pb.KVServer, <-chan struct{}) {
 func (p *kvProxy) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if r.Serializable {
 		resp, err := p.cache.Get(r)
-		switch err {
-		case nil:
+		switch {
+		case err == nil:
 			cacheHits.Inc()
 			return resp, nil
-		case cache.ErrCompacted:
+		case errors.Is(err, cache.ErrCompacted):
 			cacheHits.Inc()
 			return nil, err
 		}
