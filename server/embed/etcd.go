@@ -152,7 +152,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		memberInitialized = false
 		urlsmap, token, err = cfg.PeerURLsMapAndToken("etcd")
 		if err != nil {
-			return e, fmt.Errorf("error setting up initial cluster: %v", err)
+			return e, fmt.Errorf("error setting up initial cluster: %w", err)
 		}
 	}
 
@@ -907,7 +907,7 @@ func parseCompactionRetention(mode, retention string) (ret time.Duration, err er
 		// periodic compaction
 		ret, err = time.ParseDuration(retention)
 		if err != nil {
-			return 0, fmt.Errorf("error parsing CompactionRetention: %v", err)
+			return 0, fmt.Errorf("error parsing CompactionRetention: %w", err)
 		}
 	}
 	return ret, nil

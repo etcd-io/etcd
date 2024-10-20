@@ -63,11 +63,11 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	}
 
 	if terr := fileutil.TouchDirAll(cfg.Logger, cfg.DataDir); terr != nil {
-		return nil, fmt.Errorf("cannot access data directory: %v", terr)
+		return nil, fmt.Errorf("cannot access data directory: %w", terr)
 	}
 
 	if terr := fileutil.TouchDirAll(cfg.Logger, cfg.MemberDir()); terr != nil {
-		return nil, fmt.Errorf("cannot access member directory: %v", terr)
+		return nil, fmt.Errorf("cannot access member directory: %w", terr)
 	}
 	ss := bootstrapSnapshot(cfg)
 	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.PeerDialTimeout())
@@ -85,7 +85,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 
 	if haveWAL {
 		if err = fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
-			return nil, fmt.Errorf("cannot write to WAL directory: %v", err)
+			return nil, fmt.Errorf("cannot write to WAL directory: %w", err)
 		}
 		bwal = bootstrapWALFromSnapshot(cfg, backend.snapshot)
 	}
@@ -296,10 +296,10 @@ func bootstrapExistingClusterNoWAL(cfg config.ServerConfig, prt http.RoundTrippe
 	}
 	existingCluster, gerr := GetClusterFromRemotePeers(cfg.Logger, getRemotePeerURLs(cl, cfg.Name), prt)
 	if gerr != nil {
-		return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %v", gerr)
+		return nil, fmt.Errorf("cannot fetch cluster info from peer urls: %w", gerr)
 	}
 	if err := membership.ValidateClusterAndAssignIDs(cfg.Logger, cl, existingCluster); err != nil {
-		return nil, fmt.Errorf("error validating peerURLs %s: %v", existingCluster, err)
+		return nil, fmt.Errorf("error validating peerURLs %s: %w", existingCluster, err)
 	}
 	if !isCompatibleWithCluster(cfg.Logger, cl, cl.MemberByName(cfg.Name).ID, prt, cfg.ReqTimeout()) {
 		return nil, fmt.Errorf("incompatible with current running cluster")
@@ -363,7 +363,7 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 
 func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*bootstrappedCluster, error) {
 	if err := fileutil.IsDirWriteable(cfg.MemberDir()); err != nil {
-		return nil, fmt.Errorf("cannot write to member directory: %v", err)
+		return nil, fmt.Errorf("cannot write to member directory: %w", err)
 	}
 
 	if cfg.ShouldDiscover() {

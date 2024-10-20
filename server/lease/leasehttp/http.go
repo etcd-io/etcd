@@ -197,7 +197,7 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 
 	lresp := &pb.LeaseKeepAliveResponse{}
 	if err := lresp.Unmarshal(b); err != nil {
-		return -1, fmt.Errorf(`lease: %v. data = "%s"`, err, b)
+		return -1, fmt.Errorf(`lease: %w. data = "%s"`, err, b)
 	}
 	if lresp.ID != int64(id) {
 		return -1, fmt.Errorf("lease: renew id mismatch")
@@ -254,7 +254,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 
 	lresp := &leasepb.LeaseInternalResponse{}
 	if err := lresp.Unmarshal(b); err != nil {
-		return nil, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
+		return nil, fmt.Errorf(`lease: %w. data = "%s"`, err, string(b))
 	}
 	if lresp.LeaseTimeToLiveResponse.ID != int64(id) {
 		return nil, fmt.Errorf("lease: TTL id mismatch")
