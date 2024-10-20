@@ -1,0 +1,18 @@
+[
+	{
+		"project": "sigs.k8s.io/yaml",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License"
+			}
+		]
+	},
+	{
+		"project": "github.com/inconshreveable/mousetrap",
+		"licenses": [
+			{
+				"type": "Apache License 2.0"
+			}
+		]
+	}
+]

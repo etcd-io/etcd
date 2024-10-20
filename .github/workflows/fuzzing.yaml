@@ -1,0 +1,26 @@
+---
+name: Fuzzing v3rpc
+on: [push, pull_request]
+permissions: read-all
+jobs:
+  fuzzing:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    env:
+      TARGET_PATH: ./server/etcdserver/api/v3rpc
+    steps:
+      - uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+      - id: goversion
+        run: echo "goversion=$(cat .go-version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: ${{ steps.goversion.outputs.goversion }}
+      - run: |
+          set -euo pipefail
+
+          GOARCH=amd64 CPU=4 make fuzz
+      - uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        if: failure()
+        with:
+          path: "${{env.TARGET_PATH}}/testdata/fuzz/**/*"
