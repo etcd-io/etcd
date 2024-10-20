@@ -16,6 +16,7 @@ package clientv3
 
 import (
 	"context"
+	"errors"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -52,7 +53,8 @@ func (rp retryPolicy) String() string {
 // handle itself even with retries.
 func isSafeRetryImmutableRPC(err error) bool {
 	eErr := rpctypes.Error(err)
-	if serverErr, ok := eErr.(rpctypes.EtcdError); ok && serverErr.Code() != codes.Unavailable {
+	var serverErr rpctypes.EtcdError
+	if errors.As(eErr, &serverErr) && serverErr.Code() != codes.Unavailable {
 		// interrupted by non-transient server-side or gRPC-side error
 		// client cannot handle itself (e.g. rpctypes.ErrCompacted)
 		return false

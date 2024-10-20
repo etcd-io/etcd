@@ -15,6 +15,7 @@
 package transport
 
 import (
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -57,7 +58,8 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 		t.Fatal("wait timeout")
 	}
 
-	if operr, ok := err.(*net.OpError); !ok || operr.Op != "write" || !operr.Timeout() {
+	var operr *net.OpError
+	if !errors.As(err, &operr) || operr.Op != "write" || !operr.Timeout() {
 		t.Errorf("err = %v, want write i/o timeout error", err)
 	}
 
@@ -77,7 +79,7 @@ func TestReadWriteTimeoutDialer(t *testing.T) {
 		t.Fatal("wait timeout")
 	}
 
-	if operr, ok := err.(*net.OpError); !ok || operr.Op != "read" || !operr.Timeout() {
+	if !errors.As(err, &operr) || operr.Op != "read" || !operr.Timeout() {
 		t.Errorf("err = %v, want read i/o timeout error", err)
 	}
 }

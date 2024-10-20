@@ -15,6 +15,7 @@
 package rpctypes
 
 import (
+	"errors"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -24,19 +25,20 @@ import (
 func TestConvert(t *testing.T) {
 	e1 := status.Error(codes.InvalidArgument, "etcdserver: key is not provided")
 	e2 := ErrGRPCEmptyKey
-	e3 := ErrEmptyKey
+	var e3 EtcdError
+	errors.As(ErrEmptyKey, &e3)
 
 	if e1.Error() != e2.Error() {
 		t.Fatalf("expected %q == %q", e1.Error(), e2.Error())
 	}
-	if ev1, ok := status.FromError(e1); ok && ev1.Code() != e3.(EtcdError).Code() {
-		t.Fatalf("expected them to be equal, got %v / %v", ev1.Code(), e3.(EtcdError).Code())
+	if ev1, ok := status.FromError(e1); ok && ev1.Code() != e3.Code() {
+		t.Fatalf("expected them to be equal, got %v / %v", ev1.Code(), e3.Code())
 	}
 
 	if e1.Error() == e3.Error() {
 		t.Fatalf("expected %q != %q", e1.Error(), e3.Error())
 	}
-	if ev2, ok := status.FromError(e2); ok && ev2.Code() != e3.(EtcdError).Code() {
-		t.Fatalf("expected them to be equal, got %v / %v", ev2.Code(), e3.(EtcdError).Code())
+	if ev2, ok := status.FromError(e2); ok && ev2.Code() != e3.Code() {
+		t.Fatalf("expected them to be equal, got %v / %v", ev2.Code(), e3.Code())
 	}
 }

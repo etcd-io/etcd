@@ -16,6 +16,7 @@ package leasing
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -282,7 +283,8 @@ func (lkv *leasingKV) acquire(ctx context.Context, key string, op v3.Op) (*v3.Tx
 			return resp, nil
 		}
 		// retry if transient error
-		if _, ok := err.(rpctypes.EtcdError); ok {
+		var serverErr rpctypes.EtcdError
+		if errors.As(err, &serverErr) {
 			return nil, err
 		}
 		if ev, ok := status.FromError(err); ok && ev.Code() != codes.Unavailable {

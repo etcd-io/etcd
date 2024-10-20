@@ -85,12 +85,12 @@ func startMockServersUnix(count int) (ms *MockServers, err error) {
 	for i := 0; i < count; i++ {
 		f, err := os.CreateTemp(dir, "etcd-unix-so-")
 		if err != nil {
-			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %v", err)
+			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %w", err)
 		}
 		fn := f.Name()
 		err = os.Remove(fn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to remove temp file before creating unix socket: %v", err)
+			return nil, fmt.Errorf("failed to remove temp file before creating unix socket: %w", err)
 		}
 		addrs = append(addrs, fn)
 	}
@@ -110,7 +110,7 @@ func startMockServers(network string, addrs []string) (ms *MockServers, err erro
 	for idx, addr := range addrs {
 		ln, err := net.Listen(network, addr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to listen %v", err)
+			return nil, fmt.Errorf("failed to listen %w", err)
 		}
 		ms.Servers[idx] = &MockServer{ln: ln, Network: network, Address: ln.Addr().String()}
 		ms.StartAt(idx)
@@ -126,7 +126,7 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	if ms.Servers[idx].ln == nil {
 		ms.Servers[idx].ln, err = net.Listen(ms.Servers[idx].Network, ms.Servers[idx].Address)
 		if err != nil {
-			return fmt.Errorf("failed to listen %v", err)
+			return fmt.Errorf("failed to listen %w", err)
 		}
 	}
 

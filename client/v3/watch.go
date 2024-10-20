@@ -395,7 +395,7 @@ func (w *watcher) Close() (err error) {
 		}
 	}
 	// Consider context.Canceled as a successful close
-	if err == context.Canceled {
+	if errors.Is(err, context.Canceled) {
 		err = nil
 	}
 	return err
@@ -653,7 +653,7 @@ func (w *watchGRPCStream) run() {
 
 		// watch client failed on Recv; spawn another if possible
 		case err := <-w.errc:
-			if isHaltErr(w.ctx, err) || ContextError(w.ctx, err) == v3rpc.ErrNoLeader {
+			if isHaltErr(w.ctx, err) || errors.Is(ContextError(w.ctx, err), v3rpc.ErrNoLeader) {
 				closeErr = err
 				return
 			}
