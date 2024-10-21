@@ -42,6 +42,10 @@ import (
 
 const (
 	defaultEntryTypes string = "Normal,ConfigChange"
+	methodSync        string = "SYNC"
+	methodQGet        string = "QGET"
+	methodDelete      string = "DELETE"
+	methodRandom      string = "RANDOM"
 )
 
 func main() {
@@ -293,9 +297,9 @@ func printRequest(entry raftpb.Entry) {
 		switch r.Method {
 		case "":
 			fmt.Print("\tnoop")
-		case "SYNC":
+		case methodSync:
 			fmt.Printf("\tmethod=SYNC time=%q", time.Unix(0, r.Time).UTC())
-		case "QGET", "DELETE":
+		case methodQGet, methodDelete:
 			fmt.Printf("\tmethod=%s path=%s", r.Method, excerpt(r.Path, 64, 64))
 		default:
 			fmt.Printf("\tmethod=%s path=%s val=%s", r.Method, excerpt(r.Path, 64, 64), excerpt(r.Val, 128, 0))

@@ -53,7 +53,7 @@ func TestNewTimeoutTransport(t *testing.T) {
 	}
 
 	// ensure not reuse timeout connection
-	req, err := http.NewRequest("GET", srv.URL, nil)
+	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
 	require.NoError(t, err)
 	resp, err := tr.RoundTrip(req)
 	require.NoError(t, err)

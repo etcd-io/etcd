@@ -16,6 +16,7 @@ package etcdserver
 
 import (
 	"encoding/json"
+	"net/http"
 	"path"
 
 	"github.com/coreos/go-semver/semver"
@@ -26,7 +27,7 @@ import (
 )
 
 func (s *EtcdServer) applyV2Request(r *RequestV2, shouldApplyV3 membership.ShouldApplyV3) {
-	if r.Method != "PUT" || (!storeMemberAttributeRegexp.MatchString(r.Path) && r.Path != membership.StoreClusterVersionKey()) {
+	if r.Method != http.MethodPut || (!storeMemberAttributeRegexp.MatchString(r.Path) && r.Path != membership.StoreClusterVersionKey()) {
 		s.lg.Panic("detected disallowed v2 WAL for stage --v2-deprecation=write-only", zap.String("method", r.Method))
 	}
 	if storeMemberAttributeRegexp.MatchString(r.Path) {

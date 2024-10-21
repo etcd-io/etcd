@@ -31,6 +31,7 @@ linters:
     - unconvert # Remove unnecessary type conversions
     - unparam
     - unused
+    - usestdlibvars
     - whitespace
 linters-settings: # please keep this alphabetized
   goimports:

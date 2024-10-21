@@ -533,7 +533,7 @@ func TestRedirectedHTTPAction(t *testing.T) {
 	act := &redirectedHTTPAction{
 		action: &staticHTTPAction{
 			request: http.Request{
-				Method: "DELETE",
+				Method: http.MethodDelete,
 				URL: &url.URL{
 					Scheme: "https",
 					Host:   "foo.example.com",
@@ -549,7 +549,7 @@ func TestRedirectedHTTPAction(t *testing.T) {
 	}
 
 	want := &http.Request{
-		Method: "DELETE",
+		Method: http.MethodDelete,
 		URL: &url.URL{
 			Scheme: "https",
 			Host:   "bar.example.com",

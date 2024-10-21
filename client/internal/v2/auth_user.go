@@ -74,11 +74,11 @@ type httpAuthAPI struct {
 }
 
 func (s *httpAuthAPI) Enable(ctx context.Context) error {
-	return s.enableDisable(ctx, &authAPIAction{"PUT"})
+	return s.enableDisable(ctx, &authAPIAction{http.MethodPut})
 }
 
 func (s *httpAuthAPI) Disable(ctx context.Context) error {
-	return s.enableDisable(ctx, &authAPIAction{"DELETE"})
+	return s.enableDisable(ctx, &authAPIAction{http.MethodDelete})
 }
 
 func (s *httpAuthAPI) enableDisable(ctx context.Context, req httpAction) error {
@@ -217,7 +217,7 @@ func (u *httpAuthUserAPI) AddUser(ctx context.Context, username string, password
 		Password: password,
 	}
 	return u.addRemoveUser(ctx, &authUserAPIAction{
-		verb:     "PUT",
+		verb:     http.MethodPut,
 		username: username,
 		user:     user,
 	})
@@ -225,7 +225,7 @@ func (u *httpAuthUserAPI) AddUser(ctx context.Context, username string, password
 
 func (u *httpAuthUserAPI) RemoveUser(ctx context.Context, username string) error {
 	return u.addRemoveUser(ctx, &authUserAPIAction{
-		verb:     "DELETE",
+		verb:     http.MethodDelete,
 		username: username,
 	})
 }
@@ -248,7 +248,7 @@ func (u *httpAuthUserAPI) addRemoveUser(ctx context.Context, req *authUserAPIAct
 
 func (u *httpAuthUserAPI) GetUser(ctx context.Context, username string) (*User, error) {
 	return u.modUser(ctx, &authUserAPIAction{
-		verb:     "GET",
+		verb:     http.MethodGet,
 		username: username,
 	})
 }
@@ -259,7 +259,7 @@ func (u *httpAuthUserAPI) GrantUser(ctx context.Context, username string, roles 
 		Grant: roles,
 	}
 	return u.modUser(ctx, &authUserAPIAction{
-		verb:     "PUT",
+		verb:     http.MethodPut,
 		username: username,
 		user:     user,
 	})
@@ -271,7 +271,7 @@ func (u *httpAuthUserAPI) RevokeUser(ctx context.Context, username string, roles
 		Revoke: roles,
 	}
 	return u.modUser(ctx, &authUserAPIAction{
-		verb:     "PUT",
+		verb:     http.MethodPut,
 		username: username,
 		user:     user,
 	})
@@ -283,7 +283,7 @@ func (u *httpAuthUserAPI) ChangePassword(ctx context.Context, username string, p
 		Password: password,
 	}
 	return u.modUser(ctx, &authUserAPIAction{
-		verb:     "PUT",
+		verb:     http.MethodPut,
 		username: username,
 		user:     user,
 	})

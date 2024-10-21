@@ -139,10 +139,10 @@ func appendNormalRequestEnts(ents *[]raftpb.Entry) {
 
 	requests := []etcdserverpb.Request{
 		{ID: 0, Method: "", Path: "/path0", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: true, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 1, Method: "QGET", Path: "/path1", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 2, Method: "SYNC", Path: "/path2", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 3, Method: "DELETE", Path: "/path3", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &a, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
-		{ID: 4, Method: "RANDOM", Path: "/path4/superlong" + strings.Repeat("/path", 30), Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
+		{ID: 1, Method: methodQGet, Path: "/path1", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 9, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
+		{ID: 2, Method: methodSync, Path: "/path2", Val: "{\"0\":\"1\",\"2\":[\"3\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
+		{ID: 3, Method: methodDelete, Path: "/path3", Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &a, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
+		{ID: 4, Method: methodRandom, Path: "/path4/superlong" + strings.Repeat("/path", 30), Val: "{\"hey\":\"ho\",\"hi\":[\"yo\"]}", Dir: false, PrevValue: "", PrevIndex: 0, PrevExist: &b, Expiration: 2, Wait: false, Since: 1, Recursive: false, Sorted: false, Quorum: false, Time: 1, Stream: false, Refresh: &b},
 	}
 
 	for i, request := range requests {

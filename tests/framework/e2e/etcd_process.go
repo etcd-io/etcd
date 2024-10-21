@@ -363,7 +363,7 @@ func (f *BinaryFailpoints) SetupHTTP(ctx context.Context, failpoint, payload str
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "PUT", failpointURL.String(), bytes.NewBuffer([]byte(payload)))
+	r, err := http.NewRequestWithContext(ctx, http.MethodPut, failpointURL.String(), bytes.NewBuffer([]byte(payload)))
 	if err != nil {
 		return err
 	}
@@ -395,7 +395,7 @@ func (f *BinaryFailpoints) DeactivateHTTP(ctx context.Context, failpoint string)
 		Host:   host,
 		Path:   failpoint,
 	}
-	r, err := http.NewRequestWithContext(ctx, "DELETE", failpointURL.String(), nil)
+	r, err := http.NewRequestWithContext(ctx, http.MethodDelete, failpointURL.String(), nil)
 	if err != nil {
 		return err
 	}
