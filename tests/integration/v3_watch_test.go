@@ -1514,7 +1514,7 @@ func TestV3WatchProgressWaitsForSyncNoEvents(t *testing.T) {
 			break
 		}
 	}
-	require.True(t, gotProgressNotification, "Expected to get progress notification")
+	require.Truef(t, gotProgressNotification, "Expected to get progress notification")
 }
 
 // TestV3NoEventsLostOnCompact verifies that slow watchers exit with compacted watch response

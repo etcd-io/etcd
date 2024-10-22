@@ -40,12 +40,12 @@ func AssertNotNil(t *testing.T, v any) {
 // Deprecated: use github.com/stretchr/testify/assert.True instead.
 func AssertTrue(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	assert.True(t, v, msg)
+	assert.True(t, v, msg) //nolint:testifylint
 }
 
 // AssertFalse
 // Deprecated: use github.com/stretchr/testify/assert.False instead.
 func AssertFalse(t *testing.T, v bool, msg ...string) {
 	t.Helper()
-	assert.False(t, v, msg)
+	assert.False(t, v, msg) //nolint:testifylint
 }

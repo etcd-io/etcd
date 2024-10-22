@@ -102,7 +102,7 @@ func TestReproduce17780(t *testing.T) {
 		resp, err := cli.Get(ctx, fmt.Sprintf("%d", next))
 		require.NoError(t, err)
 
-		assert.GreaterOrEqual(t, resp.Header.Revision, int64(expectedRevision),
-			fmt.Sprintf("LeaderIdx: %d, Current: %d", leaderIdx, procIdx))
+		assert.GreaterOrEqualf(t, resp.Header.Revision, int64(expectedRevision),
+			"LeaderIdx: %d, Current: %d", leaderIdx, procIdx)
 	}
 }

@@ -78,7 +78,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.NoError(t, w.Close())
 
 	// repair the wal
-	require.True(t, Repair(lg, p), "'Repair' returned 'false', want 'true'")
+	require.True(t, Repair(lg, p))
 
 	// verify the broken wal has correct permissions
 	bf := filepath.Join(p, filepath.Base(w.tail().Name())+".broken")
@@ -86,7 +86,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.NoError(t, err)
 	expectedPerms := fmt.Sprintf("%o", os.FileMode(fileutil.PrivateFileMode))
 	actualPerms := fmt.Sprintf("%o", fi.Mode().Perm())
-	require.Equal(t, expectedPerms, actualPerms, "unexpected file permissions on .broken wal")
+	require.Equalf(t, expectedPerms, actualPerms, "unexpected file permissions on .broken wal")
 
 	// read it back
 	w, err = Open(lg, p, walpb.Snapshot{})

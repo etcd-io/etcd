@@ -133,8 +133,8 @@ func TestTLSMinMaxVersion(t *testing.T) {
 				TLS:         cc,
 			})
 			if cerr != nil {
-				assert.True(t, tt.expectError, "got TLS handshake error while expecting success: %v", cerr)
-				assert.Equal(t, context.DeadlineExceeded, cerr, "expected %v with TLS handshake failure, got %v", context.DeadlineExceeded, cerr)
+				assert.Truef(t, tt.expectError, "got TLS handshake error while expecting success: %v", cerr)
+				assert.Equal(t, context.DeadlineExceeded, cerr)
 				return
 			}
 

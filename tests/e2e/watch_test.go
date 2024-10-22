@@ -447,11 +447,11 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 
 						last := receivedEvents[prevEventCount-1]
 
-						assert.Equal(t, last.Type, ev.Type,
+						assert.Equalf(t, last.Type, ev.Type,
 							"last received event type %s, but got event type %s", last.Type, ev.Type)
-						assert.Equal(t, string(last.Kv.Key), string(ev.Kv.Key),
+						assert.Equalf(t, string(last.Kv.Key), string(ev.Kv.Key),
 							"last received event key %s, but got event key %s", string(last.Kv.Key), string(ev.Kv.Key))
-						assert.Equal(t, string(last.Kv.Value), string(ev.Kv.Value),
+						assert.Equalf(t, string(last.Kv.Value), string(ev.Kv.Value),
 							"last received event value %s, but got event value %s", string(last.Kv.Value), string(ev.Kv.Value))
 						continue
 					}
@@ -473,11 +473,11 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 
 	t.Logf("Received total number of events: %d", len(receivedEvents))
 	require.Len(t, requestedValues, totalRev)
-	require.Len(t, receivedEvents, totalRev, "should receive %d events", totalRev)
+	require.Lenf(t, receivedEvents, totalRev, "should receive %d events", totalRev)
 	for idx, expected := range requestedValues {
 		ev := receivedEvents[idx]
 
-		require.Equal(t, expected.typ, ev.Type, "#%d expected event %s", idx, expected.typ)
+		require.Equalf(t, expected.typ, ev.Type, "#%d expected event %s", idx, expected.typ)
 
 		updatedKey := string(ev.Kv.Key)
 

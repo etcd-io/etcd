@@ -71,10 +71,10 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("2s")`}),
 	)
-	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+	require.NoErrorf(t, err, "failed to start etcd cluster")
 	defer func() {
 		derr := epc.Close()
-		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+		require.NoErrorf(t, derr, "failed to close etcd cluster")
 	}()
 
 	t.Log("Adding and then removing a learner")

@@ -382,8 +382,7 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 				tc.request.Header = &pb.RequestHeader{Username: userReadOnly}
 			}
 			result := authApplier.Apply(tc.request, dummyApplyFunc)
-			require.Equal(t, errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded,
-				"Admin permission needed: got %v, expect: %v", errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded)
+			require.Equalf(t, errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded, "Admin permission needed")
 		})
 	}
 }
@@ -783,28 +782,28 @@ func TestAuthApplierV3_RoleGet(t *testing.T) {
 
 func TestCheckLeasePutsKeys(t *testing.T) {
 	aa := defaultAuthApplierV3(t)
-	assert.NoError(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
+	assert.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is disabled, should allow puts")
 	mustCreateRolesAndEnableAuth(t, aa)
 	aa.authInfo = auth.AuthInfo{Username: "root"}
-	assert.NoError(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
+	assert.NoErrorf(t, aa.checkLeasePutsKeys(lease.NewLease(lease.LeaseID(1), 3600)), "auth is enabled, should allow puts for root")
 
 	l := lease.NewLease(lease.LeaseID(1), 3600)
 	l.SetLeaseItem(lease.LeaseItem{Key: "a"})
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 0}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
+	assert.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrUserEmpty, "auth is enabled, should not allow bob, non existing at rev 0")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: 1}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
+	assert.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrAuthOldRevision, "auth is enabled, old revision")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
+	assert.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob does not have permissions, bob does not exist")
 	_, err := aa.as.UserAdd(&pb.AuthUserAddRequest{Name: "bob", Options: &authpb.UserAddOptions{NoPassword: true}})
-	assert.NoError(t, err, "bob should be added without error")
+	assert.NoErrorf(t, err, "bob should be added without error")
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.ErrorIs(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
+	assert.ErrorIsf(t, aa.checkLeasePutsKeys(l), auth.ErrPermissionDenied, "auth is enabled, bob exists yet does not have permissions")
 
 	// allow bob to access "a"
 	_, err = aa.as.RoleAdd(&pb.AuthRoleAddRequest{Name: "bobsrole"})
-	assert.NoError(t, err, "bobsrole should be added without error")
+	assert.NoErrorf(t, err, "bobsrole should be added without error")
 	_, err = aa.as.RoleGrantPermission(&pb.AuthRoleGrantPermissionRequest{
 		Name: "bobsrole",
 		Perm: &authpb.Permission{
@@ -813,13 +812,13 @@ func TestCheckLeasePutsKeys(t *testing.T) {
 			RangeEnd: nil,
 		},
 	})
-	assert.NoError(t, err, "bobsrole should be granted permissions without error")
+	assert.NoErrorf(t, err, "bobsrole should be granted permissions without error")
 	_, err = aa.as.UserGrantRole(&pb.AuthUserGrantRoleRequest{
 		User: "bob",
 		Role: "bobsrole",
 	})
-	assert.NoError(t, err, "bob should be granted bobsrole without error")
+	assert.NoErrorf(t, err, "bob should be granted bobsrole without error")
 
 	aa.authInfo = auth.AuthInfo{Username: "bob", Revision: aa.as.Revision()}
-	assert.NoError(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
+	assert.NoErrorf(t, aa.checkLeasePutsKeys(l), "bob should be able to access key 'a'")
 }

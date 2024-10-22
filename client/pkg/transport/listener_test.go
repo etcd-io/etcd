@@ -511,7 +511,7 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 	}
 	testNewListenerTLSInfoAccept(t, tlsinfo)
 
-	assert.Panics(t, func() {
+	assert.Panicsf(t, func() {
 		SelfCert(nil, tmpdir, []string{"127.0.0.1"}, 1)
 	}, "expected panic with nil log")
 }
