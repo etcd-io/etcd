@@ -120,4 +120,9 @@ linters-settings: # please keep this alphabetized
       # there is no variable-length variables, i.e. require require.NoErrorf for both cases below:
       # require.NoErrorf(t, err, "whatever message")
       # require.NoErrorf(t, err, "whatever message: %v", v)
+      #
+      # Note from golang programming perspective, we still prefer non-f-functions (i.e. fmt.Print)
+      # to f-functions (i.e. fmt.Printf) when there is no variable-length parameters. It's accepted
+      # to always require f-functions for stretchr/testify, but not for golang standard lib.
+      # Also refer to https://github.com/etcd-io/etcd/pull/18741#issuecomment-2422395914
       require-f-funcs: true
