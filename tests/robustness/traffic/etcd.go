@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -98,7 +99,7 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -142,6 +143,35 @@ func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter
 			lastRev = rev
 		}
 		limiter.Wait(ctx)
+	}
+}
+
+func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
+	var lastRev int64 = 2
+	timer := time.NewTimer(period)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		case <-timer.C:
+		}
+		timer.Reset(period)
+		statusCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := c.Status(statusCtx, c.Endpoints()[0])
+		cancel()
+		if err != nil {
+			continue
+		}
+
+		// Range allows for both revision has been compacted and future revision errors
+		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
+		_, err = c.Compact(ctx, compactRev)
+		if err != nil {
+			continue
+		}
+		lastRev = compactRev
 	}
 }
 

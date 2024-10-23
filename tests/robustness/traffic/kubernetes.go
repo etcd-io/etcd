@@ -19,7 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
@@ -57,7 +59,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -206,6 +208,62 @@ func (t kubernetesTraffic) Watch(ctx context.Context, kc *kubernetesClient, s *s
 
 func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
+}
+
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}) {
+	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
+	var compactTime int64
+	var rev int64
+	var err error
+	for {
+		select {
+		case <-time.After(interval):
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		}
+
+		compactTime, rev, err = compact(ctx, c, compactTime, rev)
+		if err != nil {
+			continue
+		}
+	}
+}
+
+// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L30
+const (
+	compactRevKey = "compact_rev_key"
+)
+
+func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) (int64, int64, error) {
+	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L133-L162
+	// TODO: Use Version and not ModRevision when model supports key versioning.
+	resp, err := client.Txn(ctx,
+		[]clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(compactRevKey), "=", t)},
+		[]clientv3.Op{clientv3.OpPut(compactRevKey, strconv.FormatInt(rev, 10))},
+		[]clientv3.Op{clientv3.OpGet(compactRevKey)},
+	)
+	if err != nil {
+		return t, rev, err
+	}
+
+	curRev := resp.Header.Revision
+
+	if !resp.Succeeded {
+		// TODO: Use Version and not ModRevision when model supports key versioning.
+		curTime := resp.Responses[0].GetResponseRange().Kvs[0].ModRevision
+		return curTime, curRev, nil
+	}
+	curTime := t + 1
+
+	if rev == 0 {
+		return curTime, curRev, nil
+	}
+	if _, err = client.Compact(ctx, rev); err != nil {
+		return curTime, curRev, err
+	}
+	return curTime, curRev, nil
 }
 
 type KubernetesRequestType string
