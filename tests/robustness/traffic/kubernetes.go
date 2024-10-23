@@ -39,10 +39,9 @@ var (
 		namespace:       "default",
 		// Please keep the sum of weights equal 1000.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-			{Choice: KubernetesUpdate, Weight: 875},
-			{Choice: KubernetesDelete, Weight: 50},
-			{Choice: KubernetesCreate, Weight: 50},
-			{Choice: KubernetesCompact, Weight: 25},
+			{Choice: KubernetesUpdate, Weight: 90},
+			{Choice: KubernetesDelete, Weight: 5},
+			{Choice: KubernetesCreate, Weight: 5},
 		},
 	}
 )
@@ -52,21 +51,6 @@ type kubernetesTraffic struct {
 	resource        string
 	namespace       string
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
-}
-
-func (t kubernetesTraffic) WithoutCompact() Traffic {
-	wcs := make([]random.ChoiceWeight[KubernetesRequestType], 0, len(t.writeChoices))
-	for _, wc := range t.writeChoices {
-		if wc.Choice != KubernetesCompact {
-			wcs = append(wcs, wc)
-		}
-	}
-	return kubernetesTraffic{
-		averageKeyCount: t.averageKeyCount,
-		resource:        t.resource,
-		namespace:       t.namespace,
-		writeChoices:    wcs,
-	}
 }
 
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
@@ -182,8 +166,6 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestID()), rev)
 			case KubernetesCreate:
 				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestID()))
-			case KubernetesCompact:
-				err = kc.Compact(writeCtx, rev)
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
@@ -229,10 +211,9 @@ func (t kubernetesTraffic) generateKey() string {
 type KubernetesRequestType string
 
 const (
-	KubernetesDelete  KubernetesRequestType = "delete"
-	KubernetesUpdate  KubernetesRequestType = "update"
-	KubernetesCreate  KubernetesRequestType = "create"
-	KubernetesCompact KubernetesRequestType = "compact"
+	KubernetesDelete KubernetesRequestType = "delete"
+	KubernetesUpdate KubernetesRequestType = "update"
+	KubernetesCreate KubernetesRequestType = "create"
 )
 
 type kubernetesClient struct {
@@ -269,11 +250,6 @@ func (k kubernetesClient) RequestProgress(ctx context.Context) error {
 	// present in the cluster:
 	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L87
 	return k.client.RequestProgress(clientv3.WithRequireLeader(ctx))
-}
-
-func (k kubernetesClient) Compact(ctx context.Context, rev int64) error {
-	_, err := k.client.Compact(ctx, rev)
-	return err
 }
 
 // Kubernetes optimistically assumes that key didn't change since it was last observed, so it executes operations within a transaction conditioned on key not changing.

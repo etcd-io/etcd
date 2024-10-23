@@ -28,6 +28,10 @@ func RandString(size int) string {
 	return data.String()
 }
 
+func RandRange(start, end int64) int64 {
+	return rand.Int63n(end-start) + start
+}
+
 type ChoiceWeight[T any] struct {
 	Choice T
 	Weight int
