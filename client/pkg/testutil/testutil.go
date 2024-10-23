@@ -30,6 +30,7 @@ func WaitSchedule() {
 }
 
 func MustNewURLs(t *testing.T, urls []string) []url.URL {
+	t.Helper()
 	if urls == nil {
 		return nil
 	}
@@ -42,6 +43,7 @@ func MustNewURLs(t *testing.T, urls []string) []url.URL {
 }
 
 func MustNewURL(t *testing.T, s string) *url.URL {
+	t.Helper()
 	u, err := url.Parse(s)
 	if err != nil {
 		t.Fatalf("parse %v error: %v", s, err)
@@ -51,6 +53,7 @@ func MustNewURL(t *testing.T, s string) *url.URL {
 
 // FatalStack helps to fatal the test and print out the stacks of all running goroutines.
 func FatalStack(t *testing.T, s string) {
+	t.Helper()
 	stackTrace := make([]byte, 1024*1024)
 	n := runtime.Stack(stackTrace, true)
 	t.Errorf("---> Test failed: %s", s)
