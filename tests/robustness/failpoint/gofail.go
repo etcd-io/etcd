@@ -163,7 +163,7 @@ func (f goPanicFailpoint) Available(config e2e.EtcdProcessClusterConfig, member 
 }
 
 func (f goPanicFailpoint) Name() string {
-	return fmt.Sprintf("%s=panic()", f.failpoint)
+	return fmt.Sprintf("%s=panic", f.failpoint)
 }
 
 type killAndGofailSleep struct {
@@ -198,7 +198,7 @@ func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Lo
 }
 
 func (f killAndGofailSleep) Name() string {
-	return fmt.Sprintf("%s=sleep(%s)", f.failpoint, f.time)
+	return fmt.Sprintf("%s=sleep", f.failpoint)
 }
 
 func (f killAndGofailSleep) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
@@ -236,7 +236,7 @@ func (f gofailSleepAndDeactivate) Inject(ctx context.Context, t *testing.T, lg *
 }
 
 func (f gofailSleepAndDeactivate) Name() string {
-	return fmt.Sprintf("%s=sleep(%s)", f.failpoint, f.time)
+	return fmt.Sprintf("%s=sleep", f.failpoint)
 }
 
 func (f gofailSleepAndDeactivate) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
