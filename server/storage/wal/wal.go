@@ -215,10 +215,10 @@ func Create(lg *zap.Logger, dirpath string, metadata []byte) (*WAL, error) {
 		return nil
 	}
 	start := time.Now()
-	if perr = fileutil.Fsync(pdir); perr != nil {
+	if perr = fileutil.Fdatasync(pdir); perr != nil {
 		dirCloser()
 		lg.Warn(
-			"failed to fsync the parent data directory file",
+			"failed to fdatasync the parent data directory file",
 			zap.String("parent-dir-path", filepath.Dir(w.dir)),
 			zap.String("dir-path", w.dir),
 			zap.Error(perr),
@@ -795,7 +795,7 @@ func (w *WAL) cut() error {
 		return err
 	}
 	start := time.Now()
-	if err = fileutil.Fsync(w.dirFile); err != nil {
+	if err = fileutil.Fdatasync(w.dirFile); err != nil {
 		return err
 	}
 	walFsyncSec.Observe(time.Since(start).Seconds())

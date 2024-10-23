@@ -90,8 +90,8 @@ func Repair(lg *zap.Logger, dirpath string) bool {
 			}
 
 			start := time.Now()
-			if err = fileutil.Fsync(f.File); err != nil {
-				lg.Warn("failed to fsync", zap.String("path", f.Name()), zap.Error(err))
+			if err = fileutil.Fdatasync(f.File); err != nil {
+				lg.Warn("failed to fdatasync", zap.String("path", f.Name()), zap.Error(err))
 				return false
 			}
 			walFsyncSec.Observe(time.Since(start).Seconds())
