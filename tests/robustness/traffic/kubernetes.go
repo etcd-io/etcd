@@ -19,7 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"strconv"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
@@ -39,10 +41,9 @@ var (
 		namespace:       "default",
 		// Please keep the sum of weights equal 1000.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-			{Choice: KubernetesUpdate, Weight: 875},
-			{Choice: KubernetesDelete, Weight: 50},
-			{Choice: KubernetesCreate, Weight: 50},
-			{Choice: KubernetesCompact, Weight: 25},
+			{Choice: KubernetesUpdate, Weight: 90},
+			{Choice: KubernetesDelete, Weight: 5},
+			{Choice: KubernetesCreate, Weight: 5},
 		},
 	}
 )
@@ -54,26 +55,11 @@ type kubernetesTraffic struct {
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
 }
 
-func (t kubernetesTraffic) WithoutCompact() Traffic {
-	wcs := make([]random.ChoiceWeight[KubernetesRequestType], 0, len(t.writeChoices))
-	for _, wc := range t.writeChoices {
-		if wc.Choice != KubernetesCompact {
-			wcs = append(wcs, wc)
-		}
-	}
-	return kubernetesTraffic{
-		averageKeyCount: t.averageKeyCount,
-		resource:        t.resource,
-		namespace:       t.namespace,
-		writeChoices:    wcs,
-	}
-}
-
 func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	kc := &kubernetesClient{client: c}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -182,8 +168,6 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc *kubernetesClient, ids 
 				_, err = kc.OptimisticUpdate(writeCtx, key, fmt.Sprintf("%d", ids.NewRequestID()), rev)
 			case KubernetesCreate:
 				err = kc.OptimisticCreate(writeCtx, t.generateKey(), fmt.Sprintf("%d", ids.NewRequestID()))
-			case KubernetesCompact:
-				err = kc.Compact(writeCtx, rev)
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
@@ -226,13 +210,68 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}) {
+	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
+	var compactTime int64
+	var rev int64
+	var err error
+	for {
+		select {
+		case <-time.After(interval):
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		}
+
+		compactTime, rev, err = compact(ctx, c, compactTime, rev)
+		if err != nil {
+			continue
+		}
+	}
+}
+
+// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L30
+const (
+	compactRevKey = "compact_rev_key"
+)
+
+func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) (int64, int64, error) {
+	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L133-L162
+	// TODO: Use Version and not ModRevision when model supports key versioning.
+	resp, err := client.Txn(ctx,
+		[]clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(compactRevKey), "=", t)},
+		[]clientv3.Op{clientv3.OpPut(compactRevKey, strconv.FormatInt(rev, 10))},
+		[]clientv3.Op{clientv3.OpGet(compactRevKey)},
+	)
+	if err != nil {
+		return t, rev, err
+	}
+
+	curRev := resp.Header.Revision
+
+	if !resp.Succeeded {
+		// TODO: Use Version and not ModRevision when model supports key versioning.
+		curTime := resp.Responses[0].GetResponseRange().Kvs[0].ModRevision
+		return curTime, curRev, nil
+	}
+	curTime := t + 1
+
+	if rev == 0 {
+		return curTime, curRev, nil
+	}
+	if _, err = client.Compact(ctx, rev); err != nil {
+		return curTime, curRev, err
+	}
+	return curTime, curRev, nil
+}
+
 type KubernetesRequestType string
 
 const (
-	KubernetesDelete  KubernetesRequestType = "delete"
-	KubernetesUpdate  KubernetesRequestType = "update"
-	KubernetesCreate  KubernetesRequestType = "create"
-	KubernetesCompact KubernetesRequestType = "compact"
+	KubernetesDelete KubernetesRequestType = "delete"
+	KubernetesUpdate KubernetesRequestType = "update"
+	KubernetesCreate KubernetesRequestType = "create"
 )
 
 type kubernetesClient struct {
@@ -269,11 +308,6 @@ func (k kubernetesClient) RequestProgress(ctx context.Context) error {
 	// present in the cluster:
 	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L87
 	return k.client.RequestProgress(clientv3.WithRequireLeader(ctx))
-}
-
-func (k kubernetesClient) Compact(ctx context.Context, rev int64) error {
-	_, err := k.client.Compact(ctx, rev)
-	return err
 }
 
 // Kubernetes optimistically assumes that key didn't change since it was last observed, so it executes operations within a transaction conditioned on key not changing.

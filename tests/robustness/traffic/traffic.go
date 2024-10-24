@@ -41,12 +41,14 @@ var (
 		MaximalQPS:                     200,
 		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
+		CompactPeriod:                  100 * time.Millisecond,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     200,
 		MaximalQPS:                     1000,
 		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
+		CompactPeriod:                  100 * time.Millisecond,
 	}
 )
 
@@ -57,10 +59,6 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
-
-	if profile.ForbidCompaction {
-		traffic = traffic.WithoutCompact()
-	}
 
 	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
@@ -87,7 +85,39 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
+			traffic.RunTrafficLoop(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
+			mux.Lock()
+			reports = append(reports, c.Report())
+			mux.Unlock()
+		}(c)
+	}
+	if !profile.ForbidCompaction {
+		wg.Add(1)
+		c, nerr := client.NewRecordingClient(endpoints, ids, baseTime)
+		if nerr != nil {
+			t.Fatal(nerr)
+		}
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+
+			traffic.RunCompactLoop(ctx, c, profile.CompactPeriod, finish)
+			mux.Lock()
+			reports = append(reports, c.Report())
+			mux.Unlock()
+		}(c)
+	}
+	if !profile.ForbidCompaction {
+		wg.Add(1)
+		c, nerr := client.NewRecordingClient(endpoints, ids, baseTime)
+		if nerr != nil {
+			t.Fatal(nerr)
+		}
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+
+			traffic.RunCompactLoop(ctx, c, profile.CompactPeriod, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -171,6 +201,7 @@ type Profile struct {
 	MaxNonUniqueRequestConcurrency int
 	ClientCount                    int
 	ForbidCompaction               bool
+	CompactPeriod                  time.Duration
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -179,7 +210,7 @@ func (p Profile) WithoutCompaction() Profile {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	RunTrafficLoop(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{})
 	ExpectUniqueRevision() bool
-	WithoutCompact() Traffic
 }

@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"golang.org/x/time/rate"
 
@@ -45,9 +46,8 @@ var (
 			{Choice: PutWithLease, Weight: 5},
 			{Choice: LeaseRevoke, Weight: 5},
 			{Choice: CompareAndSet, Weight: 5},
-			{Choice: Put, Weight: 18},
+			{Choice: Put, Weight: 20},
 			{Choice: LargePut, Weight: 5},
-			{Choice: Compact, Weight: 2},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
@@ -74,21 +74,6 @@ type etcdTraffic struct {
 	largePutSize int
 }
 
-func (t etcdTraffic) WithoutCompact() Traffic {
-	requests := make([]random.ChoiceWeight[etcdRequestType], 0, len(t.requests))
-	for _, request := range t.requests {
-		if request.Choice != Compact {
-			requests = append(requests, request)
-		}
-	}
-	return etcdTraffic{
-		keyCount:     t.keyCount,
-		requests:     requests,
-		leaseTTL:     t.leaseTTL,
-		largePutSize: t.largePutSize,
-	}
-}
-
 func (t etcdTraffic) ExpectUniqueRevision() bool {
 	return false
 }
@@ -108,14 +93,13 @@ const (
 	LeaseRevoke   etcdRequestType = "leaseRevoke"
 	CompareAndSet etcdRequestType = "compareAndSet"
 	Defragment    etcdRequestType = "defragment"
-	Compact       etcdRequestType = "compact"
 )
 
 func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -159,6 +143,35 @@ func (t etcdTraffic) Run(ctx context.Context, c *client.RecordingClient, limiter
 			lastRev = rev
 		}
 		limiter.Wait(ctx)
+	}
+}
+
+func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
+	var lastRev int64 = 2
+	timer := time.NewTimer(period)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		case <-timer.C:
+		}
+		timer.Reset(period)
+		statusCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := c.Status(statusCtx, c.Endpoints()[0])
+		cancel()
+		if err != nil {
+			continue
+		}
+
+		// Range allows for both revision has been compacted and future revision errors
+		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
+		_, err = c.Compact(ctx, compactRev)
+		if err != nil {
+			continue
+		}
+		lastRev = compactRev
 	}
 }
 
@@ -283,12 +296,6 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	case Defragment:
 		var resp *clientv3.DefragmentResponse
 		resp, err = c.client.Defragment(opCtx)
-		if resp != nil {
-			rev = resp.Header.Revision
-		}
-	case Compact:
-		var resp *clientv3.CompactResponse
-		resp, err = c.client.Compact(opCtx, lastRev)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
