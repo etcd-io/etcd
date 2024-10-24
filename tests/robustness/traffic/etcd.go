@@ -45,9 +45,8 @@ var (
 			{Choice: PutWithLease, Weight: 5},
 			{Choice: LeaseRevoke, Weight: 5},
 			{Choice: CompareAndSet, Weight: 5},
-			{Choice: Put, Weight: 18},
+			{Choice: Put, Weight: 20},
 			{Choice: LargePut, Weight: 5},
-			{Choice: Compact, Weight: 2},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
@@ -74,21 +73,6 @@ type etcdTraffic struct {
 	largePutSize int
 }
 
-func (t etcdTraffic) WithoutCompact() Traffic {
-	requests := make([]random.ChoiceWeight[etcdRequestType], 0, len(t.requests))
-	for _, request := range t.requests {
-		if request.Choice != Compact {
-			requests = append(requests, request)
-		}
-	}
-	return etcdTraffic{
-		keyCount:     t.keyCount,
-		requests:     requests,
-		leaseTTL:     t.leaseTTL,
-		largePutSize: t.largePutSize,
-	}
-}
-
 func (t etcdTraffic) ExpectUniqueRevision() bool {
 	return false
 }
@@ -108,7 +92,6 @@ const (
 	LeaseRevoke   etcdRequestType = "leaseRevoke"
 	CompareAndSet etcdRequestType = "compareAndSet"
 	Defragment    etcdRequestType = "defragment"
-	Compact       etcdRequestType = "compact"
 )
 
 func (t etcdTraffic) Name() string {
@@ -283,12 +266,6 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	case Defragment:
 		var resp *clientv3.DefragmentResponse
 		resp, err = c.client.Defragment(opCtx)
-		if resp != nil {
-			rev = resp.Header.Revision
-		}
-	case Compact:
-		var resp *clientv3.CompactResponse
-		resp, err = c.client.Compact(opCtx, lastRev)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
