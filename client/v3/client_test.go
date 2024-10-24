@@ -192,7 +192,7 @@ func TestBackoffJitterFraction(t *testing.T) {
 	require.NotNil(t, c)
 	defer c.Close()
 
-	require.Equal(t, backoffJitterFraction, c.cfg.BackoffJitterFraction)
+	require.InDelta(t, backoffJitterFraction, c.cfg.BackoffJitterFraction, 0.01)
 }
 
 func TestIsHaltErr(t *testing.T) {
