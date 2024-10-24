@@ -64,7 +64,7 @@ If things go well the second client process invoked as `./client 2` finishes soo
 After checking this, please hit any key for `./client 1` and resume the process. It will show an output like below:
 ```
 resuming client 1
-expected fail to write to storage with old lease version: error: given version (694d82254d5fa305) is different from the existing version (694d82254e18770a)
+expected fail to write to storage with old lease version: error: given version (8) is smaller than the existing version (10)
 ```
 
 [fencing]: https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
