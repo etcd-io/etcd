@@ -115,9 +115,9 @@ func newConfig() *config {
 
 func (cfg *config) parse(arguments []string) error {
 	perr := cfg.cf.flagSet.Parse(arguments)
-	switch perr {
-	case nil:
-	case flag.ErrHelp:
+	switch {
+	case perr == nil:
+	case errors.Is(perr, flag.ErrHelp):
 		fmt.Println(flagsline)
 		os.Exit(0)
 	default:

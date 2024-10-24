@@ -29,7 +29,7 @@ import (
 func getJournalWriteSyncer() (zapcore.WriteSyncer, error) {
 	jw, err := logutil.NewJournalWriter(os.Stderr)
 	if err != nil {
-		return nil, fmt.Errorf("can't find journal (%v)", err)
+		return nil, fmt.Errorf("can't find journal (%w)", err)
 	}
 	return zapcore.AddSync(jw), nil
 }

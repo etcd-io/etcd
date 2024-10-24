@@ -243,7 +243,7 @@ func visitDescriptor(md protoreflect.Descriptor, visitor Visitor) error {
 	}
 	ver, err := etcdVersionFromOptionsString(opts.String())
 	if err != nil {
-		return fmt.Errorf("%s: %s", md.FullName(), err)
+		return fmt.Errorf("%s: %w", md.FullName(), err)
 	}
 	return visitor(md.FullName(), ver)
 }

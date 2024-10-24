@@ -110,7 +110,7 @@ func newProxyFunc(lg *zap.Logger, proxy string) (func(*http.Request) (*url.URL, 
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf("invalid proxy address %q: %v", proxy, err)
+		return nil, fmt.Errorf("invalid proxy address %q: %w", proxy, err)
 	}
 
 	lg.Info("running proxy with discovery", zap.String("proxy-url", proxyURL.String()))
@@ -361,7 +361,8 @@ func (d *discovery) waitNodes(nodes []*client.Node, size uint64, index uint64) (
 		)
 		resp, err := w.Next(context.Background())
 		if err != nil {
-			if ce, ok := err.(*client.ClusterError); ok {
+			var ce *client.ClusterError
+			if errors.As(err, &ce) {
 				d.lg.Warn(
 					"error while waiting for peers",
 					zap.String("discovery-url", d.url.String()),
