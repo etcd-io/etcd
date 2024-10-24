@@ -168,6 +168,8 @@ Clustering:
     Auto compaction retention length. 0 means disable auto compaction.
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
+  --auto-compaction-interval ''
+    Auto compaction interval. Empty means use default based on mode selected.
   --v2-deprecation '` + string(cconfig.V2DeprDefault) + `'
     Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
     Supported values:
