@@ -283,7 +283,7 @@ func TestSimpleHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 
 	select {
 	case <-donechan:
-		//expected behavior
+		// expected behavior
 		return
 	case <-time.After(time.Second):
 		t.Fatalf("simpleHTTPClient.Do did not exit within 1s")
@@ -493,7 +493,8 @@ func (f fakeCancelContext) Value(key any) any { return 1 }
 
 func withTimeout(parent context.Context, _timeout time.Duration) (
 	ctx context.Context,
-	cancel context.CancelFunc) {
+	cancel context.CancelFunc,
+) {
 	ctx = parent
 	cancel = func() {
 		ctx = nil
