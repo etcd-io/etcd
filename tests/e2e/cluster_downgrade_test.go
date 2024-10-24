@@ -218,16 +218,13 @@ func downgradeEnable(t *testing.T, epc *e2e.EtcdProcessCluster, ver *semver.Vers
 	c := epc.Etcdctl()
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
 		err := c.DowngradeEnable(context.TODO(), ver.String())
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	})
 }
 
 func stopEtcd(t *testing.T, ep e2e.EtcdProcess) {
-	if err := ep.Stop(); err != nil {
-		t.Fatal(err)
-	}
+	err := ep.Stop()
+	require.NoError(t, err)
 }
 
 func validateVersion(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, expect version.Versions) {
@@ -260,14 +257,10 @@ func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 			Endpoints:   endpoints,
 			DialTimeout: 3 * time.Second,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer cli.Close()
 		resp, err := cli.Status(ctx, endpoints[0])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if resp.Header.GetMemberId() == resp.Leader {
 			return epc.Procs[i]
 		}

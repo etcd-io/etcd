@@ -68,16 +68,12 @@ func corruptTest(cx ctlCtx) {
 	cx.t.Log("connecting clientv3...")
 	eps := cx.epc.EndpointsGRPC()
 	cli1, err := clientv3.New(clientv3.Config{Endpoints: []string{eps[1]}, DialTimeout: 3 * time.Second})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	defer cli1.Close()
 
 	sresp, err := cli1.Status(context.TODO(), eps[0])
 	cx.t.Logf("checked status sresp:%v err:%v", sresp, err)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	id0 := sresp.Header.GetMemberId()
 
 	cx.t.Log("stopping etcd[0]...")
@@ -86,16 +82,13 @@ func corruptTest(cx ctlCtx) {
 	// corrupting first member by modifying backend offline.
 	fp := datadir.ToBackendFileName(cx.epc.Procs[0].Config().DataDirPath)
 	cx.t.Logf("corrupting backend: %v", fp)
-	if err = cx.corruptFunc(fp); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = cx.corruptFunc(fp)
+	require.NoError(cx.t, err)
 
 	cx.t.Log("restarting etcd[0]")
 	ep := cx.epc.Procs[0]
 	proc, err := e2e.SpawnCmd(append([]string{ep.Config().ExecPath}, ep.Config().Args...), cx.envMap)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	defer proc.Stop()
 
 	cx.t.Log("waiting for etcd[0] failure...")

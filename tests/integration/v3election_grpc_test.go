@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	epb "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -160,9 +162,8 @@ func TestV3ElectionObserve(t *testing.T) {
 	for i := 1; i < 5; i++ {
 		v := []byte(fmt.Sprintf("%d", i))
 		req := &epb.ProclaimRequest{Leader: c1.Leader, Value: v}
-		if _, err := lc.Proclaim(context.TODO(), req); err != nil {
-			t.Fatal(err)
-		}
+		_, err := lc.Proclaim(context.TODO(), req)
+		require.NoError(t, err)
 	}
 	// start second leader
 	lc.Resign(context.TODO(), &epb.ResignRequest{Leader: c1.Leader})

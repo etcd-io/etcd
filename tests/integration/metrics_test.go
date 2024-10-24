@@ -65,9 +65,8 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	putreq := &pb.PutRequest{Key: []byte("k"), Value: make([]byte, 4096)}
 	for i := 0; i < numPuts; i++ {
 		time.Sleep(10 * time.Millisecond) // to execute multiple backend txn
-		if _, err := kvc.Put(context.TODO(), putreq); err != nil {
-			t.Fatal(err)
-		}
+		_, err := kvc.Put(context.TODO(), putreq)
+		require.NoError(t, err)
 	}
 
 	// wait for backend txn sync

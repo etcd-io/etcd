@@ -322,15 +322,12 @@ func TestV3AuthWithLeaseAttach(t *testing.T) {
 
 func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 	for _, user := range users {
-		if _, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: user.name, Password: user.password, Options: &authpb.UserAddOptions{NoPassword: false}}); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := auth.RoleAdd(context.TODO(), &pb.AuthRoleAddRequest{Name: user.role}); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := auth.UserGrantRole(context.TODO(), &pb.AuthUserGrantRoleRequest{User: user.name, Role: user.role}); err != nil {
-			t.Fatal(err)
-		}
+		_, err := auth.UserAdd(context.TODO(), &pb.AuthUserAddRequest{Name: user.name, Password: user.password, Options: &authpb.UserAddOptions{NoPassword: false}})
+		require.NoError(t, err)
+		_, err = auth.RoleAdd(context.TODO(), &pb.AuthRoleAddRequest{Name: user.role})
+		require.NoError(t, err)
+		_, err = auth.UserGrantRole(context.TODO(), &pb.AuthUserGrantRoleRequest{User: user.name, Role: user.role})
+		require.NoError(t, err)
 
 		if len(user.key) == 0 {
 			continue
@@ -341,9 +338,8 @@ func authSetupUsers(t *testing.T, auth pb.AuthClient, users []user) {
 			Key:      []byte(user.key),
 			RangeEnd: []byte(user.end),
 		}
-		if _, err := auth.RoleGrantPermission(context.TODO(), &pb.AuthRoleGrantPermissionRequest{Name: user.role, Perm: perm}); err != nil {
-			t.Fatal(err)
-		}
+		_, err = auth.RoleGrantPermission(context.TODO(), &pb.AuthRoleGrantPermissionRequest{Name: user.role, Perm: perm})
+		require.NoError(t, err)
 	}
 }
 

@@ -249,9 +249,7 @@ func TestMemberRemove(t *testing.T) {
 // It ensures that `MemberRemove` function does not return an "etcdserver: server stopped" error.
 func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clusterSize int) (memberID uint64, clusterID uint64) {
 	listResp, err := client.MemberList(ctx, false)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clusterID = listResp.Header.ClusterId
 	if clusterSize == 1 {
@@ -259,9 +257,7 @@ func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clust
 	} else {
 		// get status of the specific member that client has connected to
 		statusResp, err := client.Status(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// choose a member that client has not connected to
 		for _, m := range listResp.Members {

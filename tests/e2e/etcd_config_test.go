@@ -88,9 +88,8 @@ func TestEtcdMultiPeer(t *testing.T) {
 	}
 
 	for _, p := range procs {
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines); err != nil {
-			t.Fatal(err)
-		}
+		err := e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines)
+		require.NoError(t, err)
 	}
 }
 
@@ -247,9 +246,8 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
-			t.Fatal(err)
-		}
+		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		require.NoError(t, err)
 	}
 }
 
@@ -337,9 +335,8 @@ func TestEtcdPeerMultiCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
-			t.Fatal(err)
-		}
+		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		require.NoError(t, err)
 	}
 }
 
@@ -413,9 +410,8 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		} else {
 			expect = []string{"client certificate authentication failed"}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
-			t.Fatal(err)
-		}
+		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		require.NoError(t, err)
 	}
 }
 
@@ -522,9 +518,8 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 		} else {
 			expect = []string{"x509: certificate is valid for 127.0.0.1, not "}
 		}
-		if err := e2e.WaitReadyExpectProc(context.TODO(), p, expect); err != nil {
-			t.Fatal(err)
-		}
+		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		require.NoError(t, err)
 	}
 }
 

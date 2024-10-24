@@ -67,33 +67,26 @@ func ctlV3PutFailPerm(cx ctlCtx, key, val string) error {
 }
 
 func authSetupTestUser(cx ctlCtx) {
-	if err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"}); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"}); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := ctlV3User(cx, []string{"grant-role", "test-user", "test-role"}, "Role test-role is granted to user test-user", nil); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := ctlV3User(cx, []string{"add", "test-user", "--interactive=false"}, "User test-user created", []string{"pass"})
+	require.NoError(cx.t, err)
+	err = e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"})
+	require.NoError(cx.t, err)
+	err = ctlV3User(cx, []string{"grant-role", "test-user", "test-role"}, "Role test-role is granted to user test-user", nil)
+	require.NoError(cx.t, err)
 	cmd := append(cx.PrefixArgs(), "role", "grant-permission", "test-role", "readwrite", "foo")
-	if err := e2e.SpawnWithExpectWithEnv(cmd, cx.envMap, expect.ExpectedResponse{Value: "Role test-role updated"}); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = e2e.SpawnWithExpectWithEnv(cmd, cx.envMap, expect.ExpectedResponse{Value: "Role test-role updated"})
+	require.NoError(cx.t, err)
 }
 
 func authTestMemberUpdate(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := authEnable(cx)
+	require.NoError(cx.t, err)
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
 	mr, err := getMemberList(cx, false)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
 	// ordinary user cannot update a member
 	cx.user, cx.pass = "test-user", "pass"
@@ -105,31 +98,25 @@ func authTestMemberUpdate(cx ctlCtx) {
 
 	// root can update a member
 	cx.user, cx.pass = "root", "root"
-	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3MemberUpdate(cx, memberID, peerURL)
+	require.NoError(cx.t, err)
 }
 
 func authTestCertCN(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	err := authEnable(cx)
+	require.NoError(cx.t, err)
 
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"}); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""})
+	require.NoError(cx.t, err)
+	err = e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"})
+	require.NoError(cx.t, err)
+	err = ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil)
+	require.NoError(cx.t, err)
 
 	// grant a new key
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", "", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	err = ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", "", false})
+	require.NoError(cx.t, err)
 
 	// try a granted key
 	cx.user, cx.pass = "", ""
@@ -139,7 +126,7 @@ func authTestCertCN(cx ctlCtx) {
 
 	// try a non-granted key
 	cx.user, cx.pass = "", ""
-	err := ctlV3PutFailPerm(cx, "baz", "bar")
+	err = ctlV3PutFailPerm(cx, "baz", "bar")
 	require.ErrorContains(cx.t, err, "permission denied")
 }
 

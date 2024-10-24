@@ -1274,9 +1274,8 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 	}}
 	for i, tt := range tests {
 		kvc := integration.ToGRPC(clus.RandClient()).KV
-		if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[0])}); err != nil {
-			t.Fatal(err)
-		}
+		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[0])})
+		require.NoError(t, err)
 
 		ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(wctx)
 		if werr != nil {
@@ -1289,16 +1288,13 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 				RangeEnd: []byte(tt.end),
 				PrevKv:   true,
 			}}}
-		if err := ws.Send(req); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := ws.Recv(); err != nil {
-			t.Fatal(err)
-		}
+		err = ws.Send(req)
+		require.NoError(t, err)
+		_, err = ws.Recv()
+		require.NoError(t, err)
 
-		if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[1])}); err != nil {
-			t.Fatal(err)
-		}
+		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[1])})
+		require.NoError(t, err)
 
 		recv := make(chan *pb.WatchResponse, 1)
 		go func() {

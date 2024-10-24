@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
@@ -546,9 +548,8 @@ func TestLeaseTimeToLive(t *testing.T) {
 	kv := clus.RandClient()
 	keys := []string{"foo1", "foo2"}
 	for i := range keys {
-		if _, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID)); err != nil {
-			t.Fatal(err)
-		}
+		_, err = kv.Put(context.TODO(), keys[i], "bar", clientv3.WithLease(resp.ID))
+		require.NoError(t, err)
 	}
 
 	// linearized read to ensure Puts propagated to server backing lapi

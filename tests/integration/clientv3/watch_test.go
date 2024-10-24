@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
 
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
@@ -437,9 +438,8 @@ func TestWatchResumeCompacted(t *testing.T) {
 	numPuts := 5
 	kv := clus.Client(1)
 	for i := 0; i < numPuts; i++ {
-		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := kv.Put(context.TODO(), "foo", "bar")
+		require.NoError(t, err)
 	}
 	if _, err := kv.Compact(context.TODO(), 3); err != nil {
 		t.Fatal(err)
@@ -503,9 +503,8 @@ func TestWatchCompactRevision(t *testing.T) {
 	// set some keys
 	kv := clus.RandClient()
 	for i := 0; i < 5; i++ {
-		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
-			t.Fatal(err)
-		}
+		_, err := kv.Put(context.TODO(), "foo", "bar")
+		require.NoError(t, err)
 	}
 
 	w := clus.RandClient()

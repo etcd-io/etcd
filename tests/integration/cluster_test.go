@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -186,9 +188,8 @@ func TestAddMemberAfterClusterFullRotation(t *testing.T) {
 
 	// remove all the previous three members and add in three new members.
 	for i := 0; i < 3; i++ {
-		if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[1].Server.MemberID())); err != nil {
-			t.Fatal(err)
-		}
+		err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[1].Server.MemberID()))
+		require.NoError(t, err)
 		c.WaitMembersForLeader(t, c.Members)
 
 		c.AddMember(t)
