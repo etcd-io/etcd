@@ -55,9 +55,10 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{
-		Size:                   3,
-		SnapshotCount:          10,
-		SnapshotCatchUpEntries: 5,
+		Size:                        3,
+		SnapshotCount:               10,
+		SnapshotCatchUpEntries:      5,
+		CompactRaftLogEveryNApplies: 10,
 	})
 	defer clus.Terminate(t)
 
@@ -102,11 +103,12 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// elected. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
 	// changes. So member 0 has index 8 in raft log before network
 	// partition. We need to trigger EtcdServer.snapshot() at least twice.
+	// Raft log is only compacted when appliedi%CompactRaftLogEveryNApplies==0
 	//
-	// SnapshotCount: 10, SnapshotCatchUpEntries: 5
+	// SnapshotCount: 10, SnapshotCatchUpEntries: 5, CompactRaftLogEveryNApplies: 10
 	//
-	// T1: L(snapshot-index: 11, compacted-index:  6), F_m0(index:8)
-	// T2: L(snapshot-index: 22, compacted-index: 17), F_m0(index:8, out of date)
+	// T1: L(snapshot-index: 11, compacted-index:  5), F_m0(index:8)
+	// T2: L(snapshot-index: 22, compacted-index: 15), F_m0(index:8, out of date)
 	//
 	// Since there is no way to confirm server has compacted the log, we
 	// use log monitor to watch and expect "compacted Raft logs" content.
