@@ -16,7 +16,6 @@ package flags
 
 import (
 	"flag"
-	"os"
 	"strings"
 	"testing"
 
@@ -30,9 +29,8 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	fs.String("c", "", "")
 	fs.Parse([]string{})
 
-	os.Clearenv()
 	// flags should be settable using env vars
-	os.Setenv("ETCD_A", "foo")
+	t.Setenv("ETCD_A", "foo")
 	// and command-line flags
 	if err := fs.Set("b", "bar"); err != nil {
 		t.Fatal(err)
@@ -67,7 +65,7 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	// now verify that an error is propagated
 	fs := flag.NewFlagSet("testing", flag.ExitOnError)
 	fs.Int("x", 0, "")
-	os.Setenv("ETCD_X", "not_a_number")
+	t.Setenv("ETCD_X", "not_a_number")
 	if err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs); err == nil {
 		t.Errorf("err=nil, want != nil")
 	}
@@ -78,10 +76,7 @@ func TestSetFlagsFromEnvParsingError(t *testing.T) {
 	var tickMs uint
 	fs.UintVar(&tickMs, "heartbeat-interval", 0, "Time (in milliseconds) of a heartbeat interval.")
 
-	if oerr := os.Setenv("ETCD_HEARTBEAT_INTERVAL", "100 # ms"); oerr != nil {
-		t.Fatal(oerr)
-	}
-	defer os.Unsetenv("ETCD_HEARTBEAT_INTERVAL")
+	t.Setenv("ETCD_HEARTBEAT_INTERVAL", "100 # ms")
 
 	err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs)
 	for _, v := range []string{"invalid syntax", "parse error"} {
