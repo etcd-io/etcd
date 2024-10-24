@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -153,9 +155,7 @@ func Exploratory(_ *testing.T) []TestScenario {
 
 func Regression(t *testing.T) []TestScenario {
 	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
-	if err != nil {
-		t.Fatalf("Failed checking etcd version binary, binary: %q, err: %v", e2e.BinPath.Etcd, err)
-	}
+	require.NoErrorf(t, err, "Failed checking etcd version binary, binary: %q", e2e.BinPath.Etcd)
 
 	scenarios := []TestScenario{}
 	scenarios = append(scenarios, TestScenario{

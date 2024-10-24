@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -56,9 +57,8 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	if err != nil {
 		return nil, err
 	}
-	if !found {
-		t.Fatal("Member not found")
-	}
+	require.Truef(t, found, "Member not found")
+
 	// Need to wait health interval for cluster to accept member changes
 	time.Sleep(etcdserver.HealthInterval)
 	lg.Info("Removing member", zap.String("member", member.Config().Name))
@@ -70,9 +70,7 @@ func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger,
 	if err != nil {
 		return nil, err
 	}
-	if found {
-		t.Fatal("Expected member to be removed")
-	}
+	require.Falsef(t, found, "Expected member to be removed")
 
 	for member.IsRunning() {
 		err = member.Kill()
