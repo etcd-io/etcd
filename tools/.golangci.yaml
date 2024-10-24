@@ -25,6 +25,7 @@ linters:
     - revive
     - staticcheck
     - stylecheck
+    - tenv
     - testifylint
     - unconvert # Remove unnecessary type conversions
     - unparam
