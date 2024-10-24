@@ -92,136 +92,36 @@ func TestConfigFileOtherFields(t *testing.T) {
 	assert.Falsef(t, cfg.SocketOpts.ReuseAddress, "ReuseAddress does not match")
 }
 
+// TestConfigFileFeatureGates ensures that experimental flags migrate to feature gate.
 func TestConfigFileFeatureGates(t *testing.T) {
-	testCases := []struct {
-		name                                string
-		serverFeatureGatesJSON              string
-		experimentalStopGRPCServiceOnDefrag string
-		experimentalInitialCorruptCheck     string
-		expectErr                           bool
-		expectedFeatures                    map[featuregate.Feature]bool
-	}{
+	testCases := []featureTestCase{
 		{
-			name: "default",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      false,
-				features.StopGRPCServiceOnDefrag: false,
-				features.InitialCorruptCheck:     false,
-			},
+			name:             "default",
+			expectedFeatures: defaultFeatureGates(),
 		},
 		{
-			name:                                "cannot set both experimental flag and feature gate flag",
-			serverFeatureGatesJSON:              "StopGRPCServiceOnDefrag=true",
-			experimentalStopGRPCServiceOnDefrag: "false",
-			expectErr:                           true,
-		},
-		{
-			name:                            "cannot set both experimental flag and feature gate flag for InitialCorruptCheck",
-			serverFeatureGatesJSON:          "InitialCorruptCheck=true",
-			experimentalInitialCorruptCheck: "false",
-			expectErr:                       true,
-		},
-		{
-			name:                                "ok to set different experimental flag and feature gate flag",
-			serverFeatureGatesJSON:              "DistributedTracing=true",
-			experimentalStopGRPCServiceOnDefrag: "true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:      true,
-				features.StopGRPCServiceOnDefrag: true,
-				features.InitialCorruptCheck:     false,
-			},
-		},
-		{
-			name:                                "can set feature gate to true from experimental flag",
-			experimentalStopGRPCServiceOnDefrag: "true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     false,
-			},
-		},
-		{
-			name:                                "can set feature gate to false from experimental flag",
-			experimentalStopGRPCServiceOnDefrag: "false",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     false,
-			},
-		},
-		{
-			name:                            "can set feature gate experimentalInitialCorruptCheck to true from experimental flag",
-			experimentalInitialCorruptCheck: "true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     true,
-			},
-		},
-		{
-			name:                            "can set feature gate experimentalInitialCorruptCheck to false from experimental flag",
-			experimentalInitialCorruptCheck: "false",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     false,
-			},
-		},
-		{
-			name:                   "can set feature gate StopGRPCServiceOnDefrag to true from feature gate flag",
-			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     false,
-			},
-		},
-		{
-			name:                   "can set feature gate InitialCorruptCheck to true from feature gate flag",
-			serverFeatureGatesJSON: "InitialCorruptCheck=true",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     true,
-			},
-		},
-		{
-			name:                   "can set feature gate to false from feature gate flag",
-			serverFeatureGatesJSON: "StopGRPCServiceOnDefrag=false",
-			expectedFeatures: map[featuregate.Feature]bool{
-				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
-				features.InitialCorruptCheck:     false,
-			},
+			name:                   "ok to set different experimental flag and feature gate flag",
+			serverFeatureGatesJSON: "DistributedTracing=true",
+			experimentalFlagName:   "experimental-stop-grpc-service-on-defrag",
+			experimentalValue:      true,
+			expectedFeatures:       defaultFeatureGatesWithFeaturegates([]featuregate.Feature{features.StopGRPCServiceOnDefrag, features.DistributedTracing}, true),
 		},
 	}
+
+	// add a new experimental flag here when migrating a new experimental flag to feature.
+	testCases = append(testCases, testCasesForFeaturegate("experimental-stop-grpc-service-on-defrag", "StopGRPCServiceOnDefrag", features.StopGRPCServiceOnDefrag)...)
+	testCases = append(testCases, testCasesForFeaturegate("experimental-initial-corrupt-check", "InitialCorruptCheck", features.InitialCorruptCheck)...)
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			yc := struct {
-				ExperimentalStopGRPCServiceOnDefrag *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
-				ExperimentalInitialCorruptCheck     *bool  `json:"experimental-initial-corrupt-check,omitempty"`
-				ServerFeatureGatesJSON              string `json:"feature-gates"`
-			}{
-				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
+			configurationMap := make(map[string]interface{})
+			configurationMap["feature-gates"] = tc.serverFeatureGatesJSON
+
+			if tc.experimentalFlagName != "" {
+				configurationMap[tc.experimentalFlagName] = tc.experimentalValue
 			}
 
-			if tc.experimentalInitialCorruptCheck != "" {
-				experimentalInitialCorruptCheck, err := strconv.ParseBool(tc.experimentalInitialCorruptCheck)
-				if err != nil {
-					t.Fatal(err)
-				}
-				yc.ExperimentalInitialCorruptCheck = &experimentalInitialCorruptCheck
-			}
-
-			if tc.experimentalStopGRPCServiceOnDefrag != "" {
-				experimentalStopGRPCServiceOnDefrag, err := strconv.ParseBool(tc.experimentalStopGRPCServiceOnDefrag)
-				if err != nil {
-					t.Fatal(err)
-				}
-				yc.ExperimentalStopGRPCServiceOnDefrag = &experimentalStopGRPCServiceOnDefrag
-			}
-
-			b, err := yaml.Marshal(&yc)
+			b, err := yaml.Marshal(configurationMap)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -246,6 +146,71 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			}
 		})
 	}
+}
+
+type featureTestCase struct {
+	name                   string
+	serverFeatureGatesJSON string
+	expectErr              bool
+	expectedFeatures       map[featuregate.Feature]bool
+	experimentalFlagName   string
+	experimentalValue      bool
+}
+
+func testCasesForFeaturegate(experimentalFlagName, fgname string, fg featuregate.Feature) []featureTestCase {
+	return []featureTestCase{
+		{
+			name:                   "cannot set both experimental flag and feature gate flag",
+			serverFeatureGatesJSON: fgname + "=true",
+			experimentalFlagName:   experimentalFlagName,
+			experimentalValue:      false,
+			expectErr:              true,
+		},
+		{
+			name:                 "can set feature gate to true from experimental flag",
+			experimentalFlagName: experimentalFlagName,
+			experimentalValue:    true,
+			expectedFeatures:     defaultFeatureGatesWithFeaturegate(fg, true),
+		},
+		{
+			name:                 "can set feature gate to false from experimental flag",
+			experimentalFlagName: experimentalFlagName,
+			experimentalValue:    false,
+			expectedFeatures:     defaultFeatureGatesWithFeaturegate(fg, false),
+		},
+		{
+			name:                   "can set feature gate " + fgname + " to true from feature gate flag",
+			serverFeatureGatesJSON: fgname + "=true",
+			expectedFeatures:       defaultFeatureGatesWithFeaturegate(fg, true),
+		},
+		{
+			name:                   "can set feature gate to false from feature gate flag",
+			serverFeatureGatesJSON: fgname + "=false",
+			expectedFeatures:       defaultFeatureGatesWithFeaturegate(fg, false),
+		},
+	}
+}
+
+func defaultFeatureGates() map[featuregate.Feature]bool {
+	fgs := make(map[featuregate.Feature]bool)
+	for fg, fgspec := range features.DefaultEtcdServerFeatureGates {
+		fgs[fg] = fgspec.Default
+	}
+	return fgs
+}
+
+func defaultFeatureGatesWithFeaturegate(fg featuregate.Feature, enabled bool) map[featuregate.Feature]bool {
+	fgs := defaultFeatureGates()
+	fgs[fg] = enabled
+	return fgs
+}
+
+func defaultFeatureGatesWithFeaturegates(fgs2 []featuregate.Feature, enabled bool) map[featuregate.Feature]bool {
+	fgs := defaultFeatureGates()
+	for _, f := range fgs2 {
+		fgs[f] = enabled
+	}
+	return fgs
 }
 
 // TestUpdateDefaultClusterFromName ensures that etcd can start with 'etcd --name=abc'.
