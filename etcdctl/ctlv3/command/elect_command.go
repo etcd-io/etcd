@@ -28,9 +28,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
-var (
-	electListen bool
-)
+var electListen bool
 
 // NewElectCommand returns the cobra command for "elect".
 func NewElectCommand() *cobra.Command {

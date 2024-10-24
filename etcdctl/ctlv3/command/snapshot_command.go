@@ -27,8 +27,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
-var (
-	snapshotExample = util.Normalize(`
+var snapshotExample = util.Normalize(`
 	# Save snapshot to a given file
 	etcdctl snapshot save /backup/etcd-snapshot.db
 
@@ -46,7 +45,6 @@ var (
 
 	# Save snapshot with desirable time format
 	etcdctl snapshot save /mnt/backup/etcd/backup_$(date +%Y%m%d_%H%M%S).db`)
-)
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
 func NewSnapshotCommand() *cobra.Command {
