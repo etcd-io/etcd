@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -156,7 +157,7 @@ func getSnapshotStatus(cx ctlCtx, fpath string) (snapshot.Status, error) {
 
 	resp := snapshot.Status{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&resp); err == io.EOF {
+	if err := dec.Decode(&resp); errors.Is(err, io.EOF) {
 		return snapshot.Status{}, err
 	}
 	return resp, nil

@@ -1086,7 +1086,7 @@ func testV3LeaseTimeToLiveWithLeaderChanged(t *testing.T, fpName string) {
 	require.NoError(t, gofail.Enable(fpName, `sleep("3s")`))
 	t.Cleanup(func() {
 		terr := gofail.Disable(fpName)
-		if terr != nil && terr != gofail.ErrDisabled {
+		if terr != nil && !errors.Is(terr, gofail.ErrDisabled) {
 			t.Fatalf("failed to disable %s: %v", fpName, terr)
 		}
 	})
