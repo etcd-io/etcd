@@ -60,11 +60,7 @@ type Config struct {
 }
 
 func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
-	err := validatePutOperationUnique(reports)
-	if err != nil {
-		return err
-	}
-	err = validateEmptyDatabaseAtStart(reports)
+	err := validateEmptyDatabaseAtStart(reports)
 	if err != nil {
 		return err
 	}
@@ -76,36 +72,6 @@ func checkValidationAssumptions(reports []report.ClientReport, persistedRequests
 	err = validateNonConcurrentClientRequests(reports)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func validatePutOperationUnique(reports []report.ClientReport) error {
-	type KV struct {
-		Key   string
-		Value model.ValueOrHash
-	}
-	putValue := map[KV]struct{}{}
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			if request.Type != model.Txn {
-				continue
-			}
-			for _, op := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-				if op.Type != model.PutOperation {
-					continue
-				}
-				kv := KV{
-					Key:   op.Put.Key,
-					Value: op.Put.Value,
-				}
-				if _, ok := putValue[kv]; ok {
-					return fmt.Errorf("non unique put %v, required to patch operation history", kv)
-				}
-				putValue[kv] = struct{}{}
-			}
-		}
 	}
 	return nil
 }
