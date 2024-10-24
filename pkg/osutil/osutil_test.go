@@ -27,6 +27,7 @@ import (
 func init() { setDflSignal = func(syscall.Signal) {} }
 
 func waitSig(t *testing.T, c <-chan os.Signal, sig os.Signal) {
+	t.Helper()
 	select {
 	case s := <-c:
 		if s != sig {

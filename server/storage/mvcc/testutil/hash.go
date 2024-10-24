@@ -58,6 +58,7 @@ type KeyValueHash struct {
 }
 
 func testCompactionHash(ctx context.Context, t *testing.T, h CompactionHashTestCase, start, stop int64) {
+	t.Helper()
 	for i := start; i <= stop; i++ {
 		if i%67 == 0 {
 			err := h.Delete(ctx, PickKey(i+83))

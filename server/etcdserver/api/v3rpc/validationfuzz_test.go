@@ -155,6 +155,7 @@ func FuzzTxnDeleteRangeRequest(f *testing.F) {
 }
 
 func verifyCheck(t *testing.T, check func() error) {
+	t.Helper()
 	errCheck := check()
 	if errCheck != nil {
 		t.Skip("Validation not passing. Skipping the apply.")
@@ -162,6 +163,7 @@ func verifyCheck(t *testing.T, check func() error) {
 }
 
 func execTransaction(t *testing.T, req *pb.RequestOp) {
+	t.Helper()
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, b)
 	s := mvcc.NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, mvcc.StoreConfig{})

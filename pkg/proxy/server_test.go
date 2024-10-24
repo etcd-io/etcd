@@ -47,6 +47,7 @@ func TestServer_Unix_Secure_DelayTx(t *testing.T)   { testServer(t, "unix", true
 func TestServer_TCP_Secure_DelayTx(t *testing.T)    { testServer(t, "tcp", true, true) }
 
 func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	if scheme == "tcp" {
@@ -178,6 +179,7 @@ func createTLSInfo(lg *zap.Logger, secure bool) transport.TLSInfo {
 func TestServer_Unix_Insecure_DelayAccept(t *testing.T) { testServerDelayAccept(t, false) }
 func TestServer_Unix_Secure_DelayAccept(t *testing.T)   { testServerDelayAccept(t, true) }
 func testServerDelayAccept(t *testing.T, secure bool) {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	srcAddr, dstAddr := newUnixAddr(), newUnixAddr()
 	defer func() {
@@ -486,6 +488,7 @@ func TestServerHTTP_Secure_DelayTx(t *testing.T)   { testServerHTTP(t, true, tru
 func TestServerHTTP_Insecure_DelayRx(t *testing.T) { testServerHTTP(t, false, false) }
 func TestServerHTTP_Secure_DelayRx(t *testing.T)   { testServerHTTP(t, true, false) }
 func testServerHTTP(t *testing.T, secure, delayTx bool) {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	scheme := "tcp"
 	ln1, ln2 := listen(t, scheme, "localhost:0", transport.TLSInfo{}), listen(t, scheme, "localhost:0", transport.TLSInfo{})
@@ -634,6 +637,7 @@ func newUnixAddr() string {
 }
 
 func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln net.Listener) {
+	t.Helper()
 	var err error
 	if !tlsInfo.Empty() {
 		ln, err = transport.NewListener(addr, scheme, &tlsInfo)
@@ -647,6 +651,7 @@ func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln ne
 }
 
 func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSInfo) {
+	t.Helper()
 	var out net.Conn
 	var err error
 	if !tlsInfo.Empty() {
@@ -670,6 +675,7 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 }
 
 func receive(t *testing.T, ln net.Listener) (data []byte) {
+	t.Helper()
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	for {
 		in, err := ln.Accept()
@@ -691,6 +697,7 @@ func receive(t *testing.T, ln net.Listener) (data []byte) {
 // Waits until a proxy is ready to serve.
 // Aborts test on proxy start-up error.
 func waitForServer(t *testing.T, s Server) {
+	t.Helper()
 	select {
 	case <-s.Ready():
 	case err := <-s.Error():

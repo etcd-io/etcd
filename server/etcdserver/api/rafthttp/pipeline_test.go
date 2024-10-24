@@ -298,6 +298,7 @@ func (n *nopReadCloser) Read(p []byte) (int, error) { return 0, io.EOF }
 func (n *nopReadCloser) Close() error               { return nil }
 
 func startTestPipeline(t *testing.T, tr *Transport, picker *urlPicker) *pipeline {
+	t.Helper()
 	p := &pipeline{
 		peerID:        types.ID(1),
 		tr:            tr,

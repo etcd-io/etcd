@@ -24,6 +24,7 @@ import (
 )
 
 func mustNewURLs(t *testing.T, urls []string) []url.URL {
+	t.Helper()
 	if len(urls) == 0 {
 		return nil
 	}

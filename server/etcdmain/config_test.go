@@ -476,6 +476,7 @@ func TestParseFeatureGateFlags(t *testing.T) {
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
+	t.Helper()
 	tmpfile, err := os.CreateTemp("", "servercfg")
 	if err != nil {
 		t.Fatal(err)
@@ -494,6 +495,7 @@ func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 }
 
 func validateMemberFlags(t *testing.T, cfg *config) {
+	t.Helper()
 	wcfg := &embed.Config{
 		Dir:                    "testdir",
 		ListenPeerUrls:         []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}},
@@ -536,6 +538,7 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 }
 
 func validateClusteringFlags(t *testing.T, cfg *config) {
+	t.Helper()
 	wcfg := newConfig()
 	wcfg.ec.AdvertisePeerUrls = []url.URL{{Scheme: "http", Host: "localhost:8000"}, {Scheme: "https", Host: "localhost:8001"}}
 	wcfg.ec.AdvertiseClientUrls = []url.URL{{Scheme: "http", Host: "localhost:7000"}, {Scheme: "https", Host: "localhost:7001"}}

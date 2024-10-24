@@ -37,6 +37,7 @@ import (
 const memberID = 111195
 
 func defaultUberApplier(t *testing.T) UberApplier {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	t.Cleanup(func() {

@@ -349,6 +349,7 @@ func TestRangeAfterOverwriteAndDeleteMatch(t *testing.T) {
 }
 
 func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, bucket backend.Bucket, key, endKey []byte, limit int64) {
+	t.Helper()
 	tx.Lock()
 	ks1, vs1 := tx.UnsafeRange(bucket, key, endKey, limit)
 	tx.Unlock()
@@ -366,6 +367,7 @@ func checkRangeResponseMatch(t *testing.T, tx backend.BatchTx, rtx backend.ReadT
 }
 
 func checkForEach(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, expectedKeys, expectedValues [][]byte) {
+	t.Helper()
 	tx.Lock()
 	checkUnsafeForEach(t, tx, expectedKeys, expectedValues)
 	tx.Unlock()
@@ -376,6 +378,7 @@ func checkForEach(t *testing.T, tx backend.BatchTx, rtx backend.ReadTx, expected
 }
 
 func checkUnsafeForEach(t *testing.T, tx backend.UnsafeReader, expectedKeys, expectedValues [][]byte) {
+	t.Helper()
 	var ks, vs [][]byte
 	tx.UnsafeForEach(schema.Test, func(k, v []byte) error {
 		ks = append(ks, k)
@@ -393,9 +396,9 @@ func checkUnsafeForEach(t *testing.T, tx backend.UnsafeReader, expectedKeys, exp
 
 // runWriteback is used test the txWriteBuffer.writeback function, which is called inside tx.Unlock().
 // The parameters are chosen based on defaultBatchLimit = 10000
-func runWriteback(t testing.TB, kss, vss [][]string, isSeq bool) {
-	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
-	defer betesting.Close(t, b)
+func runWriteback(tb testing.TB, kss, vss [][]string, isSeq bool) {
+	b, _ := betesting.NewTmpBackend(tb, time.Hour, 10000)
+	defer betesting.Close(tb, b)
 
 	tx := b.BatchTx()
 
@@ -444,6 +447,7 @@ func BenchmarkWritebackNonSeqBatches1000BatchSize10(b *testing.B) {
 }
 
 func benchmarkWriteback(b *testing.B, batches, batchSize int, isSeq bool) {
+	b.Helper()
 	// kss and vss are key and value arrays to write with size batches*batchSize
 	var kss, vss [][]string
 	for i := 0; i < batches; i++ {

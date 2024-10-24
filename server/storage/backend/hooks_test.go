@@ -94,11 +94,11 @@ func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
 	waitUntil(ctx, t, func() bool { return getCommitsKey(t, be) == ">ccc" })
 }
 
-func waitUntil(ctx context.Context, t testing.TB, f func() bool) {
+func waitUntil(ctx context.Context, tb testing.TB, f func() bool) {
 	for !f() {
 		select {
 		case <-ctx.Done():
-			t.Fatalf("Context cancelled/timedout without condition met: %v", ctx.Err())
+			tb.Fatalf("Context cancelled/timedout without condition met: %v", ctx.Err())
 		default:
 		}
 		time.Sleep(10 * time.Millisecond)

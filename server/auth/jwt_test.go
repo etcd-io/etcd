@@ -90,6 +90,7 @@ func TestJWTInfo(t *testing.T) {
 }
 
 func testJWTInfo(t *testing.T, opts map[string]string) {
+	t.Helper()
 	lg := zap.NewNop()
 	jwt, err := newTokenProviderJWT(lg, opts)
 	if err != nil {

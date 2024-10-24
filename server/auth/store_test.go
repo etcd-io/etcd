@@ -92,6 +92,7 @@ func encodePassword(s string) string {
 }
 
 func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testing.T)) {
+	t.Helper()
 	tp, err := NewTokenProvider(zaptest.NewLogger(t), tokenTypeSimple, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)
@@ -1152,6 +1153,7 @@ func TestAuthInfoFromCtxWithRootJWT(t *testing.T) {
 
 // testAuthInfoFromCtxWithRoot ensures "WithRoot" properly embeds token in the context.
 func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
+	t.Helper()
 	tp, err := NewTokenProvider(zaptest.NewLogger(t), opts, dummyIndexWaiter, simpleTokenTTLDefault)
 	if err != nil {
 		t.Fatal(err)

@@ -93,6 +93,7 @@ func TestTimeToLiveHTTPTimeout(t *testing.T) {
 }
 
 func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)

@@ -94,6 +94,7 @@ func TestSnapshotSend(t *testing.T) {
 }
 
 func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
+	t.Helper()
 	d := t.TempDir()
 
 	r := &fakeRaft{}

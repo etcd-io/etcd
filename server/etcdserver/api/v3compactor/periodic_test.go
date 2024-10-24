@@ -240,6 +240,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 }
 
 func waitOneAction(t *testing.T, r testutil.Recorder) {
+	t.Helper()
 	if actions, _ := r.Wait(1); len(actions) != 1 {
 		t.Errorf("expect 1 action, got %v instead", len(actions))
 	}

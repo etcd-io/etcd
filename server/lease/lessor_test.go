@@ -210,6 +210,7 @@ func TestLessorRevoke(t *testing.T) {
 }
 
 func renew(t *testing.T, le *lessor, id LeaseID) int64 {
+	t.Helper()
 	ch := make(chan int64, 1)
 	errch := make(chan error, 1)
 	go func() {
@@ -689,6 +690,7 @@ func (fd *fakeDeleter) DeleteRange(key, end []byte) (int64, int64) {
 }
 
 func NewTestBackend(t *testing.T) (string, backend.Backend) {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	tmpPath := t.TempDir()
 	bcfg := backend.DefaultBackendConfig(lg)

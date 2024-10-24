@@ -71,6 +71,7 @@ type fakeSnapshotServer struct{}
 func (*fakeSnapshotServer) ForceSnapshot() {}
 
 func defaultAuthApplierV3(t *testing.T) *authApplierV3 {
+	t.Helper()
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	t.Cleanup(func() {
@@ -125,6 +126,7 @@ const (
 )
 
 func mustCreateRolesAndEnableAuth(t *testing.T, authApplier *authApplierV3) {
+	t.Helper()
 	_, err := authApplier.UserAdd(&pb.AuthUserAddRequest{Name: userRoot, Options: &authpb.UserAddOptions{NoPassword: true}})
 	require.NoError(t, err)
 	_, err = authApplier.RoleAdd(&pb.AuthRoleAddRequest{Name: roleRoot})

@@ -68,6 +68,7 @@ func TestURLPickerUnreachable(t *testing.T) {
 }
 
 func mustNewURLPicker(t *testing.T, us []string) *urlPicker {
+	t.Helper()
 	urls := testutil.MustNewURLs(t, us)
 	return newURLPicker(urls)
 }
