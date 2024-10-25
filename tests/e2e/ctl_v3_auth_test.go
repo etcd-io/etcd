@@ -120,7 +120,7 @@ func authTestCertCN(cx ctlCtx) {
 
 	// try a granted key
 	cx.user, cx.pass = "", ""
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
+	if err = ctlV3Put(cx, "hoo", "bar", ""); err != nil {
 		cx.t.Error(err)
 	}
 
