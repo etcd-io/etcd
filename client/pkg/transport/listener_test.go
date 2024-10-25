@@ -614,7 +614,7 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 				require.NoErrorf(t, err, "unable to create revocation list")
 			}
 
-			err = os.WriteFile(tlsInfo.CRLFile, revocationListContents, 0600)
+			err = os.WriteFile(tlsInfo.CRLFile, revocationListContents, 0o600)
 			require.NoErrorf(t, err, "unable to write revocation list")
 
 			chHandshakeFailure := make(chan error, 1)

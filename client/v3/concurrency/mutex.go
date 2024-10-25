@@ -26,9 +26,11 @@ import (
 )
 
 // ErrLocked is returned by TryLock when Mutex is already locked by another session.
-var ErrLocked = errors.New("mutex: Locked by another session")
-var ErrSessionExpired = errors.New("mutex: session is expired")
-var ErrLockReleased = errors.New("mutex: lock has already been released")
+var (
+	ErrLocked         = errors.New("mutex: Locked by another session")
+	ErrSessionExpired = errors.New("mutex: session is expired")
+	ErrLockReleased   = errors.New("mutex: lock has already been released")
+)
 
 // Mutex implements the sync Locker interface with etcd
 type Mutex struct {
@@ -164,6 +166,7 @@ func (lm *lockerMutex) Lock() {
 		panic(err)
 	}
 }
+
 func (lm *lockerMutex) Unlock() {
 	client := lm.s.Client()
 	if err := lm.Mutex.Unlock(client.Ctx()); err != nil {
