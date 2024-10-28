@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -152,7 +152,7 @@ func benchmarkStoreRestore(revsPerKey int, b *testing.B) {
 			txn.End()
 		}
 	}
-	assert.NoError(b, s.Close())
+	require.NoError(b, s.Close())
 
 	b.ReportAllocs()
 	b.ResetTimer()

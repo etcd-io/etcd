@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
@@ -31,9 +32,9 @@ func BeforeTest(tb testing.TB) {
 	revertVerifyFunc := verify.EnableAllVerifications()
 
 	path, err := os.Getwd()
-	assert.NoError(tb, err)
+	require.NoError(tb, err)
 	tempDir := tb.TempDir()
-	assert.NoError(tb, os.Chdir(tempDir))
+	require.NoError(tb, os.Chdir(tempDir))
 	tb.Logf("Changing working directory to: %s", tempDir)
 
 	tb.Cleanup(func() {

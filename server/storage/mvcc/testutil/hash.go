@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -61,23 +62,23 @@ func testCompactionHash(ctx context.Context, t *testing.T, h CompactionHashTestC
 	for i := start; i <= stop; i++ {
 		if i%67 == 0 {
 			err := h.Delete(ctx, PickKey(i+83))
-			assert.NoErrorf(t, err, "error on delete")
+			require.NoErrorf(t, err, "error on delete")
 		} else {
 			err := h.Put(ctx, PickKey(i), fmt.Sprint(i))
-			assert.NoErrorf(t, err, "error on put")
+			require.NoErrorf(t, err, "error on put")
 		}
 	}
 	hash1, err := h.HashByRev(ctx, stop)
-	assert.NoErrorf(t, err, "error on hash (rev %v)", stop)
+	require.NoErrorf(t, err, "error on hash (rev %v)", stop)
 
 	err = h.Compact(ctx, stop)
-	assert.NoErrorf(t, err, "error on compact (rev %v)", stop)
+	require.NoErrorf(t, err, "error on compact (rev %v)", stop)
 
 	err = h.Defrag(ctx)
-	assert.NoErrorf(t, err, "error on defrag")
+	require.NoErrorf(t, err, "error on defrag")
 
 	hash2, err := h.HashByRev(ctx, stop)
-	assert.NoErrorf(t, err, "error on hash (rev %v)", stop)
+	require.NoErrorf(t, err, "error on hash (rev %v)", stop)
 	assert.Equalf(t, hash1, hash2, "hashes do not match on rev %v", stop)
 }
 

@@ -298,7 +298,7 @@ func TestVerify(t *testing.T) {
 	}
 
 	hs := raftpb.HardState{Term: 1, Vote: 3, Commit: 5}
-	assert.NoError(t, w.Save(hs, nil))
+	require.NoError(t, w.Save(hs, nil))
 
 	// to verify the WAL is not corrupted at this point
 	hardstate, err := Verify(lg, walDir, walpb.Snapshot{})

@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/golang/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -96,7 +97,7 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 				maxVer = maxVersion(maxVer, ver)
 				return nil
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expect, maxVer)
 		})
 	}
@@ -166,7 +167,7 @@ func TestEtcdVersionFromMessage(t *testing.T) {
 				maxVer = maxVersion(maxVer, ver)
 				return nil
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expect, maxVer)
 		})
 	}
@@ -242,7 +243,7 @@ func TestEtcdVersionFromFieldOptionsString(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.input, func(t *testing.T) {
 			ver, err := etcdVersionFromOptionsString(tc.input)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, ver, tc.expect)
 		})
 	}
