@@ -2,6 +2,10 @@ package etcdserver
 
 import (
 	"context"
+	"crypto/sha256"
+	"github.com/stretchr/testify/require"
+	"io"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -55,8 +59,7 @@ func TestReadonlyTxnError(t *testing.T) {
 }
 
 func TestWriteTxnPanic(t *testing.T) {
-	b, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, b)
+	b, bePath := betesting.NewDefaultTmpBackend(t)
 	s := mvcc.New(zap.NewExample(), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	defer s.Close()
 
@@ -92,5 +95,29 @@ func TestWriteTxnPanic(t *testing.T) {
 		},
 	}
 
+	// compute DB file hash before applying the txn
+	dbHashBefore, err := computeFileHash(bePath)
+	require.NoErrorf(t, err, "failed to compute DB file hash before txn")
+
+	// we verify the following properties below:
+	// 1. server panics after a write txn aply fails (invariant: server should never try to move on from a failed write)
+	// 2. no writes from the txn are applied to the backend (invariant: failed write should have no side-effect on DB state besides panic)
 	assert.Panics(t, func() { a.Txn(ctx, txn) }, "Expected panic in Txn with writes")
+	dbHashAfter, err := computeFileHash(bePath)
+	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
+	require.Equalf(t, dbHashBefore, dbHashAfter, "mismatch in DB hash before and after failed write txn")
+}
+
+func computeFileHash(filePath string) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, file); err != nil {
+		return "", err
+	}
+	return string(h.Sum(nil)), nil
 }
