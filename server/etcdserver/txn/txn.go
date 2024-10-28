@@ -275,7 +275,11 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	if isWrite {
 		trace.AddField(traceutil.Field{Key: "read_only", Value: false})
 	}
-	_, err := checkTxn(txnRead, rt, lessor, txnPath)
+	// checkTxn performs pre-flight checks on the txn to confirm that it's valid (e.g range operation is not asking for
+	// a future/compacted revision, put operations doesn't supply a lease which doesn't exist, etc) or returns an error.
+	// performsWrite says if the txn actually performs any write operations based on the compare choices we land with
+	// (i.e. txnPath) - which has been pre-computed. So even if isWrite was true for the txn, performsWrite may be false.
+	_, performsWrite, err := checkTxn(txnRead, rt, lessor, txnPath)
 	if err != nil {
 		txnRead.End()
 		return nil, nil, err
@@ -286,13 +290,13 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	// serialized on the raft loop, the revision in the read view will
 	// be the revision of the write txnWrite.
 	var txnWrite mvcc.TxnWrite
-	if isWrite {
+	if performsWrite {
 		txnRead.End()
 		txnWrite = kv.Write(trace)
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
-	txnResp, err := txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnResp, err := txn(ctx, lg, txnWrite, rt, performsWrite, txnPath)
 	txnWrite.End()
 
 	trace.AddField(
@@ -314,6 +318,8 @@ func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.Txn
 			// - data inconsistency across different etcd members if they applied the txn asymmetrically
 			lg.Panic("unexpected error during txn with writes", zap.Error(err))
 		} else {
+			// Given the txn performs only read operations, it does not cause any apply layer side-effects.
+			// Therefore, it's safe for the server to return an error here (without panic) and continue applying subsequent records.
 			lg.Error("unexpected error during readonly txn", zap.Error(err))
 		}
 	}
@@ -441,8 +447,9 @@ func checkRange(rv mvcc.ReadView, req *pb.RangeRequest) error {
 	return nil
 }
 
-func checkTxn(rv mvcc.ReadView, rt *pb.TxnRequest, lessor lease.Lessor, txnPath []bool) (int, error) {
+func checkTxn(rv mvcc.ReadView, rt *pb.TxnRequest, lessor lease.Lessor, txnPath []bool) (int, bool, error) {
 	txnCount := 0
+	performsWrite := false
 	reqs := rt.Success
 	if !txnPath[0] {
 		reqs = rt.Failure
@@ -450,24 +457,28 @@ func checkTxn(rv mvcc.ReadView, rt *pb.TxnRequest, lessor lease.Lessor, txnPath 
 	for _, req := range reqs {
 		var err error
 		var txns int
+		var nestedTxnPerformsWrite bool
 		switch tv := req.Request.(type) {
 		case *pb.RequestOp_RequestRange:
 			err = checkRange(rv, tv.RequestRange)
 		case *pb.RequestOp_RequestPut:
 			err = checkPut(rv, lessor, tv.RequestPut)
+			performsWrite = true
 		case *pb.RequestOp_RequestDeleteRange:
+			performsWrite = true
 		case *pb.RequestOp_RequestTxn:
-			txns, err = checkTxn(rv, tv.RequestTxn, lessor, txnPath[1:])
+			txns, nestedTxnPerformsWrite, err = checkTxn(rv, tv.RequestTxn, lessor, txnPath[1:])
+			performsWrite = performsWrite || nestedTxnPerformsWrite
 			txnCount += txns + 1
 			txnPath = txnPath[txns+1:]
 		default:
 			// empty union
 		}
 		if err != nil {
-			return 0, err
+			return 0, performsWrite, err
 		}
 	}
-	return txnCount, nil
+	return txnCount, performsWrite, nil
 }
 
 // mkGteRange determines if the range end is a >= range. This works around grpc
