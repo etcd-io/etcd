@@ -345,11 +345,17 @@ func (sws *serverWatchStream) recvLoop() error {
 				id := uv.CancelRequest.WatchId
 				err := sws.watchStream.Cancel(mvcc.WatchID(id))
 				if err == nil {
-					sws.ctrlStream <- &pb.WatchResponse{
+					wr := &pb.WatchResponse{
 						Header:   sws.newResponseHeader(sws.watchStream.Rev()),
 						WatchId:  id,
 						Canceled: true,
 					}
+					select {
+					case sws.ctrlStream <- wr:
+					case <-sws.closec:
+						return nil
+					}
+
 					sws.mu.Lock()
 					delete(sws.progress, mvcc.WatchID(id))
 					delete(sws.prevKV, mvcc.WatchID(id))
