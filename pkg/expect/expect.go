@@ -171,3 +171,9 @@ func (ep *ExpectProcess) Send(command string) error {
 func (ep *ExpectProcess) IsRunning() bool {
 	return ep.cmd != nil
 }
+
+func (ep *ExpectProcess) Lines() []string {
+	ep.mu.Lock()
+	defer ep.mu.Unlock()
+	return ep.lines
+}
