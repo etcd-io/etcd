@@ -138,9 +138,10 @@ func (h *pipelineHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(len(b)))
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
-		switch v := err.(type) {
-		case writerToResponse:
-			v.WriteTo(w)
+		var writerErr writerToResponse
+		switch {
+		case errors.As(err, &writerErr):
+			writerErr.WriteTo(w)
 		default:
 			h.lg.Warn(
 				"failed to process Raft message",
@@ -294,11 +295,12 @@ func (h *snapshotHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err := h.r.Process(context.TODO(), m); err != nil {
-		switch v := err.(type) {
+		var writerErr writerToResponse
+		switch {
 		// Process may return writerToResponse error when doing some
 		// additional checks before calling raft.Node.Step.
-		case writerToResponse:
-			v.WriteTo(w)
+		case errors.As(err, &writerErr):
+			writerErr.WriteTo(w)
 		default:
 			msg := fmt.Sprintf("failed to process raft message (%v)", err)
 			h.lg.Warn(

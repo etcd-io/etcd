@@ -534,7 +534,7 @@ func (s *store) Update(nodePath string, newValue string, expireOpts TTLOptionSet
 	eNode := e.Node
 
 	if err := n.Write(newValue, nextIndex); err != nil {
-		return nil, fmt.Errorf("nodePath %v : %v", nodePath, err)
+		return nil, fmt.Errorf("nodePath %v : %w", nodePath, err)
 	}
 
 	if n.IsDir() {

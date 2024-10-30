@@ -155,14 +155,14 @@ func nodeToMember(lg *zap.Logger, n *v2store.NodeExtern) (*Member, error) {
 	}
 	if data := attrs[raftAttrKey]; data != nil {
 		if err := json.Unmarshal(data, &m.RaftAttributes); err != nil {
-			return nil, fmt.Errorf("unmarshal raftAttributes error: %v", err)
+			return nil, fmt.Errorf("unmarshal raftAttributes error: %w", err)
 		}
 	} else {
 		return nil, fmt.Errorf("raftAttributes key doesn't exist")
 	}
 	if data := attrs[attrKey]; data != nil {
 		if err := json.Unmarshal(data, &m.Attributes); err != nil {
-			return m, fmt.Errorf("unmarshal attributes error: %v", err)
+			return m, fmt.Errorf("unmarshal attributes error: %w", err)
 		}
 	}
 	return m, nil

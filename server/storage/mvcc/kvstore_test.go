@@ -665,12 +665,12 @@ func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
 	}
 
 	_, _, errFutureRev := s.HashStorage().HashByRev(int64(rev + 1))
-	if errFutureRev != ErrFutureRev {
+	if !errors.Is(errFutureRev, ErrFutureRev) {
 		t.Error(errFutureRev)
 	}
 
 	_, _, errPastRev := s.HashStorage().HashByRev(int64(compactRev - 1))
-	if errPastRev != ErrCompacted {
+	if !errors.Is(errPastRev, ErrCompacted) {
 		t.Error(errPastRev)
 	}
 

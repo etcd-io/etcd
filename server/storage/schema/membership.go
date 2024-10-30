@@ -102,7 +102,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't read members from backend: %v", err)
+		return nil, nil, fmt.Errorf("couldn't read members from backend: %w", err)
 	}
 
 	err = tx.UnsafeForEach(MembersRemoved, func(k, v []byte) error {
@@ -111,7 +111,7 @@ func (s *membershipBackend) readMembersFromBackend() (map[types.ID]*membership.M
 		return nil
 	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %v", err)
+		return nil, nil, fmt.Errorf("couldn't read members_removed from backend: %w", err)
 	}
 	return members, removed, nil
 }

@@ -15,6 +15,7 @@
 package etcdmain
 
 import (
+	errorspkg "errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -63,8 +64,8 @@ func startEtcdOrProxyV2(args []string) {
 	lg.Info("Running: ", zap.Strings("args", args))
 	if err != nil {
 		lg.Warn("failed to verify flags", zap.Error(err))
-		switch err {
-		case embed.ErrUnsetAdvertiseClientURLsFlag:
+		switch {
+		case errorspkg.Is(err, embed.ErrUnsetAdvertiseClientURLsFlag):
 			lg.Warn("advertise client URLs are not set", zap.Error(err))
 		}
 		os.Exit(1)
@@ -129,9 +130,10 @@ func startEtcdOrProxyV2(args []string) {
 	}
 
 	if err != nil {
-		if derr, ok := err.(*errors.DiscoveryError); ok {
-			switch derr.Err {
-			case v2discovery.ErrDuplicateID:
+		var derr *errors.DiscoveryError
+		if errorspkg.As(err, &derr) {
+			switch {
+			case errorspkg.Is(derr.Err, v2discovery.ErrDuplicateID):
 				lg.Warn(
 					"member has been registered with discovery service",
 					zap.String("name", cfg.ec.Name),
@@ -145,7 +147,7 @@ func startEtcdOrProxyV2(args []string) {
 				lg.Warn("check data dir if previous bootstrap succeeded")
 				lg.Warn("or use a new discovery token if previous bootstrap failed")
 
-			case v2discovery.ErrDuplicateName:
+			case errorspkg.Is(derr.Err, v2discovery.ErrDuplicateName):
 				lg.Warn(
 					"member with duplicated name has already been registered",
 					zap.String("discovery-token", cfg.ec.Durl),

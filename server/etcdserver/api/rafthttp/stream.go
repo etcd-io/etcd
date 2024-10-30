@@ -578,7 +578,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	req, err := http.NewRequest(http.MethodGet, uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("failed to make http request to %v (%v)", u, err)
+		return nil, fmt.Errorf("failed to make http request to %v (%w)", u, err)
 	}
 	req.Header.Set("X-Server-From", cr.tr.ID.String())
 	req.Header.Set("X-Server-Version", version.Version)

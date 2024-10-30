@@ -993,11 +993,11 @@ func (cfg *Config) Validate() error {
 	}
 	if err := checkHostURLs(cfg.AdvertisePeerUrls); err != nil {
 		addrs := cfg.getAdvertisePeerURLs()
-		return fmt.Errorf(`--initial-advertise-peer-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
+		return fmt.Errorf(`--initial-advertise-peer-urls %q must be "host:port" (%w)`, strings.Join(addrs, ","), err)
 	}
 	if err := checkHostURLs(cfg.AdvertiseClientUrls); err != nil {
 		addrs := cfg.getAdvertiseClientURLs()
-		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%v)`, strings.Join(addrs, ","), err)
+		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%w)`, strings.Join(addrs, ","), err)
 	}
 	// Check if conflicting flags are passed.
 	nSet := 0
@@ -1066,7 +1066,7 @@ func (cfg *Config) Validate() error {
 	// Validate distributed tracing configuration but only if enabled.
 	if cfg.ExperimentalEnableDistributedTracing {
 		if err := validateTracingConfig(cfg.ExperimentalDistributedTracingSamplingRatePerMillion); err != nil {
-			return fmt.Errorf("distributed tracing configurition is not valid: (%v)", err)
+			return fmt.Errorf("distributed tracing configurition is not valid: (%w)", err)
 		}
 	}
 

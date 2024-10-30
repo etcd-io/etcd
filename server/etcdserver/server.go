@@ -2360,12 +2360,12 @@ func (s *EtcdServer) updateClusterVersionV3(ver string) {
 	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{ClusterVersionSet: &req})
 	cancel()
 
-	switch err {
-	case nil:
+	switch {
+	case errorspkg.Is(err, nil):
 		lg.Info("cluster version is updated", zap.String("cluster-version", version.Cluster(ver)))
 		return
 
-	case errors.ErrStopped:
+	case errorspkg.Is(err, errors.ErrStopped):
 		lg.Warn("aborting cluster version update; server is stopped", zap.Error(err))
 		return
 
@@ -2396,11 +2396,11 @@ func (s *EtcdServer) monitorDowngrade() {
 }
 
 func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
-	switch err {
-	case context.Canceled:
+	switch {
+	case errorspkg.Is(err, context.Canceled):
 		return errors.ErrCanceled
 
-	case context.DeadlineExceeded:
+	case errorspkg.Is(err, context.DeadlineExceeded):
 		s.leadTimeMu.RLock()
 		curLeadElected := s.leadElectedTime
 		s.leadTimeMu.RUnlock()

@@ -16,6 +16,7 @@ package etcdhttp
 
 import (
 	"encoding/json"
+	errorspkg "errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -138,12 +139,12 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	resp, err := h.server.PromoteMember(r.Context(), id)
 	if err != nil {
-		switch err {
-		case membership.ErrIDNotFound:
+		switch {
+		case errorspkg.Is(err, membership.ErrIDNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
-		case membership.ErrMemberNotLearner:
+		case errorspkg.Is(err, membership.ErrMemberNotLearner):
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		case errors.ErrLearnerNotReady:
+		case errorspkg.Is(err, errors.ErrLearnerNotReady):
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		default:
 			writeError(h.lg, w, r, err)

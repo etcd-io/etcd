@@ -111,7 +111,9 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo", false, false)
 	assert.Nil(t, e)
-	assert.Equal(t, v2error.EcodeKeyNotFound, err.(*v2error.Error).ErrorCode)
+	var v2Err *v2error.Error
+	assert.ErrorAs(t, err, &v2Err)
+	assert.Equal(t, v2error.EcodeKeyNotFound, v2Err.ErrorCode)
 }
 
 // TestStoreUpdateDirTTL ensures that the store can update the TTL on a directory.
@@ -137,7 +139,9 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	s.DeleteExpiredKeys(fc.Now())
 	e, err = s.Get("/foo/bar", false, false)
 	assert.Nil(t, e)
-	assert.Equal(t, v2error.EcodeKeyNotFound, err.(*v2error.Error).ErrorCode)
+	var v2Err *v2error.Error
+	assert.ErrorAs(t, err, &v2Err)
+	assert.Equal(t, v2error.EcodeKeyNotFound, v2Err.ErrorCode)
 }
 
 // TestStoreWatchExpire ensures that the store can watch for key expiration.
