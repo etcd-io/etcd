@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -62,15 +63,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
 
 	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cc.Close()
 	// Ensure that first operation succeeds
 	_, err = cc.Put(ctx, "start", "true")
-	if err != nil {
-		t.Fatalf("First operation failed, validation requires first operation to succeed, err: %s", err)
-	}
+	require.NoErrorf(t, err, "First operation failed, validation requires first operation to succeed")
 	wg := sync.WaitGroup{}
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := make(chan struct{})
@@ -79,9 +76,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	for i := 0; i < profile.ClientCount; i++ {
 		wg.Add(1)
 		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
-		if nerr != nil {
-			t.Fatal(nerr)
-		}
+		require.NoError(t, nerr)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
@@ -111,9 +106,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	var fr *report.FailpointInjection
 	select {
 	case frp, ok := <-failpointInjected:
-		if !ok {
-			t.Fatalf("Failed to collect failpoint report")
-		}
+		require.Truef(t, ok, "Failed to collect failpoint report")
 		fr = &frp
 	case <-ctx.Done():
 		t.Fatalf("Traffic finished before failure was injected: %s", ctx.Err())
@@ -126,9 +119,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	time.Sleep(time.Second)
 	// Ensure that last operation succeeds
 	_, err = cc.Put(ctx, "tombstone", "true")
-	if err != nil {
-		t.Fatalf("Last operation failed, validation requires last operation to succeed, err: %s", err)
-	}
+	require.NoErrorf(t, err, "Last operation failed, validation requires last operation to succeed")
 	reports = append(reports, cc.Report())
 
 	totalStats := calculateStats(reports, startTime, endTime)
