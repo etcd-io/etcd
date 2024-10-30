@@ -26,39 +26,66 @@ import (
 )
 
 func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
-	e2e.BeforeTest(t)
-	ctx := context.TODO()
-
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-		e2e.WithClusterSize(1),
-		e2e.WithLogLevel("debug"),
-	)
-	require.NoError(t, err)
-	defer epc.Close()
-
-	logs := epc.Procs[0].Logs()
-	time.Sleep(time.Second)
-	if err = epc.Close(); err != nil {
-		t.Fatalf("error closing etcd processes (%v)", err)
-	}
-	var entry logEntry
-	lines := logs.Lines()
-	if len(lines) == 0 {
-		t.Errorf("Expected at least one log line")
+	tests := []struct {
+		name          string
+		clusterSize   int
+		allowedErrors map[string]bool
+	}{
+		{
+			name:          "single node cluster",
+			clusterSize:   1,
+			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+		},
+		{
+			name:          "three node cluster",
+			clusterSize:   3,
+			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+		},
 	}
 
-	allowedErrors := map[string]bool{"setting up serving from embedded etcd failed.": true}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			e2e.BeforeTest(t)
+			ctx := context.TODO()
 
-	for _, line := range lines {
-		err := json.Unmarshal([]byte(line), &entry)
-		if err != nil {
-			t.Errorf("Failed to parse log line as json, err: %q, line: %s", err, line)
-			continue
-		}
-		if allowedErrors[entry.Message] {
-			continue
-		}
+			epc, err := e2e.NewEtcdProcessCluster(ctx, t,
+				e2e.WithClusterSize(tc.clusterSize),
+				e2e.WithLogLevel("debug"),
+			)
+			require.NoError(t, err)
+			defer epc.Close()
 
-		require.NotEqual(t, "error", entry.Level)
+			require.Lenf(t, epc.Procs, tc.clusterSize, "embedded etcd cluster process count is not as expected")
+
+			// Collect the handle of logs before closing the processes.
+			var logHandles []e2e.LogsExpect
+			for i := range tc.clusterSize {
+				logHandles = append(logHandles, epc.Procs[i].Logs())
+			}
+
+			time.Sleep(time.Second)
+			err = epc.Close()
+			require.NoErrorf(t, err, "closing etcd processes")
+
+			// Now that the processes are closed we can collect all log lines. This must happen after closing, else we
+			// might not get all log lines.
+			var lines []string
+			for _, h := range logHandles {
+				lines = append(lines, h.Lines()...)
+			}
+			require.NotEmptyf(t, lines, "expected at least one log line")
+
+			var entry logEntry
+			for _, line := range lines {
+				err := json.Unmarshal([]byte(line), &entry)
+				require.NoErrorf(t, err, "parse log line as json, line: %s", line)
+
+				if tc.allowedErrors[entry.Message] {
+					continue
+				}
+
+				require.NotEqualf(t, "error", entry.Level, "error level log message found: %s", line)
+			}
+		})
 	}
 }
