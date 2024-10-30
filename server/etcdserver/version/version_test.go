@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -64,7 +65,7 @@ func TestDowngradeSingleNode(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 1, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 
@@ -80,7 +81,7 @@ func TestDowngradeThreeNode(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 
@@ -100,7 +101,7 @@ func TestNewerMemberCanReconnectDuringDowngrade(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	assert.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 

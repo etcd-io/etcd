@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -34,11 +34,11 @@ func BenchmarkBackendPut(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		keys[i] = make([]byte, 64)
 		_, err := rand.Read(keys[i])
-		assert.NoError(b, err)
+		require.NoError(b, err)
 	}
 	value := make([]byte, 128)
 	_, err := rand.Read(value)
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	batchTx := backend.BatchTx()
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
@@ -29,23 +30,23 @@ func TestIsMetaStoreOnly(t *testing.T) {
 	s := v2store.New("/0", "/1")
 
 	metaOnly, err := IsMetaStoreOnly(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	mustSaveClusterVersionToStore(lg, s, semver.New("3.5.17"))
 	metaOnly, err = IsMetaStoreOnly(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	mustSaveMemberToStore(lg, s, &Member{ID: 0x00abcd})
 	metaOnly, err = IsMetaStoreOnly(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
 
 	_, err = s.Create("/1/foo", false, "v1", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	metaOnly, err = IsMetaStoreOnly(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Falsef(t, metaOnly, "Just created v2store should be meta-only")
 
 	_, err = s.Delete("/1/foo", false, false)

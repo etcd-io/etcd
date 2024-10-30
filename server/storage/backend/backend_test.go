@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	bolt "go.etcd.io/bbolt"
@@ -70,7 +71,7 @@ func TestBackendSnapshot(t *testing.T) {
 	if _, err := snap.WriteTo(f); err != nil {
 		t.Fatal(err)
 	}
-	assert.NoError(t, f.Close())
+	require.NoError(t, f.Close())
 
 	// bootstrap new backend from the snapshot
 	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
@@ -332,7 +333,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	}
 	rtx := b.ReadTx()
 	rtx.RLock()
-	assert.NoError(t, rtx.UnsafeForEach(schema.Key, getSeq))
+	require.NoError(t, rtx.UnsafeForEach(schema.Key, getSeq))
 	rtx.RUnlock()
 
 	partialSeq := seq
@@ -341,7 +342,7 @@ func TestBackendWritebackForEach(t *testing.T) {
 	b.ForceCommit()
 
 	tx.Lock()
-	assert.NoError(t, tx.UnsafeForEach(schema.Key, getSeq))
+	require.NoError(t, tx.UnsafeForEach(schema.Key, getSeq))
 	tx.Unlock()
 
 	if seq != partialSeq {

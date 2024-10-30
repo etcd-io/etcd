@@ -30,7 +30,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -559,7 +559,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	now := time.Now()
 	if secure {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		assert.NoError(t, terr)
+		require.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
@@ -568,7 +568,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
