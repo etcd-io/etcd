@@ -62,6 +62,7 @@ type etcdProcess interface {
 
 type logsExpect interface {
 	Expect(string) (string, error)
+	Lines() []string
 }
 
 type etcdServerProcess struct {
