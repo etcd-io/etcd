@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -124,6 +125,38 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 
 	require.NoError(t, proc2.Stop())
 	require.NoError(t, proxyProc.Stop())
+}
+
+func TestGrpcProxyTLSVersions(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t, e2e.NewConfigClientBoth())
+	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, epc.Close())
+	}()
+
+	var (
+		node1ClientURL = epc.Procs[0].Config().ClientHttpUrl
+		proxyClientURL = "127.0.0.1:42379"
+	)
+
+	// Run independent grpc-proxy instance
+	proxyProc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcd", "grpc-proxy", "start",
+		"--advertise-client-url", proxyClientURL,
+		"--listen-addr", proxyClientURL,
+		"--endpoints", node1ClientURL,
+		"--endpoints-auto-sync-interval", "1s",
+		"--cert-file", e2e.CertPath2,
+		"--key-file", e2e.PrivateKeyPath2,
+		"--tls-min-version", "TLS1.2",
+		"--tls-max-version", "TLS1.3",
+	}, nil)
+	require.NoError(t, err)
+	defer proxyProc.Stop()
+
+	_, err = proxyProc.Expect("listening for gRPC proxy client requests")
+	require.NoError(t, err)
 }
 
 func runEtcdNode(name, dataDir, clientURL, peerURL, clusterState, initialCluster string) (*expect.ExpectProcess, error) {
