@@ -472,7 +472,7 @@ func TestWatchResumeCompacted(t *testing.T) {
 		if wresp.Err() == nil {
 			continue
 		}
-		if wresp.Err() != rpctypes.ErrCompacted {
+		if !errors.Is(wresp.Err(), rpctypes.ErrCompacted) {
 			t.Fatalf("wresp.Err() expected %v, got %+v", rpctypes.ErrCompacted, wresp.Err())
 		}
 		break
@@ -519,7 +519,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected wresp, but got closed channel")
 	}
-	if wresp.Err() != rpctypes.ErrCompacted {
+	if !errors.Is(wresp.Err(), rpctypes.ErrCompacted) {
 		t.Fatalf("wresp.Err() expected %v, but got %v", rpctypes.ErrCompacted, wresp.Err())
 	}
 	if !wresp.Canceled {
@@ -858,7 +858,7 @@ func TestWatchWithRequireLeader(t *testing.T) {
 		if !ok {
 			t.Fatalf("expected %v watch channel, got closed channel", rpctypes.ErrNoLeader)
 		}
-		if resp.Err() != rpctypes.ErrNoLeader {
+		if !errors.Is(resp.Err(), rpctypes.ErrNoLeader) {
 			t.Fatalf("expected %v watch response error, got %+v", rpctypes.ErrNoLeader, resp)
 		}
 	case <-time.After(integration2.RequestWaitTimeout):

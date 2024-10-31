@@ -109,7 +109,7 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 	for {
 		w, err := wal.OpenForRead(lg, walDir, walpb.Snapshot{Index: 0})
 		if err != nil {
-			return state, nil, fmt.Errorf("failed to open WAL, err: %s", err)
+			return state, nil, fmt.Errorf("failed to open WAL, err: %w", err)
 		}
 		_, state, ents, err = w.ReadAll()
 		w.Close()
@@ -119,10 +119,10 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {
-				return state, nil, fmt.Errorf("failed to read WAL, cannot be repaired, err: %s", err)
+				return state, nil, fmt.Errorf("failed to read WAL, cannot be repaired, err: %w", err)
 			}
 			if !wal.Repair(lg, walDir) {
-				return state, nil, fmt.Errorf("failed to repair WAL, err: %s", err)
+				return state, nil, fmt.Errorf("failed to repair WAL, err: %w", err)
 			}
 			lg.Info("repaired WAL", zap.Error(err))
 			repaired = true

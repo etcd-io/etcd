@@ -50,7 +50,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 		lg.Info("Saving visualization", zap.String("path", path))
 		err := porcupine.VisualizePath(model.NonDeterministicModel, info, path)
 		if err != nil {
-			return fmt.Errorf("failed to visualize, err: %v", err)
+			return fmt.Errorf("failed to visualize, err: %w", err)
 		}
 		return nil
 	}

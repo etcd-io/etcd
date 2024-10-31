@@ -461,7 +461,7 @@ func TestKVCompact(t *testing.T) {
 	if !wr.Canceled {
 		t.Fatalf("expected canceled watcher on compacted revision, got %v", wr.Canceled)
 	}
-	if wr.Err() != rpctypes.ErrCompacted {
+	if !errors.Is(wr.Err(), rpctypes.ErrCompacted) {
 		t.Fatalf("watch response error expected %v, got %v", rpctypes.ErrCompacted, wr.Err())
 	}
 	wr, ok := <-wchan
@@ -750,7 +750,8 @@ func TestKVLargeRequests(t *testing.T) {
 		cli := clus.Client(0)
 		_, err := cli.Put(context.TODO(), "foo", strings.Repeat("a", test.valueSize))
 
-		if _, ok := err.(rpctypes.EtcdError); ok {
+		var etcdErr rpctypes.EtcdError
+		if errors.As(err, &etcdErr) {
 			if !errors.Is(err, test.expectError) {
 				t.Errorf("#%d: expected %v, got %v", i, test.expectError, err)
 			}

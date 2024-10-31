@@ -18,6 +18,7 @@ linters:
     # - deadcode
     # - structcheck
     # - varcheck
+    - errorlint
     - gofmt
     - goimports
     - ineffassign

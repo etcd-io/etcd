@@ -73,7 +73,7 @@ func SpawnWithExpectLines(ctx context.Context, args []string, envVars map[string
 		l, lerr := proc.ExpectWithContext(ctx, txt)
 		if lerr != nil {
 			proc.Close()
-			return nil, fmt.Errorf("%v %v (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt.Value, lines)
+			return nil, fmt.Errorf("%v %w (expected %q, got %q). Try EXPECT_DEBUG=TRUE", args, lerr, txt.Value, lines)
 		}
 		lines = append(lines, l)
 	}

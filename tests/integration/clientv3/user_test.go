@@ -194,10 +194,10 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 		defer client.Close()
 	}
 
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		t.Log("passes as expected")
-	case context.DeadlineExceeded:
+	case errors.Is(err, context.DeadlineExceeded):
 		t.Errorf("not expected result:%v with endpoint:%s", err, authapi.Endpoints())
 	default:
 		t.Errorf("other errors:%v", err)

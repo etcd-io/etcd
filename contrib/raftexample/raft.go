@@ -16,6 +16,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -206,7 +207,7 @@ func (rc *raftNode) loadSnapshot() *raftpb.Snapshot {
 			log.Fatalf("raftexample: error listing snapshots (%v)", err)
 		}
 		snapshot, err := rc.snapshotter.LoadNewestAvailable(walSnaps)
-		if err != nil && err != snap.ErrNoSnapshot {
+		if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
 			log.Fatalf("raftexample: error loading snapshot (%v)", err)
 		}
 		return snapshot
@@ -391,7 +392,7 @@ func (rc *raftNode) maybeTriggerSnapshot(applyDoneC <-chan struct{}) {
 		compactIndex = rc.appliedIndex - snapshotCatchUpEntriesN
 	}
 	if err := rc.raftStorage.Compact(compactIndex); err != nil {
-		if err != raft.ErrCompacted {
+		if !errors.Is(err, raft.ErrCompacted) {
 			panic(err)
 		}
 	} else {

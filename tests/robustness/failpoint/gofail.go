@@ -120,7 +120,7 @@ func (f goPanicFailpoint) Inject(ctx context.Context, t *testing.T, lg *zap.Logg
 	err = member.Wait(ctx)
 	if err != nil && !strings.Contains(err.Error(), "unexpected exit code") {
 		lg.Info("Member didn't exit as expected", zap.String("member", member.Config().Name), zap.Error(err))
-		return reports, fmt.Errorf("member didn't exit as expected: %v", err)
+		return reports, fmt.Errorf("member didn't exit as expected: %w", err)
 	}
 	lg.Info("Member exited as expected", zap.String("member", member.Config().Name))
 

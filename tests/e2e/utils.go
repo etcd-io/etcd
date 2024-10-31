@@ -77,7 +77,7 @@ func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 		if cfg.AutoTLS {
 			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
 			if err != nil {
-				return nil, fmt.Errorf("failed to generate cert: %s", err)
+				return nil, fmt.Errorf("failed to generate cert: %w", err)
 			}
 			return &tls, nil
 		}

@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -119,8 +120,8 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 			snapshot, err = snap.Read(lg, filepath.Join(snapDir(dataDir), *snapfile))
 		}
 
-		switch err {
-		case nil:
+		switch {
+		case err == nil:
 			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 
@@ -130,7 +131,7 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 			}
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
 				walsnap.Term, walsnap.Index, nodes, confStateJSON)
-		case snap.ErrNoSnapshot:
+		case errors.Is(err, snap.ErrNoSnapshot):
 			fmt.Print("Snapshot:\nempty\n")
 		default:
 			log.Fatalf("Failed loading snapshot: %v", err)
@@ -149,7 +150,7 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 	}
 	wmetadata, state, ents, err := w.ReadAll()
 	w.Close()
-	if err != nil && (!isIndex || err != wal.ErrSnapshotNotFound) {
+	if err != nil && (!isIndex || !errors.Is(err, wal.ErrSnapshotNotFound)) {
 		log.Fatalf("Failed reading WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)

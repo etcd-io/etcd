@@ -46,13 +46,13 @@ func TestCtlV3AuthSnapshotJWT(t *testing.T) {
 func authEnable(cx ctlCtx) error {
 	// create root user with root role
 	if err := ctlV3User(cx, []string{"add", "root", "--interactive=false"}, "User root created", []string{"root"}); err != nil {
-		return fmt.Errorf("failed to create root user %v", err)
+		return fmt.Errorf("failed to create root user %w", err)
 	}
 	if err := ctlV3User(cx, []string{"grant-role", "root", "root"}, "Role root is granted to user root", nil); err != nil {
-		return fmt.Errorf("failed to grant root user root role %v", err)
+		return fmt.Errorf("failed to grant root user root role %w", err)
 	}
 	if err := ctlV3AuthEnable(cx); err != nil {
-		return fmt.Errorf("authEnableTest ctlV3AuthEnable error (%v)", err)
+		return fmt.Errorf("authEnableTest ctlV3AuthEnable error (%w)", err)
 	}
 	return nil
 }

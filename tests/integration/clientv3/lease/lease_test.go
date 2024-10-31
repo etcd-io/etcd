@@ -721,7 +721,8 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 	cli.Close()
 
 	_, err = cli.KeepAlive(ctx, resp.ID)
-	if _, ok := err.(clientv3.ErrKeepAliveHalted); !ok {
+	var keepAliveHaltedErr clientv3.ErrKeepAliveHalted
+	if !errors.As(err, &keepAliveHaltedErr) {
 		t.Fatalf("expected %T, got %v(%T)", clientv3.ErrKeepAliveHalted{}, err, err)
 	}
 }

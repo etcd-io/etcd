@@ -17,6 +17,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -252,7 +253,7 @@ func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
 	jd := json.NewDecoder(strings.NewReader(jsonData))
 	for {
 		t, e := jd.Token()
-		if e == io.EOF {
+		if errors.Is(e, io.EOF) {
 			break
 		}
 		if t == "response_range" {
