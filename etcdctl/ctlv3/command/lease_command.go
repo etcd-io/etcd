@@ -61,14 +61,14 @@ func leaseGrantCommandFunc(cmd *cobra.Command, args []string) {
 
 	ttl, err := strconv.ParseInt(args[0], 10, 64)
 	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad TTL (%v)", err))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad TTL (%w)", err))
 	}
 
 	ctx, cancel := commandCtx(cmd)
 	resp, err := mustClientFromCmd(cmd).Grant(ctx, ttl)
 	cancel()
 	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to grant lease (%v)", err))
+		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to grant lease (%w)", err))
 	}
 	display.Grant(*resp)
 }
@@ -96,7 +96,7 @@ func leaseRevokeCommandFunc(cmd *cobra.Command, args []string) {
 	resp, err := mustClientFromCmd(cmd).Revoke(ctx, id)
 	cancel()
 	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to revoke lease (%v)", err))
+		cobrautl.ExitWithError(cobrautl.ExitError, fmt.Errorf("failed to revoke lease (%w)", err))
 	}
 	display.Revoke(id, *resp)
 }
@@ -202,7 +202,7 @@ func leaseKeepAliveCommandFunc(cmd *cobra.Command, args []string) {
 func leaseFromArgs(arg string) v3.LeaseID {
 	id, err := strconv.ParseInt(arg, 16, 64)
 	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID arg (%v), expecting ID in Hex", err))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID arg (%w), expecting ID in Hex", err))
 	}
 	return v3.LeaseID(id)
 }

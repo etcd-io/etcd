@@ -194,7 +194,7 @@ func ParseCompare(line string) (*clientv3.Cmp, error) {
 		return nil, fmt.Errorf("malformed comparison: %s; got %s(%q) %s %q", line, target, key, op, val)
 	}
 	if serr != nil {
-		return nil, fmt.Errorf("malformed comparison: %s (%v)", line, serr)
+		return nil, fmt.Errorf("malformed comparison: %s (%w)", line, serr)
 	}
 
 	var (

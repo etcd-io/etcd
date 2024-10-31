@@ -99,7 +99,7 @@ func getPutOp(args []string) (string, string, []clientv3.OpOption) {
 
 	id, err := strconv.ParseInt(leaseStr, 16, 64)
 	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID (%v), expecting ID in Hex", err))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("bad lease ID (%w), expecting ID in Hex", err))
 	}
 
 	var opts []clientv3.OpOption
