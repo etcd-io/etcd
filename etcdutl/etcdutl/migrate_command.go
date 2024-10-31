@@ -85,7 +85,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 	c.targetVersion, err = semver.NewVersion(o.targetVersion + ".0")
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse target version: %v", err)
+		return nil, fmt.Errorf("failed to parse target version: %w", err)
 	}
 	if c.targetVersion.LessThan(version.V3_5) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
@@ -97,12 +97,12 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	walPath := datadir.ToWALDir(o.dataDir)
 	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})
 	if err != nil {
-		return nil, fmt.Errorf(`failed to open wal: %v`, err)
+		return nil, fmt.Errorf(`failed to open wal: %w`, err)
 	}
 	defer w.Close()
 	c.walVersion, err = wal.ReadWALVersion(w)
 	if err != nil {
-		return nil, fmt.Errorf(`failed to read wal: %v`, err)
+		return nil, fmt.Errorf(`failed to read wal: %w`, err)
 	}
 
 	return c, nil

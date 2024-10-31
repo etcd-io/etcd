@@ -270,7 +270,7 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 	}()
 	membs, err := c.MemberList(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to fetch endpoints from etcd cluster member list: %v", err)
+		err = fmt.Errorf("failed to fetch endpoints from etcd cluster member list: %w", err)
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 
