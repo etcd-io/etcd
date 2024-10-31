@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -33,7 +32,7 @@ import (
 func TestDataReports(t *testing.T) {
 	testdataPath := testutils.MustAbsPath("../testdata/")
 	files, err := os.ReadDir(testdataPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for _, file := range files {
 		if file.Name() == ".gitignore" {
 			continue
@@ -42,7 +41,7 @@ func TestDataReports(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			path := filepath.Join(testdataPath, file.Name())
 			reports, err := report.LoadClientReports(path)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
 			require.NoError(t, err)

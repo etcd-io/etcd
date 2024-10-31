@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -123,7 +124,7 @@ func TestTLSMinMaxVersion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cc, err := integration.TestTLSInfo.ClientConfig()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			cc.MinVersion = tt.minVersion
 			cc.MaxVersion = tt.maxVersion

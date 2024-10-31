@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -33,7 +34,7 @@ func TestStoreRecover(t *testing.T) {
 	s.Update("/foo/x", "barbar", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	s.Create("/foo/y", false, "baz", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	b, err := s.Save()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	s2 := v2store.New()
 	s2.Recovery(b)
@@ -42,11 +43,11 @@ func TestStoreRecover(t *testing.T) {
 	assert.Equal(t, uint64(2), e.Node.CreatedIndex)
 	assert.Equal(t, uint64(3), e.Node.ModifiedIndex)
 	assert.Equal(t, eidx, e.EtcdIndex)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "barbar", *e.Node.Value)
 
 	e, err = s.Get("/foo/y", false, false)
 	assert.Equal(t, eidx, e.EtcdIndex)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, "baz", *e.Node.Value)
 }

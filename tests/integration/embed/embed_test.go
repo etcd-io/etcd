@@ -215,7 +215,7 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	cfg.AutoCompactionRetention = "2"
 
 	e, err := embed.StartEtcd(cfg)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	autoCompactionRetention := e.Server.Cfg.AutoCompactionRetention
 	durationToCompare, _ := time.ParseDuration("2h0m0s")
 	assert.Equal(t, durationToCompare, autoCompactionRetention)

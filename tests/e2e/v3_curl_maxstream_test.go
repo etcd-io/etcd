@@ -24,7 +24,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -119,7 +118,7 @@ func testCurlV3MaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 	// Step 4: Close the cluster
 	t.Log("Closing test cluster...")
 	close(closeServerCh)
-	assert.NoError(t, epc.Close())
+	require.NoError(t, epc.Close())
 	t.Log("Closed test cluster")
 
 	// Step 5: Waiting all watch goroutines to exit.

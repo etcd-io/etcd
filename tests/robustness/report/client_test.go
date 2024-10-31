@@ -21,7 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -135,7 +135,7 @@ func TestPersistLoadClientReports(t *testing.T) {
 	path := t.TempDir()
 	persistClientReports(t, zaptest.NewLogger(t), path, reports)
 	got, err := LoadClientReports(path)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if diff := cmp.Diff(reports, got, cmpopts.EquateEmpty()); diff != "" {
 		t.Errorf("Reports don't match after persist and load, %s", diff)
 	}

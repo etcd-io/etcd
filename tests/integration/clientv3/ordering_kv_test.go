@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
@@ -81,7 +82,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	// ensure that only the third member is queried during requests
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
-	assert.NoError(t, clus.Members[2].Restart(t))
+	require.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
@@ -150,7 +151,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	// ensure that only the third member is queried during requests
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
-	assert.NoError(t, clus.Members[2].Restart(t))
+	require.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
 	cli.SetEndpoints(clus.Members[2].GRPCURL)
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed

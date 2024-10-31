@@ -180,7 +180,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	// read 16 bytes to ensure that server opens snapshot
 	buf := make([]byte, 16)
 	n, err := rc1.Read(buf)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 16, n)
 
 	cancel()

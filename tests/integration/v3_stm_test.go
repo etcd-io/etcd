@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
@@ -281,7 +281,7 @@ func TestSTMSerializableSnapshotPut(t *testing.T) {
 	cli := clus.Client(0)
 	// key with lower create/mod revision than keys being updated
 	_, err := cli.Put(context.TODO(), "a", "0")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tries := 0
 	applyf := func(stm concurrency.STM) error {
@@ -296,12 +296,12 @@ func TestSTMSerializableSnapshotPut(t *testing.T) {
 
 	iso := concurrency.WithIsolation(concurrency.SerializableSnapshot)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	resp, err := cli.Get(context.TODO(), "b")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	if resp.Kvs[0].Version != 2 {
 		t.Fatalf("bad version. got %+v, expected version 2", resp)
 	}

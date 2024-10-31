@@ -122,10 +122,10 @@ func TestInPlaceRecovery(t *testing.T) {
 	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
 	t.Log("putting 10 keys...")
 	oldCc, err := e2e.NewEtcdctl(epcOld.Cfg.Client, epcOld.EndpointsGRPC())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	for i := 0; i < 10; i++ {
 		err = oldCc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	// Create a new cluster config, but with the same port numbers. In this way the new servers can stay in
@@ -148,7 +148,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	})
 
 	newCc, err := e2e.NewEtcdctl(epcNew.Cfg.Client, epcNew.EndpointsGRPC())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Rolling recovery of the servers.
 	wg := sync.WaitGroup{}
@@ -178,7 +178,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	t.Log("new cluster started.")
 
 	alarmResponse, err := newCc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	for _, alarm := range alarmResponse.Alarms {
 		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
 			t.Fatalf("there is no corruption after in-place recovery, but corruption reported.")
@@ -208,22 +208,22 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
-	assert.NoErrorf(t, err, "error on member list")
+	require.NoErrorf(t, err, "error on member list")
 	assert.Truef(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = epc.Procs[0].Restart(context.TODO())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }
 
@@ -249,23 +249,23 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
 		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
-	assert.NoErrorf(t, err, "error on member list")
+	require.NoErrorf(t, err, "error on member list")
 	assert.Truef(t, found, "member not found")
 
 	epc.Procs[0].Stop()
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = epc.Procs[0].Restart(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = cc.Compact(ctx, 5, config.CompactOption{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: memberID}}, alarmResponse.Alarms)
 }
 

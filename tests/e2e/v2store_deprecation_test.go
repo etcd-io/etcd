@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -52,7 +53,7 @@ func TestV2DeprecationNotYet(t *testing.T) {
 	e2e.BeforeTest(t)
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=not-yet"}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
 	assert.NoError(t, err)
@@ -71,16 +72,16 @@ func TestV2DeprecationWriteOnlyWAL(t *testing.T) {
 		e2e.WithDataDirPath(dataDirPath),
 	))
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
 
 	writeCustomV2Data(t, epc, 1)
 
-	assert.NoError(t, epc.Stop())
+	require.NoError(t, epc.Stop())
 
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	_, err = proc.Expect("detected disallowed v2 WAL for stage --v2-deprecation=write-only")
 	assert.NoError(t, err)
@@ -100,17 +101,17 @@ func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
 		e2e.WithSnapshotCount(10),
 	))
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
 
 	// We need to exceed 'SnapshotCount' such that v2 snapshot is dumped.
 	writeCustomV2Data(t, epc, 10)
 
-	assert.NoError(t, epc.Stop())
+	require.NoError(t, epc.Stop())
 
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer proc.Close()
 
 	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
@@ -132,12 +133,12 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
 	cc1 := epc.Etcdctl()
 	members1 := addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
-	assert.NoError(t, epc.Close())
+	require.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, currentReleaseData, snapshotCount)
 	newMemberDataDir := epc.Procs[0].Config().DataDirPath
 	cc2 := epc.Etcdctl()
 	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
-	assert.NoError(t, epc.Close())
+	require.NoError(t, epc.Close())
 
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch members ids
@@ -164,7 +165,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 
 	cc := epc.Etcdctl()
 	lastReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	lastReleaseMemberListResponse, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err)
@@ -175,14 +176,14 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 		e2e.WithDataDirPath(dataDir),
 	))
 	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cc = epc.Etcdctl()
 	currentReleaseGetResponse, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	currentReleaseMemberListResponse, err := cc.MemberList(ctx, false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, lastReleaseGetResponse.Kvs, currentReleaseGetResponse.Kvs)
 	assert.Equal(t, lastReleaseMemberListResponse.Members, currentReleaseMemberListResponse.Members)
@@ -206,25 +207,25 @@ func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.Etcdc
 	var i uint64
 	for i = 0; i < snapshotCount*3; i++ {
 		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	members = append(members, member1.Member.ID)
 
 	for i = 0; i < snapshotCount*2; i++ {
 		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	_, err = cc.MemberRemove(ctx, member1.Member.ID)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	for i = 0; i < snapshotCount; i++ {
 		err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	member2, err := cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	members = append(members, member2.Member.ID)
 
 	for i = 0; i < snapshotCount/2; i++ {

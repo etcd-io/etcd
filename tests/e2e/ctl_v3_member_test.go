@@ -299,12 +299,12 @@ func TestRemoveNonExistingMember(t *testing.T) {
 
 	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer epc.Close()
 	c := epc.Etcdctl()
 
 	_, err = c.MemberRemove(ctx, 1)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	// Ensure that membership is properly bootstrapped.
 	err = epc.Restart(ctx)
