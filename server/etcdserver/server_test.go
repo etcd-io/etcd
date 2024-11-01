@@ -627,8 +627,8 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	}
 }
 
-// TestSnapshot should snapshot the store and cut the persistent
-func TestSnapshot(t *testing.T) {
+// TestSnapshotDisk should save the snapshot to disk and release old snapshots
+func TestSnapshotDisk(t *testing.T) {
 	revertFunc := verify.DisableVerifications()
 	defer revertFunc()
 
@@ -680,12 +680,66 @@ func TestSnapshot(t *testing.T) {
 		}
 	}()
 	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
-	srv.snapshot(&ep)
+	srv.snapshot(&ep, true)
 	<-ch
 	if len(st.Action()) != 0 {
 		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
 	}
 	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
+	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
+}
+
+func TestSnapshotMemory(t *testing.T) {
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	s := raft.NewMemoryStorage()
+	s.Append([]raftpb.Entry{{Index: 1}})
+	st := mockstore.NewRecorderStream()
+	p := mockstorage.NewStorageRecorderStream("")
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        newNodeNop(),
+		raftStorage: s,
+		storage:     p,
+	})
+	srv := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		r:            *r,
+		v2store:      st,
+		consistIndex: cindex.NewConsistentIndex(be),
+	}
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
+	srv.be = be
+
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	srv.cluster = cl
+
+	ch := make(chan struct{}, 1)
+
+	go func() {
+		gaction, _ := p.Wait(1)
+		defer func() { ch <- struct{}{} }()
+
+		if len(gaction) != 0 {
+			t.Errorf("len(action) = %d, want 0", len(gaction))
+			return
+		}
+	}()
+	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	srv.snapshot(&ep, false)
+	<-ch
+	if len(st.Action()) != 0 {
+		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
+	}
+	assert.Equal(t, uint64(0), ep.diskSnapshotIndex)
 	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
 

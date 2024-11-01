@@ -899,7 +899,7 @@ func (c *RaftCluster) Store(store v2store.Store) {
 		if m.ClientURLs != nil {
 			mustUpdateMemberAttrInStore(c.lg, store, m)
 		}
-		c.lg.Info(
+		c.lg.Debug(
 			"snapshot storing member",
 			zap.String("id", m.ID.String()),
 			zap.Strings("peer-urls", m.PeerURLs),
