@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -38,9 +39,8 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 
 	cli := clus.RandClient()
 	kvc := integration.ToGRPC(cli).KV
-	if _, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 
@@ -69,9 +69,8 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 	cli := clus.RandClient()
 	kvc := integration.ToGRPC(cli).KV
 
-	if _, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 

@@ -594,19 +594,15 @@ func TestV3WatchEmptyKey(t *testing.T) {
 			Key: []byte("foo"),
 		},
 	}}
-	if err := ws.Send(req); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ws.Recv(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ws.Send(req))
+	_, err := ws.Recv()
+	require.NoError(t, err)
 
 	// put a key with empty value
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	preq := &pb.PutRequest{Key: []byte("foo")}
-	if _, err := kvc.Put(context.TODO(), preq); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kvc.Put(context.TODO(), preq)
+	require.NoError(t, err)
 
 	// check received PUT
 	resp, rerr := ws.Recv()
@@ -1240,12 +1236,9 @@ func TestV3WatchWithFilter(t *testing.T) {
 			Filters: []pb.WatchCreateRequest_FilterType{pb.WatchCreateRequest_NOPUT},
 		},
 	}}
-	if err := ws.Send(req); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ws.Recv(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, ws.Send(req))
+	_, err := ws.Recv()
+	require.NoError(t, err)
 
 	recv := make(chan *pb.WatchResponse, 1)
 	go func() {
@@ -1260,9 +1253,8 @@ func TestV3WatchWithFilter(t *testing.T) {
 	// put a key with empty value
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	preq := &pb.PutRequest{Key: []byte("foo")}
-	if _, err := kvc.Put(context.TODO(), preq); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kvc.Put(context.TODO(), preq)
+	require.NoError(t, err)
 
 	select {
 	case <-recv:
@@ -1271,9 +1263,8 @@ func TestV3WatchWithFilter(t *testing.T) {
 	}
 
 	dreq := &pb.DeleteRangeRequest{Key: []byte("foo")}
-	if _, err := kvc.DeleteRange(context.TODO(), dreq); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kvc.DeleteRange(context.TODO(), dreq)
+	require.NoError(t, err)
 
 	select {
 	case resp := <-recv:
@@ -1386,9 +1377,7 @@ func TestV3WatchCancellation(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var expected string
 	if integration.ThroughProxy {
@@ -1425,9 +1414,7 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 	time.Sleep(3 * time.Second)
 
 	minWatches, err := clus.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	var expected string
 	if integration.ThroughProxy {
