@@ -41,39 +41,29 @@ func TestAlarm(t *testing.T) {
 	testutils.ExecuteUntil(ctx, t, func() {
 		// test small put still works
 		smallbuf := strings.Repeat("a", 64)
-		if err := cc.Put(ctx, "1st_test", smallbuf, config.PutOptions{}); err != nil {
-			t.Fatalf("alarmTest: put kv error (%v)", err)
-		}
+		require.NoErrorf(t, cc.Put(ctx, "1st_test", smallbuf, config.PutOptions{}), "alarmTest: put kv error")
 
 		// write some chunks to fill up the database
 		buf := strings.Repeat("b", os.Getpagesize())
 		for {
 			if err := cc.Put(ctx, "2nd_test", buf, config.PutOptions{}); err != nil {
-				if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
-					t.Fatal(err)
-				}
+				require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 				break
 			}
 		}
 
 		// quota alarm should now be on
 		alarmResp, err := cc.AlarmList(ctx)
-		if err != nil {
-			t.Fatalf("alarmTest: Alarm error (%v)", err)
-		}
+		require.NoErrorf(t, err, "alarmTest: Alarm error")
 
 		// check that Put is rejected when alarm is on
 		if err = cc.Put(ctx, "3rd_test", smallbuf, config.PutOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
-				t.Fatal(err)
-			}
+			require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 		}
 
 		// get latest revision to compact
 		sresp, err := cc.Status(ctx)
-		if err != nil {
-			t.Fatalf("get endpoint status error: %v", err)
-		}
+		require.NoErrorf(t, err, "get endpoint status error")
 		var rvs int64
 		for _, resp := range sresp {
 			if resp != nil && resp.Header != nil {
@@ -84,13 +74,10 @@ func TestAlarm(t *testing.T) {
 
 		// make some space
 		_, err = cc.Compact(ctx, rvs, config.CompactOption{Physical: true, Timeout: 10 * time.Second})
-		if err != nil {
-			t.Fatalf("alarmTest: Compact error (%v)", err)
-		}
+		require.NoErrorf(t, err, "alarmTest: Compact error")
 
-		if err = cc.Defragment(ctx, config.DefragOption{Timeout: 10 * time.Second}); err != nil {
-			t.Fatalf("alarmTest: defrag error (%v)", err)
-		}
+		err = cc.Defragment(ctx, config.DefragOption{Timeout: 10 * time.Second})
+		require.NoErrorf(t, err, "alarmTest: defrag error")
 
 		// turn off alarm
 		for _, alarm := range alarmResp.Alarms {
@@ -99,9 +86,7 @@ func TestAlarm(t *testing.T) {
 				Alarm:    alarm.Alarm,
 			}
 			_, err = cc.AlarmDisarm(ctx, alarmMember)
-			if err != nil {
-				t.Fatalf("alarmTest: Alarm error (%v)", err)
-			}
+			require.NoErrorf(t, err, "alarmTest: Alarm error")
 		}
 
 		// put one more key below quota
@@ -124,14 +109,12 @@ func TestAlarmlistOnMemberRestart(t *testing.T) {
 
 	testutils.ExecuteUntil(ctx, t, func() {
 		for i := 0; i < 6; i++ {
-			if _, err := cc.AlarmList(ctx); err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
+			_, err := cc.AlarmList(ctx)
+			require.NoErrorf(t, err, "Unexpected error")
 		}
 
 		clus.Members()[0].Stop()
-		if err := clus.Members()[0].Start(ctx); err != nil {
-			t.Fatalf("failed to start etcdserver: %v", err)
-		}
+		err := clus.Members()[0].Start(ctx)
+		require.NoErrorf(t, err, "failed to start etcdserver")
 	})
 }

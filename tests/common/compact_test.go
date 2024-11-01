@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -51,22 +52,17 @@ func TestCompact(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {
-					if err := cc.Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{}); err != nil {
-						t.Fatalf("compactTest #%d: put kv error (%v)", i, err)
-					}
+					err := cc.Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{})
+					require.NoErrorf(t, err, "compactTest #%d: put kv error", i)
 				}
 				get, err := cc.Get(ctx, "key", config.GetOptions{Revision: 3})
-				if err != nil {
-					t.Fatalf("compactTest: Get kv by revision error (%v)", err)
-				}
+				require.NoErrorf(t, err, "compactTest: Get kv by revision error")
 
 				getkvs := testutils.KeyValuesFromGetResponse(get)
 				assert.Equal(t, kvs[1:2], getkvs)
 
 				_, err = cc.Compact(ctx, 4, tc.options)
-				if err != nil {
-					t.Fatalf("compactTest: Compact error (%v)", err)
-				}
+				require.NoErrorf(t, err, "compactTest: Compact error")
 
 				_, err = cc.Get(ctx, "key", config.GetOptions{Revision: 3})
 				if err != nil {

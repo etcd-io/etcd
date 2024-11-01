@@ -215,14 +215,12 @@ func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOp
 
 	ccWithAuth, err := clus.Client(opts...)
 	if expectConnectError {
-		if err == nil {
-			t.Fatalf("%s: expected connection error, but got successful response", t.Name())
-		}
+		require.Errorf(t, err, "%s: expected connection error, but got successful response", t.Name())
 		t.Logf("%s: connection error: %v", t.Name(), err)
 		return
 	}
 	if err != nil {
-		t.Fatalf("%s: unexpected connection error (%v)", t.Name(), err)
+		require.NoErrorf(t, err, "%s: unexpected connection error", t.Name())
 		return
 	}
 
@@ -233,15 +231,11 @@ func testMaintenanceOperationWithAuth(t *testing.T, expectConnectError, expectOp
 		err := f(ctx, ccWithAuth)
 
 		if expectOperationError {
-			if err == nil {
-				t.Fatalf("%s: expected error, but got successful response", t.Name())
-			}
+			require.Errorf(t, err, "%s: expected error, but got successful response", t.Name())
 			t.Logf("%s: operation error: %v", t.Name(), err)
 			return
 		}
 
-		if err != nil {
-			t.Fatalf("%s: unexpected operation error (%v)", t.Name(), err)
-		}
+		require.NoErrorf(t, err, "%s: unexpected operation error", t.Name())
 	})
 }

@@ -42,9 +42,7 @@ func TestMemberList(t *testing.T) {
 
 			testutils.ExecuteUntil(ctx, t, func() {
 				resp, err := cc.MemberList(ctx, false)
-				if err != nil {
-					t.Fatalf("could not get member list, err: %s", err)
-				}
+				require.NoErrorf(t, err, "could not get member list")
 				expectNum := len(clus.Members())
 				gotNum := len(resp.Members)
 				if expectNum != gotNum {
