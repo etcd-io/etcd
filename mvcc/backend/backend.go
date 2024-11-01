@@ -27,8 +27,9 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	humanize "github.com/dustin/go-humanize"
-	bolt "go.etcd.io/bbolt"
 	"go.uber.org/zap"
+
+	bolt "go.etcd.io/bbolt"
 )
 
 var (
@@ -449,10 +450,6 @@ func (b *backend) defrag() error {
 	b.readTx.Lock()
 	defer b.readTx.Unlock()
 
-	b.batchTx.unsafeCommit(true)
-
-	b.batchTx.tx = nil
-
 	// Create a temporary file to ensure we start with a clean slate.
 	// Snapshotter.cleanupSnapdir cleans up any of these that are found during startup.
 	dir := filepath.Dir(b.db.Path())
@@ -460,11 +457,14 @@ func (b *backend) defrag() error {
 	if err != nil {
 		return err
 	}
+
 	options := bolt.Options{}
 	if boltOpenOptions != nil {
 		options = *boltOpenOptions
 	}
 	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
+		// gofail: var defragNoSpace string
+		// return nil, fmt.Errorf(defragNoSpace)
 		return temp, nil
 	}
 	tdbp := temp.Name()
@@ -485,6 +485,11 @@ func (b *backend) defrag() error {
 			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse1))),
 		)
 	}
+
+	// Commit/stop and then reset current transactions (including the readTx)
+	b.batchTx.unsafeCommit(true)
+	b.batchTx.tx = nil
+
 	// gofail: var defragBeforeCopy struct{}
 	err = defragdb(b.db, tmpdb, defragLimit)
 	if err != nil {
