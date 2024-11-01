@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -105,9 +106,7 @@ func TestAuthority(t *testing.T) {
 				putRequestMethod := "/etcdserverpb.KV/Put"
 				for i := 0; i < 100; i++ {
 					_, err := kv.Put(context.TODO(), "foo", "bar")
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, err)
 				}
 
 				assertAuthority(t, tc.expectAuthorityPattern, clus, putRequestMethod)
@@ -121,9 +120,7 @@ func setupTLS(t *testing.T, useTLS bool, cfg integration.ClusterConfig) (integra
 	if useTLS {
 		cfg.ClientTLS = &integration.TestTLSInfo
 		tlsConfig, err := integration.TestTLSInfo.ClientConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		return cfg, tlsConfig
 	}
 	return cfg, nil
@@ -138,9 +135,7 @@ func setupClient(t *testing.T, endpointPattern string, clus *integration.Cluster
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tlsConfig,
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return kv
 }
 

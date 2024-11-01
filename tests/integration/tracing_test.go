@@ -40,9 +40,7 @@ func TestTracing(t *testing.T) {
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
 	// set up trace collector
 	listener, err := net.Listen("tcp", "localhost:")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	traceFound := make(chan struct{})
 	defer close(traceFound)
@@ -64,9 +62,7 @@ func TestTracing(t *testing.T) {
 
 	// start an etcd instance with tracing enabled
 	etcdSrv, err := embed.StartEtcd(cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer etcdSrv.Close()
 
 	select {

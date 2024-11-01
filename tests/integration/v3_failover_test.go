@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -56,9 +57,7 @@ func TestFailover(t *testing.T) {
 			defer clus.Terminate(t)
 
 			cc, err := integration2.TestTLSInfo.ClientConfig()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			// Create an etcd client before or after first server down
 			t.Logf("Creating an etcd client [%s]", tc.name)
 			cli, err := tc.testFunc(t, cc, clus)

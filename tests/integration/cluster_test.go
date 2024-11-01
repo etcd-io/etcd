@@ -208,9 +208,7 @@ func TestIssue2681(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 5, DisableStrictReconfigCheck: true})
 	defer c.Terminate(t)
 
-	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.MemberID())); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[4].Server.MemberID())))
 	c.WaitMembersForLeader(t, c.Members)
 
 	c.AddMember(t)
@@ -234,9 +232,7 @@ func testIssue2746(t *testing.T, members int) {
 		clusterMustProgress(t, c.Members)
 	}
 
-	if err := c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[members-1].Server.MemberID())); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.RemoveMember(t, c.Members[0].Client, uint64(c.Members[members-1].Server.MemberID())))
 	c.WaitMembersForLeader(t, c.Members)
 
 	c.AddMember(t)
@@ -312,9 +308,7 @@ func TestIssue3699(t *testing.T) {
 	t.Logf("Restarting member '0'...")
 	// bring back node a
 	// node a will remain useless as long as d is the leader.
-	if err := c.Members[0].Restart(t); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, c.Members[0].Restart(t))
 	t.Logf("Restarted member '0'.")
 
 	select {
@@ -530,9 +524,7 @@ func TestConcurrentRemoveMember(t *testing.T) {
 	defer c.Terminate(t)
 
 	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	removeID := addResp.Member.ID
 	done := make(chan struct{})
 	go func() {
@@ -540,9 +532,8 @@ func TestConcurrentRemoveMember(t *testing.T) {
 		c.Members[0].Client.MemberRemove(context.Background(), removeID)
 		close(done)
 	}()
-	if _, err := c.Members[0].Client.MemberRemove(context.Background(), removeID); err != nil {
-		t.Fatal(err)
-	}
+	_, err = c.Members[0].Client.MemberRemove(context.Background(), removeID)
+	require.NoError(t, err)
 	<-done
 }
 
@@ -552,9 +543,7 @@ func TestConcurrentMoveLeader(t *testing.T) {
 	defer c.Terminate(t)
 
 	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	removeID := addResp.Member.ID
 	done := make(chan struct{})
 	go func() {
@@ -562,8 +551,7 @@ func TestConcurrentMoveLeader(t *testing.T) {
 		c.Members[0].Client.MoveLeader(context.Background(), removeID)
 		close(done)
 	}()
-	if _, err := c.Members[0].Client.MemberRemove(context.Background(), removeID); err != nil {
-		t.Fatal(err)
-	}
+	_, err = c.Members[0].Client.MemberRemove(context.Background(), removeID)
+	require.NoError(t, err)
 	<-done
 }

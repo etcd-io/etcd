@@ -62,9 +62,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	defer clus.Terminate(t)
 
 	cc, err := cliTLS.ClientConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cli, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,

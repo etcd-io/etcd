@@ -58,9 +58,7 @@ func TestRestartMember(t *testing.T) {
 		c.WaitMembersForLeader(t, membs)
 		clusterMustProgress(t, membs)
 		err := c.Members[i].Restart(t)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	c.WaitMembersForLeader(t, c.Members)
 	clusterMustProgress(t, c.Members)
