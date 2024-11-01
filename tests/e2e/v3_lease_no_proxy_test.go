@@ -66,9 +66,7 @@ func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bo
 	)
 	require.NoError(t, err)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	leaderIdx := epc.WaitLeader(t)

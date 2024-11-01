@@ -140,15 +140,12 @@ func TestEtctlutlMigrate(t *testing.T) {
 
 			t.Log("Write keys to ensure wal snapshot is created and all v3.5 fields are set...")
 			for i := 0; i < 10; i++ {
-				if err = e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}))
 			}
 
 			t.Log("Stopping the server...")
-			if err = epc.Procs[0].Stop(); err != nil {
-				t.Fatal(err)
-			}
+			err = epc.Procs[0].Stop()
+			require.NoError(t, err)
 
 			t.Log("etcdutl migrate...")
 			memberDataDir := epc.Procs[0].Config().DataDirPath
@@ -157,12 +154,10 @@ func TestEtctlutlMigrate(t *testing.T) {
 				args = append(args, "--force")
 			}
 			err = e2e.SpawnWithExpect(args, expect.ExpectedResponse{Value: tc.expectLogsSubString})
-			if err != nil {
-				if tc.expectLogsSubString != "" {
-					require.ErrorContains(t, err, tc.expectLogsSubString)
-				} else {
-					t.Fatal(err)
-				}
+			if err != nil && tc.expectLogsSubString != "" {
+				require.ErrorContains(t, err, tc.expectLogsSubString)
+			} else {
+				require.NoError(t, err)
 			}
 
 			t.Log("etcdutl migrate...")

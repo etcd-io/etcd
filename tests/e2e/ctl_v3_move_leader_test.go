@@ -71,9 +71,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		}
 		var err error
 		tcfg, err = tinfo.ClientConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	var leadIdx int
@@ -85,9 +83,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 			DialTimeout: 3 * time.Second,
 			TLS:         tcfg,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		resp, err := cli.Status(ctx, ep)
 		if err != nil {

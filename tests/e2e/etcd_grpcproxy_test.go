@@ -137,10 +137,7 @@ func waitForEndpointInLog(ctx context.Context, proxyProc *expect.ExpectProcess, 
 	defer cancel()
 
 	_, err := proxyProc.ExpectFunc(ctx, func(s string) bool {
-		if strings.Contains(s, endpoint) {
-			return true
-		}
-		return false
+		return strings.Contains(s, endpoint)
 	})
 
 	return err

@@ -44,9 +44,7 @@ func TestCurlV3_MaxStreams_BelowLimit_NoTLS_Medium(t *testing.T) {
 
 func TestCurlV3_MaxStreamsNoTLS_BelowLimit_Large(t *testing.T) {
 	f, err := setRLimit(10240)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer f()
 	testCurlV3MaxStream(t, false, withCfg(*e2e.NewConfigNoTLS()), withMaxConcurrentStreams(1000), withTestTimeout(200*time.Second))
 }
@@ -91,9 +89,7 @@ func testCurlV3MaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 	// Step 2: create the cluster
 	t.Log("Creating an etcd cluster")
 	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(&cx.cfg))
-	if err != nil {
-		t.Fatalf("Failed to start etcd cluster: %v", err)
-	}
+	require.NoErrorf(t, err, "Failed to start etcd cluster")
 	cx.epc = epc
 	cx.dataDir = epc.Procs[0].Config().DataDirPath
 
@@ -146,9 +142,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 			Key: []byte("foo"),
 		},
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
 	var wgSchedule sync.WaitGroup
 
@@ -193,9 +187,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 			go func(i int) {
 				defer wgDone.Done()
 
-				if err := createWatchConnection(); err != nil {
-					cx.t.Fatalf("testCurlV3MaxStream watch failed: %d, error: %v", i, err)
-				}
+				require.NoErrorf(cx.t, createWatchConnection(), "testCurlV3MaxStream watch failed: %d", i)
 			}(i)
 		}
 
@@ -208,9 +200,7 @@ func submitRangeAfterConcurrentWatch(cx ctlCtx, expectedValue string) {
 	rangeData, err := json.Marshal(&pb.RangeRequest{
 		Key: []byte("foo"),
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
 	cx.t.Log("Submitting range request...")
 	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/range", Value: string(rangeData), Expected: expect.ExpectedResponse{Value: expectedValue}, Timeout: 5}); err != nil {

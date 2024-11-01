@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -100,26 +102,14 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 	cmdArgs = append(cmdArgs, flags...)
 	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.BasePort))
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	defer func() {
-		err = proc.Stop()
-		if err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, proc.Stop())
 	}()
 
 	for i := range sourcekvs {
-		if err = ctlV3Put(cx, sourcekvs[i].key, sourcekvs[i].val, ""); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3Put(cx, sourcekvs[i].key, sourcekvs[i].val, ""))
 	}
-	if err = ctlV3Get(cx, []string{srcprefix, "--prefix"}, sourcekvs...); err != nil {
-		cx.t.Fatal(err)
-	}
-
-	if err = ctlV3Watch(mirrorctx, []string{destprefix, "--rev", "1", "--prefix"}, destkvs...); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3Get(cx, []string{srcprefix, "--prefix"}, sourcekvs...))
+	require.NoError(cx.t, ctlV3Watch(mirrorctx, []string{destprefix, "--rev", "1", "--prefix"}, destkvs...))
 }

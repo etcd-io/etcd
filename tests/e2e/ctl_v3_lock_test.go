@@ -40,9 +40,7 @@ func testLock(cx ctlCtx) {
 	name := "a"
 
 	holder, ch, err := ctlV3Lock(cx, name)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
 	l1 := ""
 	select {
@@ -56,9 +54,7 @@ func testLock(cx ctlCtx) {
 
 	// blocked process that won't acquire the lock
 	blocked, ch, err := ctlV3Lock(cx, name)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-ch:
@@ -67,9 +63,7 @@ func testLock(cx ctlCtx) {
 
 	// overlap with a blocker that will acquire the lock
 	blockAcquire, ch, err := ctlV3Lock(cx, name)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	defer func(blockAcquire *expect.ExpectProcess) {
 		err = blockAcquire.Stop()
 		require.NoError(cx.t, err)
@@ -83,9 +77,7 @@ func testLock(cx ctlCtx) {
 	}
 
 	// kill blocked process with clean shutdown
-	if err = blocked.Signal(os.Interrupt); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, blocked.Signal(os.Interrupt))
 	err = e2e.CloseWithTimeout(blocked, time.Second)
 	if err != nil {
 		// due to being blocked, this can potentially get killed and thus exit non-zero sometimes
@@ -93,12 +85,8 @@ func testLock(cx ctlCtx) {
 	}
 
 	// kill the holder with clean shutdown
-	if err = holder.Signal(os.Interrupt); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err = e2e.CloseWithTimeout(holder, 200*time.Millisecond+time.Second); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, holder.Signal(os.Interrupt))
+	require.NoError(cx.t, e2e.CloseWithTimeout(holder, 200*time.Millisecond+time.Second))
 
 	// blockAcquire should acquire the lock
 	select {
@@ -114,16 +102,13 @@ func testLock(cx ctlCtx) {
 func testLockWithCmd(cx ctlCtx) {
 	// exec command with zero exit code
 	echoCmd := []string{"echo"}
-	if err := ctlV3LockWithCmd(cx, echoCmd, expect.ExpectedResponse{Value: ""}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3LockWithCmd(cx, echoCmd, expect.ExpectedResponse{Value: ""}))
 
 	// exec command with non-zero exit code
 	code := 3
 	awkCmd := []string{"awk", fmt.Sprintf("BEGIN{exit %d}", code)}
 	expect := expect.ExpectedResponse{Value: fmt.Sprintf("Error: exit status %d", code)}
-	err := ctlV3LockWithCmd(cx, awkCmd, expect)
-	require.ErrorContains(cx.t, err, expect.Value)
+	require.ErrorContains(cx.t, ctlV3LockWithCmd(cx, awkCmd, expect), expect.Value)
 }
 
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.

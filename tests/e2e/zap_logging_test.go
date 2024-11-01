@@ -33,14 +33,10 @@ func TestServerJsonLogging(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithLogLevel("debug"),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster")
 	logs := epc.Procs[0].Logs()
 	time.Sleep(time.Second)
-	if err = epc.Close(); err != nil {
-		t.Fatalf("error closing etcd processes (%v)", err)
-	}
+	require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	var entry logEntry
 	lines := logs.Lines()
 	if len(lines) == 0 {

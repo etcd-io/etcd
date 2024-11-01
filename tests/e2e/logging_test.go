@@ -99,8 +99,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 			}
 
 			time.Sleep(time.Second)
-			err = epc.Close()
-			require.NoErrorf(t, err, "closing etcd processes")
+			require.NoErrorf(t, epc.Close(), "closing etcd processes")
 
 			// Now that the processes are closed we can collect all log lines. This must happen after closing, else we
 			// might not get all log lines.

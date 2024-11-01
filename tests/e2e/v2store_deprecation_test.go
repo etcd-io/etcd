@@ -243,13 +243,9 @@ func filterSnapshotFiles(path string) bool {
 func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patch func([]byte) []byte) {
 	lg := zaptest.NewLogger(t)
 	firstFiles, err := fileutil.ListFiles(firstDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	secondFiles, err := fileutil.ListFiles(secondDataDir, filterSnapshotFiles)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	assert.NotEmpty(t, firstFiles)
 	assert.NotEmpty(t, secondFiles)
 	assert.Equal(t, len(firstFiles), len(secondFiles))
@@ -257,13 +253,9 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
 		firstSnapshot, err := snap.Read(lg, firstFiles[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		secondSnapshot, err := snap.Read(lg, secondFiles[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
 	}
 }
