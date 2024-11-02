@@ -28,17 +28,55 @@ import (
 func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 	tests := []struct {
 		name          string
-		clusterSize   int
+		options       []e2e.EPClusterOption
 		allowedErrors map[string]bool
 	}{
 		{
-			name:          "single node cluster",
-			clusterSize:   1,
+			name: "single node cluster",
+			options: []e2e.EPClusterOption{
+				e2e.WithClusterSize(1),
+				e2e.WithLogLevel("debug"),
+			},
 			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
 		},
 		{
-			name:          "three node cluster",
-			clusterSize:   3,
+			name: "three node cluster",
+			options: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithLogLevel("debug"),
+			},
+			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+		},
+		{
+			name: "three node cluster with auto tls (all)",
+			options: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithLogLevel("debug"),
+				e2e.WithIsPeerTLS(true),
+				e2e.WithIsPeerAutoTLS(true),
+				e2e.WithClientAutoTLS(true),
+				e2e.WithClientConnType(e2e.ClientTLS),
+			},
+			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+		},
+		{
+			name: "three node cluster with auto tls (peers)",
+			options: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithLogLevel("debug"),
+				e2e.WithIsPeerTLS(true),
+				e2e.WithIsPeerAutoTLS(true),
+			},
+			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+		},
+		{
+			name: "three node cluster with auto tls (client)",
+			options: []e2e.EPClusterOption{
+				e2e.WithClusterSize(3),
+				e2e.WithLogLevel("debug"),
+				e2e.WithClientAutoTLS(true),
+				e2e.WithClientConnType(e2e.ClientTLS),
+			},
 			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
 		},
 	}
@@ -48,18 +86,15 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 			e2e.BeforeTest(t)
 			ctx := context.TODO()
 
-			epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-				e2e.WithClusterSize(tc.clusterSize),
-				e2e.WithLogLevel("debug"),
-			)
+			epc, err := e2e.NewEtcdProcessCluster(ctx, t, tc.options...)
 			require.NoError(t, err)
 			defer epc.Close()
 
-			require.Lenf(t, epc.Procs, tc.clusterSize, "embedded etcd cluster process count is not as expected")
+			require.Lenf(t, epc.Procs, epc.Cfg.ClusterSize, "embedded etcd cluster process count is not as expected")
 
 			// Collect the handle of logs before closing the processes.
 			var logHandles []e2e.LogsExpect
-			for i := range tc.clusterSize {
+			for i := range epc.Cfg.ClusterSize {
 				logHandles = append(logHandles, epc.Procs[i].Logs())
 			}
 
