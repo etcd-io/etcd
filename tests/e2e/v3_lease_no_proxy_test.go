@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -106,7 +107,7 @@ func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bo
 		defer close(doneC)
 
 		respC, kerr := clientForKeepAlive.KeepAlive(ctx, leaseRsp.ID)
-		require.NoError(t, kerr)
+		assert.NoError(t, kerr)
 		// ensure we have received the first response from the server
 		<-respC
 		startC <- struct{}{}

@@ -53,7 +53,7 @@ func TestLogObserver_Expect(t *testing.T) {
 		defer close(resCh)
 
 		res, err := logOb.Expect(ctx, t.Name(), 2)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		resCh <- res
 	}()
 

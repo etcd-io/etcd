@@ -387,7 +387,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 				t.Logf("DELETE key=%s", key)
 
 				resp, derr := c.KV.Delete(ctx, key)
-				require.NoError(t, derr)
+				assert.NoError(t, derr)
 				respHeader = resp.Header
 
 				requestedValues = append(requestedValues, valueEvent{value: "", typ: mvccpb.DELETE})
@@ -396,7 +396,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 
 				t.Logf("PUT key=%s, val=%s", key, value)
 				resp, perr := c.KV.Put(ctx, key, value)
-				require.NoError(t, perr)
+				assert.NoError(t, perr)
 				respHeader = resp.Header
 
 				requestedValues = append(requestedValues, valueEvent{value: value, typ: mvccpb.PUT})
@@ -409,7 +409,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 
 				t.Logf("COMPACT rev=%d", lastRevision)
 				_, err = c.KV.Compact(ctx, lastRevision, clientv3.WithCompactPhysical())
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		}
 	}()

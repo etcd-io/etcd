@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -130,7 +131,7 @@ func TestConnectionRejectMessage(t *testing.T) {
 			go func() {
 				startedCh <- struct{}{}
 				verr := e2e.WaitReadyExpectProc(context.TODO(), p, []string{tc.expectedErrMsg})
-				require.NoError(t, verr)
+				assert.NoError(t, verr)
 				doneCh <- struct{}{}
 			}()
 
