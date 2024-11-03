@@ -47,7 +47,7 @@ func TestPeriodicCheck(t *testing.T) {
 	}
 	testPeriodicCheck(ctx, t, cc, clus, rev, rev+totalRevisions)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember(nil), alarmResponse.Alarms)
 }
 
@@ -55,10 +55,10 @@ func testPeriodicCheck(ctx context.Context, t *testing.T, cc *clientv3.Client, c
 	for i := start; i <= stop; i++ {
 		if i%67 == 0 {
 			_, err := cc.Delete(ctx, testutil.PickKey(i+83))
-			assert.NoErrorf(t, err, "error on delete")
+			require.NoErrorf(t, err, "error on delete")
 		} else {
 			_, err := cc.Put(ctx, testutil.PickKey(i), fmt.Sprint(i))
-			assert.NoErrorf(t, err, "error on put")
+			require.NoErrorf(t, err, "error on put")
 		}
 	}
 	err := clus.Members[0].Server.CorruptionChecker().PeriodicCheck()
@@ -78,28 +78,28 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	err = clus.Members[0].Server.CorruptionChecker().PeriodicCheck()
-	assert.NoErrorf(t, err, "error on periodic check")
+	require.NoErrorf(t, err, "error on periodic check")
 	clus.Members[0].Stop(t)
 	clus.WaitLeader(t)
 
 	err = testutil.CorruptBBolt(clus.Members[0].BackendPath())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = clus.Members[0].Restart(t)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	time.Sleep(50 * time.Millisecond)
 	leader := clus.WaitLeader(t)
 
 	err = clus.Members[leader].Server.CorruptionChecker().PeriodicCheck()
-	assert.NoErrorf(t, err, "error on periodic check")
+	require.NoErrorf(t, err, "error on periodic check")
 	time.Sleep(50 * time.Millisecond)
 
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: uint64(clus.Members[0].ID())}}, alarmResponse.Alarms)
 }
 
@@ -126,14 +126,14 @@ func testCompactionHash(ctx context.Context, t *testing.T, cc *clientv3.Client, 
 	for i := start; i <= stop; i++ {
 		if i%67 == 0 {
 			_, err := cc.Delete(ctx, testutil.PickKey(i+83))
-			assert.NoErrorf(t, err, "error on delete")
+			require.NoErrorf(t, err, "error on delete")
 		} else {
 			_, err := cc.Put(ctx, testutil.PickKey(i), fmt.Sprint(i))
-			assert.NoErrorf(t, err, "error on put")
+			require.NoErrorf(t, err, "error on put")
 		}
 	}
 	_, err := cc.Compact(ctx, stop)
-	assert.NoErrorf(t, err, "error on compact (rev %v)", stop)
+	require.NoErrorf(t, err, "error on compact (rev %v)", stop)
 	// Wait for compaction to be compacted
 	time.Sleep(50 * time.Millisecond)
 
@@ -153,7 +153,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	clus.Members[0].Server.CorruptionChecker().CompactHashCheck()
@@ -161,19 +161,19 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	clus.WaitLeader(t)
 
 	err = testutil.CorruptBBolt(clus.Members[0].BackendPath())
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = clus.Members[0].Restart(t)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = cc.Compact(ctx, 5)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	time.Sleep(50 * time.Millisecond)
 	leader := clus.WaitLeader(t)
 
 	clus.Members[leader].Server.CorruptionChecker().CompactHashCheck()
 	time.Sleep(50 * time.Millisecond)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 	assert.Equal(t, []*etcdserverpb.AlarmMember{{Alarm: etcdserverpb.AlarmType_CORRUPT, MemberID: uint64(clus.Members[0].ID())}}, alarmResponse.Alarms)
 }
 
@@ -190,7 +190,7 @@ func TestCompactHashCheckDetectMultipleCorruption(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
-		assert.NoErrorf(t, err, "error on put")
+		require.NoErrorf(t, err, "error on put")
 	}
 
 	clus.Members[0].Server.CorruptionChecker().CompactHashCheck()
@@ -217,7 +217,7 @@ func TestCompactHashCheckDetectMultipleCorruption(t *testing.T) {
 	clus.Members[leader].Server.CorruptionChecker().CompactHashCheck()
 	time.Sleep(50 * time.Millisecond)
 	alarmResponse, err := cc.AlarmList(ctx)
-	assert.NoErrorf(t, err, "error on alarm list")
+	require.NoErrorf(t, err, "error on alarm list")
 
 	expectedAlarmMap := map[uint64]etcdserverpb.AlarmType{
 		uint64(clus.Members[0].ID()): etcdserverpb.AlarmType_CORRUPT,

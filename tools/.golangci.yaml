@@ -113,7 +113,6 @@ linters-settings: # please keep this alphabetized
   testifylint:
     disable:
       - go-require
-      - require-error
     enable-all: true
     formatter:
       # Require f-assertions (e.g. assert.Equalf) if a message is passed to the assertion, even if

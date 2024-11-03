@@ -112,7 +112,7 @@ func TestStoreUpdateValueTTL(t *testing.T) {
 	e, err = s.Get("/foo", false, false)
 	assert.Nil(t, e)
 	var v2Err *v2error.Error
-	assert.ErrorAs(t, err, &v2Err)
+	require.ErrorAs(t, err, &v2Err)
 	assert.Equal(t, v2error.EcodeKeyNotFound, v2Err.ErrorCode)
 }
 
@@ -140,7 +140,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	e, err = s.Get("/foo/bar", false, false)
 	assert.Nil(t, e)
 	var v2Err *v2error.Error
-	assert.ErrorAs(t, err, &v2Err)
+	require.ErrorAs(t, err, &v2Err)
 	assert.Equal(t, v2error.EcodeKeyNotFound, v2Err.ErrorCode)
 }
 

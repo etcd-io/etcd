@@ -393,7 +393,7 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		Username:    "root",
 		Password:    "123",
 	})
-	assert.NoError(t, cerr)
+	require.NoError(t, cerr)
 	defer c.Close()
 
 	var wg sync.WaitGroup
@@ -401,11 +401,11 @@ func TestV3AuthOldRevConcurrent(t *testing.T) {
 		defer wg.Done()
 		role, user := fmt.Sprintf("test-role-%d", i), fmt.Sprintf("test-user-%d", i)
 		_, err := c.RoleAdd(context.TODO(), role)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = c.RoleGrantPermission(context.TODO(), role, "\x00", clientv3.GetPrefixRangeEnd(""), clientv3.PermissionType(clientv3.PermReadWrite))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = c.UserAdd(context.TODO(), user, "123")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = c.Put(context.TODO(), "a", "b")
 		assert.NoError(t, err)
 	}

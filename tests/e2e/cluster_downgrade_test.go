@@ -316,7 +316,7 @@ func verifySnapshot(t *testing.T, epc *e2e.EtcdProcessCluster) {
 		t.Logf("Verifying snapshot for member %d", i)
 		ss := snap.New(epc.Cfg.Logger, datadir.ToSnapDir(epc.Procs[i].Config().DataDirPath))
 		_, err := ss.Load()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 	t.Logf("All members have a valid snapshot")
 }
@@ -329,10 +329,10 @@ func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMe
 		require.NoError(t, err)
 		st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
 		err = st.Recovery(snap.Data)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		for _, m := range expectedMembers.Members {
 			_, err := st.Get(membership.MemberStoreKey(types.ID(m.ID)), true, true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 		t.Logf("Verifed snapshot for member %d", i)
 	}
@@ -344,7 +344,7 @@ func getMembersAndKeys(t *testing.T, cc *e2e.EtcdctlV3) (*clientv3.MemberListRes
 	defer cancel()
 
 	kvs, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	members, err := cc.MemberList(ctx, false)
 	assert.NoError(t, err)
