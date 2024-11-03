@@ -77,7 +77,7 @@ func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 	case config.AutoTLS:
 		tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
 		if err != nil {
-			return nil, fmt.Errorf("failed to generate cert: %s", err)
+			return nil, fmt.Errorf("failed to generate cert: %w", err)
 		}
 		return &tls, nil
 	case config.ManualTLS:

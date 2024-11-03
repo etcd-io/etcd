@@ -780,13 +780,13 @@ func (m *Member) listenGRPC() error {
 	m.Logger.Info("LISTEN GRPC", zap.String("grpcAddr", grpcAddr), zap.String("m.Name", m.Name), zap.String("workdir", wd))
 	grpcListener, err := net.Listen(network, grpcAddr)
 	if err != nil {
-		return fmt.Errorf("listen failed on grpc socket %s (%v)", grpcAddr, err)
+		return fmt.Errorf("listen failed on grpc socket %s (%w)", grpcAddr, err)
 	}
 
 	addr := grpcListener.Addr().String()
 	_, port, err = net.SplitHostPort(addr)
 	if err != nil {
-		return fmt.Errorf("failed to parse grpc listen port from address %s (%v)", addr, err)
+		return fmt.Errorf("failed to parse grpc listen port from address %s (%w)", addr, err)
 	}
 	m.Port = port
 	m.GRPCURL = fmt.Sprintf("%s://%s", m.clientScheme(), addr)
@@ -830,7 +830,7 @@ func (m *Member) addBridge() (*bridge, error) {
 	m.Logger.Info("LISTEN BRIDGE", zap.String("grpc-address", bridgeAddr), zap.String("member", m.Name))
 	bridgeListener, err := transport.NewUnixListener(bridgeAddr)
 	if err != nil {
-		return nil, fmt.Errorf("listen failed on bridge socket %s (%v)", bridgeAddr, err)
+		return nil, fmt.Errorf("listen failed on bridge socket %s (%w)", bridgeAddr, err)
 	}
 	m.GRPCBridge = newBridge(dialer{network: network, addr: grpcAddr}, bridgeListener)
 
@@ -962,7 +962,7 @@ func (m *Member) Launch() error {
 	)
 	var err error
 	if m.Server, err = etcdserver.NewServer(m.ServerConfig); err != nil {
-		return fmt.Errorf("failed to initialize the etcd server: %v", err)
+		return fmt.Errorf("failed to initialize the etcd server: %w", err)
 	}
 	m.Server.SyncTicker = time.NewTicker(500 * time.Millisecond)
 	m.Server.Start()
@@ -1568,7 +1568,7 @@ func (c *Cluster) GetLearnerMembers() ([]*pb.Member, error) {
 	cli := c.Client(0)
 	resp, err := cli.MemberList(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("failed to list member %v", err)
+		return nil, fmt.Errorf("failed to list member %w", err)
 	}
 	var learners []*pb.Member
 	for _, m := range resp.Members {

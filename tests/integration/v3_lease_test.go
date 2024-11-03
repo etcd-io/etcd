@@ -590,7 +590,7 @@ func stressLeaseTimeToLive(tctx context.Context, lc pb.LeaseClient) (reterr erro
 			continue
 		}
 		_, kerr := lc.LeaseTimeToLive(tctx, &pb.LeaseTimeToLiveRequest{ID: resp.ID})
-		if rpctypes.Error(kerr) == rpctypes.ErrLeaseNotFound {
+		if errors.Is(rpctypes.Error(kerr), rpctypes.ErrLeaseNotFound) {
 			return kerr
 		}
 	}

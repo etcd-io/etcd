@@ -168,7 +168,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 		expectedLine := `"created":true}}`
 		_, lerr := proc.ExpectWithContext(context.TODO(), expect.ExpectedResponse{Value: expectedLine})
 		if lerr != nil {
-			return fmt.Errorf("%v %v (expected %q). Try EXPECT_DEBUG=TRUE", args, lerr, expectedLine)
+			return fmt.Errorf("%v %w (expected %q). Try EXPECT_DEBUG=TRUE", args, lerr, expectedLine)
 		}
 
 		wgSchedule.Done()
@@ -181,7 +181,7 @@ func submitConcurrentWatch(cx ctlCtx, number int, wgDone *sync.WaitGroup, closeC
 		case <-closeCh:
 		default:
 			// perr could be nil.
-			return fmt.Errorf("unexpected connection close before server closes: %v", perr)
+			return fmt.Errorf("unexpected connection close before server closes: %w", perr)
 		}
 		return nil
 	}
@@ -224,19 +224,19 @@ func submitRangeAfterConcurrentWatch(cx ctlCtx, expectedValue string) {
 func setRLimit(nofile uint64) (func() error, error) {
 	var rLimit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
-		return nil, fmt.Errorf("failed to get open file limit, error: %v", err)
+		return nil, fmt.Errorf("failed to get open file limit, error: %w", err)
 	}
 
 	var wLimit syscall.Rlimit
 	wLimit.Max = nofile
 	wLimit.Cur = nofile
 	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &wLimit); err != nil {
-		return nil, fmt.Errorf("failed to set max open file limit, %v", err)
+		return nil, fmt.Errorf("failed to set max open file limit, %w", err)
 	}
 
 	return func() error {
 		if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &rLimit); err != nil {
-			return fmt.Errorf("failed reset max open file limit, %v", err)
+			return fmt.Errorf("failed reset max open file limit, %w", err)
 		}
 		return nil
 	}, nil

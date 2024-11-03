@@ -227,7 +227,8 @@ func TestStoreCreateFailsIfExists(t *testing.T) {
 
 	// create /foo as dir again
 	e, _err := s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeNodeExist, err.ErrorCode)
 	assert.Equal(t, "Key already exists", err.Message)
 	assert.Equal(t, "/foo", err.Cause)
@@ -290,7 +291,8 @@ func TestStoreUpdateFailsIfDirectory(t *testing.T) {
 
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.Update("/foo", "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeNotFile, err.ErrorCode)
 	assert.Equal(t, "Not a file", err.Message)
 	assert.Equal(t, "/foo", err.Cause)
@@ -355,7 +357,8 @@ func TestStoreDeleteDirectoryFailsIfNonRecursiveAndDir(t *testing.T) {
 
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.Delete("/foo", false, false)
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeNotFile, err.ErrorCode)
 	assert.Equal(t, "Not a file", err.Message)
 	assert.Nil(t, e)
@@ -407,7 +410,8 @@ func TestStoreCompareAndDeletePrevValueFailsIfNotMatch(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndDelete("/foo", "baz", 0)
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeTestFailed, err.ErrorCode)
 	assert.Equal(t, "Compare failed", err.Message)
 	assert.Nil(t, e)
@@ -440,7 +444,8 @@ func TestStoreCompareAndDeletePrevIndexFailsIfNotMatch(t *testing.T) {
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndDelete("/foo", "", 100)
 	require.Error(t, _err)
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeTestFailed, err.ErrorCode)
 	assert.Equal(t, "Compare failed", err.Message)
 	assert.Nil(t, e)
@@ -456,7 +461,8 @@ func TestStoreCompareAndDeleteDirectoryFail(t *testing.T) {
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	_, _err := s.CompareAndDelete("/foo", "", 0)
 	require.Error(t, _err)
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeNotFile, err.ErrorCode)
 }
 
@@ -490,7 +496,8 @@ func TestStoreCompareAndSwapPrevValueFailsIfNotMatch(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndSwap("/foo", "wrong_value", 0, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeTestFailed, err.ErrorCode)
 	assert.Equal(t, "Compare failed", err.Message)
 	assert.Nil(t, e)
@@ -529,7 +536,8 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 	var eidx uint64 = 1
 	s.Create("/foo", false, "bar", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
 	e, _err := s.CompareAndSwap("/foo", "", 100, "baz", v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
-	err := _err.(*v2error.Error)
+	var err *v2error.Error
+	require.ErrorAs(t, _err, &err)
 	assert.Equal(t, v2error.EcodeTestFailed, err.ErrorCode)
 	assert.Equal(t, "Compare failed", err.Message)
 	assert.Nil(t, e)

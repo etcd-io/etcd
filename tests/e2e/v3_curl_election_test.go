@@ -173,7 +173,7 @@ func CURLWithExpected(cx ctlCtx, tests []v3cURLTest) error {
 	for _, t := range tests {
 		value := fmt.Sprintf("%v", t.value)
 		if err := e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: t.endpoint, Value: value, Expected: expect.ExpectedResponse{Value: t.expected}}); err != nil {
-			return fmt.Errorf("endpoint (%s): error (%v), wanted %v", t.endpoint, err, t.expected)
+			return fmt.Errorf("endpoint (%s): error (%w), wanted %v", t.endpoint, err, t.expected)
 		}
 	}
 	return nil

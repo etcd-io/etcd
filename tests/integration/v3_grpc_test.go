@@ -1961,7 +1961,8 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 			kvcli := integration.ToGRPC(clus.Client(0)).KV
 			reqput := &pb.PutRequest{Key: []byte("foo"), Value: make([]byte, test.valueSize)}
 			if _, err := kvcli.Put(context.TODO(), reqput); err != nil {
-				if _, ok := err.(rpctypes.EtcdError); ok {
+				var etcdErr rpctypes.EtcdError
+				if errors.As(err, &etcdErr) {
 					if err.Error() != status.Convert(test.expectError).Message() {
 						t.Errorf("expected %v, got %v", status.Convert(test.expectError).Message(), err.Error())
 					}
