@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -179,19 +180,14 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						if err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{}); err != nil {
-							t.Fatalf("count not put key %q, err: %s", kvs[i], err)
-						}
+						err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
+						require.NoErrorf(t, err, "count not put key %q", kvs[i])
 					}
 					del, err := cc.Delete(ctx, tt.deleteKey, tt.options)
-					if err != nil {
-						t.Fatalf("count not get key %q, err: %s", tt.deleteKey, err)
-					}
+					require.NoErrorf(t, err, "count not get key %q, err", tt.deleteKey)
 					assert.Equal(t, tt.wantDeleted, int(del.Deleted))
 					get, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
-					if err != nil {
-						t.Fatalf("count not get key, err: %s", err)
-					}
+					require.NoErrorf(t, err, "count not get key")
 					kvs := testutils.KeysFromGetResponse(get)
 					assert.Equal(t, tt.wantKeys, kvs)
 				}

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -77,15 +78,14 @@ func TestWatch(t *testing.T) {
 					}
 
 					for j := range tt.puts {
-						if err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{}); err != nil {
-							t.Fatalf("can't not put key %q, err: %s", tt.puts[j].Key, err)
-						}
+						err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{})
+						require.NoErrorf(t, err, "can't not put key %q, err: %s", tt.puts[j].Key, err)
 					}
 
 					kvs, err := testutils.KeyValuesFromWatchChan(wch, len(tt.wanted), watchTimeout)
 					if err != nil {
 						wCancel()
-						t.Fatalf("failed to get key-values from watch channel %s", err)
+						require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)
 					}
 
 					wCancel()
