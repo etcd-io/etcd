@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.etcd.io/etcd/clientv3"
 )
@@ -139,6 +140,15 @@ func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	}
 	args := ctl.cmdArgs("compact", fmt.Sprint(rev))
 	return nil, spawnWithExpect(args, fmt.Sprintf("compacted revision %v", rev))
+}
+
+func (ctl *Etcdctl) Defragment(timeout time.Duration) error {
+	args := append(ctl.cmdArgs(), "defrag")
+	if timeout != 0 {
+		args = append(args, fmt.Sprintf("--command-timeout=%s", timeout))
+	}
+
+	return spawnWithExpect(args, "Finished defragmenting etcd member")
 }
 
 func (ctl *Etcdctl) Status() ([]*clientv3.StatusResponse, error) {
