@@ -463,8 +463,8 @@ func (b *backend) defrag() error {
 		options = *boltOpenOptions
 	}
 	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
-		// gofail: var defragNoSpace string
-		// return nil, fmt.Errorf(defragNoSpace)
+		// gofail: var defragOpenFileError string
+		// return nil, fmt.Errorf(defragOpenFileError)
 		return temp, nil
 	}
 	tdbp := temp.Name()
@@ -501,6 +501,11 @@ func (b *backend) defrag() error {
 				plog.Fatalf("failed to remove db.tmp after defragmentation completed: %v", rmErr)
 			}
 		}
+
+		// restore the bbolt transactions if defragmentation fails
+		b.batchTx.tx = b.unsafeBegin(true)
+		b.readTx.tx = b.unsafeBegin(false)
+
 		return err
 	}
 
@@ -569,6 +574,9 @@ func (b *backend) defrag() error {
 }
 
 func defragdb(odb, tmpdb *bolt.DB, limit int) error {
+	// gofail: var defragdbFail string
+	// return fmt.Errorf(defragdbFail)
+
 	// open a tx on tmpdb for writes
 	tmptx, err := tmpdb.Begin(true)
 	if err != nil {
