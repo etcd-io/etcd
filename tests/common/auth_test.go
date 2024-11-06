@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -110,7 +111,7 @@ func TestAuthGracefulDisable(t *testing.T) {
 				return
 			}
 			// the watcher should still work after reconnecting
-			require.NoErrorf(t, rootAuthClient.Put(ctx, "key", "value", config.PutOptions{}), "failed to put key value")
+			assert.NoErrorf(t, rootAuthClient.Put(ctx, "key", "value", config.PutOptions{}), "failed to put key value")
 		}()
 
 		wCtx, wCancel := context.WithCancel(ctx)

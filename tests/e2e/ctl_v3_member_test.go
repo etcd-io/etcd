@@ -107,7 +107,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			}
 
 			merr := epc.Procs[0].Restart(ctx)
-			require.NoError(t, merr)
+			assert.NoError(t, merr)
 			epc.WaitLeader(t)
 
 			time.Sleep(100 * time.Millisecond)
@@ -135,7 +135,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 			}
 
 			count++
-			require.Len(t, mresp.Members, 1)
+			assert.Len(t, mresp.Members, 1)
 		}
 	}()
 

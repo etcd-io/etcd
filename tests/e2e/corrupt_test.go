@@ -424,7 +424,7 @@ func testCtlV3ReadAfterWrite(t *testing.T, ops ...clientv3.OpOption) {
 			}
 
 			count++
-			require.Equal(t, "bar2", string(resp.Kvs[0].Value))
+			assert.Equal(t, "bar2", string(resp.Kvs[0].Value))
 		}
 	}()
 
