@@ -11,7 +11,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Fix [panicking occurred due to improper error handling during defragmentation](https://github.com/etcd-io/etcd/pull/18842)
 
 ### Dependencies
-- Compile binaries using [go 1.22.8](https://github.com/etcd-io/etcd/pull/18669).
+- Compile binaries using [go 1.22.9](https://github.com/etcd-io/etcd/pull/18849).
 
 <hr>
 
