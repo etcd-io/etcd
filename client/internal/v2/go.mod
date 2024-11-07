@@ -2,7 +2,7 @@ module go.etcd.io/etcd/client/v2
 
 go 1.23
 
-toolchain go1.23.2
+toolchain go1.23.3
 
 require (
 	github.com/stretchr/testify v1.9.0
