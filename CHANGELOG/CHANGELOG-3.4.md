@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ### etcd server
 - Fix [watchserver related goroutine leakage](https://github.com/etcd-io/etcd/pull/18785)
+- Fix [panicking occurred due to improper error handling during defragmentation](https://github.com/etcd-io/etcd/pull/18843)
 
 ### Dependencies
 - Compile binaries using [go 1.22.8](https://github.com/etcd-io/etcd/pull/18670).
