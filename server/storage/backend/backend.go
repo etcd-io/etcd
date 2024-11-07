@@ -499,6 +499,15 @@ func (b *backend) defrag() error {
 	tdbp := temp.Name()
 	tmpdb, err := bolt.Open(tdbp, 0600, &options)
 	if err != nil {
+		temp.Close()
+		if err := os.Remove(temp.Name()); err != nil && b.lg != nil {
+			b.lg.Error(
+				"failed to remove temporary file",
+				zap.String("path", temp.Name()),
+				zap.Error(err),
+			)
+		}
+
 		return err
 	}
 
