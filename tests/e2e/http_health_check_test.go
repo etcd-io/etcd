@@ -339,7 +339,7 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 
 func doHealthCheckAndVerify(t *testing.T, client *http.Client, url string, expectTimeoutError bool, expectStatusCode int, expectRespSubStrings []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	require.NoErrorf(t, err, "failed to creat request %+v", err)
 	resp, herr := client.Do(req)
 	cancel()

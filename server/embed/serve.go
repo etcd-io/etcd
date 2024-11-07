@@ -436,7 +436,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		addCORSHeader(rw, origin)
 	}
 
-	if req.Method == "OPTIONS" {
+	if req.Method == http.MethodOptions {
 		rw.WriteHeader(http.StatusOK)
 		return
 	}
@@ -486,7 +486,7 @@ func (ch *corsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		addCORSHeader(rw, origin)
 	}
 
-	if req.Method == "OPTIONS" {
+	if req.Method == http.MethodOptions {
 		rw.WriteHeader(http.StatusOK)
 		return
 	}

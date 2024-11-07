@@ -162,7 +162,7 @@ func TestGetAction(t *testing.T) {
 		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
-		err := assertRequest(got, "GET", wantURL, wantHeader, nil)
+		err := assertRequest(got, http.MethodGet, wantURL, wantHeader, nil)
 		if err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
@@ -211,7 +211,7 @@ func TestWaitAction(t *testing.T) {
 		wantURL := baseWantURL
 		wantURL.RawQuery = tt.wantQuery
 
-		err := assertRequest(got, "GET", wantURL, wantHeader, nil)
+		err := assertRequest(got, http.MethodGet, wantURL, wantHeader, nil)
 		if err != nil {
 			t.Errorf("#%d: unexpected error: %#v", i, err)
 		}
@@ -424,7 +424,7 @@ func TestSetAction(t *testing.T) {
 		}
 
 		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
-		if err := assertRequest(*got, "PUT", u, wantHeader, []byte(tt.wantBody)); err != nil {
+		if err := assertRequest(*got, http.MethodPut, u, wantHeader, []byte(tt.wantBody)); err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
@@ -525,7 +525,7 @@ func TestCreateInOrderAction(t *testing.T) {
 		}
 
 		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
-		if err := assertRequest(*got, "POST", u, wantHeader, []byte(tt.wantBody)); err != nil {
+		if err := assertRequest(*got, http.MethodPost, u, wantHeader, []byte(tt.wantBody)); err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}
@@ -627,7 +627,7 @@ func TestDeleteAction(t *testing.T) {
 		}
 
 		got := tt.act.HTTPRequest(url.URL{Scheme: "http", Host: "example.com"})
-		if err := assertRequest(*got, "DELETE", u, wantHeader, nil); err != nil {
+		if err := assertRequest(*got, http.MethodDelete, u, wantHeader, nil); err != nil {
 			t.Errorf("#%d: %v", i, err)
 		}
 	}

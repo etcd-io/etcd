@@ -135,7 +135,7 @@ func (r *httpAuthRoleAPI) AddRole(ctx context.Context, rolename string) error {
 		Role: rolename,
 	}
 	return r.addRemoveRole(ctx, &authRoleAPIAction{
-		verb: "PUT",
+		verb: http.MethodPut,
 		name: rolename,
 		role: role,
 	})
@@ -143,7 +143,7 @@ func (r *httpAuthRoleAPI) AddRole(ctx context.Context, rolename string) error {
 
 func (r *httpAuthRoleAPI) RemoveRole(ctx context.Context, rolename string) error {
 	return r.addRemoveRole(ctx, &authRoleAPIAction{
-		verb: "DELETE",
+		verb: http.MethodDelete,
 		name: rolename,
 	})
 }
@@ -166,7 +166,7 @@ func (r *httpAuthRoleAPI) addRemoveRole(ctx context.Context, req *authRoleAPIAct
 
 func (r *httpAuthRoleAPI) GetRole(ctx context.Context, rolename string) (*Role, error) {
 	return r.modRole(ctx, &authRoleAPIAction{
-		verb: "GET",
+		verb: http.MethodGet,
 		name: rolename,
 	})
 }
@@ -194,7 +194,7 @@ func (r *httpAuthRoleAPI) GrantRoleKV(ctx context.Context, rolename string, pref
 		},
 	}
 	return r.modRole(ctx, &authRoleAPIAction{
-		verb: "PUT",
+		verb: http.MethodPut,
 		name: rolename,
 		role: role,
 	})
@@ -209,7 +209,7 @@ func (r *httpAuthRoleAPI) RevokeRoleKV(ctx context.Context, rolename string, pre
 		},
 	}
 	return r.modRole(ctx, &authRoleAPIAction{
-		verb: "PUT",
+		verb: http.MethodPut,
 		name: rolename,
 		role: role,
 	})

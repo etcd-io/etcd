@@ -172,7 +172,7 @@ func TestServeMembersGet(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		req, err := http.NewRequest("GET", testutil.MustNewURL(t, tt.path).String(), nil)
+		req, err := http.NewRequest(http.MethodGet, testutil.MustNewURL(t, tt.path).String(), nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,7 +261,7 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		req, err := http.NewRequest("POST", srv.URL+tt.path, nil)
+		req, err := http.NewRequest(http.MethodPost, srv.URL+tt.path, nil)
 		if err != nil {
 			t.Fatalf("failed to create request: %v", err)
 		}
