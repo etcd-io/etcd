@@ -25,9 +25,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
-var (
-	OutputFormat string
-)
+var OutputFormat string
 
 type printer interface {
 	DBStatus(snapshot.Status)

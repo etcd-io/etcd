@@ -151,9 +151,7 @@ func leaseListCommandFunc(cmd *cobra.Command, args []string) {
 	display.Leases(*resp)
 }
 
-var (
-	leaseKeepAliveOnce bool
-)
+var leaseKeepAliveOnce bool
 
 // NewLeaseKeepAliveCommand returns the cobra command for "lease keep-alive".
 func NewLeaseKeepAliveCommand() *cobra.Command {

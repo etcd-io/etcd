@@ -21,8 +21,7 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 )
 
-type simplePrinter struct {
-}
+type simplePrinter struct{}
 
 func (s *simplePrinter) DBStatus(ds snapshot.Status) {
 	_, rows := makeDBStatusTable(ds)
