@@ -40,22 +40,12 @@ func TestKVPut(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
-				if err := cc.Put(ctx, key, value, config.PutOptions{}); err != nil {
-					t.Fatalf("count not put key %q, err: %s", key, err)
-				}
+				require.NoErrorf(t, cc.Put(ctx, key, value, config.PutOptions{}), "count not put key %q", key)
 				resp, err := cc.Get(ctx, key, config.GetOptions{})
-				if err != nil {
-					t.Fatalf("count not get key %q, err: %s", key, err)
-				}
-				if len(resp.Kvs) != 1 {
-					t.Errorf("Unexpected length of response, got %d", len(resp.Kvs))
-				}
-				if string(resp.Kvs[0].Key) != key {
-					t.Errorf("Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
-				}
-				if string(resp.Kvs[0].Value) != value {
-					t.Errorf("Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
-				}
+				require.NoErrorf(t, err, "count not get key %q, err: %s", key, err)
+				assert.Lenf(t, resp.Kvs, 1, "Unexpected length of response, got %d", len(resp.Kvs))
+				assert.Equalf(t, string(resp.Kvs[0].Key), key, "Unexpected key, want %q, got %q", key, resp.Kvs[0].Key)
+				assert.Equalf(t, string(resp.Kvs[0].Value), value, "Unexpected value, want %q, got %q", value, resp.Kvs[0].Value)
 			})
 		})
 	}
@@ -80,9 +70,7 @@ func TestKVGet(t *testing.T) {
 				)
 
 				for i := range kvs {
-					if err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{}); err != nil {
-						t.Fatalf("count not put key %q, err: %s", kvs[i], err)
-					}
+					require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
 				}
 				tests := []struct {
 					begin   string
@@ -110,9 +98,7 @@ func TestKVGet(t *testing.T) {
 				}
 				for _, tt := range tests {
 					resp, err := cc.Get(ctx, tt.begin, tt.options)
-					if err != nil {
-						t.Fatalf("count not get key %q, err: %s", tt.begin, err)
-					}
+					require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
 					kvs := testutils.KeysFromGetResponse(resp)
 					assert.Equal(t, tt.wkv, kvs)
 				}
@@ -180,8 +166,7 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
-						require.NoErrorf(t, err, "count not put key %q", kvs[i])
+						require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
 					}
 					del, err := cc.Delete(ctx, tt.deleteKey, tt.options)
 					require.NoErrorf(t, err, "count not get key %q, err", tt.deleteKey)
@@ -228,9 +213,10 @@ func TestKVGetNoQuorum(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				key := "foo"
 				_, err := cc.Get(ctx, key, tc.options)
-				gotError := err != nil
-				if gotError != tc.wantError {
-					t.Fatalf("Unexpected result, wantError: %v, gotErr: %v, err: %s", tc.wantError, gotError, err)
+				if tc.wantError {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
 				}
 			})
 		})
