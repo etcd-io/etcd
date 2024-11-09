@@ -194,7 +194,7 @@ func makeMemberListTable(r v3.MemberListResponse) (hdr []string, rows [][]string
 			isLearner = "true"
 		}
 		rows = append(rows, []string{
-			fmt.Sprintf("%x", m.ID),
+			strconv.FormatUint(m.ID, 16),
 			status,
 			m.Name,
 			strings.Join(m.PeerURLs, ","),
@@ -210,7 +210,7 @@ func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]stri
 	for _, h := range healthList {
 		rows = append(rows, []string{
 			h.Ep,
-			fmt.Sprintf("%v", h.Health),
+			strconv.FormatBool(h.Health),
 			h.Took,
 			h.Error,
 		})
@@ -226,19 +226,19 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 	for _, status := range statusList {
 		rows = append(rows, []string{
 			status.Ep,
-			fmt.Sprintf("%x", status.Resp.Header.MemberId),
+			strconv.FormatUint(status.Resp.Header.MemberId, 16),
 			status.Resp.Version,
 			status.Resp.StorageVersion,
 			humanize.Bytes(uint64(status.Resp.DbSize)),
 			humanize.Bytes(uint64(status.Resp.DbSizeInUse)),
 			fmt.Sprintf("%d%%", int(float64(100-(status.Resp.DbSizeInUse*100/status.Resp.DbSize)))),
 			humanize.Bytes(uint64(status.Resp.DbSizeQuota)),
-			fmt.Sprint(status.Resp.Leader == status.Resp.Header.MemberId),
-			fmt.Sprint(status.Resp.IsLearner),
-			fmt.Sprint(status.Resp.RaftTerm),
-			fmt.Sprint(status.Resp.RaftIndex),
-			fmt.Sprint(status.Resp.RaftAppliedIndex),
-			fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
+			strconv.FormatBool(status.Resp.Leader == status.Resp.Header.MemberId),
+			strconv.FormatBool(status.Resp.IsLearner),
+			strconv.FormatUint(status.Resp.RaftTerm, 10),
+			strconv.FormatUint(status.Resp.RaftIndex, 10),
+			strconv.FormatUint(status.Resp.RaftAppliedIndex, 10),
+			strings.Join(status.Resp.Errors, ", "),
 			status.Resp.DowngradeInfo.GetTargetVersion(),
 			strconv.FormatBool(status.Resp.DowngradeInfo.GetEnabled()),
 		})
@@ -251,8 +251,8 @@ func makeEndpointHashKVTable(hashList []epHashKV) (hdr []string, rows [][]string
 	for _, h := range hashList {
 		rows = append(rows, []string{
 			h.Ep,
-			fmt.Sprint(h.Resp.Hash),
-			fmt.Sprint(h.Resp.HashRevision),
+			strconv.FormatUint(uint64(h.Resp.Hash), 10),
+			strconv.FormatInt(h.Resp.HashRevision, 10),
 		})
 	}
 	return hdr, rows
