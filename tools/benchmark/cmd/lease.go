@@ -33,9 +33,7 @@ var leaseKeepaliveCmd = &cobra.Command{
 	Run: leaseKeepaliveFunc,
 }
 
-var (
-	leaseKeepaliveTotal int
-)
+var leaseKeepaliveTotal int
 
 func init() {
 	RootCmd.AddCommand(leaseKeepaliveCmd)

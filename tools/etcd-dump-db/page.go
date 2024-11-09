@@ -16,9 +16,11 @@ package main
 
 import "unsafe"
 
-const pageHeaderSize = unsafe.Sizeof(page{})
-const leafPageElementSize = unsafe.Sizeof(leafPageElement{})
-const pageMaxAllocSize = 0xFFFFFFF
+const (
+	pageHeaderSize      = unsafe.Sizeof(page{})
+	leafPageElementSize = unsafe.Sizeof(leafPageElement{})
+	pageMaxAllocSize    = 0xFFFFFFF
+)
 
 const (
 	leafPageFlag = 0x02
