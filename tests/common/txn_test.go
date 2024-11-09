@@ -73,9 +73,7 @@ func TestTxnSucc(t *testing.T) {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
 						Interactive: true,
 					})
-					if err != nil {
-						t.Errorf("Txn returned error: %s", err)
-					}
+					require.NoErrorf(t, err, "Txn returned error: %s", err)
 					assert.Equal(t, req.expectResults, getRespValues(resp))
 				}
 			})
@@ -113,9 +111,7 @@ func TestTxnFail(t *testing.T) {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
 						Interactive: true,
 					})
-					if err != nil {
-						t.Errorf("Txn returned error: %s", err)
-					}
+					require.NoErrorf(t, err, "Txn returned error: %s", err)
 					assert.Equal(t, req.expectResults, getRespValues(resp))
 				}
 			})
