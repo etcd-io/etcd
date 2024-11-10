@@ -92,7 +92,7 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 
 func mustCreateWALLog(t *testing.T, path string) {
 	memberdir := filepath.Join(path, "member")
-	err := os.Mkdir(memberdir, 0744)
+	err := os.Mkdir(memberdir, 0o744)
 	require.NoError(t, err)
 	waldir := walDir(path)
 	snapdir := snapDir(path)
@@ -100,7 +100,7 @@ func mustCreateWALLog(t *testing.T, path string) {
 	w, err := wal.Create(zaptest.NewLogger(t), waldir, nil)
 	require.NoError(t, err)
 
-	err = os.Mkdir(snapdir, 0744)
+	err = os.Mkdir(snapdir, 0o744)
 	require.NoError(t, err)
 
 	ents := make([]raftpb.Entry, 0)
@@ -162,11 +162,12 @@ func appendNormalIRREnts(ents *[]raftpb.Entry) {
 
 	irrdeleterange := &etcdserverpb.DeleteRangeRequest{Key: []byte("0"), RangeEnd: []byte("9"), PrevKv: true}
 
-	delInRangeReq := &etcdserverpb.RequestOp{Request: &etcdserverpb.RequestOp_RequestDeleteRange{
-		RequestDeleteRange: &etcdserverpb.DeleteRangeRequest{
-			Key: []byte("a"), RangeEnd: []byte("b"),
+	delInRangeReq := &etcdserverpb.RequestOp{
+		Request: &etcdserverpb.RequestOp_RequestDeleteRange{
+			RequestDeleteRange: &etcdserverpb.DeleteRangeRequest{
+				Key: []byte("a"), RangeEnd: []byte("b"),
+			},
 		},
-	},
 	}
 
 	irrtxn := &etcdserverpb.TxnRequest{Success: []*etcdserverpb.RequestOp{delInRangeReq}, Failure: []*etcdserverpb.RequestOp{delInRangeReq}}

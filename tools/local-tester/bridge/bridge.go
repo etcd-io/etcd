@@ -186,8 +186,10 @@ type config struct {
 	rxDelay string
 }
 
-type acceptFaultFunc func()
-type connFaultFunc func(*bridgeConn)
+type (
+	acceptFaultFunc func()
+	connFaultFunc   func(*bridgeConn)
+)
 
 func main() {
 	var cfg config

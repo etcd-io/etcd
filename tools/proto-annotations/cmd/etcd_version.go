@@ -27,19 +27,17 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal"
 )
 
-var (
-	// externalPackages that are not expected to have etcd version annotation.
-	externalPackages = []string{
-		"io.prometheus.client",
-		"grpc.binarylog.v1",
-		"google.protobuf",
-		"google.rpc",
-		"google.api",
-		"raftpb",
-		"grpc.gateway.protoc_gen_swagger.options",
-		"grpc.gateway.protoc_gen_openapiv2.options",
-	}
-)
+// externalPackages that are not expected to have etcd version annotation.
+var externalPackages = []string{
+	"io.prometheus.client",
+	"grpc.binarylog.v1",
+	"google.protobuf",
+	"google.rpc",
+	"google.api",
+	"raftpb",
+	"grpc.gateway.protoc_gen_swagger.options",
+	"grpc.gateway.protoc_gen_openapiv2.options",
+}
 
 // printEtcdVersion writes etcd_version proto annotation to stdout and returns any errors encountered when reading annotation.
 func printEtcdVersion() []error {

@@ -53,9 +53,11 @@ var (
 	}
 )
 
-var flockTimeout time.Duration
-var iterateBucketLimit uint64
-var iterateBucketDecode bool
+var (
+	flockTimeout        time.Duration
+	iterateBucketLimit  uint64
+	iterateBucketDecode bool
+)
 
 func init() {
 	rootCommand.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
