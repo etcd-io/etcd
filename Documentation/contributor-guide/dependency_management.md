@@ -79,7 +79,7 @@ In an event of bumping the version of protoc, protoc plugins or grpc-gateway, it
 ```bash
 [0;31mFAIL: 'genproto' FAILED at Wed Jul 31 07:09:08 UTC 2024
 make: *** [Makefile:134: verify-genproto] Error 255
-
+```
 
 To fix the above error, run the following script from the root of etcd repository:
 
