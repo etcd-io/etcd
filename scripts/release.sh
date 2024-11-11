@@ -62,10 +62,12 @@ main() {
   # Set up release directory.
   local reldir="/tmp/etcd-release-${VERSION}"
   log_callout "Preparing temporary directory: ${reldir}"
-  if [ ! -d "${reldir}/etcd" ] && [ "${IN_PLACE}" == 0 ]; then
-    mkdir -p "${reldir}"
-    cd "${reldir}"
-    git clone "${REPOSITORY}" --branch "${BRANCH}" --depth 1
+  if [ "${IN_PLACE}" == 0 ]; then
+    if [ ! -d "${reldir}/etcd" ]; then
+      mkdir -p "${reldir}"
+      cd "${reldir}"
+      git clone "${REPOSITORY}" --branch "${BRANCH}" --depth 1
+    fi
     cd "${reldir}/etcd" || exit 2
     git checkout "${BRANCH}" || exit 2
     git pull origin
