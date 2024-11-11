@@ -15,15 +15,15 @@ help() {
   echo "WARNING: This does not perform the 'Add API capabilities', 'Performance testing' "
   echo "         or 'Documentation' steps. These steps must be performed manually BEFORE running this tool."
   echo ""
-  echo "WARNING: This script does not sign releases, publish releases to github or sent announcement"
-  echo "         emails. These steps must be performed manually AFTER running this tool."
+  echo "WARNING: This script does not send announcement emails. This step must be performed manually AFTER running this tool."
   echo ""
   echo "  args:"
   echo "    version: version of etcd to release, e.g. '3.2.18'"
   echo "  flags:"
-  echo "    --no-upload: skip gs://etcd binary artifact uploads."
-  echo "    --no-docker-push: skip docker image pushes."
   echo "    --in-place: build binaries using current branch."
+  echo "    --no-docker-push: skip docker image pushes."
+  echo "    --no-gh-release: skip creating the GitHub release using gh."
+  echo "    --no-upload: skip gs://etcd binary artifact uploads."
   echo ""
 }
 
@@ -88,6 +88,21 @@ main() {
   if [[ "${current_go_version}" != "${go_version}" ]]; then
     log_error "Current go version is ${current_go_version}, but etcd ${RELEASE_VERSION} requires ${go_version} (see .go-version)."
     exit 1
+  fi
+
+  if [ "${NO_GH_RELEASE}" == 1 ]; then
+    echo "Skipping gh verification, --no-gh-release is set"
+  else
+    # Check that gh is installed and logged in.
+    echo "Check gh installation"
+    if ! command -v gh >/dev/null; then
+      log_error "Cannot find gh. Please follow the installation instructions at https://github.com/cli/cli#installation"
+      exit 1
+    fi
+    if ! gh auth status &>/dev/null; then
+      log_error "GitHub authentication failed for gh. Please run gh auth login."
+      exit 1
+    fi
   fi
 
   # If the release tag does not already exist remotely, create it.
@@ -283,10 +298,74 @@ main() {
     exit 1
   fi
 
-  # TODO: signing process
-  log_warning ""
-  log_warning "WARNING: The release has not been signed and published to github. This must be done manually."
-  log_warning ""
+  if [ "${DRY_RUN}" == "true" ] || [ "${NO_GH_RELEASE}" == 1 ]; then
+    log_warning ""
+    log_warning "WARNING: Skipping creating GitHub release, --no-gh-release is set."
+    log_warning "WARNING: If not running on DRY_MODE, please do the GitHub release manually."
+    log_warning ""
+  else
+    local gh_repo
+    local release_notes_temp_file
+    local release_url
+    local gh_release_args=()
+
+    # For the main branch (v3.6), we should mark the release as a prerelease.
+    # The release-3.5 (v3.5) branch, should be marked as latest. And release-3.4 (v3.4)
+    # should be left without any additional mark (therefore, it doesn't need a special argument).
+    if [ "${BRANCH}" = "main" ]; then
+      gh_release_args=(--prerelease)
+    elif [ "${BRANCH}" = "release-3.5" ]; then
+      gh_release_args=(--latest)
+    fi
+
+    if [ "${REPOSITORY}" = "$(pwd)" ]; then
+      gh_repo=$(git remote get-url origin)
+    else
+      gh_repo="${REPOSITORY}"
+    fi
+
+    gh_repo=$(echo "${gh_repo}" | sed 's/^[^@]\+@//' | sed 's/https\?:\/\///' | sed 's/\.git$//' | tr ':' '/')
+    log_callout "Creating GitHub release for ${RELEASE_VERSION} on ${gh_repo}"
+
+    release_notes_temp_file=$(mktemp)
+
+    local release_version=${RELEASE_VERSION#v} # Remove the v prefix from the release version (i.e., v3.6.1 -> 3.6.1)
+    local release_version_major_minor=${release_version%.*} # Remove the patch from the version (i.e., 3.6)
+    local release_version_major=${release_version_major_minor%.*} # Extract the major (i.e., 3)
+    local release_version_minor=${release_version_major_minor/*./} # Extract the minor (i.e., 6)
+
+    # Disable sellcheck SC2016, the single quoted syntax for sed is intentional.
+    # shellcheck disable=SC2016
+    sed 's/${RELEASE_VERSION}/'"${RELEASE_VERSION}"'/g' ./scripts/release_notes.tpl.txt |
+      sed 's/${RELEASE_VERSION_MAJOR_MINOR}/'"${release_version_major_minor}"'/g' |
+      sed 's/${RELEASE_VERSION_MAJOR}/'"${release_version_major}"'/g' |
+      sed 's/${RELEASE_VERSION_MINOR}/'"${release_version_minor}"'/g' > "${release_notes_temp_file}"
+
+    # This condition may seem redundant because of the previous check, but it's
+    # necessary because release-3.4 doesn't have the maybe_run function.
+    if [ "${DRY_RUN}" == "false" ]; then
+      if ! gh --repo "${gh_repo}" release view "${RELEASE_VERSION}" &>/dev/null; then
+        gh release create "${RELEASE_VERSION}" \
+            --repo "${gh_repo}" \
+            --draft \
+            --title "${RELEASE_VERSION}" \
+            --notes-file "${release_notes_temp_file}" \
+            "${gh_release_args[@]}"
+      fi
+
+      # Upload files one by one, as gh doesn't support passing globs as input.
+      find ./release '(' -name '*.tar.gz' -o -name '*.zip' ')' -exec \
+        gh --repo "${gh_repo}" release upload "${RELEASE_VERSION}" {} --clobber \;
+      gh --repo "${gh_repo}" release upload "${RELEASE_VERSION}" ./release/SHA256SUMS --clobber
+
+      release_url=$(gh --repo "${gh_repo}" release view "${RELEASE_VERSION}" --json url --jq '.url')
+
+      log_warning ""
+      log_warning "WARNING: The GitHub release for ${RELEASE_VERSION} has been created as a draft, please go to ${release_url} and release it."
+      log_warning ""
+    fi
+  fi
+
   log_success "Success."
   exit 0
 }
@@ -295,6 +374,7 @@ POSITIONAL=()
 NO_UPLOAD=0
 NO_DOCKER_PUSH=0
 IN_PLACE=0
+NO_GH_RELEASE=0
 
 while test $# -gt 0; do
         case "$1" in
@@ -313,6 +393,10 @@ while test $# -gt 0; do
             ;;
           --no-docker-push)
             NO_DOCKER_PUSH=1
+            shift
+            ;;
+          --no-gh-release)
+            NO_GH_RELEASE=1
             shift
             ;;
           *)
