@@ -34,8 +34,9 @@ import (
 )
 
 const (
-	maxNoLeaderCnt = 3
-	snapshotMethod = "/etcdserverpb.Maintenance/Snapshot"
+	maxNoLeaderCnt  = 3
+	snapshotMethod  = "/etcdserverpb.Maintenance/Snapshot"
+	gRPCHealthWatch = "/grpc.health.v1.Health/Watch"
 )
 
 type streamsMap struct {
@@ -218,7 +219,7 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 			return rpctypes.ErrGRPCNotCapable
 		}
 
-		if s.IsMemberExist(s.MemberID()) && s.IsLearner() && info.FullMethod != snapshotMethod { // learner does not support stream RPC except Snapshot
+		if s.IsMemberExist(s.MemberID()) && s.IsLearner() && !isRPCStreamSupportForLearner(info) {
 			return rpctypes.ErrGRPCNotSupportedForLearner
 		}
 
@@ -257,6 +258,11 @@ func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor
 
 		return handler(srv, ss)
 	}
+}
+
+// learner does not support stream RPC except Snapshot and gRPC Health Watch
+func isRPCStreamSupportForLearner(info *grpc.StreamServerInfo) bool {
+	return info.FullMethod == snapshotMethod || info.FullMethod == gRPCHealthWatch
 }
 
 // cancellableContext wraps a context with new cancellable context that allows a

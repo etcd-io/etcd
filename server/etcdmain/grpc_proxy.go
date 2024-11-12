@@ -39,6 +39,8 @@ import (
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -508,6 +510,10 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	pb.RegisterAuthServer(server, authp)
 	v3electionpb.RegisterElectionServer(server, electionp)
 	v3lockpb.RegisterLockServer(server, lockp)
+
+	hsrv := health.NewServer()
+	hsrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(server, hsrv)
 
 	return server
 }

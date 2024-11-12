@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/health"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -44,9 +43,8 @@ const (
 
 func TestFailoverOnDefrag(t *testing.T) {
 	tcs := []struct {
-		name            string
-		clusterOptions  []e2e.EPClusterOption
-		gRPCDialOptions []grpc.DialOption
+		name           string
+		clusterOptions []e2e.EPClusterOption
 
 		// common assertion
 		expectedMinQPS float64
@@ -62,10 +60,6 @@ func TestFailoverOnDefrag(t *testing.T) {
 				e2e.WithExperimentalStopGRPCServiceOnDefrag(true),
 				e2e.WithGoFailEnabled(true),
 			},
-			gRPCDialOptions: []grpc.DialOption{
-				grpc.WithDisableServiceConfig(),
-				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
-			},
 			expectedMinQPS:         20,
 			expectedMaxFailureRate: 0.01,
 		},
@@ -74,20 +68,6 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithExperimentalStopGRPCServiceOnDefrag(false),
-				e2e.WithGoFailEnabled(true),
-			},
-			gRPCDialOptions: []grpc.DialOption{
-				grpc.WithDisableServiceConfig(),
-				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
-			},
-			expectedMinQPS:         20,
-			expectedMinFailureRate: 0.25,
-		},
-		{
-			name: "defrag blocks one-third of requests with stopGRPCServiceOnDefrag set to true and client health check disabled",
-			clusterOptions: []e2e.EPClusterOption{
-				e2e.WithClusterSize(3),
-				e2e.WithExperimentalStopGRPCServiceOnDefrag(true),
 				e2e.WithGoFailEnabled(true),
 			},
 			expectedMinQPS:         20,
@@ -100,10 +80,6 @@ func TestFailoverOnDefrag(t *testing.T) {
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
 				e2e.WithGoFailEnabled(true),
 			},
-			gRPCDialOptions: []grpc.DialOption{
-				grpc.WithDisableServiceConfig(),
-				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
-			},
 			expectedMinQPS:         20,
 			expectedMaxFailureRate: 0.01,
 		},
@@ -112,20 +88,6 @@ func TestFailoverOnDefrag(t *testing.T) {
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
 				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", false),
-				e2e.WithGoFailEnabled(true),
-			},
-			gRPCDialOptions: []grpc.DialOption{
-				grpc.WithDisableServiceConfig(),
-				grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy": "round_robin", "healthCheckConfig": {"serviceName": ""}}`),
-			},
-			expectedMinQPS:         20,
-			expectedMinFailureRate: 0.25,
-		},
-		{
-			name: "defrag blocks one-third of requests with StopGRPCServiceOnDefrag feature gate set to true and client health check disabled",
-			clusterOptions: []e2e.EPClusterOption{
-				e2e.WithClusterSize(3),
-				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
 				e2e.WithGoFailEnabled(true),
 			},
 			expectedMinQPS:         20,
@@ -151,7 +113,6 @@ func TestFailoverOnDefrag(t *testing.T) {
 					DialKeepAliveTime:    keepaliveTime,
 					DialKeepAliveTimeout: keepaliveTimeout,
 					Endpoints:            endpoints,
-					DialOptions:          tc.gRPCDialOptions,
 				})
 				if cerr != nil {
 					return cerr
