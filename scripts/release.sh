@@ -337,19 +337,26 @@ main() {
     log_warning "WARNING: If not running on DRY_MODE, please do the GitHub release manually."
     log_warning ""
   else
+    read -p "Create GitHub draft release in ${REPOSITORY} [y/N]? " -r confirm
+    [[ "${confirm,,}" == "y" ]] || exit 1
+
     local gh_repo
     local release_notes_temp_file
     local release_url
     local gh_release_args=()
 
-    # For the main branch (v3.6), we should mark the release as a prerelease.
-    # The release-3.5 (v3.5) branch, should be marked as latest. And release-3.4 (v3.4)
-    # should be left without any additional mark (therefore, it doesn't need a special argument).
-    if [ "${BRANCH}" = "main" ]; then
-      gh_release_args=(--prerelease)
-    elif [ "${BRANCH}" = "release-3.5" ]; then
-      gh_release_args=(--latest)
-    fi
+    # Explicitly set release arguments per branch.
+    case "${BRANCH}" in
+      "main")
+        gh_release_args=(--latest=false --prerelease=true)
+        ;;
+      "release-3.5")
+        gh_release_args=(--latest=true --prerelease=false)
+        ;;
+      *)
+        gh_release_args=(--latest=false --prerelease=false)
+        ;;
+    esac
 
     if [ "${REPOSITORY}" = "$(pwd)" ]; then
       gh_repo=$(git remote get-url origin)
@@ -391,8 +398,19 @@ main() {
     release_url=$(gh --repo "${gh_repo}" release view "${RELEASE_VERSION}" --json url --jq '.url')
 
     log_warning ""
-    log_warning "WARNING: The GitHub release for ${RELEASE_VERSION} has been created as a draft, please go to ${release_url} and release it."
+    log_warning "WARNING: The GitHub release for ${RELEASE_VERSION} has been created as a draft, please review it at ${release_url}."
     log_warning ""
+
+    # Give a 10 minute timeout to the user to confirm the release.
+    read -p "Release GitHub release for ${RELEASE_VERSION} [y/N]? " -t 600 -r confirm
+    if [[ "${confirm,,}" == "y" ]]; then
+      maybe_run gh release edit "${RELEASE_VERSION}" \
+          --repo "${gh_repo}" \
+          --draft=false \
+          "${gh_release_args[@]}"
+    else
+      log_warning "GitHub release for ${RELEASE_VERSION} has not been released. If manually releasing, please ensure that the bottom checkboxes are as expected (v3.4 with no option selected, v3.5 set as the latest release, v3.6 set as pre-release)."
+    fi
   fi
 
   log_success "Success."
