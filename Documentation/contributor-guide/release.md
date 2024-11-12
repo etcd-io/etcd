@@ -63,7 +63,8 @@ which don't need to be executed before releasing each version.
    - `gcloud auth login`
    - `gcloud auth configure-docker`
 5. Install gh, refer to [GitHub's documentation](https://github.com/cli/cli#installation). Ensure that running
-   `gh auth login` succeeds for the GitHub account you use to contribute to etcd.
+   `gh auth login` succeeds for the GitHub account you use to contribute to etcd,
+   and that `gh auth status` has a clean exit and doesn't show any issues.
 
 ### Release steps
 
@@ -88,7 +89,11 @@ which don't need to be executed before releasing each version.
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
 7. Publish the release page on GitHub
    - Open the **draft** release URL shown by the release script
-   - Review that it looks correct, then publish the release
+   - Click the pen button at the top right to edit the release
+   - Review that it looks correct, reviewing that the bottom checkboxes are checked depending on the
+     release version (v3.4 no checkboxes, v3.5 has the set as latest release checkbox checked,
+     v3.6 has the set as pre-release checkbox checked)
+   - Then, publish the release
 8. Announce to the etcd-dev googlegroup
 
    Follow the format of previous release emails sent to etcd-dev@googlegroups.com, see an example below. After sending out the email, ask one of the mailing list maintainers to approve the email from the pending list. Additionally, label the release email as `Release`.
