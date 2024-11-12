@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.35 (TBC)
+## v3.4.36 (TBC)
+
+<hr>
+
+## v3.4.35 (2024-11-12)
 
 ### etcd server
 - Fix [watchserver related goroutine leakage](https://github.com/etcd-io/etcd/pull/18785)
