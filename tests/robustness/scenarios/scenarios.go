@@ -210,6 +210,19 @@ func Regression(t *testing.T) []TestScenario {
 			options.WithSnapshotCount(100),
 		),
 	})
+
+	scenarios = append(scenarios, TestScenario{
+		Name:      "Issue17780",
+		Profile:   traffic.LowTraffic.WithoutCompaction(),
+		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
+		Traffic:   traffic.Kubernetes,
+		Cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithCompactionBatchLimit(300),
+			e2e.WithSnapshotCount(1000),
+			e2e.WithGoFailEnabled(true),
+		),
+	})
 	if v.Compare(version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),

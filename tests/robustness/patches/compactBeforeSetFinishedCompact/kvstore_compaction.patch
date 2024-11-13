@@ -1,0 +1,26 @@
+From 6b034466aa0ac2b46fe01fb5bd2233946f46d453 Mon Sep 17 00:00:00 2001
+From: Wei Fu <fuweid89@gmail.com>
+Date: Wed, 24 Apr 2024 12:14:27 +0800
+Subject: [PATCH] server/mvcc: introduce compactBeforeSetFinishedCompact
+ failpoint
+
+Signed-off-by: Wei Fu <fuweid89@gmail.com>
+---
+ server/mvcc/kvstore_compaction.go | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/server/mvcc/kvstore_compaction.go b/server/mvcc/kvstore_compaction.go
+index c7d343d5c..89defbd9e 100644
+--- a/server/mvcc/kvstore_compaction.go
++++ b/server/mvcc/kvstore_compaction.go
+@@ -59,6 +59,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
+ 		}
+ 
+ 		if len(keys) < s.cfg.CompactionBatchLimit {
++			// gofail: var compactBeforeSetFinishedCompact struct{}
+ 			rbytes := make([]byte, 8+1+8)
+ 			revToBytes(revision{main: compactMainRev}, rbytes)
+ 			tx.UnsafePut(buckets.Meta, finishedCompactKeyName, rbytes)
+-- 
+2.34.1
+

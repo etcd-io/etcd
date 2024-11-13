@@ -44,6 +44,11 @@ test-robustness-issue17529: /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin
 	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17529 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.12-beforeSendWatchResponse/bin' $(MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue17780
+test-robustness-issue17780: /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17780 --count 200 --failfast --bin-dir=/tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bin' make test-robustness && \
+	  echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
@@ -112,6 +117,20 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	cd /tmp/etcd-v3.5.12-beforeSendWatchResponse/; \
 	  patch -l server/etcdserver/api/v3rpc/watch.go ./beforeSendWatchResponse/watch.patch; \
 	  patch -l build.sh ./beforeSendWatchResponse/build.patch; \
+	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
+	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  FAILPOINTS=true ./build;
+
+/tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bin: $(GOPATH)/bin/gofail
+	rm -rf /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/
+	mkdir -p /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/
+	git clone --depth 1 --branch v3.5.13 https://github.com/etcd-io/etcd.git /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/
+	cp -r ./tests/robustness/patches/compactBeforeSetFinishedCompact /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/
+	cd /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/; \
+	  patch -l server/mvcc/kvstore_compaction.go ./compactBeforeSetFinishedCompact/kvstore_compaction.patch; \
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
 	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
