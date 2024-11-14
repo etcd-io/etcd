@@ -2,6 +2,3 @@
 
 approvers:
   - ivanvc           # Ivan Valdes <ivan@vald.es>
-
-labels:
-  - area/performance
