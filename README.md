@@ -12,7 +12,11 @@
 
 **Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
 
-![etcd Logo](logos/etcd-horizontal-color.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cncf/artwork/9870640f123303a355611065195c43ac3f27aa19/projects/etcd/horizontal/white/etcd-horizontal-white.png">
+  <source media="(prefers-color-scheme: light)" srcset="logos/etcd-horizontal-color.svg">
+  <img alt="etcd logo" src="logos/etcd-horizontal-color.svg" width=269 />
+</picture>
 
 etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
 
