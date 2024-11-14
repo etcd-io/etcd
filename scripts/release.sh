@@ -337,6 +337,9 @@ main() {
     log_warning "WARNING: If not running on DRY_MODE, please do the GitHub release manually."
     log_warning ""
   else
+    read -p "Create GitHub draft release in ${REPOSITORY} [y/N]? " -r confirm
+    [[ "${confirm,,}" == "y" ]] || exit 1
+
     local gh_repo
     local release_notes_temp_file
     local release_url
