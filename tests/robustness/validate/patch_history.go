@@ -77,6 +77,7 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		}
 		var resourceVersion int64
 		var matchingEvent *client.TimedWatchEvent
+		var persistedReturnTime *int64
 		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
 			if etcdOp.Type != model.PutOperation {
 				continue
@@ -89,6 +90,9 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			if ok {
 				matchingEvent = &event
 			}
+			if returnTime, found := persistedOperations[etcdOp]; found {
+				persistedReturnTime = &returnTime
+			}
 		}
 		if matchingEvent != nil {
 			eventTime := matchingEvent.Time.Nanoseconds()
@@ -97,15 +101,6 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				op.Return = eventTime
 			}
 			resourceVersion = matchingEvent.Revision
-		}
-		var persistedReturnTime *int64
-		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-			if etcdOp.Type != model.PutOperation {
-				continue
-			}
-			if returnTime, found := persistedOperations[etcdOp]; found {
-				persistedReturnTime = &returnTime
-			}
 		}
 		if persistedReturnTime != nil {
 			// Set return time based on persisted return time.
