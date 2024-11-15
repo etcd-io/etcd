@@ -78,15 +78,16 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		var resourceVersion int64
 		var matchingEvent *client.TimedWatchEvent
 		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-			if etcdOp.Type == model.PutOperation {
-				event, ok := watchEvents[model.Event{
-					Type:  etcdOp.Type,
-					Key:   etcdOp.Put.Key,
-					Value: etcdOp.Put.Value,
-				}]
-				if ok {
-					matchingEvent = &event
-				}
+			if etcdOp.Type != model.PutOperation {
+				continue
+			}
+			event, ok := watchEvents[model.Event{
+				Type:  etcdOp.Type,
+				Key:   etcdOp.Put.Key,
+				Value: etcdOp.Put.Value,
+			}]
+			if ok {
+				matchingEvent = &event
 			}
 		}
 		if matchingEvent != nil {
