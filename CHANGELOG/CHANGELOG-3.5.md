@@ -5,6 +5,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.18 (TBC)
 
+## Dependencies
+- Bump [golang-jwt/jwt to 4.5.1 to address GO-2024-3250](https://github.com/etcd-io/etcd/pull/18899).
+
 <hr>
 
 ## v3.5.17 (2024-11-12)
