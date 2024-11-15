@@ -75,7 +75,7 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			newOperations = append(newOperations, op)
 			continue
 		}
-		var resourceVersion int64
+		var txnRevision int64
 		var txnPersisted bool
 		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
 			if etcdOp.Type != model.PutOperation {
@@ -92,7 +92,7 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				if eventTime < op.Return {
 					op.Return = eventTime
 				}
-				resourceVersion = event.Revision
+				txnRevision = event.Revision
 			}
 			if returnTime, found := persistedOperations[etcdOp]; found {
 				txnPersisted = true
@@ -108,8 +108,8 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				// Remove non persisted operations
 				continue
 			} else {
-				if resourceVersion != 0 {
-					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: resourceVersion}
+				if txnRevision != 0 {
+					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
 				} else {
 					op.Output = model.MaybeEtcdResponse{Persisted: true}
 				}
