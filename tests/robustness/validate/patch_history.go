@@ -96,12 +96,10 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			}
 			if returnTime, found := persistedOperations[etcdOp]; found {
 				persistedReturnTime = &returnTime
-			}
-		}
-		if persistedReturnTime != nil {
-			// Set return time based on persisted return time.
-			if *persistedReturnTime < op.Return {
-				op.Return = *persistedReturnTime
+				// Set return time based on persisted return time.
+				if *persistedReturnTime < op.Return {
+					op.Return = *persistedReturnTime
+				}
 			}
 		}
 		if isUniqueTxn(request.Txn) {
