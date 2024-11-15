@@ -76,7 +76,19 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			continue
 		}
 		var resourceVersion int64
-		matchingEvent := matchWatchEvent(request.Txn, watchEvents)
+		var matchingEvent *client.TimedWatchEvent
+		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+			if etcdOp.Type == model.PutOperation {
+				event, ok := watchEvents[model.Event{
+					Type:  etcdOp.Type,
+					Key:   etcdOp.Put.Key,
+					Value: etcdOp.Put.Value,
+				}]
+				if ok {
+					matchingEvent = &event
+				}
+			}
+		}
 		if matchingEvent != nil {
 			eventTime := matchingEvent.Time.Nanoseconds()
 			// Set revision and time based on watchEvent.
@@ -85,7 +97,15 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			}
 			resourceVersion = matchingEvent.Revision
 		}
-		persistedReturnTime := matchReturnTime(request, persistedOperations)
+		var persistedReturnTime *int64
+		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+			if etcdOp.Type != model.PutOperation {
+				continue
+			}
+			if returnTime, found := persistedOperations[etcdOp]; found {
+				persistedReturnTime = &returnTime
+			}
+		}
 		if persistedReturnTime != nil {
 			// Set return time based on persisted return time.
 			if *persistedReturnTime < op.Return {
@@ -108,22 +128,6 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		newOperations = append(newOperations, op)
 	}
 	return newOperations
-}
-
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]client.TimedWatchEvent) *client.TimedWatchEvent {
-	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
-		if etcdOp.Type == model.PutOperation {
-			event, ok := watchEvents[model.Event{
-				Type:  etcdOp.Type,
-				Key:   etcdOp.Put.Key,
-				Value: etcdOp.Put.Value,
-			}]
-			if ok {
-				return &event
-			}
-		}
-	}
-	return nil
 }
 
 func isUniqueTxn(request *model.TxnRequest) bool {
@@ -237,16 +241,4 @@ func requestReturnTime(operationTime map[model.EtcdOperation]int64, request mode
 	default:
 		panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 	}
-}
-
-func matchReturnTime(request model.EtcdRequest, persistedOperations map[model.EtcdOperation]int64) *int64 {
-	for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-		if etcdOp.Type != model.PutOperation {
-			continue
-		}
-		if returnTime, found := persistedOperations[etcdOp]; found {
-			return &returnTime
-		}
-	}
-	return nil
 }
