@@ -144,7 +144,11 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 }
 
 func isUniqueTxn(request *model.TxnRequest) bool {
-	return (hasUniqueWriteOperation(request.OperationsOnSuccess) || !hasWriteOperation(request.OperationsOnSuccess)) && (hasUniqueWriteOperation(request.OperationsOnFailure) || !hasWriteOperation(request.OperationsOnFailure))
+	return isUniqueOps(request.OperationsOnSuccess) && isUniqueOps(request.OperationsOnFailure)
+}
+
+func isUniqueOps(ops []model.EtcdOperation) bool {
+	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
 }
 
 func hasWriteOperation(ops []model.EtcdOperation) bool {
