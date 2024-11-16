@@ -66,7 +66,6 @@ func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]client.Tim
 
 func patchOperations(operations []porcupine.Operation, watchEvents map[model.Event]client.TimedWatchEvent, persistedOperations map[model.EtcdOperation]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
-	lastObservedOperation := lastOperationObservedInWatch(operations, watchEvents)
 
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
@@ -77,26 +76,38 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			continue
 		}
 		var resourceVersion int64
-		if op.Call <= lastObservedOperation.Call {
-			matchingEvent := matchWatchEvent(request.Txn, watchEvents)
-			if matchingEvent != nil {
-				eventTime := matchingEvent.Time.Nanoseconds()
-				// Set revision and time based on watchEvent.
-				if eventTime < op.Return {
-					op.Return = eventTime
+		var persisted bool
+		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+			switch etcdOp.Type {
+			case model.PutOperation:
+				event, ok := watchEvents[model.Event{
+					Type:  etcdOp.Type,
+					Key:   etcdOp.Put.Key,
+					Value: etcdOp.Put.Value,
+				}]
+				if ok {
+					eventTime := event.Time.Nanoseconds()
+					// Set revision and time based on watchEvent.
+					if eventTime < op.Return {
+						op.Return = eventTime
+					}
+					resourceVersion = event.Revision
 				}
-				resourceVersion = matchingEvent.Revision
-			}
-		}
-		persistedReturnTime := matchReturnTime(request, persistedOperations)
-		if persistedReturnTime != nil {
-			// Set return time based on persisted return time.
-			if *persistedReturnTime < op.Return {
-				op.Return = *persistedReturnTime
+				if returnTime, found := persistedOperations[etcdOp]; found {
+					persisted = true
+					// Set return time based on persisted return time.
+					if returnTime < op.Return {
+						op.Return = returnTime
+					}
+				}
+			case model.DeleteOperation:
+			case model.RangeOperation:
+			default:
+				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
 			}
 		}
 		if isUniqueTxn(request.Txn) {
-			if persistedReturnTime == nil {
+			if !persisted {
 				// Remove non persisted operations
 				continue
 			} else {
@@ -111,39 +122,6 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 		newOperations = append(newOperations, op)
 	}
 	return newOperations
-}
-
-func lastOperationObservedInWatch(operations []porcupine.Operation, watchEvents map[model.Event]client.TimedWatchEvent) porcupine.Operation {
-	var maxCallTime int64
-	var lastOperation porcupine.Operation
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		if request.Type != model.Txn {
-			continue
-		}
-		event := matchWatchEvent(request.Txn, watchEvents)
-		if event != nil && op.Call > maxCallTime {
-			maxCallTime = op.Call
-			lastOperation = op
-		}
-	}
-	return lastOperation
-}
-
-func matchWatchEvent(request *model.TxnRequest, watchEvents map[model.Event]client.TimedWatchEvent) *client.TimedWatchEvent {
-	for _, etcdOp := range append(request.OperationsOnSuccess, request.OperationsOnFailure...) {
-		if etcdOp.Type == model.PutOperation {
-			event, ok := watchEvents[model.Event{
-				Type:  etcdOp.Type,
-				Key:   etcdOp.Put.Key,
-				Value: etcdOp.Put.Value,
-			}]
-			if ok {
-				return &event
-			}
-		}
-	}
-	return nil
 }
 
 func isUniqueTxn(request *model.TxnRequest) bool {
@@ -257,16 +235,4 @@ func requestReturnTime(operationTime map[model.EtcdOperation]int64, request mode
 	default:
 		panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 	}
-}
-
-func matchReturnTime(request model.EtcdRequest, persistedOperations map[model.EtcdOperation]int64) *int64 {
-	for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-		if etcdOp.Type != model.PutOperation {
-			continue
-		}
-		if returnTime, found := persistedOperations[etcdOp]; found {
-			return &returnTime
-		}
-	}
-	return nil
 }
