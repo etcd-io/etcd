@@ -72,28 +72,6 @@ func putReturnTimeFromWatch(reports []report.ClientReport) map[keyValue]int64 {
 	return earliestTime
 }
 
-func putRevision(reports []report.ClientReport) map[keyValue]int64 {
-	requestRevision := map[keyValue]int64{}
-	for _, client := range reports {
-		for _, watch := range client.Watch {
-			for _, resp := range watch.Responses {
-				for _, event := range resp.Events {
-					switch event.Type {
-					case model.RangeOperation:
-					case model.PutOperation:
-						kv := keyValue{Key: event.Key, Value: event.Value}
-						requestRevision[kv] = event.Revision
-					case model.DeleteOperation:
-					default:
-						panic(fmt.Sprintf("unknown event type %q", event.Type))
-					}
-				}
-			}
-		}
-	}
-	return requestRevision
-}
-
 func patchOperations(operations []porcupine.Operation, watchRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted, clientPutCount, persistedPutCount map[keyValue]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
@@ -176,6 +154,53 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
 	return false
 }
 
+func putReturnTime(operations []porcupine.Operation) map[model.EtcdOperation]int64 {
+	newOperations := map[model.EtcdOperation]int64{}
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		switch request.Type {
+		case model.Txn:
+			for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+				if etcdOp.Type != model.PutOperation {
+					continue
+				}
+				if _, found := newOperations[etcdOp]; found {
+					panic("Unexpected duplicate event in persisted requests.")
+				}
+				newOperations[etcdOp] = op.Return
+			}
+		case model.Range:
+		case model.LeaseGrant:
+		case model.LeaseRevoke:
+		case model.Compact:
+		default:
+			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
+		}
+	}
+	return newOperations
+}
+
+func putRevision(reports []report.ClientReport) map[keyValue]int64 {
+	requestRevision := map[keyValue]int64{}
+	for _, client := range reports {
+		for _, watch := range client.Watch {
+			for _, resp := range watch.Responses {
+				for _, event := range resp.Events {
+					switch event.Type {
+					case model.RangeOperation:
+					case model.PutOperation:
+						kv := keyValue{Key: event.Key, Value: event.Value}
+						requestRevision[kv] = event.Revision
+					case model.DeleteOperation:
+					default:
+						panic(fmt.Sprintf("unknown event type %q", event.Type))
+					}
+				}
+			}
+		}
+	}
+	return requestRevision
+}
 func putReturnTimeFromPersistedOperations(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
 	putReturnTimes := putReturnTime(allOperations)
 	persisted := map[keyValue]int64{}
@@ -213,32 +238,6 @@ func putReturnTimeFromPersistedOperations(allOperations []porcupine.Operation, p
 		}
 	}
 	return persisted
-}
-
-func putReturnTime(operations []porcupine.Operation) map[model.EtcdOperation]int64 {
-	newOperations := map[model.EtcdOperation]int64{}
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		switch request.Type {
-		case model.Txn:
-			for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-				if etcdOp.Type != model.PutOperation {
-					continue
-				}
-				if _, found := newOperations[etcdOp]; found {
-					panic("Unexpected duplicate event in persisted requests.")
-				}
-				newOperations[etcdOp] = op.Return
-			}
-		case model.Range:
-		case model.LeaseGrant:
-		case model.LeaseRevoke:
-		case model.Compact:
-		default:
-			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
-		}
-	}
-	return newOperations
 }
 
 func maxReturnTime(operationTime map[model.EtcdOperation]int64) int64 {
