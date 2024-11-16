@@ -29,7 +29,8 @@ func patchLinearizableOperations(reports []report.ClientReport, persistedRequest
 	putReturnTimeFromWatch := putReturnTimeFromWatch(reports)
 	putReturnTimeFromPersisted := putReturnTimeFromPersistedOperations(allOperations, persistedRequests)
 	clientPutCount := countClientPuts(reports)
-	return patchOperations(allOperations, putRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted, clientPutCount)
+	persistedPutCount := countPersistedPuts(persistedRequests)
+	return patchOperations(allOperations, putRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted, clientPutCount, persistedPutCount)
 }
 
 func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
@@ -93,7 +94,7 @@ func putRevision(reports []report.ClientReport) map[keyValue]int64 {
 	return requestRevision
 }
 
-func patchOperations(operations []porcupine.Operation, watchRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted, clientPutCount map[keyValue]int64) []porcupine.Operation {
+func patchOperations(operations []porcupine.Operation, watchRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted, clientPutCount, persistedPutCount map[keyValue]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
@@ -110,7 +111,7 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 			switch etcdOp.Type {
 			case model.PutOperation:
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				if _, ok := putReturnTimeFromPersisted[kv]; ok {
+				if _, ok := persistedPutCount[kv]; ok {
 					persisted = true
 				}
 				if count := clientPutCount[kv]; count != 1 {
@@ -272,13 +273,21 @@ func countClientPuts(reports []report.ClientReport) map[keyValue]int64 {
 	for _, client := range reports {
 		for _, op := range client.KeyValue {
 			request := op.Input.(model.EtcdRequest)
-			putCount(counter, request)
+			countPuts(counter, request)
 		}
 	}
 	return counter
 }
 
-func putCount(counter map[keyValue]int64, request model.EtcdRequest) {
+func countPersistedPuts(requests []model.EtcdRequest) map[keyValue]int64 {
+	counter := map[keyValue]int64{}
+	for _, request := range requests {
+		countPuts(counter, request)
+	}
+	return counter
+}
+
+func countPuts(counter map[keyValue]int64, request model.EtcdRequest) {
 	switch request.Type {
 	case model.Txn:
 		for _, operation := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
