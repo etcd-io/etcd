@@ -19,16 +19,16 @@ import (
 
 	"github.com/anishathalye/porcupine"
 
-	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	allOperations := relevantOperations(reports)
-	uniqueEvents := uniqueWatchEvents(reports)
-	operationsReturnTime := persistedOperationsReturnTime(allOperations, persistedRequests)
-	return patchOperations(allOperations, uniqueEvents, operationsReturnTime)
+	putRevision := putRevision(reports)
+	putReturnTimeFromWatch := putReturnTimeFromWatch(reports)
+	putReturnTimeFromPersisted := putReturnTimeFromPersistedOperations(allOperations, persistedRequests)
+	return patchOperations(allOperations, putRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted)
 }
 
 func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
@@ -46,25 +46,53 @@ func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
 	return ops
 }
 
-func uniqueWatchEvents(reports []report.ClientReport) map[model.Event]client.TimedWatchEvent {
-	persisted := map[model.Event]client.TimedWatchEvent{}
-	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
+func putReturnTimeFromWatch(reports []report.ClientReport) map[keyValue]int64 {
+	earliestTime := map[keyValue]int64{}
+	for _, client := range reports {
+		for _, watch := range client.Watch {
+			for _, resp := range watch.Responses {
 				for _, event := range resp.Events {
-					responseTime := resp.Time
-					if prev, found := persisted[event.Event]; found && prev.Time < responseTime {
-						responseTime = prev.Time
+					switch event.Type {
+					case model.RangeOperation:
+					case model.PutOperation:
+						kv := keyValue{Key: event.Key, Value: event.Value}
+						if t, ok := earliestTime[kv]; !ok || t > resp.Time.Nanoseconds() {
+							earliestTime[kv] = resp.Time.Nanoseconds()
+						}
+					case model.DeleteOperation:
+					default:
+						panic(fmt.Sprintf("unknown event type %q", event.Type))
 					}
-					persisted[event.Event] = client.TimedWatchEvent{Time: responseTime, WatchEvent: event}
 				}
 			}
 		}
 	}
-	return persisted
+	return earliestTime
 }
 
-func patchOperations(operations []porcupine.Operation, watchEvents map[model.Event]client.TimedWatchEvent, persistedOperations map[model.EtcdOperation]int64) []porcupine.Operation {
+func putRevision(reports []report.ClientReport) map[keyValue]int64 {
+	requestRevision := map[keyValue]int64{}
+	for _, client := range reports {
+		for _, watch := range client.Watch {
+			for _, resp := range watch.Responses {
+				for _, event := range resp.Events {
+					switch event.Type {
+					case model.RangeOperation:
+					case model.PutOperation:
+						kv := keyValue{Key: event.Key, Value: event.Value}
+						requestRevision[kv] = event.Revision
+					case model.DeleteOperation:
+					default:
+						panic(fmt.Sprintf("unknown event type %q", event.Type))
+					}
+				}
+			}
+		}
+	}
+	return requestRevision
+}
+
+func patchOperations(operations []porcupine.Operation, watchRevision, putReturnTimeFromWatch, putReturnTimeFromPersisted map[keyValue]int64) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
@@ -75,30 +103,21 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 			newOperations = append(newOperations, op)
 			continue
 		}
-		var resourceVersion int64
+		var txnRevision int64
 		var persisted bool
 		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
 			switch etcdOp.Type {
 			case model.PutOperation:
-				event, ok := watchEvents[model.Event{
-					Type:  etcdOp.Type,
-					Key:   etcdOp.Put.Key,
-					Value: etcdOp.Put.Value,
-				}]
-				if ok {
-					eventTime := event.Time.Nanoseconds()
-					// Set revision and time based on watchEvent.
-					if eventTime < op.Return {
-						op.Return = eventTime
-					}
-					resourceVersion = event.Revision
+				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
+				if revision, ok := watchRevision[kv]; ok {
+					txnRevision = revision
 				}
-				if returnTime, found := persistedOperations[etcdOp]; found {
+				if returnTime, ok := putReturnTimeFromWatch[kv]; ok {
+					op.Return = min(op.Return, returnTime)
+				}
+				if returnTime, ok := putReturnTimeFromPersisted[kv]; ok {
 					persisted = true
-					// Set return time based on persisted return time.
-					if returnTime < op.Return {
-						op.Return = returnTime
-					}
+					op.Return = min(op.Return, returnTime)
 				}
 			case model.DeleteOperation:
 			case model.RangeOperation:
@@ -111,8 +130,8 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 				// Remove non persisted operations
 				continue
 			} else {
-				if resourceVersion != 0 {
-					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: resourceVersion}
+				if txnRevision != 0 {
+					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
 				} else {
 					op.Output = model.MaybeEtcdResponse{Persisted: true}
 				}
@@ -125,7 +144,11 @@ func patchOperations(operations []porcupine.Operation, watchEvents map[model.Eve
 }
 
 func isUniqueTxn(request *model.TxnRequest) bool {
-	return (hasUniqueWriteOperation(request.OperationsOnSuccess) || !hasWriteOperation(request.OperationsOnSuccess)) && (hasUniqueWriteOperation(request.OperationsOnFailure) || !hasWriteOperation(request.OperationsOnFailure))
+	return isUniqueOps(request.OperationsOnSuccess) && isUniqueOps(request.OperationsOnFailure)
+}
+
+func isUniqueOps(ops []model.EtcdOperation) bool {
+	return hasUniqueWriteOperation(ops) || !hasWriteOperation(ops)
 }
 
 func hasWriteOperation(ops []model.EtcdOperation) bool {
@@ -146,11 +169,11 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation) bool {
 	return false
 }
 
-func persistedOperationsReturnTime(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest) map[model.EtcdOperation]int64 {
-	operationReturnTime := operationReturnTime(allOperations)
-	persisted := map[model.EtcdOperation]int64{}
+func putReturnTimeFromPersistedOperations(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
+	putReturnTimes := putReturnTime(allOperations)
+	persisted := map[keyValue]int64{}
 
-	lastReturnTime := maxReturnTime(operationReturnTime)
+	lastReturnTime := maxReturnTime(putReturnTimes)
 
 	for i := len(persistedRequests) - 1; i >= 0; i-- {
 		request := persistedRequests[i]
@@ -162,14 +185,15 @@ func persistedOperationsReturnTime(allOperations []porcupine.Operation, persiste
 				if op.Type != model.PutOperation {
 					continue
 				}
-				if _, found := persisted[op]; found {
+				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
+				if _, found := persisted[kv]; found {
 					panic(fmt.Sprintf("Unexpected duplicate event in persisted requests. %d %+v", i, op))
 				}
 				hasPut = true
-				persisted[op] = lastReturnTime
+				persisted[kv] = lastReturnTime
 			}
 			if hasPut {
-				newReturnTime := requestReturnTime(operationReturnTime, request)
+				newReturnTime := returnTimeFromRequest(putReturnTimes, request)
 				if newReturnTime != -1 {
 					lastReturnTime = min(lastReturnTime, newReturnTime)
 				}
@@ -184,7 +208,7 @@ func persistedOperationsReturnTime(allOperations []porcupine.Operation, persiste
 	return persisted
 }
 
-func operationReturnTime(operations []porcupine.Operation) map[model.EtcdOperation]int64 {
+func putReturnTime(operations []porcupine.Operation) map[model.EtcdOperation]int64 {
 	newOperations := map[model.EtcdOperation]int64{}
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
@@ -220,14 +244,14 @@ func maxReturnTime(operationTime map[model.EtcdOperation]int64) int64 {
 	return maxReturnTime
 }
 
-func requestReturnTime(operationTime map[model.EtcdOperation]int64, request model.EtcdRequest) int64 {
+func returnTimeFromRequest(putReturnTimes map[model.EtcdOperation]int64, request model.EtcdRequest) int64 {
 	switch request.Type {
 	case model.Txn:
 		for _, op := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
 			if op.Type != model.PutOperation {
 				continue
 			}
-			if time, found := operationTime[op]; found {
+			if time, found := putReturnTimes[op]; found {
 				return time
 			}
 		}
@@ -235,4 +259,9 @@ func requestReturnTime(operationTime map[model.EtcdOperation]int64, request mode
 	default:
 		panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 	}
+}
+
+type keyValue struct {
+	Key   string
+	Value model.ValueOrHash
 }
