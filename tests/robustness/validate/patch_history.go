@@ -218,8 +218,8 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 				returnTime, ok := earliestReturnTime[kv]
 				if ok {
 					lastReturnTime = min(returnTime, lastReturnTime)
-					earliestReturnTime[kv] = lastReturnTime
 				}
+				earliestReturnTime[kv] = lastReturnTime
 			}
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
