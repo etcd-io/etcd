@@ -25,7 +25,7 @@ import (
 
 func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	operations := relevantOperations(reports)
-	return patchOperations(operations, putPatchContext(operations, reports, persistedRequests))
+	return patchOperations(operations, generatePatchContext(operations, reports, persistedRequests))
 }
 
 func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
@@ -43,16 +43,18 @@ func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
 	return ops
 }
 
-func putPatchContext(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]patchInput {
-	putPatchContext := map[keyValue]patchInput{}
-	putRevision(putPatchContext, reports)
-	putReturnTime(putPatchContext, operations, reports, persistedRequests)
-	countClientPuts(putPatchContext, reports)
-	countPersistedPuts(putPatchContext, persistedRequests)
+func generatePatchContext(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) patchContext {
+	putPatchContext := patchContext{
+		puts: map[keyValue]patchInput{},
+	}
+	watchRevisions(putPatchContext, reports)
+	returnTime(putPatchContext, operations, reports, persistedRequests)
+	countClientRequests(putPatchContext, reports)
+	countPersistedRequests(putPatchContext, persistedRequests)
 	return putPatchContext
 }
 
-func putRevision(patchContext map[keyValue]patchInput, reports []report.ClientReport) {
+func watchRevisions(ctx patchContext, reports []report.ClientReport) {
 	for _, client := range reports {
 		for _, watch := range client.Watch {
 			for _, resp := range watch.Responses {
@@ -61,9 +63,9 @@ func putRevision(patchContext map[keyValue]patchInput, reports []report.ClientRe
 					case model.RangeOperation:
 					case model.PutOperation:
 						kv := keyValue{Key: event.Key, Value: event.Value}
-						patch := patchContext[kv]
+						patch := ctx.puts[kv]
 						patch.revision = event.Revision
-						patchContext[kv] = patch
+						ctx.puts[kv] = patch
 					case model.DeleteOperation:
 					default:
 						panic(fmt.Sprintf("unknown event type %q", event.Type))
@@ -74,7 +76,7 @@ func putRevision(patchContext map[keyValue]patchInput, reports []report.ClientRe
 	}
 }
 
-func patchOperations(operations []porcupine.Operation, putPatchContext map[keyValue]patchInput) []porcupine.Operation {
+func patchOperations(operations []porcupine.Operation, patchContext patchContext) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
@@ -91,16 +93,16 @@ func patchOperations(operations []porcupine.Operation, putPatchContext map[keyVa
 			switch etcdOp.Type {
 			case model.PutOperation:
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				if patch, _ := putPatchContext[kv]; patch.persistedCount > 0 {
+				if patch, _ := patchContext.puts[kv]; patch.persistedCount > 0 {
 					persisted = true
 				}
-				if patch, _ := putPatchContext[kv]; patch.clientRequestedCount != 1 {
+				if patch, _ := patchContext.puts[kv]; patch.clientRequestedCount != 1 {
 					continue
 				}
-				if patch, ok := putPatchContext[kv]; ok && patch.revision != 0 {
+				if patch, ok := patchContext.puts[kv]; ok && patch.revision != 0 {
 					txnRevision = patch.revision
 				}
-				if patch, ok := putPatchContext[kv]; ok && patch.earliestReturnTime != 0 {
+				if patch, ok := patchContext.puts[kv]; ok && patch.earliestReturnTime != 0 {
 					op.Return = min(op.Return, patch.earliestReturnTime)
 				}
 			case model.DeleteOperation:
@@ -109,7 +111,7 @@ func patchOperations(operations []porcupine.Operation, putPatchContext map[keyVa
 				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
 			}
 		}
-		if isUniqueTxn(request.Txn, putPatchContext) {
+		if isUniqueTxn(request.Txn, patchContext.puts) {
 			if !persisted {
 				// Remove non persisted operations
 				continue
@@ -161,7 +163,7 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, putPatchContext map[keyV
 	return false
 }
 
-func putReturnTime(patchContext map[keyValue]patchInput, allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) {
+func returnTime(patchContext patchContext, allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) {
 	var lastReturnTime int64
 	for _, op := range allOperations {
 		request := op.Input.(model.EtcdRequest)
@@ -172,9 +174,9 @@ func putReturnTime(patchContext map[keyValue]patchInput, allOperations []porcupi
 					continue
 				}
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				patch := patchContext[kv]
+				patch := patchContext.puts[kv]
 				patch.UpdateReturnTime(op.Return)
-				patchContext[kv] = patch
+				patchContext.puts[kv] = patch
 			}
 		case model.Range:
 		case model.LeaseGrant:
@@ -196,9 +198,9 @@ func putReturnTime(patchContext map[keyValue]patchInput, allOperations []porcupi
 					case model.RangeOperation:
 					case model.PutOperation:
 						kv := keyValue{Key: event.Key, Value: event.Value}
-						patch := patchContext[kv]
+						patch := patchContext.puts[kv]
 						patch.UpdateReturnTime(resp.Time.Nanoseconds())
-						patchContext[kv] = patch
+						patchContext.puts[kv] = patch
 					case model.DeleteOperation:
 					default:
 						panic(fmt.Sprintf("unknown event type %q", event.Type))
@@ -218,10 +220,10 @@ func putReturnTime(patchContext map[keyValue]patchInput, allOperations []porcupi
 					continue
 				}
 				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
-				patch := patchContext[kv]
+				patch := patchContext.puts[kv]
 				patch.UpdateReturnTime(lastReturnTime)
 				lastReturnTime = patch.earliestReturnTime
-				patchContext[kv] = patch
+				patchContext.puts[kv] = patch
 			}
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
@@ -232,7 +234,7 @@ func putReturnTime(patchContext map[keyValue]patchInput, allOperations []porcupi
 	}
 }
 
-func countClientPuts(patchContext map[keyValue]patchInput, reports []report.ClientReport) {
+func countClientRequests(patchContext patchContext, reports []report.ClientReport) {
 	counter := map[keyValue]int{}
 	for _, client := range reports {
 		for _, op := range client.KeyValue {
@@ -241,21 +243,21 @@ func countClientPuts(patchContext map[keyValue]patchInput, reports []report.Clie
 		}
 	}
 	for kv, count := range counter {
-		patch := patchContext[kv]
+		patch := patchContext.puts[kv]
 		patch.clientRequestedCount = count
-		patchContext[kv] = patch
+		patchContext.puts[kv] = patch
 	}
 }
 
-func countPersistedPuts(patchContext map[keyValue]patchInput, requests []model.EtcdRequest) {
+func countPersistedRequests(patchContext patchContext, requests []model.EtcdRequest) {
 	counter := map[keyValue]int{}
 	for _, request := range requests {
 		countPuts(counter, request)
 	}
 	for kv, count := range counter {
-		patch := patchContext[kv]
+		patch := patchContext.puts[kv]
 		patch.persistedCount = count
-		patchContext[kv] = patch
+		patchContext.puts[kv] = patch
 	}
 }
 
@@ -281,6 +283,10 @@ func countPuts(counter map[keyValue]int, request model.EtcdRequest) {
 	default:
 		panic(fmt.Sprintf("unknown request type %q", request.Type))
 	}
+}
+
+type patchContext struct {
+	puts map[keyValue]patchInput
 }
 
 type keyValue struct {
