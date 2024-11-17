@@ -111,7 +111,7 @@ func patchOperations(operations []porcupine.Operation, patchContext patchContext
 				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
 			}
 		}
-		if isUniqueTxn(request.Txn, patchContext.puts) {
+		if isUniqueRequest(patchContext, request) {
 			if !persisted {
 				// Remove non persisted operations
 				continue
@@ -129,8 +129,18 @@ func patchOperations(operations []porcupine.Operation, patchContext patchContext
 	return newOperations
 }
 
-func isUniqueTxn(request *model.TxnRequest, putPatchContext map[keyValue]patchInput) bool {
-	return isUniqueOps(request.OperationsOnSuccess, putPatchContext) && isUniqueOps(request.OperationsOnFailure, putPatchContext)
+func isUniqueRequest(patchContext patchContext, request model.EtcdRequest) bool {
+	switch request.Type {
+	case model.Txn:
+		return isUniqueOps(request.Txn.OperationsOnSuccess, patchContext.puts) && isUniqueOps(request.Txn.OperationsOnFailure, patchContext.puts)
+	case model.Range:
+	case model.LeaseGrant:
+	case model.LeaseRevoke:
+	case model.Compact:
+	default:
+		panic(fmt.Sprintf("Unknown request type: %q", request.Type))
+	}
+	return false
 }
 
 func isUniqueOps(ops []model.EtcdOperation, putPatchContext map[keyValue]patchInput) bool {
