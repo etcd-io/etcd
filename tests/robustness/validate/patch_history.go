@@ -45,7 +45,8 @@ func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
 
 func generatePatchContext(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) patchContext {
 	putPatchContext := patchContext{
-		puts: map[keyValue]patchInput{},
+		puts:    map[keyValue]patchInput{},
+		deletes: map[string]patchInput{},
 	}
 	watchRevisions(putPatchContext, reports)
 	returnTime(putPatchContext, operations, reports, persistedRequests)
@@ -67,6 +68,9 @@ func watchRevisions(ctx patchContext, reports []report.ClientReport) {
 						patch.revision = event.Revision
 						ctx.puts[kv] = patch
 					case model.DeleteOperation:
+						patch := ctx.deletes[event.Key]
+						patch.revision = event.Revision
+						ctx.deletes[event.Key] = patch
 					default:
 						panic(fmt.Sprintf("unknown event type %q", event.Type))
 					}
@@ -106,6 +110,18 @@ func patchOperations(operations []porcupine.Operation, patchContext patchContext
 					op.Return = min(op.Return, patch.earliestReturnTime)
 				}
 			case model.DeleteOperation:
+				if patch, _ := patchContext.deletes[etcdOp.Delete.Key]; patch.persistedCount > 0 {
+					persisted = true
+				}
+				if patch, _ := patchContext.deletes[etcdOp.Delete.Key]; patch.clientRequestedCount != 1 {
+					continue
+				}
+				if patch, ok := patchContext.deletes[etcdOp.Delete.Key]; ok && patch.revision != 0 {
+					txnRevision = patch.revision
+				}
+				if patch, ok := patchContext.deletes[etcdOp.Delete.Key]; ok && patch.earliestReturnTime != 0 {
+					op.Return = min(op.Return, patch.earliestReturnTime)
+				}
 			case model.RangeOperation:
 			default:
 				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
@@ -132,7 +148,7 @@ func patchOperations(operations []porcupine.Operation, patchContext patchContext
 func isUniqueRequest(patchContext patchContext, request model.EtcdRequest) bool {
 	switch request.Type {
 	case model.Txn:
-		return isUniqueOps(request.Txn.OperationsOnSuccess, patchContext.puts) && isUniqueOps(request.Txn.OperationsOnFailure, patchContext.puts)
+		return isUniqueOps(request.Txn.OperationsOnSuccess, patchContext) && isUniqueOps(request.Txn.OperationsOnFailure, patchContext)
 	case model.Range:
 	case model.LeaseGrant:
 	case model.LeaseRevoke:
@@ -143,8 +159,8 @@ func isUniqueRequest(patchContext patchContext, request model.EtcdRequest) bool 
 	return false
 }
 
-func isUniqueOps(ops []model.EtcdOperation, putPatchContext map[keyValue]patchInput) bool {
-	return hasUniqueWriteOperation(ops, putPatchContext) || !hasWriteOperation(ops)
+func isUniqueOps(ops []model.EtcdOperation, patchContext patchContext) bool {
+	return hasUniqueWriteOperation(ops, patchContext) || !hasWriteOperation(ops)
 }
 
 func hasWriteOperation(ops []model.EtcdOperation) bool {
@@ -156,15 +172,18 @@ func hasWriteOperation(ops []model.EtcdOperation) bool {
 	return false
 }
 
-func hasUniqueWriteOperation(ops []model.EtcdOperation, putPatchContext map[keyValue]patchInput) bool {
+func hasUniqueWriteOperation(ops []model.EtcdOperation, patchContext patchContext) bool {
 	for _, operation := range ops {
 		switch operation.Type {
 		case model.PutOperation:
 			kv := keyValue{Key: operation.Put.Key, Value: operation.Put.Value}
-			if patch := putPatchContext[kv]; patch.clientRequestedCount == 1 {
+			if patch := patchContext.puts[kv]; patch.clientRequestedCount == 1 {
 				return true
 			}
 		case model.DeleteOperation:
+			if patch := patchContext.deletes[operation.Delete.Key]; patch.clientRequestedCount == 1 {
+				return true
+			}
 		case model.RangeOperation:
 		default:
 			panic(fmt.Sprintf("unknown operation type %q", operation.Type))
@@ -180,13 +199,20 @@ func returnTime(patchContext patchContext, allOperations []porcupine.Operation, 
 		switch request.Type {
 		case model.Txn:
 			for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
-				if etcdOp.Type != model.PutOperation {
-					continue
+				switch etcdOp.Type {
+				case model.PutOperation:
+					kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
+					patch := patchContext.puts[kv]
+					patch.UpdateReturnTime(op.Return)
+					patchContext.puts[kv] = patch
+				case model.DeleteOperation:
+					patch := patchContext.deletes[etcdOp.Delete.Key]
+					patch.UpdateReturnTime(op.Return)
+					patchContext.deletes[etcdOp.Delete.Key] = patch
+				case model.RangeOperation:
+				default:
+					panic(fmt.Sprintf("Unknown operation type: %q", etcdOp.Type))
 				}
-				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
-				patch := patchContext.puts[kv]
-				patch.UpdateReturnTime(op.Return)
-				patchContext.puts[kv] = patch
 			}
 		case model.Range:
 		case model.LeaseGrant:
@@ -212,6 +238,9 @@ func returnTime(patchContext patchContext, allOperations []porcupine.Operation, 
 						patch.UpdateReturnTime(resp.Time.Nanoseconds())
 						patchContext.puts[kv] = patch
 					case model.DeleteOperation:
+						patch := patchContext.deletes[event.Key]
+						patch.UpdateReturnTime(resp.Time.Nanoseconds())
+						patchContext.deletes[event.Key] = patch
 					default:
 						panic(fmt.Sprintf("unknown event type %q", event.Type))
 					}
@@ -226,14 +255,22 @@ func returnTime(patchContext patchContext, allOperations []porcupine.Operation, 
 		case model.Txn:
 			lastReturnTime--
 			for _, op := range request.Txn.OperationsOnSuccess {
-				if op.Type != model.PutOperation {
-					continue
+				switch op.Type {
+				case model.PutOperation:
+					kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
+					patch := patchContext.puts[kv]
+					patch.UpdateReturnTime(lastReturnTime)
+					lastReturnTime = patch.earliestReturnTime
+					patchContext.puts[kv] = patch
+				case model.DeleteOperation:
+					patch := patchContext.deletes[op.Delete.Key]
+					patch.UpdateReturnTime(lastReturnTime)
+					lastReturnTime = patch.earliestReturnTime
+					patchContext.deletes[op.Delete.Key] = patch
+				case model.RangeOperation:
+				default:
+					panic(fmt.Sprintf("Unknown operation type: %q", op.Type))
 				}
-				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
-				patch := patchContext.puts[kv]
-				patch.UpdateReturnTime(lastReturnTime)
-				lastReturnTime = patch.earliestReturnTime
-				patchContext.puts[kv] = patch
 			}
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
@@ -296,7 +333,8 @@ func countPuts(counter map[keyValue]int, request model.EtcdRequest) {
 }
 
 type patchContext struct {
-	puts map[keyValue]patchInput
+	puts    map[keyValue]patchInput
+	deletes map[string]patchInput
 }
 
 type keyValue struct {
