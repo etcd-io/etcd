@@ -26,8 +26,8 @@ github.com/OpenPeeDeeP/depguard/v2 v2.2.0 h1:vDfG60vDtIuf0MEOhmLlLLSzqaRM8EMcgJP
 github.com/OpenPeeDeeP/depguard/v2 v2.2.0/go.mod h1:CIzddKRvLBC4Au5aYP/i3nyaWQ+ClszLIuVocRiCYFQ=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19 h1:bYOD6QJnBJY79MJQR1i9cyQePG5oNDZXDKL2bhN/uvE=
 github.com/akhenakh/hunspellgo v0.0.0-20160221122622-9db38fa26e19/go.mod h1:HcqyLXmWoESd/vPSbCPqvgw5l5cMM5PtoqFOnXLjSeM=
-github.com/alecthomas/assert/v2 v2.3.0 h1:mAsH2wmvjsuvyBvAmCtm7zFsBlb8mIHx5ySLVdDZXL0=
-github.com/alecthomas/assert/v2 v2.3.0/go.mod h1:pXcQ2Asjp247dahGEmsZ6ru0UVwnkhktn7S0bBDLxvQ=
+github.com/alecthomas/assert/v2 v2.11.0 h1:2Q9r3ki8+JYXvGsDyBXwH3LcJ+WK5D0gc5E8vS6K3D0=
+github.com/alecthomas/assert/v2 v2.11.0/go.mod h1:Bze95FyfUr7x34QZrjL+XP+0qgp/zg8yS+TtBj1WA3k=
 github.com/alecthomas/go-check-sumtype v0.1.4 h1:WCvlB3l5Vq5dZQTFmodqL2g68uHiSwwlWcT5a2FGK0c=
 github.com/alecthomas/go-check-sumtype v0.1.4/go.mod h1:WyYPfhfkdhyrdaligV6svFopZV8Lqdzn5pyVBaV6jhQ=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
