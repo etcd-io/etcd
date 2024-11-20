@@ -35,18 +35,30 @@ var leaseKeepaliveCmd = &cobra.Command{
 
 var (
 	leaseKeepaliveTotal int
+	leaseCount          int
 )
 
 func init() {
 	RootCmd.AddCommand(leaseKeepaliveCmd)
+	leaseKeepaliveCmd.Flags().IntVar(&leaseCount, "leases", 1, "Number of lease objects")
 	leaseKeepaliveCmd.Flags().IntVar(&leaseKeepaliveTotal, "total", 10000, "Total number of lease keepalive requests")
 }
 
-func leaseKeepaliveFunc(_ *cobra.Command, _ []string) {
-	requests := make(chan struct{})
+func leaseKeepaliveFunc(cmd *cobra.Command, args []string) {
+	requests := make(chan v3.LeaseID)
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(leaseKeepaliveTotal)
+	bar.Format("Bom !")
+
+	leases := []v3.LeaseID{}
+	for i := 0; i < leaseCount; i++ {
+		resp, err := clients[i%len(clients)].Grant(context.Background(), 100)
+		if err != nil {
+			panic(err)
+		}
+		leases = append(leases, resp.ID)
+	}
 	bar.Start()
 
 	r := newReport()
@@ -54,13 +66,9 @@ func leaseKeepaliveFunc(_ *cobra.Command, _ []string) {
 		wg.Add(1)
 		go func(c v3.Lease) {
 			defer wg.Done()
-			resp, err := c.Grant(context.Background(), 100)
-			if err != nil {
-				panic(err)
-			}
-			for range requests {
+			for leaseID := range requests {
 				st := time.Now()
-				_, err := c.KeepAliveOnce(context.TODO(), resp.ID)
+				_, err := c.KeepAliveOnce(context.TODO(), leaseID)
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
 			}
@@ -71,7 +79,7 @@ func leaseKeepaliveFunc(_ *cobra.Command, _ []string) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < leaseKeepaliveTotal; i++ {
-			requests <- struct{}{}
+			requests <- leases[i%len(leases)]
 		}
 		close(requests)
 	}()
