@@ -39,6 +39,12 @@ import (
 
 var testRunner = framework.E2eTestRunner
 
+var (
+	WaitBeforeFailpoint = time.Second
+	WaitJitter          = traffic.CompactionPeriod
+	WaitAfterFailpoint  = time.Second
+)
+
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
 	testRunner.TestMain(m)
@@ -116,14 +122,14 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	g.Go(func() error {
 		defer close(failpointInjected)
 		// Give some time for traffic to reach qps target before injecting failpoint.
-		time.Sleep(time.Second)
+		time.Sleep(randomizeTime(WaitBeforeFailpoint, WaitJitter))
 		fr, err := failpoint.Inject(ctx, t, lg, clus, s.Failpoint, baseTime, ids)
 		if err != nil {
 			t.Error(err)
 			cancel()
 		}
 		// Give some time for traffic to reach qps target after injecting failpoint.
-		time.Sleep(time.Second)
+		time.Sleep(randomizeTime(WaitAfterFailpoint, WaitJitter))
 		if fr != nil {
 			failpointInjected <- fr.FailpointInjection
 			failpointClientReport = fr.Client
@@ -145,6 +151,10 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	})
 	g.Wait()
 	return append(operationReport, append(failpointClientReport, watchReport...)...)
+}
+
+func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
+	return base - jitter + time.Duration(rand.Int63n(int64(jitter)*2))
 }
 
 func operationsMaxRevision(reports []report.ClientReport) int64 {
