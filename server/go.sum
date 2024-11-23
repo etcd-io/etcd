@@ -121,8 +121,8 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 go.etcd.io/bbolt v1.4.0-beta.0 h1:U7Y9yH6ZojEo5/BDFMXDXD1RNx9L7iKxudzqR68jLaM=
 go.etcd.io/bbolt v1.4.0-beta.0/go.mod h1:Qv5yHB6jkQESXT/uVfxJgUPMqgAyhL0GLxcQaz9bSec=
-go.etcd.io/raft/v3 v3.6.0-alpha.0 h1:cMmjAEjCKMGiQPowjSWM43Y5ZnBEeNP8RSYcm3ewtns=
-go.etcd.io/raft/v3 v3.6.0-alpha.0/go.mod h1:QpxpKeYmocQQFHP75LxNrdJTukZmqQig9lotwYLsUJY=
+go.etcd.io/raft/v3 v3.6.0-beta.0 h1:MZFQVjCQxPJj5K9oS69Y+atNvYnGNyOQBnroTdw56jQ=
+go.etcd.io/raft/v3 v3.6.0-beta.0/go.mod h1:C2JoekRXfvImSrk5GnqD0aZ3a+cGVRnyem9qqn2DCEw=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.57.0 h1:qtFISDHKolvIxzSs0gIaiPUPR0Cucb0F2coHC7ZLdps=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.57.0/go.mod h1:Y+Pop1Q6hCOnETWTW4NROK/q1hv50hM7yDaUTjG8lp8=
 go.opentelemetry.io/otel v1.32.0 h1:WnBN+Xjcteh0zdk01SVqV55d/m62NJLJdIyb4y/WO5U=
