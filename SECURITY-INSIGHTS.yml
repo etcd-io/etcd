@@ -1,0 +1,56 @@
+---
+header:
+  schema-version: '1.0.0'
+  expiration-date: '2025-11-24T01:00:00.000Z'
+  last-updated: '2024-11-24'
+  last-reviewed: '2024-11-24'
+  project-url: https://github.com/etcd-io/etcd
+  changelog: https://github.com/etcd-io/etcd/tree/main/CHANGELOG
+  license: https://github.com/etcd-io/etcd/blob/main/LICENSE
+project-lifecycle:
+  status: active
+  bug-fixes-only: false
+  core-maintainers:
+    - https://github.com/etcd-io/etcd/blob/main/OWNERS
+  roadmap: https://github.com/etcd-io/etcd/blob/main/Documentation/contributor-guide/roadmap.md
+contribution-policy:
+  accepts-pull-requests: true
+  accepts-automated-pull-requests: true
+  contributing-policy: https://github.com/etcd-io/etcd/blob/main/CONTRIBUTING.md
+  code-of-conduct: https://github.com/etcd-io/etcd/blob/main/code-of-conduct.md
+dependencies:
+  third-party-packages: true
+  dependencies-lists:
+    - https://github.com/etcd-io/etcd/blob/main/go.mod
+  sbom:
+    - sbom-url: https://github.com/etcd-io/etcd/blob/main/bill-of-materials.json
+distribution-points:
+  - https://github.com/etcd-io/etcd/releases
+documentation:
+  - https://etcd.io/docs/
+security-assessments:
+  - auditor-name: Trail of Bits
+    auditor-url: https://www.trailofbits.com/
+    auditor-report: https://github.com/etcd-io/etcd/blob/main/security/SECURITY_AUDIT.pdf
+    report-year: 2020
+security-contacts:
+  - type: email
+    value: etcd-maintainers@googlegroups.com
+security-testing:
+  - tool-type: sca
+    tool-name: Dependabot
+    tool-version: latest
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: true
+  - tool-type: sast
+    tool-name: CodeQL
+    tool-version: latest
+    integration:
+      ad-hoc: false
+      ci: true
+      before-release: true
+vulnerability-reporting:
+  accepts-vulnerability-reports: false
+  security-policy: https://github.com/etcd-io/etcd/blob/main/security/README.md

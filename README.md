@@ -8,7 +8,9 @@
 [![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/3192/badge)](https://www.bestpractices.dev/projects/3192)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://scorecard.dev/viewer/?uri=github.com/etcd-io/etcd)
+[![CLOMonitor](https://img.shields.io/endpoint?url=https://clomonitor.io/api/projects/cncf/etcd/badge)](https://clomonitor.io/projects/cncf/etcd)
 
 **Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
 
