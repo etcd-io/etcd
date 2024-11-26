@@ -136,7 +136,14 @@ func TestLeaseKeepAlive(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	rc, kerr := lapi.KeepAlive(context.Background(), resp.ID)
+	type uncomparableCtx struct {
+		context.Context
+		_ func()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rc, kerr := lapi.KeepAlive(uncomparableCtx{Context: ctx}, resp.ID)
 	if kerr != nil {
 		t.Errorf("failed to keepalive lease %v", kerr)
 	}
@@ -152,6 +159,26 @@ func TestLeaseKeepAlive(t *testing.T) {
 
 	if kresp.ID != resp.ID {
 		t.Errorf("ID = %x, want %x", kresp.ID, resp.ID)
+	}
+
+	ctx2, cancel2 := context.WithCancel(context.Background())
+	rc2, kerr2 := lapi.KeepAlive(uncomparableCtx{Context: ctx2}, resp.ID)
+	if kerr2 != nil {
+		t.Errorf("failed to keepalive lease %v", kerr2)
+	}
+
+	cancel2()
+
+	_, ok = <-rc2
+	if ok {
+		t.Errorf("chan is not closed, want cancel stop keepalive")
+	}
+
+	select {
+	case <-rc:
+		// cancel2() should not affect first keepalive
+		t.Errorf("chan is closed, want keepalive continue")
+	default:
 	}
 
 	lapi.Close()
