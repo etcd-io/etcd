@@ -6,6 +6,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.36 (TBC)
 
+### Package `clientv3`
+- Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18936)
+
 <hr>
 
 ## v3.4.35 (2024-11-12)
