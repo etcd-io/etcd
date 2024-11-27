@@ -181,7 +181,8 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 }
 
 func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
+	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
+) {
 	lg.Debug("request stats",
 		zap.Time("start time", startTime),
 		zap.Duration("time spent", duration),
@@ -196,7 +197,8 @@ func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.D
 }
 
 func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string) {
+	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
+) {
 	lg.Warn("request stats",
 		zap.Time("start time", startTime),
 		zap.Duration("time spent", duration),

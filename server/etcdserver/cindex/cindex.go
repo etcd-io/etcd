@@ -28,7 +28,6 @@ type Backend interface {
 
 // ConsistentIndexer is an interface that wraps the Get/Set/Save method for consistentIndex.
 type ConsistentIndexer interface {
-
 	// ConsistentIndex returns the consistent index of current executing entry.
 	ConsistentIndex() uint64
 
@@ -150,9 +149,11 @@ type fakeConsistentIndex struct {
 func (f *fakeConsistentIndex) ConsistentIndex() uint64 {
 	return atomic.LoadUint64(&f.index)
 }
+
 func (f *fakeConsistentIndex) ConsistentApplyingIndex() (uint64, uint64) {
 	return atomic.LoadUint64(&f.index), atomic.LoadUint64(&f.term)
 }
+
 func (f *fakeConsistentIndex) UnsafeConsistentIndex() uint64 {
 	return atomic.LoadUint64(&f.index)
 }
@@ -161,6 +162,7 @@ func (f *fakeConsistentIndex) SetConsistentIndex(index uint64, term uint64) {
 	atomic.StoreUint64(&f.index, index)
 	atomic.StoreUint64(&f.term, term)
 }
+
 func (f *fakeConsistentIndex) SetConsistentApplyingIndex(index uint64, term uint64) {
 	atomic.StoreUint64(&f.index, index)
 	atomic.StoreUint64(&f.term, term)

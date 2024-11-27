@@ -69,10 +69,9 @@ type ActionList []action
 // unsafeExecute executes actions one by one. If one of actions returns error,
 // it will revert them.
 func (as ActionList) unsafeExecute(lg *zap.Logger, tx backend.UnsafeReadWriter) error {
-	var revertActions = make(ActionList, 0, len(as))
+	revertActions := make(ActionList, 0, len(as))
 	for _, a := range as {
 		revert, err := a.unsafeDo(tx)
-
 		if err != nil {
 			revertActions.unsafeExecuteInReversedOrder(lg, tx)
 			return err

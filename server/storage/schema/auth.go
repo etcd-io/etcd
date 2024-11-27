@@ -78,8 +78,10 @@ type authBatchTx struct {
 	lg *zap.Logger
 }
 
-var _ auth.AuthReadTx = (*authReadTx)(nil)
-var _ auth.AuthBatchTx = (*authBatchTx)(nil)
+var (
+	_ auth.AuthReadTx  = (*authReadTx)(nil)
+	_ auth.AuthBatchTx = (*authBatchTx)(nil)
+)
 
 func (atx *authBatchTx) UnsafeSaveAuthEnabled(enabled bool) {
 	if enabled {

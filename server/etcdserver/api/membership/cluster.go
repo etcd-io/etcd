@@ -907,7 +907,7 @@ func (c *RaftCluster) Store(store v2store.Store) {
 		)
 	}
 	for id := range c.removed {
-		//We do not need to delete the member since the store is empty.
+		// We do not need to delete the member since the store is empty.
 		mustAddToRemovedMembersInStore(c.lg, store, id)
 	}
 	if c.version != nil {

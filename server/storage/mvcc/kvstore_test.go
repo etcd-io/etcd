@@ -914,7 +914,8 @@ func newTestBucketKeyBytes(rev BucketKey) []byte {
 func newFakeStore(lg *zap.Logger) *store {
 	b := &fakeBackend{&fakeBatchTx{
 		Recorder:   &testutil.RecorderBuffered{},
-		rangeRespc: make(chan rangeResp, 5)}}
+		rangeRespc: make(chan rangeResp, 5),
+	}}
 	s := &store{
 		cfg: StoreConfig{
 			CompactionBatchLimit:    10000,
@@ -965,17 +966,21 @@ func (b *fakeBatchTx) UnsafeDeleteBucket(bucket backend.Bucket) {}
 func (b *fakeBatchTx) UnsafePut(bucket backend.Bucket, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "put", Params: []any{bucket, key, value}})
 }
+
 func (b *fakeBatchTx) UnsafeSeqPut(bucket backend.Bucket, key []byte, value []byte) {
 	b.Recorder.Record(testutil.Action{Name: "seqput", Params: []any{bucket, key, value}})
 }
+
 func (b *fakeBatchTx) UnsafeRange(bucket backend.Bucket, key, endKey []byte, limit int64) (keys [][]byte, vals [][]byte) {
 	b.Recorder.Record(testutil.Action{Name: "range", Params: []any{bucket, key, endKey, limit}})
 	r := <-b.rangeRespc
 	return r.keys, r.vals
 }
+
 func (b *fakeBatchTx) UnsafeDelete(bucket backend.Bucket, key []byte) {
 	b.Recorder.Record(testutil.Action{Name: "delete", Params: []any{bucket, key}})
 }
+
 func (b *fakeBatchTx) UnsafeForEach(bucket backend.Bucket, visitor func(k, v []byte) error) error {
 	return nil
 }
@@ -1041,27 +1046,33 @@ func (i *fakeIndex) Get(key []byte, atRev int64) (rev, created Revision, ver int
 	r := <-i.indexGetRespc
 	return r.rev, r.created, r.ver, r.err
 }
+
 func (i *fakeIndex) Range(key, end []byte, atRev int64) ([][]byte, []Revision) {
 	i.Recorder.Record(testutil.Action{Name: "range", Params: []any{key, end, atRev}})
 	r := <-i.indexRangeRespc
 	return r.keys, r.revs
 }
+
 func (i *fakeIndex) Put(key []byte, rev Revision) {
 	i.Recorder.Record(testutil.Action{Name: "put", Params: []any{key, rev}})
 }
+
 func (i *fakeIndex) Tombstone(key []byte, rev Revision) error {
 	i.Recorder.Record(testutil.Action{Name: "tombstone", Params: []any{key, rev}})
 	return nil
 }
+
 func (i *fakeIndex) RangeSince(key, end []byte, rev int64) []Revision {
 	i.Recorder.Record(testutil.Action{Name: "rangeEvents", Params: []any{key, end, rev}})
 	r := <-i.indexRangeEventsRespc
 	return r.revs
 }
+
 func (i *fakeIndex) Compact(rev int64) map[Revision]struct{} {
 	i.Recorder.Record(testutil.Action{Name: "compact", Params: []any{rev}})
 	return <-i.indexCompactRespc
 }
+
 func (i *fakeIndex) Keep(rev int64) map[Revision]struct{} {
 	i.Recorder.Record(testutil.Action{Name: "keep", Params: []any{rev}})
 	return <-i.indexCompactRespc

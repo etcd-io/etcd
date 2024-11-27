@@ -39,12 +39,10 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-var (
-	confState = raftpb.ConfState{
-		Voters:    []uint64{0x00ffca74},
-		AutoLeave: false,
-	}
-)
+var confState = raftpb.ConfState{
+	Voters:    []uint64{0x00ffca74},
+	AutoLeave: false,
+}
 
 func TestNew(t *testing.T) {
 	p := t.TempDir()

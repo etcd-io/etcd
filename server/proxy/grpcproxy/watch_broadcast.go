@@ -126,6 +126,7 @@ func (wb *watchBroadcast) add(w *watcher) bool {
 
 	return true
 }
+
 func (wb *watchBroadcast) delete(w *watcher) {
 	wb.mu.Lock()
 	defer wb.mu.Unlock()

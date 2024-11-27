@@ -47,22 +47,26 @@ func TestRangePermission(t *testing.T) {
 		},
 		{
 			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte("c"), []byte("f"))},
-			[]byte("a"), []byte{},
+			[]byte("a"),
+			[]byte{},
 			false,
 		},
 		{
 			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte{})},
-			[]byte("a"), []byte{},
+			[]byte("a"),
+			[]byte{},
 			true,
 		},
 		{
 			[]adt.Interval{adt.NewBytesAffineInterval([]byte{0x00}, []byte{})},
-			[]byte("a"), []byte{},
+			[]byte("a"),
+			[]byte{},
 			true,
 		},
 		{
 			[]adt.Interval{adt.NewBytesAffineInterval([]byte{0x00}, []byte{})},
-			[]byte{0x00}, []byte{},
+			[]byte{0x00},
+			[]byte{},
 			true,
 		},
 	}

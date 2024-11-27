@@ -61,7 +61,8 @@ func NewUberApplier(
 	consistentIndex cindex.ConsistentIndexer,
 	warningApplyDuration time.Duration,
 	txnModeWriteWithSharedBuffer bool,
-	quotaBackendBytesCfg int64) UberApplier {
+	quotaBackendBytesCfg int64,
+) UberApplier {
 	applyV3base := newApplierV3(lg, be, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer, quotaBackendBytesCfg)
 
 	ua := &uberApplier{
@@ -87,7 +88,8 @@ func newApplierV3(
 	snapshotServer SnapshotServer,
 	consistentIndex cindex.ConsistentIndexer,
 	txnModeWriteWithSharedBuffer bool,
-	quotaBackendBytesCfg int64) applierV3 {
+	quotaBackendBytesCfg int64,
+) applierV3 {
 	applierBackend := newApplierV3Backend(lg, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer)
 	return newAuthApplierV3(
 		authStore,

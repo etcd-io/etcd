@@ -225,12 +225,12 @@ func createDataDir(t *testing.T) (string, error) {
 	dataDir := t.TempDir()
 
 	// create ${dataDir}/member/snap
-	if err = os.MkdirAll(datadir.ToSnapDir(dataDir), 0700); err != nil {
+	if err = os.MkdirAll(datadir.ToSnapDir(dataDir), 0o700); err != nil {
 		return "", err
 	}
 
 	// create ${dataDir}/member/wal
-	err = os.MkdirAll(datadir.ToWALDir(dataDir), 0700)
+	err = os.MkdirAll(datadir.ToWALDir(dataDir), 0o700)
 	if err != nil {
 		return "", err
 	}

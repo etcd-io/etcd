@@ -507,9 +507,9 @@ func (f *fakeHasher) TriggerCorruptAlarm(memberID types.ID) {
 }
 
 func TestHashKVHandler(t *testing.T) {
-	var remoteClusterID = 111195
-	var localClusterID = 111196
-	var revision = 1
+	remoteClusterID := 111195
+	localClusterID := 111196
+	revision := 1
 
 	etcdSrv := &EtcdServer{}
 	etcdSrv.cluster = newTestCluster(t)

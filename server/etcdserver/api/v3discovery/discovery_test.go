@@ -708,7 +708,7 @@ func TestGetInitClusterStr(t *testing.T) {
 					peerURLsMap: "infra2=http://192.168.0.102:2380",
 				},
 				{
-					peerURLsMap: "infra3=http://192.168.0.103", //not host:port
+					peerURLsMap: "infra3=http://192.168.0.103", // not host:port
 				},
 			},
 			clusterSize:    2,

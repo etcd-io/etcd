@@ -40,6 +40,7 @@ func NewRecorder() *StoreRecorder {
 	sr := &storeRecorder{Recorder: &testutil.RecorderBuffered{}}
 	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
 }
+
 func NewRecorderStream() *StoreRecorder {
 	sr := &storeRecorder{Recorder: testutil.NewRecorderStream()}
 	return &StoreRecorder{Store: sr, Recorder: sr.Recorder}
@@ -54,6 +55,7 @@ func (s *storeRecorder) Get(path string, recursive, sorted bool) (*v2store.Event
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) Set(path string, dir bool, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Set",
@@ -61,6 +63,7 @@ func (s *storeRecorder) Set(path string, dir bool, val string, expireOpts v2stor
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) Update(path, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Update",
@@ -68,6 +71,7 @@ func (s *storeRecorder) Update(path, val string, expireOpts v2store.TTLOptionSet
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Create",
@@ -75,6 +79,7 @@ func (s *storeRecorder) Create(path string, dir bool, val string, uniq bool, exp
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val string, expireOpts v2store.TTLOptionSet) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndSwap",
@@ -82,6 +87,7 @@ func (s *storeRecorder) CompareAndSwap(path, prevVal string, prevIdx uint64, val
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) Delete(path string, dir, recursive bool) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "Delete",
@@ -89,6 +95,7 @@ func (s *storeRecorder) Delete(path string, dir, recursive bool) (*v2store.Event
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (*v2store.Event, error) {
 	s.Record(testutil.Action{
 		Name:   "CompareAndDelete",
@@ -96,14 +103,17 @@ func (s *storeRecorder) CompareAndDelete(path, prevVal string, prevIdx uint64) (
 	})
 	return &v2store.Event{}, nil
 }
+
 func (s *storeRecorder) Watch(_ string, _, _ bool, _ uint64) (v2store.Watcher, error) {
 	s.Record(testutil.Action{Name: "Watch"})
 	return v2store.NewNopWatcher(), nil
 }
+
 func (s *storeRecorder) Save() ([]byte, error) {
 	s.Record(testutil.Action{Name: "Save"})
 	return nil, nil
 }
+
 func (s *storeRecorder) Recovery(b []byte) error {
 	s.Record(testutil.Action{Name: "Recovery"})
 	return nil
@@ -155,6 +165,7 @@ func (s *errStoreRecorder) Get(path string, recursive, sorted bool) (*v2store.Ev
 	s.storeRecorder.Get(path, recursive, sorted)
 	return nil, s.err
 }
+
 func (s *errStoreRecorder) Watch(path string, recursive, sorted bool, index uint64) (v2store.Watcher, error) {
 	s.storeRecorder.Watch(path, recursive, sorted, index)
 	return nil, s.err

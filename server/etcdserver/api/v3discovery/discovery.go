@@ -436,6 +436,7 @@ func (cls *clusterInfo) Len() int { return len(cls.members) }
 func (cls *clusterInfo) Less(i, j int) bool {
 	return cls.members[i].createRev < cls.members[j].createRev
 }
+
 func (cls *clusterInfo) Swap(i, j int) {
 	cls.members[i], cls.members[j] = cls.members[j], cls.members[i]
 }

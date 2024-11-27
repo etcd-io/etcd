@@ -346,7 +346,6 @@ func TestLinearizableReadCheck(t *testing.T) {
 
 func checkHTTPResponse(t *testing.T, ts *httptest.Server, url string, expectStatusCode int, inResult []string, notInResult []string) {
 	res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+url)})
-
 	if err != nil {
 		t.Fatalf("fail serve http request %s %v", url, err)
 	}
