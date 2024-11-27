@@ -69,7 +69,8 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		t.Fatal(errW)
 	}
 	if err := wStream.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
-		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5}}}); err != nil {
+		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5},
+	}}); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 	wresp, errR := wStream.Recv()

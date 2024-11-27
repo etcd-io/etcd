@@ -52,7 +52,7 @@ func testShellCompletion(t *testing.T, binPath, shellName string) {
 	require.NoError(t, completionCmd.Run())
 
 	filename := fmt.Sprintf("etcdctl-%s.completion", shellName)
-	require.NoError(t, os.WriteFile(filename, stdout.Bytes(), 0644))
+	require.NoError(t, os.WriteFile(filename, stdout.Bytes(), 0o644))
 
 	shellCmd := exec.Command(shellName, "-c", "source "+filename)
 	require.NoError(t, shellCmd.Run())

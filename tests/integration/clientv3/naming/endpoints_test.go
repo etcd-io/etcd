@@ -102,7 +102,8 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 
 	err = em.Update(context.TODO(), []*endpoints.UpdateWithOpts{
 		endpoints.NewAddUpdateOpts("foo/host", endpoints.Endpoint{Addr: "127.0.0.1:2000"}),
-		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"})})
+		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"}),
+	})
 	require.NoError(t, err)
 
 	ctx, watchCancel := context.WithCancel(context.Background())

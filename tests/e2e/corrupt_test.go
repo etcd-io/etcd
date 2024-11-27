@@ -119,7 +119,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	})
 	t.Log("old cluster started.")
 
-	//Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
+	// Put some data into the old cluster, so that after recovering from a blank db, the hash diverges.
 	t.Log("putting 10 keys...")
 	oldCc, err := e2e.NewEtcdctl(epcOld.Cfg.Client, epcOld.EndpointsGRPC())
 	require.NoError(t, err)

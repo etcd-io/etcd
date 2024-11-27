@@ -222,7 +222,8 @@ func TestMetricsRangeDurationSeconds(t *testing.T) {
 	client := clus.RandClient()
 
 	keys := []string{
-		"my-namespace/foobar", "my-namespace/foobar1", "namespace/foobar1"}
+		"my-namespace/foobar", "my-namespace/foobar1", "namespace/foobar1",
+	}
 	for _, key := range keys {
 		_, err := client.Put(context.Background(), key, "data")
 		require.NoError(t, err)

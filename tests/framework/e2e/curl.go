@@ -59,9 +59,7 @@ func CURLPrefixArgsCluster(cfg *EtcdProcessClusterConfig, member EtcdProcess, me
 }
 
 func CURLPrefixArgs(clientURL string, cfg ClientConfig, CN bool, method string, req CURLReq) []string {
-	var (
-		cmdArgs = []string{"curl"}
-	)
+	cmdArgs := []string{"curl"}
 	if req.HTTPVersion != "" {
 		cmdArgs = append(cmdArgs, "--http"+req.HTTPVersion)
 	}

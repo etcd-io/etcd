@@ -49,7 +49,7 @@ func testResultsDirectory(t *testing.T) string {
 	require.NoError(t, err)
 	err = os.RemoveAll(path)
 	require.NoError(t, err)
-	err = os.MkdirAll(path, 0700)
+	err = os.MkdirAll(path, 0o700)
 	require.NoError(t, err)
 	return path
 }

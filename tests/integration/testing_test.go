@@ -24,6 +24,5 @@ func TestBeforeTestWithoutLeakDetection(t *testing.T) {
 	integration2.BeforeTest(t, integration2.WithoutGoLeakDetection(), integration2.WithoutSkipInShort())
 	// Intentional leak that should get ignored
 	go func() {
-
 	}()
 }

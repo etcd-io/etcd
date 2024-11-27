@@ -48,7 +48,7 @@ func ExampleLease_grant() {
 			log.Fatal(err)
 		}
 	})
-	//Output:
+	// Output:
 }
 
 func mockLease_revoke() {

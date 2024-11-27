@@ -255,7 +255,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		if leaseID != 0 {
 			var resp *clientv3.LeaseRevokeResponse
 			resp, err = c.client.LeaseRevoke(opCtx, leaseID)
-			//if LeaseRevoke has failed, do not remove the mapping.
+			// if LeaseRevoke has failed, do not remove the mapping.
 			if err == nil {
 				c.leaseStorage.RemoveLeaseID(c.client.ID)
 			}

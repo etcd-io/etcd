@@ -181,10 +181,10 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		newState.Leases[request.LeaseGrant.LeaseID] = lease
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
 	case LeaseRevoke:
-		//Delete the keys attached to the lease
+		// Delete the keys attached to the lease
 		keyDeleted := false
 		for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			//same as delete.
+			// same as delete.
 			if _, ok := newState.KeyValues[key]; ok {
 				if !keyDeleted {
 					keyDeleted = true
@@ -193,7 +193,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				delete(newState.KeyLeases, key)
 			}
 		}
-		//delete the lease
+		// delete the lease
 		delete(newState.Leases, request.LeaseRevoke.LeaseID)
 		if keyDeleted {
 			newState.Revision++
@@ -402,8 +402,10 @@ type RangeResponse struct {
 type LeaseGrantReponse struct {
 	LeaseID int64
 }
-type LeaseRevokeResponse struct{}
-type DefragmentResponse struct{}
+type (
+	LeaseRevokeResponse struct{}
+	DefragmentResponse  struct{}
+)
 
 type EtcdOperationResult struct {
 	RangeResponse
@@ -451,8 +453,7 @@ func ToValueOrHash(value string) ValueOrHash {
 	return v
 }
 
-type CompactResponse struct {
-}
+type CompactResponse struct{}
 
 type CompactRequest struct {
 	Revision int64

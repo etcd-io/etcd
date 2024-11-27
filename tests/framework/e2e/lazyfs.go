@@ -50,12 +50,12 @@ func (fs *LazyFS) Start(ctx context.Context) (err error) {
 	if fs.ep != nil {
 		return nil
 	}
-	err = os.WriteFile(fs.configPath(), fs.config(), 0666)
+	err = os.WriteFile(fs.configPath(), fs.config(), 0o666)
 	if err != nil {
 		return err
 	}
 	dataPath := filepath.Join(fs.LazyFSDir, "data")
-	err = os.Mkdir(dataPath, 0700)
+	err = os.Mkdir(dataPath, 0o700)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (fs *LazyFS) Stop() error {
 }
 
 func (fs *LazyFS) ClearCache(ctx context.Context) error {
-	err := os.WriteFile(fs.socketPath(), []byte("lazyfs::clear-cache\n"), 0666)
+	err := os.WriteFile(fs.socketPath(), []byte("lazyfs::clear-cache\n"), 0o666)
 	if err != nil {
 		return err
 	}

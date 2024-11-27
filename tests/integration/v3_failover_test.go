@@ -120,7 +120,6 @@ func putWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 			}
 			return nil
 		}()
-
 		if err != nil {
 			retryCount--
 			if shouldRetry(err) {
@@ -153,7 +152,6 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 			}
 			return nil
 		}()
-
 		if err != nil {
 			retryCount--
 			if shouldRetry(err) {

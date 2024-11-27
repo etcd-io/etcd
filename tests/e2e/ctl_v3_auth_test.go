@@ -39,6 +39,7 @@ func TestCtlV3AuthEndpointHealth(t *testing.T) {
 
 // TestCtlV3AuthSnapshot TODO fill up common/maintenance_auth_test.go when Snapshot API is added in interfaces.Client
 func TestCtlV3AuthSnapshot(t *testing.T) { testCtl(t, authTestSnapshot) }
+
 func TestCtlV3AuthSnapshotJWT(t *testing.T) {
 	testCtl(t, authTestSnapshot, withCfg(*e2e.NewConfigJWT()))
 }

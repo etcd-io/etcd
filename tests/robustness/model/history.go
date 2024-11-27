@@ -481,7 +481,7 @@ func (h History) Len() int {
 
 func (h History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.operations))
-	var maxTime = h.lastObservedTime()
+	maxTime := h.lastObservedTime()
 	for _, op := range h.operations {
 		// Failed requests don't have a known return time.
 		if op.Return == -1 {

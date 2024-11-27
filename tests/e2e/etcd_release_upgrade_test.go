@@ -123,7 +123,6 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		e2e.WithSnapshotCount(10),
 		e2e.WithBasePeerScheme("unix"),
 	)
-
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

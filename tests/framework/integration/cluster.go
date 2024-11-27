@@ -975,9 +975,7 @@ func (m *Member) Launch() error {
 	}
 
 	if m.GRPCListener != nil {
-		var (
-			tlscfg *tls.Config
-		)
+		var tlscfg *tls.Config
 		if m.ClientTLSInfo != nil && !m.ClientTLSInfo.Empty() {
 			tlscfg, err = m.ClientTLSInfo.ServerConfig()
 			if err != nil {

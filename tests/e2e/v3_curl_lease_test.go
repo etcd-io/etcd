@@ -25,12 +25,15 @@ import (
 func TestCurlV3LeaseGrantNoTLS(t *testing.T) {
 	testCtl(t, testCurlV3LeaseGrant, withCfg(*e2e.NewConfigNoTLS()))
 }
+
 func TestCurlV3LeaseRevokeNoTLS(t *testing.T) {
 	testCtl(t, testCurlV3LeaseRevoke, withCfg(*e2e.NewConfigNoTLS()))
 }
+
 func TestCurlV3LeaseLeasesNoTLS(t *testing.T) {
 	testCtl(t, testCurlV3LeaseLeases, withCfg(*e2e.NewConfigNoTLS()))
 }
+
 func TestCurlV3LeaseKeepAliveNoTLS(t *testing.T) {
 	testCtl(t, testCurlV3LeaseKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }

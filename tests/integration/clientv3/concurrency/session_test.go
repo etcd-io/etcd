@@ -50,6 +50,7 @@ func TestSessionOptions(t *testing.T) {
 		t.Fatal("session did not get orphaned as expected")
 	}
 }
+
 func TestSessionTTLOptions(t *testing.T) {
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
@@ -57,7 +58,7 @@ func TestSessionTTLOptions(t *testing.T) {
 	}
 	defer cli.Close()
 
-	var setTTL = 90
+	setTTL := 90
 	s, err := concurrency.NewSession(cli, concurrency.WithTTL(setTTL))
 	if err != nil {
 		t.Fatal(err)

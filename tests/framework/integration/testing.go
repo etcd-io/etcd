@@ -31,8 +31,10 @@ import (
 	gofail "go.etcd.io/gofail/runtime"
 )
 
-var grpcLogger grpclogsettable.SettableLoggerV2
-var insideTestContext bool
+var (
+	grpcLogger        grpclogsettable.SettableLoggerV2
+	insideTestContext bool
+)
 
 func init() {
 	grpcLogger = grpclogsettable.ReplaceGrpcLoggerV2()

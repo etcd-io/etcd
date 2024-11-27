@@ -28,12 +28,15 @@ func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
 }
+
 func TestCtlV3LeaseKeepAliveClientTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientTLS()))
 }
+
 func TestCtlV3LeaseKeepAliveClientAutoTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientAutoTLS()))
 }
+
 func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
 	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigPeerTLS()))
 }

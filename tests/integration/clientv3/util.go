@@ -114,7 +114,6 @@ func populateDataIntoCluster(t *testing.T, cluster *integration2.Cluster, numKey
 	for i := 0; i < numKeys; i++ {
 		_, err := cluster.RandClient().Put(ctx,
 			fmt.Sprintf("%s-%v", t.Name(), i), strings.Repeat("a", valueSize))
-
 		if err != nil {
 			t.Errorf("populating data expected no error, but got %v", err)
 		}

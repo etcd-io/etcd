@@ -32,9 +32,11 @@ import (
 func TestCtlV3AuthCertCN(t *testing.T) {
 	testCtl(t, authTestCertCN, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
+
 func TestCtlV3AuthCertCNAndUsername(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsername, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
+
 func TestCtlV3AuthCertCNAndUsernameNoPassword(t *testing.T) {
 	testCtl(t, authTestCertCNAndUsernameNoPassword, withCfg(*e2e.NewConfigClientTLSCertAuth()))
 }
