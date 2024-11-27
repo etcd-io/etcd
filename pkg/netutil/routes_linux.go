@@ -27,9 +27,11 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cpuutil"
 )
 
-var errNoDefaultRoute = fmt.Errorf("could not find default route")
-var errNoDefaultHost = fmt.Errorf("could not find default host")
-var errNoDefaultInterface = fmt.Errorf("could not find default interface")
+var (
+	errNoDefaultRoute     = fmt.Errorf("could not find default route")
+	errNoDefaultHost      = fmt.Errorf("could not find default host")
+	errNoDefaultInterface = fmt.Errorf("could not find default interface")
+)
 
 // GetDefaultHost obtains the first IP address of machine from the routing table and returns the IP address as string.
 // An IPv4 address is preferred to an IPv6 address for backward compatibility.
