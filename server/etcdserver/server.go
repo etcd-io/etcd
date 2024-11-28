@@ -1945,17 +1945,13 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		rp := &r
 		pbutil.MustUnmarshal(rp, e.Data)
 		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		s.applyV2Request((*RequestV2)(rp), shouldApplyV3)
-		s.w.Trigger(r.ID, Response{})
-		return
+		raftReq = v2ToV3Request(s.lg, (*RequestV2)(rp))
 	}
 	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
 
 	if raftReq.V2 != nil {
 		req := (*RequestV2)(raftReq.V2)
-		s.applyV2Request(req, shouldApplyV3)
-		s.w.Trigger(req.ID, Response{})
-		return
+		raftReq = v2ToV3Request(s.lg, req)
 	}
 
 	id := raftReq.ID
