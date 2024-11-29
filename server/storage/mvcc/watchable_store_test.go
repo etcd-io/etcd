@@ -164,6 +164,112 @@ func TestSyncWatchers(t *testing.T) {
 	}
 }
 
+func TestRangeEvents(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	lg := zaptest.NewLogger(t)
+	s := NewStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+
+	defer cleanup(s, b)
+
+	foo1 := []byte("foo1")
+	foo2 := []byte("foo2")
+	foo3 := []byte("foo3")
+	value := []byte("bar")
+	s.Put(foo1, value, lease.NoLease)
+	s.Put(foo2, value, lease.NoLease)
+	s.Put(foo3, value, lease.NoLease)
+	s.DeleteRange(foo1, foo3) // Deletes "foo1" and "foo2" generating 2 events
+
+	expectEvents := []mvccpb.Event{
+		{
+			Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
+				Key:            foo1,
+				CreateRevision: 2,
+				ModRevision:    2,
+				Version:        1,
+				Value:          value,
+			},
+		},
+		{
+			Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
+				Key:            foo2,
+				CreateRevision: 3,
+				ModRevision:    3,
+				Version:        1,
+				Value:          value,
+			},
+		},
+		{
+			Type: mvccpb.PUT,
+			Kv: &mvccpb.KeyValue{
+				Key:            foo3,
+				CreateRevision: 4,
+				ModRevision:    4,
+				Version:        1,
+				Value:          value,
+			},
+		},
+		{
+			Type: mvccpb.DELETE,
+			Kv: &mvccpb.KeyValue{
+				Key:         foo1,
+				ModRevision: 5,
+			},
+		},
+		{
+			Type: mvccpb.DELETE,
+			Kv: &mvccpb.KeyValue{
+				Key:         foo2,
+				ModRevision: 5,
+			},
+		},
+	}
+
+	tcs := []struct {
+		minRev       int64
+		maxRev       int64
+		expectEvents []mvccpb.Event
+	}{
+		// maxRev, top to bottom
+		{minRev: 2, maxRev: 6, expectEvents: expectEvents[0:5]},
+		{minRev: 2, maxRev: 5, expectEvents: expectEvents[0:3]},
+		{minRev: 2, maxRev: 4, expectEvents: expectEvents[0:2]},
+		{minRev: 2, maxRev: 3, expectEvents: expectEvents[0:1]},
+		{minRev: 2, maxRev: 2, expectEvents: expectEvents[0:0]},
+
+		// minRev, bottom to top
+		{minRev: 2, maxRev: 6, expectEvents: expectEvents[0:5]},
+		{minRev: 3, maxRev: 6, expectEvents: expectEvents[1:5]},
+		{minRev: 4, maxRev: 6, expectEvents: expectEvents[2:5]},
+		{minRev: 5, maxRev: 6, expectEvents: expectEvents[3:5]},
+		{minRev: 6, maxRev: 6, expectEvents: expectEvents[0:0]},
+
+		// Moving window algorithm, first increase maxRev, then increase minRev, repeat.
+		{minRev: 2, maxRev: 2, expectEvents: expectEvents[0:0]},
+		{minRev: 2, maxRev: 3, expectEvents: expectEvents[0:1]},
+		{minRev: 2, maxRev: 4, expectEvents: expectEvents[0:2]},
+		{minRev: 3, maxRev: 4, expectEvents: expectEvents[1:2]},
+		{minRev: 3, maxRev: 5, expectEvents: expectEvents[1:3]},
+		{minRev: 4, maxRev: 5, expectEvents: expectEvents[2:3]},
+		{minRev: 4, maxRev: 6, expectEvents: expectEvents[2:5]},
+		{minRev: 5, maxRev: 6, expectEvents: expectEvents[3:5]},
+		{minRev: 6, maxRev: 6, expectEvents: expectEvents[5:5]},
+	}
+	for i, tc := range tcs {
+		t.Run(fmt.Sprintf("%d rangeEvents(%d, %d)", i, tc.minRev, tc.maxRev), func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectEvents, rangeEvents(lg, b, tc.minRev, tc.maxRev, fakeContains{}))
+		})
+	}
+}
+
+type fakeContains struct{}
+
+func (f fakeContains) contains(string) bool {
+	return true
+}
+
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)

@@ -357,20 +357,7 @@ func (s *watchableStore) syncWatchers() int {
 	compactionRev := s.store.compactMainRev
 
 	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
-	minBytes, maxBytes := NewRevBytes(), NewRevBytes()
-	minBytes = RevToBytes(Revision{Main: minRev}, minBytes)
-	maxBytes = RevToBytes(Revision{Main: curRev + 1}, maxBytes)
-
-	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
-	// values are actual key-value pairs in backend.
-	tx := s.store.b.ReadTx()
-	tx.RLock()
-	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
-	evs := kvsToEvents(s.store.lg, wg, revs, vs)
-	// Must unlock after kvsToEvents, because vs (come from boltdb memory) is not deep copy.
-	// We can only unlock after Unmarshal, which will do deep copy.
-	// Otherwise we will trigger SIGSEGV during boltdb re-mmap.
-	tx.RUnlock()
+	evs := rangeEvents(s.store.lg, s.store.b, minRev, curRev+1, wg)
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
@@ -422,15 +409,38 @@ func (s *watchableStore) syncWatchers() int {
 	return s.unsynced.size()
 }
 
+// rangeEvents returns events in range [minRev, maxRev).
+func rangeEvents(lg *zap.Logger, b backend.Backend, minRev, maxRev int64, c contains) []mvccpb.Event {
+	minBytes, maxBytes := NewRevBytes(), NewRevBytes()
+	minBytes = RevToBytes(Revision{Main: minRev}, minBytes)
+	maxBytes = RevToBytes(Revision{Main: maxRev}, maxBytes)
+
+	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
+	// values are actual key-value pairs in backend.
+	tx := b.ReadTx()
+	tx.RLock()
+	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
+	evs := kvsToEvents(lg, c, revs, vs)
+	// Must unlock after kvsToEvents, because vs (come from boltdb memory) is not deep copy.
+	// We can only unlock after Unmarshal, which will do deep copy.
+	// Otherwise we will trigger SIGSEGV during boltdb re-mmap.
+	tx.RUnlock()
+	return evs
+}
+
+type contains interface {
+	contains(string) bool
+}
+
 // kvsToEvents gets all events for the watchers from all key-value pairs
-func kvsToEvents(lg *zap.Logger, wg *watcherGroup, revs, vals [][]byte) (evs []mvccpb.Event) {
+func kvsToEvents(lg *zap.Logger, c contains, revs, vals [][]byte) (evs []mvccpb.Event) {
 	for i, v := range vals {
 		var kv mvccpb.KeyValue
 		if err := kv.Unmarshal(v); err != nil {
 			lg.Panic("failed to unmarshal mvccpb.KeyValue", zap.Error(err))
 		}
 
-		if !wg.contains(string(kv.Key)) {
+		if !c.contains(string(kv.Key)) {
 			continue
 		}
 
