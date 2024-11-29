@@ -111,7 +111,9 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	//
 	// Since there is no way to confirm server has compacted the log, we
 	// use log monitor to watch and expect "compacted Raft logs" content.
-	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "compacted Raft logs", 2)
+	// In v3.6 we no longer generates "compacted Raft logs" log as raft compaction happens independently to snapshot.
+	// For now let's use snapshot log which should be equivalent to compaction.
+	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "saved snapshot to disk", 2)
 
 	// After RecoverPartition, leader L will send snapshot to slow F_m0
 	// follower, because F_m0(index:8) is 'out of date' compared to

@@ -109,6 +109,7 @@ const (
 	readyPercentThreshold = 0.9
 
 	DowngradeEnabledPath = "/downgrade/enabled"
+	memorySnapshotCount  = 100
 )
 
 var (
@@ -291,9 +292,10 @@ type EtcdServer struct {
 	clusterVersionChanged *notify.Notifier
 
 	*AccessController
-	// forceSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
+	// forceDiskSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
 	// Should only be set within apply code path. Used to force snapshot after cluster version downgrade.
-	forceSnapshot     bool
+	// TODO: Replace with flush db in v3.7 assuming v3.6 bootstraps from db file.
+	forceDiskSnapshot bool
 	corruptionChecker CorruptionChecker
 }
 
@@ -741,10 +743,11 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 }
 
 type etcdProgress struct {
-	confState raftpb.ConfState
-	snapi     uint64
-	appliedt  uint64
-	appliedi  uint64
+	confState           raftpb.ConfState
+	diskSnapshotIndex   uint64
+	memorySnapshotIndex uint64
+	appliedt            uint64
+	appliedi            uint64
 }
 
 // raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
@@ -809,10 +812,11 @@ func (s *EtcdServer) run() {
 	s.r.start(rh)
 
 	ep := etcdProgress{
-		confState: sn.Metadata.ConfState,
-		snapi:     sn.Metadata.Index,
-		appliedt:  sn.Metadata.Term,
-		appliedi:  sn.Metadata.Index,
+		confState:           sn.Metadata.ConfState,
+		diskSnapshotIndex:   sn.Metadata.Index,
+		memorySnapshotIndex: sn.Metadata.Index,
+		appliedt:            sn.Metadata.Term,
+		appliedi:            sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -979,7 +983,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// storage, since the raft routine might be slower than toApply routine.
 	<-apply.notifyc
 
-	s.triggerSnapshot(ep)
+	s.snapshotIfNeededAndCompactRaftLog(ep)
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
@@ -998,7 +1002,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	lg := s.Logger()
 	lg.Info(
 		"applying snapshot",
-		zap.Uint64("current-snapshot-index", ep.snapi),
+		zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 		zap.Uint64("current-applied-index", ep.appliedi),
 		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1006,7 +1010,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	defer func() {
 		lg.Info(
 			"applied snapshot",
-			zap.Uint64("current-snapshot-index", ep.snapi),
+			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
 			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1017,7 +1021,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	if toApply.snapshot.Metadata.Index <= ep.appliedi {
 		lg.Panic(
 			"unexpected leader snapshot from outdated index",
-			zap.Uint64("current-snapshot-index", ep.snapi),
+			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
 			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1132,7 +1136,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 
 	ep.appliedt = toApply.snapshot.Metadata.Term
 	ep.appliedi = toApply.snapshot.Metadata.Index
-	ep.snapi = ep.appliedi
+	ep.diskSnapshotIndex = ep.appliedi
+	ep.memorySnapshotIndex = ep.appliedi
 	ep.confState = toApply.snapshot.Metadata.ConfState
 
 	// As backends and implementations like alarmsStore changed, we need
@@ -1188,31 +1193,26 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 }
 
 func (s *EtcdServer) ForceSnapshot() {
-	s.forceSnapshot = true
+	s.forceDiskSnapshot = true
 }
 
-func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
-	if !s.shouldSnapshot(ep) {
+func (s *EtcdServer) snapshotIfNeededAndCompactRaftLog(ep *etcdProgress) {
+	//TODO: Remove disk snapshot in v3.7
+	shouldSnapshotToDisk := s.shouldSnapshotToDisk(ep)
+	shouldSnapshotToMemory := s.shouldSnapshotToMemory(ep)
+	if !shouldSnapshotToDisk && !shouldSnapshotToMemory {
 		return
 	}
-	lg := s.Logger()
-	lg.Info(
-		"triggering snapshot",
-		zap.String("local-member-id", s.MemberID().String()),
-		zap.Uint64("local-member-applied-index", ep.appliedi),
-		zap.Uint64("local-member-snapshot-index", ep.snapi),
-		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
-		zap.Bool("snapshot-forced", s.forceSnapshot),
-	)
-	s.forceSnapshot = false
-
-	s.snapshot(ep.appliedi, ep.confState)
+	s.snapshot(ep, shouldSnapshotToDisk)
 	s.compactRaftLog(ep.appliedi)
-	ep.snapi = ep.appliedi
 }
 
-func (s *EtcdServer) shouldSnapshot(ep *etcdProgress) bool {
-	return (s.forceSnapshot && ep.appliedi != ep.snapi) || (ep.appliedi-ep.snapi > s.Cfg.SnapshotCount)
+func (s *EtcdServer) shouldSnapshotToDisk(ep *etcdProgress) bool {
+	return (s.forceDiskSnapshot && ep.appliedi != ep.diskSnapshotIndex) || (ep.appliedi-ep.diskSnapshotIndex > s.Cfg.SnapshotCount)
+}
+
+func (s *EtcdServer) shouldSnapshotToMemory(ep *etcdProgress) bool {
+	return ep.appliedi > ep.memorySnapshotIndex+memorySnapshotCount
 }
 
 func (s *EtcdServer) hasMultipleVotingMembers() bool {
@@ -2128,23 +2128,33 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 }
 
 // TODO: non-blocking snapshot
-func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
-	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
-	// commit kv to write metadata (for example: consistent index) to disk.
-	//
-	// This guarantees that Backend's consistent_index is >= index of last snapshot.
-	//
-	// KV().commit() updates the consistent index in backend.
-	// All operations that update consistent index must be called sequentially
-	// from applyAll function.
-	// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
-	// the go routine created below.
-	s.KV().Commit()
-
+func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	lg := s.Logger()
+	d := GetMembershipInfoInV2Format(lg, s.cluster)
+	if toDisk {
+		s.Logger().Info(
+			"triggering snapshot",
+			zap.String("local-member-id", s.MemberID().String()),
+			zap.Uint64("local-member-applied-index", ep.appliedi),
+			zap.Uint64("local-member-snapshot-index", ep.diskSnapshotIndex),
+			zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
+			zap.Bool("snapshot-forced", s.forceDiskSnapshot),
+		)
+		s.forceDiskSnapshot = false
+		// commit kv to write metadata (for example: consistent index) to disk.
+		//
+		// This guarantees that Backend's consistent_index is >= index of last snapshot.
+		//
+		// KV().commit() updates the consistent index in backend.
+		// All operations that update consistent index must be called sequentially
+		// from applyAll function.
+		// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
+		// the go routine created below.
+		s.KV().Commit()
+	}
 
 	// For backward compatibility, generate v2 snapshot from v3 state.
-	snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, d)
+	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, &ep.confState, d)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
@@ -2153,21 +2163,25 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 		}
 		lg.Panic("failed to create snapshot", zap.Error(err))
 	}
+	ep.memorySnapshotIndex = ep.appliedi
 
 	verifyConsistentIndexIsLatest(lg, snap, s.consistIndex.ConsistentIndex())
 
-	// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
-	if err = s.r.storage.SaveSnap(snap); err != nil {
-		lg.Panic("failed to save snapshot", zap.Error(err))
-	}
-	if err = s.r.storage.Release(snap); err != nil {
-		lg.Panic("failed to release wal", zap.Error(err))
-	}
+	if toDisk {
+		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
+		if err = s.r.storage.SaveSnap(snap); err != nil {
+			lg.Panic("failed to save snapshot", zap.Error(err))
+		}
+		ep.diskSnapshotIndex = ep.appliedi
+		if err = s.r.storage.Release(snap); err != nil {
+			lg.Panic("failed to release wal", zap.Error(err))
+		}
 
-	lg.Info(
-		"saved snapshot",
-		zap.Uint64("snapshot-index", snap.Metadata.Index),
-	)
+		lg.Info(
+			"saved snapshot to disk",
+			zap.Uint64("snapshot-index", snap.Metadata.Index),
+		)
+	}
 }
 
 func (s *EtcdServer) compactRaftLog(snapi uint64) {
@@ -2188,7 +2202,6 @@ func (s *EtcdServer) compactRaftLog(snapi uint64) {
 	if snapi > s.Cfg.SnapshotCatchUpEntries {
 		compacti = snapi - s.Cfg.SnapshotCatchUpEntries
 	}
-
 	err := s.r.raftStorage.Compact(compacti)
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
@@ -2198,7 +2211,7 @@ func (s *EtcdServer) compactRaftLog(snapi uint64) {
 		}
 		lg.Panic("failed to compact", zap.Error(err))
 	}
-	lg.Info(
+	lg.Debug(
 		"compacted Raft logs",
 		zap.Uint64("compact-index", compacti),
 	)

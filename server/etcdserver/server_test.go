@@ -627,8 +627,8 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	}
 }
 
-// TestSnapshot should snapshot the store and cut the persistent
-func TestSnapshot(t *testing.T) {
+// TestSnapshotDisk should save the snapshot to disk and release old snapshots
+func TestSnapshotDisk(t *testing.T) {
 	revertFunc := verify.DisableVerifications()
 	defer revertFunc()
 
@@ -667,24 +667,65 @@ func TestSnapshot(t *testing.T) {
 		gaction, _ := p.Wait(2)
 		defer func() { ch <- struct{}{} }()
 
-		if len(gaction) != 2 {
-			t.Errorf("len(action) = %d, want 2", len(gaction))
-			return
-		}
-		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
-			t.Errorf("action = %s, want SaveSnap", gaction[0])
-		}
-
-		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "Release"}) {
-			t.Errorf("action = %s, want Release", gaction[1])
-		}
+		assert.Len(t, gaction, 2)
+		assert.Equal(t, testutil.Action{Name: "SaveSnap"}, gaction[0])
+		assert.Equal(t, testutil.Action{Name: "Release"}, gaction[1])
 	}()
-
-	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
+	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	srv.snapshot(&ep, true)
 	<-ch
-	if len(st.Action()) != 0 {
-		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
+	assert.Empty(t, st.Action())
+	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
+	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
+}
+
+func TestSnapshotMemory(t *testing.T) {
+	revertFunc := verify.DisableVerifications()
+	defer revertFunc()
+
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+
+	s := raft.NewMemoryStorage()
+	s.Append([]raftpb.Entry{{Index: 1}})
+	st := mockstore.NewRecorderStream()
+	p := mockstorage.NewStorageRecorderStream("")
+	r := newRaftNode(raftNodeConfig{
+		lg:          zaptest.NewLogger(t),
+		Node:        newNodeNop(),
+		raftStorage: s,
+		storage:     p,
+	})
+	srv := &EtcdServer{
+		lgMu:         new(sync.RWMutex),
+		lg:           zaptest.NewLogger(t),
+		r:            *r,
+		v2store:      st,
+		consistIndex: cindex.NewConsistentIndex(be),
 	}
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	defer func() {
+		assert.NoError(t, srv.kv.Close())
+	}()
+	srv.be = be
+
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+	srv.cluster = cl
+
+	ch := make(chan struct{}, 1)
+
+	go func() {
+		gaction, _ := p.Wait(1)
+		defer func() { ch <- struct{}{} }()
+
+		assert.Empty(t, gaction)
+	}()
+	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	srv.snapshot(&ep, false)
+	<-ch
+	assert.Empty(t, st.Action())
+	assert.Equal(t, uint64(0), ep.diskSnapshotIndex)
+	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
 
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before
