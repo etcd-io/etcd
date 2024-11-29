@@ -145,7 +145,7 @@ func setupWatchChannels(key string) []clientv3.WatchChan {
 	wchs := make([]clientv3.WatchChan, len(streams)*watchLWatchersPerStream)
 	for i := 0; i < len(streams); i++ {
 		for j := 0; j < watchLWatchersPerStream; j++ {
-			wchs[i*len(streams)+j] = streams[i].Watch(context.TODO(), key, opts...)
+			wchs[i*watchLWatchersPerStream+j] = streams[i].Watch(context.TODO(), key, opts...)
 		}
 	}
 	return wchs
