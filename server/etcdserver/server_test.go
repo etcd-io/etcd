@@ -667,24 +667,14 @@ func TestSnapshotDisk(t *testing.T) {
 		gaction, _ := p.Wait(2)
 		defer func() { ch <- struct{}{} }()
 
-		if len(gaction) != 2 {
-			t.Errorf("len(action) = %d, want 2", len(gaction))
-			return
-		}
-		if !reflect.DeepEqual(gaction[0], testutil.Action{Name: "SaveSnap"}) {
-			t.Errorf("action = %s, want SaveSnap", gaction[0])
-		}
-
-		if !reflect.DeepEqual(gaction[1], testutil.Action{Name: "Release"}) {
-			t.Errorf("action = %s, want Release", gaction[1])
-		}
+		assert.Len(t, gaction, 2)
+		assert.Equal(t, testutil.Action{Name: "SaveSnap"}, gaction[0])
+		assert.Equal(t, testutil.Action{Name: "Release"}, gaction[1])
 	}()
 	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, true)
 	<-ch
-	if len(st.Action()) != 0 {
-		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
-	}
+	assert.Empty(t, st.Action())
 	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
 	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
@@ -728,17 +718,12 @@ func TestSnapshotMemory(t *testing.T) {
 		gaction, _ := p.Wait(1)
 		defer func() { ch <- struct{}{} }()
 
-		if len(gaction) != 0 {
-			t.Errorf("len(action) = %d, want 0", len(gaction))
-			return
-		}
+		assert.Empty(t, gaction)
 	}()
 	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, false)
 	<-ch
-	if len(st.Action()) != 0 {
-		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
-	}
+	assert.Empty(t, st.Action())
 	assert.Equal(t, uint64(0), ep.diskSnapshotIndex)
 	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
