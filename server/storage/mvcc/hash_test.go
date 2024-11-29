@@ -214,7 +214,7 @@ func TestHasherStoreFull(t *testing.T) {
 	defer store.Close()
 
 	var minRevision int64 = 100
-	var maxRevision = minRevision + hashStorageMaxSize
+	maxRevision := minRevision + hashStorageMaxSize
 	for i := 0; i < hashStorageMaxSize; i++ {
 		s.Store(KeyValueHash{Revision: int64(i) + minRevision})
 	}

@@ -97,7 +97,8 @@ func (sctx *serveCtx) serve(
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
 	splitHTTP bool,
-	gopts ...grpc.ServerOption) (err error) {
+	gopts ...grpc.ServerOption,
+) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 	<-s.ReadyNotify()
 

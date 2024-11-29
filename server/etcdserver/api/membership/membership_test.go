@@ -44,8 +44,10 @@ func TestAddRemoveMember(t *testing.T) {
 	c2 := newTestCluster(t, nil)
 	c2.SetBackend(be)
 	c2.Recover(func(*zap.Logger, *semver.Version) {})
-	assert.Equal(t, []*Member{{ID: types.ID(19),
-		Attributes: Attributes{Name: "node19"}}}, c2.Members())
+	assert.Equal(t, []*Member{{
+		ID:         types.ID(19),
+		Attributes: Attributes{Name: "node19"},
+	}}, c2.Members())
 	assert.True(t, c2.IsIDRemoved(17))
 	assert.True(t, c2.IsIDRemoved(18))
 	assert.False(t, c2.IsIDRemoved(19))
@@ -78,14 +80,17 @@ func (b *backendMock) MustSaveClusterVersionToBackend(version *semver.Version) {
 func (b *backendMock) MustReadMembersFromBackend() (x map[types.ID]*Member, y map[types.ID]bool) {
 	return b.members, b.removed
 }
+
 func (b *backendMock) MustSaveMemberToBackend(m *Member) {
 	b.members[m.ID] = m
 }
+
 func (b *backendMock) TrimMembershipFromBackend() error {
 	b.members = make(map[types.ID]*Member)
 	b.removed = make(map[types.ID]bool)
 	return nil
 }
+
 func (b *backendMock) MustDeleteMemberFromBackend(id types.ID) {
 	delete(b.members, id)
 	b.removed[id] = true

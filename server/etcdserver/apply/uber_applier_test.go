@@ -73,7 +73,7 @@ func defaultUberApplier(t *testing.T) UberApplier {
 		consistentIndex,
 		1*time.Hour,
 		false,
-		16*1024*1024, //16MB
+		16*1024*1024, // 16MB
 	)
 }
 
@@ -165,7 +165,8 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 							},
 						},
 					},
-				}}},
+				},
+			}},
 			expectError: errors.ErrNoSpace,
 		},
 		{
@@ -179,7 +180,8 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 							},
 						},
 					},
-				}}},
+				},
+			}},
 			expectError: nil,
 		},
 		{
@@ -210,7 +212,8 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 							},
 						},
 					},
-				}}},
+				},
+			}},
 			expectError: nil,
 		},
 		{

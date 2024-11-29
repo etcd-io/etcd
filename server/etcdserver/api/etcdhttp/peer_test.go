@@ -64,12 +64,15 @@ type fakeServer struct {
 func (s *fakeServer) AddMember(ctx context.Context, memb membership.Member) ([]*membership.Member, error) {
 	return nil, fmt.Errorf("AddMember not implemented in fakeServer")
 }
+
 func (s *fakeServer) RemoveMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
 	return nil, fmt.Errorf("RemoveMember not implemented in fakeServer")
 }
+
 func (s *fakeServer) UpdateMember(ctx context.Context, updateMemb membership.Member) ([]*membership.Member, error) {
 	return nil, fmt.Errorf("UpdateMember not implemented in fakeServer")
 }
+
 func (s *fakeServer) PromoteMember(ctx context.Context, id uint64) ([]*membership.Member, error) {
 	return nil, fmt.Errorf("PromoteMember not implemented in fakeServer")
 }

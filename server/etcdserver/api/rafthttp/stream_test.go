@@ -234,6 +234,7 @@ func (wrc *waitReadCloser) Read(p []byte) (int, error) {
 	<-wrc.closec
 	return 0, io.EOF
 }
+
 func (wrc *waitReadCloser) Close() error {
 	close(wrc.closec)
 	return nil

@@ -545,7 +545,8 @@ func IsCreateEvent(e mvccpb.Event) bool {
 func sendFragments(
 	wr *pb.WatchResponse,
 	maxRequestBytes int,
-	sendFunc func(*pb.WatchResponse) error) error {
+	sendFunc func(*pb.WatchResponse) error,
+) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
 	if wr.Size() < maxRequestBytes || len(wr.Events) < 2 {

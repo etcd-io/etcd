@@ -194,7 +194,7 @@ func newBackend(bcfg BackendConfig) *backend {
 	bopts.Mlock = bcfg.Mlock
 	bopts.Logger = newBoltLoggerZap(bcfg)
 
-	db, err := bolt.Open(bcfg.Path, 0600, bopts)
+	db, err := bolt.Open(bcfg.Path, 0o600, bopts)
 	if err != nil {
 		bcfg.Logger.Panic("failed to open database", zap.String("path", bcfg.Path), zap.Error(err))
 	}
@@ -407,7 +407,6 @@ func (b *backend) Hash(ignores func(bucketName, keyName []byte) bool) (uint32, e
 		}
 		return nil
 	})
-
 	if err != nil {
 		return 0, err
 	}
@@ -497,7 +496,7 @@ func (b *backend) defrag() error {
 	// Don't load tmp db into memory regardless of opening options
 	options.Mlock = false
 	tdbp := temp.Name()
-	tmpdb, err := bolt.Open(tdbp, 0600, &options)
+	tmpdb, err := bolt.Open(tdbp, 0o600, &options)
 	if err != nil {
 		temp.Close()
 		if rmErr := os.Remove(temp.Name()); rmErr != nil && b.lg != nil {
@@ -567,7 +566,7 @@ func (b *backend) defrag() error {
 		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
 	}
 
-	b.db, err = bolt.Open(dbp, 0600, b.bopts)
+	b.db, err = bolt.Open(dbp, 0o600, b.bopts)
 	if err != nil {
 		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
 	}

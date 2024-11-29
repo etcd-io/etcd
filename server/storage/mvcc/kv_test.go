@@ -766,7 +766,8 @@ func TestWatchableKVWatch(t *testing.T) {
 	wid, _ := w.Watch(0, []byte("foo"), []byte("fop"), 0)
 
 	wev := []mvccpb.Event{
-		{Type: mvccpb.PUT,
+		{
+			Type: mvccpb.PUT,
 			Kv: &mvccpb.KeyValue{
 				Key:            []byte("foo"),
 				Value:          []byte("bar"),

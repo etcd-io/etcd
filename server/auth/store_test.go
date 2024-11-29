@@ -524,7 +524,6 @@ func TestRoleGrantPermission(t *testing.T) {
 		Name: "role-test-1",
 		Perm: perm,
 	})
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -704,7 +703,6 @@ func TestRootRoleGrantPermission(t *testing.T) {
 		Name: "root",
 		Perm: perm,
 	})
-
 	if err != nil {
 		t.Error(err)
 	}
@@ -714,7 +712,7 @@ func TestRootRoleGrantPermission(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//whatever grant permission to root, it always return root permission.
+	// whatever grant permission to root, it always return root permission.
 	expectPerm := &authpb.Permission{
 		PermType: authpb.READWRITE,
 		Key:      []byte{},
@@ -742,7 +740,6 @@ func TestRoleRevokePermission(t *testing.T) {
 		Name: "role-test-1",
 		Perm: perm,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}

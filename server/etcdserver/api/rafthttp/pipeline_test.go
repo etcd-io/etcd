@@ -272,6 +272,7 @@ type respRoundTripper struct {
 func newRespRoundTripper(code int, err error) *respRoundTripper {
 	return &respRoundTripper{code: code, err: err}
 }
+
 func (t *respRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

@@ -65,7 +65,7 @@ func (q *statsQueue) Insert(p *RequestStats) {
 
 	q.back = (q.back + 1) % queueCapacity
 
-	if q.size == queueCapacity { //dequeue
+	if q.size == queueCapacity { // dequeue
 		q.totalReqSize -= q.items[q.front].Size
 		q.front = (q.back + 1) % queueCapacity
 	} else {

@@ -220,7 +220,7 @@ func TestJWTTokenWithMissingFields(t *testing.T) {
 }
 
 func TestJWTBad(t *testing.T) {
-	var badCases = map[string]map[string]string{
+	badCases := map[string]map[string]string{
 		"no options": {},
 		"invalid method": {
 			"sign-method": "invalid",

@@ -132,7 +132,8 @@ func newApplierV3Backend(
 	raftStatus RaftStatusGetter,
 	snapshotServer SnapshotServer,
 	consistentIndex cindex.ConsistentIndexer,
-	txnModeWriteWithSharedBuffer bool) applierV3 {
+	txnModeWriteWithSharedBuffer bool,
+) applierV3 {
 	return &applierV3backend{
 		lg:                           lg,
 		kv:                           kv,
@@ -143,7 +144,8 @@ func newApplierV3Backend(
 		raftStatus:                   raftStatus,
 		snapshotServer:               snapshotServer,
 		consistentIndex:              consistentIndex,
-		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer}
+		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer,
+	}
 }
 
 func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc) *Result {
