@@ -686,6 +686,7 @@ func TestSnapshot(t *testing.T) {
 		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
 	}
 	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
+	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
 
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before

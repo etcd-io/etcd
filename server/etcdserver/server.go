@@ -741,10 +741,11 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 }
 
 type etcdProgress struct {
-	confState         raftpb.ConfState
-	diskSnapshotIndex uint64
-	appliedt          uint64
-	appliedi          uint64
+	confState           raftpb.ConfState
+	diskSnapshotIndex   uint64
+	memorySnapshotIndex uint64
+	appliedt            uint64
+	appliedi            uint64
 }
 
 // raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
@@ -809,10 +810,11 @@ func (s *EtcdServer) run() {
 	s.r.start(rh)
 
 	ep := etcdProgress{
-		confState:         sn.Metadata.ConfState,
-		diskSnapshotIndex: sn.Metadata.Index,
-		appliedt:          sn.Metadata.Term,
-		appliedi:          sn.Metadata.Index,
+		confState:           sn.Metadata.ConfState,
+		diskSnapshotIndex:   sn.Metadata.Index,
+		memorySnapshotIndex: sn.Metadata.Index,
+		appliedt:            sn.Metadata.Term,
+		appliedi:            sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -1133,6 +1135,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	ep.appliedt = toApply.snapshot.Metadata.Term
 	ep.appliedi = toApply.snapshot.Metadata.Index
 	ep.diskSnapshotIndex = ep.appliedi
+	ep.memorySnapshotIndex = ep.appliedi
 	ep.confState = toApply.snapshot.Metadata.ConfState
 
 	// As backends and implementations like alarmsStore changed, we need
@@ -2160,6 +2163,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress) {
 		lg.Panic("failed to save snapshot", zap.Error(err))
 	}
 	ep.diskSnapshotIndex = ep.appliedi
+	ep.memorySnapshotIndex = ep.appliedi
 	if err = s.r.storage.Release(snap); err != nil {
 		lg.Panic("failed to release wal", zap.Error(err))
 	}
