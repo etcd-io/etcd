@@ -124,7 +124,7 @@ resetWatch:
 }
 
 func ValidateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
-	var gotProgressNotify = false
+	gotProgressNotify := false
 external:
 	for _, r := range reports {
 		for _, op := range r.Watch {

@@ -23,9 +23,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-var (
-	defaultGatewayEndpoint = "127.0.0.1:23790"
-)
+var defaultGatewayEndpoint = "127.0.0.1:23790"
 
 func TestGateway(t *testing.T) {
 	ec, err := e2e.NewEtcdProcessCluster(context.TODO(), t)

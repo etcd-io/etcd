@@ -74,13 +74,13 @@ func TestClusterProxyMemberList(t *testing.T) {
 	}
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
 
-	//test proxy member add
+	// test proxy member add
 	newMemberAddr := "127.0.0.2:6789"
 	grpcproxy.Register(lg, cts.c, prefix, newMemberAddr, 7)
 	// wait some time for proxy update members
 	time.Sleep(200 * time.Millisecond)
 
-	//check add member succ
+	// check add member succ
 	mresp, err = client.Cluster.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
@@ -90,12 +90,12 @@ func TestClusterProxyMemberList(t *testing.T) {
 	}
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{newMemberAddr}})
 
-	//test proxy member delete
+	// test proxy member delete
 	deregisterMember(cts.c, prefix, newMemberAddr, t)
 	// wait some time for proxy update members
 	time.Sleep(200 * time.Millisecond)
 
-	//check delete member succ
+	// check delete member succ
 	mresp, err = client.Cluster.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)

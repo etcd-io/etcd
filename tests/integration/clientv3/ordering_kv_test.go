@@ -29,7 +29,7 @@ import (
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {
-	var errOrderViolation = errors.New("DetectedOrderViolation")
+	errOrderViolation := errors.New("DetectedOrderViolation")
 
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
@@ -96,7 +96,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 }
 
 func TestDetectTxnOrderViolation(t *testing.T) {
-	var errOrderViolation = errors.New("DetectedOrderViolation")
+	errOrderViolation := errors.New("DetectedOrderViolation")
 
 	integration2.BeforeTest(t)
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})

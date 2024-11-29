@@ -35,9 +35,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-var (
-	MemberReplace Failpoint = memberReplace{}
-)
+var MemberReplace Failpoint = memberReplace{}
 
 type memberReplace struct{}
 

@@ -37,9 +37,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
-var (
-	EtcdServerReadyLines = []string{"ready to serve client requests"}
-)
+var EtcdServerReadyLines = []string{"ready to serve client requests"}
 
 // EtcdProcess is a process that serves etcd requests.
 type EtcdProcess interface {
@@ -112,7 +110,7 @@ func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServ
 		if err := os.RemoveAll(cfg.DataDirPath); err != nil {
 			return nil, err
 		}
-		if err := os.Mkdir(cfg.DataDirPath, 0700); err != nil {
+		if err := os.Mkdir(cfg.DataDirPath, 0o700); err != nil {
 			return nil, err
 		}
 	}

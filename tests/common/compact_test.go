@@ -50,7 +50,7 @@ func TestCompact(t *testing.T) {
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
-				var kvs = []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
+				kvs := []testutils.KV{{Key: "key", Val: "val1"}, {Key: "key", Val: "val2"}, {Key: "key", Val: "val3"}}
 				for i := range kvs {
 					err := cc.Put(ctx, kvs[i].Key, kvs[i].Val, config.PutOptions{})
 					require.NoErrorf(t, err, "compactTest #%d: put kv error", i)

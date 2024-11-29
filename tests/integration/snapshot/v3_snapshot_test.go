@@ -205,7 +205,8 @@ const testClusterTkn = "tkn"
 func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 	cURLs []url.URL,
 	pURLs []url.URL,
-	srvs []*embed.Etcd) {
+	srvs []*embed.Etcd,
+) {
 	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs = urls[:clusterN], urls[clusterN:]
 

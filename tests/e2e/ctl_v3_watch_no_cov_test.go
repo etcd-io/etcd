@@ -30,12 +30,15 @@ func TestCtlV3WatchTimeout(t *testing.T)   { testCtl(t, watchTest, withDefaultDi
 func TestCtlV3WatchInteractive(t *testing.T) {
 	testCtl(t, watchTest, withInteractive())
 }
+
 func TestCtlV3WatchInteractiveNoTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(*e2e.NewConfigNoTLS()))
 }
+
 func TestCtlV3WatchInteractiveClientTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(*e2e.NewConfigClientTLS()))
 }
+
 func TestCtlV3WatchInteractivePeerTLS(t *testing.T) {
 	testCtl(t, watchTest, withInteractive(), withCfg(*e2e.NewConfigPeerTLS()))
 }

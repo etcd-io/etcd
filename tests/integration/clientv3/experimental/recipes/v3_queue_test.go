@@ -234,6 +234,7 @@ func (q *flatPriorityQueue) Enqueue(val string) error {
 	// randomized to stress dequeuing logic; order isn't important
 	return q.PriorityQueue.Enqueue(val, uint16(rand.Intn(2)))
 }
+
 func (q *flatPriorityQueue) Dequeue() (string, error) {
 	return q.PriorityQueue.Dequeue()
 }

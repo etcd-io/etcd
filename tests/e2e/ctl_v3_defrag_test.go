@@ -26,7 +26,7 @@ func TestCtlV3DefragOffline(t *testing.T) {
 }
 
 func maintenanceInitKeys(cx ctlCtx) {
-	var kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
+	kvs := []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatal(err)

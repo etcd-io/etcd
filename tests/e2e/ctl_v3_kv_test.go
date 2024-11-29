@@ -191,9 +191,7 @@ func getFormatTest(cx ctlCtx) {
 }
 
 func getRevTest(cx ctlCtx) {
-	var (
-		kvs = []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
-	)
+	kvs := []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
@@ -218,14 +216,12 @@ func getRevTest(cx ctlCtx) {
 }
 
 func getMinMaxCreateModRevTest(cx ctlCtx) {
-	var (
-		kvs = []kv{ //     revision:   store | key create | key modify
-			{"key1", "val1"}, //     2         2           2
-			{"key2", "val2"}, //     3         3           3
-			{"key1", "val3"}, //     4         2           4
-			{"key4", "val4"}, //     5         5           5
-		}
-	)
+	kvs := []kv{ //     revision:   store | key create | key modify
+		{"key1", "val1"}, //     2         2           2
+		{"key2", "val2"}, //     3         3           3
+		{"key1", "val3"}, //     4         2           4
+		{"key4", "val4"}, //     5         5           5
+	}
 	for i := range kvs {
 		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
 			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)

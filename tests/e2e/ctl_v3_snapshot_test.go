@@ -224,7 +224,8 @@ func testIssue6361(t *testing.T) {
 		"--initial-cluster", epc.Procs[0].Config().InitialCluster,
 		"--initial-cluster-token", epc.Procs[0].Config().InitialToken,
 		"--initial-advertise-peer-urls", epc.Procs[0].Config().PeerURL.String(),
-		"--data-dir", newDataDir},
+		"--data-dir", newDataDir,
+	},
 		expect.ExpectedResponse{Value: "added member"})
 	if err != nil {
 		t.Fatal(err)
@@ -264,10 +265,12 @@ func testIssue6361(t *testing.T) {
 	t.Log("Starting the new member")
 	// start the new member
 	var nepc *expect.ExpectProcess
-	nepc, err = e2e.SpawnCmd([]string{epc.Procs[0].Config().ExecPath, "--name", name2,
+	nepc, err = e2e.SpawnCmd([]string{
+		epc.Procs[0].Config().ExecPath, "--name", name2,
 		"--listen-client-urls", clientURL, "--advertise-client-urls", clientURL,
 		"--listen-peer-urls", peerURL, "--initial-advertise-peer-urls", peerURL,
-		"--initial-cluster", initialCluster2, "--initial-cluster-state", "existing", "--data-dir", newDataDir2}, nil)
+		"--initial-cluster", initialCluster2, "--initial-cluster-state", "existing", "--data-dir", newDataDir2,
+	}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

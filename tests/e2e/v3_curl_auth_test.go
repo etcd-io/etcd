@@ -33,6 +33,7 @@ import (
 func TestCurlV3Auth(t *testing.T) {
 	testCtl(t, testCurlV3Auth)
 }
+
 func TestCurlV3AuthClientTLSCertAuth(t *testing.T) {
 	testCtl(t, testCurlV3Auth, withCfg(*e2e.NewConfigClientTLSCertAuthWithNoCN()))
 }
@@ -88,7 +89,7 @@ func testCurlV3Auth(cx ctlCtx) {
 		cx.t.Fatalf("testCurlV3Auth failed to create role (%v)", err)
 	}
 
-	//grant root role
+	// grant root role
 	for i := 0; i < len(usernames); i++ {
 		grantroleroot, merr := json.Marshal(&pb.AuthUserGrantRoleRequest{User: usernames[i], Role: "root"})
 		require.NoError(cx.t, merr)
@@ -377,9 +378,7 @@ func testCurlV3AuthRoleBasicOperations(cx ctlCtx) {
 }
 
 func testCurlV3AuthRoleManagePermission(cx ctlCtx) {
-	var (
-		rolename = "role1"
-	)
+	rolename := "role1"
 
 	// create a role
 	role, err := json.Marshal(&pb.AuthRoleAddRequest{Name: rolename})

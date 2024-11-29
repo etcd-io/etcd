@@ -30,9 +30,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 )
 
-var (
-	KillFailpoint Failpoint = killFailpoint{}
-)
+var KillFailpoint Failpoint = killFailpoint{}
 
 type killFailpoint struct{}
 

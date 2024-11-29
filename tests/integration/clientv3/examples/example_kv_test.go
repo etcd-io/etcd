@@ -322,7 +322,8 @@ func ExampleKV_do() {
 		ops := []clientv3.Op{
 			clientv3.OpPut("put-key", "123"),
 			clientv3.OpGet("put-key"),
-			clientv3.OpPut("put-key", "456")}
+			clientv3.OpPut("put-key", "456"),
+		}
 
 		for _, op := range ops {
 			if _, err := cli.Do(context.TODO(), op); err != nil {

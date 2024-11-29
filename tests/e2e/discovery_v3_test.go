@@ -28,9 +28,11 @@ import (
 func TestClusterOf1UsingV3Discovery_1endpoint(t *testing.T) {
 	testClusterUsingV3Discovery(t, 1, 1, e2e.ClientNonTLS, false)
 }
+
 func TestClusterOf3UsingV3Discovery_1endpoint(t *testing.T) {
 	testClusterUsingV3Discovery(t, 1, 3, e2e.ClientTLS, true)
 }
+
 func TestTLSClusterOf5UsingV3Discovery_1endpoint(t *testing.T) {
 	testClusterUsingV3Discovery(t, 1, 5, e2e.ClientTLS, false)
 }
@@ -38,9 +40,11 @@ func TestTLSClusterOf5UsingV3Discovery_1endpoint(t *testing.T) {
 func TestClusterOf1UsingV3Discovery_3endpoints(t *testing.T) {
 	testClusterUsingV3Discovery(t, 3, 1, e2e.ClientNonTLS, false)
 }
+
 func TestClusterOf3UsingV3Discovery_3endpoints(t *testing.T) {
 	testClusterUsingV3Discovery(t, 3, 3, e2e.ClientTLS, true)
 }
+
 func TestTLSClusterOf5UsingV3Discovery_3endpoints(t *testing.T) {
 	testClusterUsingV3Discovery(t, 3, 5, e2e.ClientTLS, false)
 }

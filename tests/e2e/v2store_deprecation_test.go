@@ -43,7 +43,8 @@ func writeCustomV2Data(t testing.TB, epc *e2e.EtcdProcessCluster, count int) {
 	for i := 0; i < count; i++ {
 		if err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
-			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}}); err != nil {
+			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)},
+		}); err != nil {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}
@@ -276,7 +277,7 @@ func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v
 	rc2.SetStore(secondStore)
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
 
-	//membership should match
+	// membership should match
 	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
 		t.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
 		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())

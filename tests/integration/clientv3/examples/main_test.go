@@ -34,7 +34,8 @@ var lazyCluster = integration.NewLazyClusterWithConfig(
 	integration2.ClusterConfig{
 		Size:                        3,
 		WatchProgressNotifyInterval: 200 * time.Millisecond,
-		DisableStrictReconfigCheck:  true})
+		DisableStrictReconfigCheck:  true,
+	})
 
 func exampleEndpoints() []string { return lazyCluster.EndpointsGRPC() }
 

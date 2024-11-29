@@ -64,7 +64,7 @@ func TestKVWithEmptyValue(t *testing.T) {
 		t.Log(string(kv.Key), "=", string(kv.Value))
 	}
 
-	//Remove all keys without WithFromKey/WithPrefix func
+	// Remove all keys without WithFromKey/WithPrefix func
 	_, err = client.Delete(context.Background(), "")
 	if err == nil {
 		// fatal error duo to without WithFromKey/WithPrefix func called.

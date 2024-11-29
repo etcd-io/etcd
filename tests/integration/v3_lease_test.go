@@ -249,7 +249,9 @@ func TestV3LeaseExpire(t *testing.T) {
 
 		wreq := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 			CreateRequest: &pb.WatchCreateRequest{
-				Key: []byte("foo"), StartRevision: 1}}}
+				Key: []byte("foo"), StartRevision: 1,
+			},
+		}}
 		if err := wStream.Send(wreq); err != nil {
 			return err
 		}
