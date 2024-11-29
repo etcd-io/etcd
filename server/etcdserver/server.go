@@ -1206,9 +1206,8 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 	)
 	s.forceDiskSnapshot = false
 
-	s.snapshot(ep.appliedi, ep.confState)
+	s.snapshot(ep)
 	s.compactRaftLog(ep.appliedi)
-	ep.diskSnapshotIndex = ep.appliedi
 }
 
 func (s *EtcdServer) shouldSnapshot(ep *etcdProgress) bool {
@@ -2128,7 +2127,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 }
 
 // TODO: non-blocking snapshot
-func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
+func (s *EtcdServer) snapshot(ep *etcdProgress) {
 	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
@@ -2144,7 +2143,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	lg := s.Logger()
 
 	// For backward compatibility, generate v2 snapshot from v3 state.
-	snap, err := s.r.raftStorage.CreateSnapshot(snapi, &confState, d)
+	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, &ep.confState, d)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
@@ -2160,6 +2159,7 @@ func (s *EtcdServer) snapshot(snapi uint64, confState raftpb.ConfState) {
 	if err = s.r.storage.SaveSnap(snap); err != nil {
 		lg.Panic("failed to save snapshot", zap.Error(err))
 	}
+	ep.diskSnapshotIndex = ep.appliedi
 	if err = s.r.storage.Release(snap); err != nil {
 		lg.Panic("failed to release wal", zap.Error(err))
 	}

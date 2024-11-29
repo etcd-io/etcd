@@ -679,12 +679,13 @@ func TestSnapshot(t *testing.T) {
 			t.Errorf("action = %s, want Release", gaction[1])
 		}
 	}()
-
-	srv.snapshot(1, raftpb.ConfState{Voters: []uint64{1}})
+	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
+	srv.snapshot(&ep)
 	<-ch
 	if len(st.Action()) != 0 {
 		t.Errorf("no action expected on v2store. Got %d actions", len(st.Action()))
 	}
+	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
 }
 
 // TestSnapshotOrdering ensures raft persists snapshot onto disk before
