@@ -981,7 +981,7 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// storage, since the raft routine might be slower than toApply routine.
 	<-apply.notifyc
 
-	s.triggerSnapshot(ep)
+	s.snapshotIfNeededAndCompactRaftLog(ep)
 	select {
 	// snapshot requested via send()
 	case m := <-s.r.msgSnapC:
@@ -1194,21 +1194,10 @@ func (s *EtcdServer) ForceSnapshot() {
 	s.forceDiskSnapshot = true
 }
 
-func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
+func (s *EtcdServer) snapshotIfNeededAndCompactRaftLog(ep *etcdProgress) {
 	if !s.shouldSnapshot(ep) {
 		return
 	}
-	lg := s.Logger()
-	lg.Info(
-		"triggering snapshot",
-		zap.String("local-member-id", s.MemberID().String()),
-		zap.Uint64("local-member-applied-index", ep.appliedi),
-		zap.Uint64("local-member-snapshot-index", ep.diskSnapshotIndex),
-		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
-		zap.Bool("snapshot-forced", s.forceDiskSnapshot),
-	)
-	s.forceDiskSnapshot = false
-
 	s.snapshot(ep)
 	s.compactRaftLog(ep.appliedi)
 }
@@ -2131,6 +2120,16 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 
 // TODO: non-blocking snapshot
 func (s *EtcdServer) snapshot(ep *etcdProgress) {
+	lg := s.Logger()
+	lg.Info(
+		"triggering snapshot",
+		zap.String("local-member-id", s.MemberID().String()),
+		zap.Uint64("local-member-applied-index", ep.appliedi),
+		zap.Uint64("local-member-snapshot-index", ep.diskSnapshotIndex),
+		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
+		zap.Bool("snapshot-forced", s.forceDiskSnapshot),
+	)
+	s.forceDiskSnapshot = false
 	d := GetMembershipInfoInV2Format(s.Logger(), s.cluster)
 	// commit kv to write metadata (for example: consistent index) to disk.
 	//
@@ -2142,8 +2141,6 @@ func (s *EtcdServer) snapshot(ep *etcdProgress) {
 	// So KV().Commit() cannot run in parallel with toApply. It has to be called outside
 	// the go routine created below.
 	s.KV().Commit()
-
-	lg := s.Logger()
 
 	// For backward compatibility, generate v2 snapshot from v3 state.
 	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, &ep.confState, d)
