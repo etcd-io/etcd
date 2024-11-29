@@ -320,7 +320,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	default:
 	}
 
-	s.syncWatchers()
+	s.syncWatchers([]mvccpb.Event{})
 
 	w.RequestProgress(id)
 	wrs := WatchResponse{WatchID: id, Revision: 2}
@@ -359,7 +359,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	default:
 	}
 
-	s.syncWatchers()
+	s.syncWatchers([]mvccpb.Event{})
 
 	w.RequestProgressAll()
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
