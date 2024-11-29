@@ -291,9 +291,9 @@ type EtcdServer struct {
 	clusterVersionChanged *notify.Notifier
 
 	*AccessController
-	// forceSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
+	// forceDiskSnapshot can force snapshot be triggered after apply, independent of the snapshotCount.
 	// Should only be set within apply code path. Used to force snapshot after cluster version downgrade.
-	forceSnapshot     bool
+	forceDiskSnapshot bool
 	corruptionChecker CorruptionChecker
 }
 
@@ -741,10 +741,10 @@ func (s *EtcdServer) ReportSnapshot(id uint64, status raft.SnapshotStatus) {
 }
 
 type etcdProgress struct {
-	confState raftpb.ConfState
-	snapi     uint64
-	appliedt  uint64
-	appliedi  uint64
+	confState         raftpb.ConfState
+	diskSnapshotIndex uint64
+	appliedt          uint64
+	appliedi          uint64
 }
 
 // raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
@@ -809,10 +809,10 @@ func (s *EtcdServer) run() {
 	s.r.start(rh)
 
 	ep := etcdProgress{
-		confState: sn.Metadata.ConfState,
-		snapi:     sn.Metadata.Index,
-		appliedt:  sn.Metadata.Term,
-		appliedi:  sn.Metadata.Index,
+		confState:         sn.Metadata.ConfState,
+		diskSnapshotIndex: sn.Metadata.Index,
+		appliedt:          sn.Metadata.Term,
+		appliedi:          sn.Metadata.Index,
 	}
 
 	defer func() {
@@ -998,7 +998,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	lg := s.Logger()
 	lg.Info(
 		"applying snapshot",
-		zap.Uint64("current-snapshot-index", ep.snapi),
+		zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 		zap.Uint64("current-applied-index", ep.appliedi),
 		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1006,7 +1006,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	defer func() {
 		lg.Info(
 			"applied snapshot",
-			zap.Uint64("current-snapshot-index", ep.snapi),
+			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
 			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1017,7 +1017,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	if toApply.snapshot.Metadata.Index <= ep.appliedi {
 		lg.Panic(
 			"unexpected leader snapshot from outdated index",
-			zap.Uint64("current-snapshot-index", ep.snapi),
+			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
 			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
 			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
@@ -1132,7 +1132,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 
 	ep.appliedt = toApply.snapshot.Metadata.Term
 	ep.appliedi = toApply.snapshot.Metadata.Index
-	ep.snapi = ep.appliedi
+	ep.diskSnapshotIndex = ep.appliedi
 	ep.confState = toApply.snapshot.Metadata.ConfState
 
 	// As backends and implementations like alarmsStore changed, we need
@@ -1188,7 +1188,7 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 }
 
 func (s *EtcdServer) ForceSnapshot() {
-	s.forceSnapshot = true
+	s.forceDiskSnapshot = true
 }
 
 func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
@@ -1200,19 +1200,19 @@ func (s *EtcdServer) triggerSnapshot(ep *etcdProgress) {
 		"triggering snapshot",
 		zap.String("local-member-id", s.MemberID().String()),
 		zap.Uint64("local-member-applied-index", ep.appliedi),
-		zap.Uint64("local-member-snapshot-index", ep.snapi),
+		zap.Uint64("local-member-snapshot-index", ep.diskSnapshotIndex),
 		zap.Uint64("local-member-snapshot-count", s.Cfg.SnapshotCount),
-		zap.Bool("snapshot-forced", s.forceSnapshot),
+		zap.Bool("snapshot-forced", s.forceDiskSnapshot),
 	)
-	s.forceSnapshot = false
+	s.forceDiskSnapshot = false
 
 	s.snapshot(ep.appliedi, ep.confState)
 	s.compactRaftLog(ep.appliedi)
-	ep.snapi = ep.appliedi
+	ep.diskSnapshotIndex = ep.appliedi
 }
 
 func (s *EtcdServer) shouldSnapshot(ep *etcdProgress) bool {
-	return (s.forceSnapshot && ep.appliedi != ep.snapi) || (ep.appliedi-ep.snapi > s.Cfg.SnapshotCount)
+	return (s.forceDiskSnapshot && ep.appliedi != ep.diskSnapshotIndex) || (ep.appliedi-ep.diskSnapshotIndex > s.Cfg.SnapshotCount)
 }
 
 func (s *EtcdServer) hasMultipleVotingMembers() bool {
