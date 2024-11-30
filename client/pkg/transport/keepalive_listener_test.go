@@ -36,9 +36,8 @@ func TestNewKeepAliveListener(t *testing.T) {
 	go http.Get("http://" + ln.Addr().String())
 	conn, err := ln.Accept()
 	require.NoErrorf(t, err, "unexpected Accept error")
-	if _, ok := conn.(*keepAliveConn); !ok {
-		t.Fatalf("Unexpected conn type: %T, wanted *keepAliveConn", conn)
-	}
+	_, ok := conn.(*keepAliveConn)
+	require.Truef(t, ok, "Unexpected conn type: %T, wanted *keepAliveConn", conn)
 	conn.Close()
 	ln.Close()
 
