@@ -15,9 +15,10 @@
 package command
 
 import (
-	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_parseWatchArgs(t *testing.T) {
@@ -535,25 +536,13 @@ func Test_parseWatchArgs(t *testing.T) {
 	}
 	for i, ts := range tt {
 		watchArgs, execArgs, err := parseWatchArgs(ts.osArgs, ts.commandArgs, ts.envKey, ts.envRange, ts.interactive)
-		if !errors.Is(err, ts.err) {
-			t.Fatalf("#%d: error expected %v, got %v", i, ts.err, err)
-		}
-		if !reflect.DeepEqual(watchArgs, ts.watchArgs) {
-			t.Fatalf("#%d: watchArgs expected %q, got %v", i, ts.watchArgs, watchArgs)
-		}
-		if !reflect.DeepEqual(execArgs, ts.execArgs) {
-			t.Fatalf("#%d: execArgs expected %q, got %v", i, ts.execArgs, execArgs)
-		}
+		require.ErrorIsf(t, err, ts.err, "#%d: error expected %v, got %v", i, ts.err, err)
+		require.Truef(t, reflect.DeepEqual(watchArgs, ts.watchArgs), "#%d: watchArgs expected %q, got %v", i, ts.watchArgs, watchArgs)
+		require.Truef(t, reflect.DeepEqual(execArgs, ts.execArgs), "#%d: execArgs expected %q, got %v", i, ts.execArgs, execArgs)
 		if ts.interactive {
-			if ts.interactiveWatchPrefix != watchPrefix {
-				t.Fatalf("#%d: interactive watchPrefix expected %v, got %v", i, ts.interactiveWatchPrefix, watchPrefix)
-			}
-			if ts.interactiveWatchRev != watchRev {
-				t.Fatalf("#%d: interactive watchRev expected %d, got %d", i, ts.interactiveWatchRev, watchRev)
-			}
-			if ts.interactiveWatchPrevKey != watchPrevKey {
-				t.Fatalf("#%d: interactive watchPrevKey expected %v, got %v", i, ts.interactiveWatchPrevKey, watchPrevKey)
-			}
+			require.Equalf(t, ts.interactiveWatchPrefix, watchPrefix, "#%d: interactive watchPrefix expected %v, got %v", i, ts.interactiveWatchPrefix, watchPrefix)
+			require.Equalf(t, ts.interactiveWatchRev, watchRev, "#%d: interactive watchRev expected %d, got %d", i, ts.interactiveWatchRev, watchRev)
+			require.Equalf(t, ts.interactiveWatchPrevKey, watchPrevKey, "#%d: interactive watchPrevKey expected %v, got %v", i, ts.interactiveWatchPrevKey, watchPrevKey)
 		}
 	}
 }
