@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -71,9 +72,7 @@ func TestActionIsReversible(t *testing.T) {
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
+			require.NotNilf(t, tx, "batch tx is nil")
 			tx.Lock()
 			defer tx.Unlock()
 			UnsafeCreateMetaBucket(tx)
@@ -128,9 +127,7 @@ func TestActionListRevert(t *testing.T) {
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
+			require.NotNilf(t, tx, "batch tx is nil")
 			tx.Lock()
 			defer tx.Unlock()
 

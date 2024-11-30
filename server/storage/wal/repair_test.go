@@ -15,7 +15,6 @@
 package wal
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -203,13 +202,9 @@ func TestRepairFailDeleteDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, _, err = w.ReadAll()
-	if !errors.Is(err, io.ErrUnexpectedEOF) {
-		t.Fatalf("err = %v, want error %v", err, io.ErrUnexpectedEOF)
-	}
+	require.ErrorIsf(t, err, io.ErrUnexpectedEOF, "err = %v, want error %v", err, io.ErrUnexpectedEOF)
 	w.Close()
 
 	os.RemoveAll(p)
-	if Repair(zaptest.NewLogger(t), p) {
-		t.Fatal("expect 'Repair' fail on unexpected directory deletion")
-	}
+	require.Falsef(t, Repair(zaptest.NewLogger(t), p), "expect 'Repair' fail on unexpected directory deletion")
 }

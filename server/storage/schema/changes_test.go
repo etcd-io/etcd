@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
@@ -39,9 +41,7 @@ func TestUpgradeDowngrade(t *testing.T) {
 			be, _ := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			defer be.Close()
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
+			require.NotNilf(t, tx, "batch tx is nil")
 			tx.Lock()
 			defer tx.Unlock()
 			UnsafeCreateMetaBucket(tx)

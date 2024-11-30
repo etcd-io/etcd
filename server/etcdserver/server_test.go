@@ -137,13 +137,10 @@ func TestApplyRepeat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(act) == 0 {
-		t.Fatalf("expected len(act)=0, got %d", len(act))
-	}
+	require.NotEmptyf(t, act, "expected len(act)=0, got %d", len(act))
 
-	if err = <-stopc; err != nil {
-		t.Fatalf("error on stop (%v)", err)
-	}
+	err = <-stopc
+	require.NoErrorf(t, err, "error on stop (%v)", err)
 }
 
 type uberApplierMock struct{}

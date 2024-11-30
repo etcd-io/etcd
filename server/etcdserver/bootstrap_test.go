@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	bolt "go.etcd.io/bbolt"
@@ -90,9 +91,7 @@ func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cluster, err := types.NewURLsMap("node0=http://localhost:2380,node1=http://localhost:2381,node2=http://localhost:2382")
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+			require.NoErrorf(t, err, "unexpected error: %v", err)
 			cfg := config.ServerConfig{
 				Name:                    "node0",
 				InitialPeerURLsMap:      cluster,
@@ -104,8 +103,8 @@ func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 			if hasError != tt.hasError {
 				t.Errorf("expected error: %v got: %v", tt.hasError, err)
 			}
-			if hasError && !strings.Contains(err.Error(), tt.expectedError.Error()) {
-				t.Fatalf("expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
+			if hasError {
+				require.Containsf(t, err.Error(), tt.expectedError.Error(), "expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
 			}
 		})
 	}
@@ -177,9 +176,7 @@ func TestBootstrapBackend(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dataDir, err := createDataDir(t)
-			if err != nil {
-				t.Fatalf("Failed to create the data dir, unexpected error: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to create the data dir, unexpected error: %v", err)
 
 			cfg := config.ServerConfig{
 				Name:                "demoNode",
@@ -189,9 +186,8 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			if tt.prepareData != nil {
-				if err = tt.prepareData(cfg); err != nil {
-					t.Fatalf("failed to prepare data, unexpected error: %v", err)
-				}
+				err = tt.prepareData(cfg)
+				require.NoErrorf(t, err, "failed to prepare data, unexpected error: %v", err)
 			}
 
 			haveWAL := wal.Exist(cfg.WALDir())
@@ -207,8 +203,8 @@ func TestBootstrapBackend(t *testing.T) {
 			if hasError != expectedHasError {
 				t.Errorf("expected error: %v got: %v", expectedHasError, err)
 			}
-			if hasError && !strings.Contains(err.Error(), tt.expectedError.Error()) {
-				t.Fatalf("expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
+			if hasError {
+				require.Containsf(t, err.Error(), tt.expectedError.Error(), "expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
 			}
 
 			if backend.ci.ConsistentIndex() != tt.expectedConsistentIdx {
