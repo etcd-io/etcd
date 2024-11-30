@@ -15,9 +15,10 @@
 package embed
 
 import (
-	"errors"
 	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
@@ -33,7 +34,6 @@ func TestEmptyClientTLSInfo_createMetricsListener(t *testing.T) {
 		Scheme: "https",
 		Host:   "localhost:8080",
 	}
-	if _, err := e.createMetricsListener(murl); !errors.Is(err, ErrMissingClientTLSInfoForMetricsURL) {
-		t.Fatalf("expected error %v, got %v", ErrMissingClientTLSInfoForMetricsURL, err)
-	}
+	_, err := e.createMetricsListener(murl)
+	require.ErrorIsf(t, err, ErrMissingClientTLSInfoForMetricsURL, "expected error %v, got %v", ErrMissingClientTLSInfoForMetricsURL, err)
 }
