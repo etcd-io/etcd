@@ -23,6 +23,13 @@ coverage:
   range: 60..80
   round: down
   precision: 2
+  status:
+    project:
+      default:
+        target: auto
+        # allow some coverage reductions within a threshold
+        # this allows a 1% drop from the previous base commit coverage
+        threshold: 1%
 comment:
   layout: "header, files, diff, footer"
   behavior: default # default: update, if exists. Otherwise post new; new: delete old and post new
