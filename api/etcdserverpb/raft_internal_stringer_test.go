@@ -17,6 +17,8 @@ package etcdserverpb_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
@@ -24,8 +26,5 @@ import (
 // panic: invalid Go type int for field k8s_io.kubernetes.vendor.go_etcd_io.etcd.etcdserver.etcdserverpb.loggablePutRequest.value_size
 // See https://github.com/kubernetes/kubernetes/issues/91937 for more details
 func TestInvalidGoTypeIntPanic(t *testing.T) {
-	result := pb.NewLoggablePutRequest(&pb.PutRequest{}).String()
-	if result != "" {
-		t.Errorf("Got result: %s, expected empty string", result)
-	}
+	assert.Empty(t, pb.NewLoggablePutRequest(&pb.PutRequest{}).String())
 }
