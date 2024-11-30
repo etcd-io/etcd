@@ -18,6 +18,8 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestUnsafeSet(t *testing.T) {
@@ -41,16 +43,11 @@ func driveSetTests(t *testing.T, s Set) {
 	t.Helper()
 	// Verify operations on an empty set
 	values := s.Values()
-	if len(values) != 0 {
-		t.Fatalf("Expect values=%v got %v", []string{}, values)
-	}
-	if l := s.Length(); l != 0 {
-		t.Fatalf("Expected length=0, got %d", l)
-	}
+	require.Emptyf(t, values, "Expect values=%v got %v", []string{}, values)
+	l := s.Length()
+	require.Equalf(t, 0, l, "Expected length=0, got %d", l)
 	for _, v := range []string{"foo", "bar", "baz"} {
-		if s.Contains(v) {
-			t.Fatalf("Expect s.Contains(%q) to be fale, got true", v)
-		}
+		require.Falsef(t, s.Contains(v), "Expect s.Contains(%q) to be fale, got true", v)
 	}
 
 	// Add three items, ensure they show up
@@ -60,30 +57,22 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues := []string{"foo", "bar", "baz"}
 	values = s.Values()
-	if !equal(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
-	}
+	require.Truef(t, equal(values, eValues), "Expect values=%v got %v", eValues, values)
 
 	for _, v := range eValues {
-		if !s.Contains(v) {
-			t.Fatalf("Expect s.Contains(%q) to be true, got false", v)
-		}
+		require.Truef(t, s.Contains(v), "Expect s.Contains(%q) to be true, got false", v)
 	}
 
-	if l := s.Length(); l != 3 {
-		t.Fatalf("Expected length=3, got %d", l)
-	}
+	l = s.Length()
+	require.Equalf(t, 3, l, "Expected length=3, got %d", l)
 
 	// Add the same item a second time, ensuring it is not duplicated
 	s.Add("foo")
 
 	values = s.Values()
-	if !equal(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
-	}
-	if l := s.Length(); l != 3 {
-		t.Fatalf("Expected length=3, got %d", l)
-	}
+	require.Truef(t, equal(values, eValues), "Expect values=%v got %v", eValues, values)
+	l = s.Length()
+	require.Equalf(t, 3, l, "Expected length=3, got %d", l)
 
 	// Remove all items, ensure they are gone
 	s.Remove("foo")
@@ -92,13 +81,10 @@ func driveSetTests(t *testing.T, s Set) {
 
 	eValues = []string{}
 	values = s.Values()
-	if !equal(values, eValues) {
-		t.Fatalf("Expect values=%v got %v", eValues, values)
-	}
+	require.Truef(t, equal(values, eValues), "Expect values=%v got %v", eValues, values)
 
-	if l := s.Length(); l != 0 {
-		t.Fatalf("Expected length=0, got %d", l)
-	}
+	l = s.Length()
+	require.Equalf(t, 0, l, "Expected length=0, got %d", l)
 
 	// Create new copies of the set, and ensure they are unlinked to the
 	// original Set by making modifications
@@ -119,9 +105,7 @@ func driveSetTests(t *testing.T, s Set) {
 		{[]string{"foo", "bar"}, cp2.Values()},
 		{[]string{"bar"}, cp3.Values()},
 	} {
-		if !equal(tt.want, tt.got) {
-			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
-		}
+		require.Truef(t, equal(tt.want, tt.got), "case %d: expect values=%v got %v", i, tt.want, tt.got)
 	}
 
 	for i, tt := range []struct {
@@ -136,9 +120,7 @@ func driveSetTests(t *testing.T, s Set) {
 		{false, cp2.Equals(s)},
 		{false, cp2.Equals(cp1)},
 	} {
-		if tt.got != tt.want {
-			t.Fatalf("case %d: want %t, got %t", i, tt.want, tt.got)
-		}
+		require.Equalf(t, tt.want, tt.got, "case %d: want %t, got %t", i, tt.want, tt.got)
 	}
 
 	// Subtract values from a Set, ensuring a new Set is created and
@@ -156,9 +138,7 @@ func driveSetTests(t *testing.T, s Set) {
 		{[]string{"foo", "baz"}, sub1.Values()},
 		{[]string{}, sub2.Values()},
 	} {
-		if !equal(tt.want, tt.got) {
-			t.Fatalf("case %d: expect values=%v got %v", i, tt.want, tt.got)
-		}
+		require.Truef(t, equal(tt.want, tt.got), "case %d: expect values=%v got %v", i, tt.want, tt.got)
 	}
 }
 

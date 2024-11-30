@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
@@ -152,12 +154,8 @@ func TestSRVGetCluster(t *testing.T) {
 		urls := testutil.MustNewURLs(t, tt.urls)
 		str, err := GetCluster(tt.scheme, tt.service, name, "example.com", urls)
 
-		if hasErr(err) != tt.werr {
-			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
-		}
-		if strings.Join(str, ",") != tt.expected {
-			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)
-		}
+		require.Equalf(t, hasErr(err), tt.werr, "%d: err = %#v, want = %#v", i, err, tt.werr)
+		require.Equalf(t, tt.expected, strings.Join(str, ","), "#%d: cluster = %s, want %s", i, str, tt.expected)
 	}
 }
 
@@ -255,9 +253,7 @@ func TestSRVDiscover(t *testing.T) {
 
 		srvs, err := GetClient("etcd-client", "example.com", "")
 
-		if hasErr(err) != tt.werr {
-			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
-		}
+		require.Equalf(t, hasErr(err), tt.werr, "%d: err = %#v, want = %#v", i, err, tt.werr)
 		if srvs == nil {
 			if len(tt.expected) > 0 {
 				t.Errorf("#%d: srvs = nil, want non-nil", i)

@@ -47,9 +47,7 @@ func TestIsDirWriteable(t *testing.T) {
 		// Chmod is not supported under windows.
 		t.Skipf("running as a superuser or in windows")
 	}
-	if err := IsDirWriteable(tmpdir); err == nil {
-		t.Fatalf("expected IsDirWriteable to error")
-	}
+	require.Errorf(t, IsDirWriteable(tmpdir), "expected IsDirWriteable to error")
 }
 
 func TestCreateDirAll(t *testing.T) {
@@ -72,9 +70,7 @@ func TestExist(t *testing.T) {
 		t.Skip(err)
 	}
 	defer os.RemoveAll(fdir)
-	if !Exist(fdir) {
-		t.Fatalf("expected Exist true, got %v", Exist(fdir))
-	}
+	require.Truef(t, Exist(fdir), "expected Exist true, got %v", Exist(fdir))
 
 	f, err := os.CreateTemp(os.TempDir(), "fileutil")
 	require.NoError(t, err)
@@ -93,20 +89,14 @@ func TestExist(t *testing.T) {
 func TestDirEmpty(t *testing.T) {
 	dir := t.TempDir()
 
-	if !DirEmpty(dir) {
-		t.Fatalf("expected DirEmpty true, got %v", DirEmpty(dir))
-	}
+	require.Truef(t, DirEmpty(dir), "expected DirEmpty true, got %v", DirEmpty(dir))
 
 	file, err := os.CreateTemp(dir, "new_file")
 	require.NoError(t, err)
 	file.Close()
 
-	if DirEmpty(dir) {
-		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(dir))
-	}
-	if DirEmpty(file.Name()) {
-		t.Fatalf("expected DirEmpty false, got %v", DirEmpty(file.Name()))
-	}
+	require.Falsef(t, DirEmpty(dir), "expected DirEmpty false, got %v", DirEmpty(dir))
+	require.Falsef(t, DirEmpty(file.Name()), "expected DirEmpty false, got %v", DirEmpty(file.Name()))
 }
 
 func TestZeroToEnd(t *testing.T) {
@@ -129,9 +119,7 @@ func TestZeroToEnd(t *testing.T) {
 	require.NoError(t, ZeroToEnd(f))
 	off, serr := f.Seek(0, io.SeekCurrent)
 	require.NoError(t, serr)
-	if off != 512 {
-		t.Fatalf("expected offset 512, got %d", off)
-	}
+	require.Equalf(t, int64(512), off, "expected offset 512, got %d", off)
 
 	b = make([]byte, 512)
 	_, err = f.Read(b)

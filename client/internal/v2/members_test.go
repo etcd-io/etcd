@@ -154,9 +154,7 @@ func TestV2MembersURL(t *testing.T) {
 		Path:   "/pants/v2/members",
 	}
 
-	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("v2MembersURL got %#v, want %#v", got, want)
-	}
+	require.Truef(t, reflect.DeepEqual(want, got), "v2MembersURL got %#v, want %#v", got, want)
 }
 
 func TestMemberUnmarshal(t *testing.T) {
@@ -316,9 +314,7 @@ func TestMemberCreateRequestMarshal(t *testing.T) {
 	got, err := json.Marshal(&req)
 	require.NoErrorf(t, err, "Marshal returned unexpected err")
 
-	if !reflect.DeepEqual(want, got) {
-		t.Fatalf("Failed to marshal memberCreateRequest: want=%s, got=%s", want, got)
-	}
+	require.Truef(t, reflect.DeepEqual(want, got), "Failed to marshal memberCreateRequest: want=%s, got=%s", want, got)
 }
 
 func TestHTTPMembersAPIAddSuccess(t *testing.T) {

@@ -112,11 +112,9 @@ func TestNewListenerWithOpts(t *testing.T) {
 			if ln != nil {
 				defer ln.Close()
 			}
-			if test.expectedErr && err == nil {
-				t.Fatalf("expected error")
-			}
-			if !test.expectedErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			require.Falsef(t, test.expectedErr && err == nil, "expected error")
+			if !test.expectedErr {
+				require.NoErrorf(t, err, "unexpected error: %v", err)
 			}
 		})
 	}
@@ -200,19 +198,18 @@ func TestNewListenerWithSocketOpts(t *testing.T) {
 			if ln2 != nil {
 				ln2.Close()
 			}
-			if test.expectedErr && err == nil {
-				t.Fatalf("expected error")
+			if test.expectedErr {
+				require.Errorf(t, err, "expected error")
 			}
-			if !test.expectedErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
+			if !test.expectedErr {
+				require.NoErrorf(t, err, "unexpected error: %v", err)
 			}
 
 			if test.scheme == "http" {
 				lnOpts := newListenOpts(test.opts...)
 				if !lnOpts.IsSocketOpts() && !lnOpts.IsTimeout() {
-					if _, ok := ln.(*keepaliveListener); !ok {
-						t.Fatalf("ln: unexpected listener type: %T, wanted *keepaliveListener", ln)
-					}
+					_, ok := ln.(*keepaliveListener)
+					require.Truef(t, ok, "ln: unexpected listener type: %T, wanted *keepaliveListener", ln)
 				}
 			}
 		})
@@ -356,10 +353,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 		tt.parseFunc = fakeCertificateParserFunc(nil)
 		trans, err := NewTransport(tt, time.Second)
 		require.NoErrorf(t, err, "Received unexpected error from NewTransport")
-
-		if trans.TLSClientConfig == nil {
-			t.Fatalf("#%d: want non-nil TLSClientConfig", i)
-		}
+		require.NotNilf(t, trans.TLSClientConfig, "#%d: want non-nil TLSClientConfig", i)
 	}
 }
 
@@ -510,9 +504,7 @@ func TestNewListenerTLSInfoSelfCert(t *testing.T) {
 
 	tlsinfo, err := SelfCert(zaptest.NewLogger(t), tmpdir, []string{"127.0.0.1"}, 1)
 	require.NoError(t, err)
-	if tlsinfo.Empty() {
-		t.Fatalf("tlsinfo should have certs (%+v)", tlsinfo)
-	}
+	require.Falsef(t, tlsinfo.Empty(), "tlsinfo should have certs (%+v)", tlsinfo)
 	testNewListenerTLSInfoAccept(t, tlsinfo)
 
 	assert.Panicsf(t, func() {
@@ -527,9 +519,7 @@ func TestIsClosedConnError(t *testing.T) {
 	}
 	l.Close()
 	_, err = l.Accept()
-	if !IsClosedConnError(err) {
-		t.Fatalf("expect true, got false (%v)", err)
-	}
+	require.Truef(t, IsClosedConnError(err), "expect true, got false (%v)", err)
 }
 
 func TestSocktOptsEmpty(t *testing.T) {

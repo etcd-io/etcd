@@ -63,9 +63,8 @@ func TestNameURLPairsString(t *testing.T) {
 		"five": testutil.MustNewURLs(t, nil),
 	})
 	w := "abc=http://0.0.0.0:0000,abc=http://1.1.1.1:1111,def=http://2.2.2.2:2222,ghi=http://127.0.0.1:2380,ghi=http://3.3.3.3:1234"
-	if g := cls.String(); g != w {
-		t.Fatalf("NameURLPairs.String():\ngot  %#v\nwant %#v", g, w)
-	}
+	g := cls.String()
+	require.Equalf(t, g, w, "NameURLPairs.String():\ngot  %#v\nwant %#v", g, w)
 }
 
 func TestParse(t *testing.T) {
