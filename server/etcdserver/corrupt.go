@@ -292,7 +292,6 @@ func (cm *corruptionChecker) CompactHashCheck() {
 		}
 	}
 	cm.lg.Info("finished compaction hash check", zap.Int("number-of-hashes-checked", len(hashes)))
-	return
 }
 
 // check peers hash and raise alarms if detected corruption.

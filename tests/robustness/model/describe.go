@@ -32,7 +32,7 @@ func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) strin
 		if response.PersistedRevision != 0 {
 			return fmt.Sprintf("unknown, rev: %d", response.PersistedRevision)
 		}
-		return fmt.Sprintf("unknown")
+		return "unknown"
 	}
 	switch request.Type {
 	case Range:
@@ -74,7 +74,7 @@ func describeEtcdRequest(request EtcdRequest) string {
 	case LeaseRevoke:
 		return fmt.Sprintf("leaseRevoke(%d)", request.LeaseRevoke.LeaseID)
 	case Defragment:
-		return fmt.Sprintf("defragment()")
+		return "defragment()"
 	case Compact:
 		return fmt.Sprintf("compact(%d)", request.Compact.Revision)
 	default:
@@ -182,7 +182,7 @@ func describeEtcdOperationResponse(op EtcdOperation, resp EtcdOperationResult) s
 	case RangeOperation:
 		return describeRangeResponse(op.Range, resp.RangeResponse)
 	case PutOperation:
-		return fmt.Sprintf("ok")
+		return "ok"
 	case DeleteOperation:
 		return fmt.Sprintf("deleted: %d", resp.Deleted)
 	default:

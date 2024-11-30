@@ -30,9 +30,7 @@ func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
 		if state.Revision != newState.Revision {
 			revisionToEtcdState = append(revisionToEtcdState, newState)
 		}
-		for _, e := range toWatchEvents(&state, request, response) {
-			events = append(events, e)
-		}
+		events = append(events, toWatchEvents(&state, request, response)...)
 		state = newState
 	}
 	return &EtcdReplay{

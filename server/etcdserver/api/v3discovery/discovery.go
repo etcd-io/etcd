@@ -450,7 +450,7 @@ func (cls *clusterInfo) add(memberKey, memberValue string, rev int64) error {
 		return errors.New("invalid peer registry key")
 	}
 
-	if strings.IndexRune(memberValue, '=') == -1 {
+	if !strings.ContainsRune(memberValue, '=') {
 		// It must be in the format "member1=http://127.0.0.1:2380".
 		return errors.New("invalid peer info returned from discovery service")
 	}

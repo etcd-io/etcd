@@ -40,7 +40,7 @@ func (c *concurrencyLimiter) Take() bool {
 
 func (c *concurrencyLimiter) Return() {
 	select {
-	case _ = <-c.ch:
+	case <-c.ch:
 	default:
 		panic("Call to Return() without a successful Take")
 	}

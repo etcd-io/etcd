@@ -70,7 +70,6 @@ func ExampleSTM_apply() {
 				// write back
 				stm.Put(fromK, fmt.Sprintf("%d", fromInt))
 				stm.Put(toK, fmt.Sprintf("%d", toInt))
-				return
 			}
 
 			// concurrently exchange values between accounts

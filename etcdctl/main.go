@@ -21,5 +21,4 @@ import (
 
 func main() {
 	ctlv3.MustStart()
-	return
 }

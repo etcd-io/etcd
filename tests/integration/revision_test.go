@@ -149,7 +149,7 @@ func silenceConnectionErrors(err error) error {
 	}
 	s := status.Convert(err)
 	for _, msg := range connectionErrorMessages {
-		if strings.Index(s.Message(), msg) != -1 {
+		if strings.Contains(s.Message(), msg) {
 			return nil
 		}
 	}

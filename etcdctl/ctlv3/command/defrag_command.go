@@ -44,7 +44,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 		ctx, cancel := commandCtx(cmd)
 		start := time.Now()
 		_, err := c.Defragment(ctx, ep)
-		d := time.Now().Sub(start)
+		d := time.Since(start)
 		cancel()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s]. took %s. (%v)\n", ep, d.String(), err)
