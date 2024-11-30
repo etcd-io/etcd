@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -41,9 +42,8 @@ func TestSetFlagsFromEnv(t *testing.T) {
 		"a": "",
 		"b": "bar",
 	} {
-		if got := fs.Lookup(f).Value.String(); got != want {
-			t.Fatalf("flag %q=%q, want %q", f, got, want)
-		}
+		got := fs.Lookup(f).Value.String()
+		require.Equalf(t, want, got, "flag %q=%q, want %q", f, got, want)
 	}
 
 	// now read the env and verify flags were updated as expected
@@ -85,7 +85,5 @@ func TestSetFlagsFromEnvParsingError(t *testing.T) {
 			break
 		}
 	}
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
+	require.NoErrorf(t, err, "unexpected error %v", err)
 }

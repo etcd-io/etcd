@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPercentiles(t *testing.T) {
@@ -64,9 +66,7 @@ func TestReport(t *testing.T) {
 		ErrorDist: map[string]int{"oops": 1},
 		Lats:      []float64{1.0, 1.0, 1.0, 1.0, 1.0},
 	}
-	if !reflect.DeepEqual(stats, wStats) {
-		t.Fatalf("got %+v, want %+v", stats, wStats)
-	}
+	require.Truef(t, reflect.DeepEqual(stats, wStats), "got %+v, want %+v", stats, wStats)
 
 	wstrs := []string{
 		"Stddev:\t0",
@@ -108,7 +108,5 @@ func TestWeightedReport(t *testing.T) {
 		ErrorDist: map[string]int{"oops": 1},
 		Lats:      []float64{0.5, 0.5, 0.5, 0.5, 0.5},
 	}
-	if !reflect.DeepEqual(stats, wStats) {
-		t.Fatalf("got %+v, want %+v", stats, wStats)
-	}
+	require.Truef(t, reflect.DeepEqual(stats, wStats), "got %+v, want %+v", stats, wStats)
 }

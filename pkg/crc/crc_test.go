@@ -8,15 +8,16 @@ import (
 	"hash/crc32"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestHash32 tests that Hash32 provided by this package can take an initial
 // crc and behaves exactly the same as the standard one in the following calls.
 func TestHash32(t *testing.T) {
 	stdhash := crc32.New(crc32.IEEETable)
-	if _, err := stdhash.Write([]byte("test data")); err != nil {
-		t.Fatalf("unexpected write error: %v", err)
-	}
+	_, err := stdhash.Write([]byte("test data"))
+	require.NoErrorf(t, err, "unexpected write error: %v", err)
 	// create a new hash with stdhash.Sum32() as initial crc
 	hash := New(stdhash.Sum32(), crc32.IEEETable)
 
@@ -38,12 +39,10 @@ func TestHash32(t *testing.T) {
 	}
 
 	// write something
-	if _, err := stdhash.Write([]byte("test data")); err != nil {
-		t.Fatalf("unexpected write error: %v", err)
-	}
-	if _, err := hash.Write([]byte("test data")); err != nil {
-		t.Fatalf("unexpected write error: %v", err)
-	}
+	_, err = stdhash.Write([]byte("test data"))
+	require.NoErrorf(t, err, "unexpected write error: %v", err)
+	_, err = hash.Write([]byte("test data"))
+	require.NoErrorf(t, err, "unexpected write error: %v", err)
 	wsum32 = stdhash.Sum32()
 	if g := hash.Sum32(); g != wsum32 {
 		t.Errorf("Sum32 after write = %d, want %d", g, wsum32)

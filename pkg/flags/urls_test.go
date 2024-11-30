@@ -18,6 +18,8 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateURLsValueBad(t *testing.T) {
@@ -66,8 +68,6 @@ func TestNewURLsValue(t *testing.T) {
 	}
 	for i := range tests {
 		uu := []url.URL(*NewURLsValue(tests[i].s))
-		if !reflect.DeepEqual(tests[i].exp, uu) {
-			t.Fatalf("#%d: expected %+v, got %+v", i, tests[i].exp, uu)
-		}
+		require.Truef(t, reflect.DeepEqual(tests[i].exp, uu), "#%d: expected %+v, got %+v", i, tests[i].exp, uu)
 	}
 }
