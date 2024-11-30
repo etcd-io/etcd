@@ -34,9 +34,7 @@ import (
 
 const debugLinesTail = 40
 
-var (
-	ErrProcessRunning = fmt.Errorf("process is still running")
-)
+var ErrProcessRunning = fmt.Errorf("process is still running")
 
 type ExpectedResponse struct {
 	Value         string

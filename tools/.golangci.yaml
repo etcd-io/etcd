@@ -19,7 +19,7 @@ linters:
     # - structcheck
     # - varcheck
     - errorlint
-    - gofmt
+    - gofumpt
     - goimports
     - ineffassign
     - nakedret

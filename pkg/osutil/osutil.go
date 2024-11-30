@@ -15,7 +15,5 @@
 // Package osutil implements operating system-related utility functions.
 package osutil
 
-var (
-	// support to override setting SIG_DFL so tests don't terminate early
-	setDflSignal = dflSignal
-)
+// support to override setting SIG_DFL so tests don't terminate early
+var setDflSignal = dflSignal

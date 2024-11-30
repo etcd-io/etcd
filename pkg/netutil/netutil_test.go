@@ -318,6 +318,7 @@ func TestURLsEqual(t *testing.T) {
 		}
 	}
 }
+
 func TestURLStringsEqual(t *testing.T) {
 	defer func() { resolveTCPAddr = resolveTCPAddrDefault }()
 	errOnResolve := func(ctx context.Context, addr string) (*net.TCPAddr, error) {
