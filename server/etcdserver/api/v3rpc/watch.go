@@ -43,7 +43,7 @@ type watchServer struct {
 	clusterID int64
 	memberID  int64
 
-	maxRequestBytes int
+	maxRequestBytes uint
 
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
@@ -58,7 +58,7 @@ func NewWatchServer(s *etcdserver.EtcdServer) pb.WatchServer {
 		clusterID: int64(s.Cluster().ID()),
 		memberID:  int64(s.MemberID()),
 
-		maxRequestBytes: int(s.Cfg.MaxRequestBytes + grpcOverheadBytes),
+		maxRequestBytes: s.Cfg.MaxRequestBytesWithOverhead(),
 
 		sg:        s,
 		watchable: s.Watchable(),
@@ -126,7 +126,7 @@ type serverWatchStream struct {
 	clusterID int64
 	memberID  int64
 
-	maxRequestBytes int
+	maxRequestBytes uint
 
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
@@ -544,12 +544,12 @@ func IsCreateEvent(e mvccpb.Event) bool {
 
 func sendFragments(
 	wr *pb.WatchResponse,
-	maxRequestBytes int,
+	maxRequestBytes uint,
 	sendFunc func(*pb.WatchResponse) error,
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if wr.Size() < maxRequestBytes || len(wr.Events) < 2 {
+	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
@@ -562,7 +562,7 @@ func sendFragments(
 		cur := ow
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && cur.Size() >= maxRequestBytes {
+			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}

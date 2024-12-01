@@ -30,8 +30,7 @@ import (
 )
 
 const (
-	grpcOverheadBytes = 512 * 1024
-	maxSendBytes      = math.MaxInt32
+	maxSendBytes = math.MaxInt32
 )
 
 func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnaryServerInterceptor, gopts ...grpc.ServerOption) *grpc.Server {
@@ -62,7 +61,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	opts = append(opts, grpc.ChainUnaryInterceptor(chainUnaryInterceptors...))
 	opts = append(opts, grpc.ChainStreamInterceptor(chainStreamInterceptors...))
 
-	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytes+grpcOverheadBytes)))
+	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytesWithOverhead())))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
 	opts = append(opts, grpc.MaxConcurrentStreams(s.Cfg.MaxConcurrentStreams))
 
