@@ -22,10 +22,11 @@ import (
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
-// watchBatchMaxSize is the maximum distinct revisions that
-// may be sent to an unsynced watcher at a time. Declared as
-// var instead of const for testing purposes.
-var watchBatchMaxSize = 2 * 1024 * 1024
+func newEventBatch(watchBatchMaxSize int) *eventBatch {
+	return &eventBatch{
+		watchBatchMaxSize: watchBatchMaxSize,
+	}
+}
 
 type eventBatch struct {
 	// evs is a batch of revision-ordered events
@@ -34,6 +35,8 @@ type eventBatch struct {
 	evsSize int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
+	// watchBatchMaxSize is maximum size of batch
+	watchBatchMaxSize int
 }
 
 func (eb *eventBatch) add(ev mvccpb.Event) {
@@ -54,7 +57,7 @@ func (eb *eventBatch) add(ev mvccpb.Event) {
 	}
 
 	size := ev.Size()
-	if eb.evsSize+size > watchBatchMaxSize {
+	if eb.watchBatchMaxSize != 0 && eb.evsSize+size > eb.watchBatchMaxSize {
 		eb.moreRev = ev.Kv.ModRevision
 		return
 	}
@@ -64,10 +67,10 @@ func (eb *eventBatch) add(ev mvccpb.Event) {
 
 type watcherBatch map[*watcher]*eventBatch
 
-func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
+func (wb watcherBatch) add(w *watcher, ev mvccpb.Event, watchBatchMaxSize int) {
 	eb := wb[w]
 	if eb == nil {
-		eb = &eventBatch{}
+		eb = newEventBatch(watchBatchMaxSize)
 		wb[w] = eb
 	}
 	eb.add(ev)
@@ -75,7 +78,7 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
-func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
+func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event, watchBatchMaxSize int) watcherBatch {
 	if len(wg.watchers) == 0 {
 		return nil
 	}
@@ -85,7 +88,7 @@ func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
 			if ev.Kv.ModRevision >= w.minRev {
 				// don't double notify
-				wb.add(w, ev)
+				wb.add(w, ev, watchBatchMaxSize)
 			}
 		}
 	}

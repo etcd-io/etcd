@@ -27,7 +27,7 @@ import (
 func TestSendFragment(t *testing.T) {
 	tt := []struct {
 		wr              *pb.WatchResponse
-		maxRequestBytes uint
+		maxRequestBytes int
 		fragments       int
 		werr            error
 	}{

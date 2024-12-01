@@ -50,6 +50,7 @@ type watchable interface {
 
 type watchableStore struct {
 	*store
+	watchBatchMaxSize int
 
 	// mu protects watcher groups and batches. It should never be locked
 	// before locking store.mu to avoid deadlock.
@@ -76,7 +77,7 @@ var _ WatchableKV = (*watchableStore)(nil)
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) WatchableKV {
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg WatchableStoreConfig) WatchableKV {
 	s := newWatchableStore(lg, b, le, cfg)
 	s.wg.Add(2)
 	go s.syncWatchersLoop()
@@ -84,16 +85,22 @@ func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) Wa
 	return s
 }
 
-func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+type WatchableStoreConfig struct {
+	StoreConfig
+	WatchBatchMaxSize int
+}
+
+func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg WatchableStoreConfig) *watchableStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
 	s := &watchableStore{
-		store:    NewStore(lg, b, le, cfg),
-		victimc:  make(chan struct{}, 1),
-		unsynced: newWatcherGroup(),
-		synced:   newWatcherGroup(),
-		stopc:    make(chan struct{}),
+		store:             NewStore(lg, b, le, cfg.StoreConfig),
+		victimc:           make(chan struct{}, 1),
+		unsynced:          newWatcherGroup(),
+		synced:            newWatcherGroup(),
+		stopc:             make(chan struct{}),
+		watchBatchMaxSize: cfg.WatchBatchMaxSize,
 	}
 	s.store.ReadView = &readView{s}
 	s.store.WriteView = &writeView{s}
@@ -360,7 +367,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 	evs = rangeEventsWithReuse(s.store.lg, s.store.b, evs, minRev, curRev+1)
 
 	victims := make(watcherBatch)
-	wb := newWatcherBatch(wg, evs)
+	wb := newWatcherBatch(wg, evs, s.watchBatchMaxSize)
 	for w := range wg.watchers {
 		if w.minRev < compactionRev {
 			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
@@ -483,7 +490,7 @@ func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []mvccpb.Event) {
 // watchers that watch on the key of the event.
 func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 	victim := make(watcherBatch)
-	for w, eb := range newWatcherBatch(&s.synced, evs) {
+	for w, eb := range newWatcherBatch(&s.synced, evs, s.watchBatchMaxSize) {
 		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {

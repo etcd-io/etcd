@@ -517,7 +517,7 @@ func TestHashKVHandler(t *testing.T) {
 	etcdSrv.cluster.SetID(types.ID(localClusterID), types.ID(localClusterID))
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
-	etcdSrv.kv = mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	etcdSrv.kv = mvcc.New(zap.NewNop(), be, &lease.FakeLessor{}, mvcc.WatchableStoreConfig{})
 	defer func() {
 		assert.NoError(t, etcdSrv.kv.Close())
 	}()

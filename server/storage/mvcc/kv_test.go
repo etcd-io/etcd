@@ -773,7 +773,7 @@ func TestKVSnapshot(t *testing.T) {
 
 func TestWatchableKVWatch(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()

@@ -664,7 +664,7 @@ func TestSnapshotDisk(t *testing.T) {
 		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
-	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.WatchableStoreConfig{})
 	defer func() {
 		assert.NoError(t, srv.kv.Close())
 	}()
@@ -715,7 +715,7 @@ func TestSnapshotMemory(t *testing.T) {
 		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
-	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.WatchableStoreConfig{})
 	defer func() {
 		assert.NoError(t, srv.kv.Close())
 	}()
@@ -793,7 +793,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
 
-	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.WatchableStoreConfig{})
 	s.be = be
 
 	s.start()
@@ -891,7 +891,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		authStore:         auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 1),
 	}
 
-	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.StoreConfig{})
+	s.kv = mvcc.New(lg, be, &lease.FakeLessor{}, mvcc.WatchableStoreConfig{})
 	s.be = be
 
 	s.start()

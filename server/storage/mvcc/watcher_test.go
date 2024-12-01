@@ -35,7 +35,7 @@ import (
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
@@ -85,7 +85,7 @@ func TestWatcherWatchID(t *testing.T) {
 
 func TestWatcherRequestsCustomID(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
@@ -122,7 +122,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 // and returns events with matching prefixes.
 func TestWatcherWatchPrefix(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
@@ -196,7 +196,7 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
@@ -216,7 +216,7 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 
 func TestWatchDeleteRange(t *testing.T) {
 	b, tmpPath := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer func() {
 		b.Close()
@@ -256,7 +256,7 @@ func TestWatchDeleteRange(t *testing.T) {
 // with given id inside watchStream.
 func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
@@ -293,7 +293,7 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 // report its correct progress.
 func TestWatcherRequestProgress(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer cleanup(s, b)
 
@@ -336,7 +336,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 
 func TestWatcherRequestProgressAll(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer cleanup(s, b)
 
@@ -375,7 +375,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 
 func TestWatcherWatchWithFilter(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	w := s.NewWatchStream()
