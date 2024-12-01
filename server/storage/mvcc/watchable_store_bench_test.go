@@ -78,7 +78,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, be)
 
 	k := []byte("testkey")
@@ -122,21 +122,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := NewStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
-
-	// manually create watchableStore instead of newWatchableStore
-	// because newWatchableStore periodically calls syncWatchersLoop
-	// method to sync watchers in unsynced map. We want to keep watchers
-	// in unsynced for this benchmark.
-	ws := &watchableStore{
-		store:    s,
-		unsynced: newWatcherGroup(),
-
-		// to make the test not crash from assigning to nil map.
-		// 'synced' doesn't get populated in this test.
-		synced: newWatcherGroup(),
-		stopc:  make(chan struct{}),
-	}
+	ws := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
 
 	defer cleanup(ws, be)
 
@@ -146,7 +132,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	// and force watchers to be in unsynced.
 	testKey := []byte("foo")
 	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
+	ws.Put(testKey, testValue, lease.NoLease)
 
 	w := ws.NewWatchStream()
 	defer w.Close()
@@ -178,7 +164,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
 
 	defer cleanup(s, be)
 
