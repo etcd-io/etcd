@@ -15,13 +15,13 @@
 package mvcc
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -126,77 +126,41 @@ func TestCancelUnsynced(t *testing.T) {
 func TestSyncWatchers(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
 	testValue := []byte("bar")
 	s.Put(testKey, testValue, lease.NoLease)
-
 	w := s.NewWatchStream()
 	defer w.Close()
-
-	// arbitrary number for watchers
 	watcherN := 100
-
 	for i := 0; i < watcherN; i++ {
-		// specify rev as 1 to keep watchers in unsynced
-		w.Watch(0, testKey, nil, 1)
+		_, err := w.Watch(0, testKey, nil, 1)
+		require.NoError(t, err)
 	}
 
-	// Before running s.syncWatchers() synced should be empty because we manually
-	// populate unsynced only
-	sws := s.synced.watcherSetByKey(string(testKey))
-	uws := s.unsynced.watcherSetByKey(string(testKey))
-
-	if len(sws) != 0 {
-		t.Fatalf("synced[string(testKey)] size = %d, want 0", len(sws))
-	}
-	// unsynced should not be empty because we manually populated unsynced only
-	if len(uws) != watcherN {
-		t.Errorf("unsynced size = %d, want %d", len(uws), watcherN)
-	}
-
-	// this should move all unsynced watchers to synced ones
+	assert.Empty(t, s.synced.watcherSetByKey(string(testKey)))
+	assert.Len(t, s.unsynced.watcherSetByKey(string(testKey)), watcherN)
 	s.syncWatchers()
+	assert.Len(t, s.synced.watcherSetByKey(string(testKey)), watcherN)
+	assert.Empty(t, s.unsynced.watcherSetByKey(string(testKey)))
 
-	sws = s.synced.watcherSetByKey(string(testKey))
-	uws = s.unsynced.watcherSetByKey(string(testKey))
-
-	// After running s.syncWatchers(), synced should not be empty because syncwatchers
-	// populates synced in this test case
-	if len(sws) != watcherN {
-		t.Errorf("synced[string(testKey)] size = %d, want %d", len(sws), watcherN)
-	}
-
-	// unsynced should be empty because syncwatchers is expected to move all watchers
-	// from unsynced to synced in this test case
-	if len(uws) != 0 {
-		t.Errorf("unsynced size = %d, want 0", len(uws))
-	}
-
-	for w := range sws {
-		if w.minRev != s.Rev()+1 {
-			t.Errorf("w.minRev = %d, want %d", w.minRev, s.Rev()+1)
-		}
-	}
-
-	if len(w.(*watchStream).ch) != watcherN {
-		t.Errorf("watched event size = %d, want %d", len(w.(*watchStream).ch), watcherN)
-	}
-
-	evs := (<-w.(*watchStream).ch).Events
-	if len(evs) != 1 {
-		t.Errorf("len(evs) got = %d, want = 1", len(evs))
-	}
-	if evs[0].Type != mvccpb.PUT {
-		t.Errorf("got = %v, want = %v", evs[0].Type, mvccpb.PUT)
-	}
-	if !bytes.Equal(evs[0].Kv.Key, testKey) {
-		t.Errorf("got = %s, want = %s", evs[0].Kv.Key, testKey)
-	}
-	if !bytes.Equal(evs[0].Kv.Value, testValue) {
-		t.Errorf("got = %s, want = %s", evs[0].Kv.Value, testValue)
+	require.Len(t, w.(*watchStream).ch, watcherN)
+	for i := 0; i < watcherN; i++ {
+		events := (<-w.(*watchStream).ch).Events
+		assert.Len(t, events, 1)
+		assert.Equal(t, []mvccpb.Event{
+			{
+				Type: mvccpb.PUT,
+				Kv: &mvccpb.KeyValue{
+					Key:            testKey,
+					CreateRevision: 2,
+					ModRevision:    2,
+					Version:        1,
+					Value:          testValue,
+				},
+			},
+		}, events)
 	}
 }
 
