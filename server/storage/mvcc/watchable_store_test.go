@@ -398,14 +398,14 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 func TestWatchBatchUnsynced(t *testing.T) {
 	tcs := []struct {
 		name                  string
-		batches               int
+		revisions             int
 		watchBatchMaxRevs     int
 		eventsPerRevision     int
 		expectRevisionBatches [][]int64
 	}{
 		{
-			name:              "3 batches, 4 revs per batch, 1 events per revision",
-			batches:           3,
+			name:              "3 revisions, 4 revs per batch, 1 events per revision",
+			revisions:         12,
 			watchBatchMaxRevs: 4,
 			eventsPerRevision: 1,
 			expectRevisionBatches: [][]int64{
@@ -415,8 +415,8 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			},
 		},
 		{
-			name:              "3 batches, 4 revs per batch, 3 events per revision",
-			batches:           3,
+			name:              "3 revisions, 4 revs per batch, 3 events per revision",
+			revisions:         12,
 			watchBatchMaxRevs: 4,
 			eventsPerRevision: 3,
 			expectRevisionBatches: [][]int64{
@@ -438,7 +438,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			watchBatchMaxRevs = tc.watchBatchMaxRevs
 
 			v := []byte("foo")
-			for i := 0; i < watchBatchMaxRevs*tc.batches; i++ {
+			for i := 0; i < tc.revisions; i++ {
 				txn := s.Write(traceutil.TODO())
 				for j := 0; j < tc.eventsPerRevision; j++ {
 					txn.Put(v, v, lease.NoLease)
@@ -450,11 +450,15 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			defer w.Close()
 
 			w.Watch(0, v, nil, 1)
-			revisionBatches := make([][]int64, tc.batches)
-			for i := 0; i < tc.batches; i++ {
+			var revisionBatches [][]int64
+			eventCount := 0
+			for eventCount < tc.revisions*tc.eventsPerRevision {
+				var revisions []int64
 				for _, e := range (<-w.Chan()).Events {
-					revisionBatches[i] = append(revisionBatches[i], e.Kv.ModRevision)
+					revisions = append(revisions, e.Kv.ModRevision)
+					eventCount++
 				}
+				revisionBatches = append(revisionBatches, revisions)
 			}
 			assert.Equal(t, tc.expectRevisionBatches, revisionBatches)
 
