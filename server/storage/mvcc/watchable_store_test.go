@@ -404,6 +404,17 @@ func TestWatchBatchUnsynced(t *testing.T) {
 		expectRevisionBatches [][]int64
 	}{
 		{
+			name:              "3 batches, 4 revs per batch, 1 events per revision",
+			batches:           3,
+			watchBatchMaxRevs: 4,
+			eventsPerRevision: 1,
+			expectRevisionBatches: [][]int64{
+				{2, 3, 4, 5},
+				{6, 7, 8, 9},
+				{10, 11, 12, 13},
+			},
+		},
+		{
 			name:              "3 batches, 4 revs per batch, 3 events per revision",
 			batches:           3,
 			watchBatchMaxRevs: 4,
