@@ -405,19 +405,32 @@ func TestWatchBatchUnsynced(t *testing.T) {
 	}()
 	batches := 3
 	watchBatchMaxRevs = 4
+	eventsPerRevision := 3
 
 	v := []byte("foo")
 	for i := 0; i < watchBatchMaxRevs*batches; i++ {
-		s.Put(v, v, lease.NoLease)
+		txn := s.Write(traceutil.TODO())
+		for j := 0; j < eventsPerRevision; j++ {
+			txn.Put(v, v, lease.NoLease)
+		}
+		txn.End()
 	}
 
 	w := s.NewWatchStream()
 	defer w.Close()
 
 	w.Watch(0, v, nil, 1)
+	revisionBatches := make([][]int64, batches)
 	for i := 0; i < batches; i++ {
-		assert.Len(t, (<-w.Chan()).Events, watchBatchMaxRevs)
+		for _, e := range (<-w.Chan()).Events {
+			revisionBatches[i] = append(revisionBatches[i], e.Kv.ModRevision)
+		}
 	}
+	assert.Equal(t, [][]int64{
+		{2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5},
+		{6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9},
+		{10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13},
+	}, revisionBatches)
 
 	s.store.revMu.Lock()
 	defer s.store.revMu.Unlock()
