@@ -484,12 +484,6 @@ func kvsToEvents(lg *zap.Logger, revs, vals [][]byte) (evs []mvccpb.Event) {
 func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 	victim := make(watcherBatch)
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
-		if eb.revs != 1 {
-			s.store.lg.Panic(
-				"unexpected multiple revisions in watch notification",
-				zap.Int("number-of-revisions", eb.revs),
-			)
-		}
 		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {

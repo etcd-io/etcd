@@ -676,30 +676,52 @@ func TestWatchBatchUnsynced(t *testing.T) {
 	tcs := []struct {
 		name                  string
 		revisions             int
-		watchBatchMaxRevs     int
+		eventSize             int
+		watchBatchMaxSize     int
 		eventsPerRevision     int
 		expectRevisionBatches [][]int64
 	}{
 		{
-			name:              "3 revisions, 4 revs per batch, 1 events per revision",
-			revisions:         12,
-			watchBatchMaxRevs: 4,
+			name:              "Fits into a single batch",
+			revisions:         10,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
 			eventsPerRevision: 1,
 			expectRevisionBatches: [][]int64{
-				{2, 3, 4, 5},
-				{6, 7, 8, 9},
-				{10, 11, 12, 13},
+				{2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 			},
 		},
 		{
-			name:              "3 revisions, 4 revs per batch, 3 events per revision",
-			revisions:         12,
-			watchBatchMaxRevs: 4,
+			name:              "Spills to second batch",
+			revisions:         15,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
+			eventsPerRevision: 1,
+			expectRevisionBatches: [][]int64{
+				{2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+				{12, 13, 14, 15, 16},
+			},
+		},
+		{
+			name:              "Spills to second batch, but maintains revision pairs",
+			revisions:         8,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
+			eventsPerRevision: 2,
+			expectRevisionBatches: [][]int64{
+				{2, 2, 3, 3, 4, 4, 5, 5, 6, 6},
+				{7, 7, 8, 8, 9, 9},
+			},
+		},
+		{
+			name:              "Spills to second batch, but maintains revision triples",
+			revisions:         6,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
 			eventsPerRevision: 3,
 			expectRevisionBatches: [][]int64{
 				{2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5},
-				{6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9},
-				{10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13},
+				{6, 6, 6, 7, 7, 7},
 			},
 		},
 	}
@@ -707,18 +729,20 @@ func TestWatchBatchUnsynced(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			b, _ := betesting.NewDefaultTmpBackend(t)
 			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-			oldMaxRevs := watchBatchMaxRevs
+			oldMaxRevs := watchBatchMaxSize
 			defer func() {
-				watchBatchMaxRevs = oldMaxRevs
+				watchBatchMaxSize = oldMaxRevs
 				cleanup(s, b)
 			}()
-			watchBatchMaxRevs = tc.watchBatchMaxRevs
+			watchBatchMaxSize = tc.watchBatchMaxSize
 
-			v := []byte("foo")
+			k := []byte("k")
+			eventProtoOverhead := 13
+			v := make([]byte, tc.eventSize-eventProtoOverhead)
 			for i := 0; i < tc.revisions; i++ {
 				txn := s.Write(traceutil.TODO())
 				for j := 0; j < tc.eventsPerRevision; j++ {
-					txn.Put(v, v, lease.NoLease)
+					txn.Put(k, v, lease.NoLease)
 				}
 				txn.End()
 			}
@@ -726,7 +750,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			w := s.NewWatchStream()
 			defer w.Close()
 
-			w.Watch(0, v, nil, 1)
+			w.Watch(0, k, nil, 1)
 			var revisionBatches [][]int64
 			eventCount := 0
 			for eventCount < tc.revisions*tc.eventsPerRevision {
@@ -734,6 +758,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 				for _, e := range (<-w.Chan()).Events {
 					revisions = append(revisions, e.Kv.ModRevision)
 					eventCount++
+					assert.Equal(t, tc.eventSize, e.Size())
 				}
 				revisionBatches = append(revisionBatches, revisions)
 			}

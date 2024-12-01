@@ -22,44 +22,43 @@ import (
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
-// watchBatchMaxRevs is the maximum distinct revisions that
+// watchBatchMaxSize is the maximum distinct revisions that
 // may be sent to an unsynced watcher at a time. Declared as
 // var instead of const for testing purposes.
-var watchBatchMaxRevs = 1000
+var watchBatchMaxSize = 2 * 1024 * 1024
 
 type eventBatch struct {
 	// evs is a batch of revision-ordered events
 	evs []mvccpb.Event
-	// revs is the minimum unique revisions observed for this batch
-	revs int
+	// evsSize is total size of events in the batch.
+	evsSize int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
 }
 
 func (eb *eventBatch) add(ev mvccpb.Event) {
-	if eb.revs > watchBatchMaxRevs {
-		// maxed out batch size
-		return
-	}
-
 	if len(eb.evs) == 0 {
-		// base case
-		eb.revs = 1
+		eb.evsSize = ev.Size()
 		eb.evs = append(eb.evs, ev)
 		return
 	}
-
-	// revision accounting
 	ebRev := eb.evs[len(eb.evs)-1].Kv.ModRevision
 	evRev := ev.Kv.ModRevision
-	if evRev > ebRev {
-		eb.revs++
-		if eb.revs > watchBatchMaxRevs {
-			eb.moreRev = evRev
-			return
-		}
+	if evRev == ebRev {
+		eb.evsSize += ev.Size()
+		eb.evs = append(eb.evs, ev)
+		return
+	}
+	if eb.moreRev != 0 {
+		return
 	}
 
+	size := ev.Size()
+	if eb.evsSize+size > watchBatchMaxSize {
+		eb.moreRev = ev.Kv.ModRevision
+		return
+	}
+	eb.evsSize += size
 	eb.evs = append(eb.evs, ev)
 }
 
