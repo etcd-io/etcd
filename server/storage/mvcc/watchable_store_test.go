@@ -416,16 +416,13 @@ func TestWatchBatchUnsynced(t *testing.T) {
 
 	w.Watch(0, v, nil, 1)
 	for i := 0; i < batches; i++ {
-		if resp := <-w.Chan(); len(resp.Events) != watchBatchMaxRevs {
-			t.Fatalf("len(events) = %d, want %d", len(resp.Events), watchBatchMaxRevs)
-		}
+		assert.Len(t, (<-w.Chan()).Events, watchBatchMaxRevs)
 	}
 
 	s.store.revMu.Lock()
 	defer s.store.revMu.Unlock()
-	if size := s.synced.size(); size != 1 {
-		t.Errorf("synced size = %d, want 1", size)
-	}
+	assert.Equal(t, 1, s.synced.size())
+	assert.Equal(t, 0, s.unsynced.size())
 }
 
 func TestNewMapwatcherToEventMap(t *testing.T) {
