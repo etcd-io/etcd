@@ -396,46 +396,63 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 
 // TestWatchBatchUnsynced tests batching on unsynced watchers
 func TestWatchBatchUnsynced(t *testing.T) {
-	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	oldMaxRevs := watchBatchMaxRevs
-	defer func() {
-		watchBatchMaxRevs = oldMaxRevs
-		cleanup(s, b)
-	}()
-	batches := 3
-	watchBatchMaxRevs = 4
-	eventsPerRevision := 3
-
-	v := []byte("foo")
-	for i := 0; i < watchBatchMaxRevs*batches; i++ {
-		txn := s.Write(traceutil.TODO())
-		for j := 0; j < eventsPerRevision; j++ {
-			txn.Put(v, v, lease.NoLease)
-		}
-		txn.End()
+	tcs := []struct {
+		name                  string
+		batches               int
+		watchBatchMaxRevs     int
+		eventsPerRevision     int
+		expectRevisionBatches [][]int64
+	}{
+		{
+			name:              "3 batches, 4 revs per batch, 3 events per revision",
+			batches:           3,
+			watchBatchMaxRevs: 4,
+			eventsPerRevision: 3,
+			expectRevisionBatches: [][]int64{
+				{2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5},
+				{6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9},
+				{10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13},
+			},
+		},
 	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			b, _ := betesting.NewDefaultTmpBackend(t)
+			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+			oldMaxRevs := watchBatchMaxRevs
+			defer func() {
+				watchBatchMaxRevs = oldMaxRevs
+				cleanup(s, b)
+			}()
+			watchBatchMaxRevs = tc.watchBatchMaxRevs
 
-	w := s.NewWatchStream()
-	defer w.Close()
+			v := []byte("foo")
+			for i := 0; i < watchBatchMaxRevs*tc.batches; i++ {
+				txn := s.Write(traceutil.TODO())
+				for j := 0; j < tc.eventsPerRevision; j++ {
+					txn.Put(v, v, lease.NoLease)
+				}
+				txn.End()
+			}
 
-	w.Watch(0, v, nil, 1)
-	revisionBatches := make([][]int64, batches)
-	for i := 0; i < batches; i++ {
-		for _, e := range (<-w.Chan()).Events {
-			revisionBatches[i] = append(revisionBatches[i], e.Kv.ModRevision)
-		}
+			w := s.NewWatchStream()
+			defer w.Close()
+
+			w.Watch(0, v, nil, 1)
+			revisionBatches := make([][]int64, tc.batches)
+			for i := 0; i < tc.batches; i++ {
+				for _, e := range (<-w.Chan()).Events {
+					revisionBatches[i] = append(revisionBatches[i], e.Kv.ModRevision)
+				}
+			}
+			assert.Equal(t, tc.expectRevisionBatches, revisionBatches)
+
+			s.store.revMu.Lock()
+			defer s.store.revMu.Unlock()
+			assert.Equal(t, 1, s.synced.size())
+			assert.Equal(t, 0, s.unsynced.size())
+		})
 	}
-	assert.Equal(t, [][]int64{
-		{2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5},
-		{6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9},
-		{10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13},
-	}, revisionBatches)
-
-	s.store.revMu.Lock()
-	defer s.store.revMu.Unlock()
-	assert.Equal(t, 1, s.synced.size())
-	assert.Equal(t, 0, s.unsynced.size())
 }
 
 func TestNewMapwatcherToEventMap(t *testing.T) {
