@@ -1197,7 +1197,7 @@ func (s *EtcdServer) ForceSnapshot() {
 }
 
 func (s *EtcdServer) snapshotIfNeededAndCompactRaftLog(ep *etcdProgress) {
-	//TODO: Remove disk snapshot in v3.7
+	// TODO: Remove disk snapshot in v3.7
 	shouldSnapshotToDisk := s.shouldSnapshotToDisk(ep)
 	shouldSnapshotToMemory := s.shouldSnapshotToMemory(ep)
 	if !shouldSnapshotToDisk && !shouldSnapshotToMemory {
