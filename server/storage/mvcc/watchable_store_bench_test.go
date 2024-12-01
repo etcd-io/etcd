@@ -27,7 +27,7 @@ import (
 
 func BenchmarkWatchableStorePut(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, be)
 
 	// arbitrary number of bytes
@@ -47,7 +47,7 @@ func BenchmarkWatchableStorePut(b *testing.B) {
 // some synchronization operations, such as mutex locking.
 func BenchmarkWatchableStoreTxnPut(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, be)
 
 	// arbitrary number of bytes
@@ -78,7 +78,7 @@ func BenchmarkWatchableStoreWatchPutUnsync(b *testing.B) {
 
 func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, be)
 
 	k := []byte("testkey")
@@ -122,7 +122,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 // we should put to simulate the real-world use cases.
 func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	ws := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	ws := newWatchableStore(zaptest.NewLogger(b), be, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer cleanup(ws, be)
 
@@ -164,7 +164,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 
 func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	be, _ := betesting.NewDefaultTmpBackend(b)
-	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(b), be, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer cleanup(s, be)
 
