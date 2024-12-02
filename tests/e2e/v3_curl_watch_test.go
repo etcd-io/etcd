@@ -32,24 +32,17 @@ func TestCurlV3Watch(t *testing.T) {
 func testCurlV3Watch(cx ctlCtx) {
 	// store "bar" into "foo"
 	putreq, err := json.Marshal(&pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	// watch for first update to "foo"
 	wcr := &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 1}
 	wreq, err := json.Marshal(wcr)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	// marshaling the grpc to json gives:
 	// "{"RequestUnion":{"CreateRequest":{"key":"Zm9v","start_revision":1}}}"
 	// but the gprc-gateway expects a different format..
 	wstr := `{"create_request" : ` + string(wreq) + "}"
 
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/put", Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}); err != nil {
-		cx.t.Fatalf("failed testCurlV3Watch put with curl (%v)", err)
-	}
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/put", Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}), "failed testCurlV3Watch put with curl")
 	// expects "bar", timeout after 2 seconds since stream waits forever
-	err = e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/watch", Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2})
-	require.ErrorContains(cx.t, err, "unexpected exit code")
+	require.ErrorContains(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/watch", Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2}), "unexpected exit code")
 }

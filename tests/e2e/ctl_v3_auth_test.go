@@ -80,8 +80,7 @@ func authSetupTestUser(cx ctlCtx) {
 }
 
 func authTestMemberUpdate(cx ctlCtx) {
-	err := authEnable(cx)
-	require.NoError(cx.t, err)
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
@@ -104,101 +103,77 @@ func authTestMemberUpdate(cx ctlCtx) {
 }
 
 func authTestCertCN(cx ctlCtx) {
-	err := authEnable(cx)
-	require.NoError(cx.t, err)
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
-	err = ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""})
-	require.NoError(cx.t, err)
-	err = e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"})
-	require.NoError(cx.t, err)
-	err = ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil)
-	require.NoError(cx.t, err)
+	require.NoError(cx.t, ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}))
+	require.NoError(cx.t, e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role created"}))
+	require.NoError(cx.t, ctlV3User(cx, []string{"grant-role", "example.com", "test-role"}, "Role test-role is granted to user example.com", nil))
 
 	// grant a new key
-	err = ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", "", false})
-	require.NoError(cx.t, err)
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "hoo", "", false}))
 
 	// try a granted key
 	cx.user, cx.pass = "", ""
-	if err = ctlV3Put(cx, "hoo", "bar", ""); err != nil {
+	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
 		cx.t.Error(err)
 	}
 
 	// try a non-granted key
 	cx.user, cx.pass = "", ""
-	err = ctlV3PutFailPerm(cx, "baz", "bar")
-	require.ErrorContains(cx.t, err, "permission denied")
+	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "baz", "bar"), "permission denied")
 }
 
 func authTestFromKeyPerm(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
 	// grant keys after z to test-user
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "z", "\x00", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "z", "\x00", false}))
 
 	// try the granted open ended permission
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
-		if err := ctlV3Put(cx, key, "val", ""); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3Put(cx, key, "val", ""))
 	}
 	largeKey := ""
 	for i := 0; i < 10; i++ {
 		largeKey += "\xff"
-		if err := ctlV3Put(cx, largeKey, "val", ""); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3Put(cx, largeKey, "val", ""))
 	}
 
 	// try a non granted key
-	err := ctlV3PutFailPerm(cx, "x", "baz")
-	require.ErrorContains(cx.t, err, "permission denied")
+	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "x", "baz"), "permission denied")
 
 	// revoke the open ended permission
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleRevokePermission(cx, "test-role", "z", "", true); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleRevokePermission(cx, "test-role", "z", "", true))
 
 	// try the revoked open ended permission
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
-		err := ctlV3PutFailPerm(cx, key, "val")
-		require.ErrorContains(cx.t, err, "permission denied")
+		require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, key, "val"), "permission denied")
 	}
 
 	// grant the entire keys
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "\x00", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "", "\x00", false}))
 
 	// try keys, of course it must be allowed because test-role has a permission of the entire keys
 	cx.user, cx.pass = "test-user", "pass"
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("z%d", i)
-		if err := ctlV3Put(cx, key, "val", ""); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3Put(cx, key, "val", ""))
 	}
 
 	// revoke the entire keys
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleRevokePermission(cx, "test-role", "", "", true); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleRevokePermission(cx, "test-role", "", "", true))
 
 	// try the revoked entire key permission
 	cx.user, cx.pass = "test-user", "pass"
@@ -210,17 +185,13 @@ func authTestFromKeyPerm(cx ctlCtx) {
 }
 
 func authTestWatch(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
 	// grant a key range
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "key", "key4", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "key", "key4", false}))
 
 	tests := []struct {
 		puts []kv
@@ -287,9 +258,7 @@ func authTestWatch(cx ctlCtx) {
 func authTestSnapshot(cx ctlCtx) {
 	maintenanceInitKeys(cx)
 
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
@@ -299,20 +268,14 @@ func authTestSnapshot(cx ctlCtx) {
 
 	// ordinary user cannot save a snapshot
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3SnapshotSave(cx, fpath); err == nil {
-		cx.t.Fatal("ordinary user should not be able to save a snapshot")
-	}
+	require.Errorf(cx.t, ctlV3SnapshotSave(cx, fpath), "ordinary user should not be able to save a snapshot")
 
 	// root can save a snapshot
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3SnapshotSave(cx, fpath), "snapshotTest ctlV3SnapshotSave error")
 
 	st, err := getSnapshotStatus(cx, fpath)
-	if err != nil {
-		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "snapshotTest getSnapshotStatus error")
 	if st.Revision != 4 {
 		cx.t.Fatalf("expected 4, got %d", st.Revision)
 	}
@@ -322,28 +285,20 @@ func authTestSnapshot(cx ctlCtx) {
 }
 
 func authTestEndpointHealth(cx ctlCtx) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
 
 	// health checking with an ordinary user "succeeds" since permission denial goes through consensus
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
 
 	// succeed if permissions granted for ordinary user
 	cx.user, cx.pass = "root", "root"
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}))
 	cx.user, cx.pass = "test-user", "pass"
 	if err := ctlV3EndpointHealth(cx); err != nil {
 		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
@@ -351,59 +306,39 @@ func authTestEndpointHealth(cx ctlCtx) {
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {
-	if err := authEnable(cx); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
 	authSetupTestUser(cx)
 
 	if noPassword {
-		if err := ctlV3User(cx, []string{"add", "example.com", "--no-password"}, "User example.com created", []string{""}); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3User(cx, []string{"add", "example.com", "--no-password"}, "User example.com created", []string{""}))
 	} else {
-		if err := ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}); err != nil {
-			cx.t.Fatal(err)
-		}
+		require.NoError(cx.t, ctlV3User(cx, []string{"add", "example.com", "--interactive=false"}, "User example.com created", []string{""}))
 	}
-	if err := e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role-cn created"}); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err := ctlV3User(cx, []string{"grant-role", "example.com", "test-role-cn"}, "Role test-role-cn is granted to user example.com", nil); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, e2e.SpawnWithExpectWithEnv(append(cx.PrefixArgs(), "role", "add", "test-role-cn"), cx.envMap, expect.ExpectedResponse{Value: "Role test-role-cn created"}))
+	require.NoError(cx.t, ctlV3User(cx, []string{"grant-role", "example.com", "test-role-cn"}, "Role test-role-cn is granted to user example.com", nil))
 
 	// grant a new key for CN based user
-	if err := ctlV3RoleGrantPermission(cx, "test-role-cn", grantingPerm{true, true, "hoo", "", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role-cn", grantingPerm{true, true, "hoo", "", false}))
 
 	// grant a new key for username based user
-	if err := ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "bar", "", false}); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "bar", "", false}))
 
 	// try a granted key for CN based user
 	cx.user, cx.pass = "", ""
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Error(err)
-	}
+	require.NoError(cx.t, ctlV3Put(cx, "hoo", "bar", ""))
 
 	// try a granted key for username based user
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3Put(cx, "bar", "bar", ""); err != nil {
-		cx.t.Error(err)
-	}
+	require.NoError(cx.t, ctlV3Put(cx, "bar", "bar", ""))
 
 	// try a non-granted key for both of them
 	cx.user, cx.pass = "", ""
-	err := ctlV3PutFailPerm(cx, "baz", "bar")
-	require.ErrorContains(cx.t, err, "permission denied")
+	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "baz", "bar"), "permission denied")
 
 	cx.user, cx.pass = "test-user", "pass"
-	err = ctlV3PutFailPerm(cx, "baz", "bar")
-	require.ErrorContains(cx.t, err, "permission denied")
+	require.ErrorContains(cx.t, ctlV3PutFailPerm(cx, "baz", "bar"), "permission denied")
 }
 
 func authTestCertCNAndUsername(cx ctlCtx) {

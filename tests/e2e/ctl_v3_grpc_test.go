@@ -135,10 +135,7 @@ func TestAuthority(t *testing.T) {
 				client, err := e2e.NewEtcdctl(cfg.Client, endpoints)
 				require.NoError(t, err)
 				for i := 0; i < 100; i++ {
-					err = client.Put(ctx, "foo", "bar", config.PutOptions{})
-					if err != nil {
-						t.Fatal(err)
-					}
+					require.NoError(t, client.Put(ctx, "foo", "bar", config.PutOptions{}))
 				}
 
 				testutils.ExecuteWithTimeout(t, 5*time.Second, func() {
@@ -167,9 +164,7 @@ func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.Etcd
 		line = strings.TrimSuffix(line, "\r")
 
 		u, err := url.Parse(clus.Procs[i].EndpointsGRPC()[0])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		expectAuthority := strings.ReplaceAll(expectAuthorityPattern, "${MEMBER_PORT}", u.Port())
 		expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAuthority)
 		assert.Truef(t, strings.HasSuffix(line, expectLine), "Got %q expected suffix %q", line, expectLine)

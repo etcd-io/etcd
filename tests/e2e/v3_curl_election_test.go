@@ -40,33 +40,23 @@ func testCurlV3Campaign(cx ctlCtx) {
 		Name:  []byte("/election-prefix"),
 		Value: []byte("v1"),
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	cargs := e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[rand.Intn(cx.epc.Cfg.ClusterSize)], "POST", e2e.CURLReq{
 		Endpoint: "/v3/election/campaign",
 		Value:    string(cdata),
 	})
 	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, expect.ExpectedResponse{Value: `"leader":{"name":"`})
-	if err != nil {
-		cx.t.Fatalf("failed post campaign request (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "failed post campaign request")
 	if len(lines) != 1 {
 		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
 	}
 
 	var cresp campaignResponse
-	if err = json.Unmarshal([]byte(lines[0]), &cresp); err != nil {
-		cx.t.Fatalf("failed to unmarshal campaign response %v", err)
-	}
+	require.NoErrorf(cx.t, json.Unmarshal([]byte(lines[0]), &cresp), "failed to unmarshal campaign response")
 	ndata, err := base64.StdEncoding.DecodeString(cresp.Leader.Name)
-	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
-	}
+	require.NoErrorf(cx.t, err, "failed to decode leader key")
 	kdata, err := base64.StdEncoding.DecodeString(cresp.Leader.Key)
-	if err != nil {
-		cx.t.Fatalf("failed to decode leader key %v", err)
-	}
+	require.NoErrorf(cx.t, err, "failed to decode leader key")
 
 	// observe
 	observeReq, err := json.Marshal(&epb.LeaderRequest{
@@ -85,8 +75,7 @@ func testCurlV3Campaign(cx ctlCtx) {
 	proc.ExpectWithContext(context.TODO(), expect.ExpectedResponse{
 		Value: fmt.Sprintf(`"key":"%s"`, cresp.Leader.Key),
 	})
-	err = proc.Stop()
-	require.NoError(cx.t, err)
+	require.NoError(cx.t, proc.Stop())
 
 	// proclaim
 	rev, _ := strconv.ParseInt(cresp.Leader.Rev, 10, 64)
@@ -100,16 +89,12 @@ func testCurlV3Campaign(cx ctlCtx) {
 		},
 		Value: []byte("v2"),
 	})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoError(cx.t, err)
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/proclaim",
 		Value:    string(pdata),
 		Expected: expect.ExpectedResponse{Value: `"revision":`},
-	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%v)", err)
-	}
+	}), "failed post proclaim request")
 }
 
 func TestCurlV3ProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
@@ -118,16 +103,12 @@ func TestCurlV3ProclaimMissiongLeaderKeyNoTLS(t *testing.T) {
 
 func testCurlV3ProclaimMissiongLeaderKey(cx ctlCtx) {
 	pdata, err := json.Marshal(&epb.ProclaimRequest{Value: []byte("v2")})
-	if err != nil {
-		cx.t.Fatal(err)
-	}
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoError(cx.t, err)
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/proclaim",
 		Value:    string(pdata),
 		Expected: expect.ExpectedResponse{Value: `"message":"\"leader\" field must be provided"`},
-	}); err != nil {
-		cx.t.Fatalf("failed post proclaim request (%v)", err)
-	}
+	}), "failed post proclaim request")
 }
 
 func TestCurlV3ResignMissiongLeaderKeyNoTLS(t *testing.T) {
@@ -135,13 +116,11 @@ func TestCurlV3ResignMissiongLeaderKeyNoTLS(t *testing.T) {
 }
 
 func testCurlV3ResignMissiongLeaderKey(cx ctlCtx) {
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/resign",
 		Value:    `{}`,
 		Expected: expect.ExpectedResponse{Value: `"message":"\"leader\" field must be provided"`},
-	}); err != nil {
-		cx.t.Fatalf("failed post resign request (%v)", err)
-	}
+	}), "failed post resign request")
 }
 
 func TestCurlV3ElectionLeader(t *testing.T) {
@@ -149,13 +128,11 @@ func TestCurlV3ElectionLeader(t *testing.T) {
 }
 
 func testCurlV3ElectionLeader(cx ctlCtx) {
-	if err := e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/election/leader",
 		Value:    `{"name": "aGVsbG8="}`, // base64 encoded string "hello"
 		Expected: expect.ExpectedResponse{Value: `election: no leader`},
-	}); err != nil {
-		cx.t.Fatalf("testCurlV3ElectionLeader failed to get leader (%v)", err)
-	}
+	}), "testCurlV3ElectionLeader failed to get leader")
 }
 
 // to manually decode; JSON marshals integer fields with

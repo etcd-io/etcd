@@ -39,15 +39,9 @@ func TestEtcdExampleConfig(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
-		t.Fatal(err)
-	}
-	if err = proc.Stop(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines))
+	require.NoError(t, proc.Stop())
 }
 
 func TestEtcdMultiPeer(t *testing.T) {
@@ -81,9 +75,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 			"--initial-cluster", ic,
 		}
 		p, err := e2e.SpawnCmd(args, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		procs[i] = p
 	}
 
@@ -109,15 +101,9 @@ func TestEtcdUnixPeers(t *testing.T) {
 		}, nil,
 	)
 	defer os.Remove("etcd.unix:1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines); err != nil {
-		t.Fatal(err)
-	}
-	if err = proc.Stop(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines))
+	require.NoError(t, proc.Stop())
 }
 
 // TestEtcdListenMetricsURLsWithMissingClientTLSInfo checks that the HTTPs listen metrics URL
@@ -158,19 +144,13 @@ func TestEtcdListenMetricsURLsWithMissingClientTLSInfo(t *testing.T) {
 	}
 
 	proc, err := e2e.SpawnCmd(commonArgs, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() {
-		if err := proc.Stop(); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, proc.Stop())
 		_ = proc.Close()
 	}()
 
-	if err := e2e.WaitReadyExpectProc(context.TODO(), proc, []string{embed.ErrMissingClientTLSInfoForMetricsURL.Error()}); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{embed.ErrMissingClientTLSInfoForMetricsURL.Error()}))
 }
 
 // TestEtcdPeerCNAuth checks that the inter peer auth based on CN of cert is working correctly.
@@ -233,9 +213,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		commonArgs = append(commonArgs, args...)
 
 		p, err := e2e.SpawnCmd(commonArgs, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		procs[i] = p
 	}
 
@@ -322,9 +300,7 @@ func TestEtcdPeerMultiCNAuth(t *testing.T) {
 
 		commonArgs = append(commonArgs, args...)
 		p, err := e2e.SpawnCmd(commonArgs, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		procs[i] = p
 	}
 
@@ -397,9 +373,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		commonArgs = append(commonArgs, args...)
 
 		p, err := e2e.SpawnCmd(commonArgs, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		procs[i] = p
 	}
 
@@ -505,9 +479,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 		commonArgs = append(commonArgs, args...)
 
 		p, err := e2e.SpawnCmd(commonArgs, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		procs[i] = p
 	}
 
@@ -554,9 +526,7 @@ func TestGrpcproxyAndCommonName(t *testing.T) {
 		}
 	}()
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
@@ -589,12 +559,8 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
 			pw, err := e2e.SpawnCmd(test.args, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err = pw.Stop(); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+			require.NoError(t, pw.Stop())
 		})
 	}
 }
@@ -603,15 +569,9 @@ func TestBootstrapDefragFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}); err != nil {
-		t.Fatal(err)
-	}
-	if err = proc.Stop(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}))
+	require.NoError(t, proc.Stop())
 
 	// wait for the process to exit, otherwise test will have leaked goroutine
 	if err := proc.Close(); err != nil {

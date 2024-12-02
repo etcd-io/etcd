@@ -42,13 +42,11 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	addMemberReq, err := json.Marshal(&pb.MemberAddRequest{PeerURLs: []string{peerURL}, IsLearner: true})
 	require.NoError(cx.t, err)
 
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/cluster/member/add",
 		Value:    string(addMemberReq),
 		Expected: expect.ExpectedResponse{Value: peerURL},
-	}); err != nil {
-		cx.t.Fatalf("testCurlV3ClusterOperations failed to add member (%v)", err)
-	}
+	}), "testCurlV3ClusterOperations failed to add member")
 
 	// list members and get the new member's ID
 	cx.t.Log("Listing members after adding a member")
@@ -59,8 +57,7 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	var newMemberIDStr string
 	for _, m := range members {
 		mObj := m.(map[string]any)
-		pURLs, _ := mObj["peerURLs"]
-		pURL := pURLs.([]any)[0].(string)
+		pURL := mObj["peerURLs"].([]any)[0].(string)
 		if pURL == peerURL {
 			newMemberIDStr = mObj["ID"].(string)
 			break
@@ -76,33 +73,27 @@ func testCurlV3ClusterOperations(cx ctlCtx) {
 	updateMemberReq, err := json.Marshal(&pb.MemberUpdateRequest{ID: newMemberID, PeerURLs: []string{updatedPeerURL}})
 	require.NoError(cx.t, err)
 
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/cluster/member/update",
 		Value:    string(updateMemberReq),
 		Expected: expect.ExpectedResponse{Value: updatedPeerURL},
-	}); err != nil {
-		cx.t.Fatalf("testCurlV3ClusterOperations failed to update member (%v)", err)
-	}
+	}), "testCurlV3ClusterOperations failed to update member")
 
 	// promote member
 	cx.t.Logf("Promoting the member %d", newMemberID)
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/cluster/member/promote",
 		Value:    fmt.Sprintf(`{"ID": %d}`, newMemberID),
 		Expected: expect.ExpectedResponse{Value: "etcdserver: can only promote a learner member which is in sync with leader"},
-	}); err != nil {
-		cx.t.Fatalf("testCurlV3ClusterOperations failed to promote member (%v)", err)
-	}
+	}), "testCurlV3ClusterOperations failed to promote member")
 
 	// remove member
 	cx.t.Logf("Removing the member %d", newMemberID)
-	if err = e2e.CURLPost(cx.epc, e2e.CURLReq{
+	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{
 		Endpoint: "/v3/cluster/member/remove",
 		Value:    fmt.Sprintf(`{"ID": %d}`, newMemberID),
 		Expected: expect.ExpectedResponse{Value: "members"},
-	}); err != nil {
-		cx.t.Fatalf("testCurlV3ClusterOperations failed to remove member (%v)", err)
-	}
+	}), "testCurlV3ClusterOperations failed to remove member")
 
 	// list members again after deleting a member
 	cx.t.Log("Listing members again after deleting a member")

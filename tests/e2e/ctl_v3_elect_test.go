@@ -35,9 +35,7 @@ func testElect(cx ctlCtx) {
 	name := "a"
 
 	holder, ch, err := ctlV3Elect(cx, name, "p1", false)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 
 	l1 := ""
 	select {
@@ -51,9 +49,7 @@ func testElect(cx ctlCtx) {
 
 	// blocked process that won't win the election
 	blocked, ch, err := ctlV3Elect(cx, name, "p2", true)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-ch:
@@ -62,9 +58,7 @@ func testElect(cx ctlCtx) {
 
 	// overlap with a blocker that will win the election
 	blockAcquire, ch, err := ctlV3Elect(cx, name, "p2", false)
-	if err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, err)
 	defer func(blockAcquire *expect.ExpectProcess) {
 		err = blockAcquire.Stop()
 		require.NoError(cx.t, err)
@@ -78,9 +72,7 @@ func testElect(cx ctlCtx) {
 	}
 
 	// kill blocked process with clean shutdown
-	if err = blocked.Signal(os.Interrupt); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, blocked.Signal(os.Interrupt))
 	err = e2e.CloseWithTimeout(blocked, time.Second)
 	if err != nil {
 		// due to being blocked, this can potentially get killed and thus exit non-zero sometimes
@@ -88,12 +80,8 @@ func testElect(cx ctlCtx) {
 	}
 
 	// kill the holder with clean shutdown
-	if err = holder.Signal(os.Interrupt); err != nil {
-		cx.t.Fatal(err)
-	}
-	if err = e2e.CloseWithTimeout(holder, time.Second); err != nil {
-		cx.t.Fatal(err)
-	}
+	require.NoError(cx.t, holder.Signal(os.Interrupt))
+	require.NoError(cx.t, e2e.CloseWithTimeout(holder, time.Second))
 
 	// blockAcquire should win the election
 	select {

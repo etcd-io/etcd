@@ -365,9 +365,7 @@ func triggerNoSpaceAlarm(ctx context.Context, t *testing.T, clus *e2e.EtcdProces
 	etcdctl := clus.Etcdctl()
 	for {
 		if err := etcdctl.Put(ctx, "foo", buf, config.PutOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "etcdserver: mvcc: database space exceeded") {
-				t.Fatal(err)
-			}
+			require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 			break
 		}
 	}
