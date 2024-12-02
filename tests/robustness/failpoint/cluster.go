@@ -29,7 +29,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
@@ -42,11 +41,13 @@ type memberReplace struct{}
 func (f memberReplace) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
 	memberID := uint64(rand.Int() % len(clus.Procs))
 	member := clus.Procs[memberID]
-	var endpoints []string
-	for i := 1; i < len(clus.Procs); i++ {
-		endpoints = append(endpoints, clus.Procs[(int(memberID)+i)%len(clus.Procs)].EndpointsGRPC()...)
-	}
-	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	endpoints := []string{clus.Procs[(int(memberID)+1)%len(clus.Procs)].EndpointsGRPC()[0]}
+	cc, err := clientv3.New(clientv3.Config{
+		Endpoints:            endpoints,
+		Logger:               zap.NewNop(),
+		DialKeepAliveTime:    10 * time.Second,
+		DialKeepAliveTimeout: 100 * time.Millisecond,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -137,10 +138,20 @@ func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, member e2e
 	return config.ClusterSize > 1 && (config.Version == e2e.QuorumLastVersion || member.Config().ExecPath == e2e.BinPath.Etcd)
 }
 
-func getID(ctx context.Context, cc clientv3.Cluster, name string) (id uint64, found bool, err error) {
+func getID(ctx context.Context, cc *clientv3.Client, name string) (id uint64, found bool, err error) {
+	// Ensure linearized MemberList by first making a linearized Get request from the same member.
+	// This is required for v3.4 support as it doesn't support linearized MemberList https://github.com/etcd-io/etcd/issues/18929
+	// TODO: Remove preceding Get when v3.4 is no longer supported.
+	getResp, err := cc.Get(ctx, "linearized-list-before-member-list")
+	if err != nil {
+		return 0, false, err
+	}
 	resp, err := cc.MemberList(ctx)
 	if err != nil {
 		return 0, false, err
+	}
+	if getResp.Header.MemberId != resp.Header.MemberId {
+		return 0, false, fmt.Errorf("expected Get and MemberList to be sent to the same member, got: %d and %d", getResp.Header.MemberId, resp.Header.MemberId)
 	}
 	for _, member := range resp.Members {
 		if name == member.Name {
