@@ -34,6 +34,10 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 )
 
+const (
+	grpcOverheadBytes = 512 * 1024
+)
+
 // ServerConfig holds the configuration of etcd as taken from the command line or discovery.
 type ServerConfig struct {
 	Name string
@@ -358,3 +362,7 @@ func (c *ServerConfig) BootstrapTimeoutEffective() time.Duration {
 }
 
 func (c *ServerConfig) BackendPath() string { return datadir.ToBackendFileName(c.DataDir) }
+
+func (c *ServerConfig) MaxRequestBytesWithOverhead() uint {
+	return c.MaxRequestBytes + grpcOverheadBytes
+}
