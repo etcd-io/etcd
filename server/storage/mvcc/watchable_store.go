@@ -70,12 +70,18 @@ type watchableStore struct {
 	wg    sync.WaitGroup
 }
 
+var _ WatchableKV = (*watchableStore)(nil)
+
 // cancelFunc updates unsynced and synced maps when running
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) WatchableKV {
-	return newWatchableStore(lg, b, le, cfg)
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+	s := newWatchableStore(lg, b, le, cfg)
+	s.wg.Add(2)
+	go s.syncWatchersLoop()
+	go s.syncVictimsLoop()
+	return s
 }
 
 func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
@@ -95,9 +101,6 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
 	}
-	s.wg.Add(2)
-	go s.syncWatchersLoop()
-	go s.syncVictimsLoop()
 	return s
 }
 
