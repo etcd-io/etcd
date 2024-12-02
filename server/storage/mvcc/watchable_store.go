@@ -15,12 +15,14 @@
 package mvcc
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -371,6 +373,17 @@ func (s *watchableStore) syncWatchers() int {
 	// We can only unlock after Unmarshal, which will do deep copy.
 	// Otherwise we will trigger SIGSEGV during boltdb re-mmap.
 	tx.RUnlock()
+
+	verify.Verify(func() {
+		if len(evs) == 0 {
+			return
+		}
+		nCount := len(evs)
+		if evs[0].Kv.ModRevision < minRev || evs[nCount-1].Kv.ModRevision > curRev {
+			panic(fmt.Errorf("watch events are out of range, expected: [%d, %d], but got evs[0].Kv.ModRevision: %d, evs[%d].Kv.ModRevision: %d",
+				minRev, curRev, evs[0].Kv.ModRevision, nCount-1, evs[nCount-1].Kv.ModRevision))
+		}
+	})
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
