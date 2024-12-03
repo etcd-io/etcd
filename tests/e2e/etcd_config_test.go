@@ -549,5 +549,74 @@ func TestEtcdTLSVersion(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, e2e.WaitReadyExpectProc(proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
 	assert.NoError(t, proc.Stop())
+}
 
+// TestEtcdDeprecatedFlags checks that etcd will print warning messages if deprecated flags are set.
+func TestEtcdDeprecatedFlags(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	commonArgs := []string{
+		e2e.BinDir + "/etcd",
+		"--name", "e1",
+	}
+
+	deprecatedWarningMessage := "--%s is deprecated in 3.5 and will be decommissioned in 3.6."
+
+	testCases := []struct {
+		name        string
+		args        []string
+		expectedMsg string
+	}{
+		{
+			name:        "enable-v2",
+			args:        append(commonArgs, "--enable-v2"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "enable-v2"),
+		},
+		{
+			name:        "experimental-enable-v2v3",
+			args:        append(commonArgs, "--experimental-enable-v2v3", "v3prefix"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "experimental-enable-v2v3"),
+		},
+		{
+			name:        "proxy",
+			args:        append(commonArgs, "--proxy", "off"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy"),
+		},
+		{
+			name:        "proxy-failure-wait",
+			args:        append(commonArgs, "--proxy-failure-wait", "10"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy-failure-wait"),
+		},
+		{
+			name:        "proxy-refresh-interval",
+			args:        append(commonArgs, "--proxy-refresh-interval", "10"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy-refresh-interval"),
+		},
+		{
+			name:        "proxy-dial-timeout",
+			args:        append(commonArgs, "--proxy-dial-timeout", "10"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy-dial-timeout"),
+		},
+		{
+			name:        "proxy-write-timeout",
+			args:        append(commonArgs, "--proxy-write-timeout", "10"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy-write-timeout"),
+		},
+		{
+			name:        "proxy-read-timeout",
+			args:        append(commonArgs, "--proxy-read-timeout", "10"),
+			expectedMsg: fmt.Sprintf(deprecatedWarningMessage, "proxy-read-timeout"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			proc, err := e2e.SpawnCmd(
+				tc.args, nil,
+			)
+			require.NoError(t, err)
+			require.NoError(t, e2e.WaitReadyExpectProc(proc, []string{tc.expectedMsg}))
+			require.NoError(t, proc.Stop())
+		})
+	}
 }

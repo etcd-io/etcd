@@ -237,7 +237,7 @@ Experimental distributed tracing:
   --experimental-distributed-tracing-sampling-rate '0'
     Number of samples to collect per million spans for distributed tracing. Disabled by default.
 
-v2 Proxy (to be deprecated in v3.6):
+v2 Proxy (Deprecated and to be decommissioned in v3.6):
   --proxy 'off'
     Proxy mode setting ('off', 'readonly' or 'on').
   --proxy-failure-wait 5000

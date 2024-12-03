@@ -36,6 +36,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+const deprecatedWarningMessage = "--%s is deprecated in 3.5 and will be decommissioned in 3.6."
+
 var (
 	proxyFlagOff      = "off"
 	proxyFlagReadonly = "readonly"
@@ -61,6 +63,17 @@ var (
 		// for coverage testing
 		"test.coverprofile",
 		"test.outputdir",
+	}
+
+	deprecatedFlags = map[string]struct{}{
+		"enable-v2":                struct{}{},
+		"experimental-enable-v2v3": struct{}{},
+		"proxy":                    struct{}{},
+		"proxy-failure-wait":       struct{}{},
+		"proxy-refresh-interval":   struct{}{},
+		"proxy-dial-timeout":       struct{}{},
+		"proxy-write-timeout":      struct{}{},
+		"proxy-read-timeout":       struct{}{},
 	}
 )
 
@@ -207,17 +220,17 @@ func newConfig() *config {
 
 	fs.BoolVar(&cfg.ec.PreVote, "pre-vote", cfg.ec.PreVote, "Enable to run an additional Raft election phase.")
 
-	fs.BoolVar(&cfg.ec.EnableV2, "enable-v2", cfg.ec.EnableV2, "Accept etcd V2 client requests. Deprecated in v3.5. Will be decommission in v3.6.")
-	fs.StringVar(&cfg.ec.ExperimentalEnableV2V3, "experimental-enable-v2v3", cfg.ec.ExperimentalEnableV2V3, "v3 prefix for serving emulated v2 state. Deprecated in 3.5. Will be decomissioned in 3.6.")
+	fs.BoolVar(&cfg.ec.EnableV2, "enable-v2", cfg.ec.EnableV2, "Accept etcd V2 client requests. Deprecated in v3.5 and will be decommissioned in v3.6.")
+	fs.StringVar(&cfg.ec.ExperimentalEnableV2V3, "experimental-enable-v2v3", cfg.ec.ExperimentalEnableV2V3, "v3 prefix for serving emulated v2 state. Deprecated in 3.5 and will be decommissioned in 3.6.")
 	fs.Var(cfg.cf.v2deprecation, "v2-deprecation", fmt.Sprintf("v2store deprecation stage: %q. ", cfg.cf.proxy.Valids()))
 
 	// proxy
 	fs.Var(cfg.cf.proxy, "proxy", fmt.Sprintf("Valid values include %q", cfg.cf.proxy.Valids()))
-	fs.UintVar(&cfg.cp.ProxyFailureWaitMs, "proxy-failure-wait", cfg.cp.ProxyFailureWaitMs, "Time (in milliseconds) an endpoint will be held in a failed state.")
-	fs.UintVar(&cfg.cp.ProxyRefreshIntervalMs, "proxy-refresh-interval", cfg.cp.ProxyRefreshIntervalMs, "Time (in milliseconds) of the endpoints refresh interval.")
-	fs.UintVar(&cfg.cp.ProxyDialTimeoutMs, "proxy-dial-timeout", cfg.cp.ProxyDialTimeoutMs, "Time (in milliseconds) for a dial to timeout.")
-	fs.UintVar(&cfg.cp.ProxyWriteTimeoutMs, "proxy-write-timeout", cfg.cp.ProxyWriteTimeoutMs, "Time (in milliseconds) for a write to timeout.")
-	fs.UintVar(&cfg.cp.ProxyReadTimeoutMs, "proxy-read-timeout", cfg.cp.ProxyReadTimeoutMs, "Time (in milliseconds) for a read to timeout.")
+	fs.UintVar(&cfg.cp.ProxyFailureWaitMs, "proxy-failure-wait", cfg.cp.ProxyFailureWaitMs, "Time (in milliseconds) an endpoint will be held in a failed state. Deprecated in 3.5 and will be decommissioned in 3.6.")
+	fs.UintVar(&cfg.cp.ProxyRefreshIntervalMs, "proxy-refresh-interval", cfg.cp.ProxyRefreshIntervalMs, "Time (in milliseconds) of the endpoints refresh interval. Deprecated in 3.5 and will be decommissioned in 3.6.")
+	fs.UintVar(&cfg.cp.ProxyDialTimeoutMs, "proxy-dial-timeout", cfg.cp.ProxyDialTimeoutMs, "Time (in milliseconds) for a dial to timeout. Deprecated in 3.5 and will be decommissioned in 3.6.")
+	fs.UintVar(&cfg.cp.ProxyWriteTimeoutMs, "proxy-write-timeout", cfg.cp.ProxyWriteTimeoutMs, "Time (in milliseconds) for a write to timeout. Deprecated in 3.5 and will be decommissioned in 3.6.")
+	fs.UintVar(&cfg.cp.ProxyReadTimeoutMs, "proxy-read-timeout", cfg.cp.ProxyReadTimeoutMs, "Time (in milliseconds) for a read to timeout. Deprecated in 3.5 and will be decommissioned in 3.6.")
 
 	// security
 	fs.StringVar(&cfg.ec.ClientTLSInfo.CertFile, "cert-file", "", "Path to the client server TLS cert file.")
@@ -362,6 +375,20 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.V2Deprecation == "" {
 		cfg.ec.V2Deprecation = cconfig.V2_DEPR_DEFAULT
+	}
+
+	var warningsForDeprecatedFlags []string
+	cfg.cf.flagSet.Visit(func(f *flag.Flag) {
+		if _, ok := deprecatedFlags[f.Name]; ok {
+			warningsForDeprecatedFlags = append(warningsForDeprecatedFlags, fmt.Sprintf(deprecatedWarningMessage, f.Name))
+		}
+	})
+	if len(warningsForDeprecatedFlags) > 0 {
+		if lg := cfg.ec.GetLogger(); lg != nil {
+			for _, msg := range warningsForDeprecatedFlags {
+				lg.Warn(msg)
+			}
+		}
 	}
 
 	// now logger is set up
