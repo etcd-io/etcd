@@ -244,7 +244,7 @@ func (s *watchableStore) syncWatchersLoop() {
 
 		delayTicker.Reset(waitDuration)
 		// more work pending?
-		if unsyncedWatchers != 0 && lastUnsyncedWatchers > unsyncedWatchers {
+		if unsyncedWatchers != 0 && lastUnsyncedWatchers >= unsyncedWatchers {
 			// be fair to other store operations by yielding time taken
 			delayTicker.Reset(syncDuration)
 		}
