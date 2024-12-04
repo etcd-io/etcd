@@ -85,6 +85,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 
 - Add [`etcd grpc-proxy start --endpoints-auto-sync-interval`](https://github.com/etcd-io/etcd/pull/14354) flag to enable and configure interval of auto sync of endpoints with server.
 - Add [`etcd grpc-proxy start --listen-cipher-suites`](https://github.com/etcd-io/etcd/pull/14308) flag to support adding configurable cipher list.
+- Add [`tls min/max version to grpc proxy`](https://github.com/etcd-io/etcd/pull/18816) to support setting TLS min and max version.
 
 ### tools/benchmark
 
