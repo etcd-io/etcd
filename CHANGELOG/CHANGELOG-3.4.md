@@ -9,6 +9,9 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18936)
 
+### Dependencies
+- Compile binaries using [go 1.22.10](https://github.com/etcd-io/etcd/pull/19005)
+- 
 <hr>
 
 ## v3.4.35 (2024-11-12)
