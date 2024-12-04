@@ -18,6 +18,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -28,17 +29,13 @@ func TestConvert(t *testing.T) {
 	var e3 EtcdError
 	errors.As(ErrEmptyKey, &e3)
 
-	if e1.Error() != e2.Error() {
-		t.Fatalf("expected %q == %q", e1.Error(), e2.Error())
-	}
-	if ev1, ok := status.FromError(e1); ok && ev1.Code() != e3.Code() {
-		t.Fatalf("expected them to be equal, got %v / %v", ev1.Code(), e3.Code())
+	require.Equal(t, e1.Error(), e2.Error())
+	if ev1, ok := status.FromError(e1); ok {
+		require.Equal(t, ev1.Code(), e3.Code())
 	}
 
-	if e1.Error() == e3.Error() {
-		t.Fatalf("expected %q != %q", e1.Error(), e3.Error())
-	}
-	if ev2, ok := status.FromError(e2); ok && ev2.Code() != e3.Code() {
-		t.Fatalf("expected them to be equal, got %v / %v", ev2.Code(), e3.Code())
+	require.NotEqual(t, e1.Error(), e3.Error())
+	if ev2, ok := status.FromError(e2); ok {
+		require.Equal(t, ev2.Code(), e3.Code())
 	}
 }
