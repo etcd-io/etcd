@@ -2,7 +2,7 @@ module go.etcd.io/etcd/pkg/v3
 
 go 1.22
 
-toolchain go1.22.9
+toolchain go1.22.10
 
 require (
 	github.com/creack/pty v1.1.11
