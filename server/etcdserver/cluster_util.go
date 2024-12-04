@@ -433,8 +433,7 @@ func convertToClusterVersion(v string) (*semver.Version, error) {
 }
 
 func GetMembershipInfoInV2Format(lg *zap.Logger, cl *membership.RaftCluster) []byte {
-	var st v2store.Store
-	st = v2store.New(StoreClusterPrefix, StoreKeysPrefix)
+	st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
 	cl.Store(st)
 	d, err := st.SaveNoCopy()
 	if err != nil {

@@ -187,10 +187,7 @@ func visitMessage(m protoreflect.Message, visitor Visitor) error {
 		case protoreflect.EnumNumber:
 			err = visitEnumNumber(fd.Enum(), m, visitor)
 		}
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	})
 	return err
 }

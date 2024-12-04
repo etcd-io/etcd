@@ -56,7 +56,6 @@ func testCurlV3MaintenanceStatus(cx ctlCtx) {
 		}
 	}
 
-	require.Contains(cx.t, resp, "version")
 	require.Equal(cx.t, version.Version, resp["version"])
 }
 

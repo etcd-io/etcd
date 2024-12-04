@@ -8,6 +8,9 @@ issues:
     # exclude ineffassing linter for generated files for conversion
     - path: conversion\.go
       linters: [ineffassign]
+    - text: "S1000"  # TODO: Fix me
+      linters:
+        - gosimple
   exclude-files:
     - ^zz_generated.*
 linters:
@@ -21,6 +24,7 @@ linters:
     - errorlint
     - gofumpt
     - goimports
+    - gosimple
     - ineffassign
     - nakedret
     - revive

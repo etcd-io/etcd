@@ -263,11 +263,11 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
 	rc1 := membership.NewCluster(zaptest.NewLogger(t))
 	rc1.SetStore(firstStore)
-	rc1.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+	rc1.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	rc2 := membership.NewCluster(zaptest.NewLogger(t))
 	rc2.SetStore(secondStore)
-	rc2.Recover(func(lg *zap.Logger, v *semver.Version) { return })
+	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	// membership should match
 	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
