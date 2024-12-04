@@ -169,12 +169,12 @@ Clustering:
   --auto-compaction-mode 'periodic'
     Interpret 'auto-compaction-retention' one of: periodic|revision. 'periodic' for duration based retention, defaulting to hours if no time unit is provided (e.g. '5m'). 'revision' for revision number based retention.
   --v2-deprecation '` + string(cconfig.V2DeprDefault) + `'
-    Phase of v2store deprecation. Allows to opt-in for higher compatibility mode.
+    Phase of v2store deprecation. Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
     Supported values:
       'not-yet'                // Issues a warning if v2store have meaningful content (default in v3.5)
-      'write-only'             // Custom v2 state is not allowed (planned default in v3.6)
-      'write-only-drop-data'   // Custom v2 state will get DELETED !
-      'gone'                   // v2store is not maintained any longer. (planned default in v3.7)
+      'write-only'             // Custom v2 state is not allowed (default in v3.6)
+      'write-only-drop-data'   // Custom v2 state will get DELETED ! (planned default in v3.7)
+      'gone'                   // v2store is not maintained any longer. (planned to cleanup anything related to v2store in v3.8)
 
 Security:
   --cert-file ''

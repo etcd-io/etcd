@@ -666,17 +666,67 @@ func TestEtcdTLSVersion(t *testing.T) {
 func TestEtcdDeprecatedFlags(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd(
-		[]string{
-			e2e.BinPath.Etcd,
-			"--name", "e1",
-			"--snapshot-count=100",
-		}, nil,
-	)
-	require.NoError(t, err)
-	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7"}))
-	require.NoError(t, proc.Stop())
+	commonArgs := []string{
+		e2e.BinPath.Etcd,
+		"--name", "e1",
+	}
 
-	proc.Wait() // ensure the port has been released
-	proc.Close()
+	testCases := []struct {
+		name        string
+		args        []string
+		expectedMsg string
+	}{
+		{
+			name:        "snapshot-count",
+			args:        append(commonArgs, "--snapshot-count=100"),
+			expectedMsg: "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7",
+		},
+		{
+			name:        "v2-deprecation",
+			args:        append(commonArgs, "--v2-deprecation", "write-only-drop-data"),
+			expectedMsg: "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			proc, err := e2e.SpawnCmd(
+				tc.args, nil,
+			)
+			require.NoError(t, err)
+			require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{tc.expectedMsg}))
+			require.NoError(t, proc.Stop())
+
+			proc.Wait() // ensure the port has been released
+			proc.Close()
+		})
+	}
+}
+
+// TestV2DeprecationEnforceDefaultValue verifies that etcd enforces the default V2Deprecation level
+// and ignores users input.
+func TestV2DeprecationEnforceDefaultValue(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	commonArgs := []string{
+		e2e.BinPath.Etcd,
+		"--name", "e1",
+	}
+
+	validV2DeprecationLevels := []string{"write-only", "write-only-drop-data", "gone"}
+	expectedDeprecationLevelMsg := `"v2-deprecation":"write-only"`
+
+	for _, optionLevel := range validV2DeprecationLevels {
+		t.Run(optionLevel, func(t *testing.T) {
+			proc, err := e2e.SpawnCmd(
+				append(commonArgs, "--v2-deprecation", optionLevel), nil,
+			)
+			require.NoError(t, err)
+			require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{expectedDeprecationLevelMsg}))
+			require.NoError(t, proc.Stop())
+
+			proc.Wait() // ensure the port has been released
+			proc.Close()
+		})
+	}
 }
