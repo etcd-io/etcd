@@ -661,3 +661,22 @@ func TestEtcdTLSVersion(t *testing.T) {
 	proc.Wait() // ensure the port has been released
 	proc.Close()
 }
+
+// TestEtcdDeprecatedFlags checks that etcd will print warning messages if deprecated flags are set.
+func TestEtcdDeprecatedFlags(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	proc, err := e2e.SpawnCmd(
+		[]string{
+			e2e.BinPath.Etcd,
+			"--name", "e1",
+			"--snapshot-count=100",
+		}, nil,
+	)
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7"}))
+	require.NoError(t, proc.Stop())
+
+	proc.Wait() // ensure the port has been released
+	proc.Close()
+}

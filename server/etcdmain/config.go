@@ -56,6 +56,11 @@ var (
 		"test.coverprofile",
 		"test.outputdir",
 	}
+
+	deprecatedFlags = map[string]string{
+		// TODO: remove in 3.7.
+		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
+	}
 )
 
 // config holds the config for a command line invocation of etcd
@@ -163,6 +168,20 @@ func (cfg *config) parse(arguments []string) error {
 	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()
 	if perr != nil {
 		return perr
+	}
+
+	var warningsForDeprecatedFlags []string
+	cfg.cf.flagSet.Visit(func(f *flag.Flag) {
+		if msg, ok := deprecatedFlags[f.Name]; ok {
+			warningsForDeprecatedFlags = append(warningsForDeprecatedFlags, msg)
+		}
+	})
+	if len(warningsForDeprecatedFlags) > 0 {
+		if lg := cfg.ec.GetLogger(); lg != nil {
+			for _, msg := range warningsForDeprecatedFlags {
+				lg.Warn(msg)
+			}
+		}
 	}
 
 	// now logger is set up
