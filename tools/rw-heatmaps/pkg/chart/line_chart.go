@@ -84,8 +84,11 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	ratios := datasets[0].GetSortedRatios()
 	row, col := 0, 0
 	for _, ratio := range ratios {
-		records := datasets[0].Records[ratio]
-		p, l := plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records)
+		var records [][]dataset.DataRecord
+		for _, d := range datasets {
+			records = append(records, d.Records[ratio])
+		}
+		p, l := plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records...)
 		plots[row][col] = p
 		legends[row][col] = l
 
@@ -127,7 +130,7 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	return canvas
 }
 
-func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.Plot, plot.Legend) {
+func plotIndividualLineChart(title string, records ...[]dataset.DataRecord) (*plot.Plot, plot.Legend) {
 	p := plot.New()
 	p.Title.Text = title
 	p.X.Label.Text = "Connections Amount"
@@ -139,16 +142,41 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 
 	legend := plot.NewLegend()
 
-	var values []int
-	rec := make(map[int64][]dataset.DataRecord)
-	for _, r := range records {
-		if _, ok := rec[r.ValueSize]; !ok {
-			values = append(values, int(r.ValueSize))
+	values := getSortedValueSizes(records...)
+	for i, rs := range records {
+		rec := make(map[int64][]dataset.DataRecord)
+		for _, r := range rs {
+			rec[r.ValueSize] = append(rec[r.ValueSize], r)
 		}
-		rec[r.ValueSize] = append(rec[r.ValueSize], r)
+		if len(records) > 0 {
+			// TODO: Add the filename to the legend.
+			addValues(p, legend, values, rec, i)
+		} else {
+			addValues(p, legend, values, rec, i)
+		}
+	}
+
+	return p, legend
+}
+
+func getSortedValueSizes(records ...[]dataset.DataRecord) []int {
+	valueMap := make(map[int64]struct{})
+	for _, rs := range records {
+		for _, r := range rs {
+			valueMap[r.ValueSize] = struct{}{}
+		}
+	}
+
+	var values []int
+	for v := range valueMap {
+		values = append(values, int(v))
 	}
 	sort.Ints(values)
 
+	return values
+}
+
+func addValues(p *plot.Plot, legend plot.Legend, values []int, rec map[int64][]dataset.DataRecord, index int) {
 	for i, value := range values {
 		r := rec[int64(value)]
 		readPts := make(plotter.XYs, len(r))
@@ -164,7 +192,7 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 		if err != nil {
 			panic(err)
 		}
-		l.Color = plotutil.Color(0)
+		l.Color = plotutil.Color(index * 2)
 		s.Color = l.Color
 		s.Shape = plotutil.Shape(i)
 		p.Add(l, s)
@@ -176,8 +204,7 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 		if err != nil {
 			panic(err)
 		}
-		l.Color = plotutil.Color(1)
-		//l.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		l.Color = plotutil.Color(index*2 + 1)
 		s.Color = l.Color
 		s.Shape = plotutil.Shape(i)
 		p.Add(l, s)
@@ -192,5 +219,4 @@ func plotIndividualLineChart(title string, records []dataset.DataRecord) (*plot.
 		legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(sc))
 	}
 
-	return p, legend
 }
