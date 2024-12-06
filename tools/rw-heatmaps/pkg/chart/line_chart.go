@@ -15,8 +15,10 @@
 package chart
 
 import (
+	"cmp"
 	"fmt"
 	"image/color"
+	"slices"
 	"sort"
 
 	"gonum.org/v1/plot"
@@ -52,11 +54,18 @@ func PlotLineCharts(datasets []*dataset.DataSet, title, outputImageFile, outputF
 }
 
 func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
-	// Make a 4x2 grid of heatmaps.
-	const rows, cols = 8, 1
+	maxRatios := func() int {
+		max := slices.MaxFunc(datasets, func(a, b *dataset.DataSet) int {
+			return cmp.Compare(len(a.GetSortedRatios()), len(b.GetSortedRatios()))
+		})
+		return len(max.GetSortedRatios())
+	}()
+
+	// Make a nx1 grid of heatmaps.
+	rows, cols := maxRatios, 1
 
 	// Set the width and height of the canvas.
-	const width, height = 30 * vg.Centimeter, 100 * vg.Centimeter
+	width, height := 30*vg.Centimeter, 15*font.Length(maxRatios)*vg.Centimeter
 
 	canvas := vgimg.New(width, height)
 	dc := draw.New(canvas)
