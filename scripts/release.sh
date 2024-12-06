@@ -48,8 +48,9 @@ help() {
 }
 
 main() {
-  VERSION=$1
-  if [[ ! "${VERSION}" =~ [0-9]+.[0-9]+.[0-9]+ ]]; then
+  # Allow to receive the version with the "v" prefix, i.e. v3.6.0.
+  VERSION=${1#v}
+  if [[ ! "${VERSION}" =~ ^[0-9]+.[0-9]+.[0-9]+ ]]; then
     log_error "Expected 'version' param of the form '<major-version>.<minor-version>.<patch-version>' but got '${VERSION}'"
     exit 1
   fi
