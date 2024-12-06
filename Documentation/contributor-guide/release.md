@@ -84,6 +84,10 @@ which don't need to be executed before releasing each version.
    - `git clone --branch release-3.X git@github.com:etcd-io/etcd.git`
 6. Run the release script under the repository's root directory, replacing `${VERSION}` with a value without the `v` prefix, i.e. `3.5.13`.
    - `DRY_RUN=false ./scripts/release.sh ${VERSION}`
+   - **NOTE:** When doing a pre-release (i.e., a version from the main branch, 3.6.0-alpha.2), you will need to explicitly set the branch to main:
+     ```
+     DRY_RUN=false BRANCH=main ./scripts/release.sh ${VERSION}
+     ```
 
    It generates all release binaries under the directory `/tmp/etcd-release-${VERSION}/etcd/release/` and images. Binaries are pushed to the Google Cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
