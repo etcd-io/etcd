@@ -459,7 +459,9 @@ type Config struct {
 	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
 	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
-	// V2Deprecation describes phase of API & Storage V2 support
+	// V2Deprecation describes phase of API & Storage V2 support.
+	// Deprecated and scheduled for removal in v3.8.
+	// Do not set this field for embedded use cases, as it has no effect. However, setting it will not cause any harm.
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 
 	// ServerFeatureGate is a server level feature gate

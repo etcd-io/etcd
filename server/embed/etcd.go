@@ -376,6 +376,8 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
 		zap.Int("max-learners", sc.ExperimentalMaxLearners),
+
+		zap.String("v2-deprecation", string(ec.V2Deprecation)),
 	)
 }
 

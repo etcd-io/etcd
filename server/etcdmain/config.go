@@ -60,6 +60,7 @@ var (
 	deprecatedFlags = map[string]string{
 		// TODO: remove in 3.7.
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
+		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
 	}
 )
 
@@ -74,9 +75,11 @@ type config struct {
 
 // configFlags has the set of flags used for command line parsing a Config
 type configFlags struct {
-	flagSet       *flag.FlagSet
-	clusterState  *flags.SelectiveStringValue
-	fallback      *flags.SelectiveStringValue
+	flagSet      *flag.FlagSet
+	clusterState *flags.SelectiveStringValue
+	fallback     *flags.SelectiveStringValue
+	// Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
+	// TODO: remove in v3.8.
 	v2deprecation *flags.SelectiveStringsValue
 }
 
@@ -108,7 +111,7 @@ func newConfig() *config {
 	fs.StringVar(&cfg.configFile, "config-file", "", "Path to the server configuration file. Note that if a configuration file is provided, other command line flags and environment variables will be ignored.")
 	fs.Var(cfg.cf.fallback, "discovery-fallback", fmt.Sprintf("Valid values include %q", cfg.cf.fallback.Valids()))
 	fs.Var(cfg.cf.clusterState, "initial-cluster-state", "Initial cluster state ('new' when bootstrapping a new cluster or 'existing' when adding new members to an existing cluster). After successful initialization (bootstrapping or adding), flag is ignored on restarts.")
-	fs.Var(cfg.cf.v2deprecation, "v2-deprecation", fmt.Sprintf("v2store deprecation stage: %q. ", cfg.cf.v2deprecation.Valids()))
+	fs.Var(cfg.cf.v2deprecation, "v2-deprecation", fmt.Sprintf("v2store deprecation stage: %q. Deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.", cfg.cf.v2deprecation.Valids()))
 
 	fs.BoolVar(&cfg.printVersion, "version", false, "Print the version and exit.")
 	// ignored
@@ -161,9 +164,8 @@ func (cfg *config) parse(arguments []string) error {
 		err = cfg.configFromCmdLine()
 	}
 
-	if cfg.ec.V2Deprecation == "" {
-		cfg.ec.V2Deprecation = cconfig.V2DeprDefault
-	}
+	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
+	cfg.ec.V2Deprecation = cconfig.V2DeprDefault
 
 	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()
 	if perr != nil {
