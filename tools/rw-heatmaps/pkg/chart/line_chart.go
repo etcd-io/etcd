@@ -76,7 +76,7 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 		Cols:      cols,
 		PadX:      vg.Millimeter * 4,
 		PadY:      vg.Millimeter * 4,
-		PadTop:    vg.Millimeter * 10,
+		PadTop:    vg.Millimeter * 15,
 		PadBottom: vg.Millimeter * 2,
 		PadLeft:   vg.Millimeter * 2,
 		PadRight:  vg.Millimeter * 2,
@@ -131,7 +131,9 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	// Add the title and parameter legend.
 	l := plot.NewLegend()
 	l.Add(title)
-	l.Add(datasets[0].Param)
+	for _, d := range datasets {
+		l.Add(fmt.Sprintf("%s: %s", d.FileName, d.Param))
+	}
 	l.Top = true
 	l.Left = true
 	l.Draw(dc)
@@ -159,9 +161,9 @@ func plotIndividualLineChart(title string, records ...[]dataset.DataRecord) (*pl
 		}
 		if len(records) > 0 {
 			// TODO: Add the filename to the legend.
-			addValues(p, legend, values, rec, i)
+			addValues(p, &legend, values, rec, i)
 		} else {
-			addValues(p, legend, values, rec, i)
+			addValues(p, &legend, values, rec, i)
 		}
 	}
 
@@ -185,7 +187,7 @@ func getSortedValueSizes(records ...[]dataset.DataRecord) []int {
 	return values
 }
 
-func addValues(p *plot.Plot, legend plot.Legend, values []int, rec map[int64][]dataset.DataRecord, index int) {
+func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]dataset.DataRecord, index int) {
 	for i, value := range values {
 		r := rec[int64(value)]
 		readPts := make(plotter.XYs, len(r))
