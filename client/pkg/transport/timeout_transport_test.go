@@ -42,9 +42,7 @@ func TestNewTimeoutTransport(t *testing.T) {
 	defer conn.Close()
 
 	tconn, ok := conn.(*timeoutConn)
-	if !ok {
-		t.Fatalf("failed to dial out *timeoutConn")
-	}
+	require.Truef(t, ok, "failed to dial out *timeoutConn")
 	if tconn.readTimeout != time.Hour {
 		t.Errorf("read timeout = %s, want %s", tconn.readTimeout, time.Hour)
 	}
