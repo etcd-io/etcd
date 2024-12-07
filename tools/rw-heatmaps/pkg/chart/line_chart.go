@@ -32,11 +32,6 @@ import (
 	"go.etcd.io/etcd/tools/rw-heatmaps/v3/pkg/dataset"
 )
 
-/*
-type lineChart struct {
-}
-*/
-
 // PlotLineCharts creates a new line chart.
 func PlotLineCharts(datasets []*dataset.DataSet, title, outputImageFile, outputFormat string) error {
 	plot.DefaultFont = font.Font{
@@ -54,7 +49,7 @@ func PlotLineCharts(datasets []*dataset.DataSet, title, outputImageFile, outputF
 }
 
 func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
-	maxRatios := func() int {
+	ratiosLength := func() int {
 		max := slices.MaxFunc(datasets, func(a, b *dataset.DataSet) int {
 			return cmp.Compare(len(a.GetSortedRatios()), len(b.GetSortedRatios()))
 		})
@@ -62,10 +57,10 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	}()
 
 	// Make a nx1 grid of heatmaps.
-	rows, cols := maxRatios, 1
+	rows, cols := ratiosLength, 1
 
 	// Set the width and height of the canvas.
-	width, height := 30*vg.Centimeter, 15*font.Length(maxRatios)*vg.Centimeter
+	width, height := 30*vg.Centimeter, 15*font.Length(ratiosLength)*vg.Centimeter
 
 	canvas := vgimg.New(width, height)
 	dc := draw.New(canvas)
@@ -90,14 +85,19 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	}
 
 	// Load records into the grid.
-	ratios := datasets[0].GetSortedRatios()
+	ratios := slices.MaxFunc(datasets, func(a, b *dataset.DataSet) int {
+		return cmp.Compare(len(a.GetSortedRatios()), len(b.GetSortedRatios()))
+	}).GetSortedRatios()
+
 	row, col := 0, 0
 	for _, ratio := range ratios {
 		var records [][]dataset.DataRecord
+		var fileNames []string
 		for _, d := range datasets {
 			records = append(records, d.Records[ratio])
+			fileNames = append(fileNames, d.FileName)
 		}
-		p, l := plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records...)
+		p, l := plotIndividualLineChart(fmt.Sprintf("R/W Ratio %0.04f", ratio), records, fileNames)
 		plots[row][col] = p
 		legends[row][col] = l
 
@@ -141,7 +141,7 @@ func plotLineChart(datasets []*dataset.DataSet, title string) *vgimg.Canvas {
 	return canvas
 }
 
-func plotIndividualLineChart(title string, records ...[]dataset.DataRecord) (*plot.Plot, plot.Legend) {
+func plotIndividualLineChart(title string, records [][]dataset.DataRecord, fileNames []string) (*plot.Plot, plot.Legend) {
 	p := plot.New()
 	p.Title.Text = title
 	p.X.Label.Text = "Connections Amount"
@@ -159,11 +159,10 @@ func plotIndividualLineChart(title string, records ...[]dataset.DataRecord) (*pl
 		for _, r := range rs {
 			rec[r.ValueSize] = append(rec[r.ValueSize], r)
 		}
-		if len(records) > 0 {
-			// TODO: Add the filename to the legend.
-			addValues(p, &legend, values, rec, i)
+		if len(records) > 1 {
+			addValues(p, &legend, values, rec, i, fileNames[i])
 		} else {
-			addValues(p, &legend, values, rec, i)
+			addValues(p, &legend, values, rec, i, "")
 		}
 	}
 
@@ -187,7 +186,7 @@ func getSortedValueSizes(records ...[]dataset.DataRecord) []int {
 	return values
 }
 
-func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]dataset.DataRecord, index int) {
+func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]dataset.DataRecord, index int, fileName string) {
 	for i, value := range values {
 		r := rec[int64(value)]
 		readPts := make(plotter.XYs, len(r))
@@ -199,35 +198,34 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 			writePts[i].Y = record.AvgWrite
 		}
 
-		l, s, err := plotter.NewLinePoints(readPts)
+		readLine, s, err := plotter.NewLinePoints(readPts)
 		if err != nil {
 			panic(err)
 		}
-		l.Color = plotutil.Color(index * 2)
-		s.Color = l.Color
+		readLine.Color = plotutil.Color(index * 2)
+		s.Color = readLine.Color
 		s.Shape = plotutil.Shape(i)
-		p.Add(l, s)
-		if i == 0 {
-			legend.Add("read", plot.Thumbnailer(l))
-		}
+		p.Add(readLine, s)
 
-		l, s, err = plotter.NewLinePoints(writePts)
+		writeLine, s, err := plotter.NewLinePoints(writePts)
 		if err != nil {
 			panic(err)
 		}
-		l.Color = plotutil.Color(index*2 + 1)
-		s.Color = l.Color
+		writeLine.Color = plotutil.Color(index*2 + 1)
+		s.Color = writeLine.Color
 		s.Shape = plotutil.Shape(i)
-		p.Add(l, s)
-		if i == 0 {
-			legend.Add("write", plot.Thumbnailer(l))
-		}
+		p.Add(writeLine, s)
 
-		sc, _ := plotter.NewScatter(writePts)
-		sc.Color = color.RGBA{0, 0, 0, 255}
-		sc.Shape = s.Shape
-		sc.XYs = s.XYs
-		legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(sc))
+		if index == 0 {
+			sc, _ := plotter.NewScatter(writePts)
+			sc.Color = color.RGBA{0, 0, 0, 255}
+			sc.Shape = s.Shape
+			sc.XYs = s.XYs
+			legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(sc))
+		}
+		if i == len(values)-1 {
+			legend.Add(fmt.Sprintf("read %s", fileName), plot.Thumbnailer(readLine))
+			legend.Add(fmt.Sprintf("write %s", fileName), plot.Thumbnailer(writeLine))
+		}
 	}
-
 }
