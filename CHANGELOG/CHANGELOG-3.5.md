@@ -11,14 +11,13 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18937)
 
-## Dependencies
-- Compile binaries using [go 1.22.10](https://github.com/etcd-io/etcd/pull/19004).
 
 ### etcd grpc-proxy
 - Add [`tls min/max version to grpc proxy`](https://github.com/etcd-io/etcd/pull/18829) to support setting TLS min and max version.
 
 ## Dependencies
 - Bump [golang-jwt/jwt to 4.5.1 to address GO-2024-3250](https://github.com/etcd-io/etcd/pull/18899).
+- Compile binaries using [go 1.22.10](https://github.com/etcd-io/etcd/pull/19004).
 
 <hr>
 
