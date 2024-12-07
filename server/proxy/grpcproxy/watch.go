@@ -123,7 +123,8 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 
 	// post to stopc => terminate server stream; can't use a waitgroup
 	// since all goroutines will only terminate after Watch() exits.
-	stopc := make(chan struct{}, 3)
+	stopc := make(chan struct{}, 2)
+	leaderc := make(chan struct{}, 1)
 	go func() {
 		defer func() { stopc <- struct{}{} }()
 		wps.recvLoop()
@@ -134,7 +135,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 	}()
 	// tear down watch if leader goes down or entire watch proxy is terminated
 	go func() {
-		defer func() { stopc <- struct{}{} }()
+		defer func() { leaderc <- struct{}{} }()
 		select {
 		case <-lostLeaderC:
 		case <-ctx.Done():
@@ -142,7 +143,7 @@ func (wp *watchProxy) Watch(stream pb.Watch_WatchServer) (err error) {
 		}
 	}()
 
-	<-stopc
+	<-leaderc
 	cancel()
 
 	// recv/send may only shutdown after function exits;
