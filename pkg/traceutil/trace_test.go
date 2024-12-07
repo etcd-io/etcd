@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
 
@@ -215,9 +217,7 @@ func TestLog(t *testing.T) {
 			tt.trace.lg = lg
 			tt.trace.Log()
 			data, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			for _, msg := range tt.expectedMsg {
 				if !bytes.Contains(data, []byte(msg)) {
@@ -293,9 +293,7 @@ func TestLogIfLong(t *testing.T) {
 			tt.trace.lg = lg
 			tt.trace.LogIfLong(tt.threshold)
 			data, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			for _, msg := range tt.expectedMsg {
 				if !bytes.Contains(data, []byte(msg)) {
 					t.Errorf("Expected to find %v in log", msg)
