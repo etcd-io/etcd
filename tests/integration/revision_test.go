@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -95,7 +97,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			getWorker(ctx, t, clus)
+			getWorker(ctx, t, clus) //nolint:testifylint
 		}()
 	}
 
@@ -103,9 +105,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	wg.Wait()
 	kv := clus.Client(0)
 	resp, err := kv.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Logf("Revision %d", resp.Header.Revision)
 }
 
@@ -116,9 +116,7 @@ func putWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return
 		}
-		if silenceConnectionErrors(err) != nil {
-			t.Fatal(err)
-		}
+		assert.NoError(t, silenceConnectionErrors(err))
 	}
 }
 
@@ -130,9 +128,7 @@ func getWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return
 		}
-		if silenceConnectionErrors(err) != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, silenceConnectionErrors(err))
 		if resp == nil {
 			continue
 		}
