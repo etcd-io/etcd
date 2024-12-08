@@ -202,26 +202,31 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 		if err != nil {
 			panic(err)
 		}
+		if index > 0 {
+			readLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		}
 		readLine.Color = plotutil.Color(index * 2)
+		readLine.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
 		s.Color = readLine.Color
-		s.Shape = plotutil.Shape(i)
 		p.Add(readLine, s)
 
 		writeLine, s, err := plotter.NewLinePoints(writePts)
 		if err != nil {
 			panic(err)
 		}
+		if index > 0 {
+			writeLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		}
 		writeLine.Color = plotutil.Color(index*2 + 1)
+		writeLine.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
 		s.Color = writeLine.Color
-		s.Shape = plotutil.Shape(i)
 		p.Add(writeLine, s)
 
 		if index == 0 {
-			sc, _ := plotter.NewScatter(writePts)
-			sc.Color = color.RGBA{0, 0, 0, 255}
-			sc.Shape = s.Shape
-			sc.XYs = s.XYs
-			legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(sc))
+			l, _, _ := plotter.NewLinePoints(writePts)
+			l.Color = color.RGBA{0, 0, 0, 255}
+			l.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
+			legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(l))
 		}
 		if i == len(values)-1 {
 			legend.Add(fmt.Sprintf("read %s", fileName), plot.Thumbnailer(readLine))
