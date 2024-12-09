@@ -70,6 +70,7 @@ func (wbs *watchBroadcasts) coalesce(wb *watchBroadcast) {
 				wbs.watchers[w] = wbswb
 			}
 			wb.receivers = nil
+			watchersCoalescing.Inc()
 		}
 		wbswb.mu.Unlock()
 		wb.mu.Unlock()
