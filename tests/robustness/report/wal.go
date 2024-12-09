@@ -183,6 +183,8 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 		return nil, nil
 	case raftReq.ClusterVersionSet != nil:
 		return nil, nil
+	case raftReq.DowngradeInfoSet != nil:
+		return nil, nil
 	case raftReq.Compaction != nil:
 		request := model.EtcdRequest{
 			Type:    model.Compact,

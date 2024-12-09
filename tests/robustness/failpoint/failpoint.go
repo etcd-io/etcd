@@ -46,6 +46,7 @@ var allFailpoints = []Failpoint{
 	RaftBeforeSaveSnapPanic, RaftAfterSaveSnapPanic, BlackholeUntilSnapshot,
 	BeforeApplyOneConfChangeSleep,
 	MemberReplace,
+	MemberDowngrade,
 	DropPeerNetwork,
 	RaftBeforeSaveSleep,
 	RaftAfterSaveSleep,
