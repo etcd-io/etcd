@@ -113,7 +113,11 @@ func TestMemberAdd(t *testing.T) {
 		for _, quorumTc := range quorumTcs {
 			for _, clusterTc := range clusterTestCases() {
 				t.Run(learnerTc.name+"/"+quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					ctxTimeout := 10 * time.Second
+					if quorumTc.waitForQuorum {
+						ctxTimeout += etcdserver.HealthInterval
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 					defer cancel()
 					c := clusterTc.config
 					c.StrictReconfigCheck = quorumTc.strictReconfigCheck
