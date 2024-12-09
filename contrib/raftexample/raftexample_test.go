@@ -217,9 +217,8 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	if gotValue := string(data); wantValue != gotValue {
-		t.Fatalf("expect %s, got %s", wantValue, gotValue)
-	}
+	gotValue := string(data)
+	require.Equalf(t, wantValue, gotValue, "expect %s, got %s", wantValue, gotValue)
 }
 
 // TestAddNewNode tests adding new node to the existing cluster.

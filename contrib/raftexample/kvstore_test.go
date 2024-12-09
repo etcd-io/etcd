@@ -26,9 +26,7 @@ func Test_kvstore_snapshot(t *testing.T) {
 	s := &kvstore{kvStore: tm}
 
 	v, _ := s.Lookup("foo")
-	if v != "bar" {
-		t.Fatalf("foo has unexpected value, got %s", v)
-	}
+	require.Equalf(t, "bar", v, "foo has unexpected value, got %s", v)
 
 	data, err := s.getSnapshot()
 	require.NoError(t, err)
@@ -37,10 +35,6 @@ func Test_kvstore_snapshot(t *testing.T) {
 	err = s.recoverFromSnapshot(data)
 	require.NoError(t, err)
 	v, _ = s.Lookup("foo")
-	if v != "bar" {
-		t.Fatalf("foo has unexpected value, got %s", v)
-	}
-	if !reflect.DeepEqual(s.kvStore, tm) {
-		t.Fatalf("store expected %+v, got %+v", tm, s.kvStore)
-	}
+	require.Equalf(t, "bar", v, "foo has unexpected value, got %s", v)
+	require.Truef(t, reflect.DeepEqual(s.kvStore, tm), "store expected %+v, got %+v", tm, s.kvStore)
 }
