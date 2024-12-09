@@ -372,6 +372,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		CompactionBatchLimit:    cfg.CompactionBatchLimit,
 		CompactionSleepInterval: cfg.CompactionSleepInterval,
 	}
+	if cfg.AutoCompactionMode == v3compactor.ModeRevisionThreshold {
+		mvccStoreConfig.CompactionNotifyThreshold = int64(cfg.AutoCompactionRetention)
+	}
+
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 	srv.corruptionChecker = newCorruptionChecker(cfg.Logger, srv, srv.kv.HashStorage())
 
@@ -386,7 +390,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		}
 	}()
 	if num := cfg.AutoCompactionRetention; num != 0 {
-		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, srv.kv, srv)
+		srv.compactor, err = v3compactor.New(cfg.Logger, cfg.AutoCompactionMode, num, any(srv.kv).(kvGetter), srv)
 		if err != nil {
 			return nil, err
 		}
@@ -2511,4 +2515,9 @@ func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
 
 func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
 	return s.corruptionChecker
+}
+
+type kvGetter interface {
+	CompactNotify() chan struct{}
+	Rev() int64
 }
