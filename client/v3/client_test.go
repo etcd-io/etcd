@@ -147,9 +147,7 @@ func TestDialTimeout(t *testing.T) {
 func TestDialNoTimeout(t *testing.T) {
 	cfg := Config{Endpoints: []string{"127.0.0.1:12345"}}
 	c, err := NewClient(t, cfg)
-	if c == nil {
-		t.Fatalf("new client with DialNoWait should succeed, got %v", err)
-	}
+	require.NotNilf(t, c, "new client with DialNoWait should succeed, got %v", err)
 	require.NoErrorf(t, err, "new client with DialNoWait should succeed")
 	c.Close()
 }
