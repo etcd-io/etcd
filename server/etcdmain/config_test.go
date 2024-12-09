@@ -24,6 +24,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
 	"go.etcd.io/etcd/pkg/v3/featuregate"
@@ -328,9 +329,8 @@ func TestConfigIsNewCluster(t *testing.T) {
 	for i, tt := range tests {
 		cfg := newConfig()
 		args := []string{"--initial-cluster-state", tests[i].state}
-		if err := cfg.parse(args); err != nil {
-			t.Fatalf("#%d: unexpected clusterState.Set error: %v", i, err)
-		}
+		err := cfg.parse(args)
+		require.NoErrorf(t, err, "#%d: unexpected clusterState.Set error: %v", i, err)
 		if g := cfg.ec.IsNewCluster(); g != tt.wIsNew {
 			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
 		}
@@ -458,9 +458,7 @@ func TestParseFeatureGateFlags(t *testing.T) {
 			cfg := newConfig()
 			err := cfg.parse(tc.args)
 			if tc.expectErr {
-				if err == nil {
-					t.Fatal("expect parse error")
-				}
+				require.Errorf(t, err, "expect parse error")
 				return
 			}
 			if err != nil {
