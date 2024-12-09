@@ -17,6 +17,8 @@ package flags
 import (
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewUniqueStrings(t *testing.T) {
@@ -58,11 +60,7 @@ func TestNewUniqueStrings(t *testing.T) {
 	}
 	for i := range tests {
 		uv := NewUniqueStringsValue(tests[i].s)
-		if !reflect.DeepEqual(tests[i].exp, uv.Values) {
-			t.Fatalf("#%d: expected %+v, got %+v", i, tests[i].exp, uv.Values)
-		}
-		if uv.String() != tests[i].rs {
-			t.Fatalf("#%d: expected %q, got %q", i, tests[i].rs, uv.String())
-		}
+		require.Truef(t, reflect.DeepEqual(tests[i].exp, uv.Values), "#%d: expected %+v, got %+v", i, tests[i].exp, uv.Values)
+		require.Equalf(t, uv.String(), tests[i].rs, "#%d: expected %q, got %q", i, tests[i].rs, uv.String())
 	}
 }
