@@ -34,8 +34,11 @@ func TestMemberList(t *testing.T) {
 
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
+			tc.config.UniquePortAlloc = true
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
@@ -113,6 +116,8 @@ func TestMemberAdd(t *testing.T) {
 		for _, quorumTc := range quorumTcs {
 			for _, clusterTc := range clusterTestCases() {
 				t.Run(learnerTc.name+"/"+quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+					t.Parallel()
+
 					ctxTimeout := 10 * time.Second
 					if quorumTc.waitForQuorum {
 						ctxTimeout += etcdserver.HealthInterval
@@ -121,6 +126,7 @@ func TestMemberAdd(t *testing.T) {
 					defer cancel()
 					c := clusterTc.config
 					c.StrictReconfigCheck = quorumTc.strictReconfigCheck
+					c.UniquePortAlloc = true
 					clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 					defer clus.Close()
 					cc := testutils.MustClient(clus.Client())
@@ -198,10 +204,13 @@ func TestMemberRemove(t *testing.T) {
 				continue
 			}
 			t.Run(quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+				t.Parallel()
+
 				ctx, cancel := context.WithTimeout(context.Background(), 14*time.Second)
 				defer cancel()
 				c := clusterTc.config
 				c.StrictReconfigCheck = quorumTc.strictReconfigCheck
+				c.UniquePortAlloc = true
 				clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(c))
 				defer clus.Close()
 				// client connects to a specific member which won't be removed from cluster

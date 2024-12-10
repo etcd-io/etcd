@@ -36,6 +36,7 @@ type ClusterConfig struct {
 	StrictReconfigCheck bool
 	AuthToken           string
 	SnapshotCount       uint64
+	UniquePortAlloc     bool
 
 	// ClusterContext is used by "e2e" or "integration" to extend the
 	// ClusterConfig. The common test cases shouldn't care about what
@@ -87,4 +88,8 @@ func WithSnapshotCount(count uint64) ClusterOption {
 
 func WithStrictReconfigCheck(strict bool) ClusterOption {
 	return func(c *ClusterConfig) { c.StrictReconfigCheck = strict }
+}
+
+func WithUniquePortAlloc() ClusterOption {
+	return func(c *ClusterConfig) { c.UniquePortAlloc = true }
 }

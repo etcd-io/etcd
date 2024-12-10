@@ -518,6 +518,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	peer2Port := port + 3
 	clientHTTPPort := port + 4
 
+	var allocatedPorts []int
+	if cfg.BasePort == -1 {
+		clientPort = uniquePorts.Alloc()
+		peerPort = uniquePorts.Alloc()
+		metricsPort = uniquePorts.Alloc()
+		peer2Port = uniquePorts.Alloc()
+		clientHTTPPort = uniquePorts.Alloc()
+		allocatedPorts = []int{clientPort, peerPort, metricsPort, peer2Port, clientHTTPPort}
+	}
+
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
 		curls = []string{curl, clientURL(cfg.ClientScheme(), clientPort, ClientTLS)}
@@ -639,7 +649,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	var gofailPort int
 	if cfg.GoFailEnabled {
-		gofailPort = (i+1)*10000 + 2381
+		gofailPort = uniquePorts.Alloc()
+		allocatedPorts = append(allocatedPorts, gofailPort)
 		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
@@ -662,6 +673,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
 		Proxy:               proxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
+		AllocatedPorts:      allocatedPorts,
 	}
 }
 
