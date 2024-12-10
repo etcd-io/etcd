@@ -60,6 +60,7 @@ var (
 	deprecatedFlags = map[string]string{
 		// TODO: remove in 3.7.
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
+		"max-snapshots":  "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
 	}
 )
