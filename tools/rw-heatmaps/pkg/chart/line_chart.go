@@ -205,8 +205,8 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 		if index > 0 {
 			readLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
 		}
-		readLine.Color = plotutil.Color(index * 2)
-		readLine.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
+		readLine.Color = plotutil.Color(0)
+		readLine.Width = vg.Length(vg.Millimeter * 0.15 * vg.Length(i+1))
 		s.Color = readLine.Color
 		p.Add(readLine, s)
 
@@ -217,15 +217,15 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 		if index > 0 {
 			writeLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
 		}
-		writeLine.Color = plotutil.Color(index*2 + 1)
-		writeLine.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
+		writeLine.Color = plotutil.Color(2)
+		writeLine.Width = vg.Length(vg.Millimeter * 0.15 * vg.Length(i+1))
 		s.Color = writeLine.Color
 		p.Add(writeLine, s)
 
 		if index == 0 {
 			l, _, _ := plotter.NewLinePoints(writePts)
 			l.Color = color.RGBA{0, 0, 0, 255}
-			l.Width = vg.Length(vg.Millimeter * 0.1 * vg.Length(i+1))
+			l.Width = vg.Length(vg.Millimeter * 0.15 * vg.Length(i+1))
 			legend.Add(fmt.Sprintf("%d", value), plot.Thumbnailer(l))
 		}
 		if i == len(values)-1 {
