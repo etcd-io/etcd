@@ -260,13 +260,12 @@ func (c *Cluster) ProtoMembers() []*pb.Member {
 }
 
 func (c *Cluster) mustNewMember(t testutil.TB) *Member {
-	memberNumber := c.LastMemberNum
+	uniqueNumber := atomic.AddInt32(&UniqueNumber, 1)*10 + int32(c.LastMemberNum)
 	c.LastMemberNum++
 
 	m := MustNewMember(t,
 		MemberConfig{
-			Name:                        fmt.Sprintf("m%v", memberNumber),
-			MemberNumber:                memberNumber,
+			Name:                        fmt.Sprintf("m%v", uniqueNumber),
 			AuthToken:                   c.Cfg.AuthToken,
 			PeerTLS:                     c.Cfg.PeerTLS,
 			ClientTLS:                   c.Cfg.ClientTLS,
@@ -549,7 +548,6 @@ func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
 type Member struct {
 	config.ServerConfig
 	UniqNumber                     int
-	MemberNumber                   int
 	Port                           string
 	PeerListeners, ClientListeners []net.Listener
 	GRPCListener                   net.Listener
@@ -591,7 +589,6 @@ type Member struct {
 type MemberConfig struct {
 	Name                        string
 	UniqNumber                  int64
-	MemberNumber                int
 	PeerTLS                     *transport.TLSInfo
 	ClientTLS                   *transport.TLSInfo
 	AuthToken                   string
@@ -624,8 +621,7 @@ type MemberConfig struct {
 func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	var err error
 	m := &Member{
-		MemberNumber: mcfg.MemberNumber,
-		UniqNumber:   int(atomic.AddInt32(&UniqueCount, 1)),
+		UniqNumber: int(atomic.AddInt32(&UniqueCount, 1)),
 	}
 
 	peerScheme := SchemeFromTLSInfo(mcfg.PeerTLS)

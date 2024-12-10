@@ -88,10 +88,11 @@ type EtcdServerProcessConfig struct {
 
 	Name string
 
-	PeerURL       url.URL
-	ClientURL     string
-	ClientHTTPURL string
-	MetricsURL    string
+	PeerURL        url.URL
+	ClientURL      string
+	ClientHTTPURL  string
+	MetricsURL     string
+	AllocatedPorts []int
 
 	InitialToken        string
 	InitialCluster      string
@@ -248,6 +249,11 @@ func (ep *EtcdServerProcess) Close() error {
 		ep.cfg.lg.Info("removing directory", zap.String("data-dir", ep.cfg.DataDirPath))
 		return os.RemoveAll(ep.cfg.DataDirPath)
 	}
+
+	for _, port := range ep.cfg.AllocatedPorts {
+		uniquePorts.Free(port)
+	}
+	ep.cfg.AllocatedPorts = nil
 	return nil
 }
 
