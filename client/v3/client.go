@@ -319,6 +319,13 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 	if c.authTokenBundle != nil {
 		opts = append(opts, grpc.WithPerRPCCredentials(c.authTokenBundle.PerRPCCredentials()))
 	}
+	serviceConfig := `{
+		"loadBalancingPolicy": "round_robin",
+		"healthCheckConfig": {
+			"serviceName": ""
+		}
+	}`
+	opts = append(opts, grpc.WithDefaultServiceConfig(serviceConfig))
 
 	opts = append(opts, c.cfg.DialOptions...)
 
