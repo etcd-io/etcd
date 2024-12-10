@@ -131,7 +131,7 @@ Suggested steps for performing a minor version upgrade for the etcd development 
 
 1. Carefully review new Go version release notes and potentially related blog posts for any deprecations, performance impacts, or other considerations.
 2. Create a GitHub issue to signal intent to upgrade and invite discussion, for example, <https://github.com/etcd-io/etcd/issues/16393>.
-3. Complete the upgrade locally in your development environment.
+3. Complete the upgrade locally in your development environment by editing `.go-version` and running `make fix`.
 4. Run performance benchmarks locally to compare before and after.
 5. Raise a pull request for the changes, for example, <https://github.com/etcd-io/etcd/pull/16394>.
 
