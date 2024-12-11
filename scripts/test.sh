@@ -628,34 +628,11 @@ function release_pass {
 }
 
 function mod_tidy_for_module {
-  # Watch for upstream solution: https://github.com/golang/go/issues/27005
-  local tmpModDir
-  tmpModDir=$(mktemp -d -t 'tmpModDir.XXXXXX')
-  run cp "./go.mod" "${tmpModDir}" || return 2
-
-  # Guarantees keeping go.sum minimal
-  # If this is causing too much problems, we should
-  # stop controlling go.sum at all.
-  rm go.sum
-  run go mod tidy || return 2
-
-  set +e
-  local tmpFileGoModInSync
-  diff -C 5 "${tmpModDir}/go.mod" "./go.mod"
-  tmpFileGoModInSync="$?"
-
-  # Bring back initial state
-  mv "${tmpModDir}/go.mod" "./go.mod"
-
-  if [ "${tmpFileGoModInSync}" -ne 0 ]; then
-    log_error "${PWD}/go.mod is not in sync with 'go mod tidy'"
-    return 255
-  fi
-  set -e
+  run go mod tidy -diff
 }
 
 function mod_tidy_pass {
-  run_for_modules mod_tidy_for_module
+  run_for_modules generic_checker mod_tidy_for_module
 }
 
 function proto_annotations_pass {
