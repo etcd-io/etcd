@@ -2284,6 +2284,21 @@ func (s *EtcdServer) monitorClusterVersions() {
 func (s *EtcdServer) monitorStorageVersion() {
 	lg := s.Logger()
 	monitor := serverversion.NewMonitor(lg, NewServerVersionAdapter(s))
+
+	// The field "storageVersion" in Meta bucket was introduced in 3.6.
+	// It doesn't exist in 3.5 and older versions. We depend on fields
+	// "confState" and "term" to identify 3.5, as the two fields were
+	// introduced in 3.5.
+	// But the field "confState" is only guaranteed to be populated
+	// after the member fully bootstraps itself. So we need to wait
+	// for the etcdserver ready for serve client requests here.
+	select {
+	case <-s.StoppingNotify():
+		return
+	case <-s.ReadyNotify():
+	}
+	lg.Info("monitorStorageVersion: start running")
+
 	for {
 		select {
 		case <-time.After(monitorVersionInterval):

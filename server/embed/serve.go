@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	defaultLog "log"
@@ -100,7 +101,12 @@ func (sctx *serveCtx) serve(
 	gopts ...grpc.ServerOption,
 ) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
+
+	select {
+	case <-s.StoppingNotify():
+		return errors.New("server is stopping")
+	case <-s.ReadyNotify():
+	}
 
 	sctx.lg.Info("ready to serve client requests")
 
