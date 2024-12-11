@@ -202,11 +202,13 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 		if err != nil {
 			panic(err)
 		}
-		if index > 0 {
-			readLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		if index == 0 {
+			readLine.Color = plotutil.Color(0)
+		} else {
+			readLine.Color = plotutil.Color(2)
 		}
-		readLine.Color = plotutil.Color(0)
 		readLine.Width = vg.Length(vg.Millimeter * 0.15 * vg.Length(i+1))
+		readLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
 		s.Color = readLine.Color
 		p.Add(readLine, s)
 
@@ -214,10 +216,11 @@ func addValues(p *plot.Plot, legend *plot.Legend, values []int, rec map[int64][]
 		if err != nil {
 			panic(err)
 		}
-		if index > 0 {
-			writeLine.Dashes = []vg.Length{vg.Points(6), vg.Points(2)}
+		if index == 0 {
+			writeLine.Color = plotutil.Color(0)
+		} else {
+			writeLine.Color = plotutil.Color(2)
 		}
-		writeLine.Color = plotutil.Color(2)
 		writeLine.Width = vg.Length(vg.Millimeter * 0.15 * vg.Length(i+1))
 		s.Color = writeLine.Color
 		p.Add(writeLine, s)
