@@ -422,15 +422,15 @@ function lint_fix_pass {
   run_for_all_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
-function license_header_per_module {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
+function license_header_check {
+  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_source_files)
+  local go_files=()
+  while IFS= read -r line; do go_files+=("$line"); done < <(go_source_files)
+  run_go_tool "github.com/google/addlicense" --check "${go_files[@]}"
 }
 
 function license_header_pass {
-  run_for_modules generic_checker license_header_per_module
+  run generic_checker license_header_check
 }
 
 # goword_check
