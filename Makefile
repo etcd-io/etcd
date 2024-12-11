@@ -70,7 +70,7 @@ verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-
 	verify-govet-shadow verify-markdown-marker verify-go-versions
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
+fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive update-go-workspace
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -210,3 +210,7 @@ verify-go-versions:
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
 	./scripts/sync_go_toolchain_directive.sh
+
+.PHONY: update-go-workspace
+update-go-workspace:
+	./scripts/update_go_workspace.sh

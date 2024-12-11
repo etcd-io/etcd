@@ -27,8 +27,8 @@ replace (
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
 replace (
-	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/pkg/v3 => ./FORBIDDED_DEPENDENCY
-	go.etcd.io/etcd/tests/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd => ../../../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/pkg/v3 v3.0.0 => ../../../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/tests/v3 v3.0.0 => ../../../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/v3 v3.0.0 => ../../../FORBIDDEN_DEPENDENCY
 )

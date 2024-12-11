@@ -38,8 +38,8 @@ replace go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
 // Etcd contains lots of packages and dependency relationship.
 // Shouldn't import unnecessary dependencies
 replace (
-	go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/api/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/tests/v3 => ./FORBIDDEN_DEPENDENCY
-	go.etcd.io/etcd/v3 => ./FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd => ../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/api/v3 v3.0.0 => ../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/tests/v3 v3.0.0 => ../FORBIDDEN_DEPENDENCY
+	go.etcd.io/etcd/v3 v3.0.0 => ../FORBIDDEN_DEPENDENCY
 )

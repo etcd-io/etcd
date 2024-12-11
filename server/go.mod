@@ -89,6 +89,7 @@ replace (
 
 // Bad imports are sometimes causing attempts to pull that code.
 // This makes the error more explicit.
-replace go.etcd.io/etcd => ./FORBIDDEN_DEPENDENCY
-
-replace go.etcd.io/tests/v3 => ./FORBIDDEN_DEPENDENCY
+replace (
+	go.etcd.io/etcd => ../FORBIDDEN_DEPENDENCY
+	go.etcd.io/tests/v3 v3.0.0 => ../FORBIDDEN_DEPENDENCY
+)
