@@ -34,6 +34,8 @@ func TestMemberList(t *testing.T) {
 
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
@@ -113,6 +115,8 @@ func TestMemberAdd(t *testing.T) {
 		for _, quorumTc := range quorumTcs {
 			for _, clusterTc := range clusterTestCases() {
 				t.Run(learnerTc.name+"/"+quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+					t.Parallel()
+
 					ctxTimeout := 10 * time.Second
 					if quorumTc.waitForQuorum {
 						ctxTimeout += etcdserver.HealthInterval
@@ -198,6 +202,8 @@ func TestMemberRemove(t *testing.T) {
 				continue
 			}
 			t.Run(quorumTc.name+"/"+clusterTc.name, func(t *testing.T) {
+				t.Parallel()
+
 				ctx, cancel := context.WithTimeout(context.Background(), 14*time.Second)
 				defer cancel()
 				c := clusterTc.config

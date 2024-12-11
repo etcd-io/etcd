@@ -17,12 +17,15 @@ package e2e
 import (
 	"context"
 	"os"
+	"sync/atomic"
 	"testing"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
+
+var uniqueCount int32
 
 type e2eRunner struct{}
 
@@ -83,6 +86,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
+	e2eConfig.BasePort = 11000 + int(atomic.AddInt32(&uniqueCount, int32(cfg.ClusterSize+2)*5)%8000)
 	epc, err := NewEtcdProcessCluster(ctx, t, WithConfig(e2eConfig))
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)
