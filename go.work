@@ -1,0 +1,21 @@
+// This is a generated file. Do not edit directly.
+
+go 1.25.0
+
+toolchain go1.25.1
+
+use (
+	.
+	./api
+	./cache
+	./client/pkg
+	./client/v3
+	./etcdctl
+	./etcdutl
+	./pkg
+	./server
+	./tests
+	./tools/mod
+	./tools/rw-heatmaps
+	./tools/testgrid-analysis
+)
