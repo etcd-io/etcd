@@ -169,6 +169,8 @@ type Config struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
 
+	// MaxSnapFiles is deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: remove it in 3.7.
 	MaxSnapFiles uint `json:"max-snapshots"`
 	//revive:disable-next-line:var-naming
 	MaxWalFiles uint `json:"max-wals"`
@@ -617,7 +619,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 		"listen-metrics-urls",
 		"List of URLs to listen on for the metrics and health endpoints.",
 	)
-	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited).")
+	fs.UintVar(&cfg.MaxSnapFiles, "max-snapshots", cfg.MaxSnapFiles, "Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.7.")
 	fs.UintVar(&cfg.MaxWalFiles, "max-wals", cfg.MaxWalFiles, "Maximum number of wal files to retain (0 is unlimited).")
 	fs.StringVar(&cfg.Name, "name", cfg.Name, "Human-readable name for this member.")
 	fs.Uint64Var(&cfg.SnapshotCount, "snapshot-count", cfg.SnapshotCount, "Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.")

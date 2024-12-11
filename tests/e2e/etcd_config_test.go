@@ -682,6 +682,11 @@ func TestEtcdDeprecatedFlags(t *testing.T) {
 			expectedMsg: "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7",
 		},
 		{
+			name:        "max-snapshots",
+			args:        append(commonArgs, "--max-snapshots=10"),
+			expectedMsg: "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7",
+		},
+		{
 			name:        "v2-deprecation",
 			args:        append(commonArgs, "--v2-deprecation", "write-only-drop-data"),
 			expectedMsg: "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input",
