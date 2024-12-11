@@ -102,7 +102,7 @@ verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-
 	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
+fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive update-go-workspace
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -244,3 +244,7 @@ sync-toolchain-directive:
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
 	./scripts/markdown_diff_lint.sh
+
+.PHONY: update-go-workspace
+update-go-workspace:
+	./scripts/update_go_workspace.sh
