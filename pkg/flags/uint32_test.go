@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUint32Value(t *testing.T) {
@@ -101,9 +102,7 @@ func TestUint32FromFlag(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
 			fs.Var(NewUint32Value(tc.defaultVal), flagName, "Maximum concurrent streams that each client can open at a time.")
-			if err := fs.Parse(tc.arguments); err != nil {
-				t.Fatalf("Unexpected error: %v\n", err)
-			}
+			require.NoError(t, fs.Parse(tc.arguments))
 			actualMaxStream := Uint32FromFlag(fs, flagName)
 			assert.Equal(t, tc.expectedVal, actualMaxStream)
 		})

@@ -16,9 +16,10 @@ package ioutil
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 type readerNilCloser struct{ io.Reader }
@@ -29,19 +30,15 @@ func (rc *readerNilCloser) Close() error { return nil }
 func TestExactReadCloserExpectEOF(t *testing.T) {
 	buf := bytes.NewBuffer(make([]byte, 10))
 	rc := NewExactReadCloser(&readerNilCloser{buf}, 1)
-	if _, err := rc.Read(make([]byte, 10)); !errors.Is(err, ErrExpectEOF) {
-		t.Fatalf("expected %v, got %v", ErrExpectEOF, err)
-	}
+	_, err := rc.Read(make([]byte, 10))
+	require.ErrorIsf(t, err, ErrExpectEOF, "expected %v, got %v", ErrExpectEOF, err)
 }
 
 // TestExactReadCloserShort expects an eof when reading too little
 func TestExactReadCloserShort(t *testing.T) {
 	buf := bytes.NewBuffer(make([]byte, 5))
 	rc := NewExactReadCloser(&readerNilCloser{buf}, 10)
-	if _, err := rc.Read(make([]byte, 10)); err != nil {
-		t.Fatalf("Read expected nil err, got %v", err)
-	}
-	if err := rc.Close(); !errors.Is(err, ErrShortRead) {
-		t.Fatalf("Close expected %v, got %v", ErrShortRead, err)
-	}
+	_, err := rc.Read(make([]byte, 10))
+	require.NoErrorf(t, err, "Read expected nil err, got %v", err)
+	require.ErrorIs(t, rc.Close(), ErrShortRead)
 }
