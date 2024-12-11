@@ -370,7 +370,7 @@ function govuln_pass {
 }
 
 function govet_pass {
-  run_for_modules generic_checker run go vet
+  run_for_all_modules generic_checker run go vet
 }
 
 function govet_shadow_per_package {
