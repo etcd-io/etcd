@@ -101,9 +101,8 @@ func TestV3AuthTokenWithDisable(t *testing.T) {
 	}()
 
 	time.Sleep(10 * time.Millisecond)
-	if _, err := c.AuthDisable(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	_, err := c.AuthDisable(context.TODO())
+	require.NoError(t, err)
 	time.Sleep(10 * time.Millisecond)
 
 	cancel()
@@ -168,14 +167,11 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg integration.ClusterCon
 	defer rootc.Close()
 
 	leaseResp, err := rootc.Grant(context.TODO(), 2)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leaseID := leaseResp.ID
 
-	if _, err = rootc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(leaseID)); err != nil {
-		t.Fatal(err)
-	}
+	_, err = rootc.Put(context.TODO(), "foo", "bar", clientv3.WithLease(leaseID))
+	require.NoError(t, err)
 
 	// wait for lease expire
 	time.Sleep(3 * time.Second)
@@ -229,15 +225,11 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	defer rootc.Close()
 
 	leaseResp, err := rootc.Grant(context.TODO(), 90)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leaseID := leaseResp.ID
 	// permission of k3 isn't granted to user1
 	_, err = rootc.Put(context.TODO(), "k3", "val", clientv3.WithLease(leaseID))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	userc, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
 	if cerr != nil {
@@ -288,31 +280,21 @@ func TestV3AuthWithLeaseAttach(t *testing.T) {
 	defer user2c.Close()
 
 	leaseResp, err := user1c.Grant(context.TODO(), 90)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leaseID := leaseResp.ID
 	// permission of k2 is also granted to user2
 	_, err = user1c.Put(context.TODO(), "k2", "val", clientv3.WithLease(leaseID))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = user2c.Revoke(context.TODO(), leaseID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	leaseResp, err = user1c.Grant(context.TODO(), 90)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leaseID = leaseResp.ID
 	// permission of k1 isn't granted to user2
 	_, err = user1c.Put(context.TODO(), "k1", "val", clientv3.WithLease(leaseID))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = user2c.Revoke(context.TODO(), leaseID)
 	if err == nil {
@@ -353,9 +335,8 @@ func authSetupRoot(t *testing.T, auth pb.AuthClient) {
 		},
 	}
 	authSetupUsers(t, auth, root)
-	if _, err := auth.AuthEnable(context.TODO(), &pb.AuthEnableRequest{}); err != nil {
-		t.Fatal(err)
-	}
+	_, err := auth.AuthEnable(context.TODO(), &pb.AuthEnableRequest{})
+	require.NoError(t, err)
 }
 
 func TestV3AuthNonAuthorizedRPCs(t *testing.T) {

@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	v3 "go.etcd.io/etcd/client/v3"
@@ -230,15 +231,13 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	if _, err := etcdc.Put(context.TODO(), "foo", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := etcdc.Put(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
 	donec, readyc := make(chan struct{}), make(chan struct{})
 	go func() {
 		<-readyc
-		if _, err := etcdc.Delete(context.TODO(), "foo"); err != nil {
-			t.Error(err)
-		}
+		_, derr := etcdc.Delete(context.TODO(), "foo")
+		assert.NoError(t, derr)
 		close(donec)
 	}()
 
@@ -256,9 +255,9 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	}
 
 	iso := concurrency.WithIsolation(concurrency.RepeatableReads)
-	if _, err := concurrency.NewSTM(etcdc, applyf, iso); err != nil {
-		t.Fatalf("error on stm txn (%v)", err)
-	}
+	_, err = concurrency.NewSTM(etcdc, applyf, iso)
+	require.NoErrorf(t, err, "error on stm txn")
+
 	if try != 2 {
 		t.Fatalf("STM apply expected to run twice, got %d", try)
 	}
