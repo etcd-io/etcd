@@ -79,9 +79,9 @@ func TestAuthDisable(t *testing.T) {
 		// confirm put succeeded
 		resp, err := cc.Get(ctx, "hoo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "hoo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "hoo", string(resp.Kvs[0].Key), "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'hoo', 'bar' but got %+v", resp.Kvs)
 	})
 }
 
@@ -173,9 +173,9 @@ func TestAuthRoleUpdate(t *testing.T) {
 		// confirm put succeeded
 		resp, err := testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "hoo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "hoo", string(resp.Kvs[0].Key), "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
 		// revoke the newly granted key
 		_, err = rootAuthClient.RoleRevokePermission(ctx, testRoleName, "hoo", "")
 		require.NoError(t, err)
@@ -184,9 +184,9 @@ func TestAuthRoleUpdate(t *testing.T) {
 		// confirm a key still granted can be accessed
 		resp, err = testUserAuthClient.Get(ctx, "foo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "foo", string(resp.Kvs[0].Key), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
 	})
 }
 
@@ -209,9 +209,9 @@ func TestAuthUserDeleteDuringOps(t *testing.T) {
 		// confirm put succeeded
 		resp, err := testUserAuthClient.Get(ctx, "foo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "foo", string(resp.Kvs[0].Key), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
 		// delete the user
 		_, err = rootAuthClient.UserDelete(ctx, testUserName)
 		require.NoError(t, err)
@@ -240,9 +240,9 @@ func TestAuthRoleRevokeDuringOps(t *testing.T) {
 		// confirm put succeeded
 		resp, err := testUserAuthClient.Get(ctx, "foo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "foo", string(resp.Kvs[0].Key), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
 		// create a new role
 		_, err = rootAuthClient.RoleAdd(ctx, "test-role2")
 		require.NoError(t, err)
@@ -258,9 +258,9 @@ func TestAuthRoleRevokeDuringOps(t *testing.T) {
 		// confirm put succeeded
 		resp, err = testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "hoo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "hoo", string(resp.Kvs[0].Key), "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'hoo' 'bar' but got %+v", resp.Kvs)
 		// revoke a role from the user
 		_, err = rootAuthClient.UserRevokeRole(ctx, testUserName, testRoleName)
 		require.NoError(t, err)
@@ -272,9 +272,9 @@ func TestAuthRoleRevokeDuringOps(t *testing.T) {
 		// confirm put succeeded
 		resp, err = testUserAuthClient.Get(ctx, "hoo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "hoo" || string(resp.Kvs[0].Value) != "bar2" {
-			t.Fatalf("want key value pair 'hoo' 'bar2' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'hoo' 'bar2' but got %+v", resp.Kvs)
+		require.Equalf(t, "hoo", string(resp.Kvs[0].Key), "want key value pair 'hoo' 'bar2' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar2", string(resp.Kvs[0].Value), "want key value pair 'hoo' 'bar2' but got %+v", resp.Kvs)
 	})
 }
 
@@ -296,9 +296,9 @@ func TestAuthWriteKey(t *testing.T) {
 		require.NoError(t, rootAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
 		resp, err := rootAuthClient.Get(ctx, "foo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" || string(resp.Kvs[0].Value) != "bar" {
-			t.Fatalf("want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "foo", string(resp.Kvs[0].Key), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar", string(resp.Kvs[0].Value), "want key value pair 'foo' 'bar' but got %+v", resp.Kvs)
 		// try invalid user
 		_, err = clus.Client(WithAuth("a", "b"))
 		require.ErrorContains(t, err, AuthenticationFailed)
@@ -308,9 +308,9 @@ func TestAuthWriteKey(t *testing.T) {
 		// confirm put succeeded
 		resp, err = testUserAuthClient.Get(ctx, "foo", config.GetOptions{})
 		require.NoError(t, err)
-		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" || string(resp.Kvs[0].Value) != "bar2" {
-			t.Fatalf("want key value pair 'foo' 'bar2' but got %+v", resp.Kvs)
-		}
+		require.Lenf(t, resp.Kvs, 1, "want key value pair 'foo' 'bar2' but got %+v", resp.Kvs)
+		require.Equalf(t, "foo", string(resp.Kvs[0].Key), "want key value pair 'foo' 'bar2' but got %+v", resp.Kvs)
+		require.Equalf(t, "bar2", string(resp.Kvs[0].Value), "want key value pair 'foo' 'bar2' but got %+v", resp.Kvs)
 
 		// try bad password
 		_, err = clus.Client(WithAuth(testUserName, "badpass"))
@@ -403,7 +403,7 @@ func TestAuthTxn(t *testing.T) {
 						Interactive: true,
 					})
 					if req.expectError {
-						require.Contains(t, err.Error(), req.expectResults[0])
+						require.ErrorContains(t, err, req.expectResults[0])
 					} else {
 						require.NoError(t, err)
 						require.Equal(t, req.expectResults, getRespValues(resp))
@@ -468,9 +468,9 @@ func TestAuthLeaseKeepAlive(t *testing.T) {
 
 		gresp, err := rootAuthClient.Get(ctx, "key", config.GetOptions{})
 		require.NoError(t, err)
-		if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Key) != "key" || string(gresp.Kvs[0].Value) != "value" {
-			t.Fatalf("want kv pair ('key', 'value') but got %v", gresp.Kvs)
-		}
+		require.Lenf(t, gresp.Kvs, 1, "want kv pair ('key', 'value') but got %v", gresp.Kvs)
+		require.Equalf(t, "key", string(gresp.Kvs[0].Key), "want kv pair ('key', 'value') but got %v", gresp.Kvs)
+		require.Equalf(t, "value", string(gresp.Kvs[0].Value), "want kv pair ('key', 'value') but got %v", gresp.Kvs)
 	})
 }
 
@@ -561,9 +561,8 @@ func TestAuthLeaseGrantLeases(t *testing.T) {
 				leaseID := resp.ID
 				lresp, err := rootAuthClient.Leases(ctx)
 				require.NoError(t, err)
-				if len(lresp.Leases) != 1 || lresp.Leases[0].ID != leaseID {
-					t.Fatalf("want %v leaseID but got %v leases", leaseID, lresp.Leases)
-				}
+				require.Lenf(t, lresp.Leases, 1, "want %v leaseID but got %v leases", leaseID, lresp.Leases)
+				require.Equalf(t, lresp.Leases[0].ID, leaseID, "want %v leaseID but got %v leases", leaseID, lresp.Leases)
 			})
 		})
 	}
