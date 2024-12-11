@@ -196,9 +196,12 @@ function modules() {
   echo "${modules[@]}"
 }
 
-function modules_for_bom() {
-  for m in $(modules); do
-    echo -n "${m}/... "
+# returns the absolute path to the module.
+function workspace_modules() {
+  local modules=()
+  while IFS= read -r line; do modules+=("$line"); done < <(workspace_relative_modules)
+  for module in "${modules[@]}"; do
+    go mod edit -json "${module/.../go.mod}" | jq -r '.Module.Path'
   done
 }
 
@@ -404,15 +407,11 @@ function tool_exists {
 # tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
 function tool_get_bin {
   local tool="$1"
-  local pkg_part="$1"
-  if [[ "$tool" == *"@"* ]]; then
-    pkg_part=$(echo "${tool}" | cut -d'@' -f1)
+  local pkg_part
+
+  pkg_part=$(echo "${tool}" | cut -d'@' -f1)
     # shellcheck disable=SC2086
-    run go install ${GOBINARGS:-} "${tool}" || return 2
-  else
-    # shellcheck disable=SC2086
-    run_for_module ./tools/mod run go install ${GOBINARGS:-} "${tool}" || return 2
-  fi
+  run go install ${GOBINARGS:-} "${tool}" || return 2
 
   # remove the version suffix, such as removing "/v3" from "go.etcd.io/etcd/v3".
   local cmd_base_name
@@ -421,7 +420,7 @@ function tool_get_bin {
     pkg_part=$(dirname "${pkg_part}")
   fi
 
-  run_for_module ./tools/mod go list -f '{{.Target}}' "${pkg_part}"
+  run go list -f '{{.Target}}' "${pkg_part}"
 }
 
 # tool_pkg_dir [pkg] - returns absolute path to a directory that stores given pkg.

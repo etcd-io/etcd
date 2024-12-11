@@ -469,14 +469,21 @@ function gofmt_pass {
 function bom_pass {
   log_callout "Checking bill of materials..."
   # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  # shellcheck disable=SC2207
-  modules=($(modules_for_bom))
+  local modules=()
+  while IFS= read -r line; do modules+=("$line"); done < <(workspace_relative_modules_without_tools)
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  # Download modules first to avoid issues when running license-bill-of-materials
+  for module in "${modules[@]}"; do
+    local module_dir
+    module_dir="${module%/...}"
+    run_for_module "${module_dir}" run go mod download
+  done
+
+  output=$(run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -500,24 +507,22 @@ function bom_pass {
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_deps_of_module() {
-  local module
-  if ! module=$(run go list -m); then
-    return 255
-  fi
-  run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+  local modules=("$@")
+  for module in "${modules[@]}"; do
+    local module_file
+    local module_name
+    module_file="${module/.../go.mod}"
+    if ! module_name=$(go mod edit -json "${module_file}" | jq -r '.Module.Path'); then
+      return 255
+    fi
+    go mod edit -json "${module_file}" | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module_name}"'"'
+  done
 }
 
 # Checks whether dependencies are consistent across modules
 function dep_pass {
   local all_dependencies
-  local tools_mod_dependencies
-  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
-  # tools/mod is a special case. It is a module that is not included in the
-  # module list from test_lib.sh. However, we need to ensure that the
-  # dependency versions match the rest of the project. Therefore, explicitly
-  # execute the command for tools/mod, and append its dependencies to the list.
-  tools_mod_dependencies=$(run_for_module "tools/mod" dump_deps_of_module "./...") || return 2
-  all_dependencies="${all_dependencies}"$'\n'"${tools_mod_dependencies}"
+  all_dependencies=$(run_for_all_modules dump_deps_of_module | sort) || return 2
 
   local duplicates
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
