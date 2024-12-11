@@ -207,6 +207,16 @@ function workspace_relative_modules() {
   go work edit -json | jq -r '.Use[].DiskPath + "/..."'
 }
 
+# returns all the go files from the repository.
+function go_source_files {
+  find . -not \(\
+    -wholename './.git' -prune\
+  \) -and -not \(\
+    -name '*.pb.go' \
+    -or -name '*.pb.gw.go'\
+  \) -and -name '*.go'
+}
+
 # returns the list of the workspace modules, not including the tools, as they
 # are not considered to be added to the bill of materials.
 function workspace_relative_modules_without_tools() {

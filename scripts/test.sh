@@ -458,19 +458,12 @@ function goword_for_package {
   fi
 }
 
-
 function goword_pass {
   run_for_modules goword_for_package || return 255
 }
 
-function go_fmt_for_package {
-  # We utilize 'go fmt' to find all files suitable for formatting,
-  # but reuse full power gofmt to perform just RO check.
-  go fmt -n "$1" | sed 's| -w | -d |g' | sh
-}
-
 function gofmt_pass {
-  run_for_modules generic_checker go_fmt_for_package
+  run go_source_files | generic_checker xargs gofmt -d
 }
 
 function bom_pass {
