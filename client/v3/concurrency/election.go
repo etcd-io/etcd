@@ -195,13 +195,15 @@ func (e *Election) observe(ctx context.Context, ch chan<- v3.GetResponse) {
 					return
 				}
 				// only accept puts; a delete will make observe() spin
+				// find the smaller create revision among the puts
 				for _, ev := range wr.Events {
 					if ev.Type == mvccpb.PUT {
-						hdr, kv = &wr.Header, ev.Kv
-						// may have multiple revs; hdr.rev = the last rev
-						// set to kv's rev in case batch has multiple Puts
-						hdr.Revision = kv.ModRevision
-						break
+						if kv == nil || ev.Kv.CreateRevision < kv.CreateRevision {
+							hdr, kv = &wr.Header, ev.Kv
+							// may have multiple revs; hdr.rev = the last rev
+							// set to kv's rev in case batch has multiple Puts
+							hdr.Revision = kv.ModRevision
+						}
 					}
 				}
 			}
