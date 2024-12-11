@@ -15,8 +15,8 @@
 package mvcc
 
 import (
-	"sync"
-
+	"bytes"
+	"fmt"
 	"github.com/google/btree"
 	"go.uber.org/zap"
 )
@@ -37,96 +37,110 @@ type index interface {
 }
 
 type treeIndex struct {
-	sync.RWMutex
-	tree *btree.BTreeG[*keyIndex]
-	lg   *zap.Logger
+	baseRev      int64
+	revisionTree []*btree.BTreeG[keyRev]
+	lg           *zap.Logger
+}
+
+func (ti *treeIndex) Equal(b index) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ti *treeIndex) Insert(ki *keyIndex) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ti *treeIndex) KeyIndex(ki *keyIndex) *keyIndex {
+	//TODO implement me
+	panic("implement me")
+}
+
+type keyRev struct {
+	key          []byte
+	mod, created Revision
+	version      int64
+}
+
+var lessThen btree.LessFunc[keyRev] = func(k keyRev, k2 keyRev) bool {
+	return compare(k, k2) == -1
+}
+
+func compare(k keyRev, k2 keyRev) int {
+	return bytes.Compare(k.key, k2.key)
 }
 
 func newTreeIndex(lg *zap.Logger) index {
 	return &treeIndex{
-		tree: btree.NewG(32, func(aki *keyIndex, bki *keyIndex) bool {
-			return aki.Less(bki)
-		}),
-		lg: lg,
+		baseRev: -1,
+		lg:      lg,
 	}
 }
 
 func (ti *treeIndex) Put(key []byte, rev Revision) {
-	keyi := &keyIndex{key: key}
-
-	ti.Lock()
-	defer ti.Unlock()
-	okeyi, ok := ti.tree.Get(keyi)
-	if !ok {
-		keyi.put(ti.lg, rev.Main, rev.Sub)
-		ti.tree.ReplaceOrInsert(keyi)
-		return
+	if ti.baseRev == -1 {
+		ti.baseRev = rev.Main - 1
+		ti.revisionTree = []*btree.BTreeG[keyRev]{
+			btree.NewG[keyRev](32, lessThen),
+		}
 	}
-	okeyi.put(ti.lg, rev.Main, rev.Sub)
+	if rev.Main != ti.rev()+1 {
+		panic(fmt.Sprintf("append only, lastRev: %d, putRev: %d", ti.rev(), rev.Main))
+	}
+	prevTree := ti.revisionTree[len(ti.revisionTree)-1]
+	item, found := prevTree.Get(keyRev{key: key})
+	created := rev
+	var version int64 = 1
+	if found {
+		created = item.created
+		version = item.version + 1
+	}
+	newTree := prevTree.Clone()
+	newTree.ReplaceOrInsert(keyRev{
+		key:     key,
+		mod:     rev,
+		created: created,
+		version: version,
+	})
+	ti.revisionTree = append(ti.revisionTree, newTree)
+}
+
+func (ti *treeIndex) rev() int64 {
+	return ti.baseRev + int64(len(ti.revisionTree)) - 1
 }
 
 func (ti *treeIndex) Get(key []byte, atRev int64) (modified, created Revision, ver int64, err error) {
-	ti.RLock()
-	defer ti.RUnlock()
-	return ti.unsafeGet(key, atRev)
-}
-
-func (ti *treeIndex) unsafeGet(key []byte, atRev int64) (modified, created Revision, ver int64, err error) {
-	keyi := &keyIndex{key: key}
-	if keyi = ti.keyIndex(keyi); keyi == nil {
+	idx := atRev - ti.baseRev
+	if idx < 0 || idx >= int64(len(ti.revisionTree)) {
 		return Revision{}, Revision{}, 0, ErrRevisionNotFound
 	}
-	return keyi.get(ti.lg, atRev)
-}
-
-func (ti *treeIndex) KeyIndex(keyi *keyIndex) *keyIndex {
-	ti.RLock()
-	defer ti.RUnlock()
-	return ti.keyIndex(keyi)
-}
-
-func (ti *treeIndex) keyIndex(keyi *keyIndex) *keyIndex {
-	if ki, ok := ti.tree.Get(keyi); ok {
-		return ki
+	tree := ti.revisionTree[idx]
+	keyRev, found := tree.Get(keyRev{key: key})
+	if !found {
+		return Revision{}, Revision{}, 0, ErrRevisionNotFound
 	}
-	return nil
-}
-
-func (ti *treeIndex) unsafeVisit(key, end []byte, f func(ki *keyIndex) bool) {
-	keyi, endi := &keyIndex{key: key}, &keyIndex{key: end}
-
-	ti.tree.AscendGreaterOrEqual(keyi, func(item *keyIndex) bool {
-		if len(endi.key) > 0 && !item.Less(endi) {
-			return false
-		}
-		if !f(item) {
-			return false
-		}
-		return true
-	})
+	return keyRev.mod, keyRev.created, keyRev.version, nil
 }
 
 // Revisions returns limited number of revisions from key(included) to end(excluded)
 // at the given rev. The returned slice is sorted in the order of key. There is no limit if limit <= 0.
 // The second return parameter isn't capped by the limit and reflects the total number of revisions.
 func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []Revision, total int) {
-	ti.RLock()
-	defer ti.RUnlock()
-
 	if end == nil {
-		rev, _, _, err := ti.unsafeGet(key, atRev)
+		rev, _, _, err := ti.Get(key, atRev)
 		if err != nil {
 			return nil, 0
 		}
 		return []Revision{rev}, 1
 	}
-	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
-		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			if limit <= 0 || len(revs) < limit {
-				revs = append(revs, rev)
-			}
-			total++
+	idx := atRev - ti.baseRev
+	tree := ti.revisionTree[idx]
+	tree.AscendRange(keyRev{key: key}, keyRev{key: end}, func(kr keyRev) bool {
+		if limit <= 0 || len(revs) < limit {
+			revs = append(revs, kr.mod)
 		}
+		total++
 		return true
 	})
 	return revs, total
@@ -135,119 +149,74 @@ func (ti *treeIndex) Revisions(key, end []byte, atRev int64, limit int) (revs []
 // CountRevisions returns the number of revisions
 // from key(included) to end(excluded) at the given rev.
 func (ti *treeIndex) CountRevisions(key, end []byte, atRev int64) int {
-	ti.RLock()
-	defer ti.RUnlock()
-
 	if end == nil {
-		_, _, _, err := ti.unsafeGet(key, atRev)
+		_, _, _, err := ti.Get(key, atRev)
 		if err != nil {
 			return 0
 		}
 		return 1
 	}
+	idx := atRev - ti.baseRev
+	tree := ti.revisionTree[idx]
 	total := 0
-	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
-		if _, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			total++
-		}
+	tree.AscendRange(keyRev{key: key}, keyRev{key: end}, func(kr keyRev) bool {
+		total++
 		return true
 	})
 	return total
 }
 
 func (ti *treeIndex) Range(key, end []byte, atRev int64) (keys [][]byte, revs []Revision) {
-	ti.RLock()
-	defer ti.RUnlock()
-
 	if end == nil {
-		rev, _, _, err := ti.unsafeGet(key, atRev)
+		rev, _, _, err := ti.Get(key, atRev)
 		if err != nil {
 			return nil, nil
 		}
 		return [][]byte{key}, []Revision{rev}
 	}
-	ti.unsafeVisit(key, end, func(ki *keyIndex) bool {
-		if rev, _, _, err := ki.get(ti.lg, atRev); err == nil {
-			revs = append(revs, rev)
-			keys = append(keys, ki.key)
-		}
+	idx := atRev - ti.baseRev
+	tree := ti.revisionTree[idx]
+	tree.AscendRange(keyRev{key: key}, keyRev{key: end}, func(kr keyRev) bool {
+		revs = append(revs, kr.mod)
+		keys = append(keys, kr.key)
 		return true
 	})
 	return keys, revs
 }
 
 func (ti *treeIndex) Tombstone(key []byte, rev Revision) error {
-	keyi := &keyIndex{key: key}
-
-	ti.Lock()
-	defer ti.Unlock()
-	ki, ok := ti.tree.Get(keyi)
-	if !ok {
+	if rev.Main != ti.rev()+1 {
+		panic(fmt.Sprintf("append only, lastRev: %d, putRev: %d", ti.rev(), rev.Main))
+	}
+	prevTree := ti.revisionTree[len(ti.revisionTree)-1]
+	newTree := prevTree.Clone()
+	_, found := prevTree.Delete(keyRev{
+		key: key,
+	})
+	ti.revisionTree = append(ti.revisionTree, newTree)
+	if !found {
 		return ErrRevisionNotFound
 	}
-
-	return ki.tombstone(ti.lg, rev.Main, rev.Sub)
+	return nil
 }
 
 func (ti *treeIndex) Compact(rev int64) map[Revision]struct{} {
 	available := make(map[Revision]struct{})
 	ti.lg.Info("compact tree index", zap.Int64("revision", rev))
-	ti.Lock()
-	clone := ti.tree.Clone()
-	ti.Unlock()
-
-	clone.Ascend(func(keyi *keyIndex) bool {
-		// Lock is needed here to prevent modification to the keyIndex while
-		// compaction is going on or revision added to empty before deletion
-		ti.Lock()
-		keyi.compact(ti.lg, rev, available)
-		if keyi.isEmpty() {
-			_, ok := ti.tree.Delete(keyi)
-			if !ok {
-				ti.lg.Panic("failed to delete during compaction")
-			}
-		}
-		ti.Unlock()
-		return true
-	})
+	idx := rev - ti.baseRev
+	ti.revisionTree = ti.revisionTree[idx:]
+	ti.baseRev = rev
 	return available
 }
 
 // Keep finds all revisions to be kept for a Compaction at the given rev.
 func (ti *treeIndex) Keep(rev int64) map[Revision]struct{} {
 	available := make(map[Revision]struct{})
-	ti.RLock()
-	defer ti.RUnlock()
-	ti.tree.Ascend(func(keyi *keyIndex) bool {
-		keyi.keep(rev, available)
+	idx := rev - ti.baseRev
+	tree := ti.revisionTree[idx]
+	tree.Ascend(func(item keyRev) bool {
+		available[item.mod] = struct{}{}
 		return true
 	})
 	return available
-}
-
-func (ti *treeIndex) Equal(bi index) bool {
-	b := bi.(*treeIndex)
-
-	if ti.tree.Len() != b.tree.Len() {
-		return false
-	}
-
-	equal := true
-
-	ti.tree.Ascend(func(aki *keyIndex) bool {
-		bki, _ := b.tree.Get(aki)
-		if !aki.equal(bki) {
-			equal = false
-			return false
-		}
-		return true
-	})
-
-	return equal
-}
-
-func (ti *treeIndex) Insert(ki *keyIndex) {
-	ti.Lock()
-	defer ti.Unlock()
-	ti.tree.ReplaceOrInsert(ki)
 }
