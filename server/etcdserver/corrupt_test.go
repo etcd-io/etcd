@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -550,27 +551,17 @@ func TestHashKVHandler(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hashReq := &pb.HashKVRequest{Revision: int64(revision)}
 			hashReqBytes, err := json.Marshal(hashReq)
-			if err != nil {
-				t.Fatalf("failed to marshal request: %v", err)
-			}
+			require.NoErrorf(t, err, "failed to marshal request: %v", err)
 			req, err := http.NewRequest(http.MethodGet, srv.URL+PeerHashKVPath, bytes.NewReader(hashReqBytes))
-			if err != nil {
-				t.Fatalf("failed to create request: %v", err)
-			}
+			require.NoErrorf(t, err, "failed to create request: %v", err)
 			req.Header.Set("X-Etcd-Cluster-ID", strconv.FormatUint(uint64(tt.remoteClusterID), 16))
 
 			resp, err := http.DefaultClient.Do(req)
-			if err != nil {
-				t.Fatalf("failed to get http response: %v", err)
-			}
+			require.NoErrorf(t, err, "failed to get http response: %v", err)
 			body, err := io.ReadAll(resp.Body)
 			resp.Body.Close()
-			if err != nil {
-				t.Fatalf("unexpected io.ReadAll error: %v", err)
-			}
-			if resp.StatusCode != tt.wcode {
-				t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
-			}
+			require.NoErrorf(t, err, "unexpected io.ReadAll error: %v", err)
+			require.Equalf(t, resp.StatusCode, tt.wcode, "#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
 			if resp.StatusCode != http.StatusOK {
 				if !strings.Contains(string(body), tt.wKeyWords) {
 					t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
@@ -580,16 +571,10 @@ func TestHashKVHandler(t *testing.T) {
 
 			hashKVResponse := pb.HashKVResponse{}
 			err = json.Unmarshal(body, &hashKVResponse)
-			if err != nil {
-				t.Fatalf("unmarshal response error: %v", err)
-			}
+			require.NoErrorf(t, err, "unmarshal response error: %v", err)
 			hashValue, _, err := etcdSrv.KV().HashStorage().HashByRev(int64(revision))
-			if err != nil {
-				t.Fatalf("etcd server hash failed: %v", err)
-			}
-			if hashKVResponse.Hash != hashValue.Hash {
-				t.Fatalf("hash value inconsistent: %d != %d", hashKVResponse.Hash, hashValue)
-			}
+			require.NoErrorf(t, err, "etcd server hash failed: %v", err)
+			require.Equalf(t, hashKVResponse.Hash, hashValue.Hash, "hash value inconsistent: %d != %d", hashKVResponse.Hash, hashValue)
 		})
 	}
 }
