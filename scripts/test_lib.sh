@@ -202,29 +202,44 @@ function modules_for_bom() {
   done
 }
 
+# returns all workspace modules.
+function workspace_relative_modules() {
+  go work edit -json | jq -r '.Use[].DiskPath + "/..."'
+}
+
+# returns the list of the workspace modules, not including the tools, as they
+# are not considered to be added to the bill of materials.
+function workspace_relative_modules_without_tools() {
+  local modules=()
+  while IFS= read -r line; do modules+=("$line"); done < <(workspace_relative_modules)
+  for module in "${modules[@]}"; do
+    if [[ ! "${module}" =~ ^\./tools ]]; then
+      echo "${module}"
+    fi
+  done
+}
+
+#  run_for_modules [cmd]
+#  run given command across all modules and packages, not including the tools
+#  (unless the set is limited using ${PKG} or / ${USERMOD})
+function run_for_modules {
+  local pkg="${PKG:-./...}"
+  if [ -z "${USERMOD:-}" ]; then
+    # shellcheck disable=SC2046
+    run "$@" $(workspace_relative_modules_without_tools)
+  else
+    run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
+  fi
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
-function run_for_modules {
-  KEEP_GOING_MODULE=${KEEP_GOING_MODULE:-false}
+function run_for_all_modules {
   local pkg="${PKG:-./...}"
-  local fail_mod=false
   if [ -z "${USERMOD:-}" ]; then
-    for m in $(module_dirs); do
-      if run_for_module "${m}" "$@" "${pkg}"; then
-        continue
-      else
-        if [ "$KEEP_GOING_MODULE" = false ]; then
-          log_error "There was a Failure in module ${m}, aborting..."
-          return 1
-        fi
-        log_error "There was a Failure in module ${m}, keep going..."
-        fail_mod=true
-      fi
-    done
-    if [ "$fail_mod" = true ]; then
-      return 1
-    fi
+    # shellcheck disable=SC2046
+    run "$@" $(workspace_relative_modules)
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
