@@ -44,7 +44,7 @@ func TestWatch(t *testing.T) {
 	defer w.Close()
 
 	w.Watch(0, testKey, nil, 0)
-	if !s.synced.contains(string(testKey)) {
+	if !s.(*watchableStore).synced.contains(string(testKey)) {
 		// the key must have had an entry in synced
 		t.Errorf("existence = false, want true")
 	}
@@ -67,7 +67,7 @@ func TestNewWatcherCancel(t *testing.T) {
 		t.Error(err)
 	}
 
-	if s.synced.contains(string(testKey)) {
+	if s.(*watchableStore).synced.contains(string(testKey)) {
 		// the key shoud have been deleted
 		t.Errorf("existence = true, want false")
 	}
@@ -340,7 +340,9 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// fill up w.Chan() with 1 buf via 2 compacted watch response
-	s.syncWatchers([]mvccpb.Event{})
+	sImpl, ok := s.(*watchableStore)
+	require.Truef(t, ok, "TestWatchNoEventLossOnCompact: needs a WatchableKV implementation")
+	sImpl.syncWatchers([]mvccpb.Event{})
 
 	for len(watchers) > 0 {
 		resp := <-w.Chan()
@@ -355,7 +357,7 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 			require.Equalf(t, nextRev, ev.Kv.ModRevision, "got event revision %d but want %d for watcher with watch ID %d", ev.Kv.ModRevision, nextRev, resp.WatchID)
 			nextRev++
 		}
-		if nextRev == s.rev()+1 {
+		if nextRev == sImpl.rev()+1 {
 			delete(watchers, resp.WatchID)
 		}
 	}
@@ -566,10 +568,13 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			}
 			assert.Equal(t, tc.expectRevisionBatches, revisionBatches)
 
-			s.store.revMu.Lock()
-			defer s.store.revMu.Unlock()
-			assert.Equal(t, 1, s.synced.size())
-			assert.Equal(t, 0, s.unsynced.size())
+			sImpl, ok := s.(*watchableStore)
+			require.Truef(t, ok, "TestWatchBatchUnsynced: needs a WatchableKV implementation")
+
+			sImpl.store.revMu.Lock()
+			defer sImpl.store.revMu.Unlock()
+			assert.Equal(t, 1, sImpl.synced.size())
+			assert.Equal(t, 0, sImpl.unsynced.size())
 		})
 	}
 }

@@ -36,6 +36,8 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
+var _ AuthStore = (*authStore)(nil)
+
 var (
 	rootPerm = authpb.Permission{PermType: authpb.READWRITE, Key: []byte{}, RangeEnd: []byte{0}}
 
@@ -938,7 +940,7 @@ func (as *authStore) IsAuthEnabled() bool {
 }
 
 // NewAuthStore creates a new AuthStore.
-func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost int) *authStore {
+func NewAuthStore(lg *zap.Logger, be AuthBackend, tp TokenProvider, bcryptCost int) AuthStore {
 	if lg == nil {
 		lg = zap.NewNop()
 	}

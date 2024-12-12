@@ -82,6 +82,7 @@ type store struct {
 
 // NewStore returns a new store. It is useful to create a store inside
 // mvcc pkg. It should only be used for testing externally.
+// revive:disable-next-line:unexported-return this is used internally in the mvcc pkg
 func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *store {
 	if lg == nil {
 		lg = zap.NewNop()
