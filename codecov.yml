@@ -30,6 +30,10 @@ coverage:
         # allow some coverage reductions within a threshold
         # this allows a 1% drop from the previous base commit coverage
         threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 80%
 comment:
   layout: "header, files, diff, footer"
   behavior: default # default: update, if exists. Otherwise post new; new: delete old and post new
