@@ -51,6 +51,7 @@ tokengen() {
 }
 
 add_user() {
+  	log_callout "Ensuring no tab-based indention in shell scripts"
     json=$(printf '{"name": "%s", "password": "%s"}' \
         "$(escape "$1")" \
         "$(escape "$2")"
