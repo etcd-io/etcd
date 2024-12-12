@@ -592,12 +592,17 @@ function release_pass {
   mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function mod_tidy_for_module {
-  run go mod tidy -diff
+function mod_tidy_check {
+  local modules=("$@")
+  for module in "${modules[@]}"; do
+    local module_dir
+    module_dir="${module%/...}"
+    run_for_module "${module_dir}" run go mod tidy -diff
+  done
 }
 
 function mod_tidy_pass {
-  run_for_modules generic_checker mod_tidy_for_module
+  run_for_all_modules generic_checker mod_tidy_check
 }
 
 function proto_annotations_pass {
