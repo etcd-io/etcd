@@ -343,8 +343,8 @@ function shellws_pass {
   TAB=$'\t'
   log_callout "Ensuring no tab-based indention in shell scripts"
   local files
-  files=$(find ./ -name '*.sh' -print0 | xargs -0 )
-  # shellcheck disable=SC2206
+  	files=$(find ./ -name '*.sh' -print0 | xargs -0 )
+	# shellcheck disable=SC2206
   files=( ${files[@]} "./scripts/build-binary.sh" "./scripts/build-docker.sh" "./scripts/release.sh" )
   log_cmd "grep -E -n $'^ *${TAB}' ${files[*]}"
   # shellcheck disable=SC2086
