@@ -679,7 +679,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 func values(cfg embed.Config) map[string]string {
 	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
-	cfg.AddFlags(fs)
+	cfg.AddFlagsWithoutGlobals(fs)
 	values := map[string]string{}
 	fs.VisitAll(func(f *flag.Flag) {
 		value := f.Value.String()
