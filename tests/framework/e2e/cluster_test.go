@@ -34,12 +34,12 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 	}{
 		{
 			name:   "Default",
-			config: NewConfig(),
+			config: NewConfig(WithBasePort(20000)),
 			expectArgsContain: []string{
-				"--listen-client-urls=http://localhost:0",
-				"--advertise-client-urls=http://localhost:0",
-				"--listen-peer-urls=http://localhost:1",
-				"--initial-advertise-peer-urls=http://localhost:1",
+				"--listen-client-urls=http://localhost:20000",
+				"--advertise-client-urls=http://localhost:20000",
+				"--listen-peer-urls=http://localhost:20001",
+				"--initial-advertise-peer-urls=http://localhost:20001",
 				"--initial-cluster-token=new",
 				"--snapshot-count=10000",
 			},
