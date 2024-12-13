@@ -196,6 +196,14 @@ function modules() {
   echo "${modules[@]}"
 }
 
+function workspace_modules_without_tools() {
+  local modules=()
+  while IFS= read -r line; do modules+=("$line"); done < <(workspace_relative_modules_without_tools)
+  for module in "${modules[@]}"; do
+    go mod edit -json "${module/.../go.mod}" | jq -r '.Module.Path'
+  done
+}
+
 # returns the absolute path to the module.
 function workspace_modules() {
   local modules=()

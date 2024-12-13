@@ -28,22 +28,33 @@ function _cmd() {
 #   Updates versions of cross-references in all internal references in current module.
 function update_module_version() {
   local v3version="${1}"
-  local v2version="${2}"
-  local modules
-  run go mod tidy
-  modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  shift
+  local v2version="${1}"
+  shift
 
-  v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
-  for dep in ${v3deps}; do
-    run go mod edit -require "${dep}@${v3version}"
+  for module in "$@"; do
+    pushd "${module%/...}" &>/dev/null || return 2
+    run go mod tidy
+    local modules
+    modules=$(go mod edit -json | jq -r '.Require[] | select(.Indirect == null) | .Path')
+
+    local v3deps
+    if v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3"); then
+      for dep in ${v3deps}; do
+        run go mod edit -require "${dep}@${v3version}"
+      done
+    fi
+
+    local v2deps
+    if v2deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v2"); then
+      for dep in ${v2deps}; do
+        run go mod edit -require "${dep}@${v2version}"
+      done
+    fi
+
+    run go mod tidy
+    popd >/dev/null
   done
-
-  v2deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v2")
-  for dep in ${v2deps}; do
-    run go mod edit -require "${dep}@${v2version}"
-  done
-
-  run go mod tidy
 }
 
 function mod_tidy_fix {
@@ -97,16 +108,18 @@ function push_mod_tags_cmd {
 
   # Any module ccan be used for this
   local main_version
-  main_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
+  main_version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${ROOT_MODULE}"'/api/v3") | .Version')
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
 
-  for module in $(modules); do
+  # Reverse the list of modules to tag the main module last
+  for module in $(workspace_modules_without_tools | sed '1!G;h;$!d'); do
+    module="${module%/...}"
     local version
-    version=$(go list -f '{{.Version}}' -m "${module}")
+    version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Version')
     local path
-    path=$(go list -f '{{.Path}}' -m "${module}")
+    path=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Path')
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
@@ -121,7 +134,7 @@ function push_mod_tags_cmd {
     # consider main-module's tag as the latest.
     run sleep 2
     run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
-    tags=("${tags[@]}" "${tag}")
+    tags+=("${tag}")
   done
   maybe_run git push -f "${REMOTE_REPO}" "${tags[@]}"
 }
