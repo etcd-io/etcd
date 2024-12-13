@@ -101,7 +101,6 @@ func (sctx *serveCtx) serve(
 	gopts ...grpc.ServerOption,
 ) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
 
 	select {
 	case <-s.StoppingNotify():
