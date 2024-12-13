@@ -71,6 +71,7 @@ type logEntry struct {
 	Timestamp string `json:"ts"`
 	Caller    string `json:"caller"`
 	Message   string `json:"msg"`
+	Error     string `json:"error"`
 }
 
 func TestConnectionRejectMessage(t *testing.T) {
