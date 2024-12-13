@@ -64,6 +64,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
@@ -2328,7 +2329,7 @@ func (s *EtcdServer) monitorKVHash() {
 }
 
 func (s *EtcdServer) monitorCompactHash() {
-	if !s.Cfg.CompactHashCheckEnabled {
+	if !s.FeatureEnabled(features.CompactHashCheck) {
 		return
 	}
 	t := s.Cfg.CompactHashCheckTime

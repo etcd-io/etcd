@@ -328,7 +328,7 @@ func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
 }
 
 func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckTime = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactHashCheckTime = time }
 }
 
 func WithGoFailEnabled(enabled bool) EPClusterOption {

@@ -91,6 +91,8 @@ type FeatureGate interface {
 	// set on the copy without mutating the original. This is useful for validating
 	// config against potential feature gate changes before committing those changes.
 	DeepCopy() MutableFeatureGate
+	// String returns a string containing all enabled feature gates, formatted as "key1=value1,key2=value2,...".
+	String() string
 }
 
 // MutableFeatureGate parses and stores flag gates for known features from

@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"sigs.k8s.io/yaml"
 
@@ -470,6 +471,99 @@ func TestParseFeatureGateFlags(t *testing.T) {
 				if cfg.ec.ServerFeatureGate.Enabled(k) != v {
 					t.Errorf("expected feature gate %s=%v, got %v", k, v, cfg.ec.ServerFeatureGate.Enabled(k))
 				}
+			}
+		})
+	}
+}
+
+// TestCompactHashCheckTimeFlagMigration tests the migration from
+// --experimental-compact-hash-check-time to --compact-hash-check-time
+// TODO: delete in v3.7
+func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                             string
+		compactHashCheckTime             string
+		experimentalCompactHashCheckTime string
+		useConfigFile                    bool
+		expectErr                        bool
+		expectedCompactHashCheckTime     time.Duration
+	}{
+		{
+			name:                         "default",
+			expectedCompactHashCheckTime: time.Minute,
+		},
+		{
+			name:                             "cannot set both experimental flag and non experimental flag",
+			compactHashCheckTime:             "2m",
+			experimentalCompactHashCheckTime: "3m",
+			expectErr:                        true,
+		},
+		{
+			name:                             "can set experimental flag",
+			experimentalCompactHashCheckTime: "3m",
+			expectedCompactHashCheckTime:     3 * time.Minute,
+		},
+		{
+			name:                         "can set non experimental flag",
+			compactHashCheckTime:         "2m",
+			expectedCompactHashCheckTime: 2 * time.Minute,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalCompactHashCheckTime time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
+				CompactHashCheckTime             time.Duration `json:"compact-hash-check-time,omitempty"`
+			}{}
+
+			if tc.compactHashCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--compact-hash-check-time=%s", tc.compactHashCheckTime))
+				compactHashCheckTime, err := time.ParseDuration(tc.compactHashCheckTime)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.CompactHashCheckTime = compactHashCheckTime
+			}
+
+			if tc.experimentalCompactHashCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-compact-hash-check-time=%s", tc.experimentalCompactHashCheckTime))
+				experimentalCompactHashCheckTime, err := time.ParseDuration(tc.experimentalCompactHashCheckTime)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalCompactHashCheckTime = experimentalCompactHashCheckTime
+			}
+
+			b, err := yaml.Marshal(&yc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tmpfile := mustCreateCfgFile(t, b)
+			defer os.Remove(tmpfile.Name())
+
+			cfgFromCmdLine := newConfig()
+			errFromCmdLine := cfgFromCmdLine.parse(cmdLineArgs)
+
+			cfgFromFile := newConfig()
+			errFromFile := cfgFromFile.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal(err)
+			}
+
+			if cfgFromCmdLine.ec.CompactHashCheckTime != tc.expectedCompactHashCheckTime {
+				t.Errorf("expected CompactHashCheckTime=%v, got %v", tc.expectedCompactHashCheckTime, cfgFromCmdLine.ec.CompactHashCheckTime)
+			}
+			if cfgFromFile.ec.CompactHashCheckTime != tc.expectedCompactHashCheckTime {
+				t.Errorf("expected CompactHashCheckTime=%v, got %v", tc.expectedCompactHashCheckTime, cfgFromFile.ec.CompactHashCheckTime)
 			}
 		})
 	}
