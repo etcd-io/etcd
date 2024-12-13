@@ -95,7 +95,6 @@ func (sctx *serveCtx) serve(
 	splitHttp bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
 
 	select {
 	case <-s.StoppingNotify():
