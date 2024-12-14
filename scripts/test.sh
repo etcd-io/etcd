@@ -340,24 +340,15 @@ function shellcheck_pass {
 }
 
 function shellws_pass {
-  TAB=$'\t'
   log_callout "Ensuring no tab-based indention in shell scripts"
   local files
-  files=$(find ./ -name '*.sh' -print0 | xargs -0 )
-  # shellcheck disable=SC2206
-  files=( ${files[@]} "./scripts/build-binary.sh" "./scripts/build-docker.sh" "./scripts/release.sh" )
-  log_cmd "grep -E -n $'^ *${TAB}' ${files[*]}"
-  # shellcheck disable=SC2086
-  if grep -E -n $'^ *${TAB}' "${files[@]}" | sed $'s|${TAB}|[\\\\tab]|g'; then
-    log_error "FAIL: found tab-based indention in bash scripts. Use '  ' (double space)."
-    local files_with_tabs
-    files_with_tabs=$(grep -E -l $'^ *\\t' "${files[@]}")
-    log_warning "Try: sed -i 's|\\t|  |g' $files_with_tabs"
-    return 1
-  else
-    log_success "SUCCESS: no tabulators found."
-    return 0
+  if files=$(find . -name '*.sh' -print0 | xargs -0 grep -E -n $'^\s*\t'); then
+    log_error "FAIL: found tab-based indention in the following bash scripts. Use '  ' (double space):"
+    log_error "${files}"
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
   fi
+  log_success "SUCCESS: no tabulators found."
 }
 
 function markdown_marker_pass {
