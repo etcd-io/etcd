@@ -37,7 +37,12 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				e2e.WithClusterSize(1),
 				e2e.WithLogLevel("debug"),
 			},
-			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+			allowedErrors: map[string]bool{
+				"setting up serving from embedded etcd failed.": true,
+				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
+				// TODO: Remove with etcd 3.7
+				"cannot detect storage schema version: missing confstate information": true,
+			},
 		},
 		{
 			name: "three node cluster",
@@ -45,7 +50,12 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				e2e.WithClusterSize(3),
 				e2e.WithLogLevel("debug"),
 			},
-			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+			allowedErrors: map[string]bool{
+				"setting up serving from embedded etcd failed.": true,
+				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
+				// TODO: Remove with etcd 3.7
+				"cannot detect storage schema version: missing confstate information": true,
+			},
 		},
 		{
 			name: "three node cluster with auto tls (all)",
@@ -57,7 +67,12 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				e2e.WithClientAutoTLS(true),
 				e2e.WithClientConnType(e2e.ClientTLS),
 			},
-			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+			allowedErrors: map[string]bool{
+				"setting up serving from embedded etcd failed.": true,
+				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
+				// TODO: Remove with etcd 3.7
+				"cannot detect storage schema version: missing confstate information": true,
+			},
 		},
 		{
 			name: "three node cluster with auto tls (peers)",
@@ -67,7 +82,12 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				e2e.WithIsPeerTLS(true),
 				e2e.WithIsPeerAutoTLS(true),
 			},
-			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+			allowedErrors: map[string]bool{
+				"setting up serving from embedded etcd failed.": true,
+				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
+				// TODO: Remove with etcd 3.7
+				"cannot detect storage schema version: missing confstate information": true,
+			},
 		},
 		{
 			name: "three node cluster with auto tls (client)",
@@ -77,7 +97,12 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				e2e.WithClientAutoTLS(true),
 				e2e.WithClientConnType(e2e.ClientTLS),
 			},
-			allowedErrors: map[string]bool{"setting up serving from embedded etcd failed.": true},
+			allowedErrors: map[string]bool{
+				"setting up serving from embedded etcd failed.": true,
+				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
+				// TODO: Remove with etcd 3.7
+				"cannot detect storage schema version: missing confstate information": true,
+			},
 		},
 	}
 
@@ -114,7 +139,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				err := json.Unmarshal([]byte(line), &entry)
 				require.NoErrorf(t, err, "parse log line as json, line: %s", line)
 
-				if tc.allowedErrors[entry.Message] {
+				if tc.allowedErrors[entry.Message] || tc.allowedErrors[entry.Error] {
 					continue
 				}
 
