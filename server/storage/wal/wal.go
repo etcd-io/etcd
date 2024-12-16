@@ -485,13 +485,14 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 			// 0 <= e.Index-w.start.Index - 1 < len(ents)
 			if e.Index > w.start.Index {
 				// prevent "panic: runtime error: slice bounds out of range [:13038096702221461992] with capacity 0"
-				up := e.Index - w.start.Index - 1
-				if up > uint64(len(ents)) {
+				offset := e.Index - w.start.Index - 1
+				if offset > uint64(len(ents)) {
 					// return error before append call causes runtime panic
-					return nil, state, nil, ErrSliceOutOfRange
+					return nil, state, nil, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
+						ErrSliceOutOfRange, w.start.Index, w.start.Term, e.Index, e.Term, len(ents))
 				}
 				// The line below is potentially overriding some 'uncommitted' entries.
-				ents = append(ents[:up], e)
+				ents = append(ents[:offset], e)
 			}
 			w.enti = e.Index
 
