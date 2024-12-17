@@ -228,15 +228,25 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 }
 
 func TestCompactHashCheckDetectCorruption(t *testing.T) {
+	testCompactHashCheckDetectCorruption(t, false)
+}
+
+func TestCompactHashCheckDetectCorruptionWithFeatureGate(t *testing.T) {
+	testCompactHashCheckDetectCorruption(t, true)
+}
+
+func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-		e2e.WithKeepDataDir(true),
-		e2e.WithCompactHashCheckEnabled(true),
-		e2e.WithCompactHashCheckTime(checkTime),
-	)
+	opts := []e2e.EPClusterOption{e2e.WithKeepDataDir(true), e2e.WithCompactHashCheckTime(checkTime)}
+	if useFeatureGate {
+		opts = append(opts, e2e.WithServerFeatureGate("CompactHashCheck", true))
+	} else {
+		opts = append(opts, e2e.WithCompactHashCheckEnabled(true))
+	}
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, opts...)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -270,6 +280,14 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 }
 
 func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
+	testCompactHashCheckDetectCorruptionInterrupt(t, false)
+}
+
+func TestCompactHashCheckDetectCorruptionInterruptWithFeatureGate(t *testing.T) {
+	testCompactHashCheckDetectCorruptionInterrupt(t, true)
+}
+
+func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -281,14 +299,20 @@ func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
 	t.Log("creating a new cluster with 3 nodes...")
 
 	dataDirPath := t.TempDir()
-	cfg := e2e.NewConfig(
+	opts := []e2e.EPClusterOption{
 		e2e.WithKeepDataDir(true),
-		e2e.WithCompactHashCheckEnabled(true),
 		e2e.WithCompactHashCheckTime(checkTime),
 		e2e.WithClusterSize(3),
 		e2e.WithDataDirPath(dataDirPath),
 		e2e.WithLogLevel("info"),
-	)
+	}
+	if useFeatureGate {
+		opts = append(opts, e2e.WithServerFeatureGate("CompactHashCheck", true))
+	} else {
+		opts = append(opts, e2e.WithCompactHashCheckEnabled(true))
+	}
+
+	cfg := e2e.NewConfig(opts...)
 	epc, err := e2e.InitEtcdProcessCluster(t, cfg)
 	require.NoError(t, err)
 

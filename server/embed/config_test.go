@@ -98,6 +98,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		serverFeatureGatesJSON              string
 		experimentalStopGRPCServiceOnDefrag string
 		experimentalInitialCorruptCheck     string
+		experimentalCompactHashCheckEnabled string
 		expectErr                           bool
 		expectedFeatures                    map[featuregate.Feature]bool
 	}{
@@ -194,12 +195,46 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.InitialCorruptCheck:     false,
 			},
 		},
+		{
+			name:                                "cannot set both experimental flag and feature gate flag for ExperimentalCompactHashCheckEnabled",
+			serverFeatureGatesJSON:              "CompactHashCheck=true",
+			experimentalCompactHashCheckEnabled: "false",
+			expectErr:                           true,
+		},
+		{
+			name:                                "can set feature gate experimentalCompactHashCheckEnabled to true from experimental flag",
+			experimentalCompactHashCheckEnabled: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.CompactHashCheck:        true,
+			},
+		},
+		{
+			name:                                "can set feature gate experimentalCompactHashCheckEnabled to false from experimental flag",
+			experimentalCompactHashCheckEnabled: "false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.CompactHashCheck:        false,
+			},
+		},
+		{
+			name:                   "can set feature gate CompactHashCheck to true from feature gate flag",
+			serverFeatureGatesJSON: "CompactHashCheck=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.CompactHashCheck:        true,
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			yc := struct {
 				ExperimentalStopGRPCServiceOnDefrag *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
 				ExperimentalInitialCorruptCheck     *bool  `json:"experimental-initial-corrupt-check,omitempty"`
+				ExperimentalCompactHashCheckEnabled *bool  `json:"experimental-compact-hash-check-enabled,omitempty"`
 				ServerFeatureGatesJSON              string `json:"feature-gates"`
 			}{
 				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
@@ -219,6 +254,14 @@ func TestConfigFileFeatureGates(t *testing.T) {
 					t.Fatal(err)
 				}
 				yc.ExperimentalStopGRPCServiceOnDefrag = &experimentalStopGRPCServiceOnDefrag
+			}
+
+			if tc.experimentalCompactHashCheckEnabled != "" {
+				experimentalCompactHashCheckEnabled, err := strconv.ParseBool(tc.experimentalCompactHashCheckEnabled)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalCompactHashCheckEnabled = &experimentalCompactHashCheckEnabled
 			}
 
 			b, err := yaml.Marshal(&yc)

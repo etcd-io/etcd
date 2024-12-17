@@ -50,6 +50,11 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/10524
 	InitialCorruptCheck featuregate.Feature = "InitialCorruptCheck"
+	// CompactHashCheck enables leader to periodically check followers compaction hashes.
+	// owner: @serathius
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/14120
+	CompactHashCheck featuregate.Feature = "CompactHashCheck"
 )
 
 var (
@@ -57,6 +62,7 @@ var (
 		DistributedTracing:      {Default: false, PreRelease: featuregate.Alpha},
 		StopGRPCServiceOnDefrag: {Default: false, PreRelease: featuregate.Alpha},
 		InitialCorruptCheck:     {Default: false, PreRelease: featuregate.Alpha},
+		CompactHashCheck:        {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
@@ -64,6 +70,7 @@ var (
 	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
 		"experimental-stop-grpc-service-on-defrag": StopGRPCServiceOnDefrag,
 		"experimental-initial-corrupt-check":       InitialCorruptCheck,
+		"experimental-compact-hash-check-enabled":  CompactHashCheck,
 	}
 )
 

@@ -62,6 +62,8 @@ var (
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"max-snapshots":  "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
+		"experimental-compact-hash-check-enabled": "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
+		"experimental-compact-hash-check-time":    "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
 	}
 )
 
@@ -165,6 +167,12 @@ func (cfg *config) parse(arguments []string) error {
 		err = cfg.configFromCmdLine()
 	}
 
+	// params related to experimental flag deprecation
+	// TODO: delete in v3.7
+	if cfg.ec.FlagsExplicitlySet["experimental-compact-hash-check-time"] {
+		cfg.ec.CompactHashCheckTime = cfg.ec.ExperimentalCompactHashCheckTime
+	}
+
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
 	cfg.ec.V2Deprecation = cconfig.V2DeprDefault
 
@@ -259,6 +267,10 @@ func (cfg *config) configFromCmdLine() error {
 	if (cfg.ec.Durl != "" || cfg.ec.DNSCluster != "" || cfg.ec.DNSClusterServiceName != "" || len(cfg.ec.DiscoveryCfg.Endpoints) > 0) && !flags.IsSet(cfg.cf.flagSet, "initial-cluster") {
 		cfg.ec.InitialCluster = ""
 	}
+
+	cfg.cf.flagSet.Visit(func(f *flag.Flag) {
+		cfg.ec.FlagsExplicitlySet[f.Name] = true
+	})
 
 	getBoolFlagVal := func(flagName string) *bool {
 		boolVal, parseErr := flags.GetBoolFlagVal(cfg.cf.flagSet, flagName)
