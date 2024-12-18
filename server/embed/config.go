@@ -583,11 +583,10 @@ func NewConfig() *Config {
 		LogRotationConfigJSON: DefaultLogRotationConfig,
 		EnableGRPCGateway:     true,
 
-		ExperimentalDowngradeCheckTime:           DefaultDowngradeCheckTime,
-		ExperimentalMemoryMlock:                  false,
-		ExperimentalTxnModeWriteWithSharedBuffer: true,
-		ExperimentalStopGRPCServiceOnDefrag:      false,
-		ExperimentalMaxLearners:                  membership.DefaultMaxLearners,
+		ExperimentalDowngradeCheckTime:      DefaultDowngradeCheckTime,
+		ExperimentalMemoryMlock:             false,
+		ExperimentalStopGRPCServiceOnDefrag: false,
+		ExperimentalMaxLearners:             membership.DefaultMaxLearners,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 		// TODO: delete in v3.7
