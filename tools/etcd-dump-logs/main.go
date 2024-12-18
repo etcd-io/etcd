@@ -74,8 +74,15 @@ and output a hex encoded line of binary for each input line`)
 		log.Fatal("start-snap and start-index flags cannot be used together.")
 	}
 
+	startFromIndex := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "start-index" {
+			startFromIndex = true
+		}
+	})
+
 	if !*raw {
-		ents := readUsingReadAll(lg, index, snapfile, dataDir, waldir)
+		ents := readUsingReadAll(lg, startFromIndex, index, snapfile, dataDir, waldir)
 
 		fmt.Printf("WAL entries: %d\n", len(ents))
 		if len(ents) > 0 {
@@ -104,16 +111,14 @@ and output a hex encoded line of binary for each input line`)
 	}
 }
 
-func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
+func readUsingReadAll(lg *zap.Logger, startFromIndex bool, index *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
 	var (
 		walsnap  walpb.Snapshot
 		snapshot *raftpb.Snapshot
 		err      error
 	)
 
-	isIndex := *index != 0
-
-	if isIndex {
+	if startFromIndex {
 		fmt.Printf("Start dumping log entries from index %d.\n", *index)
 		walsnap.Index = *index
 	} else {
@@ -154,7 +159,7 @@ func readUsingReadAll(lg *zap.Logger, index *uint64, snapfile *string, dataDir s
 	}
 	wmetadata, state, ents, err := w.ReadAll()
 	w.Close()
-	if err != nil && (!isIndex || !errors.Is(err, wal.ErrSnapshotNotFound)) {
+	if err != nil && (!startFromIndex || !errors.Is(err, wal.ErrSnapshotNotFound)) {
 		log.Fatalf("Failed reading WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)
