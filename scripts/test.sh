@@ -115,7 +115,7 @@ function unit_pass {
 function integration_extra {
   if [ -z "${PKG}" ] ; then
     # shellcheck disable=SC2068
-    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@" || return $?
+    go_test "./tests/integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@" || return $?
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
@@ -123,24 +123,24 @@ function integration_extra {
 
 function integration_pass {
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
+  go_test "./tests/integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
+  go_test "./tests/common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
   integration_extra "$@"
 }
 
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
+  go_test "./tests/e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  go_test "./tests/common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
 }
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  go_test "./tests/robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
 }
 
 function integration_e2e_pass {
@@ -172,12 +172,12 @@ function grpcproxy_pass {
 
 function grpcproxy_integration_pass {
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  go_test "./tests/integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
 }
 
 function grpcproxy_e2e_pass {
   # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  go_test "./tests/e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
 }
 
 ################# COVERAGE #####################################################
