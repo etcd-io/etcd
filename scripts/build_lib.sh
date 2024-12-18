@@ -26,36 +26,33 @@ etcd_build() {
 
   run rm -f "${out}/etcd"
   (
-    cd ./server
     # Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
     # shellcheck disable=SC2086
     run env "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcd" . || return 2
+      -o="./${out}/etcd" ./server || return 2
   ) || return 2
 
   run rm -f "${out}/etcdutl"
   # shellcheck disable=SC2086
   (
-    cd ./etcdutl
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcdutl" . || return 2
+      -o="./${out}/etcdutl" ./etcdutl || return 2
   ) || return 2
 
   run rm -f "${out}/etcdctl"
   # shellcheck disable=SC2086
   (
-    cd ./etcdctl
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcdctl" . || return 2
+      -o="./${out}/etcdctl" ./etcdctl || return 2
   ) || return 2
   # Verify whether symbol we overwrote exists
   # For cross-compiling we cannot run: ${out}/etcd --version | grep -q "Git SHA: ${GIT_SHA}"
