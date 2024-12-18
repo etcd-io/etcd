@@ -15,8 +15,12 @@ source ./scripts/updatebom.sh
 GO_CMD="go"
 
 function mod_tidy_fix {
-  run rm ./go.sum
-  run ${GO_CMD} mod tidy || return 2
+  local modules=("$@")
+  for module in "${modules[@]}"; do
+    local module_dir
+    module_dir="${module%/...}"
+    run_for_module "${module_dir}" run "${GO_CMD}" mod tidy
+  done
 }
 
 function bash_ws_fix {
@@ -31,8 +35,8 @@ function bash_ws_fix {
 
 log_callout -e "\\nFixing etcd code for you...\n"
 
-run_for_modules mod_tidy_fix || exit 2
-run_for_modules run ${GO_CMD} fmt || exit 2
+run_for_all_modules mod_tidy_fix || exit 2
+run run gofmt -w . || exit 2
 bash_ws_fix || exit 2
 
 log_success -e "\\nSUCCESS: etcd code is fixed :)"
