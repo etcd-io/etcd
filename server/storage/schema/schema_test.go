@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -218,7 +219,7 @@ func TestMigrate(t *testing.T) {
 			if (err != nil) != tc.expectError {
 				t.Errorf("Migrate(lg, tx, %q) = %+v, expected error: %v", tc.targetVersion, err, tc.expectError)
 			}
-			if err != nil && err.Error() != tc.expectErrorMsg {
+			if err != nil && !strings.Contains(err.Error(), tc.expectErrorMsg) {
 				t.Errorf("Migrate(lg, tx, %q) = %q, expected error message: %q", tc.targetVersion, err, tc.expectErrorMsg)
 			}
 			v := UnsafeReadStorageVersion(b.BatchTx())

@@ -73,7 +73,10 @@ func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, ta
 	if target.LessThan(current) {
 		minVersion := w.MinimalEtcdVersion()
 		if minVersion != nil && target.LessThan(*minVersion) {
-			return fmt.Errorf("cannot downgrade storage, WAL contains newer entries")
+			// Occasionally we may see this error during downgrade test due to ClusterVersionSet,
+			// which is harmless. Please read https://github.com/etcd-io/etcd/pull/13405#discussion_r1890378185.
+			return fmt.Errorf("cannot downgrade storage, WAL contains newer entries, as the target version (%s) is lower than the version (%s) detected from WAL logs",
+				target.String(), minVersion.String())
 		}
 	}
 	return plan.unsafeExecute(lg, tx)
