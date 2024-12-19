@@ -433,29 +433,6 @@ function license_header_pass {
   run_for_modules generic_checker license_header_per_module
 }
 
-function receiver_name_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-
-  recvs=$(grep 'func ([^*]' "${gofiles[@]}"  | tr  ':' ' ' |  \
-    awk ' { print $2" "$3" "$4" "$1 }' | sed "s/[a-zA-Z\\.]*go//g" |  sort  | uniq  | \
-    grep -Ev  "(Descriptor|Proto|_)"  | awk ' { print $3" "$4 } ' | sort | uniq -c | grep -v ' 1 ' | awk ' { print $2 } ')
-  if [ -n "${recvs}" ]; then
-    # shellcheck disable=SC2206
-    recvs=($recvs)
-    for recv in "${recvs[@]}"; do
-      log_error "Mismatched receiver for $recv..."
-      grep "$recv" "${gofiles[@]}" | grep 'func ('
-    done
-    return 255
-  fi
-}
-
-function receiver_name_pass {
-  run_for_modules receiver_name_for_package
-}
-
 # goword_for_package package
 # checks spelling and comments in the 'package' in the current module
 #
