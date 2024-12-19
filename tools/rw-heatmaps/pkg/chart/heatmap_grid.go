@@ -75,8 +75,8 @@ func (h *heatMapGrid) Dims() (int, int) {
 
 // Z returns the value of a grid cell at (c, r).
 // It implements the plotter.GridXYZ interface.
-func (h *heatMapGrid) Z(c, r int) float64 {
-	return h.z[r][c]
+func (hg *heatMapGrid) Z(c, r int) float64 {
+	return hg.z[r][c]
 }
 
 // X returns the coordinate for the column at index c.
