@@ -78,8 +78,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if strings.Compare(req.Op, "write") == 0 {
 		if val, ok := data[req.Key]; ok {
-			if req.Version != val.version {
-				writeResponse(response{"", -1, fmt.Sprintf("given version (%x) is different from the existing version (%x)", req.Version, val.version)}, w)
+			if req.Version < val.version {
+				writeResponse(response{"", -1, fmt.Sprintf("given version (%d) is smaller than the existing version (%d)", req.Version, val.version)}, w)
 			} else {
 				data[req.Key].val = req.Val
 				data[req.Key].version = req.Version
