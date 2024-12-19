@@ -564,6 +564,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
 		"--data-dir", dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
+		"--max-wals=1000", "--max-snapshots=1000",
 	}
 	var clientHTTPURL string
 	if cfg.ClientHTTPSeparate {
