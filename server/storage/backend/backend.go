@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 var (
@@ -187,6 +188,11 @@ func newBackend(bcfg BackendConfig) *backend {
 	if boltOpenOptions != nil {
 		*bopts = *boltOpenOptions
 	}
+
+	if bcfg.Logger == nil {
+		bcfg.Logger = zap.NewNop()
+	}
+
 	bopts.InitialMmapSize = bcfg.mmapSize()
 	bopts.FreelistType = bcfg.BackendFreelistType
 	bopts.NoSync = bcfg.UnsafeNoFsync
@@ -458,6 +464,7 @@ func (b *backend) Defrag() error {
 }
 
 func (b *backend) defrag() error {
+	verify.Assert(b.lg != nil, "the logger should not be nil")
 	now := time.Now()
 	isDefragActive.Set(1)
 	defer isDefragActive.Set(0)
@@ -499,7 +506,7 @@ func (b *backend) defrag() error {
 	tmpdb, err := bolt.Open(tdbp, 0o600, &options)
 	if err != nil {
 		temp.Close()
-		if rmErr := os.Remove(temp.Name()); rmErr != nil && b.lg != nil {
+		if rmErr := os.Remove(temp.Name()); rmErr != nil {
 			b.lg.Error(
 				"failed to remove temporary file",
 				zap.String("path", temp.Name()),
@@ -512,16 +519,14 @@ func (b *backend) defrag() error {
 
 	dbp := b.db.Path()
 	size1, sizeInUse1 := b.Size(), b.SizeInUse()
-	if b.lg != nil {
-		b.lg.Info(
-			"defragmenting",
-			zap.String("path", dbp),
-			zap.Int64("current-db-size-bytes", size1),
-			zap.String("current-db-size", humanize.Bytes(uint64(size1))),
-			zap.Int64("current-db-size-in-use-bytes", sizeInUse1),
-			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse1))),
-		)
-	}
+	b.lg.Info(
+		"defragmenting",
+		zap.String("path", dbp),
+		zap.Int64("current-db-size-bytes", size1),
+		zap.String("current-db-size", humanize.Bytes(uint64(size1))),
+		zap.Int64("current-db-size-in-use-bytes", sizeInUse1),
+		zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse1))),
+	)
 
 	defer func() {
 		// NOTE: We should exit as soon as possible because that tx
@@ -584,19 +589,17 @@ func (b *backend) defrag() error {
 	defragSec.Observe(took.Seconds())
 
 	size2, sizeInUse2 := b.Size(), b.SizeInUse()
-	if b.lg != nil {
-		b.lg.Info(
-			"finished defragmenting directory",
-			zap.String("path", dbp),
-			zap.Int64("current-db-size-bytes-diff", size2-size1),
-			zap.Int64("current-db-size-bytes", size2),
-			zap.String("current-db-size", humanize.Bytes(uint64(size2))),
-			zap.Int64("current-db-size-in-use-bytes-diff", sizeInUse2-sizeInUse1),
-			zap.Int64("current-db-size-in-use-bytes", sizeInUse2),
-			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse2))),
-			zap.Duration("took", took),
-		)
-	}
+	b.lg.Info(
+		"finished defragmenting directory",
+		zap.String("path", dbp),
+		zap.Int64("current-db-size-bytes-diff", size2-size1),
+		zap.Int64("current-db-size-bytes", size2),
+		zap.String("current-db-size", humanize.Bytes(uint64(size2))),
+		zap.Int64("current-db-size-in-use-bytes-diff", sizeInUse2-sizeInUse1),
+		zap.Int64("current-db-size-in-use-bytes", sizeInUse2),
+		zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse2))),
+		zap.Duration("took", took),
+	)
 	return nil
 }
 
