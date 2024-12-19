@@ -109,7 +109,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:           false,
 				features.StopGRPCServiceOnDefrag:      false,
 				features.InitialCorruptCheck:          false,
-				features.TxnModeWriteWithSharedBuffer: false,
+				features.TxnModeWriteWithSharedBuffer: true,
 			},
 		},
 		{
@@ -159,7 +159,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag:      true,
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
-				features.TxnModeWriteWithSharedBuffer: false,
+				features.TxnModeWriteWithSharedBuffer: true,
 			},
 		},
 		{
@@ -169,7 +169,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag:      false,
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
-				features.TxnModeWriteWithSharedBuffer: false,
+				features.TxnModeWriteWithSharedBuffer: true,
 			},
 		},
 		{

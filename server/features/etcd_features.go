@@ -68,7 +68,7 @@ var (
 		StopGRPCServiceOnDefrag:      {Default: false, PreRelease: featuregate.Alpha},
 		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
 		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
-		TxnModeWriteWithSharedBuffer: {Default: false, PreRelease: featuregate.Alpha},
+		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
