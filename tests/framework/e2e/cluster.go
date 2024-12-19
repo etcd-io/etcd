@@ -407,9 +407,6 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 	if cfg.Logger == nil {
 		cfg.Logger = zaptest.NewLogger(t)
 	}
-	if cfg.BasePort == 0 {
-		cfg.BasePort = EtcdProcessBasePort
-	}
 	if cfg.ServerConfig.SnapshotCount == 0 {
 		cfg.ServerConfig.SnapshotCount = etcdserver.DefaultSnapshotCount
 	}
@@ -517,6 +514,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	metricsPort := port + 2
 	peer2Port := port + 3
 	clientHTTPPort := port + 4
+
+	var allocatedPorts []int
+	if cfg.BasePort == 0 {
+		clientPort = uniquePorts.Alloc()
+		peerPort = uniquePorts.Alloc()
+		metricsPort = uniquePorts.Alloc()
+		peer2Port = uniquePorts.Alloc()
+		clientHTTPPort = uniquePorts.Alloc()
+		allocatedPorts = []int{clientPort, peerPort, metricsPort, peer2Port, clientHTTPPort}
+	}
 
 	if cfg.Client.ConnectionType == ClientTLSAndNonTLS {
 		curl = clientURL(cfg.ClientScheme(), clientPort, ClientNonTLS)
@@ -639,7 +646,8 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	var gofailPort int
 	if cfg.GoFailEnabled {
-		gofailPort = (i+1)*10000 + 2381
+		gofailPort = uniquePorts.Alloc()
+		allocatedPorts = append(allocatedPorts, gofailPort)
 		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
@@ -662,12 +670,13 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		GoFailClientTimeout: cfg.GoFailClientTimeout,
 		Proxy:               proxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
+		AllocatedPorts:      allocatedPorts,
 	}
 }
 
 func values(cfg embed.Config) map[string]string {
 	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
-	cfg.AddFlags(fs)
+	cfg.AddFlagsWithoutGlobals(fs)
 	values := map[string]string{}
 	fs.VisitAll(func(f *flag.Flag) {
 		value := f.Value.String()
