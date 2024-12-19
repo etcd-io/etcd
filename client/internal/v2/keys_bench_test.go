@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func createTestNode(size int) *Node {
@@ -54,9 +56,7 @@ func benchmarkResponseUnmarshalling(b *testing.B, children, size int) {
 	header.Add("X-Etcd-Index", "123456")
 	response := createTestResponse(children, size)
 	body, err := json.Marshal(response)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(b, err)
 
 	b.ResetTimer()
 	newResponse := new(Response)
