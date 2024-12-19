@@ -178,24 +178,6 @@ function maybe_run() {
   fi
 }
 
-# modules
-# returns the list of all modules in the project, not including the tools,
-# as they are not considered to be added to the bill for materials.
-function modules() {
-  modules=(
-    "${ROOT_MODULE}/api/v3"
-    "${ROOT_MODULE}/pkg/v3"
-    "${ROOT_MODULE}/client/pkg/v3"
-    "${ROOT_MODULE}/client/v2"
-    "${ROOT_MODULE}/client/v3"
-    "${ROOT_MODULE}/server/v3"
-    "${ROOT_MODULE}/etcdutl/v3"
-    "${ROOT_MODULE}/etcdctl/v3"
-    "${ROOT_MODULE}/tests/v3"
-    "${ROOT_MODULE}/v3")
-  echo "${modules[@]}"
-}
-
 function workspace_modules_without_tools() {
   local modules=()
   while IFS= read -r line; do modules+=("$line"); done < <(workspace_relative_modules_without_tools)

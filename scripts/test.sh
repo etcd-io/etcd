@@ -198,10 +198,13 @@ function pkg_to_coverprofileflag {
   echo -n "-coverprofile=${coverdir}/${prefix_normalized}/${pkgs_normalized}.coverprofile"
 }
 
-function not_test_packages {
-  for m in $(modules); do
+# Returns the packages to be considered for coverage, removing the tests, root
+# and tools packages.
+function coverage_packages {
+  for m in $(workspace_modules); do
     if [[ $m =~ .*/etcd/tests/v3 ]]; then continue; fi
     if [[ $m =~ .*/etcd/v3 ]]; then continue; fi
+    if [[ $m =~ .*/etcd/tools/ ]]; then continue; fi
     echo "${m}/..."
   done
 }
@@ -263,7 +266,6 @@ function merge_cov {
 
 # https://docs.codecov.com/docs/unexpected-coverage-changes#reasons-for-indirect-changes
 function cov_pass {
-  # shellcheck disable=SC2153
   if [ -z "${COVERDIR:-}" ]; then
     log_error "COVERDIR undeclared"
     return 255
@@ -275,7 +277,7 @@ function cov_pass {
   find "${coverdir}" -print0 -name '*.coverprofile' | xargs -0 rm
 
   local covpkgs
-  covpkgs=$(not_test_packages)
+  covpkgs=$(coverage_packages)
   local coverpkg_comma
   coverpkg_comma=$(echo "${covpkgs[@]}" | xargs | tr ' ' ',')
   local gocov_build_flags=("-covermode=set" "-coverpkg=$coverpkg_comma")
@@ -283,19 +285,19 @@ function cov_pass {
   local failed=""
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
-  for m in $(module_dirs); do
-    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
+  for module in $(workspace_relative_modules); do
+    GOLANG_TEST_SHORT=true run go_test "${module}" "parallel" "pkg_to_coverprofileflag unit_${module%/...}" -short -timeout=30m \
        "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
   done
 
   log_callout "[$(date)] Collecting coverage from integration tests ..."
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration" \
+  run go_test "./tests/integration/..." "parallel" "pkg_to_coverprofileflag integration" \
       -timeout=30m "${gocov_build_flags[@]}" "$@" || failed="$failed integration"
   # integration-store-v2
-  run_for_module "tests" go_test "./integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
+  run go_test "./tests/integration/v2store/..." "keep_going" "pkg_to_coverprofileflag store_v2" \
       -timeout=5m "${gocov_build_flags[@]}" "$@" || failed="$failed integration_v2"
   # integration_cluster_proxy
-  run_for_module "tests" go_test "./integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
+  run go_test "./tests/integration/..." "parallel" "pkg_to_coverprofileflag integration_cluster_proxy" \
       -tags cluster_proxy -timeout=30m "${gocov_build_flags[@]}" || failed="$failed integration_cluster_proxy"
 
   local cover_out_file="${coverdir}/all.coverprofile"
