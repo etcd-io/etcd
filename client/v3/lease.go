@@ -136,6 +136,10 @@ type Lease interface {
 	// (see https://github.com/etcd-io/etcd/pull/7866)
 	KeepAlive(ctx context.Context, id LeaseID) (<-chan *LeaseKeepAliveResponse, error)
 
+	// Unexpired returns true iff the lease is unexpired (more precisely: iff the
+	// lease was unexpired during the execution of the Unexpired() call).
+	Unexpired(id LeaseID) bool
+
 	// KeepAliveOnce renews the lease once. The response corresponds to the
 	// first message from calling KeepAlive. If the response has a recoverable
 	// error, KeepAliveOnce will retry the RPC with a new keep alive message.
@@ -623,4 +627,14 @@ func (ka *keepAlive) close() {
 	for _, ch := range ka.chs {
 		close(ch)
 	}
+}
+
+func (l *lessor) Unexpired(id LeaseID) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	ka, ok := l.keepAlives[id]
+	if !ok {
+		return false
+	}
+	return ka.deadline.After(time.Now())
 }
