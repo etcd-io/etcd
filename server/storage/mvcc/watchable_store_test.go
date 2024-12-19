@@ -33,7 +33,7 @@ import (
 
 func TestWatch(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
@@ -52,7 +52,7 @@ func TestWatch(t *testing.T) {
 
 func TestNewWatcherCancel(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
@@ -81,7 +81,7 @@ func TestCancelUnsynced(t *testing.T) {
 	// because newWatchableStore automatically calls syncWatchers
 	// method to sync watchers in unsynced map. We want to keep watchers
 	// in unsynced to test if syncWatchers works as expected.
-	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	// Put a key so that we can spawn watchers on that key.
@@ -125,7 +125,7 @@ func TestCancelUnsynced(t *testing.T) {
 // and moves these watchers to synced.
 func TestSyncWatchers(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
@@ -271,7 +271,7 @@ func TestRangeEvents(t *testing.T) {
 // TestWatchCompacted tests a watcher that watches on a compacted revision.
 func TestWatchCompacted(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
@@ -309,7 +309,7 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	lg := zaptest.NewLogger(t)
-	s := New(lg, b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(lg, b, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer func() {
 		cleanup(s, b)
@@ -363,7 +363,7 @@ func TestWatchNoEventLossOnCompact(t *testing.T) {
 
 func TestWatchFutureRev(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey := []byte("foo")
@@ -402,7 +402,7 @@ func TestWatchRestore(t *testing.T) {
 	test := func(delay time.Duration) func(t *testing.T) {
 		return func(t *testing.T) {
 			b, _ := betesting.NewDefaultTmpBackend(t)
-			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 			defer cleanup(s, b)
 
 			testKey := []byte("foo")
@@ -448,11 +448,11 @@ func readEventsForSecond(ws <-chan WatchResponse) (events []mvccpb.Event) {
 //  5. choose the watcher from step 1, without panic
 func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	b1, _ := betesting.NewDefaultTmpBackend(t)
-	s1 := New(zaptest.NewLogger(t), b1, &lease.FakeLessor{}, StoreConfig{})
+	s1 := New(zaptest.NewLogger(t), b1, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s1, b1)
 
 	b2, _ := betesting.NewDefaultTmpBackend(t)
-	s2 := New(zaptest.NewLogger(t), b2, &lease.FakeLessor{}, StoreConfig{})
+	s2 := New(zaptest.NewLogger(t), b2, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s2, b2)
 
 	testKey, testValue := []byte("foo"), []byte("bar")
@@ -503,49 +503,69 @@ func TestWatchBatchUnsynced(t *testing.T) {
 	tcs := []struct {
 		name                  string
 		revisions             int
-		watchBatchMaxRevs     int
+		eventSize             int
+		watchBatchMaxSize     int
 		eventsPerRevision     int
 		expectRevisionBatches [][]int64
 	}{
 		{
-			name:              "3 revisions, 4 revs per batch, 1 events per revision",
-			revisions:         12,
-			watchBatchMaxRevs: 4,
+			name:              "Fits into a single batch",
+			revisions:         10,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
 			eventsPerRevision: 1,
 			expectRevisionBatches: [][]int64{
-				{2, 3, 4, 5},
-				{6, 7, 8, 9},
-				{10, 11, 12, 13},
+				{2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
 			},
 		},
 		{
-			name:              "3 revisions, 4 revs per batch, 3 events per revision",
-			revisions:         12,
-			watchBatchMaxRevs: 4,
+			name:              "Spills to second batch",
+			revisions:         15,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
+			eventsPerRevision: 1,
+			expectRevisionBatches: [][]int64{
+				{2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+				{12, 13, 14, 15, 16},
+			},
+		},
+		{
+			name:              "Spills to second batch, but maintains revision pairs",
+			revisions:         8,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
+			eventsPerRevision: 2,
+			expectRevisionBatches: [][]int64{
+				{2, 2, 3, 3, 4, 4, 5, 5, 6, 6},
+				{7, 7, 8, 8, 9, 9},
+			},
+		},
+		{
+			name:              "Spills to second batch, but maintains revision triples",
+			revisions:         6,
+			eventSize:         100,
+			watchBatchMaxSize: 1000,
 			eventsPerRevision: 3,
 			expectRevisionBatches: [][]int64{
 				{2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5},
-				{6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9},
-				{10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13},
+				{6, 6, 6, 7, 7, 7},
 			},
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			b, _ := betesting.NewDefaultTmpBackend(t)
-			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-			oldMaxRevs := watchBatchMaxRevs
-			defer func() {
-				watchBatchMaxRevs = oldMaxRevs
-				cleanup(s, b)
-			}()
-			watchBatchMaxRevs = tc.watchBatchMaxRevs
+			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{
+				WatchBatchMaxSize: tc.watchBatchMaxSize,
+			})
 
-			v := []byte("foo")
+			k := []byte("k")
+			eventProtoOverhead := 13
+			v := make([]byte, tc.eventSize-eventProtoOverhead)
 			for i := 0; i < tc.revisions; i++ {
 				txn := s.Write(traceutil.TODO())
 				for j := 0; j < tc.eventsPerRevision; j++ {
-					txn.Put(v, v, lease.NoLease)
+					txn.Put(k, v, lease.NoLease)
 				}
 				txn.End()
 			}
@@ -553,7 +573,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 			w := s.NewWatchStream()
 			defer w.Close()
 
-			w.Watch(0, v, nil, 1)
+			w.Watch(0, k, nil, 1)
 			var revisionBatches [][]int64
 			eventCount := 0
 			for eventCount < tc.revisions*tc.eventsPerRevision {
@@ -561,6 +581,7 @@ func TestWatchBatchUnsynced(t *testing.T) {
 				for _, e := range (<-w.Chan()).Events {
 					revisions = append(revisions, e.Kv.ModRevision)
 					eventCount++
+					assert.Equal(t, tc.eventSize, e.Size())
 				}
 				revisionBatches = append(revisionBatches, revisions)
 			}
@@ -655,7 +676,7 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 			wg.add(w)
 		}
 
-		gwe := newWatcherBatch(&wg, tt.evs)
+		gwe := newWatcherBatch(&wg, tt.evs, 0)
 		if len(gwe) != len(tt.wwe) {
 			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
 		}
@@ -677,7 +698,7 @@ func TestWatchVictims(t *testing.T) {
 	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
 
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 
 	defer func() {
 		cleanup(s, b)
@@ -754,7 +775,7 @@ func TestWatchVictims(t *testing.T) {
 // canceling its watches.
 func TestStressWatchCancelClose(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
-	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, WatchableStoreConfig{})
 	defer cleanup(s, b)
 
 	testKey, testValue := []byte("foo"), []byte("bar")

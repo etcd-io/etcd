@@ -43,7 +43,7 @@ type watchServer struct {
 	clusterID int64
 	memberID  int64
 
-	maxRequestBytes uint
+	maxRequestBytes int
 
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
@@ -126,7 +126,7 @@ type serverWatchStream struct {
 	clusterID int64
 	memberID  int64
 
-	maxRequestBytes uint
+	maxRequestBytes int
 
 	sg        apply.RaftStatusGetter
 	watchable mvcc.WatchableKV
@@ -544,12 +544,12 @@ func IsCreateEvent(e mvccpb.Event) bool {
 
 func sendFragments(
 	wr *pb.WatchResponse,
-	maxRequestBytes uint,
+	maxRequestBytes int,
 	sendFunc func(*pb.WatchResponse) error,
 ) error {
 	// no need to fragment if total request size is smaller
 	// than max request limit or response contains only one event
-	if uint(wr.Size()) < maxRequestBytes || len(wr.Events) < 2 {
+	if wr.Size() < maxRequestBytes || len(wr.Events) < 2 {
 		return sendFunc(wr)
 	}
 
@@ -562,7 +562,7 @@ func sendFragments(
 		cur := ow
 		for _, ev := range wr.Events[idx:] {
 			cur.Events = append(cur.Events, ev)
-			if len(cur.Events) > 1 && uint(cur.Size()) >= maxRequestBytes {
+			if len(cur.Events) > 1 && cur.Size() >= maxRequestBytes {
 				cur.Events = cur.Events[:len(cur.Events)-1]
 				break
 			}
