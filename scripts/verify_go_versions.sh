@@ -38,6 +38,20 @@ while read -r mod; do
     verify_go_versions "${mod}";
 done < <(find . -name 'go.mod')
 
+# Workaround to get go.work's toolchain, as go work edit -json doesn't return
+# the toolchain as of Go 1.23.4. When this is fixed, we can replace these two
+# checks with verify_go_versions go.work
+toolchain_version="$(grep toolchain go.work | cut -d' ' -f2)"
+if [[ "go${target_go_version}" != "${toolchain_version}" ]]; then
+    log_error "go toolchain directive out of sync for go.work, got: ${toolchain_version}"
+    toolchain_out_of_sync="true"
+fi
+go_line_version="$(go work edit -json | jq -r .Go)"
+if ! printf '%s\n' "${go_line_version}" "${target_go_version}" | sort --check=silent --version-sort; then
+    log_error "go directive in go.work is greater than maximum allowed: go${target_go_version}"
+    go_line_violation="true"
+fi
+
 if [[ "${toolchain_out_of_sync}" == "true" ]]; then
     log_error
     log_error "Please run scripts/sync_go_toolchain_directive.sh or update .go-version to rectify this error"
