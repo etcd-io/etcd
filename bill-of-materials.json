@@ -567,6 +567,15 @@
 		]
 	},
 	{
+		"project": "go.opentelemetry.io/auto/sdk",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
 		"licenses": [
 			{
