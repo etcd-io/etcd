@@ -35,11 +35,12 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
 	serializableOperations := filterSerializableOperations(reports)
 
-	linearizable, visualize := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	linearizable, results := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
-		return visualize
+		return results.Visualize
 	}
+
 	// TODO: Use requests from linearization for replay.
 	replay := model.NewReplay(persistedRequests)
 
@@ -51,7 +52,7 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	if err != nil {
 		t.Errorf("Failed validating serializable operations, err: %s", err)
 	}
-	return visualize
+	return results.Visualize
 }
 
 type Config struct {
