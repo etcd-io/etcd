@@ -611,6 +611,17 @@ function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
 }
 
+function go_workspace_pass {
+  log_callout "Ensuring go workspace is in sync."
+
+  run go mod download
+  if [ -n "$(git status --porcelain go.work.sum)" ]; then
+    log_error "Go workspace not in sync."
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
+  fi
+}
+
 ########### MAIN ###############################################################
 
 function run_pass {
