@@ -46,7 +46,7 @@ const (
 	// main PR: https://github.com/etcd-io/etcd/pull/18279
 	StopGRPCServiceOnDefrag featuregate.Feature = "StopGRPCServiceOnDefrag"
 	// TxnModeWriteWithSharedBuffer enables the write transaction to use a shared buffer in its readonly check operations.
-	// owner: @serathius
+	// owner: @wilsonwang371
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/12896
 	TxnModeWriteWithSharedBuffer featuregate.Feature = "TxnModeWriteWithSharedBuffer"

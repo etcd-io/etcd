@@ -160,7 +160,7 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
 
 	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("TxnModeWriteWithSharedBuffer", nil),
+		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
 	}
 
 	srv := &EtcdServer{
@@ -206,7 +206,7 @@ func TestV2SetClusterVersion(t *testing.T) {
 	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
 	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
 	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("TxnModeWriteWithSharedBuffer", nil),
+		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
 	}
 
 	srv := &EtcdServer{
@@ -778,7 +778,7 @@ func TestSnapshotOrdering(t *testing.T) {
 		Logger:                 lg,
 		DataDir:                testdir,
 		SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries,
-		ServerFeatureGate:      features.NewDefaultServerFeatureGate("TxnModeWriteWithSharedBuffer", nil),
+		ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 	}
 
 	s := &EtcdServer{
@@ -878,7 +878,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			Logger:                 lg,
 			DataDir:                testdir,
 			SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries,
-			ServerFeatureGate:      features.NewDefaultServerFeatureGate("TxnModeWriteWithSharedBuffer", nil),
+			ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 		},
 		r:                 *r,
 		v2store:           st,

@@ -62,8 +62,9 @@ var (
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"max-snapshots":  "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
-		"experimental-compact-hash-check-enabled": "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
-		"experimental-compact-hash-check-time":    "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
+		"experimental-compact-hash-check-enabled":        "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
+		"experimental-compact-hash-check-time":           "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
+		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
 	}
 )
 
