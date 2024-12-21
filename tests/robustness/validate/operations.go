@@ -35,7 +35,7 @@ var (
 type Results struct {
 	Info  porcupine.LinearizationInfo
 	Model porcupine.Model
-	Lg    *zap.Logger // // TODO: Remove logger from struct and instead of making it an argument for Visualize
+	Lg    *zap.Logger // TODO: Remove logger from struct and instead of making it an argument for Visualize
 }
 
 func (r Results) Visualize(path string) error {
