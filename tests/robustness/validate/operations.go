@@ -38,7 +38,6 @@ type Results struct {
 	Lg    *zap.Logger // Include logger in the Results struct
 }
 
-// Change the Visualize method to match the signature func(path string) error
 func (r Results) Visualize(path string) error {
 	// Directly use the logger from the Results struct
 	r.Lg.Info("Saving visualization", zap.String("path", path))
