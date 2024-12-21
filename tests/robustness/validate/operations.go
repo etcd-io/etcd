@@ -35,11 +35,11 @@ var (
 type Results struct {
 	Info  porcupine.LinearizationInfo
 	Model porcupine.Model
-	Lg    *zap.Logger // Include logger in the Results struct
+	Lg    *zap.Logger // // TODO: Remove logger from struct and instead of making it an argument for Visualize
 }
 
 func (r Results) Visualize(path string) error {
-	// Directly use the logger from the Results struct
+
 	r.Lg.Info("Saving visualization", zap.String("path", path))
 	err := porcupine.VisualizePath(r.Model, r.Info, path)
 	if err != nil {
