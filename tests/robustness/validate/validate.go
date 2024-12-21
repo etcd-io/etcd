@@ -28,8 +28,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-// ValidateAndReturnVisualize returns visualize as porcupine.linearizationInfo used to generate visualization is private.
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (visualize func(basepath string) error) {
+func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Results {
 	err := checkValidationAssumptions(reports, persistedRequests)
 	require.NoErrorf(t, err, "Broken validation assumptions")
 	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
@@ -38,7 +37,7 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	linearizable, results := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
 	if linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
-		return results.Visualize
+		return results
 	}
 
 	// TODO: Use requests from linearization for replay.
@@ -52,7 +51,7 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 	if err != nil {
 		t.Errorf("Failed validating serializable operations, err: %s", err)
 	}
-	return results.Visualize
+	return results
 }
 
 type Config struct {
