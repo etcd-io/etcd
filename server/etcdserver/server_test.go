@@ -57,6 +57,7 @@ import (
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
@@ -157,6 +158,11 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
+
+	cfg := config.ServerConfig{
+		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
+	}
+
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
@@ -164,6 +170,7 @@ func TestV2SetMemberAttributes(t *testing.T) {
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
+		Cfg:          cfg,
 	}
 	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
 	if err != nil {
@@ -198,6 +205,10 @@ func TestV2SetClusterVersion(t *testing.T) {
 	defer betesting.Close(t, be)
 	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
 	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
+	cfg := config.ServerConfig{
+		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
+	}
+
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
@@ -205,6 +216,7 @@ func TestV2SetClusterVersion(t *testing.T) {
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
+		Cfg:          cfg,
 	}
 	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
 	if err != nil {
@@ -762,10 +774,17 @@ func TestSnapshotOrdering(t *testing.T) {
 		raftStorage: rs,
 	})
 	ci := cindex.NewConsistentIndex(be)
+	cfg := config.ServerConfig{
+		Logger:                 lg,
+		DataDir:                testdir,
+		SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries,
+		ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
+	}
+
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
-		Cfg:          config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		Cfg:          cfg,
 		r:            *r,
 		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
@@ -853,9 +872,14 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	})
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
-		lgMu:              new(sync.RWMutex),
-		lg:                lg,
-		Cfg:               config.ServerConfig{Logger: lg, DataDir: testdir, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		lgMu: new(sync.RWMutex),
+		lg:   lg,
+		Cfg: config.ServerConfig{
+			Logger:                 lg,
+			DataDir:                testdir,
+			SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries,
+			ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
+		},
 		r:                 *r,
 		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),

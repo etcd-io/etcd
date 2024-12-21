@@ -45,6 +45,11 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/18279
 	StopGRPCServiceOnDefrag featuregate.Feature = "StopGRPCServiceOnDefrag"
+	// TxnModeWriteWithSharedBuffer enables the write transaction to use a shared buffer in its readonly check operations.
+	// owner: @wilsonwang371
+	// beta: v3.5
+	// main PR: https://github.com/etcd-io/etcd/pull/12896
+	TxnModeWriteWithSharedBuffer featuregate.Feature = "TxnModeWriteWithSharedBuffer"
 	// InitialCorruptCheck enable to check data corruption before serving any client/peer traffic.
 	// owner: @serathius
 	// alpha: v3.6
@@ -59,18 +64,20 @@ const (
 
 var (
 	DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-		DistributedTracing:      {Default: false, PreRelease: featuregate.Alpha},
-		StopGRPCServiceOnDefrag: {Default: false, PreRelease: featuregate.Alpha},
-		InitialCorruptCheck:     {Default: false, PreRelease: featuregate.Alpha},
-		CompactHashCheck:        {Default: false, PreRelease: featuregate.Alpha},
+		DistributedTracing:           {Default: false, PreRelease: featuregate.Alpha},
+		StopGRPCServiceOnDefrag:      {Default: false, PreRelease: featuregate.Alpha},
+		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
+		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
+		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
 	// Deprecated: only add existing experimental features here. DO NOT use for new features.
 	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
-		"experimental-stop-grpc-service-on-defrag": StopGRPCServiceOnDefrag,
-		"experimental-initial-corrupt-check":       InitialCorruptCheck,
-		"experimental-compact-hash-check-enabled":  CompactHashCheck,
+		"experimental-stop-grpc-service-on-defrag":       StopGRPCServiceOnDefrag,
+		"experimental-initial-corrupt-check":             InitialCorruptCheck,
+		"experimental-compact-hash-check-enabled":        CompactHashCheck,
+		"experimental-txn-mode-write-with-shared-buffer": TxnModeWriteWithSharedBuffer,
 	}
 )
 
