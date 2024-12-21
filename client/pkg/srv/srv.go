@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -54,7 +55,7 @@ func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]
 			return err
 		}
 		for _, srv := range addrs {
-			port := fmt.Sprintf("%d", srv.Port)
+			port := strconv.FormatUint(uint64(srv.Port), 10)
 			host := net.JoinHostPort(srv.Target, port)
 			tcpAddr, terr := resolveTCPAddr("tcp", host)
 			if terr != nil {
@@ -67,7 +68,7 @@ func GetCluster(serviceScheme, service, name, dns string, apurls types.URLs) ([]
 				n = name
 			}
 			if n == "" {
-				n = fmt.Sprintf("%d", tempName)
+				n = strconv.Itoa(tempName)
 				tempName++
 			}
 			// SRV records have a trailing dot but URL shouldn't.
@@ -112,7 +113,7 @@ func GetClient(service, domain string, serviceName string) (*SRVClients, error) 
 		for _, srv := range addrs {
 			urls = append(urls, &url.URL{
 				Scheme: scheme,
-				Host:   net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port)),
+				Host:   net.JoinHostPort(srv.Target, strconv.FormatUint(uint64(srv.Port), 10)),
 			})
 		}
 		srvs = append(srvs, addrs...)
