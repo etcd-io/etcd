@@ -44,10 +44,7 @@ func TestMemberList(t *testing.T) {
 				resp, err := cc.MemberList(ctx, false)
 				require.NoErrorf(t, err, "could not get member list")
 				expectNum := len(clus.Members())
-				gotNum := len(resp.Members)
-				if expectNum != gotNum {
-					t.Fatalf("number of members not equal, expect: %d, got: %d", expectNum, gotNum)
-				}
+				require.Lenf(t, resp.Members, expectNum, "unexpected number of members")
 				assert.Eventually(t, func() bool {
 					resp, err := cc.MemberList(ctx, false)
 					if err != nil {
@@ -142,15 +139,9 @@ func TestMemberAdd(t *testing.T) {
 							require.ErrorContains(t, err, "etcdserver: unhealthy cluster")
 						} else {
 							require.NoErrorf(t, err, "MemberAdd failed")
-							if addResp.Member == nil {
-								t.Fatalf("MemberAdd failed, expected: member != nil, got: member == nil")
-							}
-							if addResp.Member.ID == 0 {
-								t.Fatalf("MemberAdd failed, expected: ID != 0, got: ID == 0")
-							}
-							if len(addResp.Member.PeerURLs) == 0 {
-								t.Fatalf("MemberAdd failed, expected: non-empty PeerURLs, got: empty PeerURLs")
-							}
+							require.NotNilf(t, addResp.Member, "MemberAdd failed, expected: member != nil, got: member == nil")
+							require.NotZerof(t, addResp.Member.ID, "MemberAdd failed, expected: ID != 0, got: ID == 0")
+							require.NotEmptyf(t, addResp.Member.PeerURLs, "MemberAdd failed, expected: non-empty PeerURLs, got: empty PeerURLs")
 						}
 					})
 				})
@@ -228,16 +219,10 @@ func TestMemberRemove(t *testing.T) {
 
 					require.NoErrorf(t, err, "MemberRemove failed")
 					t.Logf("removeResp.Members:%v", removeResp.Members)
-					if removeResp.Header.ClusterId != clusterID {
-						t.Fatalf("MemberRemove failed, expected ClusterID: %d, got: %d", clusterID, removeResp.Header.ClusterId)
-					}
-					if len(removeResp.Members) != c.ClusterSize-1 {
-						t.Fatalf("MemberRemove failed, expected length of members: %d, got: %d", c.ClusterSize-1, len(removeResp.Members))
-					}
+					require.Equalf(t, removeResp.Header.ClusterId, clusterID, "MemberRemove failed, expected ClusterID: %d, got: %d", clusterID, removeResp.Header.ClusterId)
+					require.Lenf(t, removeResp.Members, c.ClusterSize-1, "MemberRemove failed, expected length of members: %d, got: %d", c.ClusterSize-1, len(removeResp.Members))
 					for _, m := range removeResp.Members {
-						if m.ID == memberID {
-							t.Fatalf("MemberRemove failed, member(id=%d) is still in cluster", memberID)
-						}
+						require.NotEqualf(t, m.ID, memberID, "MemberRemove failed, member(id=%d) is still in cluster", memberID)
 					}
 				})
 			})
@@ -268,9 +253,7 @@ func memberToRemove(ctx context.Context, t *testing.T, client intf.Client, clust
 				break
 			}
 		}
-		if memberID == 0 {
-			t.Fatalf("memberToRemove failed. listResp:%v, statusResp:%v", listResp, statusResp)
-		}
+		require.NotZerof(t, memberID, "memberToRemove failed. listResp:%v, statusResp:%v", listResp, statusResp)
 	}
 	return memberID, clusterID
 }
