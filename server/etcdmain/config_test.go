@@ -653,3 +653,171 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls)
 	}
 }
+
+// TODO: delete in v3.7
+func TestDistributedTracingFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name         string
+		args         []string            // command line arguments
+		yamlConfig   string              // YAML configuration content
+		expectValues func(*config) error // function to verify expected values
+		expectErr    bool
+	}{
+		{
+			name: "use experimental flags",
+			args: []string{
+				"--experimental-enable-distributed-tracing=true",
+				"--experimental-distributed-tracing-address=localhost:4318",
+				"--experimental-distributed-tracing-service-name=test-service",
+				"--experimental-distributed-tracing-instance-id=instance-1",
+				"--experimental-distributed-tracing-sampling-rate=1000",
+			},
+			expectValues: func(cfg *config) error {
+				if !cfg.ec.EnableDistributedTracing {
+					return fmt.Errorf("expected EnableDistributedTracing to be true")
+				}
+				if cfg.ec.DistributedTracingAddress != "localhost:4318" {
+					return fmt.Errorf("expected DistributedTracingAddress to be localhost:4318, got %s", cfg.ec.DistributedTracingAddress)
+				}
+				if cfg.ec.DistributedTracingServiceName != "test-service" {
+					return fmt.Errorf("expected DistributedTracingServiceName to be test-service, got %s", cfg.ec.DistributedTracingServiceName)
+				}
+				if cfg.ec.DistributedTracingServiceInstanceID != "instance-1" {
+					return fmt.Errorf("expected DistributedTracingServiceInstanceID to be instance-1, got %s", cfg.ec.DistributedTracingServiceInstanceID)
+				}
+				if cfg.ec.DistributedTracingSamplingRatePerMillion != 1000 {
+					return fmt.Errorf("expected DistributedTracingSamplingRatePerMillion to be 1000, got %d", cfg.ec.DistributedTracingSamplingRatePerMillion)
+				}
+				return nil
+			},
+		},
+		{
+			name: "use regular flags",
+			args: []string{
+				"--enable-distributed-tracing=true",
+				"--distributed-tracing-address=localhost:4319",
+				"--distributed-tracing-service-name=new-service",
+				"--distributed-tracing-instance-id=instance-2",
+				"--distributed-tracing-sampling-rate=2000",
+			},
+			expectValues: func(cfg *config) error {
+				if !cfg.ec.EnableDistributedTracing {
+					return fmt.Errorf("expected EnableDistributedTracing to be true")
+				}
+				if cfg.ec.DistributedTracingAddress != "localhost:4319" {
+					return fmt.Errorf("expected DistributedTracingAddress to be localhost:4319, got %s", cfg.ec.DistributedTracingAddress)
+				}
+				if cfg.ec.DistributedTracingServiceName != "new-service" {
+					return fmt.Errorf("expected DistributedTracingServiceName to be new-service, got %s", cfg.ec.DistributedTracingServiceName)
+				}
+				if cfg.ec.DistributedTracingServiceInstanceID != "instance-2" {
+					return fmt.Errorf("expected DistributedTracingServiceInstanceID to be instance-2, got %s", cfg.ec.DistributedTracingServiceInstanceID)
+				}
+				if cfg.ec.DistributedTracingSamplingRatePerMillion != 2000 {
+					return fmt.Errorf("expected DistributedTracingSamplingRatePerMillion to be 2000, got %d", cfg.ec.DistributedTracingSamplingRatePerMillion)
+				}
+				return nil
+			},
+		},
+		{
+			name: "config file with experimental flags",
+			yamlConfig: `
+experimental-enable-distributed-tracing: true
+experimental-distributed-tracing-address: "localhost:4318"
+experimental-distributed-tracing-service-name: "test-service"
+experimental-distributed-tracing-instance-id: "instance-1"
+experimental-distributed-tracing-sampling-rate: 1000
+`,
+			expectValues: func(cfg *config) error {
+				if !cfg.ec.EnableDistributedTracing {
+					return fmt.Errorf("expected EnableDistributedTracing to be true")
+				}
+				if cfg.ec.DistributedTracingAddress != "localhost:4318" {
+					return fmt.Errorf("expected DistributedTracingAddress to be localhost:4318, got %s", cfg.ec.DistributedTracingAddress)
+				}
+				if cfg.ec.DistributedTracingServiceName != "test-service" {
+					return fmt.Errorf("expected DistributedTracingServiceName to be test-service, got %s", cfg.ec.DistributedTracingServiceName)
+				}
+				if cfg.ec.DistributedTracingServiceInstanceID != "instance-1" {
+					return fmt.Errorf("expected DistributedTracingServiceInstanceID to be instance-1, got %s", cfg.ec.DistributedTracingServiceInstanceID)
+				}
+				if cfg.ec.DistributedTracingSamplingRatePerMillion != 1000 {
+					return fmt.Errorf("expected DistributedTracingSamplingRatePerMillion to be 1000, got %d", cfg.ec.DistributedTracingSamplingRatePerMillion)
+				}
+				return nil
+			},
+		},
+		{
+			name: "config file with regular flags",
+			yamlConfig: `
+enable-distributed-tracing: true
+distributed-tracing-address: "localhost:4319"
+distributed-tracing-service-name: "new-service"
+distributed-tracing-instance-id: "instance-2"
+distributed-tracing-sampling-rate: 2000
+`,
+			expectValues: func(cfg *config) error {
+				if !cfg.ec.EnableDistributedTracing {
+					return fmt.Errorf("expected EnableDistributedTracing to be true")
+				}
+				if cfg.ec.DistributedTracingAddress != "localhost:4319" {
+					return fmt.Errorf("expected DistributedTracingAddress to be localhost:4319, got %s", cfg.ec.DistributedTracingAddress)
+				}
+				if cfg.ec.DistributedTracingServiceName != "new-service" {
+					return fmt.Errorf("expected DistributedTracingServiceName to be new-service, got %s", cfg.ec.DistributedTracingServiceName)
+				}
+				if cfg.ec.DistributedTracingServiceInstanceID != "instance-2" {
+					return fmt.Errorf("expected DistributedTracingServiceInstanceID to be instance-2, got %s", cfg.ec.DistributedTracingServiceInstanceID)
+				}
+				if cfg.ec.DistributedTracingSamplingRatePerMillion != 2000 {
+					return fmt.Errorf("expected DistributedTracingSamplingRatePerMillion to be 2000, got %d", cfg.ec.DistributedTracingSamplingRatePerMillion)
+				}
+				return nil
+			},
+		},
+		{
+			name: "config file with both flags is error",
+			yamlConfig: `
+experimental-enable-distributed-tracing: true
+enable-distributed-tracing: true
+`,
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := newConfig()
+
+			if tc.yamlConfig != "" {
+				tmpfile, err := os.CreateTemp("", "etcd-test-*.yaml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer os.Remove(tmpfile.Name())
+
+				if err := os.WriteFile(tmpfile.Name(), []byte(tc.yamlConfig), 0600); err != nil {
+					t.Fatal(err)
+				}
+
+				tc.args = []string{"--config-file=" + tmpfile.Name()}
+			}
+
+			err := cfg.parse(tc.args)
+			if tc.expectErr {
+				if err == nil {
+					t.Error("expected error but got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if err := tc.expectValues(cfg); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
