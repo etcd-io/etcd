@@ -151,7 +151,7 @@ verify-govet-shadow:
 verify-markdown-marker:
 	PASSES="markdown_marker" ./scripts/test.sh
 
-YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
+YAMLFMT_VERSION = $(shell go list -m -f '{{.Version}}' github.com/google/yamlfmt)
 
 .PHONY: fix-yamllint
 fix-yamllint:
