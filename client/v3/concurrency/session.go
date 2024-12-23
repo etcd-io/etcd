@@ -155,8 +155,7 @@ func WithContext(ctx context.Context) SessionOption {
 	}
 }
 
-// Unexpired returns true iff the session was unexpired at some point during the
-// Unexpired() call.
-func (s *Session) Unexpired() bool {
-	return s.client.Unexpired(s.id)
+// Expired returns true iff the session is expired.
+func (s *Session) Expired() bool {
+	return s.client.Expired(s.id)
 }
