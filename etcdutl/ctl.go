@@ -41,6 +41,7 @@ func init() {
 		etcdutl.NewDefragCommand(),
 		etcdutl.NewSnapshotCommand(),
 		etcdutl.NewVersionCommand(),
+		etcdutl.NewCheckCommand(),
 	)
 }
 

@@ -97,3 +97,60 @@ func TestV2DeprecationWriteOnlyNoV2Api(t *testing.T) {
 	_, err = proc.Expect("--enable-v2 and --v2-deprecation=write-only are mutually exclusive")
 	assert.NoError(t, err)
 }
+
+func TestV2DeprecationCheckCustomContentOffline(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	t.Run("WithCustomContent", func(t *testing.T) {
+		dataDirPath := t.TempDir()
+
+		createV2store(t, dataDirPath)
+
+		assertVerifyCheckCustomContentOffline(t, dataDirPath)
+	})
+
+	t.Run("WithoutCustomContent", func(t *testing.T) {
+		dataDirPath := ""
+
+		func() {
+			cCtx := getDefaultCtlCtx(t)
+
+			cfg := cCtx.cfg
+			cfg.ClusterSize = 3
+			cfg.SnapshotCount = 5
+			cfg.EnableV2 = true
+
+			// create a cluster with 3 members
+			epc, err := e2e.NewEtcdProcessCluster(t, &cfg)
+			assert.NoError(t, err)
+
+			cCtx.epc = epc
+			dataDirPath = epc.Procs[0].Config().DataDirPath
+
+			defer func() {
+				assert.NoError(t, epc.Stop())
+			}()
+
+			// create key-values with v3 api
+			for i := 0; i < 10; i++ {
+				assert.NoError(t, ctlV3Put(cCtx, fmt.Sprintf("key%d", i), fmt.Sprintf("value%d", i), ""))
+			}
+		}()
+
+		proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+		assert.NoError(t, err)
+
+		_, err = proc.Expect("No custom content found in v2store")
+		assert.NoError(t, err)
+	})
+}
+
+func assertVerifyCheckCustomContentOffline(t *testing.T, dataDirPath string) {
+	t.Logf("Checking custom content in v2store - %s", dataDirPath)
+
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
+
+	_, err = proc.Expect("detected custom content in v2store")
+	assert.NoError(t, err)
+}
