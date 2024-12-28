@@ -486,7 +486,7 @@ func checkClusterCompatibilityFromHeader(lg *zap.Logger, localID types.ID, heade
 
 	if err != nil {
 		lg.Warn(
-			"local and remote versions are incompatible",
+			"failed version check compatibility",
 			zap.String("local-member-id", localID.String()),
 			zap.String("local-member-cluster-id", cid.String()),
 			zap.String("local-member-server-version", localVs),
