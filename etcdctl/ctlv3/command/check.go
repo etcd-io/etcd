@@ -113,6 +113,7 @@ func NewCheckCommand() *cobra.Command {
 
 	cc.AddCommand(NewCheckPerfCommand())
 	cc.AddCommand(NewCheckDatascaleCommand())
+	cc.AddCommand(NewCheckV2StoreCommand())
 
 	return cc
 }
@@ -436,4 +437,39 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	} else {
 		fmt.Println(fmt.Sprintf("PASS: Approximate system memory used : %v MB.", strconv.FormatFloat(mbUsed, 'f', 2, 64)))
 	}
+}
+
+// NewCheckV2StoreCommand returns the cobra command for "check v2store".
+func NewCheckV2StoreCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "v2store",
+		Short: "Check custom content in v2store memory",
+		Run:   checkV2StoreMemoryRunFunc,
+	}
+}
+
+func checkV2StoreMemoryRunFunc(cmd *cobra.Command, _ []string) {
+	err := checkV2StoreMemory(cmd)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
+}
+
+func checkV2StoreMemory(cmd *cobra.Command) error {
+	scfg := secureCfgFromCmd(cmd)
+
+	cli := clientConfigFromCmd(cmd).mustClient()
+	ep := cli.Endpoints()[0]
+
+	res, err := listAllKeysFromV2Store(ep, scfg)
+	if err != nil {
+		return err
+	}
+
+	if len(res.Node.Nodes) > 0 {
+		return fmt.Errorf("detected custom content in v2store memory")
+	}
+
+	fmt.Println("No active custom content in v2store memory. Still need to run `etcdutl check v2store` offline to make sure that there is no custom content in WAL")
+	return nil
 }

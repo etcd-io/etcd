@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/mvccpb"
+	clientv2 "go.etcd.io/etcd/client/v2"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 
@@ -165,4 +167,46 @@ func defrag(c *v3.Client, ep string) {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Printf("Defragmented %q\n", ep)
+}
+
+// listAllKeysFromV2Store lists all keys in v2store memory.
+func listAllKeysFromV2Store(host string, scfg *secureCfg) (*clientv2.Response, error) {
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
+		host = "http://" + host
+	}
+
+	if strings.HasPrefix(host, "https://") {
+		cert, err := tls.LoadX509KeyPair(scfg.cert, scfg.key)
+		if err != nil {
+			return nil, fmt.Errorf("client certificate error: %w", err)
+		}
+
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: scfg.insecureSkipVerify,
+		}
+	}
+
+	kurl := host + "/v2/keys/?recursive=true"
+
+	resp, err := http.Get(kurl)
+	if err != nil {
+		return nil, fmt.Errorf("fetch %s error: %w", kurl, err)
+	}
+	defer resp.Body.Close()
+
+	bytes, rerr := ioutil.ReadAll(resp.Body)
+	if rerr != nil {
+		return nil, fmt.Errorf("read %s error: %w", kurl, rerr)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch %s with unexpected code %d: %s", kurl, resp.StatusCode, string(bytes))
+	}
+
+	var res clientv2.Response
+	if err := json.Unmarshal(bytes, &res); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %s: %w", string(bytes), err)
+	}
+	return &res, nil
 }

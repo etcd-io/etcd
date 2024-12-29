@@ -41,6 +41,14 @@ func createV2store(t testing.TB, dataDirPath string) {
 			t.Fatalf("failed put with curl (%v)", err)
 		}
 	}
+
+	t.Log("Verify keys in v2store memory")
+	epURL := epc.Procs[0].EndpointsV3()[0]
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdctl", "--endpoints=" + epURL, "check", "v2store"}, nil)
+	assert.NoError(t, err)
+
+	_, err = proc.Expect("detected custom content in v2store memory")
+	assert.NoError(t, err)
 }
 
 func assertVerifyCanStartV2deprecationNotYet(t testing.TB, dataDirPath string) {
