@@ -147,12 +147,13 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 
 	sent := int64(0)
 	total := snap.Size()
+	totalByteToSend := total + int64(h.Size())
 	size := humanize.Bytes(uint64(total))
 
 	start := time.Now()
 	ms.lg.Info("sending database snapshot to client",
-		zap.Int64("total-bytes", total),
-		zap.String("size", size),
+		zap.Int64("total-bytes-to-send", totalByteToSend),
+		zap.String("database-size", size),
 		zap.String("storage-version", storageVersion),
 	)
 	for total-sent > 0 {
@@ -178,7 +179,7 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 		// No, the client will still receive non-nil response
 		// until server closes the stream with EOF
 		resp := &pb.SnapshotResponse{
-			RemainingBytes: uint64(total - sent),
+			RemainingBytes: uint64(totalByteToSend - sent),
 			Blob:           buf[:n],
 			Version:        storageVersion,
 		}
@@ -202,8 +203,8 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 	}
 
 	ms.lg.Info("successfully sent database snapshot to client",
-		zap.Int64("total-bytes", total),
-		zap.String("size", size),
+		zap.Int64("total-bytes-sent", totalByteToSend),
+		zap.String("database-size", size),
 		zap.Duration("took", time.Since(start)),
 		zap.String("storage-version", storageVersion),
 	)
