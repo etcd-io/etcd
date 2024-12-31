@@ -796,7 +796,8 @@ enable-distributed-tracing: true
 				}
 				defer os.Remove(tmpfile.Name())
 
-				if err := os.WriteFile(tmpfile.Name(), []byte(tc.yamlConfig), 0600); err != nil {
+				err = os.WriteFile(tmpfile.Name(), []byte(tc.yamlConfig), 0600)
+				if err != nil {
 					t.Fatal(err)
 				}
 
