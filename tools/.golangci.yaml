@@ -55,6 +55,9 @@ linters-settings: # please keep this alphabetized
       - name: context-as-argument
         severity: error
         disabled: false
+      - name: context-keys-type
+        severity: error
+        disabled: false
       - name: dot-imports
         severity: error
         disabled: false
@@ -64,13 +67,19 @@ linters-settings: # please keep this alphabetized
       - name: error-naming
         severity: error
         disabled: false
+      - name: error-strings
+        severity: error
+        disabled: false
+      - name: errorf
+        severity: error
+        disabled: false
       - name: if-return
         severity: error
         disabled: false
       - name: increment-decrement
         severity: error
         disabled: false
-      - name: var-declaration
+      - name: indent-error-flow
         severity: error
         disabled: false
       - name: package-comments
@@ -85,16 +94,10 @@ linters-settings: # please keep this alphabetized
       - name: time-naming
         severity: error
         disabled: false
-      - name: indent-error-flow
+      - name: use-any
         severity: error
         disabled: false
-      - name: errorf
-        severity: error
-        disabled: false
-      - name: context-keys-type
-        severity: error
-        disabled: false
-      - name: error-strings
+      - name: var-declaration
         severity: error
         disabled: false
       - name: var-naming
