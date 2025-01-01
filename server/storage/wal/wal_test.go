@@ -97,7 +97,7 @@ func TestNew(t *testing.T) {
 func TestCreateNewWALFile(t *testing.T) {
 	tests := []struct {
 		name     string
-		fileType interface{}
+		fileType any
 		forceNew bool
 	}{
 		{
@@ -130,7 +130,7 @@ func TestCreateNewWALFile(t *testing.T) {
 			err := os.WriteFile(p, []byte("test data"), fileutil.PrivateFileMode)
 			require.NoError(t, err)
 
-			var f interface{}
+			var f any
 			switch tt.fileType.(type) {
 			case *os.File:
 				f, err = createNewWALFile[*os.File](p, tt.forceNew)

@@ -44,58 +44,41 @@ linters-settings: # please keep this alphabetized
     # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
     max-func-lines: 5
   revive:
-    ignore-generated-header: false
-    severity: error
     confidence: 0.8
-    enable-all-rules: false
     rules:
       - name: blank-imports
-        severity: error
         disabled: false
       - name: context-as-argument
-        severity: error
-        disabled: false
-      - name: dot-imports
-        severity: error
-        disabled: false
-      - name: error-return
-        severity: error
-        disabled: false
-      - name: error-naming
-        severity: error
-        disabled: false
-      - name: if-return
-        severity: error
-        disabled: false
-      - name: increment-decrement
-        severity: error
-        disabled: false
-      - name: var-declaration
-        severity: error
-        disabled: false
-      - name: package-comments
-        severity: error
-        disabled: false
-      - name: range
-        severity: error
-        disabled: false
-      - name: receiver-naming
-        severity: error
-        disabled: false
-      - name: time-naming
-        severity: error
-        disabled: false
-      - name: indent-error-flow
-        severity: error
-        disabled: false
-      - name: errorf
-        severity: error
         disabled: false
       - name: context-keys-type
-        severity: error
+        disabled: false
+      - name: dot-imports
+        disabled: false
+      - name: error-return
+        disabled: false
+      - name: error-naming
         disabled: false
       - name: error-strings
-        severity: error
+        disabled: false
+      - name: errorf
+        disabled: false
+      - name: if-return
+        disabled: false
+      - name: increment-decrement
+        disabled: false
+      - name: indent-error-flow
+        disabled: false
+      - name: package-comments
+        disabled: false
+      - name: range
+        disabled: false
+      - name: receiver-naming
+        disabled: false
+      - name: time-naming
+        disabled: false
+      - name: use-any
+        disabled: false
+      - name: var-declaration
         disabled: false
       - name: var-naming
         disabled: false
