@@ -15,11 +15,12 @@
 package embed
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/server/v3/auth"
 )
@@ -44,9 +45,8 @@ func TestStartEtcdWrongToken(t *testing.T) {
 	cfg.Dir = tdir
 	cfg.AuthToken = "wrong-token"
 
-	if _, err := StartEtcd(cfg); !errors.Is(err, auth.ErrInvalidAuthOpts) {
-		t.Fatalf("expected %v, got %v", auth.ErrInvalidAuthOpts, err)
-	}
+	_, err := StartEtcd(cfg)
+	require.ErrorIsf(t, err, auth.ErrInvalidAuthOpts, "expected %v, got %v", auth.ErrInvalidAuthOpts, err)
 }
 
 func newEmbedURLs(n int) (urls []url.URL) {
