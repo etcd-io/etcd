@@ -83,6 +83,9 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 	default:
 		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
+	if cfg.UniquePortAlloc {
+		e2eConfig.BasePort = -1
+	}
 	epc, err := NewEtcdProcessCluster(ctx, t, WithConfig(e2eConfig))
 	if err != nil {
 		t.Fatalf("could not start etcd integrationCluster: %s", err)

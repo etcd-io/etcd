@@ -82,6 +82,7 @@ fi
 COMMON_TEST_FLAGS=("${RACE}")
 if [[ -n "${CPU:-}" ]]; then
   COMMON_TEST_FLAGS+=("--cpu=${CPU}")
+  COMMON_TEST_FLAGS+=("--parallel=${CPU}")
 fi 
 
 log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
