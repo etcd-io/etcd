@@ -487,8 +487,10 @@ func (w *WAL) ReadAll() (metadata []byte, state raftpb.HardState, ents []raftpb.
 				// prevent "panic: runtime error: slice bounds out of range [:13038096702221461992] with capacity 0"
 				offset := e.Index - w.start.Index - 1
 				if offset > uint64(len(ents)) {
-					// return error before append call causes runtime panic
-					return nil, state, nil, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
+					// return error before append call causes runtime panic.
+					// We still return the continuous WAL entries that have already been read.
+					// Refer to https://github.com/etcd-io/etcd/pull/19038#issuecomment-2557414292.
+					return nil, state, ents, fmt.Errorf("%w, snapshot[Index: %d, Term: %d], current entry[Index: %d, Term: %d], len(ents): %d",
 						ErrSliceOutOfRange, w.start.Index, w.start.Term, e.Index, e.Term, len(ents))
 				}
 				// The line below is potentially overriding some 'uncommitted' entries.

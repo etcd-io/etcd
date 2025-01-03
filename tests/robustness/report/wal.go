@@ -114,7 +114,8 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 		_, state, ents, err = w.ReadAll()
 		w.Close()
 		if err != nil {
-			if errors.Is(err, wal.ErrSnapshotNotFound) {
+			if errors.Is(err, wal.ErrSnapshotNotFound) || errors.Is(err, wal.ErrSliceOutOfRange) {
+				lg.Info("Error occurred when reading WAL entries", zap.Error(err))
 				return state, ents, nil
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
