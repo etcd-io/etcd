@@ -260,17 +260,29 @@ Logging:
   --warning-unary-request-duration '300ms'
     Set time duration after which a warning is logged if a unary request takes more than this duration.
 
-Experimental distributed tracing:
+Distributed Tracing:
+  --enable-distributed-tracing 'false'
+    Enable distributed tracing using OpenTelemetry protocol.
+  --distributed-tracing-address 'localhost:4317'
+    Address for distributed tracing used for OpenTelemetry Tracing.
+  --distributed-tracing-service-name 'etcd'
+    Configures service name for distributed tracing.
+  --distributed-tracing-instance-id ''
+    Configures service instance ID for distributed tracing.
+  --distributed-tracing-sampling-rate '0'
+    Number of samples to collect per million spans for distributed tracing.
+
+Experimental distributed tracing (deprecated):
   --experimental-enable-distributed-tracing 'false'
-    Enable experimental distributed tracing.
+    Enable distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --enable-distributed-tracing instead.
   --experimental-distributed-tracing-address 'localhost:4317'
-    Distributed tracing collector address.
+    Distributed tracing collector address. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-address instead.
   --experimental-distributed-tracing-service-name 'etcd'
-    Distributed tracing service name, must be same across all etcd instances.
+    Distributed tracing service name. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-service-name instead.
   --experimental-distributed-tracing-instance-id ''
-    Distributed tracing instance ID, must be unique per each etcd instance.
+    Distributed tracing instance ID. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-instance-id instead.
   --experimental-distributed-tracing-sampling-rate '0'
-    Number of samples to collect per million spans for distributed tracing. Disabled by default.
+    Number of samples to collect per million spans. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-sampling-rate instead.
 
 Experimental feature:
   --experimental-initial-corrupt-check 'false'. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=InitialCorruptCheck=true' instead.
