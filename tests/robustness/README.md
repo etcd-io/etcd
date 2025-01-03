@@ -86,13 +86,13 @@ Etcd provides strict serializability for KV operations and eventual consistency 
 
 ## Running locally 
 
-1. Build etcd with failpoints
+1. Build etcd with failpoints. Please make sure that you are at the root directory of the repository before performing below steps.
     ```bash
-    make gofail-enable
+    make -f tests/robustness/makefile.mk gofail-enable 
     make build
-    make gofail-disable
+    make -f tests/robustness/makefile.mk gofail-disable 
     ```
-2. Run the tests
+2. Run the tests from the root directory of the repository only.
 
     ```bash
     make test-robustness
