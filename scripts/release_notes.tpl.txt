@@ -82,10 +82,10 @@ rm -rf /tmp/etcd-data.tmp && mkdir -p /tmp/etcd-data.tmp && \
   --logger zap \
   --log-outputs stderr
 
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcd --version
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcdctl version
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcdutl version
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcdctl endpoint health
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcdctl put foo bar
-docker exec etcd-gcr-${ETCD_VER}/usr/local/bin/etcdctl get foo
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcd --version
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl version
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdutl version
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl endpoint health
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl put foo bar
+docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl get foo
 ```
