@@ -49,6 +49,13 @@ var (
 			// 1 second -> 3 months
 			Buckets: prometheus.ExponentialBuckets(1, 2, 24),
 		})
+
+	leaseActive = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "lease",
+		Name:      "active",
+		Help:      "The current number of active leases.",
+	})
 )
 
 func init() {
@@ -56,4 +63,5 @@ func init() {
 	prometheus.MustRegister(leaseRevoked)
 	prometheus.MustRegister(leaseRenewed)
 	prometheus.MustRegister(leaseTotalTTLs)
+	prometheus.MustRegister(leaseActive)
 }
