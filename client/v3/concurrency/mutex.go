@@ -154,6 +154,7 @@ func (m *Mutex) IsOwner() v3.Cmp {
 }
 
 func (m *Mutex) Key() string { return m.myKey }
+func (m *Mutex) Rev() int64  { return m.myRev }
 
 // Header is the response header received from etcd on acquiring the lock.
 func (m *Mutex) Header() *pb.ResponseHeader { return m.hdr }
@@ -176,5 +177,25 @@ func (lm *lockerMutex) Unlock() {
 
 // NewLocker creates a sync.Locker backed by an etcd mutex.
 func NewLocker(s *Session, pfx string) sync.Locker {
+	return &lockerMutex{NewMutex(s, pfx)}
+}
+
+// DLocker represents an object that can be locked and unlocked
+// in distributed environment.
+//
+// # Experimental
+//
+// Notice: This interface is EXPERIMENTAL and may be changed or removed
+// in a later release.
+type DLocker interface {
+	sync.Locker
+	// Rev returns a revision which is monotonically incremental. It can
+	// be used as a fencing token to prevent expired locker from operating
+	// the shared resource.
+	Rev() int64
+}
+
+// NewDLocker creates a DLocker backed by an etcd mutex.
+func NewDLocker(s *Session, pfx string) DLocker {
 	return &lockerMutex{NewMutex(s, pfx)}
 }

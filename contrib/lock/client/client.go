@@ -118,14 +118,15 @@ func main() {
 
 	log.Print("created etcd client and session")
 
-	locker := concurrency.NewLocker(session, "/lock")
+	locker := concurrency.NewDLocker(session, "/lock")
 	locker.Lock()
 	defer locker.Unlock()
-	version := session.Lease()
+	leaseID := session.Lease()
+	version := locker.Rev()
 	log.Printf("acquired lock, version: %x", version)
 
 	if mode == 1 {
-		log.Printf("please manually revoke the lease using 'etcdctl lease revoke %x' or wait for it to expire, then start executing client 2 and hit any key...", version)
+		log.Printf("please manually revoke the lease using 'etcdctl lease revoke %x' or wait for it to expire, then start executing client 2 and hit any key...", leaseID)
 		reader := bufio.NewReader(os.Stdin)
 		_, _ = reader.ReadByte()
 		log.Print("resuming client 1")
@@ -133,14 +134,14 @@ func main() {
 		log.Print("this is client 2, continuing\n")
 	}
 
-	err = write("key0", fmt.Sprintf("value from client %x", mode), int64(version))
+	err = write("key0", fmt.Sprintf("value from client %x", mode), version)
 	if err != nil {
 		if mode == 1 {
-			log.Printf("expected fail to write to storage with old lease version: %s\n", err) // client 1 should show this message
+			log.Printf("expected fail to write to storage with old version: %s\n", err) // client 1 should show this message
 		} else {
 			log.Fatalf("unexpected fail to write to storage: %s\n", err)
 		}
 	} else {
-		log.Printf("successfully write a key to storage using lease %x\n", int64(version))
+		log.Printf("successfully write a key to storage with version %x\n", version)
 	}
 }
