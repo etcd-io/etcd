@@ -16,16 +16,13 @@ package e2e
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -86,7 +83,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 	var snapshotCount uint64 = 10
 	epc := newCluster(t, clusterSize, snapshotCount)
 	for i := 0; i < len(epc.Procs); i++ {
-		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+		e2e.ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: currentVersionStr,
 			Server:  version.Version,
 			Storage: currentVersionStr,
@@ -117,7 +114,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 
 	t.Log("Downgrade enabled, validating if cluster is ready for downgrade")
 	for i := 0; i < len(epc.Procs); i++ {
-		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+		e2e.ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: lastClusterVersionStr,
 			Server:  version.Version,
 			Storage: lastClusterVersionStr,
@@ -136,7 +133,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 	t.Log("All members downgraded, validating downgrade")
 	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
 	for i := 0; i < len(epc.Procs); i++ {
-		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+		e2e.ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: lastClusterVersionStr,
 			Server:  lastVersionStr,
 		})
@@ -176,7 +173,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 
 	t.Log("All members upgraded, validating upgrade")
 	for i := 0; i < len(epc.Procs); i++ {
-		validateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+		e2e.ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: currentVersionStr,
 			Server:  version.Version,
 			Storage: currentVersionStr,
@@ -227,27 +224,6 @@ func stopEtcd(t *testing.T, ep e2e.EtcdProcess) {
 	require.NoError(t, err)
 }
 
-func validateVersion(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, expect version.Versions) {
-	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
-		for {
-			result, err := getMemberVersionByCurl(cfg, member)
-			if err != nil {
-				cfg.Logger.Warn("failed to get member version and retrying", zap.Error(err), zap.String("member", member.Config().Name))
-				time.Sleep(time.Second)
-				continue
-			}
-			cfg.Logger.Info("Comparing versions", zap.String("member", member.Config().Name), zap.Any("got", result), zap.Any("want", expect))
-			if err := compareMemberVersion(expect, result); err != nil {
-				cfg.Logger.Warn("Versions didn't match retrying", zap.Error(err), zap.String("member", member.Config().Name))
-				time.Sleep(time.Second)
-				continue
-			}
-			cfg.Logger.Info("Versions match", zap.String("member", member.Config().Name))
-			break
-		}
-	})
-}
-
 func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -267,36 +243,6 @@ func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
 	}
 	t.Fatal("Leader not found")
 	return nil
-}
-
-func compareMemberVersion(expect version.Versions, target version.Versions) error {
-	if expect.Server != "" && expect.Server != target.Server {
-		return fmt.Errorf("expect etcdserver version %v, but got %v", expect.Server, target.Server)
-	}
-
-	if expect.Cluster != "" && expect.Cluster != target.Cluster {
-		return fmt.Errorf("expect etcdcluster version %v, but got %v", expect.Cluster, target.Cluster)
-	}
-
-	if expect.Storage != "" && expect.Storage != target.Storage {
-		return fmt.Errorf("expect storage version %v, but got %v", expect.Storage, target.Storage)
-	}
-	return nil
-}
-
-func getMemberVersionByCurl(cfg *e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess) (version.Versions, error) {
-	args := e2e.CURLPrefixArgsCluster(cfg, member, "GET", e2e.CURLReq{Endpoint: "/version"})
-	lines, err := e2e.RunUtilCompletion(args, nil)
-	if err != nil {
-		return version.Versions{}, err
-	}
-
-	data := strings.Join(lines, "\n")
-	result := version.Versions{}
-	if err := json.Unmarshal([]byte(data), &result); err != nil {
-		return version.Versions{}, fmt.Errorf("failed to unmarshal (%v): %w", data, err)
-	}
-	return result, nil
 }
 
 func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {
