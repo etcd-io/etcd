@@ -18,20 +18,26 @@ import (
 	"github.com/coreos/go-semver/semver"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+type StorageRecorder interface {
+	storage.Storage
+	testutil.Recorder
+}
 
 type storageRecorder struct {
 	testutil.Recorder
 	dbPath string // must have '/' suffix if set
 }
 
-func NewStorageRecorder(db string) *storageRecorder {
+func NewStorageRecorder(db string) StorageRecorder {
 	return &storageRecorder{&testutil.RecorderBuffered{}, db}
 }
 
-func NewStorageRecorderStream(db string) *storageRecorder {
+func NewStorageRecorderStream(db string) StorageRecorder {
 	return &storageRecorder{testutil.NewRecorderStream(), db}
 }
 
