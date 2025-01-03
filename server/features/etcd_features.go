@@ -60,6 +60,11 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/14120
 	CompactHashCheck featuregate.Feature = "CompactHashCheck"
+	// MemoryMlock enables mlock memory to prevent etcd from being swapped to disk.
+	// owner: @ptabor
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/12750
+	MemoryMlock featuregate.Feature = "MemoryMlock"
 )
 
 var (
@@ -69,6 +74,7 @@ var (
 		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
 		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
 		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
+		MemoryMlock:                  {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
@@ -78,6 +84,7 @@ var (
 		"experimental-initial-corrupt-check":             InitialCorruptCheck,
 		"experimental-compact-hash-check-enabled":        CompactHashCheck,
 		"experimental-txn-mode-write-with-shared-buffer": TxnModeWriteWithSharedBuffer,
+		"experimental-memory-mlock":                      MemoryMlock,
 	}
 )
 

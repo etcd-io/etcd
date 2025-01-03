@@ -309,7 +309,7 @@ Experimental feature:
     Duration of time between two downgrade status checks.
   --experimental-enable-lease-checkpoint-persist 'false'
     Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.
-  --experimental-memory-mlock
+  --experimental-memory-mlock. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=MemoryMlock=true' instead.
     Enable to enforce etcd pages (in particular bbolt) to stay in RAM.
   --experimental-snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
