@@ -90,16 +90,10 @@ func TestEtctlutlMigrate(t *testing.T) {
 			expectStorageVersion: &version.V3_6,
 		},
 		{
-			name:                 "Downgrade v3.6 to v3.5 should fail until it's implemented",
+			name:                 "Downgrade v3.6 to v3.5 should work",
 			targetVersion:        "3.5",
-			expectLogsSubString:  "cannot downgrade storage, WAL contains newer entries",
-			expectStorageVersion: &version.V3_6,
-		},
-		{
-			name:                "Downgrade v3.6 to v3.5 with force should work",
-			targetVersion:       "3.5",
-			force:               true,
-			expectLogsSubString: "forcefully cleared storage version",
+			expectLogsSubString:  "updated storage version",
+			expectStorageVersion: nil, // 3.5 doesn't have the field `storageVersion`, so it returns nil.
 		},
 		{
 			name:                 "Upgrade v3.6 to v3.7 with force should work",
