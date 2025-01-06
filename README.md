@@ -25,7 +25,7 @@ etcd is a distributed reliable key-value store for the most critical data of a d
 * *Fast*: benchmarked 10,000 writes/sec
 * *Reliable*: properly distributed using Raft
 
-etcd is written in Go and uses the [Raft][] consensus algorithm to manage a highly-available replicated log.
+test etcd is written in Go and uses the [Raft][] consensus algorithm to manage a highly-available replicated log.
 
 etcd is used [in production by many companies](./ADOPTERS.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [locksmith][], [vulcand][], [Doorman][], and many others. Reliability is further ensured by rigorous [**robustness testing**](https://github.com/etcd-io/etcd/tree/main/tests/robustness).
 
