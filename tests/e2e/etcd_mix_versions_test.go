@@ -148,8 +148,8 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 	err = toPartitionedMember.Stop()
 	require.NoError(t, err)
 
-	t.Log("Writing 20 keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot)")
-	writeKVs(t, epc.Etcdctl(), 0, 20)
+	t.Log("Writing 30 keys to the cluster (more than SnapshotCount entries to trigger at least a snapshot)")
+	writeKVs(t, epc.Etcdctl(), 0, 30)
 
 	t.Log("Verify logs to check leader has saved snapshot")
 	leaderEPC := epc.Procs[epc.WaitLeader(t)]
