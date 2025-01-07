@@ -219,3 +219,43 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 	assert.Equal(t, durationToCompare, autoCompactionRetention)
 	e.Close()
 }
+
+func TestEmbedEtcdStopDuringBootstrapping(t *testing.T) {
+	integration2.BeforeTest(t, integration2.WithFailpoint("beforePublishing", `sleep("2s")`))
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		cfg := embed.NewConfig()
+		urls := newEmbedURLs(false, 2)
+		setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+		cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
+
+		e, err := embed.StartEtcd(cfg)
+		require.NoError(t, err)
+		defer e.Close()
+
+		go func() {
+			time.Sleep(time.Second)
+			e.Server.Stop()
+			t.Log("Stopped server during bootstrapping")
+		}()
+
+		select {
+		case <-e.Server.ReadyNotify():
+			t.Log("Server is ready!")
+		case <-e.Server.StopNotify():
+			t.Log("Server is stopped")
+		case <-time.After(20 * time.Second):
+			e.Server.Stop() // trigger a shutdown
+			t.Error("Server took too long to start!")
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Error("timeout in bootstrapping etcd")
+	}
+}

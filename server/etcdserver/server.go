@@ -1776,6 +1776,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 			ClientUrls: s.attributes.ClientURLs,
 		},
 	}
+	// gofail: var beforePublishing struct{}
 	lg := s.Logger()
 	for {
 		select {
