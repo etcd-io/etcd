@@ -146,7 +146,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, i
 			return errors.New("storage empty")
 		}
 		if count > t.averageKeyCount*3/2 && nonUniqueWriteLimiter.Take() {
-			_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{})
+			_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{GetOnFailure: true})
 			nonUniqueWriteLimiter.Return()
 		} else {
 			shouldReturn := false
@@ -158,9 +158,9 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, i
 			op := random.PickRandom(choices)
 			switch op {
 			case KubernetesDelete:
-				_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{})
+				_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{GetOnFailure: true})
 			case KubernetesUpdate:
-				_, err = kc.OptimisticPut(writeCtx, key, []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{})
+				_, err = kc.OptimisticPut(writeCtx, key, []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{GetOnFailure: true})
 			case KubernetesCreate:
 				_, err = kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{})
 			default:
