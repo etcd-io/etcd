@@ -230,7 +230,8 @@ func TestMemberPromote(t *testing.T) {
 	followerIdx := (leaderIdx + 1) % 3
 	capi := clus.Client(followerIdx)
 
-	urls := []string{"http://127.0.0.1:1234"}
+	learnerMember := clus.MustNewMember(t)
+	urls := learnerMember.PeerURLs.StringSlice()
 	memberAddResp, err := capi.MemberAddAsLearner(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
@@ -262,9 +263,9 @@ func TestMemberPromote(t *testing.T) {
 		t.Fatalf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 
-	// create and launch learner member based on the response of V3 Member Add API.
+	// Initialize and launch learner member based on the response of V3 Member Add API.
 	// (the response has information on peer urls of the existing members in cluster)
-	learnerMember := clus.MustNewMember(t, memberAddResp)
+	clus.InitializeMemberWithResponse(t, learnerMember, memberAddResp)
 
 	if err = learnerMember.Launch(); err != nil {
 		t.Fatal(err)

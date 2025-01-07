@@ -259,7 +259,7 @@ func (c *Cluster) ProtoMembers() []*pb.Member {
 	return ms
 }
 
-func (c *Cluster) mustNewMember(t testutil.TB) *Member {
+func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 	memberNumber := c.LastMemberNum
 	c.LastMemberNum++
 
@@ -299,7 +299,7 @@ func (c *Cluster) mustNewMember(t testutil.TB) *Member {
 
 // addMember return PeerURLs of the added member.
 func (c *Cluster) addMember(t testutil.TB) types.URLs {
-	m := c.mustNewMember(t)
+	m := c.MustNewMember(t)
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
 
@@ -1394,7 +1394,7 @@ func NewCluster(t testutil.TB, cfg *ClusterConfig) *Cluster {
 	c := &Cluster{Cfg: cfg}
 	ms := make([]*Member, cfg.Size)
 	for i := 0; i < cfg.Size; i++ {
-		ms[i] = c.mustNewMember(t)
+		ms[i] = c.MustNewMember(t)
 	}
 	c.Members = ms
 	if err := c.fillClusterForMembers(); err != nil {
@@ -1580,7 +1580,7 @@ func (c *Cluster) GetLearnerMembers() ([]*pb.Member, error) {
 // AddAndLaunchLearnerMember creates a learner member, adds it to Cluster
 // via v3 MemberAdd API, and then launches the new member.
 func (c *Cluster) AddAndLaunchLearnerMember(t testutil.TB) {
-	m := c.mustNewMember(t)
+	m := c.MustNewMember(t)
 	m.IsLearner = true
 
 	scheme := SchemeFromTLSInfo(c.Cfg.PeerTLS)
@@ -1679,9 +1679,8 @@ func (p SortableProtoMemberSliceByPeerURLs) Less(i, j int) bool {
 }
 func (p SortableProtoMemberSliceByPeerURLs) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
-// MustNewMember creates a new member instance based on the response of V3 Member Add API.
-func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse) *Member {
-	m := c.mustNewMember(t)
+// InitializeMemberWithResponse initializes a member with the response
+func (c *Cluster) InitializeMemberWithResponse(t testutil.TB, m *Member, resp *clientv3.MemberAddResponse) {
 	m.IsLearner = resp.Member.IsLearner
 	m.NewCluster = false
 
@@ -1691,5 +1690,4 @@ func (c *Cluster) MustNewMember(t testutil.TB, resp *clientv3.MemberAddResponse)
 	}
 	m.InitialPeerURLsMap[m.Name] = types.MustNewURLs(resp.Member.PeerURLs)
 	c.Members = append(c.Members, m)
-	return m
 }
