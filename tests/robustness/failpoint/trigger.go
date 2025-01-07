@@ -67,7 +67,7 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 
 	var rev int64
 	for {
-		_, rev, err = cc.Get(ctx, "/", 0)
+		_, rev, err = cc.OldGet(ctx, "/", 0)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get revision: %w", err)
 		}

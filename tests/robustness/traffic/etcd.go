@@ -170,9 +170,9 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	var limit int64
 	switch request {
 	case StaleGet:
-		_, rev, err = c.client.Get(opCtx, c.randomKey(), lastRev)
+		_, rev, err = c.client.OldGet(opCtx, c.randomKey(), lastRev)
 	case Get:
-		_, rev, err = c.client.Get(opCtx, c.randomKey(), 0)
+		_, rev, err = c.client.OldGet(opCtx, c.randomKey(), 0)
 	case List:
 		var resp *clientv3.GetResponse
 		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), 0, limit)
@@ -205,14 +205,14 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case MultiOpTxn:
 		var resp *clientv3.TxnResponse
-		resp, err = c.client.Txn(opCtx, nil, c.pickMultiTxnOps(), nil)
+		resp, err = c.client.OldTxn(opCtx, nil, c.pickMultiTxnOps(), nil)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case CompareAndSet:
 		var kv *mvccpb.KeyValue
 		key := c.randomKey()
-		kv, rev, err = c.client.Get(opCtx, key, 0)
+		kv, rev, err = c.client.OldGet(opCtx, key, 0)
 		if err == nil {
 			c.limiter.Wait(ctx)
 			var expectedRevision int64
@@ -221,7 +221,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.TxnResponse
-			resp, err = c.client.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID()))}, nil)
+			resp, err = c.client.OldTxn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID()))}, nil)
 			txnCancel()
 			if resp != nil {
 				rev = resp.Header.Revision
