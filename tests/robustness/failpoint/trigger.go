@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -67,10 +68,12 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 
 	var rev int64
 	for {
-		_, rev, err = cc.OldGet(ctx, "/", 0)
+		var resp *clientv3.GetResponse
+		resp, err = cc.Get(ctx, "/", clientv3.WithRev(0))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get revision: %w", err)
 		}
+		rev = resp.Header.Revision
 
 		if !t.multiBatchCompaction || rev > int64(clus.Cfg.ServerConfig.ExperimentalCompactionBatchLimit) {
 			break

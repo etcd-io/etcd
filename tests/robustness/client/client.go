@@ -92,17 +92,6 @@ func (c *RecordingClient) Get(ctx context.Context, key string, opts ...clientv3.
 	return c.Range(ctx, key, "", revision, 0)
 }
 
-func (c *RecordingClient) OldGet(ctx context.Context, key string, revision int64) (kv *mvccpb.KeyValue, rev int64, err error) {
-	resp, err := c.Range(ctx, key, "", revision, 0)
-	if err != nil {
-		return nil, 0, err
-	}
-	if len(resp.Kvs) == 1 {
-		kv = resp.Kvs[0]
-	}
-	return kv, resp.Header.Revision, nil
-}
-
 func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
 	ops := []clientv3.OpOption{}
 	if end != "" {
