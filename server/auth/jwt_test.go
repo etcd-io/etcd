@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"testing"
 	"time"
 
@@ -118,9 +119,7 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 	if opts["pub-key"] != "" && opts["priv-key"] != "" {
 		t.Run("verify-only", func(t *testing.T) {
 			newOpts := make(map[string]string, len(opts))
-			for k, v := range opts {
-				newOpts[k] = v
-			}
+			maps.Copy(newOpts, opts)
 			delete(newOpts, "priv-key")
 			verify, err := newTokenProviderJWT(lg, newOpts)
 			if err != nil {

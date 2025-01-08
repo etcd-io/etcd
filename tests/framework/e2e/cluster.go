@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"maps"
 	"net/url"
 	"path"
 	"path/filepath"
@@ -634,9 +635,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
 	}
 	envVars := map[string]string{}
-	for key, value := range cfg.EnvVars {
-		envVars[key] = value
-	}
+	maps.Copy(envVars, cfg.EnvVars)
 	var gofailPort int
 	if cfg.GoFailEnabled {
 		gofailPort = (i+1)*10000 + 2381

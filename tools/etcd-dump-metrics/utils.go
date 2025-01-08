@@ -14,26 +14,17 @@
 
 package main
 
-import "sort"
+import (
+	"maps"
+	"slices"
+)
 
 func aggSort(ss []string) (sorted []string) {
-	set := make(map[string]struct{})
-	for _, s := range ss {
-		set[s] = struct{}{}
-	}
-	sorted = make([]string, 0, len(set))
-	for k := range set {
-		sorted = append(sorted, k)
-	}
-	sort.Strings(sorted)
-	return sorted
+	dup := slices.Clone(ss)
+	slices.Sort(dup)
+	return slices.Compact(dup)
 }
 
 func sortMap(set map[string]struct{}) (sorted []string) {
-	sorted = make([]string, 0, len(set))
-	for k := range set {
-		sorted = append(sorted, k)
-	}
-	sort.Strings(sorted)
-	return sorted
+	return slices.Sorted(maps.Keys(set))
 }

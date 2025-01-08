@@ -18,7 +18,9 @@ package report
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -63,7 +65,7 @@ type Stats struct {
 func (s *Stats) copy() Stats {
 	ss := *s
 	ss.ErrorDist = copyMap(ss.ErrorDist)
-	ss.Lats = copyFloats(ss.Lats)
+	ss.Lats = slices.Clone(ss.Lats)
 	return ss
 }
 
@@ -124,15 +126,7 @@ func (r *report) Stats() <-chan Stats {
 
 func copyMap(m map[string]int) (c map[string]int) {
 	c = make(map[string]int, len(m))
-	for k, v := range m {
-		c[k] = v
-	}
-	return c
-}
-
-func copyFloats(s []float64) (c []float64) {
-	c = make([]float64, len(s))
-	copy(c, s)
+	maps.Copy(c, m)
 	return c
 }
 
