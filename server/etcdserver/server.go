@@ -623,7 +623,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	srv.kv = mvcc.New(srv.Logger(), srv.be, srv.lessor, mvccStoreConfig)
 
 	kvindex := ci.ConsistentIndex()
-	srv.lg.Debug("restore consistentIndex", zap.Uint64("index", kvindex))
+	srv.lg.Info("restore consistentIndex", zap.Uint64("index", kvindex))
 
 	if beExist {
 		// TODO: remove kvindex != 0 checking when we do not expect users to upgrade
