@@ -790,16 +790,8 @@ enable-distributed-tracing: true
 			cfg := newConfig()
 
 			if tc.yamlConfig != "" {
-				tmpfile, err := os.CreateTemp("", "etcd-test-*.yaml")
-				if err != nil {
-					t.Fatal(err)
-				}
+				tmpfile := mustCreateCfgFile(t, []byte(tc.yamlConfig))
 				defer os.Remove(tmpfile.Name())
-
-				err = os.WriteFile(tmpfile.Name(), []byte(tc.yamlConfig), 0600)
-				if err != nil {
-					t.Fatal(err)
-				}
 
 				tc.args = []string{"--config-file=" + tmpfile.Name()}
 			}
