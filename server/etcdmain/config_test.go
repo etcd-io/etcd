@@ -654,7 +654,9 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	}
 }
 
-// TODO: delete in v3.7
+// TestDistributedTracingFlagMigration tests the migration from experimental
+// distributed tracing flags to non-experimental ones.
+// TODO(v3.7): delete this test when experimental flags are removed.
 func TestDistributedTracingFlagMigration(t *testing.T) {
 	testCases := []struct {
 		name         string
