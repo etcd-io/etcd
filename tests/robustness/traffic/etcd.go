@@ -213,7 +213,9 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case MultiOpTxn:
 		var resp *clientv3.TxnResponse
-		resp, err = c.client.OldTxn(opCtx, nil, c.pickMultiTxnOps(), nil)
+		resp, err = c.client.Txn(opCtx).Then(
+			c.pickMultiTxnOps()...,
+		).Commit()
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
@@ -234,7 +236,11 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.TxnResponse
-			resp, err = c.client.OldTxn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID()))}, nil)
+			resp, err = c.client.Txn(txnCtx).If(
+				clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision),
+			).Then(
+				clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID())),
+			).Commit()
 			txnCancel()
 			if resp != nil {
 				rev = resp.Header.Revision

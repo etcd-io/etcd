@@ -174,23 +174,6 @@ func (c *RecordingClient) Txn(ctx context.Context) clientv3.Txn {
 	return &wrappedTxn{txn: c.client.Txn(ctx), c: c}
 }
 
-func (c *RecordingClient) OldTxn(ctx context.Context, conditions []clientv3.Cmp, onSuccess []clientv3.Op, onFailure []clientv3.Op) (*clientv3.TxnResponse, error) {
-	txn := c.client.Txn(ctx).If(
-		conditions...,
-	).Then(
-		onSuccess...,
-	).Else(
-		onFailure...,
-	)
-	c.kvMux.Lock()
-	defer c.kvMux.Unlock()
-	callTime := time.Since(c.baseTime)
-	resp, err := txn.Commit()
-	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendTxn(conditions, onSuccess, onFailure, callTime, returnTime, resp, err)
-	return resp, err
-}
-
 func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
