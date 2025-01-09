@@ -64,8 +64,7 @@ func startEtcdOrProxyV2(args []string) {
 	lg.Info("Running: ", zap.Strings("args", args))
 	if err != nil {
 		lg.Warn("failed to verify flags", zap.Error(err))
-		switch {
-		case errorspkg.Is(err, embed.ErrUnsetAdvertiseClientURLsFlag):
+		if errorspkg.Is(err, embed.ErrUnsetAdvertiseClientURLsFlag) {
 			lg.Warn("advertise client URLs are not set", zap.Error(err))
 		}
 		os.Exit(1)
