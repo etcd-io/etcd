@@ -46,6 +46,8 @@ type RecordingClient struct {
 	kvOperations *model.AppendableHistory
 }
 
+var _ clientv3.KV = (*RecordingClient)(nil)
+
 type TimedWatchEvent struct {
 	model.WatchEvent
 	Time time.Duration
@@ -81,15 +83,13 @@ func (c *RecordingClient) Report() report.ClientReport {
 	}
 }
 
-func (c *RecordingClient) Get(ctx context.Context, key string, revision int64) (kv *mvccpb.KeyValue, rev int64, err error) {
-	resp, err := c.Range(ctx, key, "", revision, 0)
-	if err != nil {
-		return nil, 0, err
-	}
-	if len(resp.Kvs) == 1 {
-		kv = resp.Kvs[0]
-	}
-	return kv, resp.Header.Revision, nil
+func (c *RecordingClient) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+	panic("not implemented")
+}
+
+func (c *RecordingClient) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	revision := clientv3.OpGet(key, opts...).Rev()
+	return c.Range(ctx, key, "", revision, 0)
 }
 
 func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
@@ -112,7 +112,7 @@ func (c *RecordingClient) Range(ctx context.Context, start, end string, revision
 	return resp, err
 }
 
-func (c *RecordingClient) Put(ctx context.Context, key, value string) (*clientv3.PutResponse, error) {
+func (c *RecordingClient) Put(ctx context.Context, key, value string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
@@ -122,7 +122,7 @@ func (c *RecordingClient) Put(ctx context.Context, key, value string) (*clientv3
 	return resp, err
 }
 
-func (c *RecordingClient) Delete(ctx context.Context, key string) (*clientv3.DeleteResponse, error) {
+func (c *RecordingClient) Delete(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
@@ -132,21 +132,46 @@ func (c *RecordingClient) Delete(ctx context.Context, key string) (*clientv3.Del
 	return resp, err
 }
 
-func (c *RecordingClient) Txn(ctx context.Context, conditions []clientv3.Cmp, onSuccess []clientv3.Op, onFailure []clientv3.Op) (*clientv3.TxnResponse, error) {
-	txn := c.client.Txn(ctx).If(
-		conditions...,
-	).Then(
-		onSuccess...,
-	).Else(
-		onFailure...,
-	)
-	c.kvMux.Lock()
-	defer c.kvMux.Unlock()
-	callTime := time.Since(c.baseTime)
-	resp, err := txn.Commit()
-	returnTime := time.Since(c.baseTime)
-	c.kvOperations.AppendTxn(conditions, onSuccess, onFailure, callTime, returnTime, resp, err)
+type wrappedTxn struct {
+	txn        clientv3.Txn
+	conditions []clientv3.Cmp
+	onSuccess  []clientv3.Op
+	onFailure  []clientv3.Op
+	c          *RecordingClient
+}
+
+var _ clientv3.Txn = (*wrappedTxn)(nil)
+
+func (w *wrappedTxn) If(cs ...clientv3.Cmp) clientv3.Txn {
+	w.conditions = append(w.conditions, cs...)
+	w.txn = w.txn.If(cs...)
+	return w
+}
+
+func (w *wrappedTxn) Then(ops ...clientv3.Op) clientv3.Txn {
+	w.onSuccess = append(w.onSuccess, ops...)
+	w.txn = w.txn.Then(ops...)
+	return w
+}
+
+func (w *wrappedTxn) Else(ops ...clientv3.Op) clientv3.Txn {
+	w.onFailure = append(w.onFailure, ops...)
+	w.txn = w.txn.Else(ops...)
+	return w
+}
+
+func (w *wrappedTxn) Commit() (*clientv3.TxnResponse, error) {
+	w.c.kvMux.Lock()
+	defer w.c.kvMux.Unlock()
+	callTime := time.Since(w.c.baseTime)
+	resp, err := w.txn.Commit()
+	returnTime := time.Since(w.c.baseTime)
+	w.c.kvOperations.AppendTxn(w.conditions, w.onSuccess, w.onFailure, callTime, returnTime, resp, err)
 	return resp, err
+}
+
+func (c *RecordingClient) Txn(ctx context.Context) clientv3.Txn {
+	return &wrappedTxn{txn: c.client.Txn(ctx), c: c}
 }
 
 func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (*clientv3.LeaseGrantResponse, error) {
@@ -190,7 +215,7 @@ func (c *RecordingClient) Defragment(ctx context.Context) (*clientv3.DefragmentR
 	return resp, err
 }
 
-func (c *RecordingClient) Compact(ctx context.Context, rev int64) (*clientv3.CompactResponse, error) {
+func (c *RecordingClient) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)

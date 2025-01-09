@@ -170,9 +170,17 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	var limit int64
 	switch request {
 	case StaleGet:
-		_, rev, err = c.client.Get(opCtx, c.randomKey(), lastRev)
+		var resp *clientv3.GetResponse
+		resp, err = c.client.Get(opCtx, c.randomKey(), clientv3.WithRev(lastRev))
+		if err == nil {
+			rev = resp.Header.Revision
+		}
 	case Get:
-		_, rev, err = c.client.Get(opCtx, c.randomKey(), 0)
+		var resp *clientv3.GetResponse
+		resp, err = c.client.Get(opCtx, c.randomKey(), clientv3.WithRev(0))
+		if err == nil {
+			rev = resp.Header.Revision
+		}
 	case List:
 		var resp *clientv3.GetResponse
 		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), 0, limit)
@@ -205,15 +213,22 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		}
 	case MultiOpTxn:
 		var resp *clientv3.TxnResponse
-		resp, err = c.client.Txn(opCtx, nil, c.pickMultiTxnOps(), nil)
+		resp, err = c.client.Txn(opCtx).Then(
+			c.pickMultiTxnOps()...,
+		).Commit()
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case CompareAndSet:
 		var kv *mvccpb.KeyValue
 		key := c.randomKey()
-		kv, rev, err = c.client.Get(opCtx, key, 0)
+		var resp *clientv3.GetResponse
+		resp, err = c.client.Get(opCtx, key, clientv3.WithRev(0))
 		if err == nil {
+			rev = resp.Header.Revision
+			if len(resp.Kvs) == 1 {
+				kv = resp.Kvs[0]
+			}
 			c.limiter.Wait(ctx)
 			var expectedRevision int64
 			if kv != nil {
@@ -221,7 +236,11 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			}
 			txnCtx, txnCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.TxnResponse
-			resp, err = c.client.Txn(txnCtx, []clientv3.Cmp{clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision)}, []clientv3.Op{clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID()))}, nil)
+			resp, err = c.client.Txn(txnCtx).If(
+				clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision),
+			).Then(
+				clientv3.OpPut(key, fmt.Sprintf("%d", c.idProvider.NewRequestID())),
+			).Commit()
 			txnCancel()
 			if resp != nil {
 				rev = resp.Header.Revision
