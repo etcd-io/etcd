@@ -15,6 +15,7 @@
 package etcdutl
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -24,6 +25,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -95,7 +97,11 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 
 	walPath := datadir.ToWALDir(o.dataDir)
-	w, err := wal.OpenForRead(c.lg, walPath, walpb.Snapshot{})
+	walSnap, err := getLatestWALSnap(c.lg, o.dataDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get the lastest snapshot: %w", err)
+	}
+	w, err := wal.OpenForRead(c.lg, walPath, walSnap)
 	if err != nil {
 		return nil, fmt.Errorf(`failed to open wal: %w`, err)
 	}
@@ -106,6 +112,26 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 
 	return c, nil
+}
+
+func getLatestWALSnap(lg *zap.Logger, dataDir string) (walpb.Snapshot, error) {
+	walPath := datadir.ToWALDir(dataDir)
+	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
+	if err != nil {
+		return walpb.Snapshot{}, err
+	}
+
+	ss := snap.New(lg, datadir.ToSnapDir(dataDir))
+	snapshot, err := ss.LoadNewestAvailable(walSnaps)
+	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
+		return walpb.Snapshot{}, err
+	}
+
+	var walsnap walpb.Snapshot
+	if snapshot != nil {
+		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	}
+	return walsnap, nil
 }
 
 type migrateConfig struct {
