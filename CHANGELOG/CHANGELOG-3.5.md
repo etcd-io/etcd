@@ -11,6 +11,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Package `clientv3`
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18937)
 
+### etcdutl v3
+- Add [command `etcdutl check v2store` to offline check whether v2store contains custom content](https://github.com/etcd-io/etcd/pull/19113)
 
 ### etcd grpc-proxy
 - Add [`tls min/max version to grpc proxy`](https://github.com/etcd-io/etcd/pull/18829) to support setting TLS min and max version.
