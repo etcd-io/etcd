@@ -205,7 +205,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		TokenTTL:                             cfg.AuthTokenTTL,
 		CORS:                                 cfg.CORS,
 		HostWhitelist:                        cfg.HostWhitelist,
-		CorruptCheckTime:                     cfg.ExperimentalCorruptCheckTime,
+		CorruptCheckTime:                     cfg.CorruptCheckTime,
 		CompactHashCheckTime:                 cfg.CompactHashCheckTime,
 		PreVote:                              cfg.PreVote,
 		Logger:                               cfg.logger,

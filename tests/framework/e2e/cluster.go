@@ -313,6 +313,10 @@ func WithLogLevel(level string) EPClusterOption {
 }
 
 func WithCorruptCheckTime(time time.Duration) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CorruptCheckTime = time }
+}
+
+func WithExperimentalCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
 }
 
