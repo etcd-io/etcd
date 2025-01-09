@@ -247,11 +247,10 @@ func TestV3CorruptAlarm(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		presp, perr := clus.Client(0).Put(context.TODO(), "abc", "aaa")
 		if perr != nil {
-			if !eqErrGRPC(perr, rpctypes.ErrCorrupt) {
-				t.Fatalf("expected %v, got %+v (%v)", rpctypes.ErrCorrupt, presp, perr)
-			} else {
+			if eqErrGRPC(perr, rpctypes.ErrCorrupt) {
 				return
 			}
+			t.Fatalf("expected %v, got %+v (%v)", rpctypes.ErrCorrupt, presp, perr)
 		}
 		time.Sleep(time.Second)
 	}
@@ -347,10 +346,9 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	time.Sleep(time.Second)
 	presp, perr := clus.Client(0).Put(context.TODO(), "abc", "aaa")
 	if perr != nil {
-		if !eqErrGRPC(perr, rpctypes.ErrCorrupt) {
-			t.Fatalf("expected %v, got %+v (%v)", rpctypes.ErrCorrupt, presp, perr)
-		} else {
+		if eqErrGRPC(perr, rpctypes.ErrCorrupt) {
 			return
 		}
+		t.Fatalf("expected %v, got %+v (%v)", rpctypes.ErrCorrupt, presp, perr)
 	}
 }

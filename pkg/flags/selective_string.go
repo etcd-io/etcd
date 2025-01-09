@@ -77,11 +77,11 @@ type SelectiveStringsValue struct {
 func (ss *SelectiveStringsValue) Set(s string) error {
 	vs := strings.Split(s, ",")
 	for i := range vs {
-		if _, ok := ss.valids[vs[i]]; ok {
-			ss.vs = append(ss.vs, vs[i])
-		} else {
+		_, ok := ss.valids[vs[i]]
+		if !ok {
 			return fmt.Errorf("invalid value %q", vs[i])
 		}
+		ss.vs = append(ss.vs, vs[i])
 	}
 	sort.Strings(ss.vs)
 	return nil

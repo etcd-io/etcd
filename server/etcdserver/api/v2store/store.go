@@ -603,17 +603,16 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	// force will try to replace an existing file
 	if n != nil {
-		if replace {
-			if n.IsDir() {
-				return nil, v2error.NewError(v2error.EcodeNotFile, nodePath, currIndex)
-			}
-			e.PrevNode = n.Repr(false, false, s.clock)
-
-			if err := n.Remove(false, false, nil); err != nil {
-				return nil, err
-			}
-		} else {
+		if !replace {
 			return nil, v2error.NewError(v2error.EcodeNodeExist, nodePath, currIndex)
+		}
+		if n.IsDir() {
+			return nil, v2error.NewError(v2error.EcodeNotFile, nodePath, currIndex)
+		}
+		e.PrevNode = n.Repr(false, false, s.clock)
+
+		if err := n.Remove(false, false, nil); err != nil {
+			return nil, err
 		}
 	}
 

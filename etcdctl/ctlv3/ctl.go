@@ -114,11 +114,10 @@ func Start() error {
 
 func MustStart() {
 	if err := Start(); err != nil {
-		if rootCmd.SilenceErrors {
-			cobrautl.ExitWithError(cobrautl.ExitError, err)
-		} else {
+		if !rootCmd.SilenceErrors {
 			os.Exit(cobrautl.ExitError)
 		}
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 }
 
