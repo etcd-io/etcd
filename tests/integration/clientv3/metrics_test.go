@@ -168,9 +168,8 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
-			} else {
-				t.Fatalf("error reading: %v", err)
 			}
+			t.Fatalf("error reading: %v", err)
 		}
 		lines = append(lines, line)
 	}

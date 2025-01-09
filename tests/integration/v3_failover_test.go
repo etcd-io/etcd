@@ -124,9 +124,8 @@ func putWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 			retryCount--
 			if shouldRetry(err) {
 				continue
-			} else {
-				t.Fatal(err)
 			}
+			t.Fatal(err)
 		}
 		break
 	}
@@ -156,9 +155,8 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 			retryCount--
 			if shouldRetry(err) {
 				continue
-			} else {
-				t.Fatal(err)
 			}
+			t.Fatal(err)
 		}
 		break
 	}

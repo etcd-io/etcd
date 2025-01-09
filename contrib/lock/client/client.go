@@ -135,11 +135,10 @@ func main() {
 
 	err = write("key0", fmt.Sprintf("value from client %x", mode), int64(version))
 	if err != nil {
-		if mode == 1 {
-			log.Printf("expected fail to write to storage with old lease version: %s\n", err) // client 1 should show this message
-		} else {
+		if mode != 1 {
 			log.Fatalf("unexpected fail to write to storage: %s\n", err)
 		}
+		log.Printf("expected fail to write to storage with old lease version: %s\n", err) // client 1 should show this message
 	} else {
 		log.Printf("successfully write a key to storage using lease %x\n", int64(version))
 	}

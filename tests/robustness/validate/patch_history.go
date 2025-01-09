@@ -108,12 +108,11 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 			if !persisted {
 				// Remove non persisted operations
 				continue
+			}
+			if txnRevision != 0 {
+				op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
 			} else {
-				if txnRevision != 0 {
-					op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
-				} else {
-					op.Output = model.MaybeEtcdResponse{Persisted: true}
-				}
+				op.Output = model.MaybeEtcdResponse{Persisted: true}
 			}
 		}
 		// Leave operation as it is as we cannot discard it.
