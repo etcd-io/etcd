@@ -23,6 +23,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/soheilhy/cmux"
@@ -66,6 +67,7 @@ type serveCtx struct {
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
 	serversC        chan *servers
+	closeOnce       sync.Once
 }
 
 type servers struct {
@@ -102,6 +104,9 @@ func (sctx *serveCtx) serve(
 ) (err error) {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer sctx.close()
+
 	select {
 	case <-s.StoppingNotify():
 		return errors.New("server is stopping")
@@ -121,8 +126,6 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	// Make sure serversC is closed even if we prematurely exit the function.
-	defer close(sctx.serversC)
 	var gwmux *gw.ServeMux
 	if s.Cfg.EnableGRPCGateway {
 		// GRPC gateway connects to grpc server via connection provided by grpc dial.
@@ -520,4 +523,10 @@ func (sctx *serveCtx) registerTrace() {
 	sctx.registerUserHandler("/debug/requests", http.HandlerFunc(reqf))
 	evf := func(w http.ResponseWriter, r *http.Request) { trace.RenderEvents(w, r, true) }
 	sctx.registerUserHandler("/debug/events", http.HandlerFunc(evf))
+}
+
+func (sctx *serveCtx) close() {
+	sctx.closeOnce.Do(func() {
+		close(sctx.serversC)
+	})
 }
