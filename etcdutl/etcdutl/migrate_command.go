@@ -74,8 +74,9 @@ func (o *migrateOptions) AddFlags(cmd *cobra.Command) {
 
 func (o *migrateOptions) Config() (*migrateConfig, error) {
 	c := &migrateConfig{
-		force: o.force,
-		lg:    GetLogger(),
+		force:   o.force,
+		dataDir: o.dataDir,
+		lg:      GetLogger(),
 	}
 	var err error
 	dotCount := strings.Count(o.targetVersion, ".")
@@ -90,24 +91,6 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 		return nil, fmt.Errorf(`target version %q not supported. Minimal "3.5"`, storageVersionToString(c.targetVersion))
 	}
 
-	dbPath := datadir.ToBackendFileName(o.dataDir)
-	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
-
-	walPath := datadir.ToWALDir(o.dataDir)
-	walSnap, err := getLatestWALSnap(c.lg, o.dataDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get the lastest snapshot: %w", err)
-	}
-	w, err := wal.OpenForRead(c.lg, walPath, walSnap)
-	if err != nil {
-		return nil, fmt.Errorf(`failed to open wal: %w`, err)
-	}
-	defer w.Close()
-	c.walVersion, err = wal.ReadWALVersion(w)
-	if err != nil {
-		return nil, fmt.Errorf(`failed to read wal: %w`, err)
-	}
-
 	return c, nil
 }
 
@@ -116,21 +99,65 @@ type migrateConfig struct {
 	be            backend.Backend
 	targetVersion *semver.Version
 	walVersion    schema.WALVersion
+	dataDir       string
 	force         bool
 }
 
+func (c *migrateConfig) finalize() error {
+	walPath := datadir.ToWALDir(c.dataDir)
+	walSnap, err := getLatestWALSnap(c.lg, c.dataDir)
+	if err != nil {
+		return fmt.Errorf("failed to get the lastest snapshot: %w", err)
+	}
+	w, err := wal.OpenForRead(c.lg, walPath, walSnap)
+	if err != nil {
+		return fmt.Errorf(`failed to open wal: %w`, err)
+	}
+	defer w.Close()
+	c.walVersion, err = wal.ReadWALVersion(w)
+	if err != nil {
+		return fmt.Errorf(`failed to read wal: %w`, err)
+	}
+
+	return nil
+}
+
 func migrateCommandFunc(c *migrateConfig) error {
+	dbPath := datadir.ToBackendFileName(c.dataDir)
+	c.be = backend.NewDefaultBackend(GetLogger(), dbPath)
 	defer c.be.Close()
+
 	tx := c.be.BatchTx()
 	current, err := schema.DetectSchemaVersion(c.lg, c.be.ReadTx())
 	if err != nil {
-		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
+		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older", zap.Error(err))
 		return err
 	}
 	if current == *c.targetVersion {
 		c.lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
 		return nil
 	}
+
+	// only generate a v2 snapshot file for downgrade case
+	if c.targetVersion.LessThan(current) {
+		// Update cluster version
+		be := schema.NewMembershipBackend(c.lg, c.be)
+		be.MustSaveClusterVersionToBackend(c.targetVersion)
+
+		// forcibly create a v2 snapshot file
+		// TODO: remove in 3.8
+		if err = createV2SnapshotFromV3Store(c.dataDir, c.be); err != nil {
+			c.lg.Error("Failed to create v2 snapshot file", zap.Error(err))
+			return err
+		}
+		c.lg.Info("Generated a v2 snapshot file")
+	}
+
+	if err = c.finalize(); err != nil {
+		c.lg.Error("Failed to finalize config", zap.Error(err))
+		return err
+	}
+
 	err = schema.Migrate(c.lg, tx, c.walVersion, *c.targetVersion)
 	if err != nil {
 		if !c.force {
@@ -139,7 +166,9 @@ func migrateCommandFunc(c *migrateConfig) error {
 		c.lg.Info("normal migrate failed, trying with force", zap.Error(err))
 		migrateForce(c.lg, tx, c.targetVersion)
 	}
+
 	c.be.ForceCommit()
+
 	return nil
 }
 
