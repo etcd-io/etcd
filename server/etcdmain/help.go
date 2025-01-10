@@ -277,7 +277,9 @@ Experimental feature:
     Enable to check data corruption before serving any client/peer traffic.
   --experimental-corrupt-check-time '0s'
     Duration of time between cluster corruption check passes. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'corrupt-check-time' instead.
-  --experimental-compact-hash-check-enabled 'false'. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=CompactHashCheck=true' instead.
+  --corrupt-check-time '0s'
+    Duration of time between cluster corruption check passes.
+    --experimental-compact-hash-check-enabled 'false'. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=CompactHashCheck=true' instead.
     Enable leader to periodically check followers compaction hashes.
   --experimental-compact-hash-check-time '1m'
     Duration of time between leader checks followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--compact-hash-check-time' instead.
