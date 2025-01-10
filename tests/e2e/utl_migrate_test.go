@@ -49,6 +49,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 
 		expectLogsSubString  string
 		expectStorageVersion *semver.Version
+		expectTargetBinary   string
 	}{
 		{
 			name:                 "Invalid target version string",
@@ -81,23 +82,25 @@ func TestEtctlutlMigrate(t *testing.T) {
 		{
 			name:                "Migrate v3.5 to v3.5 is no-op",
 			clusterVersion:      e2e.LastVersion,
-			clusterSize:         1,
 			targetVersion:       "3.5",
+			clusterSize:         1,
 			expectLogsSubString: "storage version up-to-date\t" + `{"storage-version": "3.5"}`,
 		},
 		{
 			name:                 "Upgrade 1 member cluster from v3.5 to v3.6 should work",
 			clusterVersion:       e2e.LastVersion,
-			clusterSize:          1,
 			targetVersion:        "3.6",
+			clusterSize:          1,
 			expectStorageVersion: &version.V3_6,
+			expectTargetBinary:   e2e.BinPath.Etcd,
 		},
 		{
 			name:                 "Upgrade 3 member cluster from v3.5 to v3.6 should work",
 			clusterVersion:       e2e.LastVersion,
-			clusterSize:          3,
 			targetVersion:        "3.6",
+			clusterSize:          3,
 			expectStorageVersion: &version.V3_6,
+			expectTargetBinary:   e2e.BinPath.Etcd,
 		},
 		{
 			name:                 "Migrate v3.6 to v3.6 is no-op",
@@ -112,6 +115,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			clusterSize:          1,
 			expectLogsSubString:  "updated storage version",
 			expectStorageVersion: nil, // 3.5 doesn't have the field `storageVersion`, so it returns nil.
+			expectTargetBinary:   e2e.BinPath.EtcdLastRelease,
 		},
 		{
 			name:                 "Downgrade 3 member cluster from v3.6 to v3.5 should work",
@@ -119,6 +123,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			clusterSize:          3,
 			expectLogsSubString:  "updated storage version",
 			expectStorageVersion: nil, // 3.5 doesn't have the field `storageVersion`, so it returns nil.
+			expectTargetBinary:   e2e.BinPath.EtcdLastRelease,
 		},
 		{
 			name:                 "Upgrade v3.6 to v3.7 with force should work",
@@ -141,7 +146,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
 				e2e.WithVersion(tc.clusterVersion),
 				e2e.WithDataDirPath(dataDirPath),
-				e2e.WithClusterSize(1),
+				e2e.WithClusterSize(tc.clusterSize),
 				e2e.WithKeepDataDir(true),
 				// Set low SnapshotCount to ensure wal snapshot is done
 				e2e.WithSnapshotCount(1),
@@ -163,7 +168,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 				require.NoError(t, e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}))
 			}
 
-			t.Log("Stopping the the members")
+			t.Log("Stopping all the servers")
 			for i := 0; i < len(epc.Procs); i++ {
 				t.Logf("Stopping server %d: %v", i, epc.Procs[i].EndpointsGRPC())
 				err = epc.Procs[i].Stop()
@@ -189,6 +194,33 @@ func TestEtctlutlMigrate(t *testing.T) {
 				ver := schema.ReadStorageVersion(be.ReadTx())
 				assert.Equal(t, tc.expectStorageVersion, ver)
 				be.Close()
+			}
+
+			if len(tc.expectTargetBinary) == 0 || !fileutil.Exist(tc.expectTargetBinary) {
+				return
+			}
+
+			t.Log("Start all members with new binary")
+			for i := 0; i < len(epc.Procs); i++ {
+				t.Logf("Replace binary for member %d: %v", i, epc.Procs[i].EndpointsGRPC())
+				member := epc.Procs[i]
+				member.Config().ExecPath = tc.expectTargetBinary
+			}
+			require.NoError(t, epc.Start(context.TODO()))
+
+			t.Log("Verify the versions of all members")
+			for i := 0; i < len(epc.Procs); i++ {
+				t.Logf("Verify the version of member %d: %v", i, epc.Procs[i].EndpointsGRPC())
+				ver := tc.targetVersion + ".0"
+				expectedVer := version.Versions{
+					Server:  ver,
+					Cluster: ver,
+				}
+				if tc.expectStorageVersion != nil {
+					expectedVer.Storage = ver
+				}
+
+				e2e.ValidateVersion(t, epc.Cfg, epc.Procs[i], expectedVer)
 			}
 		})
 	}
