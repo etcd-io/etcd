@@ -210,7 +210,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		Logger:                               cfg.logger,
 		ForceNewCluster:                      cfg.ForceNewCluster,
 		EnableGRPCGateway:                    cfg.EnableGRPCGateway,
-		ExperimentalEnableDistributedTracing: cfg.ExperimentalEnableDistributedTracing,
+		EnableDistributedTracing:             cfg.EnableDistributedTracing,
 		UnsafeNoFsync:                        cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                cfg.ExperimentalEnableLeaseCheckpoint,
 		LeaseCheckpointPersist:               cfg.ExperimentalEnableLeaseCheckpointPersist,
@@ -228,7 +228,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		ServerFeatureGate:                             cfg.ServerFeatureGate,
 	}
 
-	if srvcfg.ExperimentalEnableDistributedTracing {
+	if srvcfg.EnableDistributedTracing {
 		tctx := context.Background()
 		tracingExporter, terr := newTracingExporter(tctx, cfg)
 		if terr != nil {
@@ -237,7 +237,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e.tracingExporterShutdown = func() {
 			tracingExporter.Close(tctx)
 		}
-		srvcfg.ExperimentalTracerOptions = tracingExporter.opts
+		srvcfg.TracerOptions = tracingExporter.opts
 
 		e.cfg.logger.Info(
 			"distributed tracing setup enabled",
