@@ -350,7 +350,7 @@ func TestStoreWatchExpireWithHiddenKey(t *testing.T) {
 }
 
 // newFakeClock creates a new FakeClock that has been advanced to at least minExpireTime
-func newFakeClock() clockwork.FakeClock {
+func newFakeClock() *clockwork.FakeClock {
 	fc := clockwork.NewFakeClock()
 	for minExpireTime.After(fc.Now()) {
 		fc.Advance((0x1 << 62) * time.Nanosecond)
