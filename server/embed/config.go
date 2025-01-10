@@ -364,12 +364,12 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
+	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
 	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
-	CorruptCheckTime				time.Duration `json:"corrupt-check-time"`
+	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
+	CorruptCheckTime             time.Duration `json:"corrupt-check-time"`
 	// ExperimentalCompactHashCheckEnabled enables leader to periodically check followers compaction hashes.
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
