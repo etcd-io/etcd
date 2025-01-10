@@ -315,7 +315,7 @@ func WithCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CorruptCheckTime = time }
 }
 
-// Deprecated in v3.6 and will be decommissioned in v3.7.
+// experimental-corrupt-check time flag is deprecated in v3.6 and will be decommissioned in v3.7.
 // TODO: delete in v3.7
 func WithExperimentalCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
