@@ -17,11 +17,11 @@ package etcdutl
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/server/v3/datadir"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -67,8 +67,8 @@ func checkV2StoreDataDir(dataDir string) error {
 	var (
 		lg = GetLogger()
 
-		walDir  = filepath.Join(dataDir, "member", "wal")
-		snapDir = filepath.Join(dataDir, "member", "snap")
+		walDir  = datadir.ToWalDir(dataDir)
+		snapDir = datadir.ToSnapDir(dataDir)
 	)
 
 	walSnaps, err := wal.ValidSnapshotEntries(lg, walDir)
