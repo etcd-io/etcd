@@ -129,12 +129,26 @@ func migrateCommandFunc(c *migrateConfig) error {
 	tx := be.BatchTx()
 	current, err := schema.DetectSchemaVersion(c.lg, be.ReadTx())
 	if err != nil {
-		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older")
+		c.lg.Error("failed to detect storage version. Please make sure you are using data dir from etcd v3.5 and older", zap.Error(err))
 		return err
 	}
 	if current == *c.targetVersion {
 		c.lg.Info("storage version up-to-date", zap.String("storage-version", storageVersionToString(&current)))
 		return nil
+	}
+
+	// only generate a v2 snapshot file for downgrade case
+	if c.targetVersion.LessThan(current) {
+		// Update cluster version
+		schema.NewMembershipBackend(c.lg, be).MustSaveClusterVersionToBackend(c.targetVersion)
+
+		// forcibly create a v2 snapshot file
+		// TODO: remove in 3.8
+		if err = createV2SnapshotFromV3Store(c.dataDir, be); err != nil {
+			c.lg.Error("Failed to create v2 snapshot file", zap.Error(err))
+			return err
+		}
+		c.lg.Info("Generated a v2 snapshot file")
 	}
 
 	if err = c.finalize(); err != nil {
@@ -150,6 +164,7 @@ func migrateCommandFunc(c *migrateConfig) error {
 		c.lg.Info("normal migrate failed, trying with force", zap.Error(err))
 		migrateForce(c.lg, tx, c.targetVersion)
 	}
+
 	be.ForceCommit()
 	return nil
 }
