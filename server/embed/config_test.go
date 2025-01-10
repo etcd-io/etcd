@@ -347,9 +347,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 
 			cfg, err := ConfigFromFile(tmpfile.Name())
 			if tc.expectErr {
-				if err == nil {
-					t.Fatal("expect parse error")
-				}
+				require.Errorf(t, err, "expect parse error")
 				return
 			}
 			if err != nil {
@@ -378,17 +376,11 @@ func TestUpdateDefaultClusterFromName(t *testing.T) {
 	// in case of 'etcd --name=abc'
 	exp := fmt.Sprintf("%s=%s://localhost:%s", cfg.Name, oldscheme, lpport)
 	_, _ = cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
-	if exp != cfg.InitialCluster {
-		t.Fatalf("initial-cluster expected %q, got %q", exp, cfg.InitialCluster)
-	}
+	require.Equalf(t, exp, cfg.InitialCluster, "initial-cluster expected %q, got %q", exp, cfg.InitialCluster)
 	// advertise peer URL should not be affected
-	if origpeer != cfg.AdvertisePeerUrls[0].String() {
-		t.Fatalf("advertise peer url expected %q, got %q", origadvc, cfg.AdvertisePeerUrls[0].String())
-	}
+	require.Equalf(t, origpeer, cfg.AdvertisePeerUrls[0].String(), "advertise peer url expected %q, got %q", origadvc, cfg.AdvertisePeerUrls[0].String())
 	// advertise client URL should not be affected
-	if origadvc != cfg.AdvertiseClientUrls[0].String() {
-		t.Fatalf("advertise client url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
-	}
+	require.Equalf(t, origadvc, cfg.AdvertiseClientUrls[0].String(), "advertise client url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 }
 
 // TestUpdateDefaultClusterFromNameOverwrite ensures that machine's default host is only used
@@ -407,25 +399,15 @@ func TestUpdateDefaultClusterFromNameOverwrite(t *testing.T) {
 	lpport := cfg.ListenPeerUrls[0].Port()
 	cfg.ListenPeerUrls[0] = url.URL{Scheme: cfg.ListenPeerUrls[0].Scheme, Host: fmt.Sprintf("0.0.0.0:%s", lpport)}
 	dhost, _ := cfg.UpdateDefaultClusterFromName(defaultInitialCluster)
-	if dhost != defaultHostname {
-		t.Fatalf("expected default host %q, got %q", defaultHostname, dhost)
-	}
+	require.Equalf(t, dhost, defaultHostname, "expected default host %q, got %q", defaultHostname, dhost)
 	aphost, apport := cfg.AdvertisePeerUrls[0].Hostname(), cfg.AdvertisePeerUrls[0].Port()
-	if apport != lpport {
-		t.Fatalf("advertise peer url got different port %s, expected %s", apport, lpport)
-	}
-	if aphost != defaultHostname {
-		t.Fatalf("advertise peer url expected machine default host %q, got %q", defaultHostname, aphost)
-	}
+	require.Equalf(t, apport, lpport, "advertise peer url got different port %s, expected %s", apport, lpport)
+	require.Equalf(t, aphost, defaultHostname, "advertise peer url expected machine default host %q, got %q", defaultHostname, aphost)
 	expected := fmt.Sprintf("%s=%s://%s:%s", cfg.Name, oldscheme, defaultHostname, lpport)
-	if expected != cfg.InitialCluster {
-		t.Fatalf("initial-cluster expected %q, got %q", expected, cfg.InitialCluster)
-	}
+	require.Equalf(t, expected, cfg.InitialCluster, "initial-cluster expected %q, got %q", expected, cfg.InitialCluster)
 
 	// advertise client URL should not be affected
-	if origadvc != cfg.AdvertiseClientUrls[0].String() {
-		t.Fatalf("advertise-client-url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
-	}
+	require.Equalf(t, origadvc, cfg.AdvertiseClientUrls[0].String(), "advertise-client-url expected %q, got %q", origadvc, cfg.AdvertiseClientUrls[0].String())
 }
 
 func TestInferLocalAddr(t *testing.T) {
