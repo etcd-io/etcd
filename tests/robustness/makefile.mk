@@ -49,6 +49,11 @@ test-robustness-issue17780: /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bi
 	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue17780 --count 200 --failfast --bin-dir=/tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bin' make test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue18089
+test-robustness-issue18089: /tmp/etcd-v3.5.15-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue18089 -timeout 1h --count 300 --failfast --bin-dir=/tmp/etcd-v3.5.15-failpoints/bin' PERSIST_RESULTS=1 make test-robustness && \
+	  echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
@@ -97,6 +102,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 /tmp/etcd-v3.5.2-failpoints/bin:
 /tmp/etcd-v3.5.4-failpoints/bin:
 /tmp/etcd-v3.5.5-failpoints/bin:
+/tmp/etcd-v3.5.15-failpoints/bin:
 /tmp/etcd-v3.5.%-failpoints/bin: $(GOPATH)/bin/gofail
 	rm -rf /tmp/etcd-v3.5.$*-failpoints/
 	mkdir -p /tmp/etcd-v3.5.$*-failpoints/
