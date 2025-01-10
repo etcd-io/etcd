@@ -19,7 +19,7 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 | Duplicated watch event due to bug in TXN caching [#17247]       | Jan 2024 | main branch     | Robustness    | Yes, prevented regression in v3.6               |                                   |
 | Watch events lost during stream starvation [#17529]             | Mar 2024 | v3.4 or earlier | User          | Yes, after covering of slow watch               | `make test-robustness-issue17529` |
 | Revision decreasing caused by crash during compaction [#17780]  | Apr 2024 | v3.4 or earlier | Robustness    | Yes, after covering compaction                  |                                   |
-| Watch dropping an event when compacting on delete [#18089]      | May 2024 | v3.4 or earlier | Robustness    | Yes, after covering of compaction               |                                   |
+| Watch dropping an event when compacting on delete [#18089]      | May 2024 | v3.4 or earlier | Robustness    | Yes, after covering of compaction               | `make test-robustness-issue18089` |
 | Inconsistency when reading compacted revision in TXN [#18667]   | Oct 2024 | v3.4 or earlier | User          |                                                 |                                   |
 
 [#13766]: https://github.com/etcd-io/etcd/issues/13766

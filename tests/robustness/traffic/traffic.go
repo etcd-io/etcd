@@ -33,11 +33,11 @@ import (
 )
 
 var (
-	DefaultLeaseTTL   int64 = 7200
-	RequestTimeout          = 200 * time.Millisecond
-	WatchTimeout            = time.Second
-	MultiOpTxnOpCount       = 4
-	CompactionPeriod        = 200 * time.Millisecond
+	DefaultLeaseTTL         int64 = 7200
+	RequestTimeout                = 200 * time.Millisecond
+	WatchTimeout                  = time.Second
+	MultiOpTxnOpCount             = 4
+	DefaultCompactionPeriod       = 200 * time.Millisecond
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
@@ -96,7 +96,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			RunCompactLoop(ctx, c, CompactionPeriod, finish)
+			compactionPeriod := DefaultCompactionPeriod
+			if profile.CompactPeriod != time.Duration(0) {
+				compactionPeriod = profile.CompactPeriod
+			}
+			RunCompactLoop(ctx, c, compactionPeriod, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -176,10 +180,16 @@ type Profile struct {
 	MaxNonUniqueRequestConcurrency int
 	ClientCount                    int
 	ForbidCompaction               bool
+	CompactPeriod                  time.Duration
 }
 
 func (p Profile) WithoutCompaction() Profile {
 	p.ForbidCompaction = true
+	return p
+}
+
+func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
+	p.CompactPeriod = cp
 	return p
 }
 
