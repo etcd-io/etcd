@@ -206,6 +206,11 @@ func (f memberDowngrade) Available(config e2e.EtcdProcessClusterConfig, member e
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		return false
 	}
+	// only run memberDowngrade test if no snapshot would be sent between members.
+	// see https://github.com/etcd-io/etcd/issues/19147 for context.
+	if config.ServerConfig.SnapshotCatchUpEntries < etcdserver.DefaultSnapshotCatchUpEntries {
+		return false
+	}
 	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
 	if err != nil {
 		panic("Failed checking etcd version binary")

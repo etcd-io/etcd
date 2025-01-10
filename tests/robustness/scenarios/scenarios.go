@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
@@ -101,7 +102,7 @@ func Exploratory(_ *testing.T) []TestScenario {
 	}
 
 	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
-		baseOptions = append(baseOptions, e2e.WithSnapshotCatchUpEntries(100))
+		baseOptions = append(baseOptions, options.WithSnapshotCatchUpEntries(100, etcdserver.DefaultSnapshotCatchUpEntries))
 	}
 	scenarios := []TestScenario{}
 	for _, tp := range trafficProfiles {
