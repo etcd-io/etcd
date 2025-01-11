@@ -100,7 +100,7 @@ const (
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
 	ExperimentalDistributedTracingAddress = "localhost:4317"
-	
+
 	// ExperimentalDistributedTracingServiceName is the default etcd service name.
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
