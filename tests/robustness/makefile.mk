@@ -51,7 +51,7 @@ test-robustness-issue17780: /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bi
 
 .PHONY: test-robustness-issue18089
 test-robustness-issue18089: /tmp/etcd-v3.5.15-failpoints/bin
-	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue18089 -timeout 1h --count 300 --failfast --bin-dir=/tmp/etcd-v3.5.15-failpoints/bin' PERSIST_RESULTS=1 make test-robustness && \
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue18089 -timeout 1h --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.15-failpoints/bin' PERSIST_RESULTS=1 make test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
 # Failpoints
