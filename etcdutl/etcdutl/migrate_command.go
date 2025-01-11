@@ -15,7 +15,6 @@
 package etcdutl
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -25,12 +24,10 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 )
 
 // NewMigrateCommand prints out the version of etcd.
@@ -112,26 +109,6 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 	}
 
 	return c, nil
-}
-
-func getLatestWALSnap(lg *zap.Logger, dataDir string) (walpb.Snapshot, error) {
-	walPath := datadir.ToWALDir(dataDir)
-	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
-	if err != nil {
-		return walpb.Snapshot{}, err
-	}
-
-	ss := snap.New(lg, datadir.ToSnapDir(dataDir))
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-		return walpb.Snapshot{}, err
-	}
-
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	return walsnap, nil
 }
 
 type migrateConfig struct {
