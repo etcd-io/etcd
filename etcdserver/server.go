@@ -2167,6 +2167,7 @@ func (s *EtcdServer) publish(timeout time.Duration) {
 		Val:    string(b),
 	}
 
+	// gofail: var beforePublishing struct{}
 	for {
 		ctx, cancel := context.WithTimeout(s.ctx, timeout)
 		_, err := s.Do(ctx, req)
