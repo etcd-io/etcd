@@ -36,11 +36,17 @@ var (
 		largePutSize: 32769,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
-			{Choice: Get, Weight: 5},
-			{Choice: List, Weight: 5},
-			{Choice: Delete, Weight: 30},
-			{Choice: Put, Weight: 30},
-			{Choice: CompareAndSet, Weight: 20},
+			{Choice: Get, Weight: 15},
+			{Choice: List, Weight: 15},
+			{Choice: StaleGet, Weight: 10},
+			{Choice: StaleList, Weight: 10},
+			{Choice: Delete, Weight: 5},
+			{Choice: MultiOpTxn, Weight: 5},
+			{Choice: PutWithLease, Weight: 5},
+			{Choice: LeaseRevoke, Weight: 5},
+			{Choice: CompareAndSet, Weight: 5},
+			{Choice: Put, Weight: 20},
+			{Choice: LargePut, Weight: 5},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
