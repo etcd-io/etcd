@@ -37,7 +37,7 @@ var (
 	RequestTimeout          = 200 * time.Millisecond
 	WatchTimeout            = time.Second
 	MultiOpTxnOpCount       = 4
-	CompactionPeriod        = 20 * time.Millisecond
+	CompactionPeriod        = 50 * time.Millisecond
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
@@ -208,7 +208,7 @@ func RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.
 		}
 
 		// Range allows for both revision has been compacted and future revision errors
-		compactRev := random.RandRange(lastRev, resp.Header.Revision)
+		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
 		_, err = c.Compact(ctx, compactRev)
 		if err != nil {
 			continue

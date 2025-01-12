@@ -39,9 +39,9 @@ var Kubernetes Traffic = kubernetesTraffic{
 	namespace:       "default",
 	// Please keep the sum of weights equal 1000.
 	writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-		{Choice: KubernetesUpdate, Weight: 90},
-		{Choice: KubernetesDelete, Weight: 5},
-		{Choice: KubernetesCreate, Weight: 5},
+		{Choice: KubernetesUpdate, Weight: 50},
+		{Choice: KubernetesDelete, Weight: 25},
+		{Choice: KubernetesCreate, Weight: 25},
 	},
 }
 

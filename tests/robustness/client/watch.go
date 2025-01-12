@@ -71,7 +71,7 @@ func watchUntilRevision(ctx context.Context, t *testing.T, c *RecordingClient, m
 	defer cancel()
 resetWatch:
 	for {
-		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
+		watch := c.Watch(ctx, "", lastRevision, true, true, false)
 		for {
 			select {
 			case <-ctx.Done():
