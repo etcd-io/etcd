@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build !cluster_proxy
+
 package e2e
 
 import (
@@ -42,6 +44,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 		name           string
 		targetVersion  string
 		clusterVersion e2e.ClusterVersion
+		clusterSize    int
 		force          bool
 
 		expectLogsSubString  string
@@ -50,54 +53,77 @@ func TestEtctlutlMigrate(t *testing.T) {
 		{
 			name:                 "Invalid target version string",
 			targetVersion:        "abc",
+			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "abc"`,
 			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Invalid target version",
 			targetVersion:        "3.a",
+			clusterSize:          1,
 			expectLogsSubString:  `Error: failed to parse target version: strconv.ParseInt: parsing "a": invalid syntax`,
 			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Target with only major version is invalid",
 			targetVersion:        "3",
+			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3"`,
 			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Target with patch version is invalid",
 			targetVersion:        "3.6.0",
+			clusterSize:          1,
 			expectLogsSubString:  `Error: wrong target version format, expected "X.Y", got "3.6.0"`,
 			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                "Migrate v3.5 to v3.5 is no-op",
 			clusterVersion:      e2e.LastVersion,
+			clusterSize:         1,
 			targetVersion:       "3.5",
 			expectLogsSubString: "storage version up-to-date\t" + `{"storage-version": "3.5"}`,
 		},
 		{
-			name:                 "Upgrade v3.5 to v3.6 should work",
+			name:                 "Upgrade 1 member cluster from v3.5 to v3.6 should work",
 			clusterVersion:       e2e.LastVersion,
+			clusterSize:          1,
+			targetVersion:        "3.6",
+			expectStorageVersion: &version.V3_6,
+		},
+		{
+			name:                 "Upgrade 3 member cluster from v3.5 to v3.6 should work",
+			clusterVersion:       e2e.LastVersion,
+			clusterSize:          3,
 			targetVersion:        "3.6",
 			expectStorageVersion: &version.V3_6,
 		},
 		{
 			name:                 "Migrate v3.6 to v3.6 is no-op",
 			targetVersion:        "3.6",
+			clusterSize:          1,
 			expectLogsSubString:  "storage version up-to-date\t" + `{"storage-version": "3.6"}`,
 			expectStorageVersion: &version.V3_6,
 		},
 		{
-			name:                 "Downgrade v3.6 to v3.5 should work",
+			name:                 "Downgrade 1 member cluster from v3.6 to v3.5 should work",
 			targetVersion:        "3.5",
+			clusterSize:          1,
+			expectLogsSubString:  "updated storage version",
+			expectStorageVersion: nil, // 3.5 doesn't have the field `storageVersion`, so it returns nil.
+		},
+		{
+			name:                 "Downgrade 3 member cluster from v3.6 to v3.5 should work",
+			targetVersion:        "3.5",
+			clusterSize:          3,
 			expectLogsSubString:  "updated storage version",
 			expectStorageVersion: nil, // 3.5 doesn't have the field `storageVersion`, so it returns nil.
 		},
 		{
 			name:                 "Upgrade v3.6 to v3.7 with force should work",
 			targetVersion:        "3.7",
+			clusterSize:          1,
 			force:                true,
 			expectLogsSubString:  "forcefully set storage version\t" + `{"storage-version": "3.7"}`,
 			expectStorageVersion: &semver.Version{Major: 3, Minor: 7},
@@ -137,29 +163,33 @@ func TestEtctlutlMigrate(t *testing.T) {
 				require.NoError(t, e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}))
 			}
 
-			t.Log("Stopping the server...")
-			err = epc.Procs[0].Stop()
-			require.NoError(t, err)
-
-			t.Log("etcdutl migrate...")
-			memberDataDir := epc.Procs[0].Config().DataDirPath
-			args := []string{e2e.BinPath.Etcdutl, "migrate", "--data-dir", memberDataDir, "--target-version", tc.targetVersion}
-			if tc.force {
-				args = append(args, "--force")
-			}
-			err = e2e.SpawnWithExpect(args, expect.ExpectedResponse{Value: tc.expectLogsSubString})
-			if err != nil && tc.expectLogsSubString != "" {
-				require.ErrorContains(t, err, tc.expectLogsSubString)
-			} else {
+			t.Log("Stopping the the members")
+			for i := 0; i < len(epc.Procs); i++ {
+				t.Logf("Stopping server %d: %v", i, epc.Procs[i].EndpointsGRPC())
+				err = epc.Procs[i].Stop()
 				require.NoError(t, err)
 			}
 
-			t.Log("etcdutl migrate...")
-			be := backend.NewDefaultBackend(lg, filepath.Join(memberDataDir, "member/snap/db"))
-			defer be.Close()
+			t.Log("etcdutl migrate all members")
+			for i := 0; i < len(epc.Procs); i++ {
+				t.Logf("etcdutl migrate member %d: %v", i, epc.Procs[i].EndpointsGRPC())
+				memberDataDir := epc.Procs[i].Config().DataDirPath
+				args := []string{e2e.BinPath.Etcdutl, "migrate", "--data-dir", memberDataDir, "--target-version", tc.targetVersion}
+				if tc.force {
+					args = append(args, "--force")
+				}
+				err = e2e.SpawnWithExpect(args, expect.ExpectedResponse{Value: tc.expectLogsSubString})
+				if err != nil && tc.expectLogsSubString != "" {
+					require.ErrorContains(t, err, tc.expectLogsSubString)
+				} else {
+					require.NoError(t, err)
+				}
 
-			ver := schema.ReadStorageVersion(be.ReadTx())
-			assert.Equal(t, tc.expectStorageVersion, ver)
+				be := backend.NewDefaultBackend(lg, filepath.Join(memberDataDir, "member/snap/db"))
+				ver := schema.ReadStorageVersion(be.ReadTx())
+				assert.Equal(t, tc.expectStorageVersion, ver)
+				be.Close()
+			}
 		})
 	}
 }
