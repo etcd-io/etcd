@@ -30,11 +30,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/integration"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 var (
@@ -209,4 +212,57 @@ func setupEmbedCfg(cfg *embed.Config, curls []url.URL, purls []url.URL) {
 		cfg.InitialCluster += ",default=" + purls[i].String()
 	}
 	cfg.InitialCluster = cfg.InitialCluster[1:]
+}
+
+func TestEmbedEtcdStopDuringBootstrapping(t *testing.T) {
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+
+	fpName := "beforePublishing"
+	require.NoError(t, gofail.Enable(fpName, `sleep("2s")`))
+	t.Cleanup(func() {
+		terr := gofail.Disable(fpName)
+		if terr != nil && terr != gofail.ErrDisabled {
+			t.Fatalf("failed to disable %s: %v", fpName, terr)
+		}
+	})
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		cfg := embed.NewConfig()
+		urls := newEmbedURLs(false, 2)
+		setupEmbedCfg(cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+		cfg.Dir = filepath.Join(t.TempDir(), "embed-etcd")
+
+		e, err := embed.StartEtcd(cfg)
+		if err != nil {
+			t.Errorf("Failed to start etcd, got error %v", err)
+		}
+		defer e.Close()
+
+		go func() {
+			time.Sleep(time.Second)
+			e.Server.Stop()
+			t.Log("Stopped server during bootstrapping")
+		}()
+
+		select {
+		case <-e.Server.ReadyNotify():
+			t.Log("Server is ready!")
+		case <-e.Server.StopNotify():
+			t.Log("Server is stopped")
+		case <-time.After(20 * time.Second):
+			e.Server.Stop() // trigger a shutdown
+			t.Error("Server took too long to start!")
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		t.Error("timeout in bootstrapping etcd")
+	}
 }

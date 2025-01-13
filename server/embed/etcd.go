@@ -86,6 +86,7 @@ type Etcd struct {
 	errc  chan error
 
 	closeOnce sync.Once
+	wg        sync.WaitGroup
 }
 
 type peerListener struct {
@@ -111,7 +112,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		if !serving {
 			// errored before starting gRPC server for serveCtx.serversC
 			for _, sctx := range e.sctxs {
-				close(sctx.serversC)
+				sctx.close()
 			}
 		}
 		e.Close()
@@ -436,6 +437,7 @@ func (e *Etcd) Close() {
 		}
 	}
 	if e.errc != nil {
+		e.wg.Wait()
 		close(e.errc)
 	}
 }
@@ -880,6 +882,9 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
+	e.wg.Add(1)
+	defer e.wg.Done()
+
 	select {
 	case <-e.stopc:
 		return
