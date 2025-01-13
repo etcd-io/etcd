@@ -59,7 +59,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 200)
+	// Use the highest MaximalQPS of all traffic profiles as burst otherwise actual traffic may be accidentally limited
+	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 1000)
 
 	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	require.NoError(t, err)
