@@ -65,6 +65,11 @@ var (
 		"experimental-compact-hash-check-enabled":        "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
 		"experimental-compact-hash-check-time":           "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
 		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
+		"experimental-enable-distributed-tracing":        "--experimental-enable-distributed-tracing is deprecated in 3.6 and will be decommissioned in 3.7. Use --enable-distributed-tracing instead.",
+		"experimental-distributed-tracing-address":       "--experimental-distributed-tracing-address is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-address instead.",
+		"experimental-distributed-tracing-service-name":  "--experimental-distributed-tracing-service-name is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-service-name instead.",
+		"experimental-distributed-tracing-instance-id":   "--experimental-distributed-tracing-instance-id is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-instance-id instead.",
+		"experimental-distributed-tracing-sampling-rate": "--experimental-distributed-tracing-sampling-rate is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-sampling-rate instead.",
 	}
 )
 
@@ -194,6 +199,13 @@ func (cfg *config) parse(arguments []string) error {
 				lg.Warn(msg)
 			}
 		}
+	}
+	if cfg.ec.ExperimentalEnableDistributedTracing {
+		cfg.ec.EnableDistributedTracing = true
+		cfg.ec.DistributedTracingAddress = cfg.ec.ExperimentalDistributedTracingAddress
+		cfg.ec.DistributedTracingServiceName = cfg.ec.ExperimentalDistributedTracingServiceName
+		cfg.ec.DistributedTracingServiceInstanceID = cfg.ec.ExperimentalDistributedTracingServiceInstanceID
+		cfg.ec.DistributedTracingSamplingRatePerMillion = cfg.ec.ExperimentalDistributedTracingSamplingRatePerMillion
 	}
 
 	// now logger is set up
