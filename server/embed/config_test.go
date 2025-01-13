@@ -100,6 +100,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		experimentalInitialCorruptCheck          string
 		experimentalCompactHashCheckEnabled      string
 		experimentalTxnModeWriteWithSharedBuffer string
+		experimentalMemoryMlock                  string
 		expectErr                                bool
 		expectedFeatures                         map[featuregate.Feature]bool
 	}{
@@ -131,6 +132,12 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			expectErr:                                true,
 		},
 		{
+			name:                    "cannot set both experimental flag and feature gate flag for MemoryMlock",
+			serverFeatureGatesJSON:  "MemoryMlock=true",
+			experimentalMemoryMlock: "false",
+			expectErr:               true,
+		},
+		{
 			name:                                "ok to set different experimental flag and feature gate flag",
 			serverFeatureGatesJSON:              "DistributedTracing=true",
 			experimentalStopGRPCServiceOnDefrag: "true",
@@ -138,6 +145,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:      true,
 				features.StopGRPCServiceOnDefrag: true,
 				features.InitialCorruptCheck:     false,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -160,6 +168,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: true,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -170,6 +179,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: true,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -179,6 +189,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
 				features.InitialCorruptCheck:     true,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -188,6 +199,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
 				features.InitialCorruptCheck:     false,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -199,6 +211,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.InitialCorruptCheck:          false,
 				features.CompactHashCheck:             false,
 				features.TxnModeWriteWithSharedBuffer: true,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -210,6 +223,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.InitialCorruptCheck:          false,
 				features.CompactHashCheck:             false,
 				features.TxnModeWriteWithSharedBuffer: false,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -219,6 +233,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag: true,
 				features.DistributedTracing:      false,
 				features.InitialCorruptCheck:     false,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -228,6 +243,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
 				features.InitialCorruptCheck:     true,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -237,6 +253,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.StopGRPCServiceOnDefrag: false,
 				features.DistributedTracing:      false,
 				features.InitialCorruptCheck:     false,
+				features.MemoryMlock:             false,
 			},
 		},
 		{
@@ -247,6 +264,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: true,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -257,6 +275,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.DistributedTracing:           false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: false,
+				features.MemoryMlock:                  false,
 			},
 		},
 		{
@@ -292,6 +311,24 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.CompactHashCheck:        true,
 			},
 		},
+		{
+			name:                   "can set feature gate MemoryMlock to true from feature gate flag",
+			serverFeatureGatesJSON: "MemoryMlock=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.MemoryMlock:             true,
+			},
+		},
+		{
+			name:                   "can set feature gate MemoryMlock to false from feature gate flag",
+			serverFeatureGatesJSON: "MemoryMlock=false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.StopGRPCServiceOnDefrag: false,
+				features.DistributedTracing:      false,
+				features.MemoryMlock:             false,
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -300,6 +337,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				ExperimentalInitialCorruptCheck          *bool  `json:"experimental-initial-corrupt-check,omitempty"`
 				ExperimentalCompactHashCheckEnabled      *bool  `json:"experimental-compact-hash-check-enabled,omitempty"`
 				ExperimentalTxnModeWriteWithSharedBuffer *bool  `json:"experimental-txn-mode-write-with-shared-buffer,omitempty"`
+				ExperimentalMemoryMlock                  *bool  `json:"experimental-memory-mlock,omitempty"`
 				ServerFeatureGatesJSON                   string `json:"feature-gates"`
 			}{
 				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
@@ -335,6 +373,14 @@ func TestConfigFileFeatureGates(t *testing.T) {
 					t.Fatal(err)
 				}
 				yc.ExperimentalCompactHashCheckEnabled = &experimentalCompactHashCheckEnabled
+			}
+
+			if tc.experimentalMemoryMlock != "" {
+				experimentalMemoryMlock, err := strconv.ParseBool(tc.experimentalMemoryMlock)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalMemoryMlock = &experimentalMemoryMlock
 			}
 
 			b, err := yaml.Marshal(&yc)
