@@ -39,19 +39,13 @@ func TestStatus(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				rs, err := cc.Status(ctx)
 				require.NoErrorf(t, err, "could not get status")
-				if len(rs) != tc.config.ClusterSize {
-					t.Fatalf("wrong number of status responses. expected:%d, got:%d ", tc.config.ClusterSize, len(rs))
-				}
+				require.Lenf(t, rs, tc.config.ClusterSize, "wrong number of status responses. expected:%d, got:%d ", tc.config.ClusterSize, len(rs))
 				memberIDs := make(map[uint64]struct{})
 				for _, r := range rs {
-					if r == nil {
-						t.Fatalf("status response is nil")
-					}
+					require.NotNilf(t, r, "status response is nil")
 					memberIDs[r.Header.MemberId] = struct{}{}
 				}
-				if len(rs) != len(memberIDs) {
-					t.Fatalf("found duplicated members")
-				}
+				require.Lenf(t, rs, len(memberIDs), "found duplicated members")
 			})
 		})
 	}
