@@ -257,12 +257,11 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		fmt.Printf("PASS: Stddev is %fs\n", s.Stddev)
 	}
 
-	if ok {
-		fmt.Println("PASS")
-	} else {
+	if !ok {
 		fmt.Println("FAIL")
 		os.Exit(cobrautl.ExitError)
 	}
+	fmt.Println("PASS")
 }
 
 func attemptCleanup(client *v3.Client, autoCompact bool) {
@@ -434,7 +433,6 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 			fmt.Printf("FAIL: ERROR(%v) -> %d\n", k, v)
 		}
 		os.Exit(cobrautl.ExitError)
-	} else {
-		fmt.Printf("PASS: Approximate system memory used : %v MB.\n", strconv.FormatFloat(mbUsed, 'f', 2, 64))
 	}
+	fmt.Printf("PASS: Approximate system memory used : %v MB.\n", strconv.FormatFloat(mbUsed, 'f', 2, 64))
 }
