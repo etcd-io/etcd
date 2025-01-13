@@ -256,10 +256,7 @@ func (c *RaftCluster) SetVersionChangedNotifier(n *notify.Notifier) {
 	c.versionChanged = n
 }
 
-func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
-	c.Lock()
-	defer c.Unlock()
-
+func (c *RaftCluster) UnsafeLoad() {
 	if c.be != nil {
 		c.version = c.be.ClusterVersionFromBackend()
 		c.members, c.removed = c.be.MustReadMembersFromBackend()
@@ -267,11 +264,20 @@ func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
 		c.version = clusterVersionFromStore(c.lg, c.v2store)
 		c.members, c.removed = membersFromStore(c.lg, c.v2store)
 	}
-	c.buildMembershipMetric()
 
 	if c.be != nil {
 		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
 	}
+}
+
+func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.UnsafeLoad()
+
+	c.buildMembershipMetric()
+
 	sv := semver.Must(semver.NewVersion(version.Version))
 	if c.downgradeInfo != nil && c.downgradeInfo.Enabled {
 		c.lg.Info(
