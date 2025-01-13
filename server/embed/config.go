@@ -134,6 +134,7 @@ var (
 	// TODO: delete in v3.7
 	experimentalNonBoolFlagMigrationMap = map[string]string{
 		"experimental-compact-hash-check-time": "compact-hash-check-time",
+		"experimental-corrupt-check-time":      "corrupt-check-time",
 	}
 )
 
@@ -363,8 +364,12 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
-	ExperimentalInitialCorruptCheck bool          `json:"experimental-initial-corrupt-check"`
-	ExperimentalCorruptCheckTime    time.Duration `json:"experimental-corrupt-check-time"`
+	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
+	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
+	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
+	CorruptCheckTime             time.Duration `json:"corrupt-check-time"`
 	// ExperimentalCompactHashCheckEnabled enables leader to periodically check followers compaction hashes.
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
@@ -771,7 +776,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 
 	// experimental
 	fs.BoolVar(&cfg.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
-	fs.DurationVar(&cfg.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes.")
+	// TODO: delete in v3.7
+	fs.DurationVar(&cfg.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes. Deprecated in v3.6 and will be decommissioned in v3.7. Use --corrupt-check-time instead")
+	fs.DurationVar(&cfg.CorruptCheckTime, "corrupt-check-time", cfg.CorruptCheckTime, "Duration of time between cluster corruption check passes.")
 	// TODO: delete in v3.7
 	fs.BoolVar(&cfg.ExperimentalCompactHashCheckEnabled, "experimental-compact-hash-check-enabled", cfg.ExperimentalCompactHashCheckEnabled, "Enable leader to periodically check followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=CompactHashCheck=true' instead")
 	fs.DurationVar(&cfg.ExperimentalCompactHashCheckTime, "experimental-compact-hash-check-time", cfg.ExperimentalCompactHashCheckTime, "Duration of time between leader checks followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compact-hash-check-time instead.")

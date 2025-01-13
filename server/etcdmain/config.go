@@ -65,6 +65,7 @@ var (
 		"experimental-compact-hash-check-enabled":        "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
 		"experimental-compact-hash-check-time":           "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
 		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
+		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
 	}
 )
 
@@ -172,6 +173,10 @@ func (cfg *config) parse(arguments []string) error {
 	// TODO: delete in v3.7
 	if cfg.ec.FlagsExplicitlySet["experimental-compact-hash-check-time"] {
 		cfg.ec.CompactHashCheckTime = cfg.ec.ExperimentalCompactHashCheckTime
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-corrupt-check-time"] {
+		cfg.ec.CorruptCheckTime = cfg.ec.ExperimentalCorruptCheckTime
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
