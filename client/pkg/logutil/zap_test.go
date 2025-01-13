@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"regexp"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -55,4 +56,80 @@ func TestEncodeTimePrecisionToMicroSeconds(t *testing.T) {
 	matches := re.FindStringSubmatch(fields.Timestamp)
 	require.Len(t, matches, 3)
 	require.Lenf(t, matches[1], fractionSecondsPrecision, "unexpected timestamp %s", fields.Timestamp)
+}
+
+func TestMergeOutputPaths(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  zap.Config
+		want zap.Config
+	}{
+		{
+			name: "OutputPaths /dev/null",
+			cfg: zap.Config{
+				OutputPaths:      []string{"c", "/dev/null"},
+				ErrorOutputPaths: []string{"c", "a", "a", "b"},
+			},
+			want: zap.Config{
+				OutputPaths:      []string{"/dev/null"},
+				ErrorOutputPaths: []string{"a", "b", "c"},
+			},
+		},
+		{
+			name: "ErrorOutputPaths /dev/null",
+			cfg: zap.Config{
+				OutputPaths:      []string{"c", "a", "a", "b"},
+				ErrorOutputPaths: []string{"/dev/null", "c"},
+			},
+			want: zap.Config{
+				OutputPaths:      []string{"a", "b", "c"},
+				ErrorOutputPaths: []string{"/dev/null"},
+			},
+		},
+		{
+			name: "empty slice",
+			cfg: zap.Config{
+				OutputPaths:      []string{},
+				ErrorOutputPaths: []string{"c", "a", "a", "b"},
+			},
+			want: zap.Config{
+				OutputPaths:      []string{},
+				ErrorOutputPaths: []string{"a", "b", "c"},
+			},
+		},
+		{
+			name: "nil slice",
+			cfg: zap.Config{
+				OutputPaths:      []string{"c", "a", "a", "b"},
+				ErrorOutputPaths: nil,
+			},
+			want: zap.Config{
+				OutputPaths:      []string{"a", "b", "c"},
+				ErrorOutputPaths: []string{},
+			},
+		},
+		{
+			name: "normal",
+			cfg: zap.Config{
+				OutputPaths:      []string{"c", "a", "a", "b"},
+				ErrorOutputPaths: []string{"c", "a", "a", "b"},
+			},
+			want: zap.Config{
+				OutputPaths:      []string{"a", "b", "c"},
+				ErrorOutputPaths: []string{"a", "b", "c"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputPaths := slices.Clone(tt.cfg.OutputPaths)
+			errorOutputPaths := slices.Clone(tt.cfg.ErrorOutputPaths)
+
+			require.Equal(t, tt.want, MergeOutputPaths(tt.cfg))
+
+			// ensure the OutputPaths and ErrorOutputPaths have not been modified
+			require.Equal(t, outputPaths, tt.cfg.OutputPaths)
+			require.Equal(t, errorOutputPaths, tt.cfg.ErrorOutputPaths)
+		})
+	}
 }
