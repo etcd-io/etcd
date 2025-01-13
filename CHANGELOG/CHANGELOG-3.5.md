@@ -6,6 +6,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ## v3.5.18 (TBC)
 
 ### etcd server
+- [Avoid deadlock in etcd.Close when stopping during bootstrapping](https://github.com/etcd-io/etcd/pull/19167)
 - [Print warning messages if any of the deprecated v2store related flags is set](https://github.com/etcd-io/etcd/pull/18999)
 
 ### Package `clientv3`
