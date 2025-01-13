@@ -16,12 +16,14 @@ package embed
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	defaultLog "log"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"go.etcd.io/etcd/etcdserver"
 	"go.etcd.io/etcd/etcdserver/api/v3client"
@@ -63,6 +65,7 @@ type serveCtx struct {
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
 	serversC        chan *servers
+	closeOnce       sync.Once
 }
 
 type servers struct {
@@ -94,7 +97,15 @@ func (sctx *serveCtx) serve(
 	splitHttp bool,
 	gopts ...grpc.ServerOption) (err error) {
 	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
+
+	// Make sure serversC is closed even if we prematurely exit the function.
+	defer sctx.close()
+
+	select {
+	case <-s.StoppingNotify():
+		return errors.New("server is stopping")
+	case <-s.ReadyNotify():
+	}
 
 	if sctx.lg != nil {
 		sctx.lg.Info("ready to serve client requests")
@@ -113,8 +124,6 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	// Make sure serversC is closed even if we prematurely exit the function.
-	defer close(sctx.serversC)
 	var gwmux *gw.ServeMux
 	if s.Cfg.EnableGRPCGateway {
 		// GRPC gateway connects to grpc server via connection provided by grpc dial.
@@ -548,4 +557,10 @@ func (sctx *serveCtx) registerTrace() {
 	sctx.registerUserHandler("/debug/requests", http.HandlerFunc(reqf))
 	evf := func(w http.ResponseWriter, r *http.Request) { trace.RenderEvents(w, r, true) }
 	sctx.registerUserHandler("/debug/events", http.HandlerFunc(evf))
+}
+
+func (sctx *serveCtx) close() {
+	sctx.closeOnce.Do(func() {
+		close(sctx.serversC)
+	})
 }

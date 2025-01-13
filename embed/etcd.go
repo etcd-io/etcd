@@ -109,7 +109,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		if !serving {
 			// errored before starting gRPC server for serveCtx.serversC
 			for _, sctx := range e.sctxs {
-				close(sctx.serversC)
+				sctx.close()
 			}
 		}
 		e.Close()
