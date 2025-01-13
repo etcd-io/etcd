@@ -37,7 +37,7 @@ var (
 	RequestTimeout          = 200 * time.Millisecond
 	WatchTimeout            = time.Second
 	MultiOpTxnOpCount       = 4
-	CompactionPeriod        = 200 * time.Millisecond
+	CompactionPeriod        = 50 * time.Millisecond
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
