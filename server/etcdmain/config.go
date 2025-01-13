@@ -182,21 +182,23 @@ func (cfg *config) parse(arguments []string) error {
 		return perr
 	}
 
-	var warningsForDeprecatedFlags []string
-	cfg.cf.flagSet.Visit(func(f *flag.Flag) {
-		if msg, ok := deprecatedFlags[f.Name]; ok {
-			warningsForDeprecatedFlags = append(warningsForDeprecatedFlags, msg)
+	// Check for deprecated options from both command line and config file
+	var warningsForDeprecatedOpts []string
+	for flagName := range cfg.ec.FlagsExplicitlySet {
+		if msg, ok := deprecatedFlags[flagName]; ok {
+			warningsForDeprecatedOpts = append(warningsForDeprecatedOpts, msg)
 		}
-	})
-	if len(warningsForDeprecatedFlags) > 0 {
+	}
+
+	// Log warnings if any deprecated options were found
+	if len(warningsForDeprecatedOpts) > 0 {
 		if lg := cfg.ec.GetLogger(); lg != nil {
-			for _, msg := range warningsForDeprecatedFlags {
+			for _, msg := range warningsForDeprecatedOpts {
 				lg.Warn(msg)
 			}
 		}
 	}
 
-	// now logger is set up
 	return err
 }
 
