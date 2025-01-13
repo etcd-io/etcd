@@ -22,53 +22,55 @@ import (
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
 
-// watchBatchMaxRevs is the maximum distinct revisions that
-// may be sent to an unsynced watcher at a time. Declared as
-// var instead of const for testing purposes.
-var watchBatchMaxRevs = 1000
+func newEventBatch(watchBatchMaxSize int) *eventBatch {
+	return &eventBatch{
+		watchBatchMaxSize: watchBatchMaxSize,
+	}
+}
 
 type eventBatch struct {
 	// evs is a batch of revision-ordered events
 	evs []mvccpb.Event
-	// revs is the minimum unique revisions observed for this batch
-	revs int
+	// evsSize is total size of events in the batch.
+	evsSize int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
+	// watchBatchMaxSize is maximum size of batch
+	watchBatchMaxSize int
 }
 
 func (eb *eventBatch) add(ev mvccpb.Event) {
-	if eb.revs > watchBatchMaxRevs {
-		// maxed out batch size
-		return
-	}
-
 	if len(eb.evs) == 0 {
-		// base case
-		eb.revs = 1
+		eb.evsSize = ev.Size()
 		eb.evs = append(eb.evs, ev)
 		return
 	}
-
-	// revision accounting
 	ebRev := eb.evs[len(eb.evs)-1].Kv.ModRevision
 	evRev := ev.Kv.ModRevision
-	if evRev > ebRev {
-		eb.revs++
-		if eb.revs > watchBatchMaxRevs {
-			eb.moreRev = evRev
-			return
-		}
+	if evRev == ebRev {
+		eb.evsSize += ev.Size()
+		eb.evs = append(eb.evs, ev)
+		return
+	}
+	if eb.moreRev != 0 {
+		return
 	}
 
+	size := ev.Size()
+	if eb.watchBatchMaxSize != 0 && eb.evsSize+size > eb.watchBatchMaxSize {
+		eb.moreRev = ev.Kv.ModRevision
+		return
+	}
+	eb.evsSize += size
 	eb.evs = append(eb.evs, ev)
 }
 
 type watcherBatch map[*watcher]*eventBatch
 
-func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
+func (wb watcherBatch) add(w *watcher, ev mvccpb.Event, watchBatchMaxSize int) {
 	eb := wb[w]
 	if eb == nil {
-		eb = &eventBatch{}
+		eb = newEventBatch(watchBatchMaxSize)
 		wb[w] = eb
 	}
 	eb.add(ev)
@@ -76,7 +78,7 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
-func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
+func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event, watchBatchMaxSize int) watcherBatch {
 	if len(wg.watchers) == 0 {
 		return nil
 	}
@@ -86,7 +88,7 @@ func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
 		for w := range wg.watcherSetByKey(string(ev.Kv.Key)) {
 			if ev.Kv.ModRevision >= w.minRev {
 				// don't double notify
-				wb.add(w, ev)
+				wb.add(w, ev, watchBatchMaxSize)
 			}
 		}
 	}
