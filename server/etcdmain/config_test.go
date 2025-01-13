@@ -752,6 +752,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalCompactHashCheckEnabled     bool          `json:"experimental-compact-hash-check-enabled,omitempty"`
 		ExperimentalCompactHashCheckTime        time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
 		ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
+		ExperimentalCorruptCheckTime            time.Duration `json:"experimental-corrupt-check-time,omitempty"`
 	}
 
 	testCases := []struct {
@@ -770,10 +771,12 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalCompactHashCheckEnabled:     true,
 				ExperimentalCompactHashCheckTime:        2 * time.Minute,
 				ExperimentalWarningUnaryRequestDuration: time.Second,
+				ExperimentalCorruptCheckTime:            time.Minute,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled": {},
 				"experimental-compact-hash-check-time":    {},
+				"experimental-corrupt-check-time":         {},
 			},
 		},
 		{
