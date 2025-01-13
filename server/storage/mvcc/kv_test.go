@@ -25,6 +25,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -657,6 +658,8 @@ func TestKVHash(t *testing.T) {
 }
 
 func TestKVRestore(t *testing.T) {
+	compactBatchLimit := 5
+
 	tests := []func(kv KV){
 		func(kv KV) {
 			kv.Put([]byte("foo"), []byte("bar0"), 1)
@@ -674,10 +677,23 @@ func TestKVRestore(t *testing.T) {
 			kv.Put([]byte("foo"), []byte("bar1"), 2)
 			kv.Compact(traceutil.TODO(), 1)
 		},
+		func(kv KV) { // after restore, foo1 key only has tombstone revision
+			kv.Put([]byte("foo1"), []byte("bar1"), 0)
+			kv.Put([]byte("foo2"), []byte("bar2"), 0)
+			kv.Put([]byte("foo3"), []byte("bar3"), 0)
+			kv.Put([]byte("foo4"), []byte("bar4"), 0)
+			kv.Put([]byte("foo5"), []byte("bar5"), 0)
+			_, delAtRev := kv.DeleteRange([]byte("foo1"), nil)
+			assert.Equal(t, int64(7), delAtRev)
+
+			// after compaction and restore, foo1 key only has tombstone revision
+			ch, _ := kv.Compact(traceutil.TODO(), delAtRev)
+			<-ch
+		},
 	}
 	for i, tt := range tests {
 		b, _ := betesting.NewDefaultTmpBackend(t)
-		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{CompactionBatchLimit: compactBatchLimit})
 		tt(s)
 		var kvss [][]mvccpb.KeyValue
 		for k := int64(0); k < 10; k++ {
@@ -689,7 +705,7 @@ func TestKVRestore(t *testing.T) {
 		s.Close()
 
 		// ns should recover the previous state from backend.
-		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{CompactionBatchLimit: compactBatchLimit})
 
 		if keysRestore := readGaugeInt(keysGauge); keysBefore != keysRestore {
 			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
