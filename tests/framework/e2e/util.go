@@ -24,8 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
+	"go.uber.org/zap"
 )
 
 func WaitReadyExpectProc(ctx context.Context, exproc *expect.ExpectProcess, readyStrs []string) error {
@@ -176,4 +179,55 @@ func mergeEnvVariables(envVars map[string]string) []string {
 	}
 
 	return env
+}
+
+func ValidateVersion(t *testing.T, cfg *EtcdProcessClusterConfig, member EtcdProcess, expect version.Versions) {
+	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
+		for {
+			result, err := getMemberVersionByCurl(cfg, member)
+			if err != nil {
+				cfg.Logger.Warn("failed to get member version and retrying", zap.Error(err), zap.String("member", member.Config().Name))
+				time.Sleep(time.Second)
+				continue
+			}
+			cfg.Logger.Info("Comparing versions", zap.String("member", member.Config().Name), zap.Any("got", result), zap.Any("want", expect))
+			if err := compareMemberVersion(expect, result); err != nil {
+				cfg.Logger.Warn("Versions didn't match retrying", zap.Error(err), zap.String("member", member.Config().Name))
+				time.Sleep(time.Second)
+				continue
+			}
+			cfg.Logger.Info("Versions match", zap.String("member", member.Config().Name))
+			break
+		}
+	})
+}
+
+func compareMemberVersion(expect version.Versions, target version.Versions) error {
+	if expect.Server != "" && expect.Server != target.Server {
+		return fmt.Errorf("expect etcdserver version %v, but got %v", expect.Server, target.Server)
+	}
+
+	if expect.Cluster != "" && expect.Cluster != target.Cluster {
+		return fmt.Errorf("expect etcdcluster version %v, but got %v", expect.Cluster, target.Cluster)
+	}
+
+	if expect.Storage != "" && expect.Storage != target.Storage {
+		return fmt.Errorf("expect storage version %v, but got %v", expect.Storage, target.Storage)
+	}
+	return nil
+}
+
+func getMemberVersionByCurl(cfg *EtcdProcessClusterConfig, member EtcdProcess) (version.Versions, error) {
+	args := CURLPrefixArgsCluster(cfg, member, "GET", CURLReq{Endpoint: "/version"})
+	lines, err := RunUtilCompletion(args, nil)
+	if err != nil {
+		return version.Versions{}, err
+	}
+
+	data := strings.Join(lines, "\n")
+	result := version.Versions{}
+	if err := json.Unmarshal([]byte(data), &result); err != nil {
+		return version.Versions{}, fmt.Errorf("failed to unmarshal (%v): %w", data, err)
+	}
+	return result, nil
 }
