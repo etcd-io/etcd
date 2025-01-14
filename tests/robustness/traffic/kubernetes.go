@@ -162,7 +162,7 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, i
 			case KubernetesUpdate:
 				_, err = kc.OptimisticPut(writeCtx, key, []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{GetOnFailure: true})
 			case KubernetesCreate:
-				_, err = kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{})
+				_, err = kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), 0, kubernetes.PutOptions{})
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
