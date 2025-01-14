@@ -188,13 +188,27 @@ func TestInPlaceRecovery(t *testing.T) {
 }
 
 func TestPeriodicCheckDetectsCorruption(t *testing.T) {
+	testPeriodicCheckDetectsCorruption(t, false)
+}
+
+func TestPeriodicCheckDetectsCorruptionWithExperimentalFlag(t *testing.T) {
+	testPeriodicCheckDetectsCorruption(t, true)
+}
+
+func testPeriodicCheckDetectsCorruption(t *testing.T, useExperimentalFlag bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	var corruptCheckTime e2e.EPClusterOption
+	if useExperimentalFlag {
+		corruptCheckTime = e2e.WithExperimentalCorruptCheckTime(time.Second)
+	} else {
+		corruptCheckTime = e2e.WithCorruptCheckTime(time.Second)
+	}
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithKeepDataDir(true),
-		e2e.WithCorruptCheckTime(time.Second),
+		corruptCheckTime,
 	)
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)

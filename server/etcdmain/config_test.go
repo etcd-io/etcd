@@ -570,6 +570,95 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 	}
 }
 
+// TestCorruptCheckTimeFlagMigration tests the migration from
+// --experimental-corrupt-check-time to --corrupt-check-time
+// TODO: delete in v3.7
+func TestCorruptCheckTimeFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                         string
+		corruptCheckTime             string
+		experimentalCorruptCheckTime string
+		useConfigFile                bool
+		expectErr                    bool
+		expectedCorruptCheckTime     time.Duration
+	}{
+		{
+			name:                         "cannot set both experimental flag and non experimental flag",
+			corruptCheckTime:             "2m",
+			experimentalCorruptCheckTime: "3m",
+			expectErr:                    true,
+		},
+		{
+			name:                         "can set experimental flag",
+			experimentalCorruptCheckTime: "3m",
+			expectedCorruptCheckTime:     3 * time.Minute,
+		},
+		{
+			name:                     "can set non experimental flag",
+			corruptCheckTime:         "2m",
+			expectedCorruptCheckTime: 2 * time.Minute,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time,omitempty"`
+				CorruptCheckTime             time.Duration `json:"corrupt-check-time,omitempty"`
+			}{}
+
+			if tc.corruptCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--corrupt-check-time=%s", tc.corruptCheckTime))
+				corruptCheckTime, err := time.ParseDuration(tc.corruptCheckTime)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.CorruptCheckTime = corruptCheckTime
+			}
+
+			if tc.experimentalCorruptCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-corrupt-check-time=%s", tc.experimentalCorruptCheckTime))
+				experimentalCorruptCheckTime, err := time.ParseDuration(tc.experimentalCorruptCheckTime)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalCorruptCheckTime = experimentalCorruptCheckTime
+			}
+
+			b, err := yaml.Marshal(&yc)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			tmpfile := mustCreateCfgFile(t, b)
+			defer os.Remove(tmpfile.Name())
+
+			cfgFromCmdLine := newConfig()
+			errFromCmdLine := cfgFromCmdLine.parse(cmdLineArgs)
+
+			cfgFromFile := newConfig()
+			errFromFile := cfgFromFile.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal(err)
+			}
+
+			if cfgFromCmdLine.ec.CorruptCheckTime != tc.expectedCorruptCheckTime {
+				t.Errorf("expected CorruptCheckTime=%v, got %v", tc.expectedCorruptCheckTime, cfgFromCmdLine.ec.CorruptCheckTime)
+			}
+			if cfgFromFile.ec.CorruptCheckTime != tc.expectedCorruptCheckTime {
+				t.Errorf("expected CorruptCheckTime=%v, got %v", tc.expectedCorruptCheckTime, cfgFromFile.ec.CorruptCheckTime)
+			}
+		})
+	}
+}
+
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 	tmpfile, err := os.CreateTemp("", "servercfg")
 	if err != nil {
@@ -663,6 +752,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalCompactHashCheckEnabled     bool          `json:"experimental-compact-hash-check-enabled,omitempty"`
 		ExperimentalCompactHashCheckTime        time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
 		ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
+		ExperimentalCorruptCheckTime            time.Duration `json:"experimental-corrupt-check-time,omitempty"`
 	}
 
 	testCases := []struct {
@@ -681,10 +771,12 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalCompactHashCheckEnabled:     true,
 				ExperimentalCompactHashCheckTime:        2 * time.Minute,
 				ExperimentalWarningUnaryRequestDuration: time.Second,
+				ExperimentalCorruptCheckTime:            time.Minute,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled": {},
 				"experimental-compact-hash-check-time":    {},
+				"experimental-corrupt-check-time":         {},
 			},
 		},
 		{
