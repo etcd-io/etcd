@@ -16,6 +16,7 @@ package clientv3test
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -27,9 +28,10 @@ import (
 	"testing"
 	"time"
 
-	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/expfmt"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -75,11 +77,14 @@ func TestV3ClientMetrics(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
+	clientMetrics := grpcprom.NewClientMetrics()
+	prometheus.Register(clientMetrics)
+
 	cfg := clientv3.Config{
 		Endpoints: []string{clus.Members[0].GRPCURL},
 		DialOptions: []grpc.DialOption{
-			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
-			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
+			grpc.WithUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
+			grpc.WithStreamInterceptor(clientMetrics.StreamClientInterceptor()),
 		},
 	}
 	cli, cerr := integration2.NewClient(t, cfg)
@@ -147,6 +152,24 @@ func sumCountersForMetricAndLabels(t *testing.T, url string, metricName string, 
 }
 
 func getHTTPBodyAsLines(t *testing.T, url string) []string {
+	data := getHTTPBodyAsBytes(t, url)
+
+	reader := bufio.NewReader(bytes.NewReader(data))
+	var lines []string
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			t.Fatalf("error reading: %v", err)
+		}
+		lines = append(lines, line)
+	}
+	return lines
+}
+
+func getHTTPBodyAsBytes(t *testing.T, url string) []byte {
 	cfgtls := transport.TLSInfo{}
 	tr, err := transport.NewTransport(cfgtls, time.Second)
 	if err != nil {
@@ -162,21 +185,12 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 	if err != nil {
 		t.Fatalf("Error fetching: %v", err)
 	}
-
-	reader := bufio.NewReader(resp.Body)
-	var lines []string
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			t.Fatalf("error reading: %v", err)
-		}
-		lines = append(lines, line)
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Error reading http body: %v", err)
 	}
-	resp.Body.Close()
-	return lines
+	return body
 }
 
 func TestAllMetricsGenerated(t *testing.T) {
@@ -213,7 +227,7 @@ func TestAllMetricsGenerated(t *testing.T) {
 
 	url := "unix://" + addr + "/metrics"
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, Metrics: "extensive"})
 	defer clus.Terminate(t)
 
 	clientMetrics := grpcprom.NewClientMetrics()
@@ -249,42 +263,26 @@ func TestAllMetricsGenerated(t *testing.T) {
 	// Define the expected list of metrics
 	expectedMetrics := []string{
 		"etcd_cluster_version",
-		"etcd_disk_backend_commit_duration_seconds_bucket",
-		"etcd_disk_backend_commit_duration_seconds_count",
-		"etcd_disk_backend_commit_duration_seconds_sum",
-		"etcd_disk_backend_defrag_duration_seconds_bucket",
-		"etcd_disk_backend_defrag_duration_seconds_count",
-		"etcd_disk_backend_defrag_duration_seconds_sum",
-		"etcd_disk_backend_snapshot_duration_seconds_bucket",
-		"etcd_disk_backend_snapshot_duration_seconds_count",
-		"etcd_disk_backend_snapshot_duration_seconds_sum",
+		"etcd_disk_backend_commit_duration_seconds",
+		"etcd_disk_backend_defrag_duration_seconds",
+		"etcd_disk_backend_snapshot_duration_seconds",
 		"etcd_disk_defrag_inflight",
-		"etcd_disk_wal_fsync_duration_seconds_bucket",
-		"etcd_disk_wal_fsync_duration_seconds_count",
-		"etcd_disk_wal_fsync_duration_seconds_sum",
+		"etcd_disk_wal_fsync_duration_seconds",
 		"etcd_disk_wal_write_bytes_total",
-		"etcd_disk_wal_write_duration_seconds_bucket",
-		"etcd_disk_wal_write_duration_seconds_count",
-		"etcd_disk_wal_write_duration_seconds_sum",
+		"etcd_disk_wal_write_duration_seconds",
 		"etcd_mvcc_db_open_read_transactions",
 		"etcd_mvcc_db_total_size_in_bytes",
 		"etcd_mvcc_db_total_size_in_use_in_bytes",
 		"etcd_mvcc_delete_total",
-		"etcd_mvcc_hash_duration_seconds_bucket",
-		"etcd_mvcc_hash_duration_seconds_count",
-		"etcd_mvcc_hash_duration_seconds_sum",
-		"etcd_mvcc_hash_rev_duration_seconds_bucket",
-		"etcd_mvcc_hash_rev_duration_seconds_count",
-		"etcd_mvcc_hash_rev_duration_seconds_sum",
+		"etcd_mvcc_hash_duration_seconds",
+		"etcd_mvcc_hash_rev_duration_seconds",
 		"etcd_mvcc_put_total",
 		"etcd_mvcc_range_total",
 		"etcd_mvcc_txn_total",
 		"etcd_network_client_grpc_received_bytes_total",
 		"etcd_network_client_grpc_sent_bytes_total",
 		"etcd_network_known_peers",
-		"etcd_server_apply_duration_seconds_bucket",
-		"etcd_server_apply_duration_seconds_count",
-		"etcd_server_apply_duration_seconds_sum",
+		"etcd_server_apply_duration_seconds",
 		"etcd_server_client_requests_total",
 		"etcd_server_go_version",
 		"etcd_server_has_leader",
@@ -306,20 +304,15 @@ func TestAllMetricsGenerated(t *testing.T) {
 		"etcd_server_slow_read_indexes_total",
 		"etcd_server_snapshot_apply_in_progress_total",
 		"etcd_server_version",
-		"etcd_snap_db_fsync_duration_seconds_bucket",
-		"etcd_snap_db_fsync_duration_seconds_count",
-		"etcd_snap_db_fsync_duration_seconds_sum",
-		"etcd_snap_db_save_total_duration_seconds_bucket",
-		"etcd_snap_db_save_total_duration_seconds_count",
-		"etcd_snap_db_save_total_duration_seconds_sum",
-		"etcd_snap_fsync_duration_seconds_bucket",
-		"etcd_snap_fsync_duration_seconds_count",
-		"etcd_snap_fsync_duration_seconds_sum",
+		"etcd_snap_db_fsync_duration_seconds",
+		"etcd_snap_db_save_total_duration_seconds",
+		"etcd_snap_fsync_duration_seconds",
 		"grpc_client_handled_total",
 		"grpc_client_msg_received_total",
 		"grpc_client_msg_sent_total",
 		"grpc_client_started_total",
 		"grpc_server_handled_total",
+		"grpc_server_handling_seconds",
 		"grpc_server_msg_received_total",
 		"grpc_server_msg_sent_total",
 		"grpc_server_started_total",
@@ -335,20 +328,15 @@ func TestAllMetricsGenerated(t *testing.T) {
 }
 
 func getMetricsList(t *testing.T, url string) []string {
-	lines := getHTTPBodyAsLines(t, url)
-	metrics := make(map[string]struct{})
-	for _, line := range lines {
-		if strings.Contains(line, "{") {
-			metric := line[:strings.Index(line, "{")]
-			metrics[metric] = struct{}{}
-		} else {
-			metric := line[:strings.Index(line, " ")]
-			metrics[metric] = struct{}{}
-		}
+	data := getHTTPBodyAsBytes(t, url)
+	var parser expfmt.TextParser
+	mfs, err := parser.TextToMetricFamilies(bytes.NewReader(data))
+	if err != nil {
+		t.Errorf("Failed to parse metric families")
 	}
-	var metricList []string
-	for metric := range metrics {
-		metricList = append(metricList, metric)
+	var ms []string
+	for key := range mfs {
+		ms = append(ms, key)
 	}
-	return metricList
+	return ms
 }
