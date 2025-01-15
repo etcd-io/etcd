@@ -135,6 +135,7 @@ var (
 	experimentalNonBoolFlagMigrationMap = map[string]string{
 		"experimental-compact-hash-check-time": "compact-hash-check-time",
 		"experimental-corrupt-check-time":      "corrupt-check-time",
+		"experimental-compaction-batch-limit":  "compaction-batch-limit",
 	}
 )
 
@@ -387,7 +388,11 @@ type Config struct {
 	// Deprecated in v3.6.
 	// TODO: Delete in v3.7
 	ExperimentalEnableLeaseCheckpointPersist bool `json:"experimental-enable-lease-checkpoint-persist"`
-	ExperimentalCompactionBatchLimit         int  `json:"experimental-compaction-batch-limit"`
+	// ExperimentalCompactionBatchLimit Sets the maximum revisions deleted in each compaction batch.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
+	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
+	CompactionBatchLimit             int `json:"compaction-batch-limit"`
 	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	ExperimentalCompactionSleepInterval     time.Duration `json:"experimental-compaction-sleep-interval"`
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
@@ -788,7 +793,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.BoolVar(&cfg.ExperimentalEnableLeaseCheckpoint, "experimental-enable-lease-checkpoint", false, "Enable leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.")
 	// TODO: delete in v3.7
 	fs.BoolVar(&cfg.ExperimentalEnableLeaseCheckpointPersist, "experimental-enable-lease-checkpoint-persist", false, "Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.")
-	fs.IntVar(&cfg.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
+	// TODO: delete in v3.7
+	fs.IntVar(&cfg.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-batch-limit instead.")
+	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
 	fs.DurationVar(&cfg.ExperimentalCompactionSleepInterval, "experimental-compaction-sleep-interval", cfg.ExperimentalCompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
 	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks.")

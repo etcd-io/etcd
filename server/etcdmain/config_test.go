@@ -485,7 +485,6 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 		name                             string
 		compactHashCheckTime             string
 		experimentalCompactHashCheckTime string
-		useConfigFile                    bool
 		expectErr                        bool
 		expectedCompactHashCheckTime     time.Duration
 	}{
@@ -536,19 +535,7 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 				yc.ExperimentalCompactHashCheckTime = experimentalCompactHashCheckTime
 			}
 
-			b, err := yaml.Marshal(&yc)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tmpfile := mustCreateCfgFile(t, b)
-			defer os.Remove(tmpfile.Name())
-
-			cfgFromCmdLine := newConfig()
-			errFromCmdLine := cfgFromCmdLine.parse(cmdLineArgs)
-
-			cfgFromFile := newConfig()
-			errFromFile := cfgFromFile.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
 
 			if tc.expectErr {
 				if errFromCmdLine == nil || errFromFile == nil {
@@ -557,7 +544,7 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 				return
 			}
 			if errFromCmdLine != nil || errFromFile != nil {
-				t.Fatal(err)
+				t.Fatal("error parsing config")
 			}
 
 			if cfgFromCmdLine.ec.CompactHashCheckTime != tc.expectedCompactHashCheckTime {
@@ -578,7 +565,6 @@ func TestCorruptCheckTimeFlagMigration(t *testing.T) {
 		name                         string
 		corruptCheckTime             string
 		experimentalCorruptCheckTime string
-		useConfigFile                bool
 		expectErr                    bool
 		expectedCorruptCheckTime     time.Duration
 	}{
@@ -625,19 +611,7 @@ func TestCorruptCheckTimeFlagMigration(t *testing.T) {
 				yc.ExperimentalCorruptCheckTime = experimentalCorruptCheckTime
 			}
 
-			b, err := yaml.Marshal(&yc)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			tmpfile := mustCreateCfgFile(t, b)
-			defer os.Remove(tmpfile.Name())
-
-			cfgFromCmdLine := newConfig()
-			errFromCmdLine := cfgFromCmdLine.parse(cmdLineArgs)
-
-			cfgFromFile := newConfig()
-			errFromFile := cfgFromFile.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
 
 			if tc.expectErr {
 				if errFromCmdLine == nil || errFromFile == nil {
@@ -646,7 +620,7 @@ func TestCorruptCheckTimeFlagMigration(t *testing.T) {
 				return
 			}
 			if errFromCmdLine != nil || errFromFile != nil {
-				t.Fatal(err)
+				t.Fatal("error parsing config")
 			}
 
 			if cfgFromCmdLine.ec.CorruptCheckTime != tc.expectedCorruptCheckTime {
@@ -657,6 +631,92 @@ func TestCorruptCheckTimeFlagMigration(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCompactionBatchLimitFlagMigration tests the migration from
+// --experimental-compaction-batch-limit to --compaction-batch-limit
+// TODO: delete in v3.7
+func TestCompactionBatchLimitFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                             string
+		compactionBatchLimit             int
+		experimentalCompactionBatchLimit int
+		expectErr                        bool
+		expectedCompactionBatchLimit     int
+	}{
+		{
+			name:                             "cannot set both experimental flag and non experimental flag",
+			compactionBatchLimit:             1,
+			experimentalCompactionBatchLimit: 2,
+			expectErr:                        true,
+		},
+		{
+			name:                             "can set experimental flag",
+			experimentalCompactionBatchLimit: 2,
+			expectedCompactionBatchLimit:     2,
+		},
+		{
+			name:                         "can set non experimental flag",
+			compactionBatchLimit:         1,
+			expectedCompactionBatchLimit: 1,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit,omitempty"`
+				CompactionBatchLimit             int `json:"compaction-batch-limit,omitempty"`
+			}{}
+
+			if tc.compactionBatchLimit != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--compaction-batch-limit=%d", tc.compactionBatchLimit))
+				yc.CompactionBatchLimit = tc.compactionBatchLimit
+			}
+
+			if tc.experimentalCompactionBatchLimit != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-compaction-batch-limit=%d", tc.experimentalCompactionBatchLimit))
+				yc.ExperimentalCompactionBatchLimit = tc.experimentalCompactionBatchLimit
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			if cfgFromCmdLine.ec.CompactionBatchLimit != tc.expectedCompactionBatchLimit {
+				t.Errorf("expected CorruptCheckTime=%v, got %v", tc.expectedCompactionBatchLimit, cfgFromCmdLine.ec.CompactionBatchLimit)
+			}
+			if cfgFromFile.ec.CompactionBatchLimit != tc.expectedCompactionBatchLimit {
+				t.Errorf("expected CorruptCheckTime=%v, got %v", tc.expectedCompactionBatchLimit, cfgFromFile.ec.CompactionBatchLimit)
+			}
+		})
+	}
+}
+
+// TODO delete in v3.7
+func generateCfgsFromFileAndCmdLine(t *testing.T, yc interface{}, cmdLineArgs []string) (*config, error, *config, error) {
+	b, err := yaml.Marshal(&yc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmpfile := mustCreateCfgFile(t, b)
+	defer os.Remove(tmpfile.Name())
+
+	cfgFromCmdLine := newConfig()
+	errFromCmdLine := cfgFromCmdLine.parse(cmdLineArgs)
+
+	cfgFromFile := newConfig()
+	errFromFile := cfgFromFile.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+	return cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
@@ -753,6 +813,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalCompactHashCheckTime        time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
 		ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
 		ExperimentalCorruptCheckTime            time.Duration `json:"experimental-corrupt-check-time,omitempty"`
+		ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit,omitempty"`
 	}
 
 	testCases := []struct {
@@ -772,11 +833,13 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalCompactHashCheckTime:        2 * time.Minute,
 				ExperimentalWarningUnaryRequestDuration: time.Second,
 				ExperimentalCorruptCheckTime:            time.Minute,
+				ExperimentalCompactionBatchLimit:        1,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled": {},
 				"experimental-compact-hash-check-time":    {},
 				"experimental-corrupt-check-time":         {},
+				"experimental-compaction-batch-limit":     {},
 			},
 		},
 		{

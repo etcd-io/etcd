@@ -294,14 +294,18 @@ func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 }
 
 func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
-	testCompactHashCheckDetectCorruptionInterrupt(t, false)
+	testCompactHashCheckDetectCorruptionInterrupt(t, false, false)
 }
 
 func TestCompactHashCheckDetectCorruptionInterruptWithFeatureGate(t *testing.T) {
-	testCompactHashCheckDetectCorruptionInterrupt(t, true)
+	testCompactHashCheckDetectCorruptionInterrupt(t, true, false)
 }
 
-func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool) {
+func TestCompactHashCheckDetectCorruptionInterruptWithExperimentalFlag(t *testing.T) {
+	testCompactHashCheckDetectCorruptionInterrupt(t, true, true)
+}
+
+func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool, useExperimentalFlag bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
@@ -325,6 +329,12 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 	} else {
 		opts = append(opts, e2e.WithCompactHashCheckEnabled(true))
 	}
+	var compactionBatchLimit e2e.EPClusterOption
+	if useExperimentalFlag {
+		compactionBatchLimit = e2e.WithExperimentalCompactionBatchLimit(1)
+	} else {
+		compactionBatchLimit = e2e.WithCompactionBatchLimit(1)
+	}
 
 	cfg := e2e.NewConfig(opts...)
 	epc, err := e2e.InitEtcdProcessCluster(t, cfg)
@@ -332,7 +342,7 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 
 	// Assign a node a very slow compaction speed, so that its compaction can be interrupted.
 	err = epc.UpdateProcOptions(slowCompactionNodeIndex, t,
-		e2e.WithCompactionBatchLimit(1),
+		compactionBatchLimit,
 		e2e.WithCompactionSleepInterval(1*time.Hour),
 	)
 	require.NoError(t, err)

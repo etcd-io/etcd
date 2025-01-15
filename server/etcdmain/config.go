@@ -66,6 +66,7 @@ var (
 		"experimental-compact-hash-check-time":           "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
 		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
 		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
+		"experimental-compaction-batch-limit":            "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
 	}
 )
 
@@ -177,6 +178,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-corrupt-check-time"] {
 		cfg.ec.CorruptCheckTime = cfg.ec.ExperimentalCorruptCheckTime
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-compaction-batch-limit"] {
+		cfg.ec.CompactionBatchLimit = cfg.ec.ExperimentalCompactionBatchLimit
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
