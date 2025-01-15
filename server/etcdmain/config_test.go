@@ -702,7 +702,7 @@ func TestCompactionBatchLimitFlagMigration(t *testing.T) {
 }
 
 // TODO delete in v3.7
-func generateCfgsFromFileAndCmdLine(t *testing.T, yc interface{}, cmdLineArgs []string) (*config, error, *config, error) {
+func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) (*config, error, *config, error) {
 	b, err := yaml.Marshal(&yc)
 	if err != nil {
 		t.Fatal(err)
