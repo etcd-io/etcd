@@ -47,6 +47,7 @@ var allFailpoints = []Failpoint{
 	BeforeApplyOneConfChangeSleep,
 	MemberReplace,
 	MemberDowngrade,
+	MemberDowngradeUpgrade,
 	DropPeerNetwork,
 	RaftBeforeSaveSleep,
 	RaftAfterSaveSleep,
