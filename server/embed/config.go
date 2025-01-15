@@ -839,7 +839,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 	}
 
 	// parses the yaml bytes to raw map first, then getBoolFlagVal can get the top level bool flag value.
-	var cfgMap map[string]interface{}
+	var cfgMap map[string]any
 	err = yaml.Unmarshal(b, &cfgMap)
 	if err != nil {
 		return err
