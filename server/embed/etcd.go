@@ -872,9 +872,6 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
-	e.wg.Add(1)
-	defer e.wg.Done()
-
 	if err != nil {
 		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
 	}
@@ -883,6 +880,10 @@ func (e *Etcd) errHandler(err error) {
 		return
 	default:
 	}
+
+	e.wg.Add(1)
+	defer e.wg.Done()
+
 	select {
 	case <-e.stopc:
 	case e.errc <- err:
