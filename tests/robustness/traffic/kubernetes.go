@@ -34,14 +34,13 @@ import (
 )
 
 var Kubernetes Traffic = kubernetesTraffic{
-	averageKeyCount: 10,
+	averageKeyCount: 100,
 	resource:        "pods",
 	namespace:       "default",
 	// Please keep the sum of weights equal 100.
 	writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-		{Choice: KubernetesUpdate, Weight: 90},
-		{Choice: KubernetesDelete, Weight: 5},
-		{Choice: KubernetesCreate, Weight: 5},
+		{Choice: KubernetesDelete, Weight: 50},
+		{Choice: KubernetesCreate, Weight: 50},
 	},
 }
 
