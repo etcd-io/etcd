@@ -84,7 +84,18 @@ type Etcd struct {
 	errc  chan error
 
 	closeOnce sync.Once
-	wg        sync.WaitGroup
+
+	// Etcd.errHandler uses a fan-in pattern to send errors to Etcd.errc.
+	// To prevent panics, ensure all writes to Etcd.errc complete before closing it.
+	// sync.WaitGroup (Etcd.errcWg) is used to track inflight writes to Etcd.errc.
+	// However, the usage pattern of Etcd.errHandler can lead to race conditions when
+	// increasing the counter happens after Etcd.errcWg.Wait() is unblocked.
+	// To address this, WaitGroup updates are gated by by Etcd.closingErrc flag within
+	// Etcd.errHandler using a critical section. Etcd.closingErrc is set to true
+	// before Etcd.errcWg.Wait(), preventing further WaitGroup updates.
+	errcWg      sync.WaitGroup
+	errcMu      sync.RWMutex
+	closingErrc bool
 }
 
 type peerListener struct {
@@ -255,6 +266,15 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 
 	// buffer channel so goroutines on closed connections won't wait forever
 	e.errc = make(chan error, len(e.Peers)+len(e.Clients)+2*len(e.sctxs))
+	e.closingErrc = false
+	// The WaitGroup must be initialized with a value of 1 to avoid a race condition.
+	// This race condition can occur if the first e.errcWg.Add() call in a goroutine happens
+	// after the main function calls e.errcWg.Wait(). By initializing the WaitGroup to 1,
+	// we guarantee that the main function will wait for at least one operation to complete
+	// before continuing.
+
+	// See https://pkg.go.dev/sync#WaitGroup.Add for more details on WaitGroup.
+	e.errcWg.Add(1)
 
 	// newly started member ("memberInitialized==false")
 	// does not need corruption check
@@ -457,7 +477,13 @@ func (e *Etcd) Close() {
 		}
 	}
 	if e.errc != nil {
-		e.wg.Wait()
+		e.errcMu.Lock()
+		e.closingErrc = true
+		e.errcMu.Unlock()
+
+		// e.errWg's initial counter is 1 so we need a matching done called here
+		e.errcWg.Done()
+		e.errcWg.Wait()
 		close(e.errc)
 	}
 }
@@ -872,9 +898,6 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
-	e.wg.Add(1)
-	defer e.wg.Done()
-
 	if err != nil {
 		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
 	}
@@ -883,6 +906,16 @@ func (e *Etcd) errHandler(err error) {
 		return
 	default:
 	}
+
+	e.errcMu.RLock()
+	if e.closingErrc {
+		return
+	}
+	e.errcWg.Add(1)
+	e.errcMu.RUnlock()
+
+	defer e.errcWg.Done()
+
 	select {
 	case <-e.stopc:
 	case e.errc <- err:
