@@ -61,13 +61,20 @@ type serveCtx struct {
 	insecure bool
 	httpOnly bool
 
+	// ctx is used to control the grpc gateway. Terminate the grpc gateway
+	// by calling `cancel` when shutting down the etcd.
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
-	serversC        chan *servers
-	closeOnce       sync.Once
+
+	// serversC is used to receive the http and grpc server objects (created
+	// in `serve`), both of which will be closed when shutting down the etcd.
+	// Close it when `serve` returns or when etcd fails to bootstrap.
+	serversC chan *servers
+	// closeOnce is to ensure `serversC` is closed only once.
+	closeOnce sync.Once
 }
 
 type servers struct {
@@ -97,7 +104,7 @@ func (sctx *serveCtx) serve(
 	s *etcdserver.EtcdServer,
 	tlsinfo *transport.TLSInfo,
 	handler http.Handler,
-	errHandler func(error),
+	errHandler func(func() error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
 	splitHTTP bool,
 	gopts ...grpc.ServerOption,
@@ -182,15 +189,25 @@ func (sctx *serveCtx) serve(
 			server = m.Serve
 
 			httpl := m.Match(cmux.HTTP1())
-			go func(srvhttp *http.Server, tlsLis net.Listener) {
-				errHandler(srvhttp.Serve(tlsLis))
-			}(srv, httpl)
+
+			var (
+				srvhttp = srv
+				tlsLis  = httpl
+			)
+			errHandler(func() error {
+				return srvhttp.Serve(tlsLis)
+			})
 
 			if grpcEnabled {
 				grpcl := m.Match(cmux.HTTP2())
-				go func(gs *grpc.Server, l net.Listener) {
-					errHandler(gs.Serve(l))
-				}(gs, grpcl)
+
+				var (
+					gs = gs
+					l  = grpcl
+				)
+				errHandler(func() error {
+					return gs.Serve(l)
+				})
 			}
 		}
 
@@ -237,7 +254,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-			if err := configureHTTPServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -248,13 +265,18 @@ func (sctx *serveCtx) serve(
 		} else {
 			server = m.Serve
 
-			tlsl, err := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if err != nil {
-				return err
+			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+			if tlsErr != nil {
+				return tlsErr
 			}
-			go func(srvhttp *http.Server, tlsl net.Listener) {
-				errHandler(srvhttp.Serve(tlsl))
-			}(srv, tlsl)
+
+			var (
+				srvhttp = srv
+				l       = tlsl
+			)
+			errHandler(func() error {
+				return srvhttp.Serve(l)
+			})
 		}
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
