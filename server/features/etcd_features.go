@@ -61,9 +61,9 @@ const (
 	// main PR: https://github.com/etcd-io/etcd/pull/14120
 	CompactHashCheck featuregate.Feature = "CompactHashCheck"
 	// PeerSkipClientSanVerification enables to skip the verification of Subject Alternative Name (SAN) field in client certificates during peer TLS communication
-	// owner: @wodeyoulai
+	// owner: @MartinWeindel
 	// alpha: v3.6
-	// main PR: https://github.com/etcd-io/etcd/pull/14120
+	// main PR: https://github.com/etcd-io/etcd/pull/10524
 	PeerSkipClientSanVerification featuregate.Feature = "PeerSkipClientSanVerification"
 )
 
