@@ -17,6 +17,7 @@ package snapshot
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -54,16 +55,31 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	if err != nil {
 		return "", err
 	}
-	defer cli.Close()
+	defer func() {
+		err = cli.Close()
+		if err != nil {
+			lg.Error("Failed to close client", zap.Error(err))
+		}
+	}()
 
 	partpath := dbPath + ".part"
-	defer os.RemoveAll(partpath)
+	defer func() {
+		err = os.RemoveAll(partpath)
+		if err != nil {
+			lg.Error("Failed to cleanup .part file", zap.Error(err))
+		}
+	}()
 
-	var f *os.File
-	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
+	f, err := os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 	if err != nil {
 		return "", fmt.Errorf("could not open %s (%w)", partpath, err)
 	}
+	defer func() {
+		err = f.Close()
+		if err != nil && !errors.Is(err, os.ErrClosed) {
+			lg.Error("Could not close file descriptor", zap.Error(err))
+		}
+	}()
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
 	start := time.Now()
@@ -71,21 +87,26 @@ func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, d
 	if err != nil {
 		return "", err
 	}
-	defer resp.Snapshot.Close()
+	defer func() {
+		err = resp.Snapshot.Close()
+		if err != nil {
+			lg.Error("Could not close snapshot stream", zap.Error(err))
+		}
+	}()
 	lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
 	var size int64
 	size, err = io.Copy(f, resp.Snapshot)
 	if err != nil {
-		return resp.Version, err
+		return resp.Version, fmt.Errorf("could not write snapshot: %w", err)
 	}
 	if !hasChecksum(size) {
 		return resp.Version, fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
-		return resp.Version, err
+		return resp.Version, fmt.Errorf("could not fsync snapshot: %w", err)
 	}
 	if err = f.Close(); err != nil {
-		return resp.Version, err
+		return resp.Version, fmt.Errorf("could not close file descriptor: %w", err)
 	}
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
