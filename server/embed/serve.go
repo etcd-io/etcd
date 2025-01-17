@@ -101,7 +101,7 @@ func (sctx *serveCtx) serve(
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
 	splitHTTP bool,
 	gopts ...grpc.ServerOption,
-) (err error) {
+) error {
 	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
 
 	// Make sure serversC is closed even if we prematurely exit the function.
@@ -126,7 +126,10 @@ func (sctx *serveCtx) serve(
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	var gwmux *gw.ServeMux
+	var (
+		gwmux *gw.ServeMux
+		err   error
+	)
 	if s.Cfg.EnableGRPCGateway {
 		// GRPC gateway connects to grpc server via connection provided by grpc dial.
 		gwmux, err = sctx.registerGateway(grpcDialForRestGatewayBackends)
@@ -237,7 +240,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-			if err := configureHTTPServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -248,9 +251,9 @@ func (sctx *serveCtx) serve(
 		} else {
 			server = m.Serve
 
-			tlsl, err := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if err != nil {
-				return err
+			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+			if tlsErr != nil {
+				return tlsErr
 			}
 			go func(srvhttp *http.Server, tlsl net.Listener) {
 				errHandler(srvhttp.Serve(tlsl))
