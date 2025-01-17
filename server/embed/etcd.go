@@ -607,7 +607,9 @@ func (e *Etcd) servePeers() {
 
 	// start peer servers in a goroutine
 	for _, pl := range e.Peers {
+		e.wg.Add(1)
 		go func(l *peerListener) {
+			defer e.wg.Done()
 			u := l.Addr().String()
 			e.cfg.logger.Info(
 				"serving peer traffic",
@@ -774,7 +776,9 @@ func (e *Etcd) serveClients() {
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
+		e.wg.Add(1)
 		go func(s *serveCtx) {
+			defer e.wg.Done()
 			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
 		}(sctx)
 	}
@@ -859,7 +863,9 @@ func (e *Etcd) serveMetrics() (err error) {
 				return err
 			}
 			e.metricsListeners = append(e.metricsListeners, ml)
+			e.wg.Add(1)
 			go func(u url.URL, ln net.Listener) {
+				defer e.wg.Done()
 				e.cfg.logger.Info(
 					"serving metrics",
 					zap.String("address", u.String()),
@@ -872,9 +878,6 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
-	e.wg.Add(1)
-	defer e.wg.Done()
-
 	if err != nil {
 		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
 	}
