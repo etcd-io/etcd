@@ -139,23 +139,47 @@ func offsetMinor(v *semver.Version, offset int) *semver.Version {
 	return &semver.Version{Major: v.Major, Minor: minor}
 }
 
-func majorMinorVersionsEqual(v1, v2 string) bool {
-	ver1 := semver.New(v1)
-	ver2 := semver.New(v2)
-	return ver1.Major == ver2.Major && ver1.Minor == ver2.Minor
+func majorMinorVersionsEqual(v1, v2 string) (bool, error) {
+	ver1, err := semver.NewVersion(v1)
+	if err != nil {
+		return false, err
+	}
+	ver2, err := semver.NewVersion(v2)
+	if err != nil {
+		return false, err
+	}
+	return ver1.Major == ver2.Major && ver1.Minor == ver2.Minor, nil
 }
 
 func compareMemberVersion(expect version.Versions, target version.Versions) error {
-	if expect.Server != "" && !majorMinorVersionsEqual(expect.Server, target.Server) {
-		return fmt.Errorf("expect etcdserver version %v, but got %v", expect.Server, target.Server)
+	if expect.Server != "" {
+		result, err := majorMinorVersionsEqual(expect.Server, target.Server)
+		if err != nil {
+			return err
+		}
+		if !result {
+			return fmt.Errorf("expect etcdserver version %v, but got %v", expect.Server, target.Server)
+		}
 	}
 
-	if expect.Cluster != "" && !majorMinorVersionsEqual(expect.Cluster, target.Cluster) {
-		return fmt.Errorf("expect etcdcluster version %v, but got %v", expect.Cluster, target.Cluster)
+	if expect.Cluster != "" {
+		result, err := majorMinorVersionsEqual(expect.Cluster, target.Cluster)
+		if err != nil {
+			return err
+		}
+		if !result {
+			return fmt.Errorf("expect etcdcluster version %v, but got %v", expect.Cluster, target.Cluster)
+		}
 	}
 
-	if expect.Storage != "" && !majorMinorVersionsEqual(expect.Storage, target.Storage) {
-		return fmt.Errorf("expect storage version %v, but got %v", expect.Storage, target.Storage)
+	if expect.Storage != "" {
+		result, err := majorMinorVersionsEqual(expect.Storage, target.Storage)
+		if err != nil {
+			return err
+		}
+		if !result {
+			return fmt.Errorf("expect storage version %v, but got %v", expect.Storage, target.Storage)
+		}
 	}
 	return nil
 }
