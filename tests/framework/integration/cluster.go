@@ -175,6 +175,7 @@ type ClusterConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+	Metrics                     string
 }
 
 type Cluster struct {
@@ -292,6 +293,7 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
 			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
 			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
+			Metrics:                     c.Cfg.Metrics,
 		})
 	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	return m
@@ -617,6 +619,7 @@ type MemberConfig struct {
 	ExperimentalMaxLearners     int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
+	Metrics                     string
 }
 
 // MustNewMember return an inited member with the given name. If peerTLS is
@@ -731,6 +734,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	if mcfg.ExperimentalMaxLearners != 0 {
 		m.ExperimentalMaxLearners = mcfg.ExperimentalMaxLearners
 	}
+	m.Metrics = mcfg.Metrics
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 

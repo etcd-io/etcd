@@ -58,6 +58,13 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 		serverMetrics.StreamServerInterceptor(),
 	}
 
+	// If extensive metrics are enabled, register a histogram to track the reponse latency of gRPC requests
+	if s.Cfg.Metrics == "extensive" {
+		unaryInterceptor, streamInterceptor := constructExtensiveMetricsInterceptors()
+		chainUnaryInterceptors = append(chainUnaryInterceptors, unaryInterceptor)
+		chainStreamInterceptors = append(chainStreamInterceptors, streamInterceptor)
+	}
+
 	if s.Cfg.ExperimentalEnableDistributedTracing {
 		chainUnaryInterceptors = append(chainUnaryInterceptors, otelgrpc.UnaryServerInterceptor(s.Cfg.ExperimentalTracerOptions...))
 		chainStreamInterceptors = append(chainStreamInterceptors, otelgrpc.StreamServerInterceptor(s.Cfg.ExperimentalTracerOptions...))
