@@ -215,7 +215,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		UnsafeNoFsync:                        cfg.UnsafeNoFsync,
 		EnableLeaseCheckpoint:                cfg.ExperimentalEnableLeaseCheckpoint,
 		LeaseCheckpointPersist:               cfg.ExperimentalEnableLeaseCheckpointPersist,
-		CompactionBatchLimit:                 cfg.ExperimentalCompactionBatchLimit,
+		CompactionBatchLimit:                 cfg.CompactionBatchLimit,
 		CompactionSleepInterval:              cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:          cfg.ExperimentalWatchProgressNotifyInterval,
 		DowngradeCheckTime:                   cfg.ExperimentalDowngradeCheckTime,

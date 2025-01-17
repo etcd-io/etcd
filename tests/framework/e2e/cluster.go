@@ -373,6 +373,10 @@ func WithServerFeatureGate(featureName string, val bool) EPClusterOption {
 }
 
 func WithCompactionBatchLimit(limit int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionBatchLimit = limit }
+}
+
+func WithExperimentalCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
 }
 
