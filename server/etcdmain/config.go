@@ -67,6 +67,7 @@ var (
 		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
 		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
 		"experimental-compaction-batch-limit":            "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
+		"experimental-peer-skip-client-san-verification": "--experimental-peer-skip-client-san-verification is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=PeerSkipClientSanVerification=true' instead.",
 	}
 )
 

@@ -94,22 +94,24 @@ func TestConfigFileOtherFields(t *testing.T) {
 
 func TestConfigFileFeatureGates(t *testing.T) {
 	testCases := []struct {
-		name                                     string
-		serverFeatureGatesJSON                   string
-		experimentalStopGRPCServiceOnDefrag      string
-		experimentalInitialCorruptCheck          string
-		experimentalCompactHashCheckEnabled      string
-		experimentalTxnModeWriteWithSharedBuffer string
-		expectErr                                bool
-		expectedFeatures                         map[featuregate.Feature]bool
+		name                                      string
+		serverFeatureGatesJSON                    string
+		experimentalStopGRPCServiceOnDefrag       string
+		experimentalInitialCorruptCheck           string
+		experimentalCompactHashCheckEnabled       string
+		experimentalTxnModeWriteWithSharedBuffer  string
+		experimentalPeerSkipClientSanVerification string
+		expectErr                                 bool
+		expectedFeatures                          map[featuregate.Feature]bool
 	}{
 		{
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:           false,
-				features.StopGRPCServiceOnDefrag:      false,
-				features.InitialCorruptCheck:          false,
-				features.TxnModeWriteWithSharedBuffer: true,
+				features.DistributedTracing:            false,
+				features.StopGRPCServiceOnDefrag:       false,
+				features.InitialCorruptCheck:           false,
+				features.TxnModeWriteWithSharedBuffer:  true,
+				features.PeerSkipClientSanVerification: false,
 			},
 		},
 		{
@@ -129,6 +131,12 @@ func TestConfigFileFeatureGates(t *testing.T) {
 			serverFeatureGatesJSON:                   "TxnModeWriteWithSharedBuffer=true",
 			experimentalTxnModeWriteWithSharedBuffer: "false",
 			expectErr:                                true,
+		},
+		{
+			name:                   "cannot set both experimental flag and feature gate flag for PeerSkipClientSanVerification",
+			serverFeatureGatesJSON: "PeerSkipClientSanVerification=true",
+			experimentalPeerSkipClientSanVerification: "false",
+			expectErr: true,
 		},
 		{
 			name:                                "ok to set different experimental flag and feature gate flag",
@@ -292,15 +300,49 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.CompactHashCheck:        true,
 			},
 		},
+		{
+			name: "can set feature gate PeerSkipClientSanVerification to true from experimental flag",
+			experimentalPeerSkipClientSanVerification: "true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.PeerSkipClientSanVerification: true,
+				features.StopGRPCServiceOnDefrag:       false,
+				features.DistributedTracing:            false,
+				features.InitialCorruptCheck:           false,
+				features.TxnModeWriteWithSharedBuffer:  true,
+			},
+		},
+		{
+			name: "can set feature gate PeerSkipClientSanVerification to false from experimental flag",
+			experimentalPeerSkipClientSanVerification: "false",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.PeerSkipClientSanVerification: false,
+				features.StopGRPCServiceOnDefrag:       false,
+				features.DistributedTracing:            false,
+				features.InitialCorruptCheck:           false,
+				features.TxnModeWriteWithSharedBuffer:  true,
+			},
+		},
+		{
+			name:                   "can set feature gate PeerSkipClientSanVerification through feature gates JSON",
+			serverFeatureGatesJSON: "PeerSkipClientSanVerification=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.PeerSkipClientSanVerification: true,
+				features.StopGRPCServiceOnDefrag:       false,
+				features.DistributedTracing:            false,
+				features.InitialCorruptCheck:           false,
+				features.TxnModeWriteWithSharedBuffer:  true,
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			yc := struct {
-				ExperimentalStopGRPCServiceOnDefrag      *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
-				ExperimentalInitialCorruptCheck          *bool  `json:"experimental-initial-corrupt-check,omitempty"`
-				ExperimentalCompactHashCheckEnabled      *bool  `json:"experimental-compact-hash-check-enabled,omitempty"`
-				ExperimentalTxnModeWriteWithSharedBuffer *bool  `json:"experimental-txn-mode-write-with-shared-buffer,omitempty"`
-				ServerFeatureGatesJSON                   string `json:"feature-gates"`
+				ExperimentalStopGRPCServiceOnDefrag       *bool  `json:"experimental-stop-grpc-service-on-defrag,omitempty"`
+				ExperimentalInitialCorruptCheck           *bool  `json:"experimental-initial-corrupt-check,omitempty"`
+				ExperimentalCompactHashCheckEnabled       *bool  `json:"experimental-compact-hash-check-enabled,omitempty"`
+				ExperimentalTxnModeWriteWithSharedBuffer  *bool  `json:"experimental-txn-mode-write-with-shared-buffer,omitempty"`
+				ExperimentalPeerSkipClientSanVerification *bool  `json:"experimental-peer-skip-client-san-verification,omitempty"`
+				ServerFeatureGatesJSON                    string `json:"feature-gates"`
 			}{
 				ServerFeatureGatesJSON: tc.serverFeatureGatesJSON,
 			}
@@ -335,6 +377,14 @@ func TestConfigFileFeatureGates(t *testing.T) {
 					t.Fatal(err)
 				}
 				yc.ExperimentalCompactHashCheckEnabled = &experimentalCompactHashCheckEnabled
+			}
+
+			if tc.experimentalPeerSkipClientSanVerification != "" {
+				experimentalPeerSkipClientSanVerification, err := strconv.ParseBool(tc.experimentalPeerSkipClientSanVerification)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalPeerSkipClientSanVerification = &experimentalPeerSkipClientSanVerification
 			}
 
 			b, err := yaml.Marshal(&yc)
