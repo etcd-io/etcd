@@ -97,8 +97,10 @@ func TestAuthGracefulDisable(t *testing.T) {
 		donec := make(chan struct{})
 		rootAuthClient := testutils.MustClient(clus.Client(WithAuth(rootUserName, rootPassword)))
 
+		startedC := make(chan struct{}, 1)
 		go func() {
 			defer close(donec)
+			defer close(startedC)
 			// sleep a bit to let the watcher connects while auth is still enabled
 			time.Sleep(time.Second)
 			// now disable auth...
@@ -112,9 +114,12 @@ func TestAuthGracefulDisable(t *testing.T) {
 				t.Errorf("failed to restart member %v", err)
 				return
 			}
+			startedC <- struct{}{}
 			// the watcher should still work after reconnecting
 			assert.NoErrorf(t, rootAuthClient.Put(ctx, "key", "value", config.PutOptions{}), "failed to put key value")
 		}()
+
+		<-startedC
 
 		wCtx, wCancel := context.WithCancel(ctx)
 		defer wCancel()
