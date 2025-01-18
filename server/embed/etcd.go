@@ -411,6 +411,16 @@ func (e *Etcd) Close() {
 		close(e.stopc)
 	})
 
+	for i := range e.Clients {
+		if e.Clients[i] != nil {
+			e.Clients[i].Close()
+		}
+	}
+
+	for i := range e.metricsListeners {
+		e.metricsListeners[i].Close()
+	}
+
 	// close client requests with request timeout
 	timeout := 2 * time.Second
 	if e.Server != nil {
@@ -426,16 +436,6 @@ func (e *Etcd) Close() {
 
 	for _, sctx := range e.sctxs {
 		sctx.cancel()
-	}
-
-	for i := range e.Clients {
-		if e.Clients[i] != nil {
-			e.Clients[i].Close()
-		}
-	}
-
-	for i := range e.metricsListeners {
-		e.metricsListeners[i].Close()
 	}
 
 	// shutdown tracing exporter
