@@ -54,6 +54,10 @@ linters-settings: # please keep this alphabetized
         disabled: false
       - name: dot-imports
         disabled: false
+      - name: early-return
+        disabled: false
+        arguments:
+          - "preserveScope"
       - name: error-return
         disabled: false
       - name: error-naming
@@ -74,6 +78,10 @@ linters-settings: # please keep this alphabetized
         disabled: false
       - name: receiver-naming
         disabled: false
+      - name: superfluous-else
+        disabled: false
+        arguments:
+          - "preserveScope"
       - name: time-naming
         disabled: false
       - name: use-any

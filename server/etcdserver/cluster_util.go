@@ -353,13 +353,12 @@ func getDowngradeEnabledFromRemotePeers(lg *zap.Logger, cl *membership.RaftClust
 			continue
 		}
 		enable, err := getDowngradeEnabled(lg, m, rt, timeout)
-		if err != nil {
-			lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
-		} else {
+		if err == nil {
 			// Since the "/downgrade/enabled" serves linearized data,
 			// this function can return once it gets a non-error response from the endpoint.
 			return enable
 		}
+		lg.Warn("failed to get downgrade enabled status", zap.String("remote-member-id", m.ID.String()), zap.Error(err))
 	}
 	return false
 }

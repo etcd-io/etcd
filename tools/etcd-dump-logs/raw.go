@@ -75,10 +75,9 @@ func readRaw(fromIndex *uint64, waldir string, out io.Writer) {
 		} else if errors.Is(err, io.ErrUnexpectedEOF) {
 			fmt.Fprintf(out, "ErrUnexpectedEOF: The last record might be corrupted, error: %v.\n", err)
 			break
-		} else {
-			log.Printf("Error: Reading failed: %v", err)
-			break
 		}
+		log.Printf("Error: Reading failed: %v", err)
+		break
 	}
 }
 

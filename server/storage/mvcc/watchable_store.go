@@ -290,15 +290,14 @@ func (s *watchableStore) moveVictims() (moved int) {
 		for w, eb := range wb {
 			// watcher has observed the store up to, but not including, w.minRev
 			rev := w.minRev - 1
-			if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
-				pendingEventsGauge.Add(float64(len(eb.evs)))
-			} else {
+			if !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
 				if newVictim == nil {
 					newVictim = make(watcherBatch)
 				}
 				newVictim[w] = eb
 				continue
 			}
+			pendingEventsGauge.Add(float64(len(eb.evs)))
 			moved++
 		}
 

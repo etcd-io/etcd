@@ -1062,9 +1062,8 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 				if strings.Contains(err.Error(), "connection refused") {
 					// if member[i] has stopped
 					continue
-				} else {
-					t.Fatal(err)
 				}
+				t.Fatal(err)
 			}
 			members[resp[0].Header.MemberId] = i
 			leaders[resp[0].Leader] = struct{}{}
