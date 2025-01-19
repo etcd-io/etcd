@@ -84,7 +84,6 @@ type Etcd struct {
 	errc  chan error
 
 	closeOnce sync.Once
-	wg        sync.WaitGroup
 }
 
 type peerListener struct {
@@ -457,7 +456,6 @@ func (e *Etcd) Close() {
 		}
 	}
 	if e.errc != nil {
-		e.wg.Wait()
 		close(e.errc)
 	}
 }
@@ -872,9 +870,6 @@ func (e *Etcd) serveMetrics() (err error) {
 }
 
 func (e *Etcd) errHandler(err error) {
-	e.wg.Add(1)
-	defer e.wg.Done()
-
 	if err != nil {
 		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
 	}
