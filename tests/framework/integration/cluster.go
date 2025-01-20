@@ -566,7 +566,7 @@ type Member struct {
 	GRPCServerOpts []grpc.ServerOption
 	GRPCServer     *grpc.Server
 	GRPCURL        string
-	GRPCBridge     *bridge
+	GRPCBridge     Bridge
 
 	// ServerClient is a clientv3 that directly calls the etcdserver.
 	ServerClient *clientv3.Client
@@ -819,7 +819,7 @@ func (m *Member) clientScheme() string {
 	return ""
 }
 
-func (m *Member) addBridge() (*bridge, error) {
+func (m *Member) addBridge() (Bridge, error) {
 	network, host, port := m.grpcAddr()
 	grpcAddr := net.JoinHostPort(host, m.Port)
 	bridgePort := fmt.Sprintf("%s%s", port, "0")
@@ -840,7 +840,7 @@ func (m *Member) addBridge() (*bridge, error) {
 	return m.GRPCBridge, nil
 }
 
-func (m *Member) Bridge() *bridge {
+func (m *Member) Bridge() Bridge {
 	if !m.UseBridge {
 		m.Logger.Panic("Bridge not available. Please configure using bridge before creating Cluster.")
 	}
