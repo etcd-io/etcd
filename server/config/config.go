@@ -211,6 +211,9 @@ type ServerConfig struct {
 
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
+
+	// Metrics types of metrics - should be either 'basic' or 'extensive'
+	Metrics string
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case
