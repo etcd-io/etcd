@@ -53,20 +53,37 @@ func TestMain(m *testing.M) {
 func TestRobustnessExploratory(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, s := range scenarios.Exploratory(t) {
-		t.Run(s.Name, func(t *testing.T) {
+		ctx := context.Background()
+		s.Failpoint = randomFailpointForConfig(ctx, t, s.Profile, s.Cluster)
+		t.Run(s.Name+"/"+s.Failpoint.Name(), func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			s.Cluster.Logger = lg
-			ctx := context.Background()
 			c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&s.Cluster))
-			require.NoError(t, err)
+			if err != nil {
+				t.Fatal(err)
+			}
 			defer forcestopCluster(c)
-			s.Failpoint, err = failpoint.PickRandom(c, s.Profile)
-			require.NoError(t, err)
-			t.Run(s.Failpoint.Name(), func(t *testing.T) {
-				testRobustness(ctx, t, lg, s, c)
-			})
+			testRobustness(ctx, t, lg, s, c)
 		})
 	}
+}
+
+// TODO: Implement lightweight a way to generate list of failpoints without needing to start a cluster
+func randomFailpointForConfig(ctx context.Context, t *testing.T, profile traffic.Profile, config e2e.EtcdProcessClusterConfig) failpoint.Failpoint {
+	config.Logger = zap.NewNop()
+	c, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(&config))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := failpoint.PickRandom(c, profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = forcestopCluster(c)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return f
 }
 
 func TestRobustnessRegression(t *testing.T) {
