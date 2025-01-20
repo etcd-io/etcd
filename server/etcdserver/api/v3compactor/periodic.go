@@ -72,12 +72,12 @@ Compaction period 1-hour:
 	- failure? update revs, and retry after 1/10 of 1-hour (6-minute)
 
 Compaction period 24-hour:
-  1. compute compaction period, which is 1-hour
-  2. record revisions for every 1/10 of 1-hour (6-minute)
+  1. compute compaction period, which is 24-hour
+  2. record revisions for every 1/10 of 24-hour (144-minute)
   3. keep recording revisions with no compaction for first 24-hour
   4. do compact with revs[0]
 	- success? continue on for-loop and move sliding window; revs = revs[1:]
-	- failure? update revs, and retry after 1/10 of 1-hour (6-minute)
+	- failure? update revs, and retry after 1/10 of 24-hour (144-minute)
 
 Compaction period 59-min:
   1. compute compaction period, which is 59-min
