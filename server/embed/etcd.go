@@ -246,7 +246,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	}
 
 	srvcfg.PeerTLSInfo.LocalAddr = srvcfg.ExperimentalLocalAddress
-
+	srvcfg.PeerTLSInfo.SkipClientSANVerify = srvcfg.ServerFeatureGate.Enabled(features.PeerSkipClientSanVerification)
 	print(e.cfg.logger, *cfg, srvcfg, memberInitialized)
 
 	if e.Server, err = etcdserver.NewServer(srvcfg); err != nil {

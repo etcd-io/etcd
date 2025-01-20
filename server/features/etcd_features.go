@@ -60,15 +60,21 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/14120
 	CompactHashCheck featuregate.Feature = "CompactHashCheck"
+	// PeerSkipClientSanVerification enables to skip the verification of Subject Alternative Name (SAN) field in client certificates during peer TLS communication
+	// owner: @MartinWeindel
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/10524
+	PeerSkipClientSanVerification featuregate.Feature = "PeerSkipClientSanVerification"
 )
 
 var (
 	DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-		DistributedTracing:           {Default: false, PreRelease: featuregate.Alpha},
-		StopGRPCServiceOnDefrag:      {Default: false, PreRelease: featuregate.Alpha},
-		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
-		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
-		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
+		DistributedTracing:            {Default: false, PreRelease: featuregate.Alpha},
+		StopGRPCServiceOnDefrag:       {Default: false, PreRelease: featuregate.Alpha},
+		InitialCorruptCheck:           {Default: false, PreRelease: featuregate.Alpha},
+		CompactHashCheck:              {Default: false, PreRelease: featuregate.Alpha},
+		TxnModeWriteWithSharedBuffer:  {Default: true, PreRelease: featuregate.Beta},
+		PeerSkipClientSanVerification: {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
@@ -78,6 +84,7 @@ var (
 		"experimental-initial-corrupt-check":             InitialCorruptCheck,
 		"experimental-compact-hash-check-enabled":        CompactHashCheck,
 		"experimental-txn-mode-write-with-shared-buffer": TxnModeWriteWithSharedBuffer,
+		"experimental-peer-skip-client-san-verification": PeerSkipClientSanVerification,
 	}
 )
 
