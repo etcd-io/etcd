@@ -24,6 +24,16 @@ type Dialer interface {
 	Dial() (net.Conn, error)
 }
 
+// Bridge interface exposing methods of the bridge
+type Bridge interface {
+	Close()
+	DropConnections()
+	PauseConnections()
+	UnpauseConnections()
+	Blackhole()
+	Unblackhole()
+}
+
 // bridge proxies connections between listener and dialer, making it possible
 // to disconnect grpc network connections without closing the logical grpc connection.
 type bridge struct {
