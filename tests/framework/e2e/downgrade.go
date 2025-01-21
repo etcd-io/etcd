@@ -53,6 +53,26 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 	t.Log("Cluster is ready for downgrade")
 }
 
+func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster, versions []*version.Versions) {
+	t.Logf("etcdctl downgrade cancel")
+	c := epc.Etcdctl()
+	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
+		err := c.DowngradeCancel(context.TODO())
+		require.NoError(t, err)
+	})
+
+	t.Log("Downgrade cancelled, validating if cluster is in the right state")
+	for i := 0; i < len(epc.Procs); i++ {
+		ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
+			Cluster: versions[i].Cluster,
+			Server:  versions[i].Server,
+			Storage: versions[i].Storage,
+		})
+	}
+
+	t.Log("Cluster downgrade cancellation is completed")
+}
+
 func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
 	if lg == nil {
 		lg = clus.lg

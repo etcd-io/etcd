@@ -86,6 +86,11 @@ func (ctl *EtcdctlV3) DowngradeEnable(ctx context.Context, version string) error
 	return err
 }
 
+func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
+	_, err := SpawnWithExpectLines(ctx, ctl.cmdArgs("downgrade", "cancel"), nil, expect.ExpectedResponse{Value: "Downgrade cancel success"})
+	return err
+}
+
 func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) (*clientv3.GetResponse, error) {
 	resp := clientv3.GetResponse{}
 	var args []string
