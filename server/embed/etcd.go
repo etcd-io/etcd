@@ -876,7 +876,7 @@ func (e *Etcd) errHandler(err error) {
 	defer e.wg.Done()
 
 	if err != nil {
-		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
+		e.GetLogger().Error("setting up serving from embedded etcd failed!", zap.Error(err))
 	}
 	select {
 	case <-e.stopc:
