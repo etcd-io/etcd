@@ -144,7 +144,8 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 	}
 
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), currentVersion, lastClusterVersion)
+	require.NoError(t, err)
 	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
 
 	t.Log("Downgrade complete")
@@ -170,7 +171,8 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), lastClusterVersion, currentVersion)
+	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), lastClusterVersion, currentVersion)
+	require.NoError(t, err)
 	t.Log("Upgrade complete")
 
 	afterMembers, afterKV = getMembersAndKeys(t, cc)
@@ -278,7 +280,6 @@ func generateIdenticalVersions(clusterSize int, currentVersion string) []*versio
 			Server:  currentVersion,
 			Storage: currentVersion,
 		}
-
 	}
 
 	return ret
