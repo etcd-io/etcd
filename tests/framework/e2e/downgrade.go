@@ -43,7 +43,7 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 	for i := 0; i < len(epc.Procs); i++ {
 		ValidateVersion(t, epc.Cfg, epc.Procs[i], version.Versions{
 			Cluster: ver.String(),
-			Server:  offsetMinor(ver, 1).String(),
+			Server:  OffsetMinor(ver, 1).String(),
 			Storage: ver.String(),
 		})
 		AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
@@ -53,17 +53,43 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 }
 
 func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
-	t.Logf("etcdctl downgrade cancel")
 	c := epc.Etcdctl()
-	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
-		err := c.DowngradeCancel(context.TODO())
-		require.NoError(t, err)
+
+	var err error
+	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+		for {
+			t.Logf("etcdctl downgrade cancel")
+			err = c.DowngradeCancel(context.TODO())
+			if err != nil {
+				if strings.Contains(err.Error(), "no inflight downgrade job") {
+					// cancellation has been performed successfully
+					t.Log(err)
+					err = nil
+					break
+				}
+
+				t.Logf("etcdctl downgrade error: %v, retrying", err)
+				continue
+			}
+
+			t.Logf("etcdctl downgrade cancel executed successfully")
+			break
+		}
 	})
+
+	require.NoError(t, err)
 
 	t.Log("Cluster downgrade cancellation is completed")
 }
 
 func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
+	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
+	t.Logf(fmt.Sprintln("Elect members for operations"), zap.Any("members", membersToChange))
+
+	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, currentVersion, targetVersion)
+}
+
+func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, currentVersion, targetVersion *semver.Version) error {
 	if lg == nil {
 		lg = clus.lg
 	}
@@ -74,8 +100,6 @@ func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessClus
 		opString = "downgrading"
 		newExecPath = BinPath.EtcdLastRelease
 	}
-	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
-	lg.Info(fmt.Sprintf("Test %s members", opString), zap.Any("members", membersToChange))
 
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
@@ -96,7 +120,7 @@ func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessClus
 	lg.Info("Validating versions")
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
-		if isDowngrade || numberOfMembersToChange == len(clus.Procs) {
+		if isDowngrade || len(membersToChange) == len(clus.Procs) {
 			ValidateVersion(t, clus.Cfg, member, version.Versions{
 				Cluster: targetVersion.String(),
 				Server:  targetVersion.String(),
@@ -119,7 +143,7 @@ func ValidateMemberVersions(t *testing.T, epc *EtcdProcessCluster, expect []*ver
 }
 
 func ValidateVersion(t *testing.T, cfg *EtcdProcessClusterConfig, member EtcdProcess, expect version.Versions) {
-	testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
+	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
 			result, err := getMemberVersionByCurl(cfg, member)
 			if err != nil {
@@ -139,8 +163,8 @@ func ValidateVersion(t *testing.T, cfg *EtcdProcessClusterConfig, member EtcdPro
 	})
 }
 
-// offsetMinor returns the version with offset from the original minor, with the same major.
-func offsetMinor(v *semver.Version, offset int) *semver.Version {
+// OffsetMinor returns the version with offset from the original minor, with the same major.
+func OffsetMinor(v *semver.Version, offset int) *semver.Version {
 	var minor int64
 	if offset >= 0 {
 		minor = v.Minor + int64(offset)

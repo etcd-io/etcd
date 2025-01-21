@@ -17,12 +17,14 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -43,41 +45,50 @@ const (
 	noCancellation CancellationState = iota
 	cancelRightBeforeEnable
 	cancelRightAfterEnable
+	cancelAfterDowngrading
 )
 
 func TestDowngradeUpgradeClusterOf1(t *testing.T) {
-	testDowngradeUpgrade(t, 1, false, noCancellation)
+	testDowngradeUpgrade(t, 1, 1, false, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf3(t *testing.T) {
-	testDowngradeUpgrade(t, 3, false, noCancellation)
+	testDowngradeUpgrade(t, 3, 3, false, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf1WithSnapshot(t *testing.T) {
-	testDowngradeUpgrade(t, 1, true, noCancellation)
+	testDowngradeUpgrade(t, 1, 1, true, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf3WithSnapshot(t *testing.T) {
-	testDowngradeUpgrade(t, 3, true, noCancellation)
+	testDowngradeUpgrade(t, 3, 3, true, noCancellation)
 }
 
 func TestDowngradeCancellationWithoutEnablingClusterOf1(t *testing.T) {
-	testDowngradeUpgrade(t, 1, false, cancelRightBeforeEnable)
+	testDowngradeUpgrade(t, 0, 1, false, cancelRightBeforeEnable)
 }
 
 func TestDowngradeCancellationRightAfterEnablingClusterOf1(t *testing.T) {
-	testDowngradeUpgrade(t, 1, false, cancelRightAfterEnable)
+	testDowngradeUpgrade(t, 0, 1, false, cancelRightAfterEnable)
 }
 
 func TestDowngradeCancellationWithoutEnablingClusterOf3(t *testing.T) {
-	testDowngradeUpgrade(t, 3, false, cancelRightBeforeEnable)
+	testDowngradeUpgrade(t, 0, 3, false, cancelRightBeforeEnable)
 }
 
 func TestDowngradeCancellationRightAfterEnablingClusterOf3(t *testing.T) {
-	testDowngradeUpgrade(t, 3, false, cancelRightAfterEnable)
+	testDowngradeUpgrade(t, 0, 3, false, cancelRightAfterEnable)
 }
 
-func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, triggerCancellation CancellationState) {
+func TestDowngradeCancellationAfterDowngrading1InClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 1, 3, false, cancelAfterDowngrading)
+}
+
+func TestDowngradeCancellationAfterDowngrading2InClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 2, 3, false, cancelAfterDowngrading)
+}
+
+func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterSize int, triggerSnapshot bool, triggerCancellation CancellationState) {
 	currentEtcdBinary := e2e.BinPath.Etcd
 	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	if !fileutil.Exist(lastReleaseBinary) {
@@ -135,7 +146,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 		t.Logf("Cancelling downgrade before enabling")
 		e2e.DowngradeCancel(t, epc)
 		t.Log("Downgrade cancelled, validating if cluster is in the right state")
-		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersion))
 
 		return // No need to perform downgrading, end the test here
 	}
@@ -144,14 +155,19 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 		t.Logf("Cancelling downgrade right after enabling (no node is downgraded yet)")
 		e2e.DowngradeCancel(t, epc)
 		t.Log("Downgrade cancelled, validating if cluster is in the right state")
-		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersion))
 		return // No need to perform downgrading, end the test here
 	}
 
+	membersToChange := rand.Perm(len(epc.Procs))[:numberOfMembersToDowngrade]
+	t.Logf(fmt.Sprintln("Elect members for operations"), zap.Any("members", membersToChange))
+
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, currentVersion, lastClusterVersion)
 	require.NoError(t, err)
-	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
+	if len(membersToChange) == len(epc.Procs) {
+		e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
+	}
 
 	t.Log("Downgrade complete")
 	afterMembers, afterKV := getMembersAndKeys(t, cc)
@@ -162,6 +178,13 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 		t.Log("Waiting health interval to required to make membership changes")
 		time.Sleep(etcdserver.HealthInterval)
 	}
+
+	if triggerCancellation == cancelAfterDowngrading {
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generatePartialCancellationVersions(clusterSize, membersToChange, lastClusterVersion))
+	}
+
 	t.Log("Adding learner to test membership, but avoid breaking quorum")
 	resp, err = cc.MemberAddAsLearner(context.Background(), "fake2", []string{"http://127.0.0.1:1002"})
 	require.NoError(t, err)
@@ -176,7 +199,7 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), lastClusterVersion, currentVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, lastClusterVersion, currentVersion)
 	require.NoError(t, err)
 	t.Log("Upgrade complete")
 
@@ -276,15 +299,33 @@ func getMembersAndKeys(t *testing.T, cc *e2e.EtcdctlV3) (*clientv3.MemberListRes
 	return members, kvs
 }
 
-func generateIdenticalVersions(clusterSize int, currentVersion string) []*version.Versions {
+func generateIdenticalVersions(clusterSize int, ver *semver.Version) []*version.Versions {
 	ret := make([]*version.Versions, clusterSize)
 
 	for i := range clusterSize {
 		ret[i] = &version.Versions{
-			Cluster: currentVersion,
-			Server:  currentVersion,
-			Storage: currentVersion,
+			Cluster: ver.String(),
+			Server:  ver.String(),
+			Storage: ver.String(),
 		}
+	}
+
+	return ret
+}
+
+func generatePartialCancellationVersions(clusterSize int, membersToChange []int, ver *semver.Version) []*version.Versions {
+	ret := make([]*version.Versions, clusterSize)
+
+	for i := range clusterSize {
+		ret[i] = &version.Versions{
+			Cluster: ver.String(),
+			Server:  e2e.OffsetMinor(ver, 1).String(),
+			Storage: "",
+		}
+	}
+
+	for i := range membersToChange {
+		ret[membersToChange[i]].Server = ver.String()
 	}
 
 	return ret
