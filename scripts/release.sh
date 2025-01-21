@@ -268,7 +268,7 @@ main() {
   if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
     log_callout "Skipping docker push. --no-docker-push flat is set."
   else
-    read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " -r confirm
+    read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io, gcr.io & artifact registry [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
     # shellcheck disable=SC2034
     for i in {1..5}; do
@@ -281,6 +281,8 @@ main() {
       maybe_run docker push "quay.io/coreos/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       log_callout "Pushing container images to gcr.io ${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      log_callout "Pushing container images to artifact registry ${RELEASE_VERSION}-${TARGET_ARCH}"
+      maybe_run docker push "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
     done
 
     log_callout "Creating manifest-list (multi-image)..."
@@ -291,6 +293,9 @@ main() {
 
       maybe_run docker manifest create --amend "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
       maybe_run docker manifest annotate "gcr.io/etcd-development/etcd:${RELEASE_VERSION}" "gcr.io/etcd-development/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
+
+      maybe_run docker manifest create --amend "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}" "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}-${TARGET_ARCH}"
+      maybe_run docker manifest annotate "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}" "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}-${TARGET_ARCH}" --arch "${TARGET_ARCH}"
     done
 
     log_callout "Pushing container manifest list to quay.io ${RELEASE_VERSION}"
@@ -298,6 +303,9 @@ main() {
 
     log_callout "Pushing container manifest list to gcr.io ${RELEASE_VERSION}"
     maybe_run docker manifest push "gcr.io/etcd-development/etcd:${RELEASE_VERSION}"
+
+    log_callout "Pushing container manifest list to artifact registry ${RELEASE_VERSION}"
+    maybe_run docker manifest push "us-docker.pkg.dev/etcd-development/etcd/etcd:${RELEASE_VERSION}"
   fi
 
   ### Release validation
