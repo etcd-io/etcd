@@ -356,6 +356,7 @@ func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
 		watch.PrevValue = &model.ValueRevision{
 			Value:       model.ToValueOrHash(string(event.PrevKv.Value)),
 			ModRevision: event.PrevKv.ModRevision,
+			Version:     event.PrevKv.Version,
 		}
 	}
 	watch.IsCreate = event.IsCreate()

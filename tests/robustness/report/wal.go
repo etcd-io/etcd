@@ -199,10 +199,20 @@ func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 			OperationsOnFailure: []model.EtcdOperation{},
 		}
 		for _, cmp := range raftReq.Txn.Compare {
-			txn.Conditions = append(txn.Conditions, model.EtcdCondition{
-				Key:              string(cmp.Key),
-				ExpectedRevision: cmp.GetModRevision(),
-			})
+			switch {
+			case cmp.Result == pb.Compare_EQUAL && cmp.Target == pb.Compare_VERSION:
+				txn.Conditions = append(txn.Conditions, model.EtcdCondition{
+					Key:             string(cmp.Key),
+					ExpectedVersion: cmp.GetVersion(),
+				})
+			case cmp.Result == pb.Compare_EQUAL && cmp.Target == pb.Compare_MOD:
+				txn.Conditions = append(txn.Conditions, model.EtcdCondition{
+					Key:              string(cmp.Key),
+					ExpectedRevision: cmp.GetModRevision(),
+				})
+			default:
+				panic(fmt.Sprintf("unsupported condition: %+v", cmp))
+			}
 		}
 		for _, op := range raftReq.Txn.Success {
 			txn.OperationsOnSuccess = append(txn.OperationsOnSuccess, toEtcdOperation(op))

@@ -1633,8 +1633,8 @@ func TestValidateWatch(t *testing.T) {
 								{
 									Events: []model.WatchEvent{
 										putWatchEvent("a", "1", 2, true),
-										putWatchEventWithPrevKV("a", "2", 3, false, "1", 2),
-										deleteWatchEventWithPrevKV("a", 4, "2", 3),
+										putWatchEventWithPrevKVV("a", "2", 3, false, "1", 2, 1),
+										deleteWatchEventWithPrevKVV("a", 4, "2", 3, 2),
 										putWatchEvent("a", "4", 5, true),
 									},
 								},
@@ -1864,21 +1864,31 @@ func deleteWatchEvent(key string, rev int64) model.WatchEvent {
 }
 
 func putWatchEventWithPrevKV(key, value string, rev int64, isCreate bool, prevValue string, modRev int64) model.WatchEvent {
+	return putWatchEventWithPrevKVV(key, value, rev, isCreate, prevValue, modRev, 0)
+}
+
+func putWatchEventWithPrevKVV(key, value string, rev int64, isCreate bool, prevValue string, modRev, ver int64) model.WatchEvent {
 	return model.WatchEvent{
 		PersistedEvent: putPersistedEvent(key, value, rev, isCreate),
 		PrevValue: &model.ValueRevision{
 			Value:       model.ToValueOrHash(prevValue),
 			ModRevision: modRev,
+			Version:     ver,
 		},
 	}
 }
 
 func deleteWatchEventWithPrevKV(key string, rev int64, prevValue string, modRev int64) model.WatchEvent {
+	return deleteWatchEventWithPrevKVV(key, rev, prevValue, modRev, 0)
+}
+
+func deleteWatchEventWithPrevKVV(key string, rev int64, prevValue string, modRev, ver int64) model.WatchEvent {
 	return model.WatchEvent{
 		PersistedEvent: deletePersistedEvent(key, rev),
 		PrevValue: &model.ValueRevision{
 			Value:       model.ToValueOrHash(prevValue),
 			ModRevision: modRev,
+			Version:     ver,
 		},
 	}
 }

@@ -235,9 +235,8 @@ const (
 
 func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) (int64, int64, error) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L133-L162
-	// TODO: Use Version and not ModRevision when model supports key versioning.
 	resp, err := client.Txn(ctx).
-		If(clientv3.Compare(clientv3.ModRevision(compactRevKey), "=", t)).
+		If(clientv3.Compare(clientv3.Version(compactRevKey), "=", t)).
 		Then(clientv3.OpPut(compactRevKey, strconv.FormatInt(rev, 10))).
 		Else(clientv3.OpGet(compactRevKey)).
 		Commit()
@@ -248,8 +247,7 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 	curRev := resp.Header.Revision
 
 	if !resp.Succeeded {
-		// TODO: Use Version and not ModRevision when model supports key versioning.
-		curTime := resp.Responses[0].GetResponseRange().Kvs[0].ModRevision
+		curTime := resp.Responses[0].GetResponseRange().Kvs[0].Version
 		return curTime, curRev, nil
 	}
 	curTime := t + 1
