@@ -61,14 +61,22 @@ type serveCtx struct {
 	insecure bool
 	httpOnly bool
 
+	// ctx is used to control the grpc gateway. Terminate the grpc gateway
+	// by calling `cancel` when shutting down the etcd.
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
-	serversC        chan *servers
-	closeOnce       sync.Once
 
+	// serversC is used to receive the http and grpc server objects (created
+	// in `serve`), both of which will be closed when shutting down the etcd.
+	// Close it when `serve` returns or when etcd fails to bootstrap.
+	serversC chan *servers
+	// closeOnce is to ensure `serversC` is closed only once.
+	closeOnce sync.Once
+
+	// wg is used to track the lifecycle of all sub goroutines created by `serve`.
 	wg sync.WaitGroup
 }
 
