@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
@@ -81,7 +80,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.Run(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
+			traffic.RunTrafficLoop(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -101,7 +100,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			if profile.CompactPeriod != time.Duration(0) {
 				compactionPeriod = profile.CompactPeriod
 			}
-			RunCompactLoop(ctx, c, compactionPeriod, finish)
+
+			traffic.RunCompactLoop(ctx, c, compactionPeriod, finish)
 			mux.Lock()
 			reports = append(reports, c.Report())
 			mux.Unlock()
@@ -195,35 +195,7 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 }
 
 type Traffic interface {
-	Run(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	RunTrafficLoop(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
+	RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{})
 	ExpectUniqueRevision() bool
-}
-
-func RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
-	var lastRev int64 = 2
-	timer := time.NewTimer(period)
-	for {
-		timer.Reset(period)
-		select {
-		case <-ctx.Done():
-			return
-		case <-finish:
-			return
-		case <-timer.C:
-		}
-		statusCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-		resp, err := c.Status(statusCtx, c.Endpoints()[0])
-		cancel()
-		if err != nil {
-			continue
-		}
-
-		// Range allows for both revision has been compacted and future revision errors
-		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
-		_, err = c.Compact(ctx, compactRev)
-		if err != nil {
-			continue
-		}
-		lastRev = compactRev
-	}
 }
