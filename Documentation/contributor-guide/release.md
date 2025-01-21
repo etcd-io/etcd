@@ -62,6 +62,7 @@ which don't need to be executed before releasing each version.
 4. Authenticate the image registry, refer to [Authentication methods](https://cloud.google.com/container-registry/docs/advanced-authentication).
    - `gcloud auth login`
    - `gcloud auth configure-docker`
+   - `gcloud auth configure-docker us-docker.pkg.dev`
 5. Install gh, refer to [GitHub's documentation](https://github.com/cli/cli#installation). Ensure that running
    `gh auth login` succeeds for the GitHub account you use to contribute to etcd,
    and that `gh auth status` has a clean exit and doesn't show any issues.
@@ -73,6 +74,7 @@ which don't need to be executed before releasing each version.
 3. Once permissions are elevated, temporarily relax [branch protections](https://github.com/etcd-io/etcd/settings/branches) to allow pushing changes directly to `release-*` branches in GitHub.
 4. Verify you can pass the authentication to the image registries,
    - `docker login gcr.io`
+   - `docker login us-docker.pkg.dev`
    - `docker login quay.io`
      - If the release person doesn't have access to 1password, one of the owners (@ahrtr, @ivanvc, @jmhbnz, @serathius) needs to share the password with them per [this guide](https://support.1password.com/share-items/). See rough steps below,
        - [Sign in](https://team-etcd.1password.com/home) to your account on 1password.com.

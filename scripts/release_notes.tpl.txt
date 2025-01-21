@@ -55,19 +55,19 @@ mv /tmp/etcd-${ETCD_VER}-darwin-amd64/* /tmp/etcd-download-test && rm -rf mv /tm
 
 ###### Docker
 
-etcd uses [`gcr.io/etcd-development/etcd`](https://gcr.io/etcd-development/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
+etcd uses [`us-docker.pkg.dev/etcd-development/etcd/etcd`](https://console.cloud.google.com/artifacts/docker/etcd-development/us/etcd) as a primary container registry, and [`quay.io/coreos/etcd`](https://quay.io/coreos/etcd) as secondary.
 
 ```sh
 ETCD_VER=${RELEASE_VERSION}
 
 rm -rf /tmp/etcd-data.tmp && mkdir -p /tmp/etcd-data.tmp && \
-  docker rmi gcr.io/etcd-development/etcd:${ETCD_VER} || true && \
+  docker rmi us-docker.pkg.dev/etcd-development/etcd/etcd:${ETCD_VER} || true && \
   docker run \
   -p 2379:2379 \
   -p 2380:2380 \
   --mount type=bind,source=/tmp/etcd-data.tmp,destination=/etcd-data \
-  --name etcd-gcr-${ETCD_VER} \
-  gcr.io/etcd-development/etcd:${ETCD_VER} \
+  --name etcd-${ETCD_VER} \
+  us-docker.pkg.dev/etcd-development/etcd/etcd:${ETCD_VER} \
   /usr/local/bin/etcd \
   --name s1 \
   --data-dir /etcd-data \
@@ -82,10 +82,10 @@ rm -rf /tmp/etcd-data.tmp && mkdir -p /tmp/etcd-data.tmp && \
   --logger zap \
   --log-outputs stderr
 
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcd --version
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl version
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdutl version
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl endpoint health
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl put foo bar
-docker exec etcd-gcr-${ETCD_VER} /usr/local/bin/etcdctl get foo
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcd --version
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcdctl version
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcdutl version
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcdctl endpoint health
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcdctl put foo bar
+docker exec etcd-${ETCD_VER} /usr/local/bin/etcdctl get foo
 ```

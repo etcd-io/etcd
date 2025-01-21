@@ -38,7 +38,7 @@ fi
 
 # Pick defaults based on release workflow
 ARCH=$(go env GOARCH)
-REPOSITARY=${REPOSITARY:-"gcr.io/etcd-development/etcd"}
+REPOSITARY=${REPOSITARY:-"us-docker.pkg.dev/etcd-development/etcd/etcd"}
 if [ -n "$VERSION" ]; then
     # Expected Format: v3.6.99-amd64
     TAG=v"${VERSION}"-"${ARCH}"

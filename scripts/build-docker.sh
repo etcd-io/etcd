@@ -45,6 +45,7 @@ if [ -z "${TAG:-}" ]; then
     # From https://stackoverflow.com/q/72144329/
     DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
     DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
+    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "us-docker.pkg.dev/etcd-development/etcd/etcd:${VERSION}" "${IMAGEDIR}"
 else
     docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
 fi
