@@ -61,13 +61,23 @@ type serveCtx struct {
 	insecure bool
 	httpOnly bool
 
+	// ctx is used to control the grpc gateway. Terminate the grpc gateway
+	// by calling `cancel` when shutting down the etcd.
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
-	serversC        chan *servers
-	closeOnce       sync.Once
+
+	// serversC is used to receive the http and grpc server objects (created
+	// in `serve`), both of which will be closed when shutting down the etcd.
+	// Close it when `serve` returns or when etcd fails to bootstrap.
+	serversC chan *servers
+	// closeOnce is to ensure `serversC` is closed only once.
+	closeOnce sync.Once
+
+	// wg is used to track the lifecycle of all sub goroutines created by `serve`.
+	wg sync.WaitGroup
 }
 
 type servers struct {
@@ -182,13 +192,17 @@ func (sctx *serveCtx) serve(
 			server = m.Serve
 
 			httpl := m.Match(cmux.HTTP1())
+			sctx.wg.Add(1)
 			go func(srvhttp *http.Server, tlsLis net.Listener) {
+				defer sctx.wg.Done()
 				errHandler(srvhttp.Serve(tlsLis))
 			}(srv, httpl)
 
 			if grpcEnabled {
 				grpcl := m.Match(cmux.HTTP2())
+				sctx.wg.Add(1)
 				go func(gs *grpc.Server, l net.Listener) {
+					defer sctx.wg.Done()
 					errHandler(gs.Serve(l))
 				}(gs, grpcl)
 			}
@@ -237,7 +251,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-			if err := configureHTTPServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -248,11 +262,13 @@ func (sctx *serveCtx) serve(
 		} else {
 			server = m.Serve
 
-			tlsl, err := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if err != nil {
-				return err
+			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+			if tlsErr != nil {
+				return tlsErr
 			}
+			sctx.wg.Add(1)
 			go func(srvhttp *http.Server, tlsl net.Listener) {
+				defer sctx.wg.Done()
 				errHandler(srvhttp.Serve(tlsl))
 			}(srv, tlsl)
 		}
@@ -265,7 +281,11 @@ func (sctx *serveCtx) serve(
 		)
 	}
 
-	return server()
+	err = server()
+	sctx.close()
+	// ensure all goroutines, which are created by this method, to complete before this method returns.
+	sctx.wg.Wait()
+	return err
 }
 
 func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
@@ -334,7 +354,9 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 			return nil, err
 		}
 	}
+	sctx.wg.Add(1)
 	go func() {
+		defer sctx.wg.Done()
 		<-ctx.Done()
 		if cerr := conn.Close(); cerr != nil {
 			sctx.lg.Warn(
