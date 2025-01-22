@@ -94,7 +94,8 @@ type Etcd struct {
 	// reading from `stopc`.
 	errc chan error
 
-	// wg is used to track the lifecycle of all sub goroutines created by `StartEtcd`.
+	// wg is used to track the lifecycle of all sub goroutines which
+	// need to send error back to the `errc`.
 	wg sync.WaitGroup
 }
 
@@ -636,16 +637,15 @@ func (e *Etcd) servePeers() {
 
 	// start peer servers in a goroutine
 	for _, pl := range e.Peers {
-		e.wg.Add(1)
-		go func(l *peerListener) {
-			defer e.wg.Done()
+		l := pl
+		e.startHandler(func() error {
 			u := l.Addr().String()
 			e.cfg.logger.Info(
 				"serving peer traffic",
 				zap.String("address", u),
 			)
-			e.errHandler(l.serve())
-		}(pl)
+			return l.serve()
+		})
 	}
 }
 
@@ -805,11 +805,10 @@ func (e *Etcd) serveClients() {
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
-		e.wg.Add(1)
-		go func(s *serveCtx) {
-			defer e.wg.Done()
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
-		}(sctx)
+		s := sctx
+		e.startHandler(func() error {
+			return s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...)
+		})
 	}
 }
 
@@ -887,23 +886,32 @@ func (e *Etcd) serveMetrics() (err error) {
 		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
+			u := murl
 			ml, err := e.createMetricsListener(murl)
 			if err != nil {
 				return err
 			}
 			e.metricsListeners = append(e.metricsListeners, ml)
-			e.wg.Add(1)
-			go func(u url.URL, ln net.Listener) {
-				defer e.wg.Done()
+
+			e.startHandler(func() error {
 				e.cfg.logger.Info(
 					"serving metrics",
 					zap.String("address", u.String()),
 				)
-				e.errHandler(http.Serve(ln, metricsMux))
-			}(murl, ml)
+				return http.Serve(ml, metricsMux)
+			})
 		}
 	}
 	return nil
+}
+
+func (e *Etcd) startHandler(handler func() error) {
+	// start each handler in a separate goroutine
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		e.errHandler(handler())
+	}()
 }
 
 func (e *Etcd) errHandler(err error) {
