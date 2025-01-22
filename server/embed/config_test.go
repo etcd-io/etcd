@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"go.etcd.io/etcd/client/pkg/v3/srv"
-	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
@@ -1051,19 +1050,8 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
 	cfg.AddFlags(fs)
 	require.NoError(t, fs.Parse(nil))
-
-	newConfig := NewConfig()
-	// TODO: Remove the following assigments when both match.
-	newConfig.SelfSignedCertValidity = 1
-	newConfig.TlsMinVersion = string(tlsutil.TLSVersion12)
-	newConfig.DiscoveryCfg.Secure.InsecureTransport = true
-	newConfig.AutoCompactionRetention = "0"
-	newConfig.ExperimentalDistributedTracingAddress = "localhost:4317"
-	newConfig.ExperimentalDistributedTracingServiceName = "etcd"
-	newConfig.LogFormat = "json"
-	newConfig.ExperimentalTxnModeWriteWithSharedBuffer = true
 	// TODO: Reduce number of unexported fields set in config
-	if diff := cmp.Diff(newConfig, cfg, cmpopts.IgnoreUnexported(transport.TLSInfo{}, Config{}), cmp.Comparer(func(a, b featuregate.FeatureGate) bool {
+	if diff := cmp.Diff(NewConfig(), cfg, cmpopts.IgnoreUnexported(transport.TLSInfo{}, Config{}), cmp.Comparer(func(a, b featuregate.FeatureGate) bool {
 		return a.String() == b.String()
 	})); diff != "" {
 		t.Errorf("Diff: %s", diff)

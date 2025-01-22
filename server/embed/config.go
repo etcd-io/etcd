@@ -71,13 +71,18 @@ const (
 	DefaultGRPCKeepAliveTimeout        = 20 * time.Second
 	DefaultDowngradeCheckTime          = 5 * time.Second
 	DefaultAutoCompactionMode          = "periodic"
+	DefaultAutoCompactionRetention     = "0"
 	DefaultAuthToken                   = "simple"
 	DefaultCompactHashCheckTime        = time.Minute
+	DefaultLoggingFormat               = "json"
 
-	DefaultDiscoveryDialTimeout      = 2 * time.Second
-	DefaultDiscoveryRequestTimeOut   = 5 * time.Second
-	DefaultDiscoveryKeepAliveTime    = 2 * time.Second
-	DefaultDiscoveryKeepAliveTimeOut = 6 * time.Second
+	DefaultDiscoveryDialTimeout       = 2 * time.Second
+	DefaultDiscoveryRequestTimeOut    = 5 * time.Second
+	DefaultDiscoveryKeepAliveTime     = 2 * time.Second
+	DefaultDiscoveryKeepAliveTimeOut  = 6 * time.Second
+	DefaultDiscoveryInsecureTransport = true
+	DefaultSelfSignedCertValidity     = 1
+	DefaultTLSMinVersion              = string(tlsutil.TLSVersion12)
 
 	DefaultListenPeerURLs   = "http://localhost:2380"
 	DefaultListenClientURLs = "http://localhost:2379"
@@ -100,6 +105,8 @@ const (
 	ExperimentalDistributedTracingAddress = "localhost:4317"
 	// ExperimentalDistributedTracingServiceName is the default etcd service name.
 	ExperimentalDistributedTracingServiceName = "etcd"
+
+	DefaultExperimentalTxnModeWriteWithSharedBuffer = true
 
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
@@ -595,15 +602,18 @@ func NewConfig() *Config {
 		CORS:          map[string]struct{}{"*": {}},
 		HostWhitelist: map[string]struct{}{"*": {}},
 
-		AuthToken:    DefaultAuthToken,
-		BcryptCost:   uint(bcrypt.DefaultCost),
-		AuthTokenTTL: 300,
+		AuthToken:              DefaultAuthToken,
+		BcryptCost:             uint(bcrypt.DefaultCost),
+		AuthTokenTTL:           300,
+		SelfSignedCertValidity: DefaultSelfSignedCertValidity,
+		TlsMinVersion:          DefaultTLSMinVersion,
 
 		PreVote: true,
 
 		loggerMu:              new(sync.RWMutex),
 		logger:                nil,
 		Logger:                "zap",
+		LogFormat:             DefaultLoggingFormat,
 		LogOutputs:            []string{DefaultLogOutput},
 		LogLevel:              logutil.DefaultLogLevel,
 		EnableLogRotation:     false,
@@ -616,6 +626,10 @@ func NewConfig() *Config {
 		MaxLearners:                         membership.DefaultMaxLearners,
 		// TODO: delete in v3.7
 		ExperimentalMaxLearners: membership.DefaultMaxLearners,
+
+		ExperimentalTxnModeWriteWithSharedBuffer:  DefaultExperimentalTxnModeWriteWithSharedBuffer,
+		ExperimentalDistributedTracingAddress:     ExperimentalDistributedTracingAddress,
+		ExperimentalDistributedTracingServiceName: ExperimentalDistributedTracingServiceName,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 		// TODO: delete in v3.7
@@ -630,14 +644,17 @@ func NewConfig() *Config {
 				KeepAliveTime:    DefaultDiscoveryKeepAliveTime,
 				KeepAliveTimeout: DefaultDiscoveryKeepAliveTimeOut,
 
-				Secure: &clientv3.SecureConfig{},
-				Auth:   &clientv3.AuthConfig{},
+				Secure: &clientv3.SecureConfig{
+					InsecureTransport: true,
+				},
+				Auth: &clientv3.AuthConfig{},
 			},
 		},
 
-		AutoCompactionMode: DefaultAutoCompactionMode,
-		ServerFeatureGate:  features.NewDefaultServerFeatureGate(DefaultName, nil),
-		FlagsExplicitlySet: map[string]bool{},
+		AutoCompactionMode:      DefaultAutoCompactionMode,
+		AutoCompactionRetention: DefaultAutoCompactionRetention,
+		ServerFeatureGate:       features.NewDefaultServerFeatureGate(DefaultName, nil),
+		FlagsExplicitlySet:      map[string]bool{},
 	}
 	cfg.InitialCluster = cfg.InitialClusterFromName(cfg.Name)
 	return cfg
