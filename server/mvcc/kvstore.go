@@ -484,8 +484,12 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 					continue
 				}
 				ki.put(lg, rev.main, rev.sub)
-			} else if !isTombstone(rkv.key) {
-				ki.restore(lg, revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+			} else {
+				if isTombstone(rkv.key) {
+					ki.restoreTombstone(lg, rev.main, rev.sub)
+				} else {
+					ki.restore(lg, revision{rkv.kv.CreateRevision, 0}, rev, rkv.kv.Version)
+				}
 				idx.Insert(ki)
 				kiCache[rkv.kstr] = ki
 			}

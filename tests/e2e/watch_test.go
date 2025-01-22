@@ -482,3 +482,82 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 		}
 	}
 }
+
+// TestResumeCompactionOnTombstone verifies whether a deletion event is preserved
+// when etcd restarts and resumes compaction on a key that only has a tombstone revision.
+func TestResumeCompactionOnTombstone(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	ctx := context.Background()
+	compactBatchLimit := 5
+
+	cfg := e2e.EtcdProcessClusterConfig{
+		GoFailEnabled:              true,
+		ClusterSize:                1,
+		IsClientAutoTLS:            true,
+		ClientTLS:                  e2e.ClientTLS,
+		CompactionBatchLimit:       compactBatchLimit,
+		WatchProcessNotifyInterval: 100 * time.Millisecond,
+	}
+	clus, err := e2e.NewEtcdProcessCluster(t, &cfg)
+	require.NoError(t, err)
+	defer clus.Close()
+
+	c1 := newClient(t, clus.EndpointsGRPC(), cfg.ClientTLS, cfg.IsClientAutoTLS)
+	defer c1.Close()
+
+	keyPrefix := "/key-"
+	for i := 0; i < compactBatchLimit; i++ {
+		key := fmt.Sprintf("%s%d", keyPrefix, i)
+		value := fmt.Sprintf("%d", i)
+
+		t.Logf("PUT key=%s, val=%s", key, value)
+		_, err = c1.KV.Put(ctx, key, value)
+		require.NoError(t, err)
+	}
+
+	firstKey := keyPrefix + "0"
+	t.Logf("DELETE key=%s", firstKey)
+	deleteResp, err := c1.KV.Delete(ctx, firstKey)
+	require.NoError(t, err)
+
+	var deleteEvent *clientv3.Event
+	select {
+	case watchResp := <-c1.Watch(ctx, firstKey, clientv3.WithRev(deleteResp.Header.Revision)):
+		require.Len(t, watchResp.Events, 1)
+
+		require.Equal(t, mvccpb.DELETE, watchResp.Events[0].Type)
+		deletedKey := string(watchResp.Events[0].Kv.Key)
+		require.Equal(t, firstKey, deletedKey)
+
+		deleteEvent = watchResp.Events[0]
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out getting watch response")
+	}
+
+	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "compactBeforeSetFinishedCompact", `panic`))
+
+	t.Logf("COMPACT rev=%d", deleteResp.Header.Revision)
+	_, err = c1.KV.Compact(ctx, deleteResp.Header.Revision, clientv3.WithCompactPhysical())
+	require.Error(t, err)
+
+	require.Error(t, clus.Procs[0].Stop())
+	// NOTE: The proc panics and exit code is 2. It's impossible to restart
+	// that etcd proc because last exit code is 2 and Restart() refuses to
+	// start new one. Using IsRunning() function is to cleanup status.
+	require.False(t, clus.Procs[0].IsRunning())
+	require.NoError(t, clus.Restart())
+
+	c2 := newClient(t, clus.EndpointsGRPC(), cfg.ClientTLS, cfg.IsClientAutoTLS)
+	defer c2.Close()
+
+	watchChan := c2.Watch(ctx, firstKey, clientv3.WithRev(deleteResp.Header.Revision))
+	select {
+	case watchResp := <-watchChan:
+		require.Equal(t, []*clientv3.Event{deleteEvent}, watchResp.Events)
+	case <-time.After(100 * time.Millisecond):
+		// we care only about the first response, but have an
+		// escape hatch in case the watch response is delayed.
+		t.Fatal("timed out getting watch response")
+	}
+}
