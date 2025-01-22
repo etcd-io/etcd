@@ -8,6 +8,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 - Avoid deadlock in etcd.Close when stopping during bootstrapping, see https://github.com/etcd-io/etcd/pull/19167 and https://github.com/etcd-io/etcd/pull/19258.
 - [Print warning messages if any of the deprecated v2store related flags is set](https://github.com/etcd-io/etcd/pull/18999)
+- Fix [missing delete event on watch opened on same revision as compaction request](https://github.com/etcd-io/etcd/pull/19249)
 
 ### Package `clientv3`
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18937)
