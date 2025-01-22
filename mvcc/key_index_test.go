@@ -19,8 +19,50 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
+
+func TestRestoreTombstone(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+
+	// restore from tombstone
+	//
+	// key: "foo"
+	// modified: 16
+	// "created": 16
+	// generations:
+	//    {empty}
+	//    {{16, 0}(t)[0]}
+	//
+	ki := &keyIndex{key: []byte("foo")}
+	ki.restoreTombstone(lg, 16, 0)
+
+	// get should return not found
+	for retAt := 16; retAt <= 20; retAt++ {
+		_, _, _, err := ki.get(lg, int64(retAt))
+		require.ErrorIs(t, err, ErrRevisionNotFound)
+	}
+
+	// doCompact should keep that tombstone
+	availables := map[revision]struct{}{}
+	ki.doCompact(16, availables)
+	require.Len(t, availables, 1)
+	_, ok := availables[revision{main: 16}]
+	require.True(t, ok)
+
+	// should be able to put new revisions
+	ki.put(lg, 17, 0)
+	ki.put(lg, 18, 0)
+	revs := ki.since(lg, 16)
+	require.Equal(t, []revision{{16, 0}, {17, 0}, {18, 0}}, revs)
+
+	// compaction should remove restored tombstone
+	ki.compact(lg, 17, map[revision]struct{}{})
+	require.Len(t, ki.generations, 1)
+	require.Equal(t, []revision{{17, 0}, {18, 0}}, ki.generations[0].revs)
+}
 
 func TestKeyIndexGet(t *testing.T) {
 	// key: "foo"
