@@ -750,6 +750,74 @@ func TestWatchProgressNotifyInterval(t *testing.T) {
 	}
 }
 
+// TestWarningApplyDuration tests the migration from
+// --experimental-warning-apply-duration to --warning-apply-duration
+// TODO: delete in v3.7
+func TestWarningApplyDuration(t *testing.T) {
+	testCases := []struct {
+		name                             string
+		warningApplyDuration             string
+		experimentalWarningApplyDuration string
+		expectErr                        bool
+		expectedWarningApplyDuration     time.Duration
+	}{
+		{
+			name:                             "cannot set both experimental flag and non experimental flag",
+			warningApplyDuration:             "2m",
+			experimentalWarningApplyDuration: "3m",
+			expectErr:                        true,
+		},
+		{
+			name:                             "can set experimental flag",
+			experimentalWarningApplyDuration: "3m",
+			expectedWarningApplyDuration:     3 * time.Minute,
+		},
+		{
+			name:                         "can set non experimental flag",
+			warningApplyDuration:         "2m",
+			expectedWarningApplyDuration: 2 * time.Minute,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration,omitempty"`
+				WarningApplyDuration             time.Duration `json:"warning-apply-duration,omitempty"`
+			}{}
+
+			if tc.warningApplyDuration != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--warning-apply-duration=%s", tc.warningApplyDuration))
+				warningApplyDuration, err := time.ParseDuration(tc.warningApplyDuration)
+				require.NoError(t, err)
+				yc.WarningApplyDuration = warningApplyDuration
+			}
+
+			if tc.experimentalWarningApplyDuration != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-warning-apply-duration=%s", tc.experimentalWarningApplyDuration))
+				experimentalWarningApplyDuration, err := time.ParseDuration(tc.experimentalWarningApplyDuration)
+				require.NoError(t, err)
+				yc.ExperimentalWarningApplyDuration = experimentalWarningApplyDuration
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.expectedWarningApplyDuration, cfgFromCmdLine.ec.WarningApplyDuration)
+			require.Equal(t, tc.expectedWarningApplyDuration, cfgFromFile.ec.WarningApplyDuration)
+		})
+	}
+}
+
 // TODO delete in v3.7
 func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) (*config, error, *config, error) {
 	b, err := yaml.Marshal(&yc)
@@ -862,6 +930,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalCorruptCheckTime            time.Duration `json:"experimental-corrupt-check-time,omitempty"`
 		ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit,omitempty"`
 		ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
+		ExperimentalWarningApplyDuration        time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 	}
 
 	testCases := []struct {
@@ -883,6 +952,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalCorruptCheckTime:            time.Minute,
 				ExperimentalCompactionBatchLimit:        1,
 				ExperimentalWatchProgressNotifyInterval: 3 * time.Minute,
+				ExperimentalWarningApplyDuration:        3 * time.Minute,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled":     {},
@@ -890,6 +960,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-corrupt-check-time":             {},
 				"experimental-compaction-batch-limit":         {},
 				"experimental-watch-progress-notify-interval": {},
+				"experimental-warning-apply-duration":         {},
 			},
 		},
 		{

@@ -137,6 +137,7 @@ var (
 		"experimental-corrupt-check-time":             "corrupt-check-time",
 		"experimental-compaction-batch-limit":         "compaction-batch-limit",
 		"experimental-watch-progress-notify-interval": "watch-progress-notify-interval",
+		"experimental-warning-apply-duration":         "warning-apply-duration",
 	}
 )
 
@@ -403,7 +404,10 @@ type Config struct {
 	WatchProgressNotifyInterval             time.Duration `json:"watch-progress-notify-interval"`
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
+	WarningApplyDuration             time.Duration `json:"warning-apply-duration"`
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
@@ -551,10 +555,10 @@ func NewConfig() *Config {
 		SnapshotCount:          etcdserver.DefaultSnapshotCount,
 		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 
-		MaxTxnOps:                        DefaultMaxTxnOps,
-		MaxRequestBytes:                  DefaultMaxRequestBytes,
-		MaxConcurrentStreams:             DefaultMaxConcurrentStreams,
-		ExperimentalWarningApplyDuration: DefaultWarningApplyDuration,
+		MaxTxnOps:            DefaultMaxTxnOps,
+		MaxRequestBytes:      DefaultMaxRequestBytes,
+		MaxConcurrentStreams: DefaultMaxConcurrentStreams,
+		WarningApplyDuration: DefaultWarningApplyDuration,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -806,7 +810,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications. Deprecated in v3.6 and will be decommissioned in v3.7. Use --watch-progress-notify-interval instead.")
 	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks.")
-	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time.")
+	// TODO: delete in v3.7
+	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time.Deprecated in v3.6 and will be decommissioned in v3.7. Use --warning-watch-progress-duration instead.")
+	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
 	fs.DurationVar(&cfg.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.")
 	fs.BoolVar(&cfg.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
