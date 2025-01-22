@@ -396,6 +396,22 @@ func WithPeerProxy(enabled bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.PeerProxy = enabled }
 }
 
+func WithClientHTTPSeparate(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ClientHTTPSeparate = enabled }
+}
+
+func WithForceNewCluster(enabled bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ForceNewCluster = enabled }
+}
+
+func WithMetricsURLScheme(scheme string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.MetricsURLScheme = scheme }
+}
+
+func WithCipherSuites(suites []string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CipherSuites = suites }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -581,7 +597,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	if cfg.ServerConfig.ForceNewCluster {
-		args = append(args, "--force-new-cluster")
+		args = append(args, "--force-new-cluster=true")
 	}
 	if cfg.ServerConfig.QuotaBackendBytes > 0 {
 		args = append(args,
@@ -592,7 +608,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--strict-reconfig-check=false")
 	}
 	if cfg.EnableV2 {
-		args = append(args, "--enable-v2")
+		args = append(args, "--enable-v2=true")
 	}
 	var murl string
 	if cfg.MetricsURLScheme != "" {
