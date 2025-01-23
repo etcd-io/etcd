@@ -80,6 +80,18 @@ type serveCtx struct {
 	wg sync.WaitGroup
 }
 
+func (sctx *serveCtx) startHandler(errHandler func(error), handler func() error) {
+	// start each handler in a separate goroutine
+	sctx.wg.Add(1)
+	go func() {
+		defer sctx.wg.Done()
+		err := handler()
+		if errHandler != nil {
+			errHandler(err)
+		}
+	}()
+}
+
 type servers struct {
 	secure bool
 	grpc   *grpc.Server
@@ -192,19 +204,15 @@ func (sctx *serveCtx) serve(
 			server = m.Serve
 
 			httpl := m.Match(cmux.HTTP1())
-			sctx.wg.Add(1)
-			go func(srvhttp *http.Server, tlsLis net.Listener) {
-				defer sctx.wg.Done()
-				errHandler(srvhttp.Serve(tlsLis))
-			}(srv, httpl)
+			sctx.startHandler(errHandler, func() error {
+				return srv.Serve(httpl)
+			})
 
 			if grpcEnabled {
 				grpcl := m.Match(cmux.HTTP2())
-				sctx.wg.Add(1)
-				go func(gs *grpc.Server, l net.Listener) {
-					defer sctx.wg.Done()
-					errHandler(gs.Serve(l))
-				}(gs, grpcl)
+				sctx.startHandler(errHandler, func() error {
+					return gs.Serve(grpcl)
+				})
 			}
 		}
 
@@ -266,11 +274,9 @@ func (sctx *serveCtx) serve(
 			if tlsErr != nil {
 				return tlsErr
 			}
-			sctx.wg.Add(1)
-			go func(srvhttp *http.Server, tlsl net.Listener) {
-				defer sctx.wg.Done()
-				errHandler(srvhttp.Serve(tlsl))
-			}(srv, tlsl)
+			sctx.startHandler(errHandler, func() error {
+				return srv.Serve(tlsl)
+			})
 		}
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
@@ -283,7 +289,6 @@ func (sctx *serveCtx) serve(
 
 	err = server()
 	sctx.close()
-	// ensure all goroutines, which are created by this method, to complete before this method returns.
 	sctx.wg.Wait()
 	return err
 }
@@ -354,9 +359,7 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 			return nil, err
 		}
 	}
-	sctx.wg.Add(1)
-	go func() {
-		defer sctx.wg.Done()
+	sctx.startHandler(nil, func() error {
 		<-ctx.Done()
 		if cerr := conn.Close(); cerr != nil {
 			sctx.lg.Warn(
@@ -365,7 +368,8 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 				zap.Error(cerr),
 			)
 		}
-	}()
+		return nil
+	})
 
 	return gwmux, nil
 }
