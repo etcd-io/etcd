@@ -294,6 +294,8 @@ Experimental feature:
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'
+    Duration of periodical watch progress notification. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'watch-progress-notify-interval' instead.
+  --watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
