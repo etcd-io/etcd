@@ -91,7 +91,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		tc := tc
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
-		cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval = watchResponsePeriod
+		cfg.ServerConfig.WatchProgressNotifyInterval = watchResponsePeriod
 		cfg.Client = tc.client
 		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {

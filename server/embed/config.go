@@ -133,9 +133,10 @@ var (
 	// This is the mapping from the non boolean `experimental-` to the new flags.
 	// TODO: delete in v3.7
 	experimentalNonBoolFlagMigrationMap = map[string]string{
-		"experimental-compact-hash-check-time": "compact-hash-check-time",
-		"experimental-corrupt-check-time":      "corrupt-check-time",
-		"experimental-compaction-batch-limit":  "compaction-batch-limit",
+		"experimental-compact-hash-check-time":        "compact-hash-check-time",
+		"experimental-corrupt-check-time":             "corrupt-check-time",
+		"experimental-compaction-batch-limit":         "compaction-batch-limit",
+		"experimental-watch-progress-notify-interval": "watch-progress-notify-interval",
 	}
 )
 
@@ -394,8 +395,12 @@ type Config struct {
 	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
 	CompactionBatchLimit             int `json:"compaction-batch-limit"`
 	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
-	ExperimentalCompactionSleepInterval     time.Duration `json:"experimental-compaction-sleep-interval"`
+	ExperimentalCompactionSleepInterval time.Duration `json:"experimental-compaction-sleep-interval"`
+	// ExperimentalWatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
+	WatchProgressNotifyInterval             time.Duration `json:"watch-progress-notify-interval"`
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
@@ -797,7 +802,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.IntVar(&cfg.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-batch-limit instead.")
 	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
 	fs.DurationVar(&cfg.ExperimentalCompactionSleepInterval, "experimental-compaction-sleep-interval", cfg.ExperimentalCompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
-	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
+	// TODO: delete in v3.7
+	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications. Deprecated in v3.6 and will be decommissioned in v3.7. Use --watch-progress-notify-interval instead.")
+	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks.")
 	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
