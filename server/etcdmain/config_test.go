@@ -544,8 +544,8 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 				t.Fatal("error parsing config")
 			}
 
-			require.Equal(t, cfgFromCmdLine.ec.CompactHashCheckTime, tc.expectedCompactHashCheckTime)
-			require.Equal(t, cfgFromFile.ec.CompactHashCheckTime, tc.expectedCompactHashCheckTime)
+			require.Equal(t, tc.expectedCompactHashCheckTime, cfgFromCmdLine.ec.CompactHashCheckTime)
+			require.Equal(t, tc.expectedCompactHashCheckTime, cfgFromFile.ec.CompactHashCheckTime)
 		})
 	}
 }
@@ -612,8 +612,8 @@ func TestCorruptCheckTimeFlagMigration(t *testing.T) {
 				t.Fatal("error parsing config")
 			}
 
-			require.Equal(t, cfgFromCmdLine.ec.CorruptCheckTime, tc.expectedCorruptCheckTime)
-			require.Equal(t, cfgFromFile.ec.CorruptCheckTime, tc.expectedCorruptCheckTime)
+			require.Equal(t, tc.expectedCorruptCheckTime, cfgFromCmdLine.ec.CorruptCheckTime)
+			require.Equal(t, tc.expectedCorruptCheckTime, cfgFromFile.ec.CorruptCheckTime)
 		})
 	}
 }
@@ -676,8 +676,8 @@ func TestCompactionBatchLimitFlagMigration(t *testing.T) {
 				t.Fatal("error parsing config")
 			}
 
-			require.Equal(t, cfgFromCmdLine.ec.CompactionBatchLimit, tc.expectedCompactionBatchLimit)
-			require.Equal(t, cfgFromFile.ec.CompactionBatchLimit, tc.expectedCompactionBatchLimit)
+			require.Equal(t, tc.expectedCompactionBatchLimit, cfgFromCmdLine.ec.CompactionBatchLimit)
+			require.Equal(t, tc.expectedCompactionBatchLimit, cfgFromFile.ec.CompactionBatchLimit)
 		})
 	}
 }
@@ -744,8 +744,8 @@ func TestWatchProgressNotifyInterval(t *testing.T) {
 				t.Fatal("error parsing config")
 			}
 
-			require.Equal(t, cfgFromCmdLine.ec.WatchProgressNotifyInterval, tc.expectedWatchProgressNotifyInterval)
-			require.Equal(t, cfgFromFile.ec.WatchProgressNotifyInterval, tc.expectedWatchProgressNotifyInterval)
+			require.Equal(t, tc.expectedWatchProgressNotifyInterval, cfgFromCmdLine.ec.WatchProgressNotifyInterval)
+			require.Equal(t, tc.expectedWatchProgressNotifyInterval, cfgFromFile.ec.WatchProgressNotifyInterval)
 		})
 	}
 }
