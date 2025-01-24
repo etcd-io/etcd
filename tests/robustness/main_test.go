@@ -46,7 +46,6 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	rand.Seed(time.Now().UnixNano())
 	testRunner.TestMain(m)
 }
 
