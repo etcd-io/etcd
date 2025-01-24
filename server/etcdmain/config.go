@@ -68,6 +68,7 @@ var (
 		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
 		"experimental-compaction-batch-limit":            "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
 		"experimental-watch-progress-notify-interval":    "--experimental-watch-progress-notify-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.",
+		"experimental-warning-apply-duration":            "--experimental-warning-apply-duration is deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.",
 	}
 )
 
@@ -187,6 +188,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-watch-progress-notify-interval"] {
 		cfg.ec.WatchProgressNotifyInterval = cfg.ec.ExperimentalWatchProgressNotifyInterval
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-warning-apply-duration"] {
+		cfg.ec.WarningApplyDuration = cfg.ec.ExperimentalWarningApplyDuration
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.

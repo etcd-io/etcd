@@ -231,7 +231,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CompactionSleepInterval:              cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:          cfg.WatchProgressNotifyInterval,
 		DowngradeCheckTime:                   cfg.ExperimentalDowngradeCheckTime,
-		WarningApplyDuration:                 cfg.ExperimentalWarningApplyDuration,
+		WarningApplyDuration:                 cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
 		ExperimentalMemoryMlock:              cfg.ExperimentalMemoryMlock,
 		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
