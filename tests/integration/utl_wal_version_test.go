@@ -85,7 +85,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, &semver.Version{Major: 3, Minor: 6}, walVersion.MinimalEtcdVersion())
+	assert.Equal(t, &semver.Version{Major: 3, Minor: 5}, walVersion.MinimalEtcdVersion())
 }
 
 func waitForClusterVersionReady(srv *embed.Etcd) error {
