@@ -129,7 +129,7 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc kubernetes.Interface, s 
 		}
 		hasMore = resp.Count > int64(len(resp.Kvs))
 		if hasMore {
-			cont = string(kvs[len(kvs)-1].Key)
+			cont = string(kvs[len(kvs)-1].Key) + "\x00"
 		}
 	}
 	s.Reset(revision, kvs)
