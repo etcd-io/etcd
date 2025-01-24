@@ -3,7 +3,11 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 <hr>
 
-## v3.5.18 (TBC)
+## v3.5.19 (TBC)
+
+<hr>
+
+## v3.5.18 (2025-01-24)
 
 ### etcd server
 - Avoid deadlock in etcd.Close when stopping during bootstrapping, see https://github.com/etcd-io/etcd/pull/19167 and https://github.com/etcd-io/etcd/pull/19258.
