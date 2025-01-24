@@ -818,6 +818,70 @@ func TestWarningApplyDuration(t *testing.T) {
 	}
 }
 
+// TestBootstrapDefragThresholdMegabytesFlagMigration tests the migration from
+// --experimental-bootstrap-defrag-threshold-megabytes to --bootstrap-defrag-threshold-megabytes
+// TODO: delete in v3.7
+func TestBootstrapDefragThresholdMegabytesFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                                          string
+		bootstrapDefragThresholdMegabytes             uint
+		experimentalBootstrapDefragThresholdMegabytes uint
+		expectErr                                     bool
+		expectedBootstrapDefragThresholdMegabytes     uint
+	}{
+		{
+			name:                              "cannot set both experimental flag and non experimental flag",
+			bootstrapDefragThresholdMegabytes: 100,
+			experimentalBootstrapDefragThresholdMegabytes: 200,
+			expectErr: true,
+		},
+		{
+			name: "can set experimental flag",
+			experimentalBootstrapDefragThresholdMegabytes: 200,
+			expectedBootstrapDefragThresholdMegabytes:     200,
+		},
+		{
+			name:                              "can set non experimental flag",
+			bootstrapDefragThresholdMegabytes: 100,
+			expectedBootstrapDefragThresholdMegabytes: 100,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
+				BootstrapDefragThresholdMegabytes             uint `json:"bootstrap-defrag-threshold-megabytes,omitempty"`
+			}{}
+
+			if tc.bootstrapDefragThresholdMegabytes != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--bootstrap-defrag-threshold-megabytes=%d", tc.bootstrapDefragThresholdMegabytes))
+				yc.BootstrapDefragThresholdMegabytes = tc.bootstrapDefragThresholdMegabytes
+			}
+
+			if tc.experimentalBootstrapDefragThresholdMegabytes != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-bootstrap-defrag-threshold-megabytes=%d", tc.experimentalBootstrapDefragThresholdMegabytes))
+				yc.ExperimentalBootstrapDefragThresholdMegabytes = tc.experimentalBootstrapDefragThresholdMegabytes
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.expectedBootstrapDefragThresholdMegabytes, cfgFromCmdLine.ec.BootstrapDefragThresholdMegabytes)
+			require.Equal(t, tc.expectedBootstrapDefragThresholdMegabytes, cfgFromFile.ec.BootstrapDefragThresholdMegabytes)
+		})
+	}
+}
+
 // TODO delete in v3.7
 func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) (*config, error, *config, error) {
 	b, err := yaml.Marshal(&yc)
@@ -922,15 +986,16 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 func TestConfigFileDeprecatedOptions(t *testing.T) {
 	// Define a minimal config struct with only the fields we need
 	type configFileYAML struct {
-		SnapshotCount                           uint64        `json:"snapshot-count,omitempty"`
-		MaxSnapFiles                            uint          `json:"max-snapshots,omitempty"`
-		ExperimentalCompactHashCheckEnabled     bool          `json:"experimental-compact-hash-check-enabled,omitempty"`
-		ExperimentalCompactHashCheckTime        time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
-		ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
-		ExperimentalCorruptCheckTime            time.Duration `json:"experimental-corrupt-check-time,omitempty"`
-		ExperimentalCompactionBatchLimit        int           `json:"experimental-compaction-batch-limit,omitempty"`
-		ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
-		ExperimentalWarningApplyDuration        time.Duration `json:"experimental-warning-apply-duration,omitempty"`
+		SnapshotCount                                 uint64        `json:"snapshot-count,omitempty"`
+		MaxSnapFiles                                  uint          `json:"max-snapshots,omitempty"`
+		ExperimentalCompactHashCheckEnabled           bool          `json:"experimental-compact-hash-check-enabled,omitempty"`
+		ExperimentalCompactHashCheckTime              time.Duration `json:"experimental-compact-hash-check-time,omitempty"`
+		ExperimentalWarningUnaryRequestDuration       time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
+		ExperimentalCorruptCheckTime                  time.Duration `json:"experimental-corrupt-check-time,omitempty"`
+		ExperimentalCompactionBatchLimit              int           `json:"experimental-compaction-batch-limit,omitempty"`
+		ExperimentalWatchProgressNotifyInterval       time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
+		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
+		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
 	}
 
 	testCases := []struct {
@@ -946,21 +1011,23 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		{
 			name: "deprecated experimental options",
 			configFileYAML: configFileYAML{
-				ExperimentalCompactHashCheckEnabled:     true,
-				ExperimentalCompactHashCheckTime:        2 * time.Minute,
-				ExperimentalWarningUnaryRequestDuration: time.Second,
-				ExperimentalCorruptCheckTime:            time.Minute,
-				ExperimentalCompactionBatchLimit:        1,
-				ExperimentalWatchProgressNotifyInterval: 3 * time.Minute,
-				ExperimentalWarningApplyDuration:        3 * time.Minute,
+				ExperimentalCompactHashCheckEnabled:           true,
+				ExperimentalCompactHashCheckTime:              2 * time.Minute,
+				ExperimentalWarningUnaryRequestDuration:       time.Second,
+				ExperimentalCorruptCheckTime:                  time.Minute,
+				ExperimentalCompactionBatchLimit:              1,
+				ExperimentalWatchProgressNotifyInterval:       3 * time.Minute,
+				ExperimentalWarningApplyDuration:              3 * time.Minute,
+				ExperimentalBootstrapDefragThresholdMegabytes: 100,
 			},
 			expectedFlags: map[string]struct{}{
-				"experimental-compact-hash-check-enabled":     {},
-				"experimental-compact-hash-check-time":        {},
-				"experimental-corrupt-check-time":             {},
-				"experimental-compaction-batch-limit":         {},
-				"experimental-watch-progress-notify-interval": {},
-				"experimental-warning-apply-duration":         {},
+				"experimental-compact-hash-check-enabled":           {},
+				"experimental-compact-hash-check-time":              {},
+				"experimental-corrupt-check-time":                   {},
+				"experimental-compaction-batch-limit":               {},
+				"experimental-watch-progress-notify-interval":       {},
+				"experimental-warning-apply-duration":               {},
+				"experimental-bootstrap-defrag-threshold-megabytes": {},
 			},
 		},
 		{

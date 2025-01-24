@@ -234,11 +234,11 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		WarningApplyDuration:                 cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
 		ExperimentalMemoryMlock:              cfg.ExperimentalMemoryMlock,
-		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
-		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
-		V2Deprecation:                                 cfg.V2DeprecationEffective(),
-		ExperimentalLocalAddress:                      cfg.InferLocalAddr(),
-		ServerFeatureGate:                             cfg.ServerFeatureGate,
+		BootstrapDefragThresholdMegabytes:    cfg.BootstrapDefragThresholdMegabytes,
+		ExperimentalMaxLearners:              cfg.ExperimentalMaxLearners,
+		V2Deprecation:                        cfg.V2DeprecationEffective(),
+		ExperimentalLocalAddress:             cfg.InferLocalAddr(),
+		ServerFeatureGate:                    cfg.ServerFeatureGate,
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {

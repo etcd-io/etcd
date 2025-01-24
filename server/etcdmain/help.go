@@ -304,6 +304,8 @@ Experimental feature:
   --experimental-txn-mode-write-with-shared-buffer 'true'. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
+    Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'bootstrap-defrag-threshold-megabytes' instead.
+  --bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
   --experimental-warning-unary-request-duration '300ms'
     Set time duration after which a warning is generated if a unary request takes more than this duration. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.
