@@ -19,14 +19,13 @@ import (
 	"os"
 	"time"
 
-	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
@@ -51,7 +50,7 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
 	}
-	bcfg.Mlock = cfg.ServerFeatureGate.Enabled(features.MemoryMlock)
+	bcfg.Mlock = cfg.ExperimentalMemoryMlock
 	bcfg.Hooks = hooks
 	return backend.New(bcfg)
 }

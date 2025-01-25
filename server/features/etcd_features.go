@@ -17,8 +17,9 @@ package features
 import (
 	"fmt"
 
-	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 )
 
 const (
@@ -59,11 +60,6 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/14120
 	CompactHashCheck featuregate.Feature = "CompactHashCheck"
-	// MemoryMlock enforces etcd pages (in particular bbolt) to stay in RAM
-	// owner: @serathius
-	// alpha: v3.5
-	// main PR: https://github.com/etcd-io/etcd/pull/12750
-	MemoryMlock featuregate.Feature = "MemoryMlock"
 )
 
 var (
@@ -73,7 +69,6 @@ var (
 		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
 		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
 		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
-		MemoryMlock:                  {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
@@ -83,7 +78,6 @@ var (
 		"experimental-initial-corrupt-check":             InitialCorruptCheck,
 		"experimental-compact-hash-check-enabled":        CompactHashCheck,
 		"experimental-txn-mode-write-with-shared-buffer": TxnModeWriteWithSharedBuffer,
-		"experimental-memory-mlock":                      MemoryMlock,
 	}
 )
 
