@@ -1297,6 +1297,40 @@
         ]
       }
     },
+    "/v3/maintenance/downgrade-version-test": {
+      "post": {
+        "summary": "DowngradeVersionTest is used for test only. Users (test cases) sends\na DowngradeVersionTestRequest request (with a version) to etcdserver,\nwhich will be processed by raft, so a related WAL record will be\ngenerated for the request.",
+        "description": "The version of the request will be read as the WAL record version.\nIf the downgrade target version is less than this version, then\nthe downgrade(online) or migration(offline) isn't safe, so shouldn't\nbe allowed.\nSupported since etcd 3.6.",
+        "operationId": "Maintenance_DowngradeVersionTest",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeVersionTestResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbDowngradeVersionTestRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Maintenance"
+        ]
+      }
+    },
     "/v3/maintenance/hash": {
       "post": {
         "summary": "Hash computes the hash of whole backend keyspace,\nincluding key, lease, and other buckets in storage.\nThis is designed for testing ONLY!\nDo not rely on this in production with ongoing transactions,\nsince Hash operation does not hold MVCC locks.\nUse \"HashKV\" API instead for \"key\" bucket consistency checks.",
@@ -2157,6 +2191,22 @@
         "version": {
           "type": "string",
           "description": "version is the current cluster version."
+        }
+      }
+    },
+    "etcdserverpbDowngradeVersionTestRequest": {
+      "type": "object",
+      "properties": {
+        "ver": {
+          "type": "string"
+        }
+      }
+    },
+    "etcdserverpbDowngradeVersionTestResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
         }
       }
     },

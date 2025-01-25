@@ -270,6 +270,23 @@ service Maintenance {
       body: "*"
     };
   }
+
+  // DowngradeVersionTest is used for test only. Users (test cases) sends
+  // a DowngradeVersionTestRequest request (with a version) to etcdserver,
+  // which will be processed by raft, so a related WAL record will be
+  // generated for the request.
+  //
+  // The version of the request will be read as the WAL record version.
+  // If the downgrade target version is less than this version, then
+  // the downgrade(online) or migration(offline) isn't safe, so shouldn't
+  // be allowed.
+  // Supported since etcd 3.6.
+  rpc DowngradeVersionTest(DowngradeVersionTestRequest) returns (DowngradeVersionTestResponse) {
+    option (google.api.http) = {
+      post: "/v3/maintenance/downgrade-version-test"
+      body: "*"
+    };
+  }
 }
 
 service Auth {
@@ -1157,6 +1174,19 @@ message DowngradeResponse {
   // version is the current cluster version.
   string version = 2;
 }
+
+message DowngradeVersionTestRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
+
+  string ver = 1;
+}
+
+message DowngradeVersionTestResponse {
+  option (versionpb.etcd_version_msg) = "3.6";
+
+  ResponseHeader header = 1;
+}
+
 
 message StatusRequest {
   option (versionpb.etcd_version_msg) = "3.0";
