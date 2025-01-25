@@ -35,6 +35,12 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 	raftReq := etcdserverpb.InternalRaftRequest{Header: &etcdserverpb.RequestHeader{AuthRevision: 1}}
 	normalRequestData := pbutil.MustMarshal(&raftReq)
 
+	downgradeVersionTestV3_6Req := etcdserverpb.InternalRaftRequest{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.6.0"}}
+	downgradeVersionTestV3_6Data := pbutil.MustMarshal(&downgradeVersionTestV3_6Req)
+
+	downgradeVersionTestV3_7Req := etcdserverpb.InternalRaftRequest{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.7.0"}}
+	downgradeVersionTestV3_7Data := pbutil.MustMarshal(&downgradeVersionTestV3_7Req)
+
 	confChange := raftpb.ConfChange{Type: raftpb.ConfChangeAddLearnerNode}
 	confChangeData := pbutil.MustMarshal(&confChange)
 
@@ -55,6 +61,26 @@ func TestEtcdVersionFromEntry(t *testing.T) {
 				Data:  normalRequestData,
 			},
 			expect: &version.V3_1,
+		},
+		{
+			name: "Setting downgradeTest version to 3.6 implies version within WAL",
+			input: raftpb.Entry{
+				Term:  1,
+				Index: 2,
+				Type:  raftpb.EntryNormal,
+				Data:  downgradeVersionTestV3_6Data,
+			},
+			expect: &version.V3_6,
+		},
+		{
+			name: "Setting downgradeTest version to 3.7 implies version within WAL",
+			input: raftpb.Entry{
+				Term:  1,
+				Index: 2,
+				Type:  raftpb.EntryNormal,
+				Data:  downgradeVersionTestV3_7Data,
+			},
+			expect: &version.V3_7,
 		},
 		{
 			name: "Using ConfigChange implies v3.0",
