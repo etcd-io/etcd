@@ -41,11 +41,11 @@ func (e integrationRunner) TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)
 }
 
-func (e integrationRunner) BeforeTest(t testing.TB) {
-	BeforeTest(t)
+func (e integrationRunner) BeforeTest(tb testing.TB) {
+	BeforeTest(tb)
 }
 
-func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
+func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	var err error
 	cfg := config.NewClusterConfig(opts...)
 	integrationCfg := ClusterConfig{
@@ -55,27 +55,27 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
 	}
-	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+	integrationCfg.ClientTLS, err = tlsInfo(tb, cfg.ClientTLS)
 	if err != nil {
-		t.Fatalf("ClientTLS: %s", err)
+		tb.Fatalf("ClientTLS: %s", err)
 	}
-	integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
+	integrationCfg.PeerTLS, err = tlsInfo(tb, cfg.PeerTLS)
 	if err != nil {
-		t.Fatalf("PeerTLS: %s", err)
+		tb.Fatalf("PeerTLS: %s", err)
 	}
 	return &integrationCluster{
-		Cluster: NewCluster(t, &integrationCfg),
-		t:       t,
+		Cluster: NewCluster(tb, &integrationCfg),
+		t:       tb,
 		ctx:     ctx,
 	}
 }
 
-func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
+func tlsInfo(tb testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 	switch cfg {
 	case config.NoTLS:
 		return nil, nil
 	case config.AutoTLS:
-		tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
+		tls, err := transport.SelfCert(zap.NewNop(), tb.TempDir(), []string{"localhost"}, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate cert: %w", err)
 		}

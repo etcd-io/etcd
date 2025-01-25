@@ -69,13 +69,13 @@ func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3
 }
 
 // tlsInfo follows the Client-to-server communication in https://etcd.io/docs/v3.6/op-guide/security/#basic-setup
-func tlsInfo(t testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
+func tlsInfo(tb testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 	switch cfg.ConnectionType {
 	case e2e.ClientNonTLS, e2e.ClientTLSAndNonTLS:
 		return nil, nil
 	case e2e.ClientTLS:
 		if cfg.AutoTLS {
-			tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
+			tls, err := transport.SelfCert(zap.NewNop(), tb.TempDir(), []string{"localhost"}, 1)
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate cert: %w", err)
 			}

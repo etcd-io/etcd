@@ -425,23 +425,23 @@ func WithExtensiveMetrics() EPClusterOption {
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
-func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
+func NewEtcdProcessCluster(ctx context.Context, tb testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
 	cfg := NewConfig(opts...)
-	epc, err := InitEtcdProcessCluster(t, cfg)
+	epc, err := InitEtcdProcessCluster(tb, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return StartEtcdProcessCluster(ctx, t, epc, cfg)
+	return StartEtcdProcessCluster(ctx, tb, epc, cfg)
 }
 
 // InitEtcdProcessCluster initializes a new cluster based on the given config.
 // It doesn't start the cluster.
-func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
-	SkipInShortMode(t)
+func InitEtcdProcessCluster(tb testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	SkipInShortMode(tb)
 
 	if cfg.Logger == nil {
-		cfg.Logger = zaptest.NewLogger(t)
+		cfg.Logger = zaptest.NewLogger(tb)
 	}
 	if cfg.BasePort == 0 {
 		cfg.BasePort = EtcdProcessBasePort
@@ -460,17 +460,17 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		}
 	}
 
-	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
+	etcdCfgs := cfg.EtcdAllServerProcessConfigs(tb)
 	epc := &EtcdProcessCluster{
 		Cfg:     cfg,
-		lg:      zaptest.NewLogger(t),
+		lg:      zaptest.NewLogger(tb),
 		Procs:   make([]EtcdProcess, cfg.ClusterSize),
 		nextSeq: cfg.ClusterSize,
 	}
 
 	// launch etcd processes
 	for i := range etcdCfgs {
-		proc, err := NewEtcdProcess(t, etcdCfgs[i])
+		proc, err := NewEtcdProcess(tb, etcdCfgs[i])
 		if err != nil {
 			epc.Close()
 			return nil, fmt.Errorf("cannot configure: %w", err)
@@ -482,7 +482,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 }
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
-func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func StartEtcdProcessCluster(ctx context.Context, tb testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	if cfg.RollingStart {
 		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %w", err)
@@ -496,11 +496,11 @@ func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcess
 	for _, proc := range epc.Procs {
 		if cfg.GoFailEnabled && !proc.Failpoints().Enabled() {
 			epc.Close()
-			t.Skip("please run 'make gofail-enable && make build' before running the test")
+			tb.Skip("please run 'make gofail-enable && make build' before running the test")
 		}
 	}
 	if cfg.InitialLeaderIndex >= 0 {
-		if err := epc.MoveLeader(ctx, t, cfg.InitialLeaderIndex); err != nil {
+		if err := epc.MoveLeader(ctx, tb, cfg.InitialLeaderIndex); err != nil {
 			return nil, fmt.Errorf("failed to move leader: %w", err)
 		}
 	}
@@ -1078,29 +1078,29 @@ func findMemberIDByEndpoint(members []*etcdserverpb.Member, endpoint string) (ui
 
 // WaitLeader returns index of the member in c.Members() that is leader
 // or fails the test (if not established in 30s).
-func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+func (epc *EtcdProcessCluster) WaitLeader(tb testing.TB) int {
+	ctx, cancel := context.WithTimeout(tb.Context(), 30*time.Second)
 	defer cancel()
-	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	return epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
+func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, tb testing.TB, membs []EtcdProcess) int {
 	cc := epc.Etcdctl()
 
 	// ensure leader is up via linearizable get
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
+			tb.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
 		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
-		t.Logf("WaitMembersForLeader Get err: %v", err)
+		tb.Logf("WaitMembersForLeader Get err: %v", err)
 	}
 
 	leaders := make(map[uint64]struct{})
@@ -1108,7 +1108,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
+			tb.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
 		for i := range membs {
@@ -1118,7 +1118,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 					// if member[i] has stopped
 					continue
 				}
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			members[resp[0].Header.MemberId] = i
 			leaders[resp[0].Leader] = struct{}{}
@@ -1133,24 +1133,24 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	}
 	for l := range leaders {
 		if index, ok := members[l]; ok {
-			t.Logf("members agree on a leader, members:%v , leader:%v", members, l)
+			tb.Logf("members agree on a leader, members:%v , leader:%v", members, l)
 			return index
 		}
-		t.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
+		tb.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
 	}
-	t.Fatal("impossible path of execution")
+	tb.Fatal("impossible path of execution")
 	return -1
 }
 
 // MoveLeader moves the leader to the ith process.
-func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i int) error {
+func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, tb testing.TB, i int) error {
 	if i < 0 || i >= len(epc.Procs) {
 		return fmt.Errorf("invalid index: %d, must between 0 and %d", i, len(epc.Procs)-1)
 	}
-	t.Logf("moving leader to Procs[%d]", i)
-	oldLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	tb.Logf("moving leader to Procs[%d]", i)
+	oldLeader := epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 	if oldLeader == i {
-		t.Logf("Procs[%d] is already the leader", i)
+		tb.Logf("Procs[%d] is already the leader", i)
 		return nil
 	}
 	resp, err := epc.Procs[i].Etcdctl().Status(ctx)
@@ -1162,10 +1162,10 @@ func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i i
 	if err != nil {
 		return err
 	}
-	newLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	newLeader := epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 	if newLeader != i {
-		t.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
+		tb.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
 	}
-	t.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
+	tb.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
 	return nil
 }

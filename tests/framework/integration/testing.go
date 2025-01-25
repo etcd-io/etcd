@@ -138,18 +138,18 @@ func assertInTestContext(t testutil.TB) {
 	}
 }
 
-func NewEmbedConfig(t testing.TB, name string) *embed.Config {
+func NewEmbedConfig(tb testing.TB, name string) *embed.Config {
 	cfg := embed.NewConfig()
 	cfg.Name = name
-	lg := zaptest.NewLogger(t, zaptest.Level(zapcore.InfoLevel)).Named(cfg.Name)
+	lg := zaptest.NewLogger(tb, zaptest.Level(zapcore.InfoLevel)).Named(cfg.Name)
 	cfg.ZapLoggerBuilder = embed.NewZapLoggerBuilder(lg)
-	cfg.Dir = t.TempDir()
+	cfg.Dir = tb.TempDir()
 	return cfg
 }
 
-func NewClient(t testing.TB, cfg clientv3.Config) (*clientv3.Client, error) {
+func NewClient(tb testing.TB, cfg clientv3.Config) (*clientv3.Client, error) {
 	if cfg.Logger == nil {
-		cfg.Logger = zaptest.NewLogger(t).Named("client")
+		cfg.Logger = zaptest.NewLogger(tb).Named("client")
 	}
 	return clientv3.New(cfg)
 }

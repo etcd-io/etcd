@@ -39,11 +39,11 @@ func (e e2eRunner) TestMain(m *testing.M) {
 	os.Exit(v)
 }
 
-func (e e2eRunner) BeforeTest(t testing.TB) {
-	BeforeTest(t)
+func (e e2eRunner) BeforeTest(tb testing.TB) {
+	BeforeTest(tb)
 }
 
-func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
+func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	cfg := config.NewClusterConfig(opts...)
 	e2eConfig := NewConfig(
 		WithClusterSize(cfg.ClusterSize),
@@ -68,7 +68,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 		e2eConfig.Client.AutoTLS = false
 		e2eConfig.Client.ConnectionType = ClientTLS
 	default:
-		t.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
+		tb.Fatalf("ClientTLS config %q not supported", cfg.ClientTLS)
 	}
 	switch cfg.PeerTLS {
 	case config.NoTLS:
@@ -81,13 +81,13 @@ func (e e2eRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.
 		e2eConfig.IsPeerTLS = true
 		e2eConfig.IsPeerAutoTLS = false
 	default:
-		t.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
+		tb.Fatalf("PeerTLS config %q not supported", cfg.PeerTLS)
 	}
-	epc, err := NewEtcdProcessCluster(ctx, t, WithConfig(e2eConfig))
+	epc, err := NewEtcdProcessCluster(ctx, tb, WithConfig(e2eConfig))
 	if err != nil {
-		t.Fatalf("could not start etcd integrationCluster: %s", err)
+		tb.Fatalf("could not start etcd integrationCluster: %s", err)
 	}
-	return &e2eCluster{t, *epc}
+	return &e2eCluster{tb, *epc}
 }
 
 type e2eCluster struct {
