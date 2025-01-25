@@ -1044,6 +1044,16 @@ func (s *EtcdServer) downgradeEnable(ctx context.Context, r *pb.DowngradeRequest
 	return &resp, nil
 }
 
+// DowngradeVersionTest is for test only! We intentionally send
+// a raft request so that a related WAL record can be generated.
+func (s *EtcdServer) DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest) (*pb.DowngradeVersionTestResponse, error) {
+	_, err := s.raftRequest(ctx, pb.InternalRaftRequest{DowngradeVersionTest: r})
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DowngradeVersionTestResponse{}, nil
+}
+
 func (s *EtcdServer) downgradeCancel(ctx context.Context) (*pb.DowngradeResponse, error) {
 	err := s.Version().DowngradeCancel(ctx)
 	if err != nil {

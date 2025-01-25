@@ -476,6 +476,10 @@ func (mm mockMaintenance) Downgrade(ctx context.Context, action DowngradeAction,
 	return nil, nil
 }
 
+func (mm mockMaintenance) DowngradeVersionTest(ctx context.Context, version string) (*DowngradeVersionTestResponse, error) {
+	return nil, nil
+}
+
 type mockAuthServer struct {
 	*etcdserverpb.UnimplementedAuthServer
 }

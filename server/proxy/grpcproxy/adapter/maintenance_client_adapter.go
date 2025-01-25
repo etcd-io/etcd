@@ -56,6 +56,10 @@ func (s *mts2mtc) Downgrade(ctx context.Context, r *pb.DowngradeRequest, opts ..
 	return s.mts.Downgrade(ctx, r)
 }
 
+func (s *mts2mtc) DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest, opts ...grpc.CallOption) (*pb.DowngradeVersionTestResponse, error) {
+	return s.mts.DowngradeVersionTest(ctx, r)
+}
+
 func (s *mts2mtc) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (pb.Maintenance_SnapshotClient, error) {
 	cs := newPipeStream(ctx, func(ss chanServerStream) error {
 		return s.mts.Snapshot(in, &ss2scServerStream{ss})

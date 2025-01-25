@@ -35,7 +35,8 @@ type (
 	MoveLeaderResponse pb.MoveLeaderResponse
 	DowngradeResponse  pb.DowngradeResponse
 
-	DowngradeAction pb.DowngradeRequest_DowngradeAction
+	DowngradeAction              pb.DowngradeRequest_DowngradeAction
+	DowngradeVersionTestResponse pb.DowngradeVersionTestResponse
 )
 
 const (
@@ -87,6 +88,10 @@ type Maintenance interface {
 	// on the cluster version.
 	// Supported since etcd 3.5.
 	Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error)
+
+	// DowngradeVersionTest is for test only! It enables users (test cases)
+	// to send a DowngradeVersionTestRequest to etcdserver.
+	DowngradeVersionTest(ctx context.Context, version string) (*DowngradeVersionTestResponse, error)
 }
 
 // SnapshotResponse is aggregated response from the snapshot stream.
@@ -347,4 +352,9 @@ func (m *maintenance) Downgrade(ctx context.Context, action DowngradeAction, ver
 	}
 	resp, err := m.remote.Downgrade(ctx, &pb.DowngradeRequest{Action: actionType, Version: version}, m.callOpts...)
 	return (*DowngradeResponse)(resp), ContextError(ctx, err)
+}
+
+func (m *maintenance) DowngradeVersionTest(ctx context.Context, version string) (*DowngradeVersionTestResponse, error) {
+	resp, err := m.remote.DowngradeVersionTest(ctx, &pb.DowngradeVersionTestRequest{Ver: version})
+	return (*DowngradeVersionTestResponse)(resp), ContextError(ctx, err)
 }

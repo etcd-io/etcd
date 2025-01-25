@@ -233,6 +233,10 @@ type retryAuthClient struct {
 	ac pb.AuthClient
 }
 
+func (rmc *retryMaintenanceClient) DowngradeVersionTest(ctx context.Context, in *pb.DowngradeVersionTestRequest, opts ...grpc.CallOption) (resp *pb.DowngradeVersionTestResponse, err error) {
+	return rmc.mc.DowngradeVersionTest(ctx, in, opts...)
+}
+
 // RetryAuthClient implements a AuthClient.
 func RetryAuthClient(c *Client) pb.AuthClient {
 	return &retryAuthClient{

@@ -86,3 +86,7 @@ func (mp *maintenanceProxy) MoveLeader(ctx context.Context, r *pb.MoveLeaderRequ
 func (mp *maintenanceProxy) Downgrade(ctx context.Context, r *pb.DowngradeRequest) (*pb.DowngradeResponse, error) {
 	return mp.maintenanceClient.Downgrade(ctx, r)
 }
+
+func (mp *maintenanceProxy) DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest) (*pb.DowngradeVersionTestResponse, error) {
+	return mp.maintenanceClient.DowngradeVersionTest(ctx, r)
+}

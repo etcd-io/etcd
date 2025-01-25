@@ -55,6 +55,7 @@ type Alarmer interface {
 
 type Downgrader interface {
 	Downgrade(ctx context.Context, dr *pb.DowngradeRequest) (*pb.DowngradeResponse, error)
+	DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest) (*pb.DowngradeVersionTestResponse, error)
 }
 
 type LeaderTransferrer interface {
@@ -296,6 +297,16 @@ func (ms *maintenanceServer) Downgrade(ctx context.Context, r *pb.DowngradeReque
 	return resp, nil
 }
 
+func (ms *maintenanceServer) DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest) (*pb.DowngradeVersionTestResponse, error) {
+	resp, err := ms.d.DowngradeVersionTest(ctx, r)
+	if err != nil {
+		return nil, togRPCError(err)
+	}
+	resp.Header = &pb.ResponseHeader{}
+	ms.hdr.fill(resp.Header)
+	return resp, nil
+}
+
 type authMaintenanceServer struct {
 	*maintenanceServer
 	*AuthAdmin
@@ -354,4 +365,12 @@ func (ams *authMaintenanceServer) Downgrade(ctx context.Context, r *pb.Downgrade
 	}
 
 	return ams.maintenanceServer.Downgrade(ctx, r)
+}
+
+func (ams *authMaintenanceServer) DowngradeVersionTest(ctx context.Context, r *pb.DowngradeVersionTestRequest) (*pb.DowngradeVersionTestResponse, error) {
+	if err := ams.isPermitted(ctx); err != nil {
+		return nil, togRPCError(err)
+	}
+
+	return ams.maintenanceServer.DowngradeVersionTest(ctx, r)
 }
