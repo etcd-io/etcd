@@ -50,7 +50,8 @@ func newBackend(cfg config.ServerConfig, hooks backend.Hooks) backend.Backend {
 		// permit 10% excess over quota for disarm
 		bcfg.MmapSize = uint64(cfg.QuotaBackendBytes + cfg.QuotaBackendBytes/10)
 	}
-	bcfg.Mlock = cfg.ExperimentalMemoryMlock
+	// TODO: remove the cfg.ExperimentalMemoryMlock part in v3.7
+	bcfg.Mlock = cfg.MemoryMlock || cfg.ExperimentalMemoryMlock
 	bcfg.Hooks = hooks
 	return backend.New(bcfg)
 }
