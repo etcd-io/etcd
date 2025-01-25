@@ -102,7 +102,7 @@ type EtcdServerProcessConfig struct {
 	Proxy         *proxy.ServerConfig
 }
 
-func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
+func NewEtcdServerProcess(tb testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
 	if !fileutil.Exist(cfg.ExecPath) {
 		return nil, fmt.Errorf("could not find etcd binary: %s", cfg.ExecPath)
 	}
@@ -122,7 +122,7 @@ func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServ
 		}
 	}
 	if cfg.LazyFSEnabled {
-		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, t)
+		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, tb)
 	}
 	return ep, nil
 }
