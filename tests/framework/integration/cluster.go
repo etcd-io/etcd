@@ -412,23 +412,23 @@ func (c *Cluster) WaitMembersMatch(t testutil.TB, membs []*pb.Member) {
 
 // WaitLeader returns index of the member in c.Members that is leader
 // or fails the test (if not established in 30s).
-func (c *Cluster) WaitLeader(t testing.TB) int {
-	return c.WaitMembersForLeader(t, c.Members)
+func (c *Cluster) WaitLeader(tb testing.TB) int {
+	return c.WaitMembersForLeader(tb, c.Members)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member) int {
-	t.Logf("WaitMembersForLeader")
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+func (c *Cluster) WaitMembersForLeader(tb testing.TB, membs []*Member) int {
+	tb.Logf("WaitMembersForLeader")
+	ctx, cancel := context.WithTimeout(tb.Context(), 30*time.Second)
 	defer cancel()
 	l := 0
-	for l = c.waitMembersForLeader(ctx, t, membs); l < 0; {
+	for l = c.waitMembersForLeader(ctx, tb, membs); l < 0; {
 		if ctx.Err() != nil {
-			t.Fatalf("WaitLeader FAILED: %v", ctx.Err())
+			tb.Fatalf("WaitLeader FAILED: %v", ctx.Err())
 		}
 	}
-	t.Logf("WaitMembersForLeader succeeded. Cluster leader index: %v", l)
+	tb.Logf("WaitMembersForLeader succeeded. Cluster leader index: %v", l)
 
 	// TODO: Consider second pass check as sometimes leadership is lost
 	// soon after election:
@@ -444,15 +444,15 @@ func (c *Cluster) WaitMembersForLeader(t testing.TB, membs []*Member) int {
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs []*Member) int {
+func (c *Cluster) waitMembersForLeader(ctx context.Context, tb testing.TB, membs []*Member) int {
 	possibleLead := make(map[uint64]bool)
 	var lead uint64
 	for _, m := range membs {
 		possibleLead[uint64(m.Server.MemberID())] = true
 	}
-	cc, err := c.ClusterClient(t)
+	cc, err := c.ClusterClient(tb)
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	// ensure leader is up via linearizable get
 	for {
@@ -483,12 +483,12 @@ func (c *Cluster) waitMembersForLeader(ctx context.Context, t testing.TB, membs 
 
 	for i, m := range membs {
 		if uint64(m.Server.MemberID()) == lead {
-			t.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
+			tb.Logf("waitMembersForLeader found leader. Member: %v lead: %x", i, lead)
 			return i
 		}
 	}
 
-	t.Logf("waitMembersForLeader failed (-1)")
+	tb.Logf("waitMembersForLeader failed (-1)")
 	return -1
 }
 
@@ -1457,7 +1457,7 @@ func (c *Cluster) Endpoints() []string {
 	return endpoints
 }
 
-func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (client *clientv3.Client, err error) {
+func (c *Cluster) ClusterClient(tb testing.TB, opts ...framecfg.ClientOption) (client *clientv3.Client, err error) {
 	cfg, err := c.newClientCfg()
 	if err != nil {
 		return nil, err
@@ -1469,7 +1469,7 @@ func (c *Cluster) ClusterClient(t testing.TB, opts ...framecfg.ClientOption) (cl
 	if err != nil {
 		return nil, err
 	}
-	t.Cleanup(func() {
+	tb.Cleanup(func() {
 		client.Close()
 	})
 	return client, nil
