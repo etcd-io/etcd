@@ -2006,7 +2006,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 }
 
 func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply.Result {
-	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil {
+	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil && r.DowngradeVersionTest == nil {
 		if !shouldApplyV3 {
 			return nil
 		}
@@ -2029,6 +2029,11 @@ func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldA
 	case r.DowngradeInfoSet != nil:
 		op = "DowngradeInfoSet" // Implemented in 3.5.x
 		membershipApplier.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
+	case r.DowngradeVersionTest != nil:
+		op = "DowngradeVersionTest" // Implemented in 3.6 for test only
+		// do nothing, we are just to ensure etcdserver don't panic in case
+		// users(test cases) intentionally inject DowngradeVersionTestRequest
+		// into the WAL files.
 	default:
 		s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
 		return nil
