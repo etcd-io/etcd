@@ -67,6 +67,7 @@ var (
 		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
 		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
 		"experimental-compaction-batch-limit":            "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
+		"experimental-memory-mlock":                      "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
 	}
 )
 
@@ -182,6 +183,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-compaction-batch-limit"] {
 		cfg.ec.CompactionBatchLimit = cfg.ec.ExperimentalCompactionBatchLimit
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-memory-mlock"] {
+		cfg.ec.MemoryMlock = cfg.ec.ExperimentalMemoryMlock
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.

@@ -471,12 +471,16 @@ type Config struct {
 
 	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
 
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// MemoryMlock enables mlocking of etcd owned memory pages.
 	// The setting improves etcd tail latency in environments were:
 	//   - memory pressure might lead to swapping pages to disk
 	//   - disk latency might be unstable
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
+	MemoryMlock bool `json:"memory-mlock"`
+
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use MemoryMlock.
+	// TODO: Delete in v3.7
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
@@ -594,6 +598,7 @@ func NewConfig() *Config {
 		EnableGRPCGateway:     true,
 
 		ExperimentalDowngradeCheckTime:      DefaultDowngradeCheckTime,
+		MemoryMlock:                         false,
 		ExperimentalMemoryMlock:             false,
 		ExperimentalStopGRPCServiceOnDefrag: false,
 		ExperimentalMaxLearners:             membership.DefaultMaxLearners,
@@ -802,7 +807,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
 	fs.DurationVar(&cfg.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.")
+	// TODO: delete in v3.7
 	fs.BoolVar(&cfg.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
+	fs.BoolVar(&cfg.MemoryMlock, "memory-mlock", cfg.MemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.BoolVar(&cfg.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
 	fs.BoolVar(&cfg.ExperimentalStopGRPCServiceOnDefrag, "experimental-stop-grpc-service-on-defrag", cfg.ExperimentalStopGRPCServiceOnDefrag, "Enable etcd gRPC service to stop serving client requests on defragmentation.")
 	fs.UintVar(&cfg.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
