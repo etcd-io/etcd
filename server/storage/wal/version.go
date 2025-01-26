@@ -112,6 +112,16 @@ func visitEntryData(entryType raftpb.EntryType, data []byte, visitor Visitor) er
 			break
 		}
 		msg = proto.MessageReflect(&raftReq)
+		if raftReq.DowngradeVersionTest != nil {
+			ver, err := semver.NewVersion(raftReq.DowngradeVersionTest.Ver)
+			if err != nil {
+				return err
+			}
+			err = visitor(msg.Descriptor().FullName(), ver)
+			if err != nil {
+				return err
+			}
+		}
 	case raftpb.EntryConfChange:
 		var confChange raftpb.ConfChange
 		err := pbutil.Unmarshaler(&confChange).Unmarshal(data)
