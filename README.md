@@ -10,7 +10,7 @@
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://scorecard.dev/viewer/?uri=github.com/etcd-io/etcd)
 
-**Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
+**Note**: The main branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/cncf/artwork/9870640f123303a355611065195c43ac3f27aa19/projects/etcd/horizontal/white/etcd-horizontal-white.png">
