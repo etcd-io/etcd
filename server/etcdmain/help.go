@@ -107,8 +107,6 @@ Member:
     Write timeout set on each rafthttp connection
   --feature-gates ''
     A set of key=value pairs that describe server level feature gates for alpha/experimental features. Options are:` + "\n    " + strings.Join(features.NewDefaultServerFeatureGate("", nil).KnownFeatures(), "\n    ") + `
-  --memory-mlock 'false'
-    Enable to enforce etcd pages (in particular bbolt) to stay in RAM.
 
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'

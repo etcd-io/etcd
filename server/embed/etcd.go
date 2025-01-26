@@ -208,7 +208,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CorruptCheckTime:                     cfg.CorruptCheckTime,
 		CompactHashCheckTime:                 cfg.CompactHashCheckTime,
 		PreVote:                              cfg.PreVote,
-		MemoryMlock:                          cfg.MemoryMlock,
 		Logger:                               cfg.logger,
 		ForceNewCluster:                      cfg.ForceNewCluster,
 		EnableGRPCGateway:                    cfg.EnableGRPCGateway,
