@@ -18,6 +18,7 @@ package e2e
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,6 +179,16 @@ func addMemberAsLearnerAndPromote(ctx context.Context, t *testing.T, epc *e2e.Et
 	id, err := epc.StartNewProc(ctx, nil, t, true /* addAsLearner */)
 	require.NoError(t, err)
 	_, err = epc.Etcdctl(e2e.WithEndpoints(endpoints)).MemberPromote(ctx, id)
+
+	attempt := 0
+	for attempt < 3 {
+		_, err = epc.Etcdctl(e2e.WithEndpoints(endpoints)).MemberPromote(ctx, id)
+		if err == nil || !strings.Contains(err.Error(), "can only promote a learner member which is in sync with leader") {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+		attempt++
+	}
 	require.NoError(t, err)
 
 	newLearnerMemberProc := epc.Procs[len(epc.Procs)-1]
