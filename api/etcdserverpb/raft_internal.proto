@@ -71,6 +71,8 @@ message InternalRaftRequest {
   membershippb.ClusterVersionSetRequest cluster_version_set = 1300 [(versionpb.etcd_version_field) = "3.5"];
   membershippb.ClusterMemberAttrSetRequest cluster_member_attr_set = 1301 [(versionpb.etcd_version_field) = "3.5"];
   membershippb.DowngradeInfoSetRequest  downgrade_info_set = 1302 [(versionpb.etcd_version_field) = "3.5"];
+
+  DowngradeVersionTestRequest downgrade_version_test = 9900 [(versionpb.etcd_version_field) = "3.6"];
 }
 
 message EmptyResponse {
