@@ -1158,6 +1158,16 @@ message DowngradeResponse {
   string version = 2;
 }
 
+// DowngradeVersionTestRequest is used for test only. The version in
+// this request will be read as the WAL record version.If the downgrade
+// target version is less than this version, then the downgrade(online)
+// or migration(offline) isn't safe, so shouldn't be allowed.
+message DowngradeVersionTestRequest {
+  option (versionpb.etcd_version_msg) = "3.6";
+
+  string ver = 1;
+}
+
 message StatusRequest {
   option (versionpb.etcd_version_msg) = "3.0";
 }
