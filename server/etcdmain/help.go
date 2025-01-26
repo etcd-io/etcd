@@ -296,12 +296,18 @@ Experimental feature:
   --experimental-peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
   --experimental-watch-progress-notify-interval '10m'
+    Duration of periodical watch progress notification. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'watch-progress-notify-interval' instead.
+  --watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
   --experimental-warning-apply-duration '100ms'
+    Warning is generated if requests take more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'warning-apply-duration' instead.
+  --warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
   --experimental-txn-mode-write-with-shared-buffer 'true'. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.
     Enable the write transaction to use a shared buffer in its readonly check operations.
   --experimental-bootstrap-defrag-threshold-megabytes
+    Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'bootstrap-defrag-threshold-megabytes' instead.
+  --bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
   --experimental-warning-unary-request-duration '300ms'
     Set time duration after which a warning is generated if a unary request takes more than this duration. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.

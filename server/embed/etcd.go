@@ -79,12 +79,24 @@ type Etcd struct {
 
 	Server *etcdserver.EtcdServer
 
-	cfg   Config
-	stopc chan struct{}
-	errc  chan error
+	cfg Config
 
+	// closeOnce is to ensure `stopc` is closed only once, no matter
+	// how many times the Close() method is called.
 	closeOnce sync.Once
-	wg        sync.WaitGroup
+	// stopc is used to notify the sub goroutines not to send
+	// any errors to `errc`.
+	stopc chan struct{}
+	// errc is used to receive error from sub goroutines (including
+	// client handler, peer handler and metrics handler). It's closed
+	// after all these sub goroutines exit (checked via `wg`). Writers
+	// should avoid writing after `stopc` is closed by selecting on
+	// reading from `stopc`.
+	errc chan error
+
+	// wg is used to track the lifecycle of all sub goroutines which
+	// need to send error back to the `errc`.
+	wg sync.WaitGroup
 }
 
 type peerListener struct {
@@ -217,16 +229,16 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		LeaseCheckpointPersist:               cfg.ExperimentalEnableLeaseCheckpointPersist,
 		CompactionBatchLimit:                 cfg.CompactionBatchLimit,
 		CompactionSleepInterval:              cfg.ExperimentalCompactionSleepInterval,
-		WatchProgressNotifyInterval:          cfg.ExperimentalWatchProgressNotifyInterval,
+		WatchProgressNotifyInterval:          cfg.WatchProgressNotifyInterval,
 		DowngradeCheckTime:                   cfg.ExperimentalDowngradeCheckTime,
-		WarningApplyDuration:                 cfg.ExperimentalWarningApplyDuration,
+		WarningApplyDuration:                 cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
 		MemoryMlock:                          cfg.MemoryMlock,
-		ExperimentalBootstrapDefragThresholdMegabytes: cfg.ExperimentalBootstrapDefragThresholdMegabytes,
-		ExperimentalMaxLearners:                       cfg.ExperimentalMaxLearners,
-		V2Deprecation:                                 cfg.V2DeprecationEffective(),
-		ExperimentalLocalAddress:                      cfg.InferLocalAddr(),
-		ServerFeatureGate:                             cfg.ServerFeatureGate,
+		BootstrapDefragThresholdMegabytes:    cfg.BootstrapDefragThresholdMegabytes,
+		ExperimentalMaxLearners:              cfg.ExperimentalMaxLearners,
+		V2Deprecation:                        cfg.V2DeprecationEffective(),
+		ExperimentalLocalAddress:             cfg.InferLocalAddr(),
+		ServerFeatureGate:                    cfg.ServerFeatureGate,
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -388,6 +400,24 @@ func (e *Etcd) Config() Config {
 // Close gracefully shuts down all servers/listeners.
 // Client requests will be terminated with request timeout.
 // After timeout, enforce remaning requests be closed immediately.
+//
+// The rough workflow to shut down etcd:
+//  1. close the `stopc` channel, so that all error handlers (child
+//     goroutines) won't send back any errors anymore;
+//  2. stop the http and grpc servers gracefully, within request timeout;
+//  3. close all client and metrics listeners, so that etcd server
+//     stops receiving any new connection;
+//  4. call the cancel function to close the gateway context, so that
+//     all gateway connections are closed.
+//  5. stop etcd server gracefully, and ensure the main raft loop
+//     goroutine is stopped;
+//  6. stop all peer listeners, so that it stops receiving peer connections
+//     and messages (wait up to 1-second);
+//  7. wait for all child goroutines (i.e. client handlers, peer handlers
+//     and metrics handlers) to exit;
+//  8. close the `errc` channel to release the resource. Note that it's only
+//     safe to close the `errc` after step 7 above is done, otherwise the
+//     child goroutines may send errors back to already closed `errc` channel.
 func (e *Etcd) Close() {
 	fields := []zap.Field{
 		zap.String("name", e.cfg.Name),
@@ -607,14 +637,15 @@ func (e *Etcd) servePeers() {
 
 	// start peer servers in a goroutine
 	for _, pl := range e.Peers {
-		go func(l *peerListener) {
+		l := pl
+		e.startHandler(func() error {
 			u := l.Addr().String()
 			e.cfg.logger.Info(
 				"serving peer traffic",
 				zap.String("address", u),
 			)
-			e.errHandler(l.serve())
-		}(pl)
+			return l.serve()
+		})
 	}
 }
 
@@ -774,9 +805,10 @@ func (e *Etcd) serveClients() {
 
 	// start client servers in each goroutine
 	for _, sctx := range e.sctxs {
-		go func(s *serveCtx) {
-			e.errHandler(s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...))
-		}(sctx)
+		s := sctx
+		e.startHandler(func() error {
+			return s.serve(e.Server, &e.cfg.ClientTLSInfo, mux, e.errHandler, e.grpcGatewayDial(splitHTTP), splitHTTP, gopts...)
+		})
 	}
 }
 
@@ -854,27 +886,35 @@ func (e *Etcd) serveMetrics() (err error) {
 		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
+			u := murl
 			ml, err := e.createMetricsListener(murl)
 			if err != nil {
 				return err
 			}
 			e.metricsListeners = append(e.metricsListeners, ml)
-			go func(u url.URL, ln net.Listener) {
+
+			e.startHandler(func() error {
 				e.cfg.logger.Info(
 					"serving metrics",
 					zap.String("address", u.String()),
 				)
-				e.errHandler(http.Serve(ln, metricsMux))
-			}(murl, ml)
+				return http.Serve(ml, metricsMux)
+			})
 		}
 	}
 	return nil
 }
 
-func (e *Etcd) errHandler(err error) {
+func (e *Etcd) startHandler(handler func() error) {
+	// start each handler in a separate goroutine
 	e.wg.Add(1)
-	defer e.wg.Done()
+	go func() {
+		defer e.wg.Done()
+		e.errHandler(handler())
+	}()
+}
 
+func (e *Etcd) errHandler(err error) {
 	if err != nil {
 		e.GetLogger().Error("setting up serving from embedded etcd failed.", zap.Error(err))
 	}

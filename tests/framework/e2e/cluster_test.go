@@ -28,20 +28,25 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
+		expectArgsEquals     []string
 		expectArgsNotContain []string
 		expectArgsContain    []string
 		mockBinaryVersion    *semver.Version
 	}{
 		{
 			name:   "Default",
-			config: NewConfig(),
-			expectArgsContain: []string{
+			config: NewConfig(WithDataDirPath("/tmp/a")),
+			expectArgsEquals: []string{
+				"--name=TestEtcdServerProcessConfigDefault-test-0",
 				"--listen-client-urls=http://localhost:0",
 				"--advertise-client-urls=http://localhost:0",
 				"--listen-peer-urls=http://localhost:1",
 				"--initial-advertise-peer-urls=http://localhost:1",
 				"--initial-cluster-token=new",
+				"--data-dir",
+				"/tmp/a/member-0",
 				"--snapshot-count=10000",
+				"--initial-cluster-token=new",
 			},
 		},
 		{
@@ -95,6 +100,121 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 			mockBinaryVersion: &v3_5_12,
 		},
+		{
+			name:   "ClientHTTPSeparate",
+			config: NewConfig(WithClientHTTPSeparate(true)),
+			expectArgsContain: []string{
+				"--listen-client-http-urls=http://localhost:4",
+			},
+		},
+		{
+			name:   "ForceNewCluster",
+			config: NewConfig(WithForceNewCluster(true)),
+			expectArgsContain: []string{
+				"--force-new-cluster=true",
+			},
+		},
+		{
+			name:   "EnableV2",
+			config: NewConfig(WithEnableV2(true)),
+			expectArgsContain: []string{
+				"--enable-v2=true",
+			},
+		},
+		{
+			name:   "MetricsURL",
+			config: NewConfig(WithMetricsURLScheme("http")),
+			expectArgsContain: []string{
+				"--listen-metrics-urls=http://localhost:2",
+			},
+		},
+		{
+			name:   "Discovery",
+			config: NewConfig(WithDiscovery("123")),
+			expectArgsContain: []string{
+				"--discovery=123",
+			},
+		},
+		{
+			name:   "ClientTLS",
+			config: NewConfig(WithClientConnType(ClientTLS)),
+			expectArgsContain: []string{
+				"--cert-file",
+				"--key-file",
+				"--trusted-ca-file",
+			},
+			expectArgsNotContain: []string{
+				"--auto-tls",
+				"--client-cert-auth",
+			},
+		},
+		{
+			name:   "ClientTLSCA",
+			config: NewConfig(WithClientConnType(ClientTLS), WithClientCertAuthority(true)),
+			expectArgsContain: []string{
+				"--cert-file",
+				"--key-file",
+				"--trusted-ca-file",
+				"--client-cert-auth",
+			},
+			expectArgsNotContain: []string{
+				"--auto-tls",
+			},
+		},
+		{
+			name:   "ClientAutoTLS",
+			config: NewConfig(WithClientConnType(ClientTLS), WithClientAutoTLS(true)),
+			expectArgsContain: []string{
+				"--auto-tls",
+			},
+			expectArgsNotContain: []string{
+				"--cert-file",
+				"--key-file",
+				"--trusted-ca-file",
+				"--client-cert-auth",
+			},
+		},
+		{
+			name:   "PeerTLS",
+			config: NewConfig(WithIsPeerTLS(true)),
+			expectArgsContain: []string{
+				"--peer-cert-file",
+				"--peer-key-file",
+				"--peer-trusted-ca-file",
+			},
+			expectArgsNotContain: []string{
+				"--peer-auto-tls",
+				"--peer-client-cert-auth",
+			},
+		},
+		{
+			name:   "PeerAutoTLS",
+			config: NewConfig(WithIsPeerTLS(true), WithIsPeerAutoTLS(true)),
+			expectArgsContain: []string{
+				"--peer-auto-tls",
+			},
+			expectArgsNotContain: []string{
+				"--peer-cert-file",
+				"--peer-key-file",
+				"--peer-trusted-ca-file",
+				"--peer-client-cert-auth",
+			},
+		},
+		{
+			name:   "RevokeCerts",
+			config: NewConfig(WithClientRevokeCerts(true)),
+			expectArgsContain: []string{
+				"--client-crl-file",
+				"--client-cert-auth",
+			},
+		},
+		{
+			name:   "CipherSuites",
+			config: NewConfig(WithCipherSuites([]string{"a", "b"})),
+			expectArgsContain: []string{
+				"--cipher-suites",
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
@@ -110,6 +230,9 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			}
 			setGetVersionFromBinary(t, mockGetVersionFromBinary)
 			args := tc.config.EtcdServerProcessConfig(t, 0).Args
+			if len(tc.expectArgsEquals) != 0 {
+				assert.Equal(t, args, tc.expectArgsEquals)
+			}
 			if len(tc.expectArgsContain) != 0 {
 				assert.Subset(t, args, tc.expectArgsContain)
 			}
