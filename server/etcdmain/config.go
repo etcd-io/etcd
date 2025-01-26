@@ -62,14 +62,6 @@ var (
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"max-snapshots":  "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
-<<<<<<< HEAD
-		"experimental-compact-hash-check-enabled":        "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
-		"experimental-compact-hash-check-time":           "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
-		"experimental-txn-mode-write-with-shared-buffer": "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
-		"experimental-corrupt-check-time":                "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
-		"experimental-compaction-batch-limit":            "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
-		"experimental-memory-mlock":                      "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
-=======
 		"experimental-compact-hash-check-enabled":           "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
 		"experimental-compact-hash-check-time":              "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
 		"experimental-txn-mode-write-with-shared-buffer":    "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
@@ -78,7 +70,7 @@ var (
 		"experimental-watch-progress-notify-interval":       "--experimental-watch-progress-notify-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.",
 		"experimental-warning-apply-duration":               "--experimental-warning-apply-duration is deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.",
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
->>>>>>> main
+		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
 	}
 )
 
