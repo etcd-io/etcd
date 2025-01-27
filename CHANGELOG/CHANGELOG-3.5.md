@@ -5,6 +5,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.19 (TBC)
 
+### `tools/benchmark`
+- Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
+
 <hr>
 
 ## v3.5.18 (2025-01-24)
