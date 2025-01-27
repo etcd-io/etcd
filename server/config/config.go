@@ -184,13 +184,13 @@ type ServerConfig struct {
 
 	DowngradeCheckTime time.Duration
 
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// MemoryMlock enables mlocking of etcd owned memory pages.
 	// The setting improves etcd tail latency in environments were:
 	//   - memory pressure might lead to swapping pages to disk
 	//   - disk latency might be unstable
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
-	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
+	MemoryMlock bool `json:"memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
 	// a shared buffer in its readonly check operations.

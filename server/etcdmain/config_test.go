@@ -946,6 +946,79 @@ func TestMaxLearnersFlagMigration(t *testing.T) {
 	}
 }
 
+// TestMemoryMlockFlagMigration tests the migration from
+// --experimental-memory-mlock to --memory-mlock
+// TODO: delete in v3.7
+func TestMemoryMlockFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		memoryMlock             bool
+		experimentalMemoryMlock bool
+		expectedMemoryMlock     bool
+		expectErr               bool
+	}{
+		{
+			name:                "default",
+			expectedMemoryMlock: false,
+		},
+		{
+			name:                    "cannot set both experimental flag and non experimental flag",
+			memoryMlock:             true,
+			experimentalMemoryMlock: true,
+			expectErr:               true,
+		},
+		{
+			name:                    "can set experimental flag",
+			experimentalMemoryMlock: true,
+			expectedMemoryMlock:     true,
+		},
+		{
+			name:                "can set non experimental flag",
+			memoryMlock:         true,
+			expectedMemoryMlock: true,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				MemoryMlock             bool `json:"memory-mlock,omitempty"`
+				ExperimentalMemoryMlock bool `json:"experimental-memory-mlock,omitempty"`
+			}{}
+
+			if tc.memoryMlock {
+				cmdLineArgs = append(cmdLineArgs, "--memory-mlock")
+				yc.MemoryMlock = tc.memoryMlock
+			}
+
+			if tc.experimentalMemoryMlock {
+				cmdLineArgs = append(cmdLineArgs, "--experimental-memory-mlock")
+				yc.ExperimentalMemoryMlock = tc.experimentalMemoryMlock
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			if cfgFromCmdLine.ec.MemoryMlock != tc.expectedMemoryMlock {
+				t.Errorf("expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromCmdLine.ec.MemoryMlock)
+			}
+			if cfgFromFile.ec.MemoryMlock != tc.expectedMemoryMlock {
+				t.Errorf("expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromFile.ec.MemoryMlock)
+			}
+		})
+	}
+}
+
 // TODO delete in v3.7
 func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) (*config, error, *config, error) {
 	b, err := yaml.Marshal(&yc)

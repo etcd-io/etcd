@@ -75,6 +75,8 @@ Member:
     Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.7.
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
     Maximum number of wal files to retain (0 is unlimited).
+  --memory-mlock
+    Enable to enforce etcd pages (in particular bbolt) to stay in RAM.
   --quota-backend-bytes '0'
     Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
   --backend-bbolt-freelist-type 'map'
@@ -322,7 +324,7 @@ Experimental feature:
   --experimental-enable-lease-checkpoint-persist 'false'
     Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.
   --experimental-memory-mlock
-    Enable to enforce etcd pages (in particular bbolt) to stay in RAM.
+    Enable to enforce etcd pages (in particular bbolt) to stay in RAM. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.
   --experimental-snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-stop-grpc-service-on-defrag
