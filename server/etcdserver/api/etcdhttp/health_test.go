@@ -27,6 +27,7 @@ type fakeHealthServer struct {
 	linearizableReadError error
 	missingLeader         bool
 	authStore             auth.AuthStore
+	isLearner             bool
 }
 
 func (s *fakeHealthServer) Range(_ context.Context, req *pb.RangeRequest) (*pb.RangeResponse, error) {
@@ -34,6 +35,10 @@ func (s *fakeHealthServer) Range(_ context.Context, req *pb.RangeRequest) (*pb.R
 		return nil, s.serializableReadError
 	}
 	return nil, s.linearizableReadError
+}
+
+func (s *fakeHealthServer) IsLearner() bool {
+	return s.isLearner
 }
 
 func (s *fakeHealthServer) Config() config.ServerConfig {
@@ -61,6 +66,7 @@ type healthTestCase struct {
 	alarms        []*pb.AlarmMember
 	apiError      error
 	missingLeader bool
+	isLearner     bool
 }
 
 func TestHealthHandler(t *testing.T) {
@@ -164,6 +170,11 @@ func TestHttpSubPath(t *testing.T) {
 			healthCheckURL:   "/readyz/serializable_read",
 			expectStatusCode: http.StatusServiceUnavailable,
 			notInResult:      []string{"data_corruption"},
+		},
+		{
+			name:             "/readyz/learner ok",
+			healthCheckURL:   "/readyz/non_learner",
+			expectStatusCode: http.StatusOK,
 		},
 		{
 			name:             "/readyz/non_exist 404",
@@ -319,6 +330,42 @@ func TestLinearizableReadCheck(t *testing.T) {
 				linearizableReadError: tt.apiError,
 				authStore:             auth.NewAuthStore(logger, be, nil, 0),
 			}
+			HandleHealth(logger, mux, s)
+			ts := httptest.NewServer(mux)
+			defer ts.Close()
+			checkHttpResponse(t, ts, tt.healthCheckURL, tt.expectStatusCode, tt.inResult, tt.notInResult)
+			checkMetrics(t, tt.healthCheckURL, "linearizable_read", tt.expectStatusCode)
+		})
+	}
+}
+
+func TestLearnerReadyCheck(t *testing.T) {
+	be, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be)
+	tests := []healthTestCase{
+		{
+			name:             "readyz normal",
+			healthCheckURL:   "/readyz",
+			expectStatusCode: http.StatusOK,
+			isLearner:        false,
+		},
+		{
+			name:             "not ready because member is learner",
+			healthCheckURL:   "/readyz",
+			expectStatusCode: http.StatusServiceUnavailable,
+			isLearner:        true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			logger := zaptest.NewLogger(t)
+			s := &fakeHealthServer{
+				linearizableReadError: tt.apiError,
+				authStore:             auth.NewAuthStore(logger, be, nil, 0),
+			}
+			s.isLearner = tt.isLearner
 			HandleHealth(logger, mux, s)
 			ts := httptest.NewServer(mux)
 			defer ts.Close()
