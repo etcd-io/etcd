@@ -183,12 +183,13 @@ func toEtcdCondition(cmp clientv3.Cmp) (cond EtcdCondition) {
 	switch {
 	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_MOD:
 		cond.Key = string(cmp.KeyBytes())
-	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_CREATE:
+		cond.ExpectedRevision = cmp.TargetUnion.(*etcdserverpb.Compare_ModRevision).ModRevision
+	case cmp.Result == etcdserverpb.Compare_EQUAL && cmp.Target == etcdserverpb.Compare_VERSION:
+		cond.ExpectedVersion = cmp.TargetUnion.(*etcdserverpb.Compare_Version).Version
 		cond.Key = string(cmp.KeyBytes())
 	default:
 		panic(fmt.Sprintf("Compare not supported, target: %q, result: %q", cmp.Target, cmp.Result))
 	}
-	cond.ExpectedRevision = cmp.TargetUnion.(*etcdserverpb.Compare_ModRevision).ModRevision
 	return cond
 }
 
@@ -228,6 +229,7 @@ func toEtcdOperationResult(resp *etcdserverpb.ResponseOp) EtcdOperationResult {
 				ValueRevision: ValueRevision{
 					Value:       ToValueOrHash(string(kv.Value)),
 					ModRevision: kv.ModRevision,
+					Version:     kv.Version,
 				},
 			}
 		}
@@ -342,7 +344,11 @@ func emptyGetResponse(revision int64) MaybeEtcdResponse {
 }
 
 func getResponse(key, value string, modRevision, revision int64) MaybeEtcdResponse {
-	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision}}, 1, revision)
+	return getResponseWithVer(key, value, modRevision, 1, revision)
+}
+
+func getResponseWithVer(key, value string, modRevision, ver, revision int64) MaybeEtcdResponse {
+	return rangeResponse([]*mvccpb.KeyValue{{Key: []byte(key), Value: []byte(value), ModRevision: modRevision, Version: ver}}, 1, revision)
 }
 
 func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtcdResponse {
@@ -354,6 +360,7 @@ func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtc
 			ValueRevision: ValueRevision{
 				Value:       ToValueOrHash(string(kv.Value)),
 				ModRevision: kv.ModRevision,
+				Version:     kv.Version,
 			},
 		}
 	}

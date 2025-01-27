@@ -91,6 +91,9 @@ func describeGuaranteedTxn(txn *TxnRequest) string {
 		if txn.Conditions[0].Key != txn.OperationsOnSuccess[0].Put.Key || (len(txn.OperationsOnFailure) == 1 && txn.Conditions[0].Key != txn.OperationsOnFailure[0].Range.Start) {
 			return ""
 		}
+		if txn.Conditions[0].ExpectedVersion > 0 {
+			return ""
+		}
 		if txn.Conditions[0].ExpectedRevision == 0 {
 			return fmt.Sprintf("guaranteedCreate(%q, %s)", txn.Conditions[0].Key, describeValueOrHash(txn.OperationsOnSuccess[0].Put.Value))
 		}
@@ -106,8 +109,12 @@ func describeGuaranteedTxn(txn *TxnRequest) string {
 
 func describeEtcdConditions(conds []EtcdCondition) string {
 	opsDescription := make([]string, len(conds))
-	for i := range conds {
-		opsDescription[i] = fmt.Sprintf("mod_rev(%s)==%d", conds[i].Key, conds[i].ExpectedRevision)
+	for i, cond := range conds {
+		if cond.ExpectedVersion > 0 {
+			opsDescription[i] = fmt.Sprintf("ver(%s)==%d", cond.Key, cond.ExpectedVersion)
+		} else {
+			opsDescription[i] = fmt.Sprintf("mod_rev(%s)==%d", cond.Key, cond.ExpectedRevision)
+		}
 	}
 	return strings.Join(opsDescription, " && ")
 }

@@ -33,7 +33,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key2", "2"), resp: putResponse(3)},
-				{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3}}, 2, 3)},
+				{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key1"), Value: []byte("1"), ModRevision: 2, Version: 1}, {Key: []byte("key2"), Value: []byte("2"), ModRevision: 3, Version: 1}}, 2, 3)},
 			},
 		},
 		{
@@ -41,7 +41,7 @@ func TestModelNonDeterministic(t *testing.T) {
 			operations: []testOperation{
 				{req: putRequest("key1", "1"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key2", "2"), resp: putResponse(2)},
-				{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2}}, 1, 2)},
+				{req: listRequest("key", 0), resp: rangeResponse([]*mvccpb.KeyValue{{Key: []byte("key2"), Value: []byte("2"), ModRevision: 2, Version: 1}}, 1, 2)},
 			},
 		},
 		{
@@ -90,14 +90,14 @@ func TestModelNonDeterministic(t *testing.T) {
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(2)},
 				{req: putRequest("key", "2"), resp: failedResponse(errors.New("failed"))},
-				{req: getRequest("key"), resp: getResponse("key", "3", 3, 3), expectFailure: true},
-				{req: getRequest("key"), resp: getResponse("key", "3", 2, 3), expectFailure: true},
-				{req: getRequest("key"), resp: getResponse("key", "2", 2, 2), expectFailure: true},
-				{req: getRequest("key"), resp: getResponse("key", "2", 3, 3)},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "3", 3, 2, 3), expectFailure: true},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "3", 2, 2, 3), expectFailure: true},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "2", 2, 2, 2), expectFailure: true},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "2", 3, 2, 3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "3"), resp: failedResponse(errors.New("failed"))},
 				{req: putRequest("key", "4"), resp: failedResponse(errors.New("failed"))},
-				{req: getRequest("key"), resp: getResponse("key", "4", 5, 5)},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "4", 5, 4, 5)},
 			},
 		},
 		{
@@ -133,7 +133,7 @@ func TestModelNonDeterministic(t *testing.T) {
 				{req: putRequest("key", "4"), resp: putResponse(4)},
 				{req: compareRevisionAndPutRequest("key", 5, ""), resp: compareRevisionAndPutResponse(false, 4)},
 				{req: putRequest("key", "5"), resp: failedResponse(errors.New("failed"))},
-				{req: getRequest("key"), resp: getResponse("key", "5", 5, 5)},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "5", 5, 4, 5)},
 			},
 		},
 		{
@@ -249,13 +249,13 @@ func TestModelNonDeterministic(t *testing.T) {
 				// One failed request, one persisted.
 				{req: putRequest("key", "1"), resp: putResponse(2)},
 				{req: compareRevisionAndPutRequest("key", 2, "2"), resp: failedResponse(errors.New("failed"))},
-				{req: getRequest("key"), resp: getResponse("key", "2", 2, 2), expectFailure: true},
-				{req: getRequest("key"), resp: getResponse("key", "2", 3, 3)},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "2", 2, 2, 2), expectFailure: true},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "2", 3, 2, 3)},
 				// Two failed request, two persisted.
 				{req: putRequest("key", "3"), resp: putResponse(4)},
 				{req: compareRevisionAndPutRequest("key", 4, "4"), resp: failedResponse(errors.New("failed"))},
 				{req: compareRevisionAndPutRequest("key", 5, "5"), resp: failedResponse(errors.New("failed"))},
-				{req: getRequest("key"), resp: getResponse("key", "5", 6, 6)},
+				{req: getRequest("key"), resp: getResponseWithVer("key", "5", 6, 5, 6)},
 			},
 		},
 		{

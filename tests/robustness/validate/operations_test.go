@@ -290,6 +290,7 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 		ValueRevision: model.ValueRevision{
 			Value:       model.ToValueOrHash(value),
 			ModRevision: rev,
+			Version:     1,
 		},
 	}
 }

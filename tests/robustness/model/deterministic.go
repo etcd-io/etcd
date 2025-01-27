@@ -127,7 +127,13 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
-			if val := newState.KeyValues[cond.Key]; val.ModRevision != cond.ExpectedRevision {
+			val := newState.KeyValues[cond.Key]
+			if cond.ExpectedVersion > 0 {
+				if val.Version != cond.ExpectedVersion {
+					failure = true
+					break
+				}
+			} else if val.ModRevision != cond.ExpectedRevision {
 				failure = true
 				break
 			}
@@ -149,9 +155,14 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 				if op.Put.LeaseID != 0 && !leaseExists {
 					break
 				}
+				ver := int64(1)
+				if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
+					ver = val.Version + 1
+				}
 				newState.KeyValues[op.Put.Key] = ValueRevision{
 					Value:       op.Put.Value,
 					ModRevision: newState.Revision + 1,
+					Version:     ver,
 				}
 				increaseRevision = true
 				newState = detachFromOldLease(newState, op.Put.Key)
@@ -326,6 +337,7 @@ type TxnRequest struct {
 type EtcdCondition struct {
 	Key              string
 	ExpectedRevision int64
+	ExpectedVersion  int64
 }
 
 type EtcdOperation struct {
@@ -434,6 +446,7 @@ func (el EtcdLease) DeepCopy() EtcdLease {
 type ValueRevision struct {
 	Value       ValueOrHash
 	ModRevision int64
+	Version     int64
 }
 
 type ValueOrHash struct {
