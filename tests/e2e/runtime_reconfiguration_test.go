@@ -178,7 +178,6 @@ func addMemberAsLearnerAndPromote(ctx context.Context, t *testing.T, epc *e2e.Et
 
 	id, err := epc.StartNewProc(ctx, nil, t, true /* addAsLearner */)
 	require.NoError(t, err)
-	_, err = epc.Etcdctl(e2e.WithEndpoints(endpoints)).MemberPromote(ctx, id)
 
 	attempt := 0
 	for attempt < 3 {
