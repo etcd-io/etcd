@@ -180,17 +180,17 @@ func TestMigrate(t *testing.T) {
 			},
 			expectVersion: nil,
 		},
-		/* TODO: add a dedicated request for testing only to cover such case
 		{
-			name:          "Downgrading v3.6 to v3.5 works even if there is ClusterVersionSetRequest WAL entries with 3.6 clusterVersion",
+			name:          "Downgrading v3.6 to v3.5 fails if there are newer WAL entries",
 			version:       version.V3_6,
 			targetVersion: version.V3_5,
 			walEntries: []etcdserverpb.InternalRaftRequest{
-				{ClusterVersionSet: &membershippb.ClusterVersionSetRequest{Ver: "3.6.0"}},
+				{DowngradeVersionTest: &etcdserverpb.DowngradeVersionTestRequest{Ver: "3.6.0"}},
 			},
-			expectVersion: nil, // 3.5 doesn't have field `storageVersion`, so it should be nil.
-			expectError:   false,
-		},*/
+			expectVersion:  &version.V3_6,
+			expectError:    true,
+			expectErrorMsg: "cannot downgrade storage, WAL contains newer entries",
+		},
 		{
 			name:           "Downgrading v3.5 to v3.4 is not supported as schema was introduced in v3.6",
 			version:        version.V3_5,
