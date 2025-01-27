@@ -292,7 +292,9 @@ Experimental feature:
   --compaction-batch-limit 1000
     CompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
   --experimental-peer-skip-client-san-verification 'false'
-    Skip verification of SAN field in client certificate for peer connections.
+    Skip verification of SAN field in client certificate for peer connections.Deprecated in v3.6 and will be decommissioned in v3.7. Use 'peer-skip-client-san-verification' instead.
+  --peer-skip-client-san-verification 'false'
+    Skip verification of SAN field in client certificate for peer connections.When both flags are set, --experimental-peer-skip-client-san-verification takes precedence over this.
   --experimental-watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'watch-progress-notify-interval' instead.
   --watch-progress-notify-interval '10m'

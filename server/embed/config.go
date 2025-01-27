@@ -452,6 +452,12 @@ type Config struct {
 	// Defaults to 0.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 
+	// ExperimentalPeerSkipClientSanVerification determines whether to skip verification of SAN field
+	// in client certificate for peer connections.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
+	ExperimentalPeerSkipClientSanVerification bool `json:"experimental-peer-skip-client-san-verification"`
+
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
@@ -755,7 +761,8 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-cn", "Comma-separated list of allowed CNs for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-hostname", "Comma-separated list of allowed SAN hostnames for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
-	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
+	fs.BoolVar(&cfg.ExperimentalPeerSkipClientSanVerification, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.Deprecated in v3.6 and will be decommissioned in v3.7. Use peer-skip-client-san-verification instead")
+	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 	fs.StringVar(&cfg.TlsMinVersion, "tls-min-version", string(tlsutil.TLSVersion12), "Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.")
 	fs.StringVar(&cfg.TlsMaxVersion, "tls-max-version", string(tlsutil.TLSVersionDefault), "Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).")
 
