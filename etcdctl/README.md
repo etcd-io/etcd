@@ -1119,7 +1119,7 @@ DOWNGRADE ENABLE starts a downgrade action to cluster.
 Downgrade enable success, cluster version 3.6
 ```
 
-### DOWNGRADE CANCEL \<TARGET_VERSION\>
+### DOWNGRADE CANCEL
 
 DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 

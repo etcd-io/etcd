@@ -37,23 +37,47 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
+type CancellationState int
+
+const (
+	noCancellation CancellationState = iota
+	cancelRightBeforeEnable
+	cancelRightAfterEnable
+)
+
 func TestDowngradeUpgradeClusterOf1(t *testing.T) {
-	testDowngradeUpgrade(t, 1, false)
+	testDowngradeUpgrade(t, 1, false, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf3(t *testing.T) {
-	testDowngradeUpgrade(t, 3, false)
+	testDowngradeUpgrade(t, 3, false, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf1WithSnapshot(t *testing.T) {
-	testDowngradeUpgrade(t, 1, true)
+	testDowngradeUpgrade(t, 1, true, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf3WithSnapshot(t *testing.T) {
-	testDowngradeUpgrade(t, 3, true)
+	testDowngradeUpgrade(t, 3, true, noCancellation)
 }
 
-func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
+func TestDowngradeCancellationWithoutEnablingClusterOf1(t *testing.T) {
+	testDowngradeUpgrade(t, 1, false, cancelRightBeforeEnable)
+}
+
+func TestDowngradeCancellationRightAfterEnablingClusterOf1(t *testing.T) {
+	testDowngradeUpgrade(t, 1, false, cancelRightAfterEnable)
+}
+
+func TestDowngradeCancellationWithoutEnablingClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 3, false, cancelRightBeforeEnable)
+}
+
+func TestDowngradeCancellationRightAfterEnablingClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 3, false, cancelRightAfterEnable)
+}
+
+func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, triggerCancellation CancellationState) {
 	currentEtcdBinary := e2e.BinPath.Etcd
 	lastReleaseBinary := e2e.BinPath.EtcdLastRelease
 	if !fileutil.Exist(lastReleaseBinary) {
@@ -107,9 +131,26 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 	require.NoError(t, err)
 	beforeMembers, beforeKV := getMembersAndKeys(t, cc)
 
+	if triggerCancellation == cancelRightBeforeEnable {
+		t.Logf("Cancelling downgrade before enabling")
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+
+		return // No need to perform downgrading, end the test here
+	}
 	e2e.DowngradeEnable(t, epc, lastVersion)
+	if triggerCancellation == cancelRightAfterEnable {
+		t.Logf("Cancelling downgrade right after enabling (no node is downgraded yet)")
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+		return // No need to perform downgrading, end the test here
+	}
+
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), currentVersion, lastClusterVersion)
+	require.NoError(t, err)
 	e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
 
 	t.Log("Downgrade complete")
@@ -135,7 +176,8 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool) {
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), lastClusterVersion, currentVersion)
+	err = e2e.DowngradeUpgradeMembers(t, nil, epc, len(epc.Procs), lastClusterVersion, currentVersion)
+	require.NoError(t, err)
 	t.Log("Upgrade complete")
 
 	afterMembers, afterKV = getMembersAndKeys(t, cc)
@@ -232,4 +274,18 @@ func getMembersAndKeys(t *testing.T, cc *e2e.EtcdctlV3) (*clientv3.MemberListRes
 	assert.NoError(t, err)
 
 	return members, kvs
+}
+
+func generateIdenticalVersions(clusterSize int, currentVersion string) []*version.Versions {
+	ret := make([]*version.Versions, clusterSize)
+
+	for i := range clusterSize {
+		ret[i] = &version.Versions{
+			Cluster: currentVersion,
+			Server:  currentVersion,
+			Storage: currentVersion,
+		}
+	}
+
+	return ret
 }
