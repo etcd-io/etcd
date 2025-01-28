@@ -26,6 +26,8 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 - Bump [golang-jwt/jwt to 4.5.1 to address GO-2024-3250](https://github.com/etcd-io/etcd/pull/18899).
 - Compile binaries using [go 1.22.11](https://github.com/etcd-io/etcd/pull/19211).
+- Bump [golang.org/x/crypto to 0.32.0 to address CVE-2024-45337](https://github.com/etcd-io/etcd/pull/19154).
+- Bump [golang.org/x/net to 0.34.0 to address CVE-2024-45338](https://github.com/etcd-io/etcd/pull/19158).
 
 <hr>
 
