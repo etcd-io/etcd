@@ -133,13 +133,18 @@ func testDowngradeUpgrade(t *testing.T, clusterSize int, triggerSnapshot bool, t
 
 	if triggerCancellation == cancelRightBeforeEnable {
 		t.Logf("Cancelling downgrade before enabling")
-		e2e.DowngradeCancel(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+
 		return // No need to perform downgrading, end the test here
 	}
 	e2e.DowngradeEnable(t, epc, lastVersion)
 	if triggerCancellation == cancelRightAfterEnable {
 		t.Logf("Cancelling downgrade right after enabling (no node is downgraded yet)")
-		e2e.DowngradeCancel(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersionStr))
 		return // No need to perform downgrading, end the test here
 	}
 
