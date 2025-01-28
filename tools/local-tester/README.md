@@ -1,5 +1,8 @@
 # etcd local-tester
 
+> [!WARNING]
+> etcd-local-tester is now deprecated in favor of our much more comprehensive [robustness testing suite](https://github.com/etcd-io/etcd/tree/main/tests/robustness). In a future etcd release this historic tool will be removed as it is no longer maintained.
+
 The etcd local-tester runs a fault injected cluster using local processes. It sets up an etcd cluster with unreliable network bridges on its peer and client interfaces. The cluster runs with a constant stream of `Put` requests to simulate client usage. A fault injection script periodically kills cluster members and disrupts bridge connectivity.
 
 # Requirements

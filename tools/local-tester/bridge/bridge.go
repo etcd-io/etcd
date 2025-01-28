@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // Package main is the entry point for the local tester network bridge.
+// Deprecated: etcd local tester is now deprecated. Use the etcd robustness
+// testing suite instead to validate etcd behaviour under failure conditions.
 package main
 
 import (
