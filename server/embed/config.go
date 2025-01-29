@@ -139,6 +139,7 @@ var (
 		"experimental-watch-progress-notify-interval":       "watch-progress-notify-interval",
 		"experimental-warning-apply-duration":               "warning-apply-duration",
 		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
+		"experimental-max-learners":                         "max-learners",
 	}
 )
 
@@ -421,7 +422,10 @@ type Config struct {
 	// ExperimentalWarningUnaryRequestDuration is deprecated, please use WarningUnaryRequestDuration instead.
 	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
 	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
 	ExperimentalMaxLearners int `json:"experimental-max-learners"`
+	MaxLearners             int `json:"max-learners"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -609,7 +613,9 @@ func NewConfig() *Config {
 		ExperimentalDowngradeCheckTime:      DefaultDowngradeCheckTime,
 		ExperimentalMemoryMlock:             false,
 		ExperimentalStopGRPCServiceOnDefrag: false,
-		ExperimentalMaxLearners:             membership.DefaultMaxLearners,
+		MaxLearners:                         membership.DefaultMaxLearners,
+		// TODO: delete in v3.7
+		ExperimentalMaxLearners: membership.DefaultMaxLearners,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 		// TODO: delete in v3.7
@@ -825,7 +831,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// TODO: delete in v3.7
 	fs.UintVar(&cfg.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. It's deprecated, and will be decommissioned in v3.7. Use --bootstrap-defrag-threshold-megabytes instead.")
 	fs.UintVar(&cfg.BootstrapDefragThresholdMegabytes, "bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
-	fs.IntVar(&cfg.ExperimentalMaxLearners, "experimental-max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
+	// TODO: delete in v3.7
+	fs.IntVar(&cfg.ExperimentalMaxLearners, "experimental-max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership. Deprecated in v3.6 and will be decommissioned in v3.7. Use --max-learners instead.")
+	fs.IntVar(&cfg.MaxLearners, "max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
 	fs.Uint64Var(&cfg.SnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries.")
 
 	// unsafe

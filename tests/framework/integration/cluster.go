@@ -172,7 +172,7 @@ type ClusterConfig struct {
 	LeaseCheckpointPersist  bool
 
 	WatchProgressNotifyInterval time.Duration
-	ExperimentalMaxLearners     int
+	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
 }
@@ -289,7 +289,7 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			LeaseCheckpointInterval:     c.Cfg.LeaseCheckpointInterval,
 			LeaseCheckpointPersist:      c.Cfg.LeaseCheckpointPersist,
 			WatchProgressNotifyInterval: c.Cfg.WatchProgressNotifyInterval,
-			ExperimentalMaxLearners:     c.Cfg.ExperimentalMaxLearners,
+			MaxLearners:                 c.Cfg.MaxLearners,
 			DisableStrictReconfigCheck:  c.Cfg.DisableStrictReconfigCheck,
 			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
 		})
@@ -614,7 +614,7 @@ type MemberConfig struct {
 	LeaseCheckpointInterval     time.Duration
 	LeaseCheckpointPersist      bool
 	WatchProgressNotifyInterval time.Duration
-	ExperimentalMaxLearners     int
+	MaxLearners                 int
 	DisableStrictReconfigCheck  bool
 	CorruptCheckTime            time.Duration
 }
@@ -727,9 +727,9 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	}
 	m.WarningApplyDuration = embed.DefaultWarningApplyDuration
 	m.WarningUnaryRequestDuration = embed.DefaultWarningUnaryRequestDuration
-	m.ExperimentalMaxLearners = membership.DefaultMaxLearners
-	if mcfg.ExperimentalMaxLearners != 0 {
-		m.ExperimentalMaxLearners = mcfg.ExperimentalMaxLearners
+	m.MaxLearners = membership.DefaultMaxLearners
+	if mcfg.MaxLearners != 0 {
+		m.MaxLearners = mcfg.MaxLearners
 	}
 	m.V2Deprecation = config.V2_DEPR_DEFAULT
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}

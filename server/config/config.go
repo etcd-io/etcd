@@ -200,8 +200,8 @@ type ServerConfig struct {
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	BootstrapDefragThresholdMegabytes uint `json:"bootstrap-defrag-threshold-megabytes"`
 
-	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
-	ExperimentalMaxLearners int `json:"experimental-max-learners"`
+	// MaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
+	MaxLearners int `json:"max-learners"`
 
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`

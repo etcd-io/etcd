@@ -70,6 +70,7 @@ var (
 		"experimental-watch-progress-notify-interval":       "--experimental-watch-progress-notify-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.",
 		"experimental-warning-apply-duration":               "--experimental-warning-apply-duration is deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.",
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
+		"experimental-max-learners":                         "--experimental-max-learners is deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.",
 	}
 )
 
@@ -197,6 +198,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-bootstrap-defrag-threshold-megabytes"] {
 		cfg.ec.BootstrapDefragThresholdMegabytes = cfg.ec.ExperimentalBootstrapDefragThresholdMegabytes
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-max-learners"] {
+		cfg.ec.MaxLearners = cfg.ec.ExperimentalMaxLearners
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
