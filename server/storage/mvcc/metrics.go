@@ -27,7 +27,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "range_total",
 			Help:      "Total number of ranges seen by this member.",
-		})
+		},
+	)
 
 	putCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -35,7 +36,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "put_total",
 			Help:      "Total number of puts seen by this member.",
-		})
+		},
+	)
 
 	deleteCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -43,7 +45,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "delete_total",
 			Help:      "Total number of deletes seen by this member.",
-		})
+		},
+	)
 
 	txnCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -51,7 +54,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "txn_total",
 			Help:      "Total number of txns seen by this member.",
-		})
+		},
+	)
 
 	keysGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -59,7 +63,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "keys_total",
 			Help:      "Total number of keys.",
-		})
+		},
+	)
 
 	watchStreamGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -67,7 +72,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "watch_stream_total",
 			Help:      "Total number of watch streams.",
-		})
+		},
+	)
 
 	watcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -75,7 +81,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "watcher_total",
 			Help:      "Total number of watchers.",
-		})
+		},
+	)
 
 	slowWatcherGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -83,7 +90,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "slow_watcher_total",
 			Help:      "Total number of unsynced slow watchers.",
-		})
+		},
+	)
 
 	totalEventsCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -91,7 +99,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "events_total",
 			Help:      "Total number of events sent by this member.",
-		})
+		},
+	)
 
 	pendingEventsGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -99,7 +108,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "pending_events_total",
 			Help:      "Total number of pending events to be sent.",
-		})
+		},
+	)
 
 	indexCompactionPauseMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
@@ -111,7 +121,8 @@ var (
 			// lowest bucket start of upper bound 0.5 ms with factor 2
 			// highest bucket start of 0.5 ms * 2^13 == 4.096 sec
 			Buckets: prometheus.ExponentialBuckets(0.5, 2, 14),
-		})
+		},
+	)
 
 	dbCompactionPauseMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
@@ -123,7 +134,8 @@ var (
 			// lowest bucket start of upper bound 1 ms with factor 2
 			// highest bucket start of 1 ms * 2^12 == 4.096 sec
 			Buckets: prometheus.ExponentialBuckets(1, 2, 13),
-		})
+		},
+	)
 
 	dbCompactionTotalMs = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
@@ -135,7 +147,8 @@ var (
 			// lowest bucket start of upper bound 100 ms with factor 2
 			// highest bucket start of 100 ms * 2^13 == 8.192 sec
 			Buckets: prometheus.ExponentialBuckets(100, 2, 14),
-		})
+		},
+	)
 
 	dbCompactionLast = prometheus.NewGauge(
 		prometheus.GaugeOpts{
@@ -143,7 +156,8 @@ var (
 			Subsystem: "mvcc",
 			Name:      "db_compaction_last",
 			Help:      "The unix time of the last db compaction. Resets to 0 on start.",
-		})
+		},
+	)
 
 	dbCompactionKeysCounter = prometheus.NewCounter(
 		prometheus.CounterOpts{
@@ -151,14 +165,16 @@ var (
 			Subsystem: "mvcc",
 			Name:      "db_compaction_keys_total",
 			Help:      "Total number of db keys compacted.",
-		})
+		},
+	)
 
-	dbTotalSize = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "mvcc",
-		Name:      "db_total_size_in_bytes",
-		Help:      "Total size of the underlying database physically allocated in bytes.",
-	},
+	dbTotalSize = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "db_total_size_in_bytes",
+			Help:      "Total size of the underlying database physically allocated in bytes.",
+		},
 		func() float64 {
 			reportDbTotalSizeInBytesMu.RLock()
 			defer reportDbTotalSizeInBytesMu.RUnlock()
@@ -169,12 +185,13 @@ var (
 	reportDbTotalSizeInBytesMu sync.RWMutex
 	reportDbTotalSizeInBytes   = func() float64 { return 0 }
 
-	dbTotalSizeInUse = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "mvcc",
-		Name:      "db_total_size_in_use_in_bytes",
-		Help:      "Total size of the underlying database logically in use in bytes.",
-	},
+	dbTotalSizeInUse = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "db_total_size_in_use_in_bytes",
+			Help:      "Total size of the underlying database logically in use in bytes.",
+		},
 		func() float64 {
 			reportDbTotalSizeInUseInBytesMu.RLock()
 			defer reportDbTotalSizeInUseInBytesMu.RUnlock()
@@ -185,12 +202,13 @@ var (
 	reportDbTotalSizeInUseInBytesMu sync.RWMutex
 	reportDbTotalSizeInUseInBytes   = func() float64 { return 0 }
 
-	dbOpenReadTxN = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "mvcc",
-		Name:      "db_open_read_transactions",
-		Help:      "The number of currently open read transactions",
-	},
+	dbOpenReadTxN = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "mvcc",
+			Name:      "db_open_read_transactions",
+			Help:      "The number of currently open read transactions",
+		},
 
 		func() float64 {
 			reportDbOpenReadTxNMu.RLock()
@@ -226,12 +244,13 @@ var (
 		Buckets: prometheus.ExponentialBuckets(.01, 2, 15),
 	})
 
-	currentRev = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
-		Namespace: "etcd_debugging",
-		Subsystem: "mvcc",
-		Name:      "current_revision",
-		Help:      "The current revision of store.",
-	},
+	currentRev = prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: "etcd_debugging",
+			Subsystem: "mvcc",
+			Name:      "current_revision",
+			Help:      "The current revision of store.",
+		},
 		func() float64 {
 			reportCurrentRevMu.RLock()
 			defer reportCurrentRevMu.RUnlock()

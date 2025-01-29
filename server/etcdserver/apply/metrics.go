@@ -16,13 +16,15 @@ package apply
 
 import "github.com/prometheus/client_golang/prometheus"
 
-var alarms = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-	Namespace: "etcd_debugging",
-	Subsystem: "server",
-	Name:      "alarms",
-	Help:      "Alarms for every member in cluster. 1 for 'server_id' label with current ID. 2 for 'alarm_type' label with type of this alarm",
-},
-	[]string{"server_id", "alarm_type"})
+var alarms = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "server",
+		Name:      "alarms",
+		Help:      "Alarms for every member in cluster. 1 for 'server_id' label with current ID. 2 for 'alarm_type' label with type of this alarm",
+	},
+	[]string{"server_id", "alarm_type"},
+)
 
 func init() {
 	prometheus.MustRegister(alarms)
