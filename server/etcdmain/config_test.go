@@ -882,6 +882,70 @@ func TestBootstrapDefragThresholdMegabytesFlagMigration(t *testing.T) {
 	}
 }
 
+// TestMaxLearnersFlagMigration tests the migration from
+// --experimental-max-learners to --max-learners
+// TODO: delete in v3.7
+func TestMaxLearnersFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                    string
+		maxLearners             int
+		experimentalMaxLearners int
+		expectErr               bool
+		expectedMaxLearners     int
+	}{
+		{
+			name:                    "cannot set both experimental flag and non experimental flag",
+			maxLearners:             1,
+			experimentalMaxLearners: 2,
+			expectErr:               true,
+		},
+		{
+			name:                    "can set experimental flag",
+			experimentalMaxLearners: 2,
+			expectedMaxLearners:     2,
+		},
+		{
+			name:                "can set non experimental flag",
+			maxLearners:         1,
+			expectedMaxLearners: 1,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalMaxLearners int `json:"experimental-max-learners,omitempty"`
+				MaxLearners             int `json:"max-learners,omitempty"`
+			}{}
+
+			if tc.maxLearners != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--max-learners=%d", tc.maxLearners))
+				yc.MaxLearners = tc.maxLearners
+			}
+
+			if tc.experimentalMaxLearners != 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-max-learners=%d", tc.experimentalMaxLearners))
+				yc.ExperimentalMaxLearners = tc.experimentalMaxLearners
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.expectedMaxLearners, cfgFromCmdLine.ec.MaxLearners)
+			require.Equal(t, tc.expectedMaxLearners, cfgFromFile.ec.MaxLearners)
+		})
+	}
+}
+
 // TODO delete in v3.7
 func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) (*config, error, *config, error) {
 	b, err := yaml.Marshal(&yc)
@@ -996,6 +1060,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWatchProgressNotifyInterval       time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
+		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
 	}
 
 	testCases := []struct {
@@ -1019,6 +1084,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWatchProgressNotifyInterval:       3 * time.Minute,
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
+				ExperimentalMaxLearners:                       1,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled":           {},
@@ -1028,6 +1094,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-watch-progress-notify-interval":       {},
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
+				"experimental-max-learners":                         {},
 			},
 		},
 		{

@@ -94,10 +94,10 @@ func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			cfg := config.ServerConfig{
-				Name:                    "node0",
-				InitialPeerURLsMap:      cluster,
-				Logger:                  zaptest.NewLogger(t),
-				ExperimentalMaxLearners: tt.maxLearner,
+				Name:               "node0",
+				InitialPeerURLsMap: cluster,
+				Logger:             zaptest.NewLogger(t),
+				MaxLearners:        tt.maxLearner,
 			}
 			_, err = bootstrapExistingClusterNoWAL(cfg, mockBootstrapRoundTrip(tt.members))
 			hasError := err != nil

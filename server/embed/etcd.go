@@ -235,7 +235,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
 		ExperimentalMemoryMlock:              cfg.ExperimentalMemoryMlock,
 		BootstrapDefragThresholdMegabytes:    cfg.BootstrapDefragThresholdMegabytes,
-		ExperimentalMaxLearners:              cfg.ExperimentalMaxLearners,
+		MaxLearners:                          cfg.MaxLearners,
 		V2Deprecation:                        cfg.V2DeprecationEffective(),
 		ExperimentalLocalAddress:             cfg.InferLocalAddr(),
 		ServerFeatureGate:                    cfg.ServerFeatureGate,
@@ -386,7 +386,7 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("discovery-user", sc.DiscoveryCfg.Auth.Username),
 
 		zap.String("downgrade-check-interval", sc.DowngradeCheckTime.String()),
-		zap.Int("max-learners", sc.ExperimentalMaxLearners),
+		zap.Int("max-learners", sc.MaxLearners),
 
 		zap.String("v2-deprecation", string(ec.V2Deprecation)),
 	)

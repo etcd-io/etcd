@@ -383,7 +383,7 @@ func TestMaxLearnerInCluster(t *testing.T) {
 	integration2.BeforeTest(t, integration2.WithFailpoint("raftBeforeAdvance", `sleep(100)`))
 
 	// 1. start with a cluster with 3 voting member and max learner 2
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ExperimentalMaxLearners: 2, DisableStrictReconfigCheck: true})
+	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, MaxLearners: 2, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// 2. adding 2 learner members should succeed
