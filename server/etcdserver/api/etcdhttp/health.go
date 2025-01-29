@@ -120,20 +120,22 @@ var (
 		Name:      "health_failures",
 		Help:      "The total number of failed health checks",
 	})
-	healthCheckGauge = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "healthcheck",
-		Help:      "The result of each kind of healthcheck.",
-	},
+	healthCheckGauge = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "etcd",
+			Subsystem: "server",
+			Name:      "healthcheck",
+			Help:      "The result of each kind of healthcheck.",
+		},
 		[]string{"type", "name"},
 	)
-	healthCheckCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "healthchecks_total",
-		Help:      "The total number of each kind of healthcheck.",
-	},
+	healthCheckCounter = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "etcd",
+			Subsystem: "server",
+			Name:      "healthchecks_total",
+			Help:      "The total number of each kind of healthcheck.",
+		},
 		[]string{"type", "name", "status"},
 	)
 )
