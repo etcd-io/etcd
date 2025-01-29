@@ -416,6 +416,10 @@ func WithCipherSuites(suites []string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CipherSuites = suites }
 }
 
+func WithExtensiveMetrics() EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.Metrics = "extensive" }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
