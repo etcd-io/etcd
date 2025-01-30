@@ -171,10 +171,12 @@ type ServerConfig struct {
 
 	EnableGRPCGateway bool
 
-	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
-	ExperimentalEnableDistributedTracing bool
 	// ExperimentalTracerOptions are options for OpenTelemetry gRPC interceptor.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: remove in v3.7
 	ExperimentalTracerOptions []otelgrpc.Option
+
+	TracerOptions []otelgrpc.Option
 
 	WatchProgressNotifyInterval time.Duration
 
@@ -211,6 +213,9 @@ type ServerConfig struct {
 
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
+
+	// EnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
+	EnableDistributedTracing bool `json:"enable-distributed-tracing"`
 }
 
 // VerifyBootstrap sanity-checks the initial config for bootstrap case

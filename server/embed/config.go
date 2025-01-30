@@ -97,8 +97,13 @@ const (
 	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
 
 	// ExperimentalDistributedTracingAddress is the default collector address.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingAddress = "localhost:4317"
+
 	// ExperimentalDistributedTracingServiceName is the default etcd service name.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceName = "etcd"
 
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
@@ -133,6 +138,10 @@ var (
 	// This is the mapping from the non boolean `experimental-` to the new flags.
 	// TODO: delete in v3.7
 	experimentalNonBoolFlagMigrationMap = map[string]string{
+		"experimental-distributed-tracing-address":          "distributed-tracing-address",
+		"experimental-distributed-tracing-service-name":     "distributed-tracing-service-name",
+		"experimental-distributed-tracing-instance-id":      "distributed-tracing-instance-id",
+		"experimental-distributed-tracing-sampling-rate":    "distributed-tracing-sampling-rate",
 		"experimental-compact-hash-check-time":              "compact-hash-check-time",
 		"experimental-corrupt-check-time":                   "corrupt-check-time",
 		"experimental-compaction-batch-limit":               "compaction-batch-limit",
@@ -435,22 +444,32 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
+	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
-	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
-	// Can only be set if ExperimentalEnableDistributedTracing is true.
+	// ExperimentalDistributedTracingAddress is the address of OpenTelemetry collector.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
 	// ExperimentalDistributedTracingServiceName is the name of the service.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
 	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
-	// This ID must be unique, as helps to distinguish instances of the same service
-	// that exist at the same time.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
-	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
-	// Defaults to 0.
+	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
+
+	EnableDistributedTracing                 bool   `json:"enable-distributed-tracing"`
+	DistributedTracingAddress                string `json:"distributed-tracing-address"`
+	DistributedTracingServiceName            string `json:"distributed-tracing-service-name"`
+	DistributedTracingServiceInstanceID      string `json:"distributed-tracing-instance-id"`
+	DistributedTracingSamplingRatePerMillion int    `json:"distributed-tracing-sampling-rate"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -683,6 +702,11 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.GRPCKeepAliveTimeout, "grpc-keepalive-timeout", cfg.GRPCKeepAliveTimeout, "Additional duration of wait before closing a non-responsive connection (0 to disable).")
 	fs.BoolVar(&cfg.SocketOpts.ReusePort, "socket-reuse-port", cfg.SocketOpts.ReusePort, "Enable to set socket option SO_REUSEPORT on listeners allowing rebinding of a port already in use.")
 	fs.BoolVar(&cfg.SocketOpts.ReuseAddress, "socket-reuse-address", cfg.SocketOpts.ReuseAddress, "Enable to set socket option SO_REUSEADDR on listeners allowing binding to an address in `TIME_WAIT` state.")
+	fs.BoolVar(&cfg.EnableDistributedTracing, "enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry protocol")
+	fs.StringVar(&cfg.DistributedTracingAddress, "distributed-tracing-address", ExperimentalDistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing")
+	fs.StringVar(&cfg.DistributedTracingServiceName, "distributed-tracing-service-name", ExperimentalDistributedTracingServiceName, "Configures service name for distributed tracing")
+	fs.StringVar(&cfg.DistributedTracingServiceInstanceID, "distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing")
+	fs.IntVar(&cfg.DistributedTracingSamplingRatePerMillion, "distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans")
 
 	fs.Var(flags.NewUint32Value(cfg.MaxConcurrentStreams), "max-concurrent-streams", "Maximum concurrent streams that each client can open at a time.")
 
@@ -784,11 +808,11 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics")
 
 	// experimental distributed tracing
-	fs.BoolVar(&cfg.ExperimentalEnableDistributedTracing, "experimental-enable-distributed-tracing", false, "Enable experimental distributed  tracing using OpenTelemetry Tracing.")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingAddress, "experimental-distributed-tracing-address", ExperimentalDistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag).")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceName, "experimental-distributed-tracing-service-name", ExperimentalDistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd.")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceInstanceID, "experimental-distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance.")
-	fs.IntVar(&cfg.ExperimentalDistributedTracingSamplingRatePerMillion, "experimental-distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag).")
+	fs.BoolVar(&cfg.ExperimentalEnableDistributedTracing, "experimental-enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry protocol. "+"Deprecated in v3.6 and will be decommissioned in v3.7. Use --enable-distributed-tracing instead.")
+	fs.StringVar(&cfg.ExperimentalDistributedTracingAddress, "experimental-distributed-tracing-address", ExperimentalDistributedTracingAddress, "Address for distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-address instead.")
+	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceName, "experimental-distributed-tracing-service-name", ExperimentalDistributedTracingServiceName, "Service name for distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-service-name instead.")
+	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceInstanceID, "experimental-distributed-tracing-instance-id", "", "Service instance ID for distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-instance-id instead.")
+	fs.IntVar(&cfg.ExperimentalDistributedTracingSamplingRatePerMillion, "experimental-distributed-tracing-sampling-rate", 0, "Samples per million for distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-sampling-rate instead.")
 
 	// auth
 	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
@@ -1051,6 +1075,10 @@ func (cfg *Config) Validate() error {
 		if cfg.FlagsExplicitlySet[oldFlag] && cfg.FlagsExplicitlySet[newFlag] {
 			return fmt.Errorf("cannot set --%s and --%s at the same time, please use --%s only", oldFlag, newFlag, newFlag)
 		}
+	}
+
+	if cfg.FlagsExplicitlySet["experimental-enable-distributed-tracing"] && cfg.FlagsExplicitlySet["enable-distributed-tracing"] {
+		return fmt.Errorf("cannot set --experimental-enable-distributed-tracing and --enable-distributed-tracing at the same time")
 	}
 
 	if err := cfg.setupLogging(); err != nil {

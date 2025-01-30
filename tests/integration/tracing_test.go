@@ -57,10 +57,10 @@ func TestTracing(t *testing.T) {
 	defer srv.Stop()
 
 	cfg := integration.NewEmbedConfig(t, "default")
-	cfg.ExperimentalEnableDistributedTracing = true
-	cfg.ExperimentalDistributedTracingAddress = listener.Addr().String()
-	cfg.ExperimentalDistributedTracingServiceName = "integration-test-tracing"
-	cfg.ExperimentalDistributedTracingSamplingRatePerMillion = 100
+	cfg.EnableDistributedTracing = true
+	cfg.DistributedTracingAddress = listener.Addr().String()
+	cfg.DistributedTracingServiceName = "integration-test-tracing"
+	cfg.DistributedTracingSamplingRatePerMillion = 100
 
 	// start an etcd instance with tracing enabled
 	etcdSrv, err := embed.StartEtcd(cfg)

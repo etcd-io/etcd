@@ -1060,6 +1060,8 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 	newConfig.AutoCompactionRetention = "0"
 	newConfig.ExperimentalDistributedTracingAddress = "localhost:4317"
 	newConfig.ExperimentalDistributedTracingServiceName = "etcd"
+	newConfig.DistributedTracingServiceName = "etcd"
+	newConfig.DistributedTracingAddress = "localhost:4317"
 	newConfig.LogFormat = "json"
 	newConfig.ExperimentalTxnModeWriteWithSharedBuffer = true
 	// TODO: Reduce number of unexported fields set in config

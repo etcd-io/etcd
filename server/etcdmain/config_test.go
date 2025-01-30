@@ -1057,6 +1057,11 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWarningUnaryRequestDuration       time.Duration `json:"experimental-warning-unary-request-duration,omitempty"`
 		ExperimentalCorruptCheckTime                  time.Duration `json:"experimental-corrupt-check-time,omitempty"`
 		ExperimentalCompactionBatchLimit              int           `json:"experimental-compaction-batch-limit,omitempty"`
+		ExperimentalDistributedTracingEnabled         bool          `json:"experimental-enable-distributed-tracing,omitempty"`
+		ExperimentalDistributedTracingAddress         string        `json:"experimental-distributed-tracing-address,omitempty"`
+		ExperimentalDistributedTracingServiceName     string        `json:"experimental-distributed-tracing-service-name,omitempty"`
+		ExperimentalDistributedTracingInstanceID      string        `json:"experimental-distributed-tracing-instance-id,omitempty"`
+		ExperimentalDistributedTracingSamplingRate    int           `json:"experimental-distributed-tracing-sampling-rate,omitempty"`
 		ExperimentalWatchProgressNotifyInterval       time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
@@ -1095,6 +1100,23 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
 				"experimental-max-learners":                         {},
+			},
+		},
+		{
+			name: "distributed tracing experimental flags",
+			configFileYAML: configFileYAML{
+				ExperimentalDistributedTracingEnabled:      true,
+				ExperimentalDistributedTracingAddress:      "localhost:4318",
+				ExperimentalDistributedTracingServiceName:  "test-service",
+				ExperimentalDistributedTracingInstanceID:   "instance-1",
+				ExperimentalDistributedTracingSamplingRate: 1000,
+			},
+			expectedFlags: map[string]struct{}{
+				"experimental-enable-distributed-tracing":        {},
+				"experimental-distributed-tracing-address":       {},
+				"experimental-distributed-tracing-service-name":  {},
+				"experimental-distributed-tracing-instance-id":   {},
+				"experimental-distributed-tracing-sampling-rate": {},
 			},
 		},
 		{
