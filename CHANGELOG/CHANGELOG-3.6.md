@@ -107,5 +107,6 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 
 - Use Distroless as base image to make the image less vulnerable and reduce image size.
 - [Upgrade grpc-gateway from v1 to v2](https://github.com/etcd-io/etcd/pull/16595).
+- [Switch from grpc-ecosystem/go-grpc-prometheus to grpc-ecosystem/go-grpc-middleware/providers/prometheus](https://github.com/etcd-io/etcd/pull/19195).
 
 <hr>
