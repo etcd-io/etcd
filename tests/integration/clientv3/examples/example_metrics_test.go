@@ -26,8 +26,9 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"
+
+	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 func mockClient_metrics() {
