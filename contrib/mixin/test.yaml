@@ -5,24 +5,24 @@ tests:
   - interval: 1m
     input_series:
       - series: up{job="etcd",instance="10.10.10.0"}
-        values: 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0
       - series: up{job="etcd",instance="10.10.10.1"}
-        values: 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0
+        values: 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
       - series: up{job="etcd",instance="10.10.10.2"}
-        values: 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0
+        values: 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
     alert_rule_test:
       - eval_time: 3m
         alertname: etcdInsufficientMembers
       - eval_time: 5m
         alertname: etcdInsufficientMembers
-      - eval_time: 12m
+      - eval_time: 22m
         alertname: etcdMembersDown
-      - eval_time: 14m
+      - eval_time: 24m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: critical
+              severity: warning
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (3).'
               summary: etcd cluster members are down.
@@ -55,30 +55,30 @@ tests:
       - series: up{job="etcd",instance="10.10.10.2"}
         values: 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
     alert_rule_test:
-      - eval_time: 14m
+      - eval_time: 24m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: critical
+              severity: warning
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (3).'
               summary: etcd cluster members are down.
   - interval: 1m
     input_series:
       - series: up{job="etcd",instance="10.10.10.0"}
-        values: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0
       - series: up{job="etcd",instance="10.10.10.1"}
-        values: 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0
+        values: 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0
       - series: etcd_network_peer_sent_failures_total{To="member-1",job="etcd",endpoint="test"}
-        values: 0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+        values: 0 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28
     alert_rule_test:
-      - eval_time: 13m
+      - eval_time: 23m
         alertname: etcdMembersDown
         exp_alerts:
           - exp_labels:
               job: etcd
-              severity: critical
+              severity: warning
             exp_annotations:
               description: 'etcd cluster "etcd": members are down (1).'
               summary: etcd cluster members are down.
