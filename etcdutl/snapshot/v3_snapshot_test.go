@@ -141,6 +141,7 @@ func createDB(t *testing.T, generateContent func(*etcdserver.EtcdServer)) string
 	t.Helper()
 
 	cfg := embed.NewConfig()
+	cfg.BackendBatchLimit = 1
 	cfg.LogLevel = "fatal"
 	cfg.Dir = t.TempDir()
 
