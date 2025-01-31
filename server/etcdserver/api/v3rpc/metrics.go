@@ -14,7 +14,9 @@
 
 package v3rpc
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 var (
 	sentBytes = prometheus.NewCounter(prometheus.CounterOpts{

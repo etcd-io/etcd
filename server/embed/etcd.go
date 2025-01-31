@@ -31,7 +31,6 @@ import (
 	"sync"
 	"time"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -239,6 +238,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		V2Deprecation:                        cfg.V2DeprecationEffective(),
 		ExperimentalLocalAddress:             cfg.InferLocalAddr(),
 		ServerFeatureGate:                    cfg.ServerFeatureGate,
+		Metrics:                              cfg.Metrics,
 	}
 
 	if srvcfg.ExperimentalEnableDistributedTracing {
@@ -876,10 +876,6 @@ func (e *Etcd) createMetricsListener(murl url.URL) (net.Listener, error) {
 }
 
 func (e *Etcd) serveMetrics() (err error) {
-	if e.cfg.Metrics == "extensive" {
-		grpc_prometheus.EnableHandlingTimeHistogram()
-	}
-
 	if len(e.cfg.ListenMetricsUrls) > 0 {
 		metricsMux := http.NewServeMux()
 		etcdhttp.HandleMetrics(metricsMux)
