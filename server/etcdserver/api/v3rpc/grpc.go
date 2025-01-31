@@ -42,10 +42,14 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
 
-	serverMetrics := grpc_prometheus.NewServerMetrics()
+	var mopts []grpc_prometheus.ServerMetricsOption
+	if s.Cfg.Metrics == "extensive" {
+		mopts = append(mopts, grpc_prometheus.WithServerHandlingTimeHistogram())
+	}
+	serverMetrics := grpc_prometheus.NewServerMetrics(mopts...)
 	err := prometheus.Register(serverMetrics)
 	if err != nil {
-		s.Cfg.Logger.Warn("etcdserver: failed to register grpc metrics: ", zap.Error(err))
+		s.Cfg.Logger.Warn("etcdserver: failed to register grpc metrics", zap.Error(err))
 	}
 
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
@@ -60,13 +64,6 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	chainStreamInterceptors := []grpc.StreamServerInterceptor{
 		newStreamInterceptor(s),
 		serverMetrics.StreamServerInterceptor(),
-	}
-
-	// If extensive metrics are enabled, register a histogram to track the reponse latency of gRPC requests
-	if s.Cfg.Metrics == "extensive" {
-		unaryInterceptor, streamInterceptor := constructExtensiveMetricsInterceptors()
-		chainUnaryInterceptors = append(chainUnaryInterceptors, unaryInterceptor)
-		chainStreamInterceptors = append(chainStreamInterceptors, streamInterceptor)
 	}
 
 	if s.Cfg.ExperimentalEnableDistributedTracing {

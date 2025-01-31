@@ -15,12 +15,7 @@
 package v3rpc
 
 import (
-	"context"
-	"strings"
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -64,47 +59,4 @@ func init() {
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(streamFailures)
 	prometheus.MustRegister(clientRequests)
-}
-
-func splitMethodName(fullMethodName string) (string, string) {
-	fullMethodName = strings.TrimPrefix(fullMethodName, "/") // remove leading slash
-	if i := strings.Index(fullMethodName, "/"); i >= 0 {
-		return fullMethodName[:i], fullMethodName[i+1:]
-	}
-	return "unknown", "unknown"
-}
-
-// constructExtensiveMetricsInterceptors constructs unary and stream interceptors to record histogram metrics for gRPC requests
-func constructExtensiveMetricsInterceptors() (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
-	// Define a new histogram metric using default buckets
-	serverHandledHistogram := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "grpc_server_handling_seconds",
-			Help:    "Histogram of response latency (seconds) of gRPC that had been application-level handled by the server.",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"grpc_type", "grpc_service", "grpc_method"},
-	)
-	prometheus.MustRegister(serverHandledHistogram)
-
-	// method to record histogram metrics for both unary and stream requests
-	recordHistogramMetrics := func(serverHandledHistogram *prometheus.HistogramVec, grpcType, fullMethodName string, startTime time.Time) {
-		grpcService, grpcMethod := splitMethodName(fullMethodName)
-		serverHandledHistogram.WithLabelValues(grpcType, grpcService, grpcMethod).Observe(time.Since(startTime).Seconds())
-	}
-
-	// Add a new interceptor to spit out histogram metrics for unary requests
-	unaryInterceptor := func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
-		startTime := time.Now()
-		resp, err = handler(ctx, req)
-		recordHistogramMetrics(serverHandledHistogram, "unary", info.FullMethod, startTime)
-		return resp, err
-	}
-	streamInterceptor := func(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		startTime := time.Now()
-		err := handler(srv, ss)
-		recordHistogramMetrics(serverHandledHistogram, "stream", info.FullMethod, startTime)
-		return err
-	}
-	return unaryInterceptor, streamInterceptor
 }

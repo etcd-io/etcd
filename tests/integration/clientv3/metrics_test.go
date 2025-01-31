@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"slices"
@@ -334,9 +335,5 @@ func getMetricsList(t *testing.T, url string) []string {
 	if err != nil {
 		t.Errorf("Failed to parse metric families")
 	}
-	var ms []string
-	for key := range mfs {
-		ms = append(ms, key)
-	}
-	return ms
+	return slices.Collect(maps.Keys(mfs))
 }
