@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Deprecated: etcd local tester is now deprecated. Use the etcd robustness
+// testing suite instead to validate etcd behaviour under failure conditions.
 package main
 
 import (
