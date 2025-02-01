@@ -57,7 +57,7 @@ test-robustness-issue18089: /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)
-GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
+GOFAIL_VERSION = $(shell go list -m -f {{.Version}} go.etcd.io/gofail)
 
 .PHONY:install-gofail
 install-gofail: $(GOPATH)/bin/gofail
@@ -111,7 +111,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin: $(GOPATH)/bin/gofail
@@ -126,7 +126,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.5.13-compactBeforeSetFinishedCompact/bin: $(GOPATH)/bin/gofail
@@ -140,7 +140,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	  (cd server; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdctl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  (cd etcdutl; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-release-3.5-failpoints/bin: $(GOPATH)/bin/gofail
@@ -149,7 +149,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	cd /tmp/etcd-release-3.5-failpoints/; \
 	  git clone --depth 1 --branch release-3.5 https://github.com/etcd-io/etcd.git .; \
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-v3.4.23-failpoints/bin:
@@ -159,7 +159,7 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	cd /tmp/etcd-v3.4.$*-failpoints/; \
 	  git clone --depth 1 --branch v3.4.$* https://github.com/etcd-io/etcd.git .; \
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
 
 /tmp/etcd-release-3.4-failpoints/bin: $(GOPATH)/bin/gofail
@@ -168,5 +168,5 @@ $(GOPATH)/bin/gofail: tools/mod/go.mod tools/mod/go.sum
 	cd /tmp/etcd-release-3.4-failpoints/; \
 	  git clone --depth 1 --branch release-3.4 https://github.com/etcd-io/etcd.git .; \
 	  go get go.etcd.io/gofail@${GOFAIL_VERSION}; \
-	  (cd tools/mod; go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
+	  (go get go.etcd.io/gofail@${GOFAIL_VERSION}); \
 	  FAILPOINTS=true ./build;
