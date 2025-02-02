@@ -226,8 +226,6 @@ func (f memberDowngradeUpgrade) Inject(ctx context.Context, t *testing.T, lg *za
 	}
 	defer cc.Close()
 
-	// Need to wait health interval for cluster to accept changes
-	time.Sleep(etcdserver.HealthInterval)
 	e2e.DowngradeEnable(t, clus, lastVersion)
 	// downgrade all members first
 	err = e2e.DowngradeUpgradeMembers(t, lg, clus, len(clus.Procs), currentVersion, lastVersion)

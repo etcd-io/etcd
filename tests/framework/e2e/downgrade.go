@@ -28,7 +28,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -77,9 +76,6 @@ func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessClus
 	}
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
 	lg.Info(fmt.Sprintf("Test %s members", opString), zap.Any("members", membersToChange))
-
-	// Need to wait health interval for cluster to prepare for downgrade/upgrade
-	time.Sleep(etcdserver.HealthInterval)
 
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
