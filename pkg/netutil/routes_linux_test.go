@@ -16,20 +16,20 @@
 
 package netutil
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestGetDefaultInterface(t *testing.T) {
 	ifc, err := GetDefaultInterfaces()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Logf("default network interfaces: %+v\n", ifc)
 }
 
 func TestGetDefaultHost(t *testing.T) {
 	ip, err := GetDefaultHost()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Logf("default ip: %v", ip)
 }

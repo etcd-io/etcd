@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,38 +22,22 @@ func TestHash32(t *testing.T) {
 	// create a new hash with stdhash.Sum32() as initial crc
 	hash := New(stdhash.Sum32(), crc32.IEEETable)
 
-	wsize := stdhash.Size()
-	if g := hash.Size(); g != wsize {
-		t.Errorf("size = %d, want %d", g, wsize)
-	}
-	wbsize := stdhash.BlockSize()
-	if g := hash.BlockSize(); g != wbsize {
-		t.Errorf("block size = %d, want %d", g, wbsize)
-	}
-	wsum32 := stdhash.Sum32()
-	if g := hash.Sum32(); g != wsum32 {
-		t.Errorf("Sum32 = %d, want %d", g, wsum32)
-	}
+	assert.Equalf(t, hash.Size(), stdhash.Size(), "size")
+	assert.Equalf(t, hash.BlockSize(), stdhash.BlockSize(), "block size")
+	assert.Equalf(t, hash.Sum32(), stdhash.Sum32(), "Sum32")
 	wsum := stdhash.Sum(make([]byte, 32))
-	if g := hash.Sum(make([]byte, 32)); !reflect.DeepEqual(g, wsum) {
-		t.Errorf("sum = %v, want %v", g, wsum)
-	}
+	g := hash.Sum(make([]byte, 32))
+	assert.Truef(t, reflect.DeepEqual(g, wsum), "sum")
 
 	// write something
 	_, err = stdhash.Write([]byte("test data"))
 	require.NoErrorf(t, err, "unexpected write error: %v", err)
 	_, err = hash.Write([]byte("test data"))
 	require.NoErrorf(t, err, "unexpected write error: %v", err)
-	wsum32 = stdhash.Sum32()
-	if g := hash.Sum32(); g != wsum32 {
-		t.Errorf("Sum32 after write = %d, want %d", g, wsum32)
-	}
+	assert.Equalf(t, hash.Sum32(), stdhash.Sum32(), "Sum32 after write")
 
 	// reset
 	stdhash.Reset()
 	hash.Reset()
-	wsum32 = stdhash.Sum32()
-	if g := hash.Sum32(); g != wsum32 {
-		t.Errorf("Sum32 after reset = %d, want %d", g, wsum32)
-	}
+	assert.Equalf(t, hash.Sum32(), stdhash.Sum32(), "Sum32 after reset")
 }

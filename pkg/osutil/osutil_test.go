@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -29,9 +30,7 @@ func init() { setDflSignal = func(syscall.Signal) {} }
 func waitSig(t *testing.T, c <-chan os.Signal, sig os.Signal) {
 	select {
 	case s := <-c:
-		if s != sig {
-			t.Fatalf("signal was %v, want %v", s, sig)
-		}
+		require.Equalf(t, s, sig, "signal was %v, want %v", s, sig)
 	case <-time.After(1 * time.Second):
 		t.Fatalf("timeout waiting for %v", sig)
 	}
@@ -54,12 +53,8 @@ func TestHandleInterrupts(t *testing.T) {
 		waitSig(t, c, sig)
 		waitSig(t, c, sig)
 
-		if n == 3 {
-			t.Fatalf("interrupt handlers were called in wrong order")
-		}
-		if n != 4 {
-			t.Fatalf("interrupt handlers were not called properly")
-		}
+		require.NotEqualf(t, 3, n, "interrupt handlers were called in wrong order")
+		require.Equalf(t, 4, n, "interrupt handlers were not called properly")
 		// reset interrupt handlers
 		interruptHandlers = interruptHandlers[:0]
 		interruptExitMu.Unlock()

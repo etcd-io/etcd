@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -213,16 +214,13 @@ func TestFeatureGateFlag(t *testing.T) {
 
 			err := fs.Parse([]string{fmt.Sprintf("--%s=%s", defaultFlagName, test.arg)})
 			if test.parseError != "" {
-				if !strings.Contains(err.Error(), test.parseError) {
-					t.Errorf("%d: Parse() Expected %v, Got %v", i, test.parseError, err)
-				}
+				assert.Containsf(t, err.Error(), test.parseError, "%d: Parse() Expected %v, Got %v", i, test.parseError, err)
 			} else if err != nil {
 				t.Errorf("%d: Parse() Expected nil, Got %v", i, err)
 			}
 			for k, v := range test.expect {
-				if actual := f.enabled.Load().(map[Feature]bool)[k]; actual != v {
-					t.Errorf("%d: expected %s=%v, Got %v", i, k, v, actual)
-				}
+				actual := f.enabled.Load().(map[Feature]bool)[k]
+				assert.Equalf(t, actual, v, "%d: expected %s=%v, Got %v", i, k, v, actual)
 			}
 		})
 	}
@@ -240,20 +238,12 @@ func TestFeatureGateOverride(t *testing.T) {
 	})
 
 	f.Set("TestAlpha=true,TestBeta=true")
-	if f.Enabled(testAlphaGate) != true {
-		t.Errorf("Expected true")
-	}
-	if f.Enabled(testBetaGate) != true {
-		t.Errorf("Expected true")
-	}
+	assert.Truef(t, f.Enabled(testAlphaGate), "Expected true")
+	assert.Truef(t, f.Enabled(testBetaGate), "Expected true")
 
 	f.Set("TestAlpha=false")
-	if f.Enabled(testAlphaGate) != false {
-		t.Errorf("Expected false")
-	}
-	if f.Enabled(testBetaGate) != true {
-		t.Errorf("Expected true")
-	}
+	assert.Falsef(t, f.Enabled(testAlphaGate), "Expected false")
+	assert.Truef(t, f.Enabled(testBetaGate), "Expected true")
 }
 
 func TestFeatureGateFlagDefaults(t *testing.T) {
@@ -268,12 +258,8 @@ func TestFeatureGateFlagDefaults(t *testing.T) {
 		testBetaGate:  {Default: true, PreRelease: Beta},
 	})
 
-	if f.Enabled(testAlphaGate) != false {
-		t.Errorf("Expected false")
-	}
-	if f.Enabled(testBetaGate) != true {
-		t.Errorf("Expected true")
-	}
+	assert.Falsef(t, f.Enabled(testAlphaGate), "Expected false")
+	assert.Truef(t, f.Enabled(testBetaGate), "Expected true")
 }
 
 func TestFeatureGateKnownFeatures(t *testing.T) {
@@ -411,9 +397,8 @@ func TestFeatureGateSetFromMap(t *testing.T) {
 				t.Errorf("%d: SetFromMap(%#v) Expected success, Got err:%v", i, test.setmap, err)
 			}
 			for k, v := range test.expect {
-				if actual := f.Enabled(k); actual != v {
-					t.Errorf("%d: SetFromMap(%#v) Expected %s=%v, Got %s=%v", i, test.setmap, k, v, k, actual)
-				}
+				actual := f.Enabled(k)
+				assert.Equalf(t, actual, v, "%d: SetFromMap(%#v) Expected %s=%v, Got %s=%v", i, test.setmap, k, v, k, actual)
 			}
 		})
 	}
@@ -467,9 +452,7 @@ func TestFeatureGateString(t *testing.T) {
 			f.Add(featuremap)
 			f.SetFromMap(test.setmap)
 			result := f.String()
-			if result != test.expect {
-				t.Errorf("%d: SetFromMap(%#v) Expected %s, Got %s", i, test.setmap, test.expect, result)
-			}
+			assert.Equalf(t, result, test.expect, "%d: SetFromMap(%#v) Expected %s, Got %s", i, test.setmap, test.expect, result)
 		})
 	}
 }
@@ -477,128 +460,90 @@ func TestFeatureGateString(t *testing.T) {
 func TestFeatureGateOverrideDefault(t *testing.T) {
 	t.Run("overrides take effect", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{
+		err := f.Add(map[Feature]FeatureSpec{
 			"TestFeature1": {Default: true},
 			"TestFeature2": {Default: false},
-		}); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature1", false); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature2", true); err != nil {
-			t.Fatal(err)
-		}
-		if f.Enabled("TestFeature1") {
-			t.Error("expected TestFeature1 to have effective default of false")
-		}
-		if !f.Enabled("TestFeature2") {
-			t.Error("expected TestFeature2 to have effective default of true")
-		}
+		})
+		require.NoError(t, err)
+		require.NoError(t, f.OverrideDefault("TestFeature1", false))
+		require.NoError(t, f.OverrideDefault("TestFeature2", true))
+		assert.Falsef(t, f.Enabled("TestFeature1"), "expected TestFeature1 to have effective default of false")
+		assert.Truef(t, f.Enabled("TestFeature2"), "expected TestFeature2 to have effective default of true")
 	})
 
 	t.Run("overrides are preserved across deep copies", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{"TestFeature": {Default: false}}); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature", true); err != nil {
-			t.Fatal(err)
-		}
+		err := f.Add(map[Feature]FeatureSpec{"TestFeature": {Default: false}})
+		require.NoError(t, err)
+		require.NoError(t, f.OverrideDefault("TestFeature", true))
 		fcopy := f.DeepCopy()
-		if !fcopy.Enabled("TestFeature") {
-			t.Error("default override was not preserved by deep copy")
-		}
+		assert.Truef(t, fcopy.Enabled("TestFeature"), "default override was not preserved by deep copy")
 	})
 
 	t.Run("reflected in known features", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{"TestFeature": {
+		err := f.Add(map[Feature]FeatureSpec{"TestFeature": {
 			Default:    false,
 			PreRelease: Alpha,
-		}}); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature", true); err != nil {
-			t.Fatal(err)
-		}
+		}})
+		require.NoError(t, err)
+		require.NoError(t, f.OverrideDefault("TestFeature", true))
 		var found bool
 		for _, s := range f.KnownFeatures() {
 			if !strings.Contains(s, "TestFeature") {
 				continue
 			}
 			found = true
-			if !strings.Contains(s, "default=true") {
-				t.Errorf("expected override of default to be reflected in known feature description %q", s)
-			}
+			assert.Containsf(t, s, "default=true", "expected override of default to be reflected in known feature description %q", s)
 		}
-		if !found {
-			t.Error("found no entry for TestFeature in known features")
-		}
+		assert.Truef(t, found, "found no entry for TestFeature in known features")
 	})
 
 	t.Run("may not change default for specs with locked defaults", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{
+		err := f.Add(map[Feature]FeatureSpec{
 			"LockedFeature": {
 				Default:       true,
 				LockToDefault: true,
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
-		if f.OverrideDefault("LockedFeature", false) == nil {
-			t.Error("expected error when attempting to override the default for a feature with a locked default")
-		}
-		if f.OverrideDefault("LockedFeature", true) == nil {
-			t.Error("expected error when attempting to override the default for a feature with a locked default")
-		}
+		})
+		require.NoError(t, err)
+		require.Errorf(t, f.OverrideDefault("LockedFeature", false), "expected error when attempting to override the default for a feature with a locked default")
+		assert.Errorf(t, f.OverrideDefault("LockedFeature", true), "expected error when attempting to override the default for a feature with a locked default")
 	})
 
 	t.Run("does not supersede explicitly-set value", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{"TestFeature": {Default: true}}); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature", false); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.SetFromMap(map[string]bool{"TestFeature": true}); err != nil {
-			t.Fatal(err)
-		}
-		if !f.Enabled("TestFeature") {
-			t.Error("expected feature to be effectively enabled despite default override")
-		}
+		err := f.Add(map[Feature]FeatureSpec{"TestFeature": {Default: true}})
+		require.NoError(t, err)
+		require.NoError(t, f.OverrideDefault("TestFeature", false))
+		require.NoError(t, f.SetFromMap(map[string]bool{"TestFeature": true}))
+		assert.Truef(t, f.Enabled("TestFeature"), "expected feature to be effectively enabled despite default override")
 	})
 
 	t.Run("prevents re-registration of feature spec after overriding default", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.Add(map[Feature]FeatureSpec{
+		err := f.Add(map[Feature]FeatureSpec{
 			"TestFeature": {
 				Default:    true,
 				PreRelease: Alpha,
 			},
-		}); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.OverrideDefault("TestFeature", false); err != nil {
-			t.Fatal(err)
-		}
-		if err := f.Add(map[Feature]FeatureSpec{
+		})
+		require.NoError(t, err)
+		require.NoError(t, f.OverrideDefault("TestFeature", false))
+		err = f.Add(map[Feature]FeatureSpec{
 			"TestFeature": {
 				Default:    true,
 				PreRelease: Alpha,
 			},
-		}); err == nil {
-			t.Error("expected re-registration to return a non-nil error after overriding its default")
-		}
+		})
+		assert.Errorf(t, err, "expected re-registration to return a non-nil error after overriding its default")
 	})
 
 	t.Run("does not allow override for an unknown feature", func(t *testing.T) {
 		f := New("test", zaptest.NewLogger(t))
-		if err := f.OverrideDefault("TestFeature", true); err == nil {
-			t.Error("expected an error to be returned in attempt to override default for unregistered feature")
-		}
+		err := f.OverrideDefault("TestFeature", true)
+		assert.Errorf(t, err, "expected an error to be returned in attempt to override default for unregistered feature")
 	})
 
 	t.Run("returns error if already added to flag set", func(t *testing.T) {
@@ -606,8 +551,7 @@ func TestFeatureGateOverrideDefault(t *testing.T) {
 		fs := flag.NewFlagSet("test", flag.ContinueOnError)
 		f.AddFlag(fs, defaultFlagName)
 
-		if err := f.OverrideDefault("TestFeature", true); err == nil {
-			t.Error("expected a non-nil error to be returned")
-		}
+		err := f.OverrideDefault("TestFeature", true)
+		assert.Errorf(t, err, "expected a non-nil error to be returned")
 	})
 }

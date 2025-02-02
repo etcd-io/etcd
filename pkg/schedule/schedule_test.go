@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
@@ -53,7 +54,5 @@ func TestFIFOSchedule(t *testing.T) {
 	}
 
 	s.WaitFinish(100)
-	if s.Finished() != 100 {
-		t.Errorf("finished = %d, want %d", s.Finished(), 100)
-	}
+	assert.Equalf(t, 100, s.Finished(), "finished = %d, want %d", s.Finished(), 100)
 }

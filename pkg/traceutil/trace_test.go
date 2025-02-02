@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
@@ -50,9 +51,7 @@ func TestGet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			trace := Get(tt.inputCtx)
-			if trace == nil {
-				t.Errorf("Expected %v; Got nil", tt.outputTrace)
-			}
+			assert.NotNilf(t, trace, "Expected %v; Got nil", tt.outputTrace)
 			if tt.outputTrace == nil || trace.operation != tt.outputTrace.operation {
 				t.Errorf("Expected %v; Got %v", tt.outputTrace, trace)
 			}
@@ -75,16 +74,10 @@ func TestCreate(t *testing.T) {
 	)
 
 	trace := New(op, nil, fields[0], fields[1])
-	if trace.operation != op {
-		t.Errorf("Expected %v; Got %v", op, trace.operation)
-	}
+	assert.Equalf(t, trace.operation, op, "Expected %v; Got %v", op, trace.operation)
 	for i, f := range trace.fields {
-		if f.Key != fields[i].Key {
-			t.Errorf("Expected %v; Got %v", fields[i].Key, f.Key)
-		}
-		if f.Value != fields[i].Value {
-			t.Errorf("Expected %v; Got %v", fields[i].Value, f.Value)
-		}
+		assert.Equalf(t, f.Key, fields[i].Key, "Expected %v; Got %v", fields[i].Key, f.Key)
+		assert.Equalf(t, f.Value, fields[i].Value, "Expected %v; Got %v", fields[i].Value, f.Value)
 	}
 
 	for i, v := range steps {
@@ -92,15 +85,9 @@ func TestCreate(t *testing.T) {
 	}
 
 	for i, v := range trace.steps {
-		if steps[i] != v.msg {
-			t.Errorf("Expected %v; Got %v", steps[i], v.msg)
-		}
-		if stepFields[i].Key != v.fields[0].Key {
-			t.Errorf("Expected %v; Got %v", stepFields[i].Key, v.fields[0].Key)
-		}
-		if stepFields[i].Value != v.fields[0].Value {
-			t.Errorf("Expected %v; Got %v", stepFields[i].Value, v.fields[0].Value)
-		}
+		assert.Equalf(t, steps[i], v.msg, "Expected %v; Got %v", steps[i], v.msg)
+		assert.Equalf(t, stepFields[i].Key, v.fields[0].Key, "Expected %v; Got %v", stepFields[i].Key, v.fields[0].Key)
+		assert.Equalf(t, stepFields[i].Value, v.fields[0].Value, "Expected %v; Got %v", stepFields[i].Value, v.fields[0].Value)
 	}
 }
 
@@ -220,9 +207,7 @@ func TestLog(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, msg := range tt.expectedMsg {
-				if !bytes.Contains(data, []byte(msg)) {
-					t.Errorf("Expected to find %v in log", msg)
-				}
+				assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
 			}
 		})
 	}
@@ -295,9 +280,7 @@ func TestLogIfLong(t *testing.T) {
 			data, err := os.ReadFile(logPath)
 			require.NoError(t, err)
 			for _, msg := range tt.expectedMsg {
-				if !bytes.Contains(data, []byte(msg)) {
-					t.Errorf("Expected to find %v in log", msg)
-				}
+				assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
 			}
 		})
 	}

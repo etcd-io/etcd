@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -136,14 +138,10 @@ func TestResolveTCPAddrs(t *testing.T) {
 		urls, err := resolveTCPAddrs(ctx, zaptest.NewLogger(t), tt.urls)
 		cancel()
 		if tt.hasError {
-			if err == nil {
-				t.Errorf("expected error")
-			}
+			require.Errorf(t, err, "expected error")
 			continue
 		}
-		if !reflect.DeepEqual(urls, tt.expected) {
-			t.Errorf("expected: %v, got %v", tt.expected, urls)
-		}
+		assert.Truef(t, reflect.DeepEqual(urls, tt.expected), "expected: %v, got %v", tt.expected, urls)
 	}
 }
 
@@ -308,9 +306,7 @@ func TestURLsEqual(t *testing.T) {
 
 	for i, test := range tests {
 		result, err := urlsEqual(context.TODO(), zaptest.NewLogger(t), test.a, test.b)
-		if result != test.expect {
-			t.Errorf("idx=%d #%d: a:%v b:%v, expected %v but %v", i, test.n, test.a, test.b, test.expect, result)
-		}
+		assert.Equalf(t, result, test.expect, "idx=%d #%d: a:%v b:%v, expected %v but %v", i, test.n, test.a, test.b, test.expect, result)
 		if test.err != nil {
 			if err.Error() != test.err.Error() {
 				t.Errorf("idx=%d #%d: err expected %v but %v", i, test.n, test.err, err)
@@ -347,11 +343,7 @@ func TestURLStringsEqual(t *testing.T) {
 		t.Logf("TestURLStringsEqual, case #%d", idx)
 		resolveTCPAddr = c.resolver
 		result, err := URLStringsEqual(context.TODO(), zaptest.NewLogger(t), c.urlsA, c.urlsB)
-		if !result {
-			t.Errorf("unexpected result %v", result)
-		}
-		if err != nil {
-			t.Errorf("unexpected error %v", err)
-		}
+		assert.Truef(t, result, "unexpected result %v", result)
+		assert.NoErrorf(t, err, "unexpected error %v", err)
 	}
 }
