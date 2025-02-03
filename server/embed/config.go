@@ -132,7 +132,7 @@ var (
 	// in 3.6, we are migration all the --experimental flags to feature gate and flags without the prefix.
 	// This is the mapping from the non boolean `experimental-` to the new flags.
 	// TODO: delete in v3.7
-	experimentalNonBoolFlagMigrationMap = map[string]string{
+	experimentalFlagMigrationMap = map[string]string{
 		"experimental-compact-hash-check-time":              "compact-hash-check-time",
 		"experimental-corrupt-check-time":                   "corrupt-check-time",
 		"experimental-compaction-batch-limit":               "compaction-batch-limit",
@@ -140,6 +140,7 @@ var (
 		"experimental-warning-apply-duration":               "warning-apply-duration",
 		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
 		"experimental-max-learners":                         "max-learners",
+		"experimental-memory-mlock":                         "memory-mlock",
 	}
 )
 
@@ -488,12 +489,17 @@ type Config struct {
 
 	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
 
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// MemoryMlock enables mlocking of etcd owned memory pages.
 	// The setting improves etcd tail latency in environments were:
 	//   - memory pressure might lead to swapping pages to disk
 	//   - disk latency might be unstable
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
+	MemoryMlock bool `json:"memory-mlock"`
+
+	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use MemoryMlock instead.
+	// TODO: Delete in v3.7
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
@@ -610,7 +616,9 @@ func NewConfig() *Config {
 		LogRotationConfigJSON: DefaultLogRotationConfig,
 		EnableGRPCGateway:     true,
 
-		ExperimentalDowngradeCheckTime:      DefaultDowngradeCheckTime,
+		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
+		MemoryMlock:                    false,
+		// TODO: delete in v3.7
 		ExperimentalMemoryMlock:             false,
 		ExperimentalStopGRPCServiceOnDefrag: false,
 		MaxLearners:                         membership.DefaultMaxLearners,
@@ -825,7 +833,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
 	fs.DurationVar(&cfg.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.")
+	// TODO: delete in v3.7
 	fs.BoolVar(&cfg.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
+	fs.BoolVar(&cfg.MemoryMlock, "memory-mlock", cfg.MemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.BoolVar(&cfg.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
 	fs.BoolVar(&cfg.ExperimentalStopGRPCServiceOnDefrag, "experimental-stop-grpc-service-on-defrag", cfg.ExperimentalStopGRPCServiceOnDefrag, "Enable etcd gRPC service to stop serving client requests on defragmentation.")
 	// TODO: delete in v3.7
@@ -1047,7 +1057,7 @@ func updateMinMaxVersions(info *transport.TLSInfo, min, max string) {
 func (cfg *Config) Validate() error {
 	// make sure there is no conflict in the flag settings in the ExperimentalNonBoolFlagMigrationMap
 	// TODO: delete in v3.7
-	for oldFlag, newFlag := range experimentalNonBoolFlagMigrationMap {
+	for oldFlag, newFlag := range experimentalFlagMigrationMap {
 		if cfg.FlagsExplicitlySet[oldFlag] && cfg.FlagsExplicitlySet[newFlag] {
 			return fmt.Errorf("cannot set --%s and --%s at the same time, please use --%s only", oldFlag, newFlag, newFlag)
 		}

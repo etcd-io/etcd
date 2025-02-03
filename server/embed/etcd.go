@@ -232,7 +232,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		DowngradeCheckTime:                   cfg.ExperimentalDowngradeCheckTime,
 		WarningApplyDuration:                 cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
-		ExperimentalMemoryMlock:              cfg.ExperimentalMemoryMlock,
+		MemoryMlock:                          cfg.MemoryMlock,
 		BootstrapDefragThresholdMegabytes:    cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                          cfg.MaxLearners,
 		V2Deprecation:                        cfg.V2DeprecationEffective(),
