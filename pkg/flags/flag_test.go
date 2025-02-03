@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
@@ -33,9 +34,7 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	// flags should be settable using env vars
 	t.Setenv("ETCD_A", "foo")
 	// and command-line flags
-	if err := fs.Set("b", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, fs.Set("b", "bar"))
 
 	// first verify that flags are as expected before reading the env
 	for f, want := range map[string]string{
@@ -47,17 +46,13 @@ func TestSetFlagsFromEnv(t *testing.T) {
 	}
 
 	// now read the env and verify flags were updated as expected
-	err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs)
-	if err != nil {
-		t.Errorf("err=%v, want nil", err)
-	}
+	require.NoError(t, SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs))
 	for f, want := range map[string]string{
 		"a": "foo",
 		"b": "bar",
 	} {
-		if got := fs.Lookup(f).Value.String(); got != want {
-			t.Errorf("flag %q=%q, want %q", f, got, want)
-		}
+		got := fs.Lookup(f).Value.String()
+		assert.Equalf(t, want, got, "flag %q=%q, want %q", f, got, want)
 	}
 }
 
@@ -66,9 +61,7 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	fs := flag.NewFlagSet("testing", flag.ExitOnError)
 	fs.Int("x", 0, "")
 	t.Setenv("ETCD_X", "not_a_number")
-	if err := SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs); err == nil {
-		t.Errorf("err=nil, want != nil")
-	}
+	assert.Error(t, SetFlagsFromEnv(zaptest.NewLogger(t), "ETCD", fs))
 }
 
 func TestSetFlagsFromEnvParsingError(t *testing.T) {

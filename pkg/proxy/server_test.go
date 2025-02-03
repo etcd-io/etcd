@@ -84,14 +84,14 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go func() {
 		defer close(donec)
 		for data := range writec {
-			send(t, data, scheme, srcAddr, tlsInfo)
+			send(t, data, scheme, srcAddr, tlsInfo) //nolint:testifylint //FIXME
 		}
 	}()
 
 	recvc := make(chan []byte, 1)
 	go func() {
 		for i := 0; i < 2; i++ {
-			recvc <- receive(t, ln)
+			recvc <- receive(t, ln) //nolint:testifylint //FIXME
 		}
 	}()
 
@@ -146,9 +146,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	default:
 	}
 
-	if err := p.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.Close())
 
 	select {
 	case <-p.Done():
@@ -207,31 +205,25 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 
 	now := time.Now()
 	send(t, data, scheme, srcAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
+	d := receive(t, ln)
+	require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
 	lat, rv := 700*time.Millisecond, 10*time.Millisecond
 	p.DelayAccept(lat, rv)
 	defer p.UndelayAccept()
-	if err := p.ResetListener(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, p.ResetListener())
 	time.Sleep(200 * time.Millisecond)
 
 	now = time.Now()
 	send(t, data, scheme, srcAddr, tlsInfo)
-	if d := receive(t, ln); !bytes.Equal(data, d) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
+	d = receive(t, ln)
+	require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
-	if took1 >= took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
-	}
+	require.Lessf(t, took1, took2, "expected took1 %v < took2 %v", took1, took2)
 }
 
 func TestServer_PauseTx(t *testing.T) {
@@ -262,7 +254,7 @@ func TestServer_PauseTx(t *testing.T) {
 
 	recvc := make(chan []byte, 1)
 	go func() {
-		recvc <- receive(t, ln)
+		recvc <- receive(t, ln) //nolint:testifylint //FIXME
 	}()
 
 	select {
@@ -275,9 +267,7 @@ func TestServer_PauseTx(t *testing.T) {
 
 	select {
 	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
+		require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
 	case <-time.After(2 * time.Second):
 		t.Fatal("took too long to receive after unpause")
 	}
@@ -310,15 +300,13 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 	})
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); bytes.Equal(d, data) {
-		t.Fatalf("expected corrupted data, got %q", string(d))
-	}
+	d := receive(t, ln)
+	require.Falsef(t, bytes.Equal(d, data), "expected corrupted data, got %q", string(d))
 
 	p.UnmodifyTx()
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected uncorrupted data, got %q", string(d))
-	}
+	d = receive(t, ln)
+	require.Truef(t, bytes.Equal(d, data), "expected uncorrupted data, got %q", string(d))
 }
 
 func TestServer_ModifyTx_packet_loss(t *testing.T) {
@@ -349,15 +337,13 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 	})
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); bytes.Equal(d, data) {
-		t.Fatalf("expected corrupted data, got %q", string(d))
-	}
+	d := receive(t, ln)
+	require.Falsef(t, bytes.Equal(d, data), "expected corrupted data, got %q", string(d))
 
 	p.UnmodifyTx()
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected uncorrupted data, got %q", string(d))
-	}
+	d = receive(t, ln)
+	require.Truef(t, bytes.Equal(d, data), "expected uncorrupted data, got %q", string(d))
 }
 
 func TestServer_BlackholeTx(t *testing.T) {
@@ -388,7 +374,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	recvc := make(chan []byte, 1)
 	go func() {
-		recvc <- receive(t, ln)
+		recvc <- receive(t, ln) //nolint:testifylint //FIXME
 	}()
 
 	select {
@@ -405,9 +391,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	select {
 	case d := <-recvc:
-		if !bytes.Equal(data, d) {
-			t.Fatalf("expected %q, got %q", string(data), string(d))
-		}
+		require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
 	case <-time.After(2 * time.Second):
 		t.Fatal("took too long to receive after unblackhole")
 	}
@@ -440,9 +424,8 @@ func TestServer_Shutdown(t *testing.T) {
 
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
+	d := receive(t, ln)
+	require.Truef(t, bytes.Equal(d, data), "expected %q, got %q", string(data), string(d))
 }
 
 func TestServer_ShutdownListener(t *testing.T) {
@@ -476,9 +459,8 @@ func TestServer_ShutdownListener(t *testing.T) {
 
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	if d := receive(t, ln); !bytes.Equal(d, data) {
-		t.Fatalf("expected %q, got %q", string(data), string(d))
-	}
+	d := receive(t, ln)
+	require.Truef(t, bytes.Equal(d, data), "expected %q, got %q", string(data), string(d))
 }
 
 func TestServerHTTP_Insecure_DelayTx(t *testing.T) { testServerHTTP(t, false, true) }
@@ -497,20 +479,15 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
 		d, err := io.ReadAll(req.Body)
 		req.Body.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d)))); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err) //nolint:testifylint //FIXME
+		_, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d))))
+		require.NoError(t, err) //nolint:testifylint //FIXME
 	})
 	tlsInfo := createTLSInfo(lg, secure)
 	var tlsConfig *tls.Config
 	if secure {
 		_, err := tlsInfo.ServerConfig()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 	srv := &http.Server{
 		Addr:      dstAddr,
@@ -570,18 +547,14 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	}
 	require.NoError(t, err)
 	d, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp.Body.Close()
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
 	rs1 := string(d)
 	exp := fmt.Sprintf("%q(confirmed)", data)
-	if rs1 != exp {
-		t.Fatalf("got %q, expected %q", rs1, exp)
-	}
+	require.Equalf(t, exp, rs1, "got %q, expected %q", rs1, exp)
 
 	lat, rv := 100*time.Millisecond, 10*time.Millisecond
 	if delayTx {
@@ -595,9 +568,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	now = time.Now()
 	if secure {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
@@ -606,24 +577,16 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	d, err = io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp.Body.Close()
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
 	rs2 := string(d)
-	if rs2 != exp {
-		t.Fatalf("got %q, expected %q", rs2, exp)
-	}
-	if took1 > took2 {
-		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
-	}
+	require.Equalf(t, exp, rs2, "got %q, expected %q", rs2, exp)
+	require.LessOrEqualf(t, took1, took2, "expected took1 %v < took2 %v", took1, took2)
 }
 
 func newUnixAddr() string {
@@ -640,9 +603,7 @@ func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln ne
 	} else {
 		ln, err = net.Listen(scheme, addr)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	return ln
 }
 
@@ -651,36 +612,25 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	var err error
 	if !tlsInfo.Empty() {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		out, err = tp.DialContext(context.Background(), scheme, addr)
 	} else {
 		out, err = net.Dial(scheme, addr)
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = out.Write(data); err != nil {
-		t.Fatal(err)
-	}
-	if err = out.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = out.Write(data)
+	require.NoError(t, err)
+	require.NoError(t, out.Close())
 }
 
 func receive(t *testing.T, ln net.Listener) (data []byte) {
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	for {
 		in, err := ln.Accept()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		var n int64
 		n, err = buf.ReadFrom(in)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if n > 0 {
 			break
 		}

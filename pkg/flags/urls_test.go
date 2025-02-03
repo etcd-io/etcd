@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,9 +41,7 @@ func TestValidateURLsValueBad(t *testing.T) {
 	}
 	for i, in := range tests {
 		u := URLsValue{}
-		if err := u.Set(in); err == nil {
-			t.Errorf(`#%d: unexpected nil error for in=%q`, i, in)
-		}
+		assert.Errorf(t, u.Set(in), `#%d: unexpected nil error for in=%q`, i, in)
 	}
 }
 

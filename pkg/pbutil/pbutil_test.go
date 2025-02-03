@@ -18,21 +18,20 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMarshaler(t *testing.T) {
 	data := []byte("test data")
 	m := &fakeMarshaler{data: data}
-	if g := MustMarshal(m); !reflect.DeepEqual(g, data) {
-		t.Errorf("data = %s, want %s", g, m.data)
-	}
+	g := MustMarshal(m)
+	assert.Truef(t, reflect.DeepEqual(g, data), "data = %s, want %s", g, m.data)
 }
 
 func TestMarshalerPanic(t *testing.T) {
 	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("recover = nil, want error")
-		}
+		assert.NotNilf(t, recover(), "recover = nil, want error")
 	}()
 	m := &fakeMarshaler{err: errors.New("blah")}
 	MustMarshal(m)
@@ -42,16 +41,12 @@ func TestUnmarshaler(t *testing.T) {
 	data := []byte("test data")
 	m := &fakeUnmarshaler{}
 	MustUnmarshal(m, data)
-	if !reflect.DeepEqual(m.data, data) {
-		t.Errorf("data = %s, want %s", m.data, data)
-	}
+	assert.Truef(t, reflect.DeepEqual(m.data, data), "data = %s, want %s", m.data, data)
 }
 
 func TestUnmarshalerPanic(t *testing.T) {
 	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("recover = nil, want error")
-		}
+		assert.NotNilf(t, recover(), "recover = nil, want error")
 	}()
 	m := &fakeUnmarshaler{err: errors.New("blah")}
 	MustUnmarshal(m, nil)
@@ -69,12 +64,8 @@ func TestGetBool(t *testing.T) {
 	}
 	for i, tt := range tests {
 		b, set := GetBool(tt.b)
-		if b != tt.wb {
-			t.Errorf("#%d: value = %v, want %v", i, b, tt.wb)
-		}
-		if set != tt.wset {
-			t.Errorf("#%d: set = %v, want %v", i, set, tt.wset)
-		}
+		assert.Equalf(t, b, tt.wb, "#%d: value = %v, want %v", i, b, tt.wb)
+		assert.Equalf(t, set, tt.wset, "#%d: set = %v, want %v", i, set, tt.wset)
 	}
 }
 

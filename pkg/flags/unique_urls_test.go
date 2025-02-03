@@ -104,7 +104,7 @@ func TestUniqueURLsFromFlag(t *testing.T) {
 	fs.Var(u, name, "usage")
 	uss := UniqueURLsFromFlag(fs, name)
 
-	require.Equal(t, len(u.Values), len(uss))
+	require.Len(t, uss, len(u.Values))
 
 	um := make(map[string]struct{})
 	for _, x := range uss {

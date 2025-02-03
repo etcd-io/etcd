@@ -56,13 +56,9 @@ func TestUint32Value(t *testing.T) {
 			err := val.Set(tc.s)
 
 			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected failure on parsing uint32 value from %s", tc.s)
-				}
+				assert.Errorf(t, err, "Expected failure on parsing uint32 value from %s", tc.s)
 			} else {
-				if err != nil {
-					t.Errorf("Unexpected error when parsing %s: %v", tc.s, err)
-				}
+				require.NoErrorf(t, err, "Unexpected error when parsing %s: %v", tc.s, err)
 				assert.Equal(t, tc.expectedVal, uint32(val))
 			}
 		})

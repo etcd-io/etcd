@@ -17,6 +17,8 @@ package httputil
 import (
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetHostname(t *testing.T) {
@@ -43,8 +45,6 @@ func TestGetHostname(t *testing.T) {
 	}
 	for i := range tt {
 		hv := GetHostname(tt[i].req)
-		if hv != tt[i].host {
-			t.Errorf("#%d: %q expected host %q, got '%v'", i, tt[i].req.Host, tt[i].host, hv)
-		}
+		assert.Equalf(t, hv, tt[i].host, "#%d: %q expected host %q, got '%v'", i, tt[i].req.Host, tt[i].host, hv)
 	}
 }

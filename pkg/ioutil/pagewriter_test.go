@@ -32,9 +32,7 @@ func TestPageWriterRandom(t *testing.T) {
 	n := 0
 	for i := 0; i < 4096; i++ {
 		c, err := w.Write(buf[:rand.Intn(len(buf))])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		n += c
 	}
 	require.LessOrEqualf(t, cw.writeBytes, n, "wrote %d bytes to io.Writer, but only wrote %d bytes", cw.writeBytes, n)
@@ -53,26 +51,20 @@ func TestPageWriterPartialSlack(t *testing.T) {
 	cw := &checkPageWriter{pageBytes: 64, t: t}
 	w := NewPageWriter(cw, pageBytes, 0)
 	// put writer in non-zero page offset
-	if _, err := w.Write(buf[:64]); err != nil {
-		t.Fatal(err)
-	}
-	if err := w.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	_, err := w.Write(buf[:64])
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
 	require.Equalf(t, 1, cw.writes, "got %d writes, expected 1", cw.writes)
 	// nearly fill buffer
-	if _, err := w.Write(buf[:1022]); err != nil {
-		t.Fatal(err)
-	}
+	_, err = w.Write(buf[:1022])
+	require.NoError(t, err)
 	// overflow buffer, but without enough to write as aligned
-	if _, err := w.Write(buf[:8]); err != nil {
-		t.Fatal(err)
-	}
+	_, err = w.Write(buf[:8])
+	require.NoError(t, err)
 	require.Equalf(t, 1, cw.writes, "got %d writes, expected 1", cw.writes)
 	// finish writing slack space
-	if _, err := w.Write(buf[:128]); err != nil {
-		t.Fatal(err)
-	}
+	_, err = w.Write(buf[:128])
+	require.NoError(t, err)
 	require.Equalf(t, 2, cw.writes, "got %d writes, expected 2", cw.writes)
 }
 
@@ -83,21 +75,15 @@ func TestPageWriterOffset(t *testing.T) {
 	buf := make([]byte, defaultBufferBytes)
 	cw := &checkPageWriter{pageBytes: 64, t: t}
 	w := NewPageWriter(cw, pageBytes, 0)
-	if _, err := w.Write(buf[:64]); err != nil {
-		t.Fatal(err)
-	}
-	if err := w.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	_, err := w.Write(buf[:64])
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
 	require.Equalf(t, 64, w.pageOffset, "w.pageOffset expected 64, got %d", w.pageOffset)
 
 	w = NewPageWriter(cw, w.pageOffset, pageBytes)
-	if _, err := w.Write(buf[:64]); err != nil {
-		t.Fatal(err)
-	}
-	if err := w.Flush(); err != nil {
-		t.Fatal(err)
-	}
+	_, err = w.Write(buf[:64])
+	require.NoError(t, err)
+	require.NoError(t, w.Flush())
 	require.Equalf(t, 0, w.pageOffset, "w.pageOffset expected 0, got %d", w.pageOffset)
 }
 
