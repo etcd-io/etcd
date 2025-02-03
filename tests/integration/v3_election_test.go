@@ -155,9 +155,8 @@ func TestElectionFailover(t *testing.T) {
 	}()
 
 	// invoke leader failover
-	if err := ss[0].Close(); err != nil {
-		t.Fatal(err)
-	}
+	err := ss[0].Close()
+	require.NoError(t, err)
 
 	// check new leader
 	e = concurrency.NewElection(ss[2], "test-election")
@@ -192,13 +191,11 @@ func TestElectionSessionRecampaign(t *testing.T) {
 	defer session.Orphan()
 
 	e := concurrency.NewElection(session, "test-elect")
-	if err := e.Campaign(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
+	err = e.Campaign(context.TODO(), "abc")
+	require.NoError(t, err)
 	e2 := concurrency.NewElection(session, "test-elect")
-	if err := e2.Campaign(context.TODO(), "def"); err != nil {
-		t.Fatal(err)
-	}
+	err = e2.Campaign(context.TODO(), "def")
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	defer cancel()
@@ -217,22 +214,19 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
-	if _, err := cli.Put(context.TODO(), "testa", "value"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := cli.Put(context.TODO(), "testa", "value")
+	require.NoError(t, err)
 	s, serr := concurrency.NewSession(cli)
 	if serr != nil {
 		t.Fatal(serr)
 	}
 	e := concurrency.NewElection(s, "test")
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-	err := e.Campaign(ctx, "abc")
+	err = e.Campaign(ctx, "abc")
 	cancel()
-	if err != nil {
-		// after 5 seconds, deadlock results in
-		// 'context deadline exceeded' here.
-		t.Fatal(err)
-	}
+	// after 5 seconds, deadlock results in
+	// 'context deadline exceeded' here.
+	require.NoError(t, err)
 }
 
 // TestElectionOnSessionRestart tests that a quick restart of leader (resulting
@@ -245,9 +239,7 @@ func TestElectionOnSessionRestart(t *testing.T) {
 	cli := clus.RandClient()
 
 	session, err := concurrency.NewSession(cli)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	e := concurrency.NewElection(session, "test-elect")
 	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
@@ -293,9 +285,7 @@ func TestElectionObserveCompacted(t *testing.T) {
 	cli := clus.Client(0)
 
 	session, err := concurrency.NewSession(cli)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer session.Orphan()
 
 	e := concurrency.NewElection(session, "test-elect")

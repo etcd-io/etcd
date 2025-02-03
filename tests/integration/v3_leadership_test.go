@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -59,15 +60,11 @@ func testMoveLeader(t *testing.T, auto bool) {
 	target := uint64(clus.Members[(oldLeadIdx+1)%3].Server.MemberID())
 	if auto {
 		err := clus.Members[oldLeadIdx].Server.TryTransferLeadershipOnShutdown()
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	} else {
 		mvc := integration.ToGRPC(clus.Client(oldLeadIdx)).Maintenance
 		_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 	}
 
 	// wait until leader transitions have happened

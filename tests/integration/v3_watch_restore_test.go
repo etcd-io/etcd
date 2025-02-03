@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -65,9 +67,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	wStream, errW := integration.ToGRPC(clus.Client(0)).Watch.Watch(ctx)
-	if errW != nil {
-		t.Fatal(errW)
-	}
+	require.NoError(t, errW)
 	if err := wStream.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5},
 	}}); err != nil {

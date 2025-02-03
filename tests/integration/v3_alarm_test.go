@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -63,15 +64,11 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	// test big put
 	bigbuf := make([]byte, quotasize)
 	_, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: bigbuf})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// quorum get should work regardless of whether alarm is raised
 	_, err = kvc0.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// wait until alarm is raised for sure-- poll the alarms
 	stopc := time.After(5 * time.Second)
@@ -111,9 +108,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.TODO(), integration.RequestWaitTimeout)
 	defer cancel()
@@ -152,25 +147,22 @@ func TestV3AlarmDeactivate(t *testing.T) {
 		Action:   pb.AlarmRequest_ACTIVATE,
 		Alarm:    pb.AlarmType_NOSPACE,
 	}
-	if _, err := mt.Alarm(context.TODO(), alarmReq); err != nil {
-		t.Fatal(err)
-	}
+	_, err := mt.Alarm(context.TODO(), alarmReq)
+	require.NoError(t, err)
 
 	key := []byte("abc")
 	smallbuf := make([]byte, 512)
-	_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
 	if err == nil && !eqErrGRPC(err, rpctypes.ErrGRPCNoSpace) {
 		t.Fatalf("put got %v, expected %v", err, rpctypes.ErrGRPCNoSpace)
 	}
 
 	alarmReq.Action = pb.AlarmRequest_DEACTIVATE
-	if _, err = mt.Alarm(context.TODO(), alarmReq); err != nil {
-		t.Fatal(err)
-	}
+	_, err = mt.Alarm(context.TODO(), alarmReq)
+	require.NoError(t, err)
 
-	if _, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	require.NoError(t, err)
 }
 
 func TestV3CorruptAlarm(t *testing.T) {
@@ -209,15 +201,12 @@ func TestV3CorruptAlarm(t *testing.T) {
 	time.Sleep(time.Second * 2)
 
 	// Wait for cluster so Puts succeed in case member 0 was the leader.
-	if _, err := clus.Client(1).Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := clus.Client(1).Put(context.TODO(), "xyz", "321"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := clus.Client(1).Put(context.TODO(), "abc", "fed"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := clus.Client(1).Get(context.TODO(), "k")
+	require.NoError(t, err)
+	_, err = clus.Client(1).Put(context.TODO(), "xyz", "321")
+	require.NoError(t, err)
+	_, err = clus.Client(1).Put(context.TODO(), "abc", "fed")
+	require.NoError(t, err)
 
 	// Restart with corruption checking enabled.
 	clus.Members[1].Stop(t)
@@ -231,14 +220,10 @@ func TestV3CorruptAlarm(t *testing.T) {
 
 	clus.Members[0].WaitStarted(t)
 	resp0, err0 := clus.Client(0).Get(context.TODO(), "abc")
-	if err0 != nil {
-		t.Fatal(err0)
-	}
+	require.NoError(t, err0)
 	clus.Members[1].WaitStarted(t)
 	resp1, err1 := clus.Client(1).Get(context.TODO(), "abc")
-	if err1 != nil {
-		t.Fatal(err1)
-	}
+	require.NoError(t, err1)
 
 	if resp0.Kvs[0].ModRevision == resp1.Kvs[0].ModRevision {
 		t.Fatalf("matching ModRevision values")
@@ -289,9 +274,7 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 		}
 	}
 
-	if err = clus.RemoveMember(t, clus.Client(1), uint64(clus.Members[2].ID())); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, clus.RemoveMember(t, clus.Client(1), uint64(clus.Members[2].ID())))
 	clus.WaitMembersForLeader(t, clus.Members)
 
 	clus.AddMember(t)
@@ -313,30 +296,20 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	schema.MustUnsafePutLease(tx, &lpb)
 	tx.Commit()
 
-	if err = be.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, be.Close())
 
-	if err = clus.Members[2].Restart(t); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, clus.Members[2].Restart(t))
 
 	clus.Members[1].WaitOK(t)
 	clus.Members[2].WaitOK(t)
 
 	// Revoke lease should remove key except the member with corruption
 	_, err = integration.ToGRPC(clus.Members[0].Client).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp.ID})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	resp0, err0 := clus.Members[1].Client.KV.Get(context.TODO(), "foo")
-	if err0 != nil {
-		t.Fatal(err0)
-	}
+	require.NoError(t, err0)
 	resp1, err1 := clus.Members[2].Client.KV.Get(context.TODO(), "foo")
-	if err1 != nil {
-		t.Fatal(err1)
-	}
+	require.NoError(t, err1)
 
 	if resp0.Header.Revision == resp1.Header.Revision {
 		t.Fatalf("matching Revision values")

@@ -38,9 +38,7 @@ func TestMetricDbSizeBoot(t *testing.T) {
 	defer clus.Terminate(t)
 
 	v, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if v == "0" {
 		t.Fatalf("expected non-zero, got %q", v)
@@ -74,40 +72,29 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 
 	expected := numPuts * len(putreq.Value)
 	beforeDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	bv, err := strconv.Atoi(beforeDefrag)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if bv < expected {
 		t.Fatalf("expected db size greater than %d, got %d", expected, bv)
 	}
 	beforeDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	biu, err := strconv.Atoi(beforeDefragInUse)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if biu < expected {
 		t.Fatalf("expected db size in use is greater than %d, got %d", expected, biu)
 	}
 
 	// clear out historical keys, in use bytes should free pages
 	creq := &pb.CompactionRequest{Revision: int64(numPuts), Physical: true}
-	if _, kerr := kvc.Compact(context.TODO(), creq); kerr != nil {
-		t.Fatal(kerr)
-	}
+	_, kerr := kvc.Compact(context.TODO(), creq)
+	require.NoError(t, kerr)
 
 	validateAfterCompactionInUse := func() error {
 		// Put to move PendingPages to FreePages
 		_, verr := kvc.Put(context.TODO(), putreq)
-		if verr != nil {
-			t.Fatal(verr)
-		}
+		require.NoError(t, verr)
 		time.Sleep(500 * time.Millisecond)
 
 		afterCompactionInUse, verr := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
@@ -142,25 +129,17 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
 
 	afterDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	av, err := strconv.Atoi(afterDefrag)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if bv <= av {
 		t.Fatalf("expected less than %d, got %d after defrag", bv, av)
 	}
 
 	afterDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	adiu, err := strconv.Atoi(afterDefragInUse)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if adiu > av {
 		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
 	}
@@ -172,13 +151,9 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 	defer clus.Terminate(t)
 
 	qs, err := clus.Members[0].Metric("etcd_server_quota_backend_bytes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	qv, err := strconv.ParseFloat(qs, 64)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if int64(qv) != storage.DefaultQuotaBytes {
 		t.Fatalf("expected %d, got %f", storage.DefaultQuotaBytes, qv)
 	}
@@ -190,9 +165,7 @@ func TestMetricsHealth(t *testing.T) {
 	defer clus.Terminate(t)
 
 	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	u := clus.Members[0].ClientURLs[0]
 	u.Path = "/health"
 	resp, err := tr.RoundTrip(&http.Request{
@@ -201,14 +174,10 @@ func TestMetricsHealth(t *testing.T) {
 		URL:    &u,
 	})
 	resp.Body.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	hv, err := clus.Members[0].Metric("etcd_server_health_failures")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if hv != "0" {
 		t.Fatalf("expected '0' from etcd_server_health_failures, got %q", hv)
 	}

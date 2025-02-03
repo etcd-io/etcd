@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
@@ -36,9 +38,7 @@ func TestCompactionHash(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cc, err := clus.ClusterClient(t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	client := &http.Client{
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
