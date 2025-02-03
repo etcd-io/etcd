@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -28,9 +29,7 @@ func mustNewURLs(t *testing.T, urls []string) []url.URL {
 		return nil
 	}
 	u, err := types.NewURLs(urls)
-	if err != nil {
-		t.Fatalf("error creating new URLs from %q: %v", urls, err)
-	}
+	require.NoErrorf(t, err, "error creating new URLs from %q: %v", urls, err)
 	return u
 }
 
@@ -48,9 +47,7 @@ func TestConfigVerifyBootstrapWithoutClusterAndDiscoveryURLFail(t *testing.T) {
 
 func TestConfigVerifyExistingWithDiscoveryURLFail(t *testing.T) {
 	cluster, err := types.NewURLsMap("node1=http://127.0.0.1:2380")
-	if err != nil {
-		t.Fatalf("NewCluster error: %v", err)
-	}
+	require.NoErrorf(t, err, "NewCluster error: %v", err)
 	c := &ServerConfig{
 		Name:               "node1",
 		DiscoveryURL:       "http://127.0.0.1:2379/abcdefg",
@@ -139,9 +136,7 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 
 	for i, tt := range tests {
 		cluster, err := types.NewURLsMap(tt.clusterSetting)
-		if err != nil {
-			t.Fatalf("#%d: Got unexpected error: %v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: Got unexpected error: %v", i, err)
 		cfg := ServerConfig{
 			Name:               "node1",
 			InitialPeerURLsMap: cluster,

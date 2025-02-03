@@ -16,7 +16,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"testing"
@@ -104,12 +103,8 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 		t.Fatalf("%#v", aerr)
 	}
 	ai, ok := jwt.info(ctx, token, 123)
-	if !ok {
-		t.Fatalf("failed to authenticate with token %s", token)
-	}
-	if ai.Revision != 123 {
-		t.Fatalf("expected revision 123, got %d", ai.Revision)
-	}
+	require.Truef(t, ok, "failed to authenticate with token %s", token)
+	require.Equalf(t, uint64(123), ai.Revision, "expected revision 123, got %d", ai.Revision)
 	ai, ok = jwt.info(ctx, "aaa", 120)
 	if ok || ai != nil {
 		t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
@@ -127,21 +122,15 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 			}
 
 			ai, ok := verify.info(ctx, token, 123)
-			if !ok {
-				t.Fatalf("failed to authenticate with token %s", token)
-			}
-			if ai.Revision != 123 {
-				t.Fatalf("expected revision 123, got %d", ai.Revision)
-			}
+			require.Truef(t, ok, "failed to authenticate with token %s", token)
+			require.Equalf(t, uint64(123), ai.Revision, "expected revision 123, got %d", ai.Revision)
 			ai, ok = verify.info(ctx, "aaa", 120)
 			if ok || ai != nil {
 				t.Fatalf("expected aaa to fail to authenticate, got %+v", ai)
 			}
 
 			_, aerr := verify.assign(ctx, "abc", 123)
-			if !errors.Is(aerr, ErrVerifyOnly) {
-				t.Fatalf("unexpected error when attempting to sign with public key: %v", aerr)
-			}
+			require.ErrorIsf(t, aerr, ErrVerifyOnly, "unexpected error when attempting to sign with public key: %v", aerr)
 		})
 	}
 }

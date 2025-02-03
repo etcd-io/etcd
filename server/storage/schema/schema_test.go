@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -298,9 +299,7 @@ func setupBackendData(t *testing.T, ver semver.Version, overrideKeys func(tx bac
 	t.Helper()
 	be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 	tx := be.BatchTx()
-	if tx == nil {
-		t.Fatal("batch tx is nil")
-	}
+	require.NotNilf(t, tx, "batch tx is nil")
 	tx.Lock()
 	UnsafeCreateMetaBucket(tx)
 	if overrideKeys != nil {
