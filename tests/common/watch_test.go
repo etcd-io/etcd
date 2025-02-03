@@ -73,9 +73,7 @@ func TestWatch(t *testing.T) {
 				for _, tt := range tests {
 					wCtx, wCancel := context.WithCancel(ctx)
 					wch := cc.Watch(wCtx, tt.watchKey, tt.opts)
-					if wch == nil {
-						t.Fatalf("failed to watch %s", tt.watchKey)
-					}
+					require.NotNilf(t, wch, "failed to watch %s", tt.watchKey)
 
 					for j := range tt.puts {
 						err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{})

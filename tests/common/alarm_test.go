@@ -110,7 +110,7 @@ func TestAlarmlistOnMemberRestart(t *testing.T) {
 	testutils.ExecuteUntil(ctx, t, func() {
 		for i := 0; i < 6; i++ {
 			_, err := cc.AlarmList(ctx)
-			require.NoErrorf(t, err, "Unexpected error")
+			require.NoError(t, err)
 		}
 
 		clus.Members()[0].Stop()

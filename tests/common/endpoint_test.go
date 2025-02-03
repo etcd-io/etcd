@@ -35,9 +35,7 @@ func TestEndpointStatus(t *testing.T) {
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
 		_, err := cc.Status(ctx)
-		if err != nil {
-			t.Fatalf("get endpoint status error: %v", err)
-		}
+		require.NoErrorf(t, err, "get endpoint status error: %v", err)
 	})
 }
 
@@ -53,9 +51,7 @@ func TestEndpointHashKV(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		if err := cc.Put(ctx, key, value, config.PutOptions{}); err != nil {
-			t.Fatalf("count not put key %q, err: %s", key, err)
-		}
+		require.NoErrorf(t, cc.Put(ctx, key, value, config.PutOptions{}), "count not put key %q", key)
 	}
 
 	t.Log("Check all members' Hash and HashRevision")
@@ -82,8 +78,6 @@ func TestEndpointHealth(t *testing.T) {
 	defer clus.Close()
 	cc := testutils.MustClient(clus.Client())
 	testutils.ExecuteUntil(ctx, t, func() {
-		if err := cc.Health(ctx); err != nil {
-			t.Fatalf("get endpoint health error: %v", err)
-		}
+		require.NoErrorf(t, cc.Health(ctx), "get endpoint health error")
 	})
 }

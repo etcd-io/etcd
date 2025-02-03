@@ -75,18 +75,10 @@ func TestUserAdd_Simple(t *testing.T) {
 				testutils.ExecuteUntil(ctx, t, func() {
 					resp, err := cc.UserAdd(ctx, nc.username, nc.password, config.UserAddOptions{NoPassword: nc.noPassword})
 					if nc.expectedError != "" {
-						if err != nil {
-							assert.ErrorContains(t, err, nc.expectedError)
-							return
-						}
-
-						t.Fatalf("expected user creation to fail")
-					}
-
-					require.NoErrorf(t, err, "expected no error")
-
-					if resp == nil {
-						t.Fatalf("unexpected nil response to successful user creation")
+						require.ErrorContainsf(t, err, nc.expectedError, "expected user creation to fail")
+					} else {
+						require.NoError(t, err)
+						require.NotNilf(t, resp, "unexpected nil response to successful user creation")
 					}
 				})
 			})
@@ -112,8 +104,7 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 				require.NoErrorf(t, err, "first user creation should succeed")
 
 				_, err = cc.UserAdd(ctx, user, password, config.UserAddOptions{})
-				require.Errorf(t, err, "duplicate user creation should fail")
-				assert.Contains(t, err.Error(), "etcdserver: user name already exists")
+				assert.ErrorContains(t, err, "etcdserver: user name already exists")
 			})
 		})
 	}
@@ -133,9 +124,7 @@ func TestUserList(t *testing.T) {
 				// No Users Yet
 				resp, err := cc.UserList(ctx)
 				require.NoErrorf(t, err, "user listing should succeed")
-				if len(resp.Users) != 0 {
-					t.Fatalf("expected no pre-existing users, found: %q", resp.Users)
-				}
+				require.Emptyf(t, resp.Users, "expected no pre-existing users, found: %q", resp.Users)
 
 				user := "barb"
 				password := "rhubarb"
@@ -146,9 +135,7 @@ func TestUserList(t *testing.T) {
 				// Users!
 				resp, err = cc.UserList(ctx)
 				require.NoErrorf(t, err, "user listing should succeed")
-				if len(resp.Users) != 1 {
-					t.Fatalf("expected one user, found: %q", resp.Users)
-				}
+				require.Lenf(t, resp.Users, 1, "expected one user, found: %q", resp.Users)
 			})
 		})
 	}
@@ -173,9 +160,7 @@ func TestUserDelete(t *testing.T) {
 
 				resp, err := cc.UserList(ctx)
 				require.NoErrorf(t, err, "user listing should succeed")
-				if len(resp.Users) != 1 {
-					t.Fatalf("expected one user, found: %q", resp.Users)
-				}
+				require.Lenf(t, resp.Users, 1, "expected one user, found: %q", resp.Users)
 
 				// Delete barb, sorry barb!
 				_, err = cc.UserDelete(ctx, user)
@@ -183,14 +168,11 @@ func TestUserDelete(t *testing.T) {
 
 				resp, err = cc.UserList(ctx)
 				require.NoErrorf(t, err, "user listing should succeed")
-				if len(resp.Users) != 0 {
-					t.Fatalf("expected no users after deletion, found: %q", resp.Users)
-				}
+				require.Emptyf(t, resp.Users, "expected no users after deletion, found: %q", resp.Users)
 
 				// Try to delete barb again
 				_, err = cc.UserDelete(ctx, user)
-				require.Errorf(t, err, "deleting a non-existent user should fail")
-				assert.Contains(t, err.Error(), "user name not found")
+				assert.ErrorContains(t, err, "user name not found")
 			})
 		})
 	}
@@ -218,8 +200,7 @@ func TestUserChangePassword(t *testing.T) {
 				require.NoErrorf(t, err, "user password change should succeed")
 
 				err = cc.UserChangePass(ctx, "non-existent-user", newPassword)
-				require.Errorf(t, err, "user password change for non-existent user should fail")
-				assert.Contains(t, err.Error(), "user name not found")
+				assert.ErrorContains(t, err, "user name not found")
 			})
 		})
 	}
