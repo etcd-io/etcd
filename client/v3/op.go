@@ -106,6 +106,9 @@ func (op Op) RangeBytes() []byte { return op.end }
 // Rev returns the requested revision, if any.
 func (op Op) Rev() int64 { return op.rev }
 
+// Limit returns limit of the result, if any.
+func (op Op) Limit() int64 { return op.limit }
+
 // IsPut returns true iff the operation is a Put.
 func (op Op) IsPut() bool { return op.t == tPut }
 

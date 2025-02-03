@@ -88,8 +88,8 @@ func (c *RecordingClient) Do(ctx context.Context, op clientv3.Op) (clientv3.OpRe
 }
 
 func (c *RecordingClient) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	revision := clientv3.OpGet(key, opts...).Rev()
-	return c.Range(ctx, key, "", revision, 0)
+	op := clientv3.OpGet(key, opts...)
+	return c.Range(ctx, key, string(op.RangeBytes()), op.Rev(), op.Limit())
 }
 
 func (c *RecordingClient) Range(ctx context.Context, start, end string, revision, limit int64) (*clientv3.GetResponse, error) {
