@@ -160,7 +160,6 @@ func RemoveMatchFile(lg *zap.Logger, dir string, matchFunc func(fileName string)
 				lg.Error("remove file failed",
 					zap.String("file", file),
 					zap.Error(err))
-				continue
 			}
 		}
 	}
