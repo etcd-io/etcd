@@ -576,7 +576,13 @@ function release_pass {
     log_warning "fallback to" ${UPGRADE_VER}
   fi
 
-  local file="etcd-$UPGRADE_VER-linux-$GOARCH.tar.gz"
+  local file
+  if [[ "$(uname -s)" == 'Darwin' ]]; then
+    file="etcd-$UPGRADE_VER-darwin-$GOARCH.zip"
+  else
+    file="etcd-$UPGRADE_VER-linux-$GOARCH.tar.gz"
+  fi
+
   log_callout "Downloading $file"
 
   set +e
