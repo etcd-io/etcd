@@ -475,6 +475,77 @@ func TestParseFeatureGateFlags(t *testing.T) {
 	}
 }
 
+// TestDowngradeCheckTimeFlagMigration tests the migration from
+// --experimental-downgrade-check-time to --downgrade-check-time
+func TestDowngradeCheckTimeFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                           string
+		downgradeCheckTime             string
+		experimentalDowngradeCheckTime string
+		wantErr                        bool
+		wantConfig                     time.Duration
+	}{
+		{
+			name:       "default",
+			wantConfig: embed.DefaultDowngradeCheckTime,
+		},
+		{
+			name:                           "cannot set both experimental flag and non experimental flag",
+			experimentalDowngradeCheckTime: "1m",
+			downgradeCheckTime:             "2m",
+			wantErr:                        true,
+		},
+		{
+			name:                           "can set experimental flag",
+			experimentalDowngradeCheckTime: "1m",
+			wantConfig:                     time.Minute,
+		},
+		{
+			name:               "can set non-experimental flag",
+			downgradeCheckTime: "2m",
+			wantConfig:         2 * time.Minute,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time,omitempty"`
+				DowngradeCheckTime             time.Duration `json:"downgrade-check-time,omitempty"`
+			}{}
+
+			if tc.downgradeCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--downgrade-check-time=%s", tc.downgradeCheckTime))
+				downgradeCheckTime, err := time.ParseDuration(tc.downgradeCheckTime)
+				require.NoError(t, err)
+				yc.DowngradeCheckTime = downgradeCheckTime
+			}
+
+			if tc.experimentalDowngradeCheckTime != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-downgrade-check-time=%s", tc.experimentalDowngradeCheckTime))
+				experimentalDowngradeCheckTime, err := time.ParseDuration(tc.experimentalDowngradeCheckTime)
+				require.NoError(t, err)
+				yc.ExperimentalDowngradeCheckTime = experimentalDowngradeCheckTime
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.wantErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.wantConfig, cfgFromCmdLine.ec.DowngradeCheckTime)
+			require.Equal(t, tc.wantConfig, cfgFromFile.ec.DowngradeCheckTime)
+		})
+	}
+}
+
 // TestCompactHashCheckTimeFlagMigration tests the migration from
 // --experimental-compact-hash-check-time to --compact-hash-check-time
 // TODO: delete in v3.7
@@ -1131,6 +1202,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
 		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
+		ExperimentalDowngradeCheckTime                time.Duration `json:"experimental-downgrade-check-time,omitempty"`
 	}
 
 	testCases := []struct {
@@ -1155,6 +1227,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
 				ExperimentalMaxLearners:                       1,
+				ExperimentalDowngradeCheckTime:                1 * time.Minute,
 			},
 			expectedFlags: map[string]struct{}{
 				"experimental-compact-hash-check-enabled":           {},
@@ -1165,6 +1238,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
 				"experimental-max-learners":                         {},
+				"experimental-downgrade-check-time":                 {},
 			},
 		},
 		{

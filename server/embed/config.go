@@ -141,6 +141,7 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
 		"experimental-max-learners":                         "max-learners",
 		"experimental-memory-mlock":                         "memory-mlock",
+		"experimental-downgrade-check-time":                 "downgrade-check-time",
 	}
 )
 
@@ -487,7 +488,12 @@ type Config struct {
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
+	// ExperimentalDowngradeCheckTime is the duration between two downgrade status checks (in seconds).
+	// Deprecated in v3.6 and scheduled to be removed in v3.7.
+	// TODO: Delete `ExperimentalDowngradeCheckTime` in v3.7.
 	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
+	// DowngradeCheckTime is the duration between two downgrade status checks (in seconds).
+	DowngradeCheckTime time.Duration `json:"downgrade-check-time"`
 
 	// MemoryMlock enables mlocking of etcd owned memory pages.
 	// The setting improves etcd tail latency in environments were:
@@ -617,6 +623,7 @@ func NewConfig() *Config {
 		EnableGRPCGateway:     true,
 
 		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
+		DowngradeCheckTime:             DefaultDowngradeCheckTime,
 		MemoryMlock:                    false,
 		// TODO: delete in v3.7
 		ExperimentalMemoryMlock:             false,
@@ -827,7 +834,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// TODO: delete in v3.7
 	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications. Deprecated in v3.6 and will be decommissioned in v3.7. Use --watch-progress-notify-interval instead.")
 	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
-	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks.")
+	fs.DurationVar(&cfg.DowngradeCheckTime, "downgrade-check-time", cfg.DowngradeCheckTime, "Duration of time between two downgrade status checks.")
+	// TODO: delete in v3.7
+	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks. Deprecated in v3.6 and will be decommissioned in v3.7. Use --downgrade-check-time instead.")
 	// TODO: delete in v3.7
 	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time. Deprecated in v3.6 and will be decommissioned in v3.7. Use --warning-watch-progress-duration instead.")
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
