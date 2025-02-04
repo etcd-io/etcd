@@ -5,6 +5,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.19 (TBC)
 
+### etcd server
+- Backport [add learner status check to readyz endpoint](https://github.com/etcd-io/etcd/pull/19280).
+
 ### `tools/benchmark`
 - Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
 
