@@ -533,6 +533,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 			"promote member",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
+			zap.String("promoted-member-id", id.String()),
 		)
 	} else {
 		c.lg.Info(
