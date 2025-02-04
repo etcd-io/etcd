@@ -424,6 +424,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 		zap.String("local-member-id", c.localID.String()),
 		zap.String("added-peer-id", m.ID.String()),
 		zap.Strings("added-peer-peer-urls", m.PeerURLs),
+		zap.Bool("added-peer-is-learner", m.IsLearner),
 	)
 }
 
@@ -475,6 +476,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 			zap.String("local-member-id", c.localID.String()),
 			zap.String("removed-remote-peer-id", id.String()),
 			zap.Strings("removed-remote-peer-urls", m.PeerURLs),
+			zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
 		)
 	} else {
 		c.lg.Warn(
@@ -536,6 +538,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		"promote member",
 		zap.String("cluster-id", c.cid.String()),
 		zap.String("local-member-id", c.localID.String()),
+		zap.String("promoted-member-id", id.String()),
 	)
 }
 
