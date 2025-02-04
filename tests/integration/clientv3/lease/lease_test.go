@@ -283,19 +283,14 @@ func TestLeaseKeepAliveNotFound(t *testing.T) {
 	var lchs []leaseCh
 	for i := 0; i < 3; i++ {
 		resp, rerr := cli.Grant(context.TODO(), 5)
-		if rerr != nil {
-			t.Fatal(rerr)
-		}
+		require.NoError(t, rerr)
 		kach, kaerr := cli.KeepAlive(context.Background(), resp.ID)
-		if kaerr != nil {
-			t.Fatal(kaerr)
-		}
+		require.NoError(t, kaerr)
 		lchs = append(lchs, leaseCh{resp.ID, kach})
 	}
 
-	if _, err := cli.Revoke(context.TODO(), lchs[1].lid); err != nil {
-		t.Fatal(err)
-	}
+	_, err := cli.Revoke(context.TODO(), lchs[1].lid)
+	require.NoError(t, err)
 
 	<-lchs[0].ch
 	if _, ok := <-lchs[0].ch; !ok {
@@ -314,9 +309,7 @@ func TestLeaseGrantErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cli.Close())
 
 	donec := make(chan struct{})
 	go func() {
@@ -386,9 +379,7 @@ func TestLeaseGrantNewAfterClose(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cli.Close())
 
 	donec := make(chan struct{})
 	go func() {
@@ -413,15 +404,11 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 
 	cli := clus.Client(0)
 	resp, err := cli.Grant(context.TODO(), 5)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	leaseID := resp.ID
 
 	clus.TakeClient(0)
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cli.Close())
 
 	errMsgCh := make(chan string, 1)
 	go func() {
@@ -454,13 +441,9 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 
 	// setup lease and do a keepalive
 	resp, err := cli.Grant(context.Background(), 10)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
-	if kerr != nil {
-		t.Fatal(kerr)
-	}
+	require.NoError(t, kerr)
 	kresp := <-rc
 	if kresp.ID != resp.ID {
 		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
@@ -471,9 +454,8 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 	time.Sleep(time.Second)
 	clus.WaitLeader(t)
 
-	if _, err := clus.Client(1).Revoke(context.TODO(), resp.ID); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Revoke(context.TODO(), resp.ID)
+	require.NoError(t, err)
 
 	clus.Members[0].Restart(t)
 
@@ -500,15 +482,11 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 
 	// setup lease and do a keepalive
 	resp, err := cli.Grant(context.Background(), 5)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// keep client disconnected
 	clus.Members[0].Stop(t)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
-	if kerr != nil {
-		t.Fatal(kerr)
-	}
+	require.NoError(t, kerr)
 	select {
 	case ka, ok := <-rc:
 		if ok {
@@ -533,13 +511,9 @@ func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 
 	// setup lease and do a keepalive
 	resp, err := cli.Grant(context.Background(), 5)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
-	if kerr != nil {
-		t.Fatal(kerr)
-	}
+	require.NoError(t, kerr)
 	if kresp := <-rc; kresp.ID != resp.ID {
 		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
 	}
@@ -580,14 +554,11 @@ func TestLeaseTimeToLive(t *testing.T) {
 	}
 
 	// linearized read to ensure Puts propagated to server backing lapi
-	if _, err := c.Get(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = c.Get(context.TODO(), "abc")
+	require.NoError(t, err)
 
 	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
-	if lerr != nil {
-		t.Fatal(lerr)
-	}
+	require.NoError(t, lerr)
 	if lresp.ID != resp.ID {
 		t.Fatalf("leaseID expected %d, got %d", resp.ID, lresp.ID)
 	}
@@ -607,9 +578,7 @@ func TestLeaseTimeToLive(t *testing.T) {
 	}
 
 	lresp, lerr = lapi.TimeToLive(context.Background(), resp.ID)
-	if lerr != nil {
-		t.Fatal(lerr)
-	}
+	require.NoError(t, lerr)
 	if len(lresp.Keys) != 0 {
 		t.Fatalf("unexpected keys %+v", lresp.Keys)
 	}
@@ -668,9 +637,7 @@ func TestLeaseLeases(t *testing.T) {
 	}
 
 	resp, err := cli.Leases(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Leases) != 5 {
 		t.Fatalf("len(resp.Leases) expected 5, got %d", len(resp.Leases))
 	}
@@ -691,16 +658,12 @@ func TestLeaseRenewLostQuorum(t *testing.T) {
 
 	cli := clus.Client(0)
 	r, err := cli.Grant(context.TODO(), 4)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	kctx, kcancel := context.WithCancel(context.Background())
 	defer kcancel()
 	ka, err := cli.KeepAlive(kctx, r.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// consume first keepalive so next message sends when cluster is down
 	<-ka
 	lastKa := time.Now()
@@ -742,9 +705,7 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 	clus.TakeClient(0)
 
 	resp, err := cli.Grant(ctx, 5)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cli.Close()
 
 	_, err = cli.KeepAlive(ctx, resp.ID)
@@ -818,23 +779,15 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 
 	c := clus.Client(0)
 	lid1, err1 := c.Grant(context.TODO(), 60)
-	if err1 != nil {
-		t.Fatal(err1)
-	}
+	require.NoError(t, err1)
 	lid2, err2 := c.Grant(context.TODO(), 60)
-	if err2 != nil {
-		t.Fatal(err2)
-	}
+	require.NoError(t, err2)
 	// kaReqLeader close if the leader is lost
 	kaReqLeader, kerr1 := c.KeepAlive(clientv3.WithRequireLeader(context.TODO()), lid1.ID)
-	if kerr1 != nil {
-		t.Fatal(kerr1)
-	}
+	require.NoError(t, kerr1)
 	// kaWait will wait even if the leader is lost
 	kaWait, kerr2 := c.KeepAlive(context.TODO(), lid2.ID)
-	if kerr2 != nil {
-		t.Fatal(kerr2)
-	}
+	require.NoError(t, kerr2)
 
 	select {
 	case <-kaReqLeader:

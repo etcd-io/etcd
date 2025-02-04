@@ -171,9 +171,7 @@ func TestElectionFailover(t *testing.T) {
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
 	eer := <-electedErrC
-	if eer != nil {
-		t.Fatal(eer)
-	}
+	require.NoError(t, eer)
 }
 
 // TestElectionSessionRecampaign ensures that campaigning twice on the same election
@@ -217,9 +215,7 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	_, err := cli.Put(context.TODO(), "testa", "value")
 	require.NoError(t, err)
 	s, serr := concurrency.NewSession(cli)
-	if serr != nil {
-		t.Fatal(serr)
-	}
+	require.NoError(t, serr)
 	e := concurrency.NewElection(s, "test")
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	err = e.Campaign(ctx, "abc")
@@ -242,15 +238,11 @@ func TestElectionOnSessionRestart(t *testing.T) {
 	require.NoError(t, err)
 
 	e := concurrency.NewElection(session, "test-elect")
-	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, e.Campaign(context.TODO(), "abc"))
 
 	// ensure leader is not lost to waiter on fail-over
 	waitSession, werr := concurrency.NewSession(cli)
-	if werr != nil {
-		t.Fatal(werr)
-	}
+	require.NoError(t, werr)
 	defer waitSession.Orphan()
 	waitCtx, waitCancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer waitCancel()
@@ -258,15 +250,11 @@ func TestElectionOnSessionRestart(t *testing.T) {
 
 	// simulate restart by reusing the lease from the old session
 	newSession, nerr := concurrency.NewSession(cli, concurrency.WithLease(session.Lease()))
-	if nerr != nil {
-		t.Fatal(nerr)
-	}
+	require.NoError(t, nerr)
 	defer newSession.Orphan()
 
 	newElection := concurrency.NewElection(newSession, "test-elect")
-	if ncerr := newElection.Campaign(context.TODO(), "def"); ncerr != nil {
-		t.Fatal(ncerr)
-	}
+	require.NoError(t, newElection.Campaign(context.TODO(), "def"))
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
@@ -289,17 +277,12 @@ func TestElectionObserveCompacted(t *testing.T) {
 	defer session.Orphan()
 
 	e := concurrency.NewElection(session, "test-elect")
-	if cerr := e.Campaign(context.TODO(), "abc"); cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, e.Campaign(context.TODO(), "abc"))
 
 	presp, perr := cli.Put(context.TODO(), "foo", "bar")
-	if perr != nil {
-		t.Fatal(perr)
-	}
-	if _, cerr := cli.Compact(context.TODO(), presp.Header.Revision); cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, perr)
+	_, cerr := cli.Compact(context.TODO(), presp.Header.Revision)
+	require.NoError(t, cerr)
 
 	v, ok := <-e.Observe(context.TODO())
 	if !ok {

@@ -40,9 +40,7 @@ func TestV3LockLockWaiter(t *testing.T) {
 
 	lc := integration.ToGRPC(clus.Client(0)).Lock
 	l1, lerr1 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
-	if lerr1 != nil {
-		t.Fatal(lerr1)
-	}
+	require.NoError(t, lerr1)
 
 	lockc := make(chan struct{})
 	go func() {
@@ -62,9 +60,8 @@ func TestV3LockLockWaiter(t *testing.T) {
 		t.Fatalf("locked before unlock")
 	}
 
-	if _, uerr := lc.Unlock(context.TODO(), &lockpb.UnlockRequest{Key: l1.Key}); uerr != nil {
-		t.Fatal(uerr)
-	}
+	_, uerr := lc.Unlock(context.TODO(), &lockpb.UnlockRequest{Key: l1.Key})
+	require.NoError(t, uerr)
 
 	select {
 	case <-time.After(200 * time.Millisecond):

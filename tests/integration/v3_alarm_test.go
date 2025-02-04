@@ -57,9 +57,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	// test small put still works
 	smallbuf := make([]byte, 1024)
 	_, serr := kvc0.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
-	if serr != nil {
-		t.Fatal(serr)
-	}
+	require.NoError(t, serr)
 
 	// test big put
 	bigbuf := make([]byte, quotasize)
@@ -75,9 +73,7 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	for {
 		req := &pb.AlarmRequest{Action: pb.AlarmRequest_GET}
 		resp, aerr := clus.Members[0].Server.Alarm(context.TODO(), req)
-		if aerr != nil {
-			t.Fatal(aerr)
-		}
+		require.NoError(t, aerr)
 		if len(resp.Alarms) != 0 {
 			break
 		}

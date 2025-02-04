@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
@@ -216,9 +217,7 @@ func TestDoubleBarrierFailover(t *testing.T) {
 		}
 	}
 
-	if err = s0.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, s0.Close())
 	// join on rest of waiters
 	for i := 0; i < waiters-1; i++ {
 		select {

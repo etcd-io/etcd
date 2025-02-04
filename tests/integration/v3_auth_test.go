@@ -86,9 +86,7 @@ func TestV3AuthTokenWithDisable(t *testing.T) {
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
 
 	c, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer c.Close()
 
 	rctx, cancel := context.WithCancel(context.TODO())
@@ -119,17 +117,13 @@ func TestV3AuthRevision(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	presp, perr := api.KV.Put(ctx, &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 	cancel()
-	if perr != nil {
-		t.Fatal(perr)
-	}
+	require.NoError(t, perr)
 	rev := presp.Header.Revision
 
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	aresp, aerr := api.Auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}})
 	cancel()
-	if aerr != nil {
-		t.Fatal(aerr)
-	}
+	require.NoError(t, aerr)
 	if aresp.Header.Revision != rev {
 		t.Fatalf("revision expected %d, got %d", rev, aresp.Header.Revision)
 	}
@@ -161,9 +155,7 @@ func testV3AuthWithLeaseRevokeWithRoot(t *testing.T, ccfg integration.ClusterCon
 		Username:  "root",
 		Password:  "123",
 	})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer rootc.Close()
 
 	leaseResp, err := rootc.Grant(context.TODO(), 2)
@@ -219,9 +211,7 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
 
 	rootc, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "root", Password: "123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer rootc.Close()
 
 	leaseResp, err := rootc.Grant(context.TODO(), 90)
@@ -232,9 +222,7 @@ func TestV3AuthWithLeaseRevoke(t *testing.T) {
 	require.NoError(t, err)
 
 	userc, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer userc.Close()
 	_, err = userc.Revoke(context.TODO(), leaseID)
 	if err == nil {
@@ -268,15 +256,11 @@ func TestV3AuthWithLeaseAttach(t *testing.T) {
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
 
 	user1c, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer user1c.Close()
 
 	user2c, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user2", Password: "user2-123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer user2c.Close()
 
 	leaseResp, err := user1c.Grant(context.TODO(), 90)
@@ -421,9 +405,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
 
 	c, cerr := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "user1-123"})
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer c.Close()
 
 	watchStartCh, watchEndCh := make(chan any), make(chan any)

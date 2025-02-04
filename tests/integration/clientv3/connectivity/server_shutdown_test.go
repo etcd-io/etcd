@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -45,9 +47,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 
 	// pin eps[lead]
 	watchCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[lead]}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer watchCli.Close()
 
 	// wait for eps[lead] to be pinned
@@ -91,9 +91,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 
 	// writes to eps[lead+1]
 	putCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[(lead+1)%3]}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer putCli.Close()
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -154,9 +152,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 
 	// pin eps[0]
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[0]}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -177,9 +173,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	cctx, ccancel := context.WithTimeout(context.Background(), time.Second)
 	err = op(cli, cctx)
 	ccancel()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBalancerUnderServerShutdownGetLinearizable(t *testing.T) {

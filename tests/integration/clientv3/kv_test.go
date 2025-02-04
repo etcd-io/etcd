@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -61,9 +62,7 @@ func TestKVPutError(t *testing.T) {
 	}
 
 	_, err = kv.Put(ctx, "foo1", strings.Repeat("a", int(maxReqBytes-50)))
-	if err != nil { // below quota
-		t.Fatal(err)
-	}
+	require.NoError(t, err) // below quota
 
 	time.Sleep(1 * time.Second) // give enough time for commit
 
@@ -123,17 +122,13 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kv.Put(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
 
-	if _, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	require.NoError(t, err)
 	rr, rerr := kv.Get(context.TODO(), "foo")
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
 	}
@@ -158,22 +153,18 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
+	if _, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID)); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID))
+	require.NoError(t, err)
 
-	if _, err := kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease())
+	require.NoError(t, err)
 
 	rr, rerr := kv.Get(context.TODO(), "zoo")
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
 	}
@@ -209,13 +200,9 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 		`type="unary"`,
 		fmt.Sprintf(`client_api_version="%v"`, version.APIVersion),
 	)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cv, err := strconv.ParseInt(cnt, 10, 32)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if cv < 1 { // >1 when retried
 		t.Fatalf("expected at least 1, got %q", cnt)
 	}
@@ -298,9 +285,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 	cli := clus.Client(0)
 
 	donec := make(chan struct{})
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cli.Close())
 	clus.TakeClient(0)
 
 	go func() {
@@ -326,9 +311,7 @@ func TestKVNewAfterClose(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
-	if err := cli.Close(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cli.Close())
 
 	donec := make(chan struct{})
 	go func() {
@@ -493,9 +476,8 @@ func TestKVGetRetry(t *testing.T) {
 	kv := clus.Client(fIdx)
 	ctx := context.TODO()
 
-	if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := kv.Put(ctx, "foo", "bar")
+	require.NoError(t, err)
 
 	clus.Members[fIdx].Stop(t)
 
@@ -650,9 +632,8 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
-	if _, err := clus.Client(0).Put(context.TODO(), "k", "1"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := clus.Client(0).Put(context.TODO(), "k", "1")
+	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
 		clus.Members[0].Bridge().DropConnections()
@@ -664,7 +645,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
-		_, err := clus.Client(0).Put(context.TODO(), "k", "v")
+		_, err = clus.Client(0).Put(context.TODO(), "k", "v")
 		<-donec
 		if err != nil {
 			break
@@ -672,9 +653,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	}
 
 	resp, err := clus.Client(0).Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.Kvs[0].Version > 11 {
 		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
 	}

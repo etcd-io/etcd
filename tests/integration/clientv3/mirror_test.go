@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3/mirror"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -35,9 +37,7 @@ func TestMirrorSync(t *testing.T) {
 
 	c := clus.Client(0)
 	_, err := c.KV.Put(context.TODO(), "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	syncer := mirror.NewSyncer(c, "", 0)
 	gch, ech := syncer.SyncBase(context.TODO())
@@ -56,9 +56,7 @@ func TestMirrorSync(t *testing.T) {
 	wch := syncer.SyncUpdates(context.TODO())
 
 	_, err = c.KV.Put(context.TODO(), "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case r := <-wch:

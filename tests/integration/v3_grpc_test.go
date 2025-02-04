@@ -671,9 +671,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 	lc := integration.ToGRPC(clus.RandClient()).Lease
 	lresp, err := lc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 
 	tests := []struct {
 		putFunc  func() error
@@ -802,9 +800,7 @@ func TestV3PutIgnoreLease(t *testing.T) {
 	lc := integration.ToGRPC(clus.RandClient()).Lease
 	lresp, err := lc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 
 	key, val, val1 := []byte("zoo"), []byte("bar"), []byte("bar1")
 	putReq := pb.PutRequest{Key: key, Value: val}
@@ -1644,9 +1640,7 @@ func TestTLSReloadAtomicReplace(t *testing.T) {
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		_, err := copyTLSFiles(integration.TestTLSInfoExpired, certsDirExp)
 		require.NoError(t, err)
 		return tlsInfo
@@ -1680,9 +1674,7 @@ func TestTLSReloadCopy(t *testing.T) {
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfo, certsDir)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		return tlsInfo
 	}
 	replaceFunc := func() {
@@ -1704,9 +1696,7 @@ func TestTLSReloadCopyIPOnly(t *testing.T) {
 
 	cloneFunc := func() transport.TLSInfo {
 		tlsInfo, terr := copyTLSFiles(integration.TestTLSInfoIP, certsDir)
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		return tlsInfo
 	}
 	replaceFunc := func() {
@@ -1787,9 +1777,7 @@ func testTLSReload(
 
 	// 7. new requests should trigger listener to reload valid certs
 	tls, terr := tlsInfo.ClientConfig()
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	cl, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: 5 * time.Second,

@@ -19,6 +19,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -26,29 +28,21 @@ import (
 
 func TestMutexLockSessionExpired(t *testing.T) {
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// create two separate sessions for lock competition
 	s1, err := concurrency.NewSession(cli)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer s1.Close()
 	m1 := concurrency.NewMutex(s1, "/my-lock/")
 
 	s2, err := concurrency.NewSession(cli)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	m2 := concurrency.NewMutex(s2, "/my-lock/")
 
 	// acquire lock for s1
-	if err = m1.Lock(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m1.Lock(context.TODO()))
 
 	m2Locked := make(chan struct{})
 	var err2 error
@@ -61,46 +55,31 @@ func TestMutexLockSessionExpired(t *testing.T) {
 	}()
 
 	// revoke the session of m2 before unlock m1
-	err = s2.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := m1.Unlock(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, s2.Close())
+	require.NoError(t, m1.Unlock(context.TODO()))
 
 	<-m2Locked
 }
 
 func TestMutexUnlock(t *testing.T) {
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	s1, err := concurrency.NewSession(cli)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer s1.Close()
 
 	m1 := concurrency.NewMutex(s1, "/my-lock/")
 	err = m1.Unlock(context.TODO())
-	if err == nil {
-		t.Fatal("expect lock released error")
-	}
+	require.Errorf(t, err, "expect lock released error")
 	if !errors.Is(err, concurrency.ErrLockReleased) {
 		t.Fatal(err)
 	}
 
-	if err = m1.Lock(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m1.Lock(context.TODO()))
 
-	if err = m1.Unlock(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, m1.Unlock(context.TODO()))
 
 	err = m1.Unlock(context.TODO())
 	if err == nil {

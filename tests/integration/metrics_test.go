@@ -98,13 +98,9 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 		time.Sleep(500 * time.Millisecond)
 
 		afterCompactionInUse, verr := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
-		if verr != nil {
-			t.Fatal(verr)
-		}
+		require.NoError(t, verr)
 		aciu, verr := strconv.Atoi(afterCompactionInUse)
-		if verr != nil {
-			t.Fatal(verr)
-		}
+		require.NoError(t, verr)
 		if biu <= aciu {
 			return fmt.Errorf("expected less than %d, got %d after compaction", biu, aciu)
 		}

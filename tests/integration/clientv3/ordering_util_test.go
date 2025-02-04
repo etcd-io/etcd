@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -39,20 +41,16 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	}
 	cfg := clientv3.Config{Endpoints: []string{clus.Members[0].GRPCURL}}
 	cli, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	ctx := context.TODO()
 
-	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(ctx, "foo", "bar")
+	require.NoError(t, err)
 	// ensure that the second member has current revision for key "foo"
-	if _, err = clus.Client(1).Get(ctx, "foo"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Get(ctx, "foo")
+	require.NoError(t, err)
 
 	// create partition between third members and the first two members
 	// in order to guarantee that the third member's revision of "foo"
@@ -61,9 +59,8 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for the operation
 
 	// update to "foo" will not be replicated to the third member due to the partition
-	if _, err = clus.Client(1).Put(ctx, "foo", "buzz"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Put(ctx, "foo", "buzz")
+	require.NoError(t, err)
 
 	cli.SetEndpoints(eps...)
 	time.Sleep(1 * time.Second) // give enough time for the operation
@@ -71,9 +68,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	// set prevRev to the second member's revision of "foo" such that
 	// the revision is higher than the third member's revision of "foo"
 	_, err = orderingKv.Get(ctx, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	t.Logf("Reconfigure client to speak only to the 'partitioned' member")
 	cli.SetEndpoints(clus.Members[2].GRPCURL)
@@ -106,9 +101,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 		},
 	}
 	cli, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 	eps := cli.Endpoints()
 	ctx := context.TODO()
@@ -116,9 +109,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	cli.SetEndpoints(clus.Members[0].GRPCURL)
 	time.Sleep(1 * time.Second)
 	_, err = cli.Put(ctx, "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// stop fourth member in order to force the member to have an outdated revision
 	clus.Members[3].Stop(t)
@@ -127,9 +118,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	clus.Members[4].Stop(t)
 	time.Sleep(1 * time.Second) // give enough time for operation
 	_, err = cli.Put(ctx, "foo", "buzz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	cli.SetEndpoints(eps...)
 	time.Sleep(1 * time.Second) // give enough time for operation
@@ -137,21 +126,13 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	// set prevRev to the first member's revision of "foo" such that
 	// the revision is higher than the fourth and fifth members' revision of "foo"
 	_, err = OrderingKv.Get(ctx, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
 	clus.Members[2].Stop(t)
-	err = clus.Members[3].Restart(t)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = clus.Members[4].Restart(t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, clus.Members[3].Restart(t))
+	require.NoError(t, clus.Members[4].Restart(t))
 	clus.Members[3].WaitStarted(t)
 	cli.SetEndpoints(clus.Members[3].GRPCURL)
 	time.Sleep(1 * time.Second) // give enough time for operation
