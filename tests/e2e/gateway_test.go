@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -40,9 +41,7 @@ func TestGateway(t *testing.T) {
 	}()
 
 	err = e2e.SpawnWithExpect([]string{e2e.BinPath.Etcdctl, "--endpoints=" + defaultGatewayEndpoint, "put", "foo", "bar"}, expect.ExpectedResponse{Value: "OK\r\n"})
-	if err != nil {
-		t.Errorf("failed to finish put request through gateway: %v", err)
-	}
+	assert.NoErrorf(t, err, "failed to finish put request through gateway: %v", err)
 }
 
 func startGateway(t *testing.T, endpoints string) *expect.ExpectProcess {

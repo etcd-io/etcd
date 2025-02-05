@@ -44,30 +44,18 @@ func snapshotTest(cx ctlCtx) {
 	maintenanceInitKeys(cx)
 
 	leaseID, err := ctlV3LeaseGrant(cx, 100)
-	if err != nil {
-		cx.t.Fatalf("snapshot: ctlV3LeaseGrant error (%v)", err)
-	}
-	if err = ctlV3Put(cx, "withlease", "withlease", leaseID); err != nil {
-		cx.t.Fatalf("snapshot: ctlV3Put error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "snapshot: ctlV3LeaseGrant error (%v)", err)
+	require.NoErrorf(cx.t, ctlV3Put(cx, "withlease", "withlease", leaseID), "snapshot: ctlV3Put error")
 
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
-	if err = ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3SnapshotSave(cx, fpath), "snapshotTest ctlV3SnapshotSave error")
 
 	st, err := getSnapshotStatus(cx, fpath)
-	if err != nil {
-		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
-	}
-	if st.Revision != 5 {
-		cx.t.Fatalf("expected 4, got %d", st.Revision)
-	}
-	if st.TotalKey < 2 {
-		cx.t.Fatalf("expected at least 2, got %d", st.TotalKey)
-	}
+	require.NoErrorf(cx.t, err, "snapshotTest getSnapshotStatus error (%v)", err)
+	require.Equalf(cx.t, int64(5), st.Revision, "expected 4, got %d", st.Revision)
+	require.GreaterOrEqualf(cx.t, st.TotalKey, 2, "expected at least 2, got %d", st.TotalKey)
 }
 
 func TestCtlV3SnapshotCorrupt(t *testing.T) { testCtl(t, snapshotCorruptTest) }
@@ -76,9 +64,7 @@ func snapshotCorruptTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3SnapshotSave(cx, fpath), "snapshotTest ctlV3SnapshotSave error")
 
 	// corrupt file
 	f, oerr := os.OpenFile(fpath, os.O_WRONLY, 0)
@@ -108,15 +94,12 @@ func snapshotStatusBeforeRestoreTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotTest ctlV3SnapshotSave error (%v)", err)
-	}
+	err := ctlV3SnapshotSave(cx, fpath)
+	require.NoErrorf(cx.t, err, "snapshotTest ctlV3SnapshotSave error (%v)", err)
 
 	// snapshot status on the fresh snapshot file
-	_, err := getSnapshotStatus(cx, fpath)
-	if err != nil {
-		cx.t.Fatalf("snapshotTest getSnapshotStatus error (%v)", err)
-	}
+	_, err = getSnapshotStatus(cx, fpath)
+	require.NoErrorf(cx.t, err, "snapshotTest getSnapshotStatus error (%v)", err)
 
 	dataDir := cx.t.TempDir()
 	defer os.RemoveAll(dataDir)
@@ -173,13 +156,9 @@ func testIssue6361(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithKeepDataDir(true),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	dialTimeout := 10 * time.Second
@@ -278,17 +257,12 @@ func snapshotVersionTest(cx ctlCtx) {
 	fpath := filepath.Join(cx.t.TempDir(), "snapshot")
 	defer os.RemoveAll(fpath)
 
-	if err := ctlV3SnapshotSave(cx, fpath); err != nil {
-		cx.t.Fatalf("snapshotVersionTest ctlV3SnapshotSave error (%v)", err)
-	}
+	err := ctlV3SnapshotSave(cx, fpath)
+	require.NoErrorf(cx.t, err, "snapshotVersionTest ctlV3SnapshotSave error (%v)", err)
 
 	st, err := getSnapshotStatus(cx, fpath)
-	if err != nil {
-		cx.t.Fatalf("snapshotVersionTest getSnapshotStatus error (%v)", err)
-	}
-	if st.Version != "3.6.0" {
-		cx.t.Fatalf("expected %q, got %q", "3.6.0", st.Version)
-	}
+	require.NoErrorf(cx.t, err, "snapshotVersionTest getSnapshotStatus error (%v)", err)
+	require.Equalf(cx.t, "3.6.0", st.Version, "expected %q, got %q", "3.6.0", st.Version)
 }
 
 func TestRestoreCompactionRevBump(t *testing.T) {
@@ -298,13 +272,9 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithKeepDataDir(true),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	ctl := epc.Etcdctl()

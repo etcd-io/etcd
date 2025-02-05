@@ -20,6 +20,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -44,18 +46,10 @@ func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
 func leaseTestKeepAlive(cx ctlCtx) {
 	// put with TTL 10 seconds and keep-alive
 	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "key", "val", leaseID); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3LeaseKeepAlive(cx, leaseID); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3LeaseKeepAlive error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}, kv{"key", "val"}); err != nil {
-		cx.t.Fatalf("leaseTestKeepAlive: ctlV3Get error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "leaseTestKeepAlive: ctlV3LeaseGrant error")
+	require.NoErrorf(cx.t, ctlV3Put(cx, "key", "val", leaseID), "leaseTestKeepAlive: ctlV3Put error")
+	require.NoErrorf(cx.t, ctlV3LeaseKeepAlive(cx, leaseID), "leaseTestKeepAlive: ctlV3LeaseKeepAlive error")
+	require.NoErrorf(cx.t, ctlV3Get(cx, []string{"key"}, kv{"key", "val"}), "leaseTestKeepAlive: ctlV3Get error")
 }
 
 func ctlV3LeaseGrant(cx ctlCtx, ttl int) (string, error) {

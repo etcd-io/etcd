@@ -147,9 +147,7 @@ func TestCtlV3ConsistentMemberList(t *testing.T) {
 }
 
 func memberListTest(cx ctlCtx) {
-	if err := ctlV3MemberList(cx); err != nil {
-		cx.t.Fatalf("memberListTest ctlV3MemberList error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3MemberList(cx), "memberListTest ctlV3MemberList error")
 }
 
 func memberListSerializableTest(cx ctlCtx) {
@@ -204,52 +202,29 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 
 func memberListWithHexTest(cx ctlCtx) {
 	resp, err := getMemberList(cx, false)
-	if err != nil {
-		cx.t.Fatalf("getMemberList error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "getMemberList error (%v)", err)
 
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	if err != nil {
-		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "memberListWithHexTest error (%v)", err)
 	var txt string
 	txt, err = proc.Expect("members")
-	if err != nil {
-		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
-	}
-	if err = proc.Close(); err != nil {
-		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "memberListWithHexTest error (%v)", err)
+	require.NoErrorf(cx.t, proc.Close(), "memberListWithHexTest error")
 	hexResp := etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&hexResp); errors.Is(err, io.EOF) {
-		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
-	}
+	require.NotErrorIsf(cx.t, dec.Decode(&hexResp), io.EOF, "memberListWithHexTest error")
 	num := len(resp.Members)
-	hexNum := len(hexResp.Members)
-	if num != hexNum {
-		cx.t.Fatalf("member number,expected %d,got %d", num, hexNum)
-	}
-	if num == 0 {
-		cx.t.Fatal("member number is 0")
-	}
+	require.Lenf(cx.t, hexResp.Members, num, "member number")
+	require.NotZerof(cx.t, num, "member number is 0")
 
-	if resp.Header.RaftTerm != hexResp.Header.RaftTerm {
-		cx.t.Fatalf("Unexpected raft_term, expected %d, got %d", resp.Header.RaftTerm, hexResp.Header.RaftTerm)
-	}
+	require.Equalf(cx.t, resp.Header.RaftTerm, hexResp.Header.RaftTerm, "Unexpected raft_term, expected %d, got %d", resp.Header.RaftTerm, hexResp.Header.RaftTerm)
 
 	for i := 0; i < num; i++ {
-		if resp.Members[i].Name != hexResp.Members[i].Name {
-			cx.t.Fatalf("Unexpected member name,expected %v, got %v", resp.Members[i].Name, hexResp.Members[i].Name)
-		}
-		if !reflect.DeepEqual(resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs) {
-			cx.t.Fatalf("Unexpected member peerURLs, expected %v, got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
-		}
-		if !reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs) {
-			cx.t.Fatalf("Unexpected member clientURLs, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
-		}
+		require.Equalf(cx.t, resp.Members[i].Name, hexResp.Members[i].Name, "Unexpected member name,expected %v, got %v", resp.Members[i].Name, hexResp.Members[i].Name)
+		require.Truef(cx.t, reflect.DeepEqual(resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs), "Unexpected member peerURLs, expected %v, got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
+		require.Truef(cx.t, reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs), "Unexpected member clientURLs, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
 	}
 }
 

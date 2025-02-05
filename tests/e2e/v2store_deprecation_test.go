@@ -41,12 +41,11 @@ import (
 
 func writeCustomV2Data(tb testing.TB, epc *e2e.EtcdProcessCluster, count int) {
 	for i := 0; i < count; i++ {
-		if err := e2e.CURLPut(epc, e2e.CURLReq{
+		err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
 			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)},
-		}); err != nil {
-			tb.Fatalf("failed put with curl (%v)", err)
-		}
+		})
+		require.NoErrorf(tb, err, "failed put with curl (%v)", err)
 	}
 }
 

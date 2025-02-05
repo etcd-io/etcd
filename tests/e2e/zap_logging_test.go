@@ -38,30 +38,20 @@ func TestServerJsonLogging(t *testing.T) {
 	require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	var entry logEntry
 	lines := logs.Lines()
-	if len(lines) == 0 {
-		t.Errorf("Expected at least one log line")
-	}
+	assert.NotEmptyf(t, lines, "Expected at least one log line")
 	for _, line := range lines {
 		err := json.Unmarshal([]byte(line), &entry)
 		if err != nil {
 			t.Errorf("Failed to parse log line as json, err: %q, line: %s", err, line)
 			continue
 		}
-		if entry.Level == "" {
-			t.Errorf(`Missing "level" key, line: %s`, line)
-		}
-		if entry.Timestamp == "" {
-			t.Errorf(`Missing "ts" key, line: %s`, line)
-		}
+		assert.NotEmptyf(t, entry.Level, `Missing "level" key, line: %s`, line)
+		assert.NotEmptyf(t, entry.Timestamp, `Missing "ts" key, line: %s`, line)
 		if _, err := time.Parse("2006-01-02T15:04:05.999999Z0700", entry.Timestamp); entry.Timestamp != "" && err != nil {
 			t.Errorf(`Unexpected "ts" key format, err: %s`, err)
 		}
-		if entry.Caller == "" {
-			t.Errorf(`Missing "caller" key, line: %s`, line)
-		}
-		if entry.Message == "" {
-			t.Errorf(`Missing "message" key, line: %s`, line)
-		}
+		assert.NotEmptyf(t, entry.Caller, `Missing "caller" key, line: %s`, line)
+		assert.NotEmptyf(t, entry.Message, `Missing "message" key, line: %s`, line)
 	}
 }
 
