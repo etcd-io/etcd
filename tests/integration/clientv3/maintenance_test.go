@@ -61,9 +61,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 		_, err := cli.Get(context.TODO(), "foo")
 		require.NoError(t, err)
 		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if hv == 0 {
 			hv = hresp.Hash
 			continue
@@ -83,9 +81,7 @@ func TestCompactionHash(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cc, err := clus.ClusterClient(t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
 }
@@ -140,9 +136,7 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 
 	cli = clus.Client(oldLeadIdx)
 	_, err = cli.MoveLeader(context.Background(), target)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	leadIdx := clus.WaitLeader(t)
 	lead := uint64(clus.Members[leadIdx].ID())
@@ -172,9 +166,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	populateDataIntoCluster(t, clus, 3, 1024*1024)
 
 	rc1, err := clus.RandClient().Snapshot(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rc1.Close()
 
 	// read 16 bytes to ensure that server opens snapshot
@@ -232,9 +224,7 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	populateDataIntoCluster(t, clus, 3, 1024*1024)
 
 	rc2, err := snapshot(ctx, clus.RandClient())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rc2.Close()
 
 	time.Sleep(2 * time.Second)
@@ -290,9 +280,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	// reading snapshot with canceled context should error out
 	ctx, cancel := context.WithCancel(context.Background())
 	rc1, err := snapshot(ctx, clus.RandClient())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rc1.Close()
 
 	donec := make(chan struct{})
@@ -311,9 +299,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	rc2, err := snapshot(ctx, clus.RandClient())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer rc2.Close()
 
 	// 300ms left and expect timeout while snapshot reading is in progress
@@ -339,9 +325,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 
 	// reading snapshot with canceled context should error out
 	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer resp.Snapshot.Close()
 	if resp.Version != "3.6.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
@@ -411,18 +395,14 @@ func TestMaintenanceStatus(t *testing.T) {
 
 	t.Logf("Creating client...")
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 	t.Logf("Creating client [DONE]")
 
 	prevID, leaderFound := uint64(0), false
 	for i := 0; i < 3; i++ {
 		resp, err := cli.Status(context.TODO(), eps[i])
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		t.Logf("Response from %v: %v", i, resp)
 		if resp.DbSizeQuota != storage.DefaultQuotaBytes {
 			t.Errorf("unexpected backend default quota returned: %d, expected %d", resp.DbSizeQuota, storage.DefaultQuotaBytes)

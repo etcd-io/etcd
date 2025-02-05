@@ -30,6 +30,7 @@ import (
 	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -86,9 +87,7 @@ func TestV3ClientMetrics(t *testing.T) {
 		},
 	}
 	cli, cerr := integration2.NewClient(t, cfg)
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	defer cli.Close()
 
 	wc := cli.Watch(context.Background(), "foo")

@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -62,9 +63,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	timeout := pingInterval + integration2.RequestWaitTimeout
 
 	cli, err := integration2.NewClient(t, ccfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
@@ -80,9 +79,8 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	clus.Members[0].Bridge().Blackhole()
 
-	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Put(context.TODO(), "foo", "bar")
+	require.NoError(t, err)
 	select {
 	case <-wch:
 	case <-time.After(timeout):
@@ -97,12 +95,10 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	clus.Members[1].Bridge().Blackhole()
 
 	// make sure client[0] can connect to eps[0] after remove the blackhole.
-	if _, err = clus.Client(0).Get(context.TODO(), "foo"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = clus.Client(0).Put(context.TODO(), "foo", "bar1"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Get(context.TODO(), "foo")
+	require.NoError(t, err)
+	_, err = clus.Client(0).Put(context.TODO(), "foo", "bar1")
+	require.NoError(t, err)
 
 	select {
 	case <-wch:
@@ -183,9 +179,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration2.NewClient(t, ccfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -214,7 +208,5 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 			t.Errorf("#%d: failed with error %v", i, err)
 		}
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }

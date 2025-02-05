@@ -586,9 +586,7 @@ func TestV3WatchEmptyKey(t *testing.T) {
 	defer cancel()
 
 	ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
-	if werr != nil {
-		t.Fatal(werr)
-	}
+	require.NoError(t, werr)
 	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 		CreateRequest: &pb.WatchCreateRequest{
 			Key: []byte("foo"),
@@ -606,9 +604,7 @@ func TestV3WatchEmptyKey(t *testing.T) {
 
 	// check received PUT
 	resp, rerr := ws.Recv()
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	wevs := []*mvccpb.Event{
 		{
 			Type: mvccpb.PUT,
@@ -1227,9 +1223,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 	defer cancel()
 
 	ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
-	if werr != nil {
-		t.Fatal(werr)
-	}
+	require.NoError(t, werr)
 	req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 		CreateRequest: &pb.WatchCreateRequest{
 			Key:     []byte("foo"),
@@ -1309,9 +1303,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 		require.NoError(t, err)
 
 		ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(wctx)
-		if werr != nil {
-			t.Fatal(werr)
-		}
+		require.NoError(t, werr)
 
 		req := &pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
 			CreateRequest: &pb.WatchCreateRequest{

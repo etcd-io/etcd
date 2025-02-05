@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
@@ -34,21 +36,16 @@ func TestNamespacePutGet(t *testing.T) {
 	c := clus.Client(0)
 	nsKV := namespace.NewKV(c.KV, "foo/")
 
-	if _, err := nsKV.Put(context.TODO(), "abc", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := nsKV.Put(context.TODO(), "abc", "bar")
+	require.NoError(t, err)
 	resp, err := nsKV.Get(context.TODO(), "abc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(resp.Kvs[0].Key) != "abc" {
 		t.Errorf("expected key=%q, got key=%q", "abc", resp.Kvs[0].Key)
 	}
 
 	resp, err = c.Get(context.TODO(), "foo/abc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(resp.Kvs[0].Value) != "bar" {
 		t.Errorf("expected value=%q, got value=%q", "bar", resp.Kvs[0].Value)
 	}
@@ -64,9 +61,8 @@ func TestNamespaceWatch(t *testing.T) {
 	nsKV := namespace.NewKV(c.KV, "foo/")
 	nsWatcher := namespace.NewWatcher(c.Watcher, "foo/")
 
-	if _, err := nsKV.Put(context.TODO(), "abc", "bar"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := nsKV.Put(context.TODO(), "abc", "bar")
+	require.NoError(t, err)
 
 	nsWch := nsWatcher.Watch(context.TODO(), "abc", clientv3.WithRev(1))
 	wkv := &mvccpb.KeyValue{Key: []byte("abc"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}

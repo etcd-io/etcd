@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -124,9 +125,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration2.NewClient(t, ccfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 	// wait for eps[0] to be pinned
 	clientv3test.MustWaitPinReady(t, cli)
@@ -180,9 +179,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 		DialTimeout: 2 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// add all eps to list, so that when the original pined one fails
@@ -201,9 +198,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 			break
 		}
 	}
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestBalancerUnderNetworkPartitionWatchLeader(t *testing.T) {
@@ -233,9 +228,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 
 	// pin eps[target]
 	watchCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	t.Logf("watchCli created to: %v", target)
 	defer watchCli.Close()
 
@@ -291,9 +284,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration2.NewClient(t, ccfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -303,9 +294,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	cli.SetEndpoints(eps...)
 	time.Sleep(time.Second * 2)
 	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCURL)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -54,9 +55,7 @@ func TestDialTLSExpired(t *testing.T) {
 	defer clus.Terminate(t)
 
 	tls, err := testTLSInfoExpired.ClientConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// expect remote errors "tls: bad certificate"
 	_, err = integration2.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
@@ -120,9 +119,7 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cli, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer cli.Close()
 
 	if setBefore {
@@ -137,9 +134,8 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 	}
 	time.Sleep(time.Second * 2)
 	ctx, cancel := context.WithTimeout(context.Background(), integration2.RequestWaitTimeout)
-	if _, err = cli.Get(ctx, "foo", clientv3.WithSerializable()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = cli.Get(ctx, "foo", clientv3.WithSerializable())
+	require.NoError(t, err)
 	cancel()
 }
 
@@ -160,9 +156,8 @@ func TestSwitchSetEndpoints(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if _, err := cli.Get(ctx, "foo"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := cli.Get(ctx, "foo")
+	require.NoError(t, err)
 }
 
 func TestRejectOldCluster(t *testing.T) {
@@ -178,9 +173,7 @@ func TestRejectOldCluster(t *testing.T) {
 		RejectOldCluster: true,
 	}
 	cli, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cli.Close()
 }
 
@@ -192,9 +185,7 @@ func TestDialForeignEndpoint(t *testing.T) {
 	defer clus.Terminate(t)
 
 	conn, err := clus.Client(0).Dial(clus.Client(1).Endpoints()[0])
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	// grpc can return a lazy connection that's not connected yet; confirm
@@ -202,9 +193,8 @@ func TestDialForeignEndpoint(t *testing.T) {
 	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), clus.Client(0))
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	if _, gerr := kvc.Get(ctx, "abc"); gerr != nil {
-		t.Fatal(err)
-	}
+	_, gerr := kvc.Get(ctx, "abc")
+	require.NoError(t, gerr)
 }
 
 // TestSetEndpointAndPut checks that a Put following a SetEndpoints

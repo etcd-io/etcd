@@ -52,9 +52,7 @@ func TestV3LeasePromote(t *testing.T) {
 	ttl := time.Duration(lresp.TTL) * time.Second
 	afterGrant := time.Now()
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 
 	// wait until the lease is going to expire.
 	time.Sleep(time.Until(afterGrant.Add(ttl - time.Second)))
@@ -436,9 +434,7 @@ func TestV3LeaseExists(t *testing.T) {
 		ctx0,
 		&pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 
 	if !leaseExist(t, clus, lresp.ID) {
 		t.Error("unexpected lease not exists")
@@ -461,9 +457,7 @@ func TestV3LeaseLeases(t *testing.T) {
 			ctx0,
 			&pb.LeaseGrantRequest{TTL: 30})
 		require.NoError(t, err)
-		if lresp.Error != "" {
-			t.Fatal(lresp.Error)
-		}
+		require.Empty(t, lresp.Error)
 		ids = append(ids, lresp.ID)
 	}
 
@@ -696,9 +690,7 @@ func TestV3LeaseFailover(t *testing.T) {
 	// create lease
 	lresp, err := lc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 5})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 
 	// isolate the current leader with its followers.
 	clus.Members[toIsolate].Pause()
@@ -789,9 +781,7 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 
 	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
@@ -830,9 +820,7 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 
 	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
@@ -872,9 +860,7 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 
 	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
-	if lresp.Error != "" {
-		t.Fatal(lresp.Error)
-	}
+	require.Empty(t, lresp.Error)
 	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
@@ -918,9 +904,7 @@ func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 		require.NoError(t, err)
-		if lresp.Error != "" {
-			t.Fatal(lresp.Error)
-		}
+		require.Empty(t, lresp.Error)
 		leaseIDs = append(leaseIDs, lresp.ID)
 
 		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})

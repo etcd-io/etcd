@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -150,14 +152,10 @@ func TestTxnSuccess(t *testing.T) {
 	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp, err := kv.Get(ctx, "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" {
 		t.Fatalf("unexpected Get response %v", resp)
 	}
@@ -171,20 +169,15 @@ func TestTxnCompareRange(t *testing.T) {
 
 	kv := clus.Client(0)
 	fooResp, err := kv.Put(context.TODO(), "foo/", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = kv.Put(context.TODO(), "foo/a", "baz"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = kv.Put(context.TODO(), "foo/a", "baz")
+	require.NoError(t, err)
 	tresp, terr := kv.Txn(context.TODO()).If(
 		clientv3.Compare(
 			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
 			WithPrefix(),
 	).Commit()
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	if tresp.Succeeded {
 		t.Fatal("expected prefix compare to false, got compares as true")
 	}
@@ -204,25 +197,19 @@ func TestTxnNested(t *testing.T) {
 			clientv3.OpPut("foo", "bar"),
 			clientv3.OpTxn(nil, []clientv3.Op{clientv3.OpPut("abc", "123")}, nil)).
 		Else(clientv3.OpPut("foo", "baz")).Commit()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(tresp.Responses) != 2 {
 		t.Errorf("expected 2 top-level txn responses, got %+v", tresp.Responses)
 	}
 
 	// check txn writes were applied
 	resp, err := kv.Get(context.TODO(), "foo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {
 		t.Errorf("unexpected Get response %+v", resp)
 	}
 	resp, err = kv.Get(context.TODO(), "abc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "123" {
 		t.Errorf("unexpected Get response %+v", resp)
 	}

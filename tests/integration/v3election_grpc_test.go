@@ -42,9 +42,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 	lc := integration.ToGRPC(clus.Client(0)).Election
 	req1 := &epb.CampaignRequest{Name: []byte("foo"), Lease: lease1.ID, Value: []byte("abc")}
 	l1, lerr1 := lc.Campaign(context.TODO(), req1)
-	if lerr1 != nil {
-		t.Fatal(lerr1)
-	}
+	require.NoError(t, lerr1)
 
 	campaignc := make(chan struct{})
 	go func() {
@@ -65,9 +63,8 @@ func TestV3ElectionCampaign(t *testing.T) {
 		t.Fatalf("got leadership before resign")
 	}
 
-	if _, uerr := lc.Resign(context.TODO(), &epb.ResignRequest{Leader: l1.Leader}); uerr != nil {
-		t.Fatal(uerr)
-	}
+	_, uerr := lc.Resign(context.TODO(), &epb.ResignRequest{Leader: l1.Leader})
+	require.NoError(t, uerr)
 
 	select {
 	case <-time.After(200 * time.Millisecond):
@@ -76,9 +73,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 	}
 
 	lval, lverr := lc.Leader(context.TODO(), &epb.LeaderRequest{Name: []byte("foo")})
-	if lverr != nil {
-		t.Fatal(lverr)
-	}
+	require.NoError(t, lverr)
 
 	if string(lval.Kv.Value) != "def" {
 		t.Fatalf("got election value %q, expected %q", string(lval.Kv.Value), "def")

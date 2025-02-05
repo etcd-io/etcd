@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -267,9 +269,7 @@ func TestMemberPromote(t *testing.T) {
 	// (the response has information on peer urls of the existing members in cluster)
 	clus.InitializeMemberWithResponse(t, learnerMember, memberAddResp)
 
-	if err = learnerMember.Launch(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, learnerMember.Launch())
 
 	// retry until promote succeed or timeout
 	timeout := time.After(5 * time.Second)

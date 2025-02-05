@@ -52,19 +52,15 @@ func TestLeasingPutGet(t *testing.T) {
 	defer closeLKV3()
 
 	resp, err := lKV1.Get(context.TODO(), "abc")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 0 {
 		t.Errorf("expected nil, got %q", resp.Kvs[0].Key)
 	}
 
-	if _, err = lKV1.Put(context.TODO(), "abc", "def"); err != nil {
-		t.Fatal(err)
-	}
-	if resp, err = lKV2.Get(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lKV1.Put(context.TODO(), "abc", "def")
+	require.NoError(t, err)
+	resp, err = lKV2.Get(context.TODO(), "abc")
+	require.NoError(t, err)
 	if string(resp.Kvs[0].Key) != "abc" {
 		t.Errorf("expected key=%q, got key=%q", "abc", resp.Kvs[0].Key)
 	}
@@ -72,16 +68,13 @@ func TestLeasingPutGet(t *testing.T) {
 		t.Errorf("expected value=%q, got value=%q", "bar", resp.Kvs[0].Value)
 	}
 
-	if _, err = lKV3.Get(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lKV2.Put(context.TODO(), "abc", "ghi"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lKV3.Get(context.TODO(), "abc")
+	require.NoError(t, err)
+	_, err = lKV2.Put(context.TODO(), "abc", "ghi")
+	require.NoError(t, err)
 
-	if resp, err = lKV3.Get(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
+	resp, err = lKV3.Get(context.TODO(), "abc")
+	require.NoError(t, err)
 	if string(resp.Kvs[0].Key) != "abc" {
 		t.Errorf("expected key=%q, got key=%q", "abc", resp.Kvs[0].Key)
 	}
@@ -108,22 +101,18 @@ func TestLeasingInterval(t *testing.T) {
 	}
 
 	resp, err := lkv.Get(context.TODO(), "abc/", clientv3.WithPrefix())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 3 {
 		t.Fatalf("expected keys %+v, got response keys %+v", keys, resp.Kvs)
 	}
 
 	// load into cache
-	if _, err = lkv.Get(context.TODO(), "abc/a"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "abc/a")
+	require.NoError(t, err)
 
 	// get when prefix is also a cached key
-	if resp, err = lkv.Get(context.TODO(), "abc/a", clientv3.WithPrefix()); err != nil {
-		t.Fatal(err)
-	}
+	resp, err = lkv.Get(context.TODO(), "abc/a", clientv3.WithPrefix())
+	require.NoError(t, err)
 	if len(resp.Kvs) != 2 {
 		t.Fatalf("expected keys %+v, got response keys %+v", keys, resp.Kvs)
 	}
@@ -139,21 +128,15 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Put(context.TODO(), "k", "v"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
+	_, err = lkv.Put(context.TODO(), "k", "v")
+	require.NoError(t, err)
 
 	lkvResp, err := lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(context.TODO(), "k")
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	if !reflect.DeepEqual(lkvResp, cResp) {
 		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
 	}
@@ -165,29 +148,22 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	if _, err := clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 
 	lkv, closeLKV, err := leasing.NewKV(clus.Client(0), "pfx/")
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Put(context.TODO(), "k", "v"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
+	_, err = lkv.Put(context.TODO(), "k", "v")
+	require.NoError(t, err)
 
 	lkvResp, err := lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(context.TODO(), "k")
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
+	require.NoError(t, cerr)
 	if !reflect.DeepEqual(lkvResp, cResp) {
 		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
 	}
@@ -232,20 +208,16 @@ func TestLeasingGetSerializable(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "cached", "abc"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Get(context.TODO(), "cached"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "cached", "abc")
+	require.NoError(t, err)
+	_, err = lkv.Get(context.TODO(), "cached")
+	require.NoError(t, err)
 
 	clus.Members[1].Stop(t)
 
 	// don't necessarily try to acquire leasing key ownership for new key
 	resp, err := lkv.Get(context.TODO(), "uncached", clientv3.WithSerializable())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 0 {
 		t.Fatalf(`expected no keys, got response %+v`, resp)
 	}
@@ -254,9 +226,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 
 	// leasing key ownership should have "cached" locally served
 	cachedResp, err := lkv.Get(context.TODO(), "cached", clientv3.WithSerializable())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(cachedResp.Kvs) != 1 || string(cachedResp.Kvs[0].Value) != "abc" {
 		t.Fatalf(`expected "cached"->"abc", got response %+v`, cachedResp)
 	}
@@ -272,17 +242,13 @@ func TestLeasingPrevKey(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 	// acquire leasing key
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
 	resp, err := lkv.Put(context.TODO(), "k", "def", clientv3.WithPrevKV())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if resp.PrevKv == nil || string(resp.PrevKv.Value) != "abc" {
 		t.Fatalf(`expected PrevKV.Value="abc", got response %+v`, resp)
 	}
@@ -299,26 +265,19 @@ func TestLeasingRevGet(t *testing.T) {
 	defer closeLKV()
 
 	putResp, err := clus.Client(0).Put(context.TODO(), "k", "abc")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "def"); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	_, err = clus.Client(0).Put(context.TODO(), "k", "def")
+	require.NoError(t, err)
 
 	// check historic revision
 	getResp, gerr := lkv.Get(context.TODO(), "k", clientv3.WithRev(putResp.Header.Revision))
-	if gerr != nil {
-		t.Fatal(gerr)
-	}
+	require.NoError(t, gerr)
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "abc" {
 		t.Fatalf(`expected "k"->"abc" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
 	// check current revision
 	getResp, gerr = lkv.Get(context.TODO(), "k")
-	if gerr != nil {
-		t.Fatal(gerr)
-	}
+	require.NoError(t, gerr)
 	if len(getResp.Kvs) != 1 || string(getResp.Kvs[0].Value) != "def" {
 		t.Fatalf(`expected "k"->"def" at rev=%d, got response %+v`, putResp.Header.Revision, getResp)
 	}
@@ -334,13 +293,11 @@ func TestLeasingGetWithOpts(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 	// in cache
-	if _, err = lkv.Get(context.TODO(), "k", clientv3.WithKeysOnly()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k", clientv3.WithKeysOnly())
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 
@@ -353,7 +310,7 @@ func TestLeasingGetWithOpts(t *testing.T) {
 		clientv3.WithSerializable(),
 	}
 	for _, opt := range opts {
-		_, err := lkv.Get(context.TODO(), "k", opt)
+		_, err = lkv.Get(context.TODO(), "k", opt)
 		require.NoError(t, err)
 	}
 
@@ -362,9 +319,8 @@ func TestLeasingGetWithOpts(t *testing.T) {
 		getOpts = append(getOpts, opts[rand.Intn(len(opts))])
 	}
 	getOpts = getOpts[:rand.Intn(len(opts))]
-	if _, err := lkv.Get(context.TODO(), "k", getOpts...); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k", getOpts...)
+	require.NoError(t, err)
 }
 
 // TestLeasingConcurrentPut ensures that a get after concurrent puts returns
@@ -379,9 +335,8 @@ func TestLeasingConcurrentPut(t *testing.T) {
 	defer closeLKV()
 
 	// force key into leasing key cache
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	// concurrently put through leasing client
 	numPuts := 16
@@ -405,9 +360,7 @@ func TestLeasingConcurrentPut(t *testing.T) {
 
 	// confirm Get gives most recently put revisions
 	getResp, gerr := lkv.Get(context.TODO(), "k")
-	if gerr != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, gerr)
 	if mr := getResp.Kvs[0].ModRevision; mr != maxRev {
 		t.Errorf("expected ModRevision %d, got %d", maxRev, mr)
 	}
@@ -425,21 +378,17 @@ func TestLeasingDisconnectedGet(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "cached", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "cached", "abc")
+	require.NoError(t, err)
 	// get key so it's cached
-	if _, err = lkv.Get(context.TODO(), "cached"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "cached")
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 
 	// leasing key ownership should have "cached" locally served
 	cachedResp, err := lkv.Get(context.TODO(), "cached")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(cachedResp.Kvs) != 1 || string(cachedResp.Kvs[0].Value) != "abc" {
 		t.Fatalf(`expected "cached"->"abc", got response %+v`, cachedResp)
 	}
@@ -454,29 +403,23 @@ func TestLeasingDeleteOwner(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 
 	// get+own / delete / get
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Delete(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
+	_, err = lkv.Delete(context.TODO(), "k")
+	require.NoError(t, err)
 	resp, err := lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(resp.Kvs) != 0 {
 		t.Fatalf(`expected "k" to be deleted, got response %+v`, resp)
 	}
 	// try to double delete
-	if _, err = lkv.Delete(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Delete(context.TODO(), "k")
+	require.NoError(t, err)
 }
 
 func TestLeasingDeleteNonOwner(t *testing.T) {
@@ -492,23 +435,18 @@ func TestLeasingDeleteNonOwner(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV2()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 	// acquire ownership
-	if _, err = lkv1.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv1.Get(context.TODO(), "k")
+	require.NoError(t, err)
 	// delete via non-owner
-	if _, err = lkv2.Delete(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv2.Delete(context.TODO(), "k")
+	require.NoError(t, err)
 
 	// key should be removed from lkv1
 	resp, err := lkv1.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 0 {
 		t.Fatalf(`expected "k" to be deleted, got response %+v`, resp)
 	}
@@ -523,22 +461,17 @@ func TestLeasingOverwriteResponse(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 
 	resp, err := lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	resp.Kvs[0].Key[0] = 'z'
 	resp.Kvs[0].Value[0] = 'z'
 
 	resp, err = lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if string(resp.Kvs[0].Key) != "k" {
 		t.Errorf(`expected key "k", got %q`, string(resp.Kvs[0].Key))
@@ -557,17 +490,12 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 	_, gerr := lkv.Get(context.TODO(), "k")
-	if gerr != nil {
-		t.Fatal(gerr)
-	}
+	require.NoError(t, gerr)
 	presp, err := lkv.Put(context.TODO(), "k", "def")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if presp == nil {
 		t.Fatal("expected put response, got nil")
 	}
@@ -575,9 +503,7 @@ func TestLeasingOwnerPutResponse(t *testing.T) {
 	clus.Members[0].Stop(t)
 
 	gresp, gerr := lkv.Get(context.TODO(), "k")
-	if gerr != nil {
-		t.Fatal(gerr)
-	}
+	require.NoError(t, gerr)
 	if gresp.Kvs[0].ModRevision != presp.Header.Revision {
 		t.Errorf("expected mod revision %d, got %d", presp.Header.Revision, gresp.Kvs[0].ModRevision)
 	}
@@ -598,17 +524,14 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 	keyCount := rand.Intn(10) + 1
 	for i := 0; i < keyCount; i++ {
 		k := fmt.Sprintf("k-%d", i)
-		_, err := clus.Client(0).Put(context.TODO(), k, k+k)
+		_, err = clus.Client(0).Put(context.TODO(), k, k+k)
 		require.NoError(t, err)
 	}
-	if _, err := lkv.Get(context.TODO(), "k-"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k-")
+	require.NoError(t, err)
 
 	tresp, terr := lkv.Txn(context.TODO()).Then(clientv3.OpGet("k-", clientv3.WithPrefix())).Commit()
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	if resp := tresp.Responses[0].GetResponseRange(); len(resp.Kvs) != keyCount {
 		t.Fatalf("expected %d keys, got response %+v", keyCount, resp.Kvs)
 	}
@@ -642,9 +565,7 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 	for i := range presps {
 		k := fmt.Sprintf("k-%d", i)
 		presp, err := client.Put(context.TODO(), k, k+k)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		presps[i] = presp
 
 		_, err = lkv.Get(context.TODO(), k)
@@ -674,9 +595,7 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		Then(thenOps...).
 		Else(elseOps...).Commit()
 
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	if tresp.Succeeded != useThen {
 		t.Fatalf("expected succeeded=%v, got tresp=%+v", useThen, tresp)
 	}
@@ -711,28 +630,22 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 	keyCount := rand.Intn(10) + 1
 	for i := 0; i < keyCount; i++ {
 		k := fmt.Sprintf("k-%d", i)
-		if _, perr := clus.Client(0).Put(context.TODO(), k, k+k); perr != nil {
-			t.Fatal(perr)
-		}
+		_, perr := clus.Client(0).Put(context.TODO(), k, k+k)
+		require.NoError(t, perr)
 	}
 
 	// cache in lkv
 	resp, err := lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != keyCount {
 		t.Fatalf("expected %d keys, got %d", keyCount, len(resp.Kvs))
 	}
 
-	if _, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k-", clientv3.WithPrefix())).Commit(); terr != nil {
-		t.Fatal(terr)
-	}
+	_, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k-", clientv3.WithPrefix())).Commit()
+	require.NoError(t, terr)
 
 	resp, err = lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 0 {
 		t.Fatalf("expected no keys, got %d", len(resp.Kvs))
 	}
@@ -747,23 +660,18 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
 
 	// cache in lkv
-	if _, gerr := lkv.Get(context.TODO(), "k"); gerr != nil {
-		t.Fatal(gerr)
-	}
+	_, gerr := lkv.Get(context.TODO(), "k")
+	require.NoError(t, gerr)
 
-	if _, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k")).Commit(); terr != nil {
-		t.Fatal(terr)
-	}
+	_, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k")).Commit()
+	require.NoError(t, terr)
 
 	resp, err := lkv.Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) != 0 {
 		t.Fatalf("expected no keys, got %d", len(resp.Kvs))
 	}
@@ -778,12 +686,10 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	// served through cache
 	clus.Members[0].Stop(t)
@@ -851,9 +757,7 @@ func TestLeasingTxnOwnerIf(t *testing.T) {
 
 	for i, tt := range tests {
 		tresp, terr := lkv.Txn(context.TODO()).If(tt.cmps...).Then(clientv3.OpGet("k")).Commit()
-		if terr != nil {
-			t.Fatal(terr)
-		}
+		require.NoError(t, terr)
 		if tresp.Succeeded != tt.wSucceeded {
 			t.Errorf("#%d: expected succeeded %v, got %v", i, tt.wSucceeded, tresp.Succeeded)
 		}
@@ -877,15 +781,13 @@ func TestLeasingTxnCancel(t *testing.T) {
 	defer closeLKV2()
 
 	// acquire lease but disconnect so no revoke in time
-	if _, err = lkv1.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv1.Get(context.TODO(), "k")
+	require.NoError(t, err)
 	clus.Members[0].Stop(t)
 
 	// wait for leader election, if any
-	if _, err = clus.Client(1).Get(context.TODO(), "abc"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Get(context.TODO(), "abc")
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.TODO())
 	go func() {
@@ -910,19 +812,15 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV2()
 
-	if _, err = clus.Client(0).Put(context.TODO(), "k", "abc"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = clus.Client(0).Put(context.TODO(), "k2", "123"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(0).Put(context.TODO(), "k", "abc")
+	require.NoError(t, err)
+	_, err = clus.Client(0).Put(context.TODO(), "k2", "123")
+	require.NoError(t, err)
 	// cache in lkv
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = lkv.Get(context.TODO(), "k2"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
+	_, err = lkv.Get(context.TODO(), "k2")
+	require.NoError(t, err)
 	// invalidate via lkv2 txn
 	opArray := make([]clientv3.Op, 0)
 	opArray = append(opArray, clientv3.OpPut("k2", "456"))
@@ -931,24 +829,18 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 		clientv3.OpPut("k", "def"),
 		clientv3.OpPut("k3", "999"), // + a key not in any cache
 	).Commit()
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	if !tresp.Succeeded || len(tresp.Responses) != 3 {
 		t.Fatalf("expected txn success, got %+v", tresp)
 	}
 	// check cache was invalidated
 	gresp, gerr := lkv.Get(context.TODO(), "k")
-	if gerr != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, gerr)
 	if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Value) != "def" {
 		t.Errorf(`expected value "def", got %+v`, gresp)
 	}
 	gresp, gerr = lkv.Get(context.TODO(), "k2")
-	if gerr != nil {
-		t.Fatal(gerr)
-	}
+	require.NoError(t, gerr)
 	if len(gresp.Kvs) != 1 || string(gresp.Kvs[0].Value) != "456" {
 		t.Errorf(`expected value "def", got %+v`, gresp)
 	}
@@ -993,9 +885,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	for i := 0; i < keyCount; i++ {
 		k, v := fmt.Sprintf("k-%d", i), fmt.Sprintf("%d", i)
 		dat[i], err1 = clus.Client(0).Put(context.TODO(), k, v)
-		if err1 != nil {
-			t.Fatal(err1)
-		}
+		require.NoError(t, err1)
 	}
 
 	// nondeterministically populate leasing caches
@@ -1054,9 +944,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	}
 
 	tresp, terr := lkv1.Txn(context.TODO()).If(cmps...).Then(thenOps...).Else(elseOps...).Commit()
-	if terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, terr)
 	// cmps always succeed
 	if tresp.Succeeded != useThen {
 		t.Fatalf("expected succeeded=%v, got tresp=%+v", useThen, tresp)
@@ -1068,9 +956,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 				continue
 			}
 			resp, rerr := kv.Get(context.TODO(), string(op.KeyBytes()))
-			if rerr != nil {
-				t.Fatal(rerr)
-			}
+			require.NoError(t, rerr)
 			if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "a" {
 				t.Fatalf(`%s: expected value="a", got %+v`, s, resp.Kvs)
 			}
@@ -1090,9 +976,8 @@ func TestLeasingOwnerPutError(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
@@ -1111,9 +996,8 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 	require.NoError(t, err)
 	defer closeLKV()
 
-	if _, err = lkv.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
@@ -1162,22 +1046,17 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 		require.NoError(t, err)
 	}
 
-	if _, err = lkv.Get(context.TODO(), "key/1"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv.Get(context.TODO(), "key/1")
+	require.NoError(t, err)
 
 	opResp, delErr := lkv.Do(context.TODO(), del)
-	if delErr != nil {
-		t.Fatal(delErr)
-	}
+	require.NoError(t, delErr)
 	delResp := opResp.Del()
 
 	// confirm keys are invalidated from cache and deleted on etcd
 	for i := 0; i < 8; i++ {
 		resp, err := lkv.Get(context.TODO(), fmt.Sprintf("key/%d", i))
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if len(resp.Kvs) != 0 {
 			t.Fatalf("expected no keys on key/%d, got %+v", i, resp)
 		}
@@ -1216,16 +1095,13 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	if _, err = delkv.Delete(context.TODO(), "k", clientv3.WithPrefix()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = delkv.Delete(context.TODO(), "k", clientv3.WithPrefix())
+	require.NoError(t, err)
 
 	// leases still on server?
 	for _, k := range []string{"j", "m"} {
 		resp, geterr := clus.Client(0).Get(context.TODO(), "0/"+k, clientv3.WithPrefix())
-		if geterr != nil {
-			t.Fatal(geterr)
-		}
+		require.NoError(t, geterr)
 		if len(resp.Kvs) != 1 {
 			t.Fatalf("expected leasing key, got %+v", resp)
 		}
@@ -1234,12 +1110,10 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 	// j and m should still have leases registered since not under k*
 	clus.Members[0].Stop(t)
 
-	if _, err = getkv.Get(context.TODO(), "j"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = getkv.Get(context.TODO(), "m"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = getkv.Get(context.TODO(), "j")
+	require.NoError(t, err)
+	_, err = getkv.Get(context.TODO(), "m")
+	require.NoError(t, err)
 }
 
 func TestLeasingDeleteRangeContendTxn(t *testing.T) {
@@ -1292,21 +1166,15 @@ func testLeasingDeleteRangeContend(t *testing.T, op clientv3.Op) {
 	_, delErr := delkv.Do(context.TODO(), op)
 	cancel()
 	<-donec
-	if delErr != nil {
-		t.Fatal(delErr)
-	}
+	require.NoError(t, delErr)
 
 	// confirm keys on non-deleter match etcd
 	for i := 0; i < maxKey; i++ {
 		key := fmt.Sprintf("key/%d", i)
 		resp, err := putkv.Get(context.TODO(), key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		servResp, err := clus.Client(0).Get(context.TODO(), key)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if !reflect.DeepEqual(resp.Kvs, servResp.Kvs) {
 			t.Errorf("#%d: expected %+v, got %+v", i, servResp.Kvs, resp.Kvs)
 		}
@@ -1350,18 +1218,14 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 	wg.Wait()
 
 	resp, err := lkvs[0].Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	if len(resp.Kvs) > 0 {
 		t.Fatalf("expected no kvs, got %+v", resp.Kvs)
 	}
 
 	resp, err = clus.Client(0).Get(context.TODO(), "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if len(resp.Kvs) > 0 {
 		t.Fatalf("expected no kvs, got %+v", resp.Kvs)
 	}
@@ -1382,9 +1246,8 @@ func TestLeasingReconnectOwnerRevoke(t *testing.T) {
 	require.NoError(t, err2)
 	defer closeLKV2()
 
-	if _, err := lkv1.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := lkv1.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	// force leader away from member 0
 	clus.Members[0].Stop(t)
@@ -1443,39 +1306,30 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	require.NoError(t, err2)
 	defer closeLKV2()
 
-	if _, err := lkv1.Get(context.TODO(), "k"); err != nil {
-		t.Fatal(err)
-	}
+	_, err := lkv1.Get(context.TODO(), "k")
+	require.NoError(t, err)
 
 	clus.Members[0].Stop(t)
 	clus.WaitLeader(t)
 
 	// put some more revisions for compaction
-	_, err := clus.Client(1).Put(context.TODO(), "a", "123")
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Put(context.TODO(), "a", "123")
+	require.NoError(t, err)
 	presp, err := clus.Client(1).Put(context.TODO(), "a", "123")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// compact while lkv1 is disconnected
 	rev := presp.Header.Revision
-	if _, err = clus.Client(1).Compact(context.TODO(), rev); err != nil {
-		t.Fatal(err)
-	}
+	_, err = clus.Client(1).Compact(context.TODO(), rev)
+	require.NoError(t, err)
 
 	clus.Members[0].Restart(t)
 
 	cctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
-	if _, err = lkv2.Put(cctx, "k", "v"); err != nil {
-		t.Fatal(err)
-	}
+	_, err = lkv2.Put(cctx, "k", "v")
+	require.NoError(t, err)
 	resp, err := lkv1.Get(cctx, "k")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	if string(resp.Kvs[0].Value) != "v" {
 		t.Fatalf(`expected "v" value, got %+v`, resp)
 	}

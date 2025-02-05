@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -45,9 +46,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 
 	// Seed /syncpath with some initial data
 	_, err := initialClient.KV.Put(context.TODO(), "/syncpath/foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Require authentication
 	authSetupRoot(t, initialClient.Auth)
@@ -61,9 +60,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 		Password:    "syncfoo",
 	}
 	syncClient, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer syncClient.Close()
 
 	// Now run the sync process, create changes, and get the initial sync state
@@ -86,9 +83,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 
 	// Update state
 	_, err = syncClient.KV.Put(context.TODO(), "/syncpath/foo", "baz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Wait for the updated state to sync
 	select {

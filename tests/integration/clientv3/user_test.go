@@ -37,9 +37,7 @@ func TestUserError(t *testing.T) {
 	authapi := clus.RandClient()
 
 	_, err := authapi.UserAdd(context.TODO(), "foo", "bar")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = authapi.UserAdd(context.TODO(), "foo", "bar")
 	if !errors.Is(err, rpctypes.ErrUserAlreadyExist) {
@@ -138,29 +136,22 @@ func TestUserErrorAuth(t *testing.T) {
 
 	cfg.Username, cfg.Password = "root", "123"
 	authed, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer authed.Close()
 
-	if _, err := authed.UserList(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = authed.UserList(context.TODO())
+	require.NoError(t, err)
 }
 
 func authSetupRoot(t *testing.T, auth clientv3.Auth) {
-	if _, err := auth.UserAdd(context.TODO(), "root", "123"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.RoleAdd(context.TODO(), "root"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.UserGrantRole(context.TODO(), "root", "root"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := auth.AuthEnable(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	_, err := auth.UserAdd(context.TODO(), "root", "123")
+	require.NoError(t, err)
+	_, err = auth.RoleAdd(context.TODO(), "root")
+	require.NoError(t, err)
+	_, err = auth.UserGrantRole(context.TODO(), "root", "root")
+	require.NoError(t, err)
+	_, err = auth.AuthEnable(context.TODO())
+	require.NoError(t, err)
 }
 
 // TestGetTokenWithoutAuth is when Client can connect to etcd even if they
@@ -177,9 +168,8 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	var client *clientv3.Client
 
 	// make sure "auth" was disabled
-	if _, err = authapi.AuthDisable(context.TODO()); err != nil {
-		t.Fatal(err)
-	}
+	_, err = authapi.AuthDisable(context.TODO())
+	require.NoError(t, err)
 
 	// "Username" and "Password" must be used
 	cfg := clientv3.Config{
