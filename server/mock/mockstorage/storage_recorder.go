@@ -22,42 +22,42 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-type storageRecorder struct {
+type StorageRecorder struct {
 	testutil.Recorder
 	dbPath string // must have '/' suffix if set
 }
 
-func NewStorageRecorder(db string) *storageRecorder {
-	return &storageRecorder{&testutil.RecorderBuffered{}, db}
+func NewStorageRecorder(db string) *StorageRecorder {
+	return &StorageRecorder{&testutil.RecorderBuffered{}, db}
 }
 
-func NewStorageRecorderStream(db string) *storageRecorder {
-	return &storageRecorder{testutil.NewRecorderStream(), db}
+func NewStorageRecorderStream(db string) *StorageRecorder {
+	return &StorageRecorder{testutil.NewRecorderStream(), db}
 }
 
-func (p *storageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
+func (p *StorageRecorder) Save(st raftpb.HardState, ents []raftpb.Entry) error {
 	p.Record(testutil.Action{Name: "Save"})
 	return nil
 }
 
-func (p *storageRecorder) SaveSnap(st raftpb.Snapshot) error {
+func (p *StorageRecorder) SaveSnap(st raftpb.Snapshot) error {
 	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "SaveSnap"})
 	}
 	return nil
 }
 
-func (p *storageRecorder) Release(st raftpb.Snapshot) error {
+func (p *StorageRecorder) Release(st raftpb.Snapshot) error {
 	if !raft.IsEmptySnap(st) {
 		p.Record(testutil.Action{Name: "Release"})
 	}
 	return nil
 }
 
-func (p *storageRecorder) Sync() error {
+func (p *StorageRecorder) Sync() error {
 	p.Record(testutil.Action{Name: "Sync"})
 	return nil
 }
 
-func (p *storageRecorder) Close() error                        { return nil }
-func (p *storageRecorder) MinimalEtcdVersion() *semver.Version { return nil }
+func (p *StorageRecorder) Close() error                        { return nil }
+func (p *StorageRecorder) MinimalEtcdVersion() *semver.Version { return nil }
