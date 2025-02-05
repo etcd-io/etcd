@@ -14,7 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18936)
 
 ### Dependencies
-- Compile binaries using [go 1.22.11](https://github.com/etcd-io/etcd/pull/19212)
+- Compile binaries using [go 1.22.12](https://github.com/etcd-io/etcd/pull/19337)
 
 <hr>
 
