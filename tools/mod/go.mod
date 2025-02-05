@@ -16,7 +16,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
-	go.etcd.io/raft/v3 v3.6.0-beta.0
+	go.etcd.io/raft/v3 v3.6.0
 	gotest.tools/gotestsum v1.12.0
 	gotest.tools/v3 v3.5.1
 	honnef.co/go/tools v0.5.1
