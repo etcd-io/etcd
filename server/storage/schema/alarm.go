@@ -21,12 +21,20 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
+type AlarmBackend interface {
+	CreateAlarmBucket()
+	MustPutAlarm(member *etcdserverpb.AlarmMember)
+	MustDeleteAlarm(alarm *etcdserverpb.AlarmMember)
+	GetAllAlarms() ([]*etcdserverpb.AlarmMember, error)
+	ForceCommit()
+}
+
 type alarmBackend struct {
 	lg *zap.Logger
 	be backend.Backend
 }
 
-func NewAlarmBackend(lg *zap.Logger, be backend.Backend) *alarmBackend {
+func NewAlarmBackend(lg *zap.Logger, be backend.Backend) AlarmBackend {
 	return &alarmBackend{
 		lg: lg,
 		be: be,
