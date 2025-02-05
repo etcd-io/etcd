@@ -31,13 +31,9 @@ func TestWarningApplyDuration(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithWarningUnaryRequestDuration(time.Microsecond),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 
 	cc := epc.Etcdctl()
@@ -58,13 +54,9 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithExperimentalWarningUnaryRequestDuration(time.Microsecond),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 
 	cc := epc.Etcdctl()
@@ -83,7 +75,5 @@ func TestBothWarningApplyDurationFlagsFail(t *testing.T) {
 		e2e.WithWarningUnaryRequestDuration(time.Second),
 		e2e.WithExperimentalWarningUnaryRequestDuration(time.Second),
 	)
-	if err == nil {
-		t.Fatal("Expected process to fail")
-	}
+	require.Errorf(t, err, "Expected process to fail")
 }
