@@ -97,7 +97,7 @@ func (o *migrateOptions) Config() (*migrateConfig, error) {
 type migrateConfig struct {
 	lg            *zap.Logger
 	targetVersion *semver.Version
-	walVersion    schema.WALVersion
+	walVersion    wal.Version
 	dataDir       string
 	force         bool
 }

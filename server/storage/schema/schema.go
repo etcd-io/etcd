@@ -22,6 +22,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/wal"
 )
 
 // Validate checks provided backend to confirm that schema used is supported.
@@ -47,21 +48,16 @@ func localBinaryVersion() semver.Version {
 	return semver.Version{Major: v.Major, Minor: v.Minor}
 }
 
-type WALVersion interface {
-	// MinimalEtcdVersion returns minimal etcd version able to interpret WAL log.
-	MinimalEtcdVersion() *semver.Version
-}
-
 // Migrate updates storage schema to provided target version.
 // Downgrading requires that provided WAL doesn't contain unsupported entries.
-func Migrate(lg *zap.Logger, tx backend.BatchTx, w WALVersion, target semver.Version) error {
+func Migrate(lg *zap.Logger, tx backend.BatchTx, w wal.Version, target semver.Version) error {
 	tx.LockOutsideApply()
 	defer tx.Unlock()
 	return UnsafeMigrate(lg, tx, w, target)
 }
 
 // UnsafeMigrate is non thread-safe version of Migrate.
-func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w WALVersion, target semver.Version) error {
+func UnsafeMigrate(lg *zap.Logger, tx backend.UnsafeReadWriter, w wal.Version, target semver.Version) error {
 	current, err := UnsafeDetectSchemaVersion(lg, tx)
 	if err != nil {
 		return fmt.Errorf("cannot detect storage schema version: %w", err)
