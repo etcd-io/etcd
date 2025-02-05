@@ -80,7 +80,11 @@ func Validate(clus *e2e.EtcdProcessCluster, failpoint Failpoint, profile traffic
 }
 
 func Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, failpoint Failpoint, baseTime time.Time, ids identity.Provider) (*report.FailpointReport, error) {
-	ctx, cancel := context.WithTimeout(ctx, triggerTimeout)
+	timeout := triggerTimeout
+	if timeoutObj, ok := failpoint.(TimeoutInterface); ok {
+		timeout = timeoutObj.Timeout()
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	var err error
 
@@ -146,4 +150,8 @@ type Failpoint interface {
 
 type AvailabilityChecker interface {
 	Available(e2e.EtcdProcessClusterConfig, e2e.EtcdProcess, traffic.Profile) bool
+}
+
+type TimeoutInterface interface {
+	Timeout() time.Duration
 }

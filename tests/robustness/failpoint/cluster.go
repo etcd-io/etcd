@@ -261,6 +261,10 @@ func (f memberDowngradeUpgrade) Available(config e2e.EtcdProcessClusterConfig, m
 	return v.Compare(v3_6) >= 0 && (config.Version == e2e.CurrentVersion && member.Config().ExecPath == e2e.BinPath.Etcd)
 }
 
+func (f memberDowngradeUpgrade) Timeout() time.Duration {
+	return 120 * time.Second
+}
+
 func getID(ctx context.Context, cc *clientv3.Client, name string) (id uint64, found bool, err error) {
 	// Ensure linearized MemberList by first making a linearized Get request from the same member.
 	// This is required for v3.4 support as it doesn't support linearized MemberList https://github.com/etcd-io/etcd/issues/18929
