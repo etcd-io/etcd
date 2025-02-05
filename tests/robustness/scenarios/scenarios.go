@@ -224,6 +224,37 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithGoFailEnabled(true),
 		),
 	})
+
+	// NOTE:
+	//
+	// 1. All keys have only two revisions: creation and tombstone. With
+	// a small compaction batch limit, it's easy to separate a key's two
+	// revisions into different batch runs. If the compaction revision is a
+	// tombstone and the creation revision was deleted in a previous
+	// compaction run, we may encounter issue 19179.
+	//
+	// 2. It can be easily reproduced when using a lower QPS with a lower
+	// burstable value. A higher QPS can generate more new keys than
+	// expected, making it difficult to determine an optimal compaction
+	// batch limit within a larger key space.
+	scenarios = append(scenarios, TestScenario{
+		Name: "Issue19179",
+		Profile: traffic.Profile{
+			MinimalQPS:                     50,
+			MaximalQPS:                     100,
+			BurstableQPS:                   100,
+			ClientCount:                    8,
+			MaxNonUniqueRequestConcurrency: 3,
+		}.WithoutCompaction(),
+		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
+		Traffic:   traffic.KubernetesCreateDelete,
+		Cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(1),
+			e2e.WithExperimentalCompactionBatchLimit(50),
+			e2e.WithSnapshotCount(1000),
+			e2e.WithGoFailEnabled(true),
+		),
+	})
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue18089",
 		Profile:   traffic.LowTraffic.WithCompactionPeriod(100 * time.Millisecond), // Use frequent compaction for high reproduce rate
