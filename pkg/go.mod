@@ -8,7 +8,7 @@ require (
 	github.com/creack/pty v1.1.18
 	github.com/dustin/go-humanize v1.0.1
 	github.com/spf13/cobra v1.8.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.uber.org/zap v1.27.0
