@@ -397,21 +397,21 @@ func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleList
 	return resp, err
 }
 
-type applierMembership struct {
+type ApplierMembership struct {
 	lg             *zap.Logger
 	cluster        *membership.RaftCluster
 	snapshotServer SnapshotServer
 }
 
-func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) *applierMembership {
-	return &applierMembership{
+func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) *ApplierMembership {
+	return &ApplierMembership{
 		lg:             lg,
 		cluster:        cluster,
 		snapshotServer: snapshotServer,
 	}
 }
 
-func (a *applierMembership) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *ApplierMembership) ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	prevVersion := a.cluster.Version()
 	newVersion := semver.Must(semver.NewVersion(r.Ver))
 	a.cluster.SetVersion(newVersion, api.UpdateCapability, shouldApplyV3)
@@ -428,7 +428,7 @@ func (a *applierMembership) ClusterVersionSet(r *membershippb.ClusterVersionSetR
 	}
 }
 
-func (a *applierMembership) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *ApplierMembership) ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	a.cluster.UpdateAttributes(
 		types.ID(r.Member_ID),
 		membership.Attributes{
@@ -439,7 +439,7 @@ func (a *applierMembership) ClusterMemberAttrSet(r *membershippb.ClusterMemberAt
 	)
 }
 
-func (a *applierMembership) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
+func (a *ApplierMembership) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3) {
 	d := version.DowngradeInfo{Enabled: false}
 	if r.Enabled {
 		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
