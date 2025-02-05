@@ -64,6 +64,18 @@ type Result struct {
 
 type applyFunc func(r *pb.InternalRaftRequest) *Result
 
+// ApplierMembership defines the applier membership interface.
+type ApplierMembership interface {
+	// ClusterVersionSet sets the version of the cluster.
+	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+
+	// ClusterMemberAttrSet sets a cluster member's attributes, if the member is not removed.
+	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+
+	// DowngradeInfoSet sets the downgrade info.
+	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
+}
+
 // applierV3 is the interface for processing V3 raft messages
 type applierV3 interface {
 	// Apply executes the generic portion of application logic for the current applier, but
@@ -403,7 +415,7 @@ type applierMembership struct {
 	snapshotServer SnapshotServer
 }
 
-func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) *applierMembership {
+func NewApplierMembership(lg *zap.Logger, cluster *membership.RaftCluster, snapshotServer SnapshotServer) ApplierMembership {
 	return &applierMembership{
 		lg:             lg,
 		cluster:        cluster,

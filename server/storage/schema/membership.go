@@ -32,12 +32,26 @@ const (
 	MemberRaftAttributesSuffix = "raftAttributes"
 )
 
+// MembershipBackend defines the membership backend interface.
+type MembershipBackend interface {
+	MustSaveMemberToBackend(m *membership.Member)
+	TrimClusterFromBackend() error
+	MustDeleteMemberFromBackend(id types.ID)
+	MustReadMembersFromBackend() (map[types.ID]*membership.Member, map[types.ID]bool)
+	TrimMembershipFromBackend() error
+	MustSaveClusterVersionToBackend(ver *semver.Version)
+	MustSaveDowngradeToBackend(downgrade *version.DowngradeInfo)
+	MustCreateBackendBuckets()
+	ClusterVersionFromBackend() *semver.Version
+	DowngradeInfoFromBackend() *version.DowngradeInfo
+}
+
 type membershipBackend struct {
 	lg *zap.Logger
 	be backend.Backend
 }
 
-func NewMembershipBackend(lg *zap.Logger, be backend.Backend) *membershipBackend {
+func NewMembershipBackend(lg *zap.Logger, be backend.Backend) MembershipBackend {
 	return &membershipBackend{
 		lg: lg,
 		be: be,
