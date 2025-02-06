@@ -531,3 +531,12 @@ func CouldSetSnapshotCatchupEntries(execPath string) bool {
 	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
 	return v.Compare(v3_5_14) >= 0
 }
+
+func UsesExperimentalSnapshotCatchupEntriesFlag(execPath string) bool {
+	v, err := GetVersionFromBinary(execPath)
+	if err != nil {
+		return false
+	}
+	v3_6 := semver.Version{Major: 3, Minor: 6}
+	return v.LessThan(v3_6)
+}

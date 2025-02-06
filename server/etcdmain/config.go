@@ -72,6 +72,7 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
 		"experimental-max-learners":                         "--experimental-max-learners is deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.",
 		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
+		"experimental-snapshot-catchup-entries":             "--experimental-snapshot-catchup-entries is deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.",
 		"experimental-compaction-sleep-interval":            "--experimental-compaction-sleep-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-sleep-interval' instead.",
 		"experimental-downgrade-check-time":                 "--experimental-downgrade-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--downgrade-check-time' instead.",
 		"experimental-enable-distributed-tracing":           "--experimental-enable-distributed-tracing is deprecated in 3.6 and will be decommissioned in 3.7. Use --enable-distributed-tracing instead.",
@@ -217,6 +218,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-memory-mlock"] {
 		cfg.ec.MemoryMlock = cfg.ec.ExperimentalMemoryMlock
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-snapshot-catchup-entries"] {
+		cfg.ec.SnapshotCatchUpEntries = cfg.ec.ExperimentalSnapshotCatchUpEntries
 	}
 
 	if cfg.ec.FlagsExplicitlySet["experimental-compaction-sleep-interval"] {
