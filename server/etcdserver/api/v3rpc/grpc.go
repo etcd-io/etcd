@@ -74,7 +74,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	opts = append(opts, grpc.ChainUnaryInterceptor(chainUnaryInterceptors...))
 	opts = append(opts, grpc.ChainStreamInterceptor(chainStreamInterceptors...))
 
-	opts = append(opts, grpc.MaxRecvMsgSize(int(s.Cfg.MaxRequestBytesWithOverhead())))
+	opts = append(opts, grpc.MaxRecvMsgSize(s.Cfg.MaxRequestBytesWithOverhead()))
 	opts = append(opts, grpc.MaxSendMsgSize(maxSendBytes))
 	opts = append(opts, grpc.MaxConcurrentStreams(s.Cfg.MaxConcurrentStreams))
 
