@@ -11,6 +11,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### `tools/benchmark`
 - Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
 
+### Dependencies
+- Compile binaries using [go 1.22.12](https://github.com/etcd-io/etcd/pull/19336).
+
 <hr>
 
 ## v3.5.18 (2025-01-24)
