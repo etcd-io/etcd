@@ -320,6 +320,8 @@ Experimental feature:
   --experimental-compaction-sleep-interval
     Sets the sleep interval between each compaction batch.
   --experimental-downgrade-check-time
+    Duration of time between two downgrade status checks. Deprecated in v3.6 and will be decommissioned in v3.7. Use "downgrade-check-time" instead.
+  --downgrade-check-time
     Duration of time between two downgrade status checks.
   --experimental-enable-lease-checkpoint-persist 'false'
     Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.

@@ -229,7 +229,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		CompactionBatchLimit:                 cfg.CompactionBatchLimit,
 		CompactionSleepInterval:              cfg.ExperimentalCompactionSleepInterval,
 		WatchProgressNotifyInterval:          cfg.WatchProgressNotifyInterval,
-		DowngradeCheckTime:                   cfg.ExperimentalDowngradeCheckTime,
+		DowngradeCheckTime:                   cfg.DowngradeCheckTime,
 		WarningApplyDuration:                 cfg.WarningApplyDuration,
 		WarningUnaryRequestDuration:          cfg.WarningUnaryRequestDuration,
 		MemoryMlock:                          cfg.MemoryMlock,

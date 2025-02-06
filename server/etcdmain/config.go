@@ -72,6 +72,7 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
 		"experimental-max-learners":                         "--experimental-max-learners is deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.",
 		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
+		"experimental-downgrade-check-time":                 "--experimental-downgrade-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--downgrade-check-time' instead.",
 	}
 )
 
@@ -207,6 +208,10 @@ func (cfg *config) parse(arguments []string) error {
 
 	if cfg.ec.FlagsExplicitlySet["experimental-memory-mlock"] {
 		cfg.ec.MemoryMlock = cfg.ec.ExperimentalMemoryMlock
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-downgrade-check-time"] {
+		cfg.ec.DowngradeCheckTime = cfg.ec.ExperimentalDowngradeCheckTime
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
