@@ -8,19 +8,20 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 
 ## Robustness track record
 
-| Correctness / Consistency issue                                 | Report   | Introduced in   | Discovered by | Reproducible by robustness test                 | Command                           |
-|-----------------------------------------------------------------|----------|-----------------|---------------|-------------------------------------------------|-----------------------------------|
-| Inconsistent revision caused by crash during high load [#13766] | Mar 2022 | v3.5            | User          | Yes, report preceded robustness tests           | `make test-robustness-issue13766` |
-| Single node cluster can loose a write on crash [#14370]         | Aug 2022 | v3.4 or earlier | User          | Yes, report preceded robustness tests           | `make test-robustness-issue14370` |
-| Enabling auth can lead to inconsistency [#14571]                | Oct 2022 | v3.4 or earlier | User          | No, authorization is not covered.               |                                   |
-| Inconsistent revision caused by crash during defrag [#14685]    | Nov 2022 | v3.5            | Robustness    | Yes, after covering defragmentation.            | `make test-robustness-issue14685` |
-| Watch progress notification not synced with steam [#15220]      | Jan 2023 | v3.4 or earlier | User          | Yes, after covering watch progress notification |                                   |
-| Watch traveling back in time after network partition [#15271]   | Feb 2023 | v3.4 or earlier | Robustness    | Yes, after covering network partitions          | `make test-robustness-issue15271` |
-| Duplicated watch event due to bug in TXN caching [#17247]       | Jan 2024 | main branch     | Robustness    | Yes, prevented regression in v3.6               |                                   |
-| Watch events lost during stream starvation [#17529]             | Mar 2024 | v3.4 or earlier | User          | Yes, after covering of slow watch               | `make test-robustness-issue17529` |
-| Revision decreasing caused by crash during compaction [#17780]  | Apr 2024 | v3.4 or earlier | Robustness    | Yes, after covering compaction                  |                                   |
-| Watch dropping an event when compacting on delete [#18089]      | May 2024 | v3.4 or earlier | Robustness    | Yes, after covering of compaction               | `make test-robustness-issue18089` |
-| Inconsistency when reading compacted revision in TXN [#18667]   | Oct 2024 | v3.4 or earlier | User          |                                                 |                                   |
+| Correctness / Consistency issue                                              | Report     | Introduced in     | Discovered by   | Reproducible by robustness test                   | Command                             |
+| -----------------------------------------------------------------            | ---------- | ----------------- | --------------- | ------------------------------------------------- | ----------------------------------- |
+| Inconsistent revision caused by crash during high load [#13766]              | Mar 2022   | v3.5              | User            | Yes, report preceded robustness tests             | `make test-robustness-issue13766`   |
+| Single node cluster can loose a write on crash [#14370]                      | Aug 2022   | v3.4 or earlier   | User            | Yes, report preceded robustness tests             | `make test-robustness-issue14370`   |
+| Enabling auth can lead to inconsistency [#14571]                             | Oct 2022   | v3.4 or earlier   | User            | No, authorization is not covered.                 |                                     |
+| Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022   | v3.5              | Robustness      | Yes, after covering defragmentation.              | `make test-robustness-issue14685`   |
+| Watch progress notification not synced with steam [#15220]                   | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   |                                     |
+| Watch traveling back in time after network partition [#15271]                | Feb 2023   | v3.4 or earlier   | Robustness      | Yes, after covering network partitions            | `make test-robustness-issue15271`   |
+| Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024   | main branch       | Robustness      | Yes, prevented regression in v3.6                 |                                     |
+| Watch events lost during stream starvation [#17529]                          | Mar 2024   | v3.4 or earlier   | User            | Yes, after covering of slow watch                 | `make test-robustness-issue17529`   |
+| Revision decreasing caused by crash during compaction [#17780]               | Apr 2024   | v3.4 or earlier   | Robustness      | Yes, after covering compaction                    |                                     |
+| Watch dropping an event when compacting on delete [#18089]                   | May 2024   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue18089`   |
+| Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024   | v3.4 or earlier   | User            |                                                   |                                     |
+| Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue19179`   |
 
 [#13766]: https://github.com/etcd-io/etcd/issues/13766
 [#14370]: https://github.com/etcd-io/etcd/issues/14370
@@ -33,6 +34,8 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 [#17780]: https://github.com/etcd-io/etcd/issues/17780
 [#18089]: https://github.com/etcd-io/etcd/issues/18089
 [#18667]: https://github.com/etcd-io/etcd/issues/18667
+[#19179]: https://github.com/etcd-io/etcd/issues/19179
+
 
 ## How Robustness Tests Work
 

@@ -35,17 +35,30 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/random"
 )
 
-var Kubernetes Traffic = kubernetesTraffic{
-	averageKeyCount: 10,
-	resource:        "pods",
-	namespace:       "default",
-	// Please keep the sum of weights equal 100.
-	writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
-		{Choice: KubernetesUpdate, Weight: 90},
-		{Choice: KubernetesDelete, Weight: 5},
-		{Choice: KubernetesCreate, Weight: 5},
-	},
-}
+var (
+	Kubernetes Traffic = kubernetesTraffic{
+		averageKeyCount: 10,
+		resource:        "pods",
+		namespace:       "default",
+		// Please keep the sum of weights equal 100.
+		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesUpdate, Weight: 90},
+			{Choice: KubernetesDelete, Weight: 5},
+			{Choice: KubernetesCreate, Weight: 5},
+		},
+	}
+
+	KubernetesCreateDelete Traffic = kubernetesTraffic{
+		averageKeyCount: 10,
+		resource:        "pods",
+		namespace:       "default",
+		// Please keep the sum of weights equal 100.
+		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesDelete, Weight: 40},
+			{Choice: KubernetesCreate, Weight: 60},
+		},
+	}
+)
 
 type kubernetesTraffic struct {
 	averageKeyCount int

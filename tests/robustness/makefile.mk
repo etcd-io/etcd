@@ -54,6 +54,11 @@ test-robustness-issue18089: /tmp/etcd-v3.5.12-beforeSendWatchResponse/bin
 	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue18089 -count 100 -failfast --bin-dir=/tmp/etcd-v3.5.12-beforeSendWatchResponse/bin' make test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue19179
+test-robustness-issue19179: /tmp/etcd-v3.5.17-failpoints/bin
+	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue19179 -count 200 -failfast --bin-dir=/tmp/etcd-v3.5.17-failpoints/bin' make test-robustness && \
+	  echo "Failed to reproduce" || echo "Successful reproduction"
+
 # Failpoints
 
 GOPATH = $(shell go env GOPATH)

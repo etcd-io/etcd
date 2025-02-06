@@ -41,12 +41,14 @@ var (
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
+		BurstableQPS:                   1000,
 		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
+		BurstableQPS:                   1000,
 		ClientCount:                    8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
@@ -59,7 +61,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	lm := identity.NewLeaseIDStorage()
 	reports := []report.ClientReport{}
 	// Use the highest MaximalQPS of all traffic profiles as burst otherwise actual traffic may be accidentally limited
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), 1000)
+	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 
 	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	require.NoError(t, err)
@@ -178,6 +180,7 @@ func (ts *trafficStats) QPS() float64 {
 type Profile struct {
 	MinimalQPS                     float64
 	MaximalQPS                     float64
+	BurstableQPS                   int
 	MaxNonUniqueRequestConcurrency int
 	ClientCount                    int
 	ForbidCompaction               bool
