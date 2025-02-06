@@ -148,6 +148,7 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
 		"experimental-max-learners":                         "max-learners",
 		"experimental-memory-mlock":                         "memory-mlock",
+		"experimental-compaction-sleep-interval":            "compaction-sleep-interval",
 		"experimental-downgrade-check-time":                 "downgrade-check-time",
 	}
 )
@@ -407,7 +408,11 @@ type Config struct {
 	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
 	CompactionBatchLimit             int `json:"compaction-batch-limit"`
 	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
 	ExperimentalCompactionSleepInterval time.Duration `json:"experimental-compaction-sleep-interval"`
+	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
+	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// ExperimentalWatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
 	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
@@ -847,7 +852,8 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// TODO: delete in v3.7
 	fs.IntVar(&cfg.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-batch-limit instead.")
 	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
-	fs.DurationVar(&cfg.ExperimentalCompactionSleepInterval, "experimental-compaction-sleep-interval", cfg.ExperimentalCompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
+	fs.DurationVar(&cfg.ExperimentalCompactionSleepInterval, "experimental-compaction-sleep-interval", cfg.ExperimentalCompactionSleepInterval, "Sets the sleep interval between each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-sleep-interval instead.")
+	fs.DurationVar(&cfg.CompactionSleepInterval, "compaction-sleep-interval", cfg.CompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
 	// TODO: delete in v3.7
 	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications. Deprecated in v3.6 and will be decommissioned in v3.7. Use --watch-progress-notify-interval instead.")
 	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
