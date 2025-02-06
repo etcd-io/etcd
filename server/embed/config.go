@@ -1186,12 +1186,12 @@ func (cfg *Config) Validate() error {
 		}
 	}
 
-	if !cfg.ExperimentalEnableLeaseCheckpointPersist && cfg.ExperimentalEnableLeaseCheckpoint {
-		cfg.logger.Warn("Detected that checkpointing is enabled without persistence. Consider enabling experimental-enable-lease-checkpoint-persist")
+	if !cfg.ServerFeatureGate.Enabled(features.LeaseCheckpointPersist) && cfg.ServerFeatureGate.Enabled(features.LeaseCheckpoint) {
+		cfg.logger.Warn("Detected that checkpointing is enabled without persistence. Consider enabling feature gate LeaseCheckpointPersist")
 	}
 
-	if cfg.ExperimentalEnableLeaseCheckpointPersist && !cfg.ExperimentalEnableLeaseCheckpoint {
-		return fmt.Errorf("setting experimental-enable-lease-checkpoint-persist requires experimental-enable-lease-checkpoint")
+	if cfg.ServerFeatureGate.Enabled(features.LeaseCheckpointPersist) && !cfg.ServerFeatureGate.Enabled(features.LeaseCheckpoint) {
+		return fmt.Errorf("enabling feature gate LeaseCheckpointPersist requires enabling feature gate LeaseCheckpoint")
 	}
 	// TODO: delete in v3.7
 	if cfg.ExperimentalCompactHashCheckTime <= 0 {

@@ -60,6 +60,19 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/14120
 	CompactHashCheck featuregate.Feature = "CompactHashCheck"
+	// LeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
+	// owner: @serathius
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/13508
+	LeaseCheckpoint featuregate.Feature = "LeaseCheckpoint"
+	// LeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
+	// Requires EnableLeaseCheckpoint featuragate to be enabled.
+	// Deprecated in v3.6.
+	// TODO: Delete in v3.7
+	// owner: @serathius
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/13508
+	LeaseCheckpointPersist featuregate.Feature = "LeaseCheckpointPersist"
 )
 
 var (
@@ -69,6 +82,8 @@ var (
 		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
 		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},
 		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
+		LeaseCheckpoint:              {Default: false, PreRelease: featuregate.Alpha},
+		LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
@@ -78,6 +93,8 @@ var (
 		"experimental-initial-corrupt-check":             InitialCorruptCheck,
 		"experimental-compact-hash-check-enabled":        CompactHashCheck,
 		"experimental-txn-mode-write-with-shared-buffer": TxnModeWriteWithSharedBuffer,
+		"experimental-enable-lease-checkpoint":           LeaseCheckpoint,
+		"experimental-enable-lease-checkpoint-persist":   LeaseCheckpointPersist,
 	}
 )
 

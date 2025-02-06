@@ -50,6 +50,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/embed"
@@ -718,9 +719,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 	m.UseIP = mcfg.UseIP
 	m.UseBridge = mcfg.UseBridge
 	m.UseTCP = mcfg.UseTCP
-	m.EnableLeaseCheckpoint = mcfg.EnableLeaseCheckpoint
 	m.LeaseCheckpointInterval = mcfg.LeaseCheckpointInterval
-	m.LeaseCheckpointPersist = mcfg.LeaseCheckpointPersist
 
 	m.WatchProgressNotifyInterval = mcfg.WatchProgressNotifyInterval
 
@@ -740,6 +739,10 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
 	m.ServerFeatureGate = features.NewDefaultServerFeatureGate(m.Name, m.Logger)
+	featureGates := fmt.Sprintf("LeaseCheckpoint=%v,LeaseCheckpointPersist=%v", mcfg.EnableLeaseCheckpoint, mcfg.LeaseCheckpointPersist)
+	if err := m.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(featureGates); err != nil {
+		t.Fatalf("Set FeatureGate FAILED: %v", err)
+	}
 
 	m.StrictReconfigCheck = !mcfg.DisableStrictReconfigCheck
 	if err := m.listenGRPC(); err != nil {
