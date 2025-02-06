@@ -17,4 +17,4 @@ for target in ${TARGETS}; do
     run popd
     log_success -e "\\COMPLETED: fuzzing with target $target in $target_path \\n"
 done
-
+exit 1
