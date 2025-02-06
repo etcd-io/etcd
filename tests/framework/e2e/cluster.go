@@ -229,7 +229,9 @@ func WithSnapshotCount(count uint64) EPClusterOption {
 }
 
 func WithSnapshotCatchUpEntries(count uint64) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.SnapshotCatchUpEntries = count }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.SnapshotCatchUpEntries = count
+	}
 }
 
 func WithClusterSize(size int) EPClusterOption {
@@ -455,6 +457,10 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		if cfg.Version == LastVersion && !CouldSetSnapshotCatchupEntries(BinPath.EtcdLastRelease) {
 			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for last etcd version: %s", BinPath.EtcdLastRelease)
 		}
+		if cfg.Version != CurrentVersion && UsesExperimentalSnapshotCatchupEntriesFlag(BinPath.EtcdLastRelease) {
+			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
+			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
+		}
 	}
 
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
@@ -661,7 +667,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
 			continue
 		}
-		if flag == "experimental-snapshot-catchup-entries" && !CouldSetSnapshotCatchupEntries(execPath) {
+		if strings.HasSuffix(flag, "snapshot-catchup-entries") && !CouldSetSnapshotCatchupEntries(execPath) {
 			continue
 		}
 		args = append(args, fmt.Sprintf("--%s=%s", flag, value))

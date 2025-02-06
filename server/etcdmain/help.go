@@ -342,6 +342,8 @@ Experimental feature:
   --experimental-memory-mlock
     Enable to enforce etcd pages (in particular bbolt) to stay in RAM. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.
   --experimental-snapshot-catchup-entries
+    Number of entries for a slow follower to catch up after compacting the raft storage entries. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.
+  --snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-stop-grpc-service-on-defrag
     Enable etcd gRPC service to stop serving client requests on defragmentation. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=StopGRPCServiceOnDefrag=true' instead.
