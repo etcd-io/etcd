@@ -618,6 +618,77 @@ func TestCompactHashCheckTimeFlagMigration(t *testing.T) {
 	}
 }
 
+// TestCompactionSleepIntervalFlagMigration tests the migration from
+// --experimental-compaction-sleep-interval to --compaction-sleep-interval
+func TestCompactionSleepIntervalFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                                string
+		compactionSleepInterval             string
+		experimentalCompactionSleepInterval string
+		wantErr                             bool
+		wantConfig                          time.Duration
+	}{
+		{
+			name:       "default",
+			wantConfig: time.Duration(0),
+		},
+		{
+			name:                                "cannot set both experimental flag and non experimental flag",
+			experimentalCompactionSleepInterval: "30s",
+			compactionSleepInterval:             "15s",
+			wantErr:                             true,
+		},
+		{
+			name:                                "can set experimental flag",
+			experimentalCompactionSleepInterval: "30s",
+			wantConfig:                          30 * time.Second,
+		},
+		{
+			name:                    "can set non-experimental flag",
+			compactionSleepInterval: "1m",
+			wantConfig:              time.Minute,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalCompactionSleepInterval time.Duration `json:"experimental-compaction-sleep-interval,omitempty"`
+				CompactionSleepInterval             time.Duration `json:"compaction-sleep-interval,omitempty"`
+			}{}
+
+			if tc.compactionSleepInterval != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--compaction-sleep-interval=%s", tc.compactionSleepInterval))
+				compactionSleepInterval, err := time.ParseDuration(tc.compactionSleepInterval)
+				require.NoError(t, err)
+				yc.CompactionSleepInterval = compactionSleepInterval
+			}
+
+			if tc.experimentalCompactionSleepInterval != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-compaction-sleep-interval=%s", tc.experimentalCompactionSleepInterval))
+				experimentalCompactionSleepInterval, err := time.ParseDuration(tc.experimentalCompactionSleepInterval)
+				require.NoError(t, err)
+				yc.ExperimentalCompactionSleepInterval = experimentalCompactionSleepInterval
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.wantErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.wantConfig, cfgFromCmdLine.ec.CompactionSleepInterval)
+			require.Equal(t, tc.wantConfig, cfgFromFile.ec.CompactionSleepInterval)
+		})
+	}
+}
+
 // TestCorruptCheckTimeFlagMigration tests the migration from
 // --experimental-corrupt-check-time to --corrupt-check-time
 // TODO: delete in v3.7
@@ -1202,6 +1273,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
 		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
+		ExperimentalCompactionSleepInterval           time.Duration `json:"experimental-compaction-sleep-interval,omitempty"`
 		ExperimentalDowngradeCheckTime                time.Duration `json:"experimental-downgrade-check-time,omitempty"`
 	}
 
@@ -1227,6 +1299,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
 				ExperimentalMaxLearners:                       1,
+				ExperimentalCompactionSleepInterval:           30 * time.Second,
 				ExperimentalDowngradeCheckTime:                1 * time.Minute,
 			},
 			expectedFlags: map[string]struct{}{
@@ -1238,6 +1311,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
 				"experimental-max-learners":                         {},
+				"experimental-compaction-sleep-interval":            {},
 				"experimental-downgrade-check-time":                 {},
 			},
 		},

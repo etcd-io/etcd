@@ -318,6 +318,8 @@ Experimental feature:
   --experimental-snapshot-catch-up-entries '5000'
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-compaction-sleep-interval
+    Sets the sleep interval between each compaction batch.  Deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-sleep-interval' instead.
+  --compaction-sleep-interval
     Sets the sleep interval between each compaction batch.
   --experimental-downgrade-check-time
     Duration of time between two downgrade status checks. Deprecated in v3.6 and will be decommissioned in v3.7. Use "downgrade-check-time" instead.
