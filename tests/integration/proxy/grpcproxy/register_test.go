@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -40,12 +41,8 @@ func TestRegister(t *testing.T) {
 	donec := grpcproxy.Register(zaptest.NewLogger(t), cli, testPrefix, paddr, 5)
 
 	ups := <-wa
-	if len(ups) != 1 {
-		t.Fatalf("len(ups) expected 1, got %d (%v)", len(ups), ups)
-	}
-	if ups[0].Endpoint.Addr != paddr {
-		t.Fatalf("ups[0].Addr expected %q, got %q", paddr, ups[0].Endpoint.Addr)
-	}
+	require.Lenf(t, ups, 1, "len(ups) expected 1, got %d (%v)", len(ups), ups)
+	require.Equalf(t, ups[0].Endpoint.Addr, paddr, "ups[0].Addr expected %q, got %q", paddr, ups[0].Endpoint.Addr)
 
 	cli.Close()
 	clus.TakeClient(0)
@@ -58,12 +55,8 @@ func TestRegister(t *testing.T) {
 
 func mustCreateWatcher(t *testing.T, c *clientv3.Client, prefix string) endpoints.WatchChannel {
 	em, err := endpoints.NewManager(c, prefix)
-	if err != nil {
-		t.Fatalf("failed to create endpoints.Manager: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to create endpoints.Manager")
 	wc, err := em.NewWatchChannel(c.Ctx())
-	if err != nil {
-		t.Fatalf("failed to resolve %q (%v)", prefix, err)
-	}
+	require.NoErrorf(t, err, "failed to resolve %q", prefix)
 	return wc
 }

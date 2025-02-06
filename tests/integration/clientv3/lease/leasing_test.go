@@ -102,9 +102,7 @@ func TestLeasingInterval(t *testing.T) {
 
 	resp, err := lkv.Get(context.TODO(), "abc/", clientv3.WithPrefix())
 	require.NoError(t, err)
-	if len(resp.Kvs) != 3 {
-		t.Fatalf("expected keys %+v, got response keys %+v", keys, resp.Kvs)
-	}
+	require.Lenf(t, resp.Kvs, 3, "expected keys %+v, got response keys %+v", keys, resp.Kvs)
 
 	// load into cache
 	_, err = lkv.Get(context.TODO(), "abc/a")
@@ -113,9 +111,7 @@ func TestLeasingInterval(t *testing.T) {
 	// get when prefix is also a cached key
 	resp, err = lkv.Get(context.TODO(), "abc/a", clientv3.WithPrefix())
 	require.NoError(t, err)
-	if len(resp.Kvs) != 2 {
-		t.Fatalf("expected keys %+v, got response keys %+v", keys, resp.Kvs)
-	}
+	require.Lenf(t, resp.Kvs, 2, "expected keys %+v, got response keys %+v", keys, resp.Kvs)
 }
 
 // TestLeasingPutInvalidateNew checks the leasing KV updates its cache on a Put to a new key.
@@ -137,9 +133,7 @@ func TestLeasingPutInvalidateNew(t *testing.T) {
 	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(context.TODO(), "k")
 	require.NoError(t, cerr)
-	if !reflect.DeepEqual(lkvResp, cResp) {
-		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
-	}
+	require.Truef(t, reflect.DeepEqual(lkvResp, cResp), `expected %+v, got response %+v`, cResp, lkvResp)
 }
 
 // TestLeasingPutInvalidateExisting checks the leasing KV updates its cache on a Put to an existing key.
@@ -164,9 +158,7 @@ func TestLeasingPutInvalidateExisting(t *testing.T) {
 	require.NoError(t, err)
 	cResp, cerr := clus.Client(0).Get(context.TODO(), "k")
 	require.NoError(t, cerr)
-	if !reflect.DeepEqual(lkvResp, cResp) {
-		t.Fatalf(`expected %+v, got response %+v`, cResp, lkvResp)
-	}
+	require.Truef(t, reflect.DeepEqual(lkvResp, cResp), `expected %+v, got response %+v`, cResp, lkvResp)
 }
 
 // TestLeasingGetNoLeaseTTL checks a key with a TTL is not leased.
@@ -218,9 +210,7 @@ func TestLeasingGetSerializable(t *testing.T) {
 	// don't necessarily try to acquire leasing key ownership for new key
 	resp, err := lkv.Get(context.TODO(), "uncached", clientv3.WithSerializable())
 	require.NoError(t, err)
-	if len(resp.Kvs) != 0 {
-		t.Fatalf(`expected no keys, got response %+v`, resp)
-	}
+	require.Emptyf(t, resp.Kvs, `expected no keys, got response %+v`, resp)
 
 	clus.Members[0].Stop(t)
 
@@ -414,9 +404,7 @@ func TestLeasingDeleteOwner(t *testing.T) {
 	resp, err := lkv.Get(context.TODO(), "k")
 	require.NoError(t, err)
 
-	if len(resp.Kvs) != 0 {
-		t.Fatalf(`expected "k" to be deleted, got response %+v`, resp)
-	}
+	require.Emptyf(t, resp.Kvs, `expected "k" to be deleted, got response %+v`, resp)
 	// try to double delete
 	_, err = lkv.Delete(context.TODO(), "k")
 	require.NoError(t, err)
@@ -447,9 +435,7 @@ func TestLeasingDeleteNonOwner(t *testing.T) {
 	// key should be removed from lkv1
 	resp, err := lkv1.Get(context.TODO(), "k")
 	require.NoError(t, err)
-	if len(resp.Kvs) != 0 {
-		t.Fatalf(`expected "k" to be deleted, got response %+v`, resp)
-	}
+	require.Emptyf(t, resp.Kvs, `expected "k" to be deleted, got response %+v`, resp)
 }
 
 func TestLeasingOverwriteResponse(t *testing.T) {
@@ -532,9 +518,8 @@ func TestLeasingTxnOwnerGetRange(t *testing.T) {
 
 	tresp, terr := lkv.Txn(context.TODO()).Then(clientv3.OpGet("k-", clientv3.WithPrefix())).Commit()
 	require.NoError(t, terr)
-	if resp := tresp.Responses[0].GetResponseRange(); len(resp.Kvs) != keyCount {
-		t.Fatalf("expected %d keys, got response %+v", keyCount, resp.Kvs)
-	}
+	resp := tresp.Responses[0].GetResponseRange()
+	require.Equalf(t, len(resp.Kvs), keyCount, "expected %d keys, got response %+v", keyCount, resp.Kvs)
 }
 
 func TestLeasingTxnOwnerGet(t *testing.T) {
@@ -596,22 +581,14 @@ func TestLeasingTxnOwnerGet(t *testing.T) {
 		Else(elseOps...).Commit()
 
 	require.NoError(t, terr)
-	if tresp.Succeeded != useThen {
-		t.Fatalf("expected succeeded=%v, got tresp=%+v", useThen, tresp)
-	}
-	if len(tresp.Responses) != len(ops) {
-		t.Fatalf("expected %d responses, got %d", len(ops), len(tresp.Responses))
-	}
+	require.Equalf(t, tresp.Succeeded, useThen, "expected succeeded=%v, got tresp=%+v", useThen, tresp)
+	require.Lenf(t, ops, len(tresp.Responses), "expected %d responses, got %d", len(ops), len(tresp.Responses))
 	wrev := presps[len(presps)-1].Header.Revision
-	if tresp.Header.Revision < wrev {
-		t.Fatalf("expected header revision >= %d, got %d", wrev, tresp.Header.Revision)
-	}
+	require.GreaterOrEqualf(t, tresp.Header.Revision, wrev, "expected header revision >= %d, got %d", wrev, tresp.Header.Revision)
 	for i := range ops {
 		k := fmt.Sprintf("k-%d", i)
 		rr := tresp.Responses[i].GetResponseRange()
-		if rr == nil {
-			t.Fatalf("expected get response, got %+v", tresp.Responses[i])
-		}
+		require.NotNilf(t, rr, "expected get response, got %+v", tresp.Responses[i])
 		if string(rr.Kvs[0].Key) != k || string(rr.Kvs[0].Value) != k+k {
 			t.Errorf(`expected key for %q, got %+v`, k, rr.Kvs)
 		}
@@ -637,18 +614,14 @@ func TestLeasingTxnOwnerDeleteRange(t *testing.T) {
 	// cache in lkv
 	resp, err := lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
 	require.NoError(t, err)
-	if len(resp.Kvs) != keyCount {
-		t.Fatalf("expected %d keys, got %d", keyCount, len(resp.Kvs))
-	}
+	require.Equalf(t, len(resp.Kvs), keyCount, "expected %d keys, got %d", keyCount, len(resp.Kvs))
 
 	_, terr := lkv.Txn(context.TODO()).Then(clientv3.OpDelete("k-", clientv3.WithPrefix())).Commit()
 	require.NoError(t, terr)
 
 	resp, err = lkv.Get(context.TODO(), "k-", clientv3.WithPrefix())
 	require.NoError(t, err)
-	if len(resp.Kvs) != 0 {
-		t.Fatalf("expected no keys, got %d", len(resp.Kvs))
-	}
+	require.Emptyf(t, resp.Kvs, "expected no keys, got %d", len(resp.Kvs))
 }
 
 func TestLeasingTxnOwnerDelete(t *testing.T) {
@@ -672,9 +645,7 @@ func TestLeasingTxnOwnerDelete(t *testing.T) {
 
 	resp, err := lkv.Get(context.TODO(), "k")
 	require.NoError(t, err)
-	if len(resp.Kvs) != 0 {
-		t.Fatalf("expected no keys, got %d", len(resp.Kvs))
-	}
+	require.Emptyf(t, resp.Kvs, "expected no keys, got %d", len(resp.Kvs))
 }
 
 func TestLeasingTxnOwnerIf(t *testing.T) {
@@ -794,9 +765,8 @@ func TestLeasingTxnCancel(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 		cancel()
 	}()
-	if _, err := lkv2.Txn(ctx).Then(clientv3.OpPut("k", "v")).Commit(); !errors.Is(err, context.Canceled) {
-		t.Fatalf("expected %v, got %v", context.Canceled, err)
-	}
+	_, err = lkv2.Txn(ctx).Then(clientv3.OpPut("k", "v")).Commit()
+	require.ErrorIsf(t, err, context.Canceled, "expected %v, got %v", context.Canceled, err)
 }
 
 func TestLeasingTxnNonOwnerPut(t *testing.T) {
@@ -860,9 +830,7 @@ func TestLeasingTxnNonOwnerPut(t *testing.T) {
 			c++
 		}
 	}
-	if c != 3 {
-		t.Fatalf("expected 3 put events, got %+v", evs)
-	}
+	require.Equalf(t, 3, c, "expected 3 put events, got %+v", evs)
 }
 
 // TestLeasingTxnRandIfThenOrElse randomly leases keys two separate clients, then
@@ -946,9 +914,7 @@ func TestLeasingTxnRandIfThenOrElse(t *testing.T) {
 	tresp, terr := lkv1.Txn(context.TODO()).If(cmps...).Then(thenOps...).Else(elseOps...).Commit()
 	require.NoError(t, terr)
 	// cmps always succeed
-	if tresp.Succeeded != useThen {
-		t.Fatalf("expected succeeded=%v, got tresp=%+v", useThen, tresp)
-	}
+	require.Equalf(t, tresp.Succeeded, useThen, "expected succeeded=%v, got tresp=%+v", useThen, tresp)
 	// get should match what was put
 	checkPuts := func(s string, kv clientv3.KV) {
 		for _, op := range ops {
@@ -982,9 +948,8 @@ func TestLeasingOwnerPutError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Put(ctx, "k", "v"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
-	}
+	resp, err := lkv.Put(ctx, "k", "v")
+	require.Errorf(t, err, "expected error, got response %+v", resp)
 }
 
 func TestLeasingOwnerDeleteError(t *testing.T) {
@@ -1002,9 +967,8 @@ func TestLeasingOwnerDeleteError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Delete(ctx, "k"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
-	}
+	resp, err := lkv.Delete(ctx, "k")
+	require.Errorf(t, err, "expected error, got response %+v", resp)
 }
 
 func TestLeasingNonOwnerPutError(t *testing.T) {
@@ -1019,9 +983,8 @@ func TestLeasingNonOwnerPutError(t *testing.T) {
 	clus.Members[0].Stop(t)
 	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
 	defer cancel()
-	if resp, err := lkv.Put(ctx, "k", "v"); err == nil {
-		t.Fatalf("expected error, got response %+v", resp)
-	}
+	resp, err := lkv.Put(ctx, "k", "v")
+	require.Errorf(t, err, "expected error, got response %+v", resp)
 }
 
 func TestLeasingOwnerDeletePrefix(t *testing.T) {
@@ -1057,9 +1020,7 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 	for i := 0; i < 8; i++ {
 		resp, err := lkv.Get(context.TODO(), fmt.Sprintf("key/%d", i))
 		require.NoError(t, err)
-		if len(resp.Kvs) != 0 {
-			t.Fatalf("expected no keys on key/%d, got %+v", i, resp)
-		}
+		require.Emptyf(t, resp.Kvs, "expected no keys on key/%d, got %+v", i, resp)
 	}
 
 	// confirm keys were deleted atomically
@@ -1070,9 +1031,8 @@ func testLeasingOwnerDelete(t *testing.T, del clientv3.Op) {
 		clientv3.WithRev(delResp.Header.Revision),
 		clientv3.WithPrefix())
 
-	if wresp := <-w; len(wresp.Events) != 8 {
-		t.Fatalf("expected %d delete events,got %d", 8, len(wresp.Events))
-	}
+	wresp := <-w
+	require.Lenf(t, wresp.Events, 8, "expected %d delete events,got %d", 8, len(wresp.Events))
 }
 
 func TestLeasingDeleteRangeBounds(t *testing.T) {
@@ -1102,9 +1062,7 @@ func TestLeasingDeleteRangeBounds(t *testing.T) {
 	for _, k := range []string{"j", "m"} {
 		resp, geterr := clus.Client(0).Get(context.TODO(), "0/"+k, clientv3.WithPrefix())
 		require.NoError(t, geterr)
-		if len(resp.Kvs) != 1 {
-			t.Fatalf("expected leasing key, got %+v", resp)
-		}
+		require.Lenf(t, resp.Kvs, 1, "expected leasing key, got %+v", resp)
 	}
 
 	// j and m should still have leases registered since not under k*
@@ -1220,15 +1178,11 @@ func TestLeasingPutGetDeleteConcurrent(t *testing.T) {
 	resp, err := lkvs[0].Get(context.TODO(), "k")
 	require.NoError(t, err)
 
-	if len(resp.Kvs) > 0 {
-		t.Fatalf("expected no kvs, got %+v", resp.Kvs)
-	}
+	require.Emptyf(t, resp.Kvs, "expected no kvs, got %+v", resp.Kvs)
 
 	resp, err = clus.Client(0).Get(context.TODO(), "k")
 	require.NoError(t, err)
-	if len(resp.Kvs) > 0 {
-		t.Fatalf("expected no kvs, got %+v", resp.Kvs)
-	}
+	require.Emptyf(t, resp.Kvs, "expected no kvs, got %+v", resp.Kvs)
 }
 
 // TestLeasingReconnectOwnerRevoke checks that revocation works if
@@ -1330,9 +1284,7 @@ func TestLeasingReconnectOwnerRevokeCompact(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := lkv1.Get(cctx, "k")
 	require.NoError(t, err)
-	if string(resp.Kvs[0].Value) != "v" {
-		t.Fatalf(`expected "v" value, got %+v`, resp)
-	}
+	require.Equalf(t, "v", string(resp.Kvs[0].Value), `expected "v" value, got %+v`, resp)
 }
 
 // TestLeasingReconnectOwnerConsistency checks a write error on an owner will
@@ -1399,9 +1351,7 @@ func TestLeasingReconnectOwnerConsistency(t *testing.T) {
 	require.NoError(t, lerr)
 	cresp, cerr := clus.Client(0).Get(context.TODO(), "k")
 	require.NoError(t, cerr)
-	if !reflect.DeepEqual(lresp.Kvs, cresp.Kvs) {
-		t.Fatalf("expected %+v, got %+v", cresp, lresp)
-	}
+	require.Truef(t, reflect.DeepEqual(lresp.Kvs, cresp.Kvs), "expected %+v, got %+v", cresp, lresp)
 }
 
 func TestLeasingTxnAtomicCache(t *testing.T) {
@@ -1561,9 +1511,7 @@ func TestLeasingReconnectNonOwnerGet(t *testing.T) {
 		require.NoError(t, lerr)
 		cresp, cerr := clus.Client(0).Get(context.TODO(), k)
 		require.NoError(t, cerr)
-		if !reflect.DeepEqual(lresp.Kvs, cresp.Kvs) {
-			t.Fatalf("expected %+v, got %+v", cresp, lresp)
-		}
+		require.Truef(t, reflect.DeepEqual(lresp.Kvs, cresp.Kvs), "expected %+v, got %+v", cresp, lresp)
 	}
 }
 
@@ -1591,9 +1539,7 @@ func TestLeasingTxnRangeCmp(t *testing.T) {
 	cmp := clientv3.Compare(clientv3.Version("k").WithPrefix(), "=", 1)
 	tresp, terr := lkv.Txn(context.TODO()).If(cmp).Commit()
 	require.NoError(t, terr)
-	if tresp.Succeeded {
-		t.Fatalf("expected Succeeded=false, got %+v", tresp)
-	}
+	require.Falsef(t, tresp.Succeeded, "expected Succeeded=false, got %+v", tresp)
 }
 
 func TestLeasingDo(t *testing.T) {
@@ -1631,9 +1577,7 @@ func TestLeasingDo(t *testing.T) {
 
 	gresp, err := clus.Client(0).Get(context.TODO(), "a", clientv3.WithPrefix())
 	require.NoError(t, err)
-	if len(gresp.Kvs) != 0 {
-		t.Fatalf("expected no keys, got %+v", gresp.Kvs)
-	}
+	require.Emptyf(t, gresp.Kvs, "expected no keys, got %+v", gresp.Kvs)
 }
 
 func TestLeasingTxnOwnerPutBranch(t *testing.T) {
@@ -1667,9 +1611,7 @@ func TestLeasingTxnOwnerPutBranch(t *testing.T) {
 		require.NoError(t, err)
 		clusResp, err := clus.Client(1).Get(context.TODO(), k)
 		require.NoError(t, err)
-		if !reflect.DeepEqual(clusResp.Kvs, lkvResp.Kvs) {
-			t.Fatalf("expected %+v, got %+v", clusResp.Kvs, lkvResp.Kvs)
-		}
+		require.Truef(t, reflect.DeepEqual(clusResp.Kvs, lkvResp.Kvs), "expected %+v, got %+v", clusResp.Kvs, lkvResp.Kvs)
 	}
 }
 
@@ -1751,9 +1693,7 @@ func TestLeasingSessionExpire(t *testing.T) {
 
 	resp, err := lkv.Get(context.TODO(), "abc")
 	require.NoError(t, err)
-	if v := string(resp.Kvs[0].Value); v != "def" {
-		t.Fatalf("expected %q, got %q", "v", v)
-	}
+	require.Equal(t, "def", string(resp.Kvs[0].Value))
 }
 
 func TestLeasingSessionExpireCancel(t *testing.T) {

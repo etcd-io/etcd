@@ -104,26 +104,20 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 
 		t.Logf("Response: %v", string(resp.GetPayload().GetBody()))
 
-		if resp.GetPayload() == nil {
-			t.Fatalf("unexpected response from foo: %s", resp.GetPayload().GetBody())
-		}
+		require.NotNilf(t, resp.GetPayload(), "unexpected response from foo: %s", resp.GetPayload().GetBody())
 		lastResponse = resp.GetPayload().GetBody()
 	}
 
 	// If the load balancing policy is pick first then return payload should equal number of requests
 	t.Logf("Last response: %v", string(lastResponse))
 	if lbPolicy == "pick_first" {
-		if string(lastResponse) != "3500" {
-			t.Fatalf("unexpected total responses from foo: %s", lastResponse)
-		}
+		require.Equalf(t, "3500", string(lastResponse), "unexpected total responses from foo: %s", lastResponse)
 	}
 
 	// If the load balancing policy is round robin we should see roughly half total requests served by each server
 	if lbPolicy == "round_robin" {
 		responses, err := strconv.Atoi(string(lastResponse))
-		if err != nil {
-			t.Fatalf("couldn't convert to int: %s", lastResponse)
-		}
+		require.NoErrorf(t, err, "couldn't convert to int: %s", lastResponse)
 
 		// Allow 25% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5

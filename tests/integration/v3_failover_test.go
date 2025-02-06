@@ -61,9 +61,7 @@ func TestFailover(t *testing.T) {
 			// Create an etcd client before or after first server down
 			t.Logf("Creating an etcd client [%s]", tc.name)
 			cli, err := tc.testFunc(t, cc, clus)
-			if err != nil {
-				t.Fatalf("Failed to create client: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to create client")
 			defer cli.Close()
 
 			// Sanity test
@@ -142,12 +140,8 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 				t.Logf("Failed to get key (%v)", getErr)
 				return getErr
 			}
-			if len(resp.Kvs) != 1 {
-				t.Fatalf("Expected 1 key, got %d", len(resp.Kvs))
-			}
-			if !bytes.Equal([]byte(val), resp.Kvs[0].Value) {
-				t.Fatalf("Unexpected value, expected: %s, got: %s", val, resp.Kvs[0].Value)
-			}
+			require.Lenf(t, resp.Kvs, 1, "Expected 1 key, got %d", len(resp.Kvs))
+			require.Truef(t, bytes.Equal([]byte(val), resp.Kvs[0].Value), "Unexpected value, expected: %s, got: %s", val, resp.Kvs[0].Value)
 			return nil
 		}()
 		if err != nil {

@@ -132,19 +132,14 @@ func TestElectionFailover(t *testing.T) {
 
 	// first leader (elected)
 	e := concurrency.NewElection(ss[0], "test-election")
-	if err := e.Campaign(context.TODO(), "foo"); err != nil {
-		t.Fatalf("failed volunteer (%v)", err)
-	}
+	err := e.Campaign(context.TODO(), "foo")
+	require.NoErrorf(t, err, "failed volunteer")
 
 	// check first leader
 	resp, ok := <-e.Observe(cctx)
-	if !ok {
-		t.Fatalf("could not wait for first election; channel closed")
-	}
+	require.Truef(t, ok, "could not wait for first election; channel closed")
 	s := string(resp.Kvs[0].Value)
-	if s != "foo" {
-		t.Fatalf("wrong election result. got %s, wanted foo", s)
-	}
+	require.Equalf(t, "foo", s, "wrong election result. got %s, wanted foo", s)
 
 	// next leader
 	electedErrC := make(chan error, 1)
@@ -155,19 +150,15 @@ func TestElectionFailover(t *testing.T) {
 	}()
 
 	// invoke leader failover
-	err := ss[0].Close()
+	err = ss[0].Close()
 	require.NoError(t, err)
 
 	// check new leader
 	e = concurrency.NewElection(ss[2], "test-election")
 	resp, ok = <-e.Observe(cctx)
-	if !ok {
-		t.Fatalf("could not wait for second election; channel closed")
-	}
+	require.Truef(t, ok, "could not wait for second election; channel closed")
 	s = string(resp.Kvs[0].Value)
-	if s != "bar" {
-		t.Fatalf("wrong election result. got %s, wanted bar", s)
-	}
+	require.Equalf(t, "bar", s, "wrong election result. got %s, wanted bar", s)
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
 	eer := <-electedErrC
@@ -288,9 +279,7 @@ func TestElectionObserveCompacted(t *testing.T) {
 	if !ok {
 		t.Fatal("failed to observe on compacted revision")
 	}
-	if string(v.Kvs[0].Value) != "abc" {
-		t.Fatalf(`expected leader value "abc", got %q`, string(v.Kvs[0].Value))
-	}
+	require.Equalf(t, "abc", string(v.Kvs[0].Value), `expected leader value "abc", got %q`, string(v.Kvs[0].Value))
 }
 
 // TestElectionWithAuthEnabled verifies the election interface when auth is enabled.

@@ -73,9 +73,7 @@ func TestDoubleBarrier(t *testing.T) {
 	default:
 	}
 
-	if err := b.Enter(); err != nil {
-		t.Fatalf("could not enter last barrier (%v)", err)
-	}
+	require.NoErrorf(t, b.Enter(), "could not enter last barrier")
 
 	timerC := time.After(time.Duration(waiters*100) * time.Millisecond)
 	for i := 0; i < waiters-1; i++ {

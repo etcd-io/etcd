@@ -67,9 +67,8 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	defer cli.Close()
 
 	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
-	if _, ok := <-wch; !ok {
-		t.Fatalf("watch failed on creation")
-	}
+	_, ok := <-wch
+	require.Truef(t, ok, "watch failed on creation")
 
 	// endpoint can switch to eps[1] when it detects the failure of eps[0]
 	cli.SetEndpoints(eps...)

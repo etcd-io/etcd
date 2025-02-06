@@ -61,14 +61,10 @@ func TestEndpointManager(t *testing.T) {
 		Endpoint: e1,
 	}
 
-	if !reflect.DeepEqual(us[0], wu) {
-		t.Fatalf("up = %#v, want %#v", us[0], wu)
-	}
+	require.Truef(t, reflect.DeepEqual(us[0], wu), "up = %#v, want %#v", us[0], wu)
 
 	err = em.DeleteEndpoint(context.TODO(), "foo/a1")
-	if err != nil {
-		t.Fatalf("failed to udpate %v", err)
-	}
+	require.NoErrorf(t, err, "failed to udpate %v", err)
 
 	us = <-w
 	if us == nil {
@@ -80,9 +76,7 @@ func TestEndpointManager(t *testing.T) {
 		Key: "foo/a1",
 	}
 
-	if !reflect.DeepEqual(us[0], wu) {
-		t.Fatalf("up = %#v, want %#v", us[1], wu)
-	}
+	require.Truef(t, reflect.DeepEqual(us[0], wu), "up = %#v, want %#v", us[0], wu)
 }
 
 // TestEndpointManagerAtomicity ensures the resolver will initialize
@@ -112,9 +106,7 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 	require.NoError(t, err)
 
 	updates := <-w
-	if len(updates) != 2 {
-		t.Fatalf("expected two updates, got %+v", updates)
-	}
+	require.Lenf(t, updates, 2, "expected two updates, got %+v", updates)
 
 	_, err = c.Txn(context.TODO()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
 	require.NoError(t, err)
@@ -155,15 +147,9 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	if len(eps) != 2 {
-		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
-	}
-	if !reflect.DeepEqual(eps[k1], e1) {
-		t.Fatalf("unexpected endpoints: %s", k1)
-	}
-	if !reflect.DeepEqual(eps[k2], e2) {
-		t.Fatalf("unexpected endpoints: %s", k2)
-	}
+	require.Lenf(t, eps, 2, "unexpected the number of endpoints: %d", len(eps))
+	require.Truef(t, reflect.DeepEqual(eps[k1], e1), "unexpected endpoints: %s", k1)
+	require.Truef(t, reflect.DeepEqual(eps[k2], e2), "unexpected endpoints: %s", k2)
 
 	// Delete
 	err = em.DeleteEndpoint(context.TODO(), k1)
@@ -175,12 +161,8 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	if len(eps) != 1 {
-		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
-	}
-	if !reflect.DeepEqual(eps[k2], e2) {
-		t.Fatalf("unexpected endpoints: %s", k2)
-	}
+	require.Lenf(t, eps, 1, "unexpected the number of endpoints: %d", len(eps))
+	require.Truef(t, reflect.DeepEqual(eps[k2], e2), "unexpected endpoints: %s", k2)
 
 	// Update
 	k3 := "foo/a3"
@@ -198,10 +180,6 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	if len(eps) != 1 {
-		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
-	}
-	if !reflect.DeepEqual(eps[k3], e3) {
-		t.Fatalf("unexpected endpoints: %s", k3)
-	}
+	require.Lenf(t, eps, 1, "unexpected the number of endpoints: %d", len(eps))
+	require.Truef(t, reflect.DeepEqual(eps[k3], e3), "unexpected endpoints: %s", k3)
 }

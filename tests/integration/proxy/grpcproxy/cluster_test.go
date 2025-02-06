@@ -52,9 +52,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 		DialTimeout: 5 * time.Second,
 	}
 	client, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatalf("err %v, want nil", err)
-	}
+	require.NoErrorf(t, err, "err %v, want nil", err)
 	defer client.Close()
 
 	// wait some time for register-loop to write keys
@@ -62,16 +60,10 @@ func TestClusterProxyMemberList(t *testing.T) {
 
 	var mresp *clientv3.MemberListResponse
 	mresp, err = client.Cluster.MemberList(context.Background())
-	if err != nil {
-		t.Fatalf("err %v, want nil", err)
-	}
+	require.NoErrorf(t, err, "err %v, want nil", err)
 
-	if len(mresp.Members) != 1 {
-		t.Fatalf("len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
-	}
-	if len(mresp.Members[0].ClientURLs) != 1 {
-		t.Fatalf("len(mresp.Members[0].ClientURLs) expected 1, got %d (%+v)", len(mresp.Members[0].ClientURLs), mresp.Members[0].ClientURLs[0])
-	}
+	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
+	require.Lenf(t, mresp.Members[0].ClientURLs, 1, "len(mresp.Members[0].ClientURLs) expected 1, got %d (%+v)", len(mresp.Members[0].ClientURLs), mresp.Members[0].ClientURLs[0])
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
 
 	// test proxy member add
@@ -82,12 +74,8 @@ func TestClusterProxyMemberList(t *testing.T) {
 
 	// check add member succ
 	mresp, err = client.Cluster.MemberList(context.Background())
-	if err != nil {
-		t.Fatalf("err %v, want nil", err)
-	}
-	if len(mresp.Members) != 2 {
-		t.Fatalf("len(mresp.Members) expected 2, got %d (%+v)", len(mresp.Members), mresp.Members)
-	}
+	require.NoErrorf(t, err, "err %v, want nil", err)
+	require.Lenf(t, mresp.Members, 2, "len(mresp.Members) expected 2, got %d (%+v)", len(mresp.Members), mresp.Members)
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{newMemberAddr}})
 
 	// test proxy member delete
@@ -97,12 +85,8 @@ func TestClusterProxyMemberList(t *testing.T) {
 
 	// check delete member succ
 	mresp, err = client.Cluster.MemberList(context.Background())
-	if err != nil {
-		t.Fatalf("err %v, want nil", err)
-	}
-	if len(mresp.Members) != 1 {
-		t.Fatalf("len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
-	}
+	require.NoErrorf(t, err, "err %v, want nil", err)
+	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
 }
 
@@ -162,10 +146,7 @@ func newClusterProxyServer(lg *zap.Logger, endpoints []string, prefix string, t 
 
 func deregisterMember(c *clientv3.Client, prefix, addr string, t *testing.T) {
 	em, err := endpoints.NewManager(c, prefix)
-	if err != nil {
-		t.Fatalf("new endpoint manager failed, err %v", err)
-	}
-	if err = em.DeleteEndpoint(c.Ctx(), prefix+"/"+addr); err != nil {
-		t.Fatalf("delete endpoint failed, err %v", err)
-	}
+	require.NoErrorf(t, err, "new endpoint manager failed, err")
+	err = em.DeleteEndpoint(c.Ctx(), prefix+"/"+addr)
+	require.NoErrorf(t, err, "delete endpoint failed, err")
 }
