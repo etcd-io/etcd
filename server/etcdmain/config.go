@@ -202,6 +202,9 @@ func (cfg *config) parse(arguments []string) error {
 	if cfg.ec.FlagsExplicitlySet["experimental-bootstrap-defrag-threshold-megabytes"] {
 		cfg.ec.BootstrapDefragThresholdMegabytes = cfg.ec.ExperimentalBootstrapDefragThresholdMegabytes
 	}
+	if cfg.ec.FlagsExplicitlySet["experimental-peer-skip-client-san-verification"] {
+		cfg.ec.PeerTLSInfo.SkipClientSANVerify = cfg.ec.ExperimentalPeerSkipClientSanVerification
+	}
 
 	if cfg.ec.FlagsExplicitlySet["experimental-max-learners"] {
 		cfg.ec.MaxLearners = cfg.ec.ExperimentalMaxLearners
