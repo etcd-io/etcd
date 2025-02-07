@@ -58,6 +58,14 @@ test-e2e-release: build
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-coverage
+test-coverage:
+	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
+
+.PHONY: upload-coverage-report
+upload-coverage-report: test-coverage
+	./scripts/codecov_upload.sh
+
 .PHONY: fuzz
 fuzz: 
 	./scripts/fuzzing.sh

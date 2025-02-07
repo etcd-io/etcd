@@ -25,7 +25,7 @@ jobs:
           mkdir "${TARGET}"
           case "${TARGET}" in
             linux-amd64-coverage)
-              GOARCH=amd64 ./scripts/codecov_upload.sh
+              GOARCH=amd64 make upload-coverage-report
               ;;
             *)
               echo "Failed to find target"
