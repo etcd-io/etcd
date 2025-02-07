@@ -150,6 +150,7 @@ var (
 		"experimental-memory-mlock":                         "memory-mlock",
 		"experimental-compaction-sleep-interval":            "compaction-sleep-interval",
 		"experimental-downgrade-check-time":                 "downgrade-check-time",
+		"experimental-peer-skip-client-san-verification":    "peer-skip-client-san-verification",
 	}
 )
 
@@ -466,6 +467,12 @@ type Config struct {
 	// Defaults to 0.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 
+	// ExperimentalPeerSkipClientSanVerification determines whether to skip verification of SAN field
+	// in client certificate for peer connections.
+	// Deprecated in v3.6 and will be decommissioned in v3.7.
+	// TODO: Delete in v3.7
+	ExperimentalPeerSkipClientSanVerification bool `json:"experimental-peer-skip-client-san-verification"`
+
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
 	Logger string `json:"logger"`
@@ -561,15 +568,16 @@ type configJSON struct {
 }
 
 type securityConfig struct {
-	CertFile         string   `json:"cert-file"`
-	KeyFile          string   `json:"key-file"`
-	ClientCertFile   string   `json:"client-cert-file"`
-	ClientKeyFile    string   `json:"client-key-file"`
-	CertAuth         bool     `json:"client-cert-auth"`
-	TrustedCAFile    string   `json:"trusted-ca-file"`
-	AutoTLS          bool     `json:"auto-tls"`
-	AllowedCNs       []string `json:"allowed-cn"`
-	AllowedHostnames []string `json:"allowed-hostname"`
+	CertFile            string   `json:"cert-file"`
+	KeyFile             string   `json:"key-file"`
+	ClientCertFile      string   `json:"client-cert-file"`
+	ClientKeyFile       string   `json:"client-key-file"`
+	CertAuth            bool     `json:"client-cert-auth"`
+	TrustedCAFile       string   `json:"trusted-ca-file"`
+	AutoTLS             bool     `json:"auto-tls"`
+	AllowedCNs          []string `json:"allowed-cn"`
+	AllowedHostnames    []string `json:"allowed-hostname"`
+	SkipClientSANVerify bool     `json:"skip-client-san-verification,omitempty"`
 }
 
 // NewConfig creates a new Config populated with default values.
@@ -792,7 +800,8 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-cn", "Comma-separated list of allowed CNs for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-hostname", "Comma-separated list of allowed SAN hostnames for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
-	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
+	fs.BoolVar(&cfg.ExperimentalPeerSkipClientSanVerification, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.Deprecated in v3.6 and will be decommissioned in v3.7. Use peer-skip-client-san-verification instead")
+	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 	fs.StringVar(&cfg.TlsMinVersion, "tls-min-version", string(tlsutil.TLSVersion12), "Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.")
 	fs.StringVar(&cfg.TlsMaxVersion, "tls-max-version", string(tlsutil.TLSVersionDefault), "Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).")
 
@@ -925,6 +934,16 @@ func (cfg *configYAML) configFromFile(path string) error {
 		cfg.FlagsExplicitlySet[flg] = true
 	}
 
+	if peerTransportSecurity, ok := cfgMap["peer-transport-security"]; ok {
+		peerTransportSecurityMap, isMap := peerTransportSecurity.(map[string]any)
+		if !isMap {
+			return fmt.Errorf("invalid peer-transport-security")
+		}
+		for k := range peerTransportSecurityMap {
+			cfg.FlagsExplicitlySet[fmt.Sprintf("peer-%s", k)] = true
+		}
+	}
+
 	getBoolFlagVal := func(flagName string) *bool {
 		flagVal, ok := cfgMap[flagName]
 		if !ok {
@@ -1019,6 +1038,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 		tls.TrustedCAFile = ysc.TrustedCAFile
 		tls.AllowedCNs = ysc.AllowedCNs
 		tls.AllowedHostnames = ysc.AllowedHostnames
+		tls.SkipClientSANVerify = ysc.SkipClientSANVerify
 	}
 	copySecurityDetails(&cfg.ClientTLSInfo, &cfg.ClientSecurityJSON)
 	copySecurityDetails(&cfg.PeerTLSInfo, &cfg.PeerSecurityJSON)

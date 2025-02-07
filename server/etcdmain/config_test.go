@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1366,6 +1367,99 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 					"experimental warning duration mismatch - expected: %v, got: %v",
 					tc.configFileYAML.ExperimentalWarningUnaryRequestDuration,
 					cfg.ec.WarningUnaryRequestDuration)
+			}
+		})
+	}
+}
+
+// TestPeerSkipClientSanVerificationFlagMigration tests the migration from
+// --experimental-peer-skip-client-san-verification to --peer-skip-client-san-verification
+// TODO: delete in v3.7
+func TestPeerSkipClientSanVerificationFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                                      string
+		peerSkipClientSanVerification             string
+		experimentalPeerSkipClientSanVerification string
+		useConfigFile                             bool
+		expectErr                                 bool
+		expectedPeerSkipClientSanVerification     bool
+	}{
+		{
+			name:                          "cannot set both experimental flag and non experimental flag",
+			peerSkipClientSanVerification: "true",
+			experimentalPeerSkipClientSanVerification: "true",
+			expectErr: true,
+		},
+		{
+			name: "can set experimental flag to true",
+			experimentalPeerSkipClientSanVerification: "true",
+			expectedPeerSkipClientSanVerification:     true,
+		},
+		{
+			name: "can set experimental flag to false",
+			experimentalPeerSkipClientSanVerification: "false",
+			expectedPeerSkipClientSanVerification:     false,
+		},
+		{
+			name:                                  "can set non experimental flag to true",
+			peerSkipClientSanVerification:         "true",
+			expectedPeerSkipClientSanVerification: true,
+		},
+		{
+			name:                                  "can set non experimental flag to false",
+			peerSkipClientSanVerification:         "false",
+			expectedPeerSkipClientSanVerification: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			type securityConfig struct {
+				SkipClientSanVerification bool `json:"skip-client-san-verification,omitempty"`
+			}
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalPeerSkipClientSanVerification bool           `json:"experimental-peer-skip-client-san-verification,omitempty"`
+				PeerSecurityJSON                          securityConfig `json:"peer-transport-security"`
+			}{}
+
+			if tc.peerSkipClientSanVerification != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--peer-skip-client-san-verification=%s", tc.peerSkipClientSanVerification))
+				val, err := strconv.ParseBool(tc.peerSkipClientSanVerification)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.PeerSecurityJSON.SkipClientSanVerification = val
+			}
+
+			if tc.experimentalPeerSkipClientSanVerification != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-peer-skip-client-san-verification=%s", tc.experimentalPeerSkipClientSanVerification))
+				val, err := strconv.ParseBool(tc.experimentalPeerSkipClientSanVerification)
+				if err != nil {
+					t.Fatal(err)
+				}
+				yc.ExperimentalPeerSkipClientSanVerification = val
+			}
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatalf("expect parse error, got errFromCmdLine=%v, errFromFile=%v", errFromCmdLine, errFromFile)
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+			if cfgFromCmdLine.ec.PeerTLSInfo.SkipClientSANVerify != tc.expectedPeerSkipClientSanVerification {
+				t.Errorf("expected SkipClientSANVerify=%v, got %v",
+					tc.expectedPeerSkipClientSanVerification,
+					cfgFromCmdLine.ec.PeerTLSInfo.SkipClientSANVerify)
+			}
+			if cfgFromFile.ec.PeerTLSInfo.SkipClientSANVerify != tc.expectedPeerSkipClientSanVerification {
+				t.Errorf("expected SkipClientSANVerify=%v, got %v",
+					tc.expectedPeerSkipClientSanVerification,
+					cfgFromFile.ec.PeerTLSInfo.SkipClientSANVerify)
 			}
 		})
 	}
