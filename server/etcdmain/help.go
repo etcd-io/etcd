@@ -288,7 +288,7 @@ Experimental feature:
   --compact-hash-check-time '1m'
     Duration of time between leader checks followers compaction hashes.
   --experimental-enable-lease-checkpoint 'false'
-    ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases.
+    ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=LeaseCheckpoint=true' instead.
   --experimental-compaction-batch-limit 1000
     ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-batch-limit' instead.
   --compaction-batch-limit 1000
@@ -326,7 +326,7 @@ Experimental feature:
   --downgrade-check-time
     Duration of time between two downgrade status checks.
   --experimental-enable-lease-checkpoint-persist 'false'
-    Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.
+    Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=LeaseCheckpointPersist=true' instead.
   --experimental-memory-mlock
     Enable to enforce etcd pages (in particular bbolt) to stay in RAM. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.
   --experimental-snapshot-catchup-entries
