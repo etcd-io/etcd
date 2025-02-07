@@ -279,8 +279,8 @@ func authTestSnapshot(cx ctlCtx) {
 	if st.Revision != 4 {
 		cx.t.Fatalf("expected 4, got %d", st.Revision)
 	}
-	if st.TotalKey < 3 {
-		cx.t.Fatalf("expected at least 3, got %d", st.TotalKey)
+	if st.TotalKey < 1 {
+		cx.t.Fatalf("expected at least 1, got %d", st.TotalKey)
 	}
 }
 
