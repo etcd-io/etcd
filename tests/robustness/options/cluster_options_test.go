@@ -18,6 +18,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -52,18 +54,10 @@ func TestWithClusterOptionGroups(t *testing.T) {
 	}
 	for i, tt := range expectedServerConfigs {
 		cluster := *e2e.NewConfig(opts...)
-		if cluster.ServerConfig.SnapshotCount != tt.SnapshotCount {
-			t.Errorf("Test case %d: SnapshotCount = %v, want %v\n", i, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount)
-		}
-		if cluster.ServerConfig.SnapshotCatchUpEntries != tt.SnapshotCatchUpEntries {
-			t.Errorf("Test case %d: SnapshotCatchUpEntries = %v, want %v\n", i, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries)
-		}
-		if cluster.ServerConfig.TickMs != tt.TickMs {
-			t.Errorf("Test case %d: TickMs = %v, want %v\n", i, cluster.ServerConfig.TickMs, tt.TickMs)
-		}
-		if cluster.ServerConfig.ElectionMs != tt.ElectionMs {
-			t.Errorf("Test case %d: ElectionMs = %v, want %v\n", i, cluster.ServerConfig.ElectionMs, tt.ElectionMs)
-		}
+		assert.Equalf(t, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount, "Test case %d: SnapshotCount = %v, want %v\n", i, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount)
+		assert.Equalf(t, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries, "Test case %d: SnapshotCatchUpEntries = %v, want %v\n", i, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries)
+		assert.Equalf(t, cluster.ServerConfig.TickMs, tt.TickMs, "Test case %d: TickMs = %v, want %v\n", i, cluster.ServerConfig.TickMs, tt.TickMs)
+		assert.Equalf(t, cluster.ServerConfig.ElectionMs, tt.ElectionMs, "Test case %d: ElectionMs = %v, want %v\n", i, cluster.ServerConfig.ElectionMs, tt.ElectionMs)
 	}
 }
 
@@ -94,17 +88,9 @@ func TestWithOptionsSubset(t *testing.T) {
 	}
 	for i, tt := range expectedServerConfigs {
 		cluster := *e2e.NewConfig(opts...)
-		if cluster.ServerConfig.SnapshotCount != tt.SnapshotCount {
-			t.Errorf("Test case %d: SnapshotCount = %v, want %v\n", i, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount)
-		}
-		if cluster.ServerConfig.SnapshotCatchUpEntries != tt.SnapshotCatchUpEntries {
-			t.Errorf("Test case %d: SnapshotCatchUpEntries = %v, want %v\n", i, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries)
-		}
-		if cluster.ServerConfig.TickMs != tt.TickMs {
-			t.Errorf("Test case %d: TickMs = %v, want %v\n", i, cluster.ServerConfig.TickMs, tt.TickMs)
-		}
-		if cluster.ServerConfig.ElectionMs != tt.ElectionMs {
-			t.Errorf("Test case %d: ElectionMs = %v, want %v\n", i, cluster.ServerConfig.ElectionMs, tt.ElectionMs)
-		}
+		assert.Equalf(t, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount, "Test case %d: SnapshotCount = %v, want %v\n", i, cluster.ServerConfig.SnapshotCount, tt.SnapshotCount)
+		assert.Equalf(t, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries, "Test case %d: SnapshotCatchUpEntries = %v, want %v\n", i, cluster.ServerConfig.SnapshotCatchUpEntries, tt.SnapshotCatchUpEntries)
+		assert.Equalf(t, cluster.ServerConfig.TickMs, tt.TickMs, "Test case %d: TickMs = %v, want %v\n", i, cluster.ServerConfig.TickMs, tt.TickMs)
+		assert.Equalf(t, cluster.ServerConfig.ElectionMs, tt.ElectionMs, "Test case %d: ElectionMs = %v, want %v\n", i, cluster.ServerConfig.ElectionMs, tt.ElectionMs)
 	}
 }
