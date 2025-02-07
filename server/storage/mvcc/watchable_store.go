@@ -76,7 +76,7 @@ var _ WatchableKV = (*watchableStore)(nil)
 // cancel operations.
 type cancelFunc func()
 
-func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) *watchableStore {
+func New(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfig) WatchableKV {
 	s := newWatchableStore(lg, b, le, cfg)
 	s.wg.Add(2)
 	go s.syncWatchersLoop()

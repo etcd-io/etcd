@@ -40,7 +40,7 @@ type authBackend struct {
 
 var _ auth.AuthBackend = (*authBackend)(nil)
 
-func NewAuthBackend(lg *zap.Logger, be backend.Backend) *authBackend {
+func NewAuthBackend(lg *zap.Logger, be backend.Backend) auth.AuthBackend {
 	return &authBackend{
 		be: be,
 		lg: lg,

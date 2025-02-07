@@ -113,12 +113,14 @@ func setupAuthStore(t *testing.T) (store *authStore, teardownfunc func(t *testin
 
 	// The UserAdd function cannot generate old etcd version user data (user's option is nil)
 	// add special users through the underlying interface
-	addUserWithNoOption(as)
+	asImpl, ok := as.(*authStore)
+	require.Truef(t, ok, "addUserWithNoOption: needs an AuthStore implementation")
+	addUserWithNoOption(asImpl)
 
 	tearDown := func(_ *testing.T) {
 		as.Close()
 	}
-	return as, tearDown
+	return asImpl, tearDown
 }
 
 func addUserWithNoOption(as *authStore) {
@@ -133,7 +135,7 @@ func addUserWithNoOption(as *authStore) {
 	as.refreshRangePermCache(tx)
 }
 
-func enableAuthAndCreateRoot(as *authStore) error {
+func enableAuthAndCreateRoot(as AuthStore) error {
 	_, err := as.UserAdd(&pb.AuthUserAddRequest{Name: "root", HashedPassword: encodePassword("root"), Options: &authpb.UserAddOptions{NoPassword: false}})
 	if err != nil {
 		return err
