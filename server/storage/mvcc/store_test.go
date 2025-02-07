@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -48,9 +49,7 @@ func TestScheduledCompact(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
+			require.NotNilf(t, tx, "batch tx is nil")
 			tx.Lock()
 			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetScheduledCompact(tx, tc.value)
@@ -87,9 +86,7 @@ func TestFinishedCompact(t *testing.T) {
 			lg := zaptest.NewLogger(t)
 			be, tmpPath := betesting.NewTmpBackend(t, time.Microsecond, 10)
 			tx := be.BatchTx()
-			if tx == nil {
-				t.Fatal("batch tx is nil")
-			}
+			require.NotNilf(t, tx, "batch tx is nil")
 			tx.Lock()
 			tx.UnsafeCreateBucket(schema.Meta)
 			UnsafeSetFinishedCompact(tx, tc.value)

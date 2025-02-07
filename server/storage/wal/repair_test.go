@@ -167,9 +167,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 	p := t.TempDir()
 
 	w, err := Create(zaptest.NewLogger(t), p, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	oldSegmentSizeBytes := SegmentSizeBytes
 	SegmentSizeBytes = 64
@@ -177,30 +175,20 @@ func TestRepairFailDeleteDir(t *testing.T) {
 		SegmentSizeBytes = oldSegmentSizeBytes
 	}()
 	for _, es := range makeEnts(50) {
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
 	}
 
 	_, serr := w.tail().Seek(0, io.SeekCurrent)
-	if serr != nil {
-		t.Fatal(serr)
-	}
+	require.NoError(t, serr)
 	w.Close()
 
 	f, err := openLast(zaptest.NewLogger(t), p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if terr := f.Truncate(20); terr != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, f.Truncate(20))
 	f.Close()
 
 	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, _, _, err = w.ReadAll()
 	require.ErrorIsf(t, err, io.ErrUnexpectedEOF, "err = %v, want error %v", err, io.ErrUnexpectedEOF)
 	w.Close()

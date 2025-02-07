@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	mrand "math/rand"
@@ -29,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -49,9 +50,8 @@ func TestStoreRev(t *testing.T) {
 
 	for i := 1; i <= 3; i++ {
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-		if r := s.Rev(); r != int64(i+1) {
-			t.Errorf("#%d: rev = %d, want %d", i, r, i+1)
-		}
+		r := s.Rev()
+		assert.Equalf(t, r, int64(i+1), "#%d: rev = %d, want %d", i, r, i+1)
 	}
 }
 
@@ -65,9 +65,7 @@ func TestStorePut(t *testing.T) {
 		Version:        1,
 	}
 	kvb, err := kv.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		rev Revision
@@ -145,9 +143,7 @@ func TestStorePut(t *testing.T) {
 		s.Put([]byte("foo"), []byte("bar"), lease.LeaseID(i+1))
 
 		data, err := tt.wkv.Marshal()
-		if err != nil {
-			t.Errorf("#%d: marshal err = %v, want nil", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: marshal err = %v, want nil", i, err)
 
 		wact := []testutil.Action{
 			{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
@@ -159,19 +155,15 @@ func TestStorePut(t *testing.T) {
 			}
 		}
 
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
-		}
+		g := b.tx.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: tx action = %+v, want %+v", i, g, wact)
 		wact = []testutil.Action{
 			{Name: "get", Params: []any{[]byte("foo"), tt.wputrev.Main}},
 			{Name: "put", Params: []any{[]byte("foo"), tt.wputrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
-		}
-		if s.currentRev != tt.wrev.Main {
-			t.Errorf("#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
-		}
+		g = fi.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: index action = %+v, want %+v", i, g, wact)
+		assert.Equalf(t, s.currentRev, tt.wrev.Main, "#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
 
 		s.Close()
 	}
@@ -188,9 +180,7 @@ func TestStoreRange(t *testing.T) {
 		Version:        1,
 	}
 	kvb, err := kv.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wrev := int64(2)
 
 	tests := []struct {
@@ -218,33 +208,24 @@ func TestStoreRange(t *testing.T) {
 		fi.indexRangeRespc <- tt.idxr
 
 		ret, err := s.Range(t.Context(), []byte("foo"), []byte("goo"), ro)
-		if err != nil {
-			t.Errorf("#%d: err = %v, want nil", i, err)
-		}
-		if w := []mvccpb.KeyValue{kv}; !reflect.DeepEqual(ret.KVs, w) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, ret.KVs, w)
-		}
-		if ret.Rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, ret.Rev, wrev)
-		}
+		require.NoErrorf(t, err, "#%d: err = %v, want nil", i, err)
+		w := []mvccpb.KeyValue{kv}
+		assert.Truef(t, reflect.DeepEqual(ret.KVs, w), "#%d: kvs = %+v, want %+v", i, ret.KVs, w)
+		assert.Equalf(t, ret.Rev, wrev, "#%d: rev = %d, want %d", i, ret.Rev, wrev)
 
 		wstart := NewRevBytes()
 		wstart = RevToBytes(tt.idxr.revs[0], wstart)
 		wact := []testutil.Action{
 			{Name: "range", Params: []any{schema.Key, wstart, []byte(nil), int64(0)}},
 		}
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
-		}
+		g := b.tx.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: tx action = %+v, want %+v", i, g, wact)
 		wact = []testutil.Action{
 			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), wrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
-		}
-		if s.currentRev != 2 {
-			t.Errorf("#%d: current rev = %+v, want %+v", i, s.currentRev, 2)
-		}
+		g = fi.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: index action = %+v, want %+v", i, g, wact)
+		assert.Equalf(t, int64(2), s.currentRev, "#%d: current rev = %+v, want %+v", i, s.currentRev, 2)
 
 		s.Close()
 	}
@@ -261,9 +242,7 @@ func TestStoreDeleteRange(t *testing.T) {
 		Version:        1,
 	}
 	kvb, err := kv.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		rev Revision
@@ -296,32 +275,24 @@ func TestStoreDeleteRange(t *testing.T) {
 		b.tx.rangeRespc <- tt.rr
 
 		n, _ := s.DeleteRange([]byte("foo"), []byte("goo"))
-		if n != 1 {
-			t.Errorf("#%d: n = %d, want 1", i, n)
-		}
+		assert.Equalf(t, int64(1), n, "#%d: n = %d, want 1", i, n)
 
 		data, err := (&mvccpb.KeyValue{
 			Key: []byte("foo"),
 		}).Marshal()
-		if err != nil {
-			t.Errorf("#%d: marshal err = %v, want nil", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: marshal err = %v, want nil", i, err)
 		wact := []testutil.Action{
 			{Name: "seqput", Params: []any{schema.Key, tt.wkey, data}},
 		}
-		if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: tx action = %+v, want %+v", i, g, wact)
-		}
+		g := b.tx.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: tx action = %+v, want %+v", i, g, wact)
 		wact = []testutil.Action{
 			{Name: "range", Params: []any{[]byte("foo"), []byte("goo"), tt.wrrev}},
 			{Name: "tombstone", Params: []any{[]byte("foo"), tt.wdelrev}},
 		}
-		if g := fi.Action(); !reflect.DeepEqual(g, wact) {
-			t.Errorf("#%d: index action = %+v, want %+v", i, g, wact)
-		}
-		if s.currentRev != tt.wrev.Main {
-			t.Errorf("#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
-		}
+		g = fi.Action()
+		assert.Truef(t, reflect.DeepEqual(g, wact), "#%d: index action = %+v, want %+v", i, g, wact)
+		assert.Equalf(t, s.currentRev, tt.wrev.Main, "#%d: rev = %+v, want %+v", i, s.currentRev, tt.wrev)
 		s.Close()
 	}
 }
@@ -344,9 +315,7 @@ func TestStoreCompact(t *testing.T) {
 	s.Compact(traceutil.TODO(), 3)
 	s.fifoSched.WaitFinish(1)
 
-	if s.compactMainRev != 3 {
-		t.Errorf("compact main rev = %d, want 3", s.compactMainRev)
-	}
+	assert.Equalf(t, int64(3), s.compactMainRev, "compact main rev = %d, want 3", s.compactMainRev)
 	end := make([]byte, 8)
 	binary.BigEndian.PutUint64(end, uint64(4))
 	wact := []testutil.Action{
@@ -357,15 +326,13 @@ func TestStoreCompact(t *testing.T) {
 		{Name: "delete", Params: []any{schema.Key, key2}},
 		{Name: "put", Params: []any{schema.Meta, schema.FinishedCompactKeyName, newTestRevBytes(Revision{Main: 3})}},
 	}
-	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
-		t.Errorf("tx actions = %+v, want %+v", g, wact)
-	}
+	g := b.tx.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wact), "tx actions = %+v, want %+v", g, wact)
 	wact = []testutil.Action{
 		{Name: "compact", Params: []any{int64(3)}},
 	}
-	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
-		t.Errorf("index action = %+v, want %+v", g, wact)
-	}
+	g = fi.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wact), "index action = %+v, want %+v", g, wact)
 }
 
 func TestStoreRestore(t *testing.T) {
@@ -384,17 +351,13 @@ func TestStoreRestore(t *testing.T) {
 		Version:        1,
 	}
 	putkvb, err := putkv.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	delkey := newTestBucketKeyBytes(newBucketKey(5, 0, true))
 	delkv := mvccpb.KeyValue{
 		Key: []byte("foo"),
 	}
 	delkvb, err := delkv.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	b.tx.rangeRespc <- rangeResp{[][]byte{schema.FinishedCompactKeyName}, [][]byte{newTestRevBytes(Revision{Main: 3})}}
 	b.tx.rangeRespc <- rangeResp{[][]byte{schema.ScheduledCompactKeyName}, [][]byte{newTestRevBytes(Revision{Main: 3})}}
 
@@ -403,20 +366,15 @@ func TestStoreRestore(t *testing.T) {
 
 	s.restore()
 
-	if s.compactMainRev != 3 {
-		t.Errorf("compact rev = %d, want 3", s.compactMainRev)
-	}
-	if s.currentRev != 5 {
-		t.Errorf("current rev = %v, want 5", s.currentRev)
-	}
+	assert.Equalf(t, int64(3), s.compactMainRev, "compact rev = %d, want 3", s.compactMainRev)
+	assert.Equalf(t, int64(5), s.currentRev, "current rev = %v, want 5", s.currentRev)
 	wact := []testutil.Action{
 		{Name: "range", Params: []any{schema.Meta, schema.FinishedCompactKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []any{schema.Meta, schema.ScheduledCompactKeyName, []byte(nil), int64(0)}},
 		{Name: "range", Params: []any{schema.Key, newTestRevBytes(Revision{Main: 1}), newTestRevBytes(Revision{Main: math.MaxInt64, Sub: math.MaxInt64}), int64(restoreChunkKeys)}},
 	}
-	if g := b.tx.Action(); !reflect.DeepEqual(g, wact) {
-		t.Errorf("tx actions = %+v, want %+v", g, wact)
-	}
+	g := b.tx.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wact), "tx actions = %+v, want %+v", g, wact)
 
 	gens := []generation{
 		{created: Revision{Main: 4}, ver: 2, revs: []Revision{{Main: 3}, {Main: 5}}},
@@ -427,9 +385,8 @@ func TestStoreRestore(t *testing.T) {
 		{Name: "keyIndex", Params: []any{ki}},
 		{Name: "insert", Params: []any{ki}},
 	}
-	if g := fi.Action(); !reflect.DeepEqual(g, wact) {
-		t.Errorf("index action = %+v, want %+v", g, wact)
-	}
+	g = fi.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wact), "index action = %+v, want %+v", g, wact)
 }
 
 func TestRestoreDelete(t *testing.T) {
@@ -469,13 +426,9 @@ func TestRestoreDelete(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
 		r, err := s.Range(t.Context(), []byte(ks), nil, RangeOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		if _, ok := keys[ks]; ok {
-			if len(r.KVs) == 0 {
-				t.Errorf("#%d: expected %q, got deleted", i, ks)
-			}
+			assert.NotEmptyf(t, r.KVs, "#%d: expected %q, got deleted", i, ks)
 		} else if len(r.KVs) != 0 {
 			t.Errorf("#%d: expected deleted, got %q", i, ks)
 		}
@@ -518,9 +471,8 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 			// wait for scheduled compaction to be finished
 			time.Sleep(100 * time.Millisecond)
 
-			if _, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: 1}); !errors.Is(err, ErrCompacted) {
-				t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
-			}
+			_, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: 1})
+			require.ErrorIsf(t, err, ErrCompacted, "range on compacted rev error = %v, want %v", err, ErrCompacted)
 			// check the key in backend is deleted
 			revbytes := NewRevBytes()
 			revbytes = BucketKeyToBytes(newBucketKey(1, 0, false), revbytes)
@@ -571,9 +523,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 			defer wg.Done()
 			for {
 				hash, _, err := s.HashStorage().HashByRev(int64(rev))
-				if err != nil {
-					t.Error(err)
-				}
+				assert.NoError(t, err)
 				select {
 				case <-stopc:
 					return
@@ -597,9 +547,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 					revHash[r.compactRev] = r.hash
 				}
 
-				if r.hash != revHash[r.compactRev] {
-					t.Errorf("Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
-				}
+				assert.Equalf(t, r.hash, revHash[r.compactRev], "Hashes differ (current %v) != (saved %v)", r.hash, revHash[r.compactRev])
 			case <-stopc:
 				return
 			case <-donec:
@@ -624,9 +572,7 @@ func TestHashKVWhenCompacting(t *testing.T) {
 			}
 
 			_, err := s.Compact(traceutil.TODO(), int64(rev-i))
-			if err != nil {
-				t.Error(err)
-			}
+			assert.NoError(t, err)
 			// Wait for the compaction job to finish
 			s.fifoSched.WaitFinish(1)
 			// Leave time for calls to HashByRev to take place after each compaction
@@ -659,24 +605,17 @@ func TestHashKVWithCompactedAndFutureRevisions(t *testing.T) {
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
-	if _, err := s.Compact(traceutil.TODO(), int64(compactRev)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := s.Compact(traceutil.TODO(), int64(compactRev))
+	require.NoError(t, err)
 
 	_, _, errFutureRev := s.HashStorage().HashByRev(int64(rev + 1))
-	if !errors.Is(errFutureRev, ErrFutureRev) {
-		t.Error(errFutureRev)
-	}
+	require.ErrorIs(t, errFutureRev, ErrFutureRev)
 
 	_, _, errPastRev := s.HashStorage().HashByRev(int64(compactRev - 1))
-	if !errors.Is(errPastRev, ErrCompacted) {
-		t.Error(errPastRev)
-	}
+	require.ErrorIs(t, errPastRev, ErrCompacted)
 
 	_, _, errCompactRev := s.HashStorage().HashByRev(int64(compactRev))
-	if errCompactRev != nil {
-		t.Error(errCompactRev)
-	}
+	assert.NoError(t, errCompactRev)
 }
 
 // TestHashKVZeroRevision ensures that "HashByRev(0)" computes
@@ -690,22 +629,15 @@ func TestHashKVZeroRevision(t *testing.T) {
 	for i := 2; i <= rev; i++ {
 		s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
 	}
-	if _, err := s.Compact(traceutil.TODO(), int64(rev/2)); err != nil {
-		t.Fatal(err)
-	}
+	_, err := s.Compact(traceutil.TODO(), int64(rev/2))
+	require.NoError(t, err)
 
 	hash1, _, err := s.HashStorage().HashByRev(int64(rev))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	var hash2 KeyValueHash
 	hash2, _, err = s.HashStorage().HashByRev(0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if hash1 != hash2 {
-		t.Errorf("hash %d (rev %d) != hash %d (rev 0)", hash1, rev, hash2)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, hash1, hash2, "hash %d (rev %d) != hash %d (rev 0)", hash1, rev, hash2)
 }
 
 func TestTxnPut(t *testing.T) {
@@ -722,9 +654,8 @@ func TestTxnPut(t *testing.T) {
 	for i := 0; i < sliceN; i++ {
 		txn := s.Write(traceutil.TODO())
 		base := int64(i + 2)
-		if rev := txn.Put(keys[i], vals[i], lease.NoLease); rev != base {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, base)
-		}
+		rev := txn.Put(keys[i], vals[i], lease.NoLease)
+		assert.Equalf(t, rev, base, "#%d: rev = %d, want %d", i, rev, base)
 		txn.End()
 	}
 }
@@ -757,9 +688,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	readTx2 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
 	ret, err := readTx2.Range(t.Context(), []byte("foo"), nil, ro)
-	if err != nil {
-		t.Fatalf("failed to range: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to range: %v", err)
 	// readTx2 should see the result of new write
 	w := mvccpb.KeyValue{
 		Key:            []byte("foo"),
@@ -768,15 +697,11 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		ModRevision:    3,
 		Version:        2,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
-	}
+	require.Truef(t, reflect.DeepEqual(ret.KVs[0], w), "range result = %+v, want = %+v", ret.KVs[0], w)
 	readTx2.End()
 
 	ret, err = readTx1.Range(t.Context(), []byte("foo"), nil, ro)
-	if err != nil {
-		t.Fatalf("failed to range: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to range: %v", err)
 	// readTx1 should not see the result of new write
 	w = mvccpb.KeyValue{
 		Key:            []byte("foo"),
@@ -785,9 +710,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 		ModRevision:    2,
 		Version:        1,
 	}
-	if !reflect.DeepEqual(ret.KVs[0], w) {
-		t.Fatalf("range result = %+v, want = %+v", ret.KVs[0], w)
-	}
+	require.Truef(t, reflect.DeepEqual(ret.KVs[0], w), "range result = %+v, want = %+v", ret.KVs[0], w)
 	readTx1.End()
 }
 
@@ -853,9 +776,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			for _, keyValue := range ret.KVs {
 				result = append(result, kv{keyValue.Key, keyValue.Value})
 			}
-			if !reflect.DeepEqual(wKVs, result) {
-				t.Errorf("unexpected range result") // too many key value pairs, skip printing them
-			}
+			assert.Truef(t, reflect.DeepEqual(wKVs, result), "unexpected range result") // too many key value pairs, skip printing them
 		}()
 	}
 

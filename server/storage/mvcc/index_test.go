@@ -15,10 +15,10 @@
 package mvcc
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
@@ -47,18 +47,10 @@ func TestIndexGet(t *testing.T) {
 	}
 	for i, tt := range tests {
 		rev, created, ver, err := ti.Get([]byte("foo"), tt.rev)
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if rev != tt.wrev {
-			t.Errorf("#%d: rev = %+v, want %+v", i, rev, tt.wrev)
-		}
-		if created != tt.wcreated {
-			t.Errorf("#%d: created = %+v, want %+v", i, created, tt.wcreated)
-		}
-		if ver != tt.wver {
-			t.Errorf("#%d: ver = %d, want %d", i, ver, tt.wver)
-		}
+		require.ErrorIsf(t, err, tt.werr, "#%d: err = %v, want %v", i, err, tt.werr)
+		assert.Equalf(t, rev, tt.wrev, "#%d: rev = %+v, want %+v", i, rev, tt.wrev)
+		assert.Equalf(t, created, tt.wcreated, "#%d: created = %+v, want %+v", i, created, tt.wcreated)
+		assert.Equalf(t, ver, tt.wver, "#%d: ver = %d, want %d", i, ver, tt.wver)
 	}
 }
 
@@ -112,12 +104,8 @@ func TestIndexRange(t *testing.T) {
 	}
 	for i, tt := range tests {
 		keys, revs := ti.Range(tt.key, tt.end, atRev)
-		if !reflect.DeepEqual(keys, tt.wkeys) {
-			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
-		}
-		if !reflect.DeepEqual(revs, tt.wrevs) {
-			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
-		}
+		assert.Truef(t, reflect.DeepEqual(keys, tt.wkeys), "#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
+		assert.Truef(t, reflect.DeepEqual(revs, tt.wrevs), "#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
 	}
 }
 
@@ -125,19 +113,11 @@ func TestIndexTombstone(t *testing.T) {
 	ti := newTreeIndex(zaptest.NewLogger(t))
 	ti.Put([]byte("foo"), Revision{Main: 1})
 
-	err := ti.Tombstone([]byte("foo"), Revision{Main: 2})
-	if err != nil {
-		t.Errorf("tombstone error = %v, want nil", err)
-	}
+	require.NoErrorf(t, ti.Tombstone([]byte("foo"), Revision{Main: 2}), "tombstone error")
 
-	_, _, _, err = ti.Get([]byte("foo"), 2)
-	if !errors.Is(err, ErrRevisionNotFound) {
-		t.Errorf("get error = %v, want ErrRevisionNotFound", err)
-	}
-	err = ti.Tombstone([]byte("foo"), Revision{Main: 3})
-	if !errors.Is(err, ErrRevisionNotFound) {
-		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
-	}
+	_, _, _, err := ti.Get([]byte("foo"), 2)
+	require.ErrorIsf(t, err, ErrRevisionNotFound, "get error = %v, want ErrRevisionNotFound", err)
+	assert.ErrorIsf(t, ti.Tombstone([]byte("foo"), Revision{Main: 3}), ErrRevisionNotFound, "tombstone error")
 }
 
 func TestIndexRevision(t *testing.T) {
@@ -224,13 +204,9 @@ func TestIndexRevision(t *testing.T) {
 	}
 	for i, tt := range tests {
 		revs, _ := ti.Revisions(tt.key, tt.end, tt.atRev, tt.limit)
-		if !reflect.DeepEqual(revs, tt.wrevs) {
-			t.Errorf("#%d limit %d: revs = %+v, want %+v", i, tt.limit, revs, tt.wrevs)
-		}
+		assert.Truef(t, reflect.DeepEqual(revs, tt.wrevs), "#%d limit %d: revs = %+v, want %+v", i, tt.limit, revs, tt.wrevs)
 		count := ti.CountRevisions(tt.key, tt.end, tt.atRev)
-		if count != tt.wcounts {
-			t.Errorf("#%d: count = %d, want %v", i, count, tt.wcounts)
-		}
+		assert.Equalf(t, count, tt.wcounts, "#%d: count = %d, want %v", i, count, tt.wcounts)
 	}
 }
 

@@ -16,13 +16,14 @@ package mvcc
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -45,21 +46,16 @@ func TestWatcherWatchID(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		id, _ := w.Watch(0, []byte("foo"), nil, 0)
-		if _, ok := idm[id]; ok {
-			t.Errorf("#%d: id %d exists", i, id)
-		}
+		_, ok := idm[id]
+		assert.Falsef(t, ok, "#%d: id %d exists", i, id)
 		idm[id] = struct{}{}
 
 		s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
 
 		resp := <-w.Chan()
-		if resp.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
-		}
+		assert.Equalf(t, resp.WatchID, id, "#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 
-		if err := w.Cancel(id); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, w.Cancel(id))
 	}
 
 	s.Put([]byte("foo2"), []byte("bar"), lease.NoLease)
@@ -67,19 +63,13 @@ func TestWatcherWatchID(t *testing.T) {
 	// unsynced watchers
 	for i := 10; i < 20; i++ {
 		id, _ := w.Watch(0, []byte("foo2"), nil, 1)
-		if _, ok := idm[id]; ok {
-			t.Errorf("#%d: id %d exists", i, id)
-		}
+		_, ok := idm[id]
+		assert.Falsef(t, ok, "#%d: id %d exists", i, id)
 		idm[id] = struct{}{}
 
 		resp := <-w.Chan()
-		if resp.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
-		}
-
-		if err := w.Cancel(id); err != nil {
-			t.Error(err)
-		}
+		assert.Equalf(t, resp.WatchID, id, "#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
+		assert.NoError(t, w.Cancel(id))
 	}
 }
 
@@ -109,9 +99,7 @@ func TestWatcherRequestsCustomID(t *testing.T) {
 	for i, tcase := range tt {
 		id, err := w.Watch(tcase.givenID, []byte("foo"), nil, 0)
 		if tcase.expectedErr != nil || err != nil {
-			if !errors.Is(err, tcase.expectedErr) {
-				t.Errorf("expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
-			}
+			assert.ErrorIsf(t, err, tcase.expectedErr, "expected get error %q in test case %q, got %q", tcase.expectedErr, i, err)
 		} else if tcase.expectedID != id {
 			t.Errorf("expected to create ID %d, got %d in test case %d", tcase.expectedID, id, i)
 		}
@@ -135,29 +123,20 @@ func TestWatcherWatchPrefix(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		id, _ := w.Watch(0, keyWatch, keyEnd, 0)
-		if _, ok := idm[id]; ok {
-			t.Errorf("#%d: unexpected duplicated id %x", i, id)
-		}
+		_, ok := idm[id]
+		assert.Falsef(t, ok, "#%d: unexpected duplicated id %x", i, id)
 		idm[id] = struct{}{}
 
 		s.Put(keyPut, val, lease.NoLease)
 
 		resp := <-w.Chan()
-		if resp.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
-		}
+		assert.Equalf(t, resp.WatchID, id, "#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 
-		if err := w.Cancel(id); err != nil {
-			t.Errorf("#%d: unexpected cancel error %v", i, err)
-		}
+		require.NoErrorf(t, w.Cancel(id), "#%d: unexpected cancel error", i)
 
-		if len(resp.Events) != 1 {
-			t.Errorf("#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
-		}
+		assert.Lenf(t, resp.Events, 1, "#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
 		if len(resp.Events) == 1 {
-			if !bytes.Equal(resp.Events[0].Kv.Key, keyPut) {
-				t.Errorf("#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut)
-			}
+			assert.Truef(t, bytes.Equal(resp.Events[0].Kv.Key, keyPut), "#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut)
 		}
 	}
 
@@ -167,27 +146,18 @@ func TestWatcherWatchPrefix(t *testing.T) {
 	// unsynced watchers
 	for i := 10; i < 15; i++ {
 		id, _ := w.Watch(0, keyWatch1, keyEnd1, 1)
-		if _, ok := idm[id]; ok {
-			t.Errorf("#%d: id %d exists", i, id)
-		}
+		_, ok := idm[id]
+		assert.Falsef(t, ok, "#%d: id %d exists", i, id)
 		idm[id] = struct{}{}
 
 		resp := <-w.Chan()
-		if resp.WatchID != id {
-			t.Errorf("#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
-		}
+		assert.Equalf(t, resp.WatchID, id, "#%d: watch id in event = %d, want %d", i, resp.WatchID, id)
 
-		if err := w.Cancel(id); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, w.Cancel(id))
 
-		if len(resp.Events) != 1 {
-			t.Errorf("#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
-		}
+		assert.Lenf(t, resp.Events, 1, "#%d: len(resp.Events) got = %d, want = 1", i, len(resp.Events))
 		if len(resp.Events) == 1 {
-			if !bytes.Equal(resp.Events[0].Kv.Key, keyPut1) {
-				t.Errorf("#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut1)
-			}
+			assert.Truef(t, bytes.Equal(resp.Events[0].Kv.Key, keyPut1), "#%d: resp.Events got = %s, want = %s", i, resp.Events[0].Kv.Key, keyPut1)
 		}
 	}
 }
@@ -202,16 +172,13 @@ func TestWatcherWatchWrongRange(t *testing.T) {
 	w := s.NewWatchStream()
 	defer w.Close()
 
-	if _, err := w.Watch(0, []byte("foa"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
-		t.Fatalf("key == end range given; expected ErrEmptyWatcherRange, got %+v", err)
-	}
-	if _, err := w.Watch(0, []byte("fob"), []byte("foa"), 1); !errors.Is(err, ErrEmptyWatcherRange) {
-		t.Fatalf("key > end range given; expected ErrEmptyWatcherRange, got %+v", err)
-	}
+	_, err := w.Watch(0, []byte("foa"), []byte("foa"), 1)
+	require.ErrorIsf(t, err, ErrEmptyWatcherRange, "key == end range given; expected ErrEmptyWatcherRange, got %+v", err)
+	_, err = w.Watch(0, []byte("fob"), []byte("foa"), 1)
+	require.ErrorIsf(t, err, ErrEmptyWatcherRange, "key > end range given; expected ErrEmptyWatcherRange, got %+v", err)
 	// watch request with 'WithFromKey' has empty-byte range end
-	if id, _ := w.Watch(0, []byte("foo"), []byte{}, 1); id != 0 {
-		t.Fatalf("\x00 is range given; id expected 0, got %d", id)
-	}
+	id, _ := w.Watch(0, []byte("foo"), []byte{}, 1)
+	require.Zerof(t, id, "\x00 is range given; id expected 0, got %d", id)
 }
 
 func TestWatchDeleteRange(t *testing.T) {
@@ -244,9 +211,7 @@ func TestWatchDeleteRange(t *testing.T) {
 
 	select {
 	case r := <-w.Chan():
-		if !reflect.DeepEqual(r.Events, we) {
-			t.Errorf("event = %v, want %v", r.Events, we)
-		}
+		assert.Truef(t, reflect.DeepEqual(r.Events, we), "event = %v, want %v", r.Events, we)
 	case <-time.After(10 * time.Second):
 		t.Fatal("failed to receive event after 10 seconds!")
 	}
@@ -278,15 +243,10 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 
 	for i, tt := range tests {
 		gerr := w.Cancel(tt.cancelID)
-
-		if !errors.Is(gerr, tt.werr) {
-			t.Errorf("#%d: err = %v, want %v", i, gerr, tt.werr)
-		}
+		require.ErrorIsf(t, gerr, tt.werr, "#%d: err = %v, want %v", i, gerr, tt.werr)
 	}
 
-	if l := len(w.(*watchStream).cancels); l != 0 {
-		t.Errorf("cancels = %d, want 0", l)
-	}
+	assert.Empty(t, w.(*watchStream).cancels)
 }
 
 // TestWatcherRequestProgress ensures synced watcher can correctly
@@ -326,9 +286,7 @@ func TestWatcherRequestProgress(t *testing.T) {
 	wrs := WatchResponse{WatchID: id, Revision: 2}
 	select {
 	case resp := <-w.Chan():
-		if !reflect.DeepEqual(resp, wrs) {
-			t.Fatalf("got %+v, expect %+v", resp, wrs)
-		}
+		require.Truef(t, reflect.DeepEqual(resp, wrs), "got %+v, expect %+v", resp, wrs)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive progress")
 	}
@@ -365,9 +323,7 @@ func TestWatcherRequestProgressAll(t *testing.T) {
 	wrs := WatchResponse{WatchID: clientv3.InvalidWatchID, Revision: 2}
 	select {
 	case resp := <-w.Chan():
-		if !reflect.DeepEqual(resp, wrs) {
-			t.Fatalf("got %+v, expect %+v", resp, wrs)
-		}
+		require.Truef(t, reflect.DeepEqual(resp, wrs), "got %+v, expect %+v", resp, wrs)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive progress")
 	}

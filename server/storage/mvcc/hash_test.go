@@ -192,18 +192,10 @@ func TestHasherStore(t *testing.T) {
 
 	for _, want := range hashes {
 		got, _, err := s.HashByRev(want.Revision)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if want.Hash != got.Hash {
-			t.Errorf("Expected stored hash to match, got: %d, expected: %d", want.Hash, got.Hash)
-		}
-		if want.Revision != got.Revision {
-			t.Errorf("Expected stored revision to match, got: %d, expected: %d", want.Revision, got.Revision)
-		}
-		if want.CompactRevision != got.CompactRevision {
-			t.Errorf("Expected stored compact revision to match, got: %d, expected: %d", want.CompactRevision, got.CompactRevision)
-		}
+		require.NoError(t, err)
+		assert.Equalf(t, want.Hash, got.Hash, "Expected stored hash to match, got: %d, expected: %d", want.Hash, got.Hash)
+		assert.Equalf(t, want.Revision, got.Revision, "Expected stored revision to match, got: %d, expected: %d", want.Revision, got.Revision)
+		assert.Equalf(t, want.CompactRevision, got.CompactRevision, "Expected stored compact revision to match, got: %d, expected: %d", want.CompactRevision, got.CompactRevision)
 	}
 }
 
@@ -222,13 +214,9 @@ func TestHasherStoreFull(t *testing.T) {
 	// Hash for old revision should be discarded as storage is already full
 	s.Store(KeyValueHash{Revision: minRevision - 1})
 	hash, _, err := s.HashByRev(minRevision - 1)
-	if err == nil {
-		t.Errorf("Expected an error as old revision should be discarded, got: %v", hash)
-	}
+	require.Errorf(t, err, "Expected an error as old revision should be discarded, got: %v", hash)
 	// Hash for new revision should be stored even when storage is full
 	s.Store(KeyValueHash{Revision: maxRevision + 1})
 	_, _, err = s.HashByRev(maxRevision + 1)
-	if err != nil {
-		t.Errorf("Didn't expect error for new revision, err: %v", err)
-	}
+	assert.NoErrorf(t, err, "Didn't expect error for new revision, err: %v", err)
 }
