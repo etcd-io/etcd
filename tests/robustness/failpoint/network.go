@@ -131,9 +131,10 @@ func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 		if err != nil {
 			return err
 		}
-		t.Logf("clusterRevision: %d, blackholedMemberRevision: %d", clusterRevision, blackholedMemberRevision)
+		minEntriesToGuarantee := entriesToGuaranteeSnapshot(*clus.Cfg)
+		t.Logf("clusterRevision: %d, blackholedMemberRevision: %d, minEntriesToGuarantee: %d", clusterRevision, blackholedMemberRevision, minEntriesToGuarantee)
 		// Blackholed member has to be sufficiently behind to trigger snapshot transfer.
-		if clusterRevision-blackholedMemberRevision > int64(entriesToGuaranteeSnapshot(*clus.Cfg)) {
+		if clusterRevision-blackholedMemberRevision > int64(minEntriesToGuarantee) {
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
