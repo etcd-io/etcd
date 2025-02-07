@@ -120,3 +120,7 @@ func BytesToBucketKey(bytes []byte) BucketKey {
 func isTombstone(b []byte) bool {
 	return len(b) == markedRevBytesLen && b[markBytePosition] == markTombstone
 }
+
+func IsTombstone(b []byte) bool {
+	return isTombstone(b)
+}

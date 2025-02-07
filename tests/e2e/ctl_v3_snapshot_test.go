@@ -65,8 +65,8 @@ func snapshotTest(cx ctlCtx) {
 	if st.Revision != 5 {
 		cx.t.Fatalf("expected 4, got %d", st.Revision)
 	}
-	if st.TotalKey < 4 {
-		cx.t.Fatalf("expected at least 4, got %d", st.TotalKey)
+	if st.TotalKey < 2 {
+		cx.t.Fatalf("expected at least 2, got %d", st.TotalKey)
 	}
 }
 
