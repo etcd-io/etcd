@@ -17,6 +17,7 @@ package v3rpc
 import (
 	"context"
 	"testing"
+	"math/rand"
 
 	"go.uber.org/zap/zaptest"
 
@@ -70,6 +71,9 @@ func FuzzTxnRangeRequest(f *testing.F) {
 				RequestRange: fuzzRequest,
 			},
 		})
+		if rand.Intn(10) == 0 {
+			t.Error("random error")
+		}
 	})
 }
 
