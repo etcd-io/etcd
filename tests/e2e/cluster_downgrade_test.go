@@ -46,6 +46,7 @@ const (
 	cancelRightBeforeEnable
 	cancelRightAfterEnable
 	cancelAfterDowngrading
+	cancelAfterDowngradingAndUpgrading
 )
 
 func TestDowngradeUpgradeClusterOf1(t *testing.T) {
@@ -86,6 +87,14 @@ func TestDowngradeCancellationAfterDowngrading1InClusterOf3(t *testing.T) {
 
 func TestDowngradeCancellationAfterDowngrading2InClusterOf3(t *testing.T) {
 	testDowngradeUpgrade(t, 2, 3, false, cancelAfterDowngrading)
+}
+
+func TestDowngradeCancellationAfterDowngradingAndUpgrading1InClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 1, 3, false, cancelAfterDowngradingAndUpgrading)
+}
+
+func TestDowngradeCancellationAfterDowngradingAndUpgrading2InClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 2, 3, false, cancelAfterDowngradingAndUpgrading)
 }
 
 func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterSize int, triggerSnapshot bool, triggerCancellation CancellationState) {
@@ -182,7 +191,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	if triggerCancellation == cancelAfterDowngrading {
 		e2e.DowngradeCancel(t, epc)
 		t.Log("Downgrade cancelled, validating if cluster is in the right state")
-		e2e.ValidateMemberVersions(t, epc, generatePartialCancellationVersions(clusterSize, membersToChange, lastClusterVersion))
+		e2e.ValidateMemberVersions(t, epc, generateCancellationVersionsAfterDowngrading(clusterSize, membersToChange, lastClusterVersion))
 	}
 
 	t.Log("Adding learner to test membership, but avoid breaking quorum")
@@ -202,6 +211,12 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, lastClusterVersion, currentVersion)
 	require.NoError(t, err)
 	t.Log("Upgrade complete")
+
+	if triggerCancellation == cancelAfterDowngradingAndUpgrading {
+		e2e.DowngradeCancel(t, epc)
+		t.Log("Downgrade cancelled, validating if cluster is in the right state")
+		e2e.ValidateMemberVersions(t, epc, generateIdenticalVersions(clusterSize, currentVersion))
+	}
 
 	afterMembers, afterKV = getMembersAndKeys(t, cc)
 	assert.Equal(t, beforeKV.Kvs, afterKV.Kvs)
@@ -313,7 +328,7 @@ func generateIdenticalVersions(clusterSize int, ver *semver.Version) []*version.
 	return ret
 }
 
-func generatePartialCancellationVersions(clusterSize int, membersToChange []int, ver *semver.Version) []*version.Versions {
+func generateCancellationVersionsAfterDowngrading(clusterSize int, membersToChange []int, ver *semver.Version) []*version.Versions {
 	ret := make([]*version.Versions, clusterSize)
 
 	for i := range clusterSize {
