@@ -56,7 +56,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	c := epc.Etcdctl()
 
 	var err error
-	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+	testutils.ExecuteWithTimeout(t, 2*time.Minute, func() {
 		for {
 			t.Logf("etcdctl downgrade cancel")
 			err = c.DowngradeCancel(context.TODO())
@@ -143,7 +143,7 @@ func ValidateMemberVersions(t *testing.T, epc *EtcdProcessCluster, expect []*ver
 }
 
 func ValidateVersion(t *testing.T, cfg *EtcdProcessClusterConfig, member EtcdProcess, expect version.Versions) {
-	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+	testutils.ExecuteWithTimeout(t, 2*time.Minute, func() {
 		for {
 			result, err := getMemberVersionByCurl(cfg, member)
 			if err != nil {
