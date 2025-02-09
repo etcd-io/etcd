@@ -24,7 +24,6 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
@@ -160,7 +159,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	}
 
 	membersToChange := rand.Perm(len(epc.Procs))[:numberOfMembersToDowngrade]
-	t.Logf(fmt.Sprintln("Elect members for operations"), zap.Any("members", membersToChange))
+	t.Logf("Elect members for operations on members: %v", membersToChange)
 
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
 	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, currentVersion, lastClusterVersion)
