@@ -72,6 +72,6 @@ jobs:
           # Ref: https://github.com/aquasecurity/trivy-action/issues/389
           TRIVY_DB_REPOSITORY: 'public.ecr.aws/aquasecurity/trivy-db:2'
       - name: upload scan results
-        uses: github/codeql-action/upload-sarif@dd746615b3b9d728a6a37ca2045b68ca76d4841a # v3.28.8
+        uses: github/codeql-action/upload-sarif@9e8d0789d4a0fa9ceb6b1738f7e269594bdd67f0 # v3.28.9
         with:
           sarif_file: 'trivy-results-${{ matrix.platforms }}.sarif'
