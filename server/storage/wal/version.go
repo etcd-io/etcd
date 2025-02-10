@@ -29,9 +29,15 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
+// Version defines the wal version interface.
+type Version interface {
+	// MinimalEtcdVersion returns minimal etcd version able to interpret WAL log.
+	MinimalEtcdVersion() *semver.Version
+}
+
 // ReadWALVersion reads remaining entries from opened WAL and returns struct
 // that implements schema.WAL interface.
-func ReadWALVersion(w *WAL) (*walVersion, error) {
+func ReadWALVersion(w *WAL) (Version, error) {
 	_, _, ents, err := w.ReadAll()
 	if err != nil {
 		return nil, err
