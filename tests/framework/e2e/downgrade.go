@@ -84,7 +84,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 
 func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
-	t.Logf(fmt.Sprintln("Elect members for operations"), zap.Any("members", membersToChange))
+	t.Logf("Elect members for operations on members: %v", membersToChange)
 
 	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, currentVersion, targetVersion)
 }
