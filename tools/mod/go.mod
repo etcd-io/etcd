@@ -12,7 +12,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.63.4
 	github.com/google/addlicense v1.1.1
-	github.com/google/yamlfmt v0.15.0
+	github.com/google/yamlfmt v0.16.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
@@ -50,7 +50,7 @@ require (
 	github.com/blizzy78/varnamelen v0.8.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.7.1 // indirect
 	github.com/bombsimon/wsl/v4 v4.5.0 // indirect
-	github.com/braydonk/yaml v0.7.0 // indirect
+	github.com/braydonk/yaml v0.9.0 // indirect
 	github.com/breml/bidichk v0.3.2 // indirect
 	github.com/breml/errchkjson v0.4.0 // indirect
 	github.com/butuzov/ireturn v0.3.1 // indirect
