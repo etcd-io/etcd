@@ -167,10 +167,10 @@ type ServerConfig struct {
 
 	EnableGRPCGateway bool
 
-	// ExperimentalEnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
-	ExperimentalEnableDistributedTracing bool
-	// ExperimentalTracerOptions are options for OpenTelemetry gRPC interceptor.
-	ExperimentalTracerOptions []otelgrpc.Option
+	// EnableDistributedTracing enables distributed tracing using OpenTelemetry protocol.
+	EnableDistributedTracing bool
+	// TracerOptions are options for OpenTelemetry gRPC interceptor.
+	TracerOptions []otelgrpc.Option
 
 	WatchProgressNotifyInterval time.Duration
 
