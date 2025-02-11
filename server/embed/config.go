@@ -102,9 +102,17 @@ const (
 	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
 
 	// ExperimentalDistributedTracingAddress is the default collector address.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DefaultDistributedTracingAddress instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingAddress = "localhost:4317"
+	// DefaultDistributedTracingAddress is the default collector address.
+	DefaultDistributedTracingAddress = "localhost:4317"
 	// ExperimentalDistributedTracingServiceName is the default etcd service name.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DefaultDistributedTracingServiceName instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceName = "etcd"
+	// DefaultDistributedTracingServiceName is the default etcd service name.
+	DefaultDistributedTracingServiceName = "etcd"
 
 	DefaultExperimentalTxnModeWriteWithSharedBuffer = true
 
@@ -151,6 +159,11 @@ var (
 		"experimental-compaction-sleep-interval":            "compaction-sleep-interval",
 		"experimental-downgrade-check-time":                 "downgrade-check-time",
 		"experimental-peer-skip-client-san-verification":    "peer-skip-client-san-verification",
+		"experimental-enable-distributed-tracing":           "enable-distributed-tracing",
+		"experimental-distributed-tracing-address":          "distributed-tracing-address",
+		"experimental-distributed-tracing-service-name":     "distributed-tracing-service-name",
+		"experimental-distributed-tracing-instance-id":      "distributed-tracing-instance-id",
+		"experimental-distributed-tracing-sampling-rate":    "distributed-tracing-sampling-rate",
 	}
 )
 
@@ -451,21 +464,47 @@ type Config struct {
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
 	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use EnableDistributedTracing instead.
+	// TODO: delete in v3.7
 	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
+	// EnableDistributedTracing indicates if tracing using OpenTelemetry is enabled.
+	EnableDistributedTracing bool `json:"enable-distributed-tracing"`
 	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
 	// Can only be set if ExperimentalEnableDistributedTracing is true.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingAddress instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
+	// DistributedTracingAddress is the address of the OpenTelemetry Collector.
+	// Can only be set if EnableDistributedTracing is true.
+	DistributedTracingAddress string `json:"distributed-tracing-address"`
 	// ExperimentalDistributedTracingServiceName is the name of the service.
 	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingServiceName instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
+	// DistributedTracingServiceName is the name of the service.
+	// Can only be used if EnableDistributedTracing is true.
+	DistributedTracingServiceName string `json:"distributed-tracing-service-name"`
 	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
 	// This ID must be unique, as helps to distinguish instances of the same service
 	// that exist at the same time.
 	// Can only be used if ExperimentalEnableDistributedTracing is true.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingServiceInstanceID instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
+	// DistributedTracingServiceInstanceID is the ID key of the service.
+	// This ID must be unique, as helps to distinguish instances of the same service
+	// that exist at the same time.
+	// Can only be used if EnableDistributedTracing is true.
+	DistributedTracingServiceInstanceID string `json:"distributed-tracing-instance-id"`
 	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
+	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingSamplingRatePerMillion instead.
+	// TODO: delete in v3.7
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
+	// DistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
+	// Defaults to 0.
+	DistributedTracingSamplingRatePerMillion int `json:"distributed-tracing-sampling-rate"`
 
 	// ExperimentalPeerSkipClientSanVerification determines whether to skip verification of SAN field
 	// in client certificate for peer connections.
@@ -656,8 +695,10 @@ func NewConfig() *Config {
 		ExperimentalMaxLearners: membership.DefaultMaxLearners,
 
 		ExperimentalTxnModeWriteWithSharedBuffer:  DefaultExperimentalTxnModeWriteWithSharedBuffer,
-		ExperimentalDistributedTracingAddress:     ExperimentalDistributedTracingAddress,
-		ExperimentalDistributedTracingServiceName: ExperimentalDistributedTracingServiceName,
+		ExperimentalDistributedTracingAddress:     DefaultDistributedTracingAddress,
+		DistributedTracingAddress:                 DefaultDistributedTracingAddress,
+		ExperimentalDistributedTracingServiceName: DefaultDistributedTracingServiceName,
+		DistributedTracingServiceName:             DefaultDistributedTracingServiceName,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
 		// TODO: delete in v3.7
@@ -830,11 +871,20 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics")
 
 	// experimental distributed tracing
-	fs.BoolVar(&cfg.ExperimentalEnableDistributedTracing, "experimental-enable-distributed-tracing", false, "Enable experimental distributed  tracing using OpenTelemetry Tracing.")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingAddress, "experimental-distributed-tracing-address", ExperimentalDistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag).")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceName, "experimental-distributed-tracing-service-name", ExperimentalDistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd.")
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceInstanceID, "experimental-distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance.")
-	fs.IntVar(&cfg.ExperimentalDistributedTracingSamplingRatePerMillion, "experimental-distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag).")
+	fs.BoolVar(&cfg.ExperimentalEnableDistributedTracing, "experimental-enable-distributed-tracing", false, "Enable experimental distributed tracing using OpenTelemetry Tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --enable-distributed-tracing instead.")
+	fs.BoolVar(&cfg.EnableDistributedTracing, "enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry Tracing.")
+
+	fs.StringVar(&cfg.ExperimentalDistributedTracingAddress, "experimental-distributed-tracing-address", cfg.ExperimentalDistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-address instead.")
+	fs.StringVar(&cfg.DistributedTracingAddress, "distributed-tracing-address", cfg.DistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
+
+	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceName, "experimental-distributed-tracing-service-name", cfg.ExperimentalDistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-service-name instead.")
+	fs.StringVar(&cfg.DistributedTracingServiceName, "distributed-tracing-service-name", cfg.DistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd.")
+
+	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceInstanceID, "experimental-distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-instance-id instead.")
+	fs.StringVar(&cfg.DistributedTracingServiceInstanceID, "distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance.")
+
+	fs.IntVar(&cfg.ExperimentalDistributedTracingSamplingRatePerMillion, "experimental-distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-sampling-rate instead.")
+	fs.IntVar(&cfg.DistributedTracingSamplingRatePerMillion, "distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
 
 	// auth
 	fs.StringVar(&cfg.AuthToken, "auth-token", cfg.AuthToken, "Specify auth token specific options.")
@@ -1206,8 +1256,8 @@ func (cfg *Config) Validate() error {
 	}
 
 	// Validate distributed tracing configuration but only if enabled.
-	if cfg.ExperimentalEnableDistributedTracing {
-		if err := validateTracingConfig(cfg.ExperimentalDistributedTracingSamplingRatePerMillion); err != nil {
+	if cfg.EnableDistributedTracing {
+		if err := validateTracingConfig(cfg.DistributedTracingSamplingRatePerMillion); err != nil {
 			return fmt.Errorf("distributed tracing configurition is not valid: (%w)", err)
 		}
 	}
