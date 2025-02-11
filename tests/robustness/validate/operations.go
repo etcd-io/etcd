@@ -32,10 +32,31 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) (result porcupine.CheckResult, visualize func(basepath string) error) {
+type Results struct {
+	Info         porcupine.LinearizationInfo
+	Model        porcupine.Model
+	Linearizable porcupine.CheckResult
+	Lg           *zap.Logger // TODO: Remove logger from struct and instead of making it an argument for Visualize
+}
+
+func (r Results) Visualize(path string) error {
+	r.Lg.Info("Saving visualization", zap.String("path", path))
+	err := porcupine.VisualizePath(r.Model, r.Info, path)
+	if err != nil {
+		return fmt.Errorf("failed to visualize, err: %w", err)
+	}
+	return nil
+}
+
+func validateLinearizableOperationsAndVisualize(
+	lg *zap.Logger,
+	operations []porcupine.Operation,
+	timeout time.Duration,
+) (results Results) {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
 	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+
 	switch result {
 	case porcupine.Illegal:
 		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
@@ -46,13 +67,11 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	default:
 		panic(fmt.Sprintf("Unknown Linearization result %s", result))
 	}
-	return result, func(path string) error {
-		lg.Info("Saving visualization", zap.String("path", path))
-		err := porcupine.VisualizePath(model.NonDeterministicModel, info, path)
-		if err != nil {
-			return fmt.Errorf("failed to visualize, err: %w", err)
-		}
-		return nil
+	return Results{
+		Info:         info,
+		Model:        model.NonDeterministicModel,
+		Linearizable: result,
+		Lg:           lg,
 	}
 }
 
