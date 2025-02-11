@@ -81,7 +81,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CatchUpEntries",
 			config: NewConfig(WithSnapshotCatchUpEntries(100)),
 			expectArgsContain: []string{
-				"--snapshot-catchup-entries=100",
+				"--experimental-snapshot-catchup-entries=100",
 			},
 			mockBinaryVersion: &v3_5_14,
 		},
