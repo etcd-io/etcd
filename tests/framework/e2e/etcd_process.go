@@ -31,6 +31,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/pkg/v3/proxy"
@@ -532,11 +533,10 @@ func CouldSetSnapshotCatchupEntries(execPath string) bool {
 	return v.Compare(v3_5_14) >= 0
 }
 
-func UsesExperimentalSnapshotCatchupEntriesFlag(execPath string) bool {
+func IsSnapshotCatchupEntriesFlagAvailable(execPath string) bool {
 	v, err := GetVersionFromBinary(execPath)
 	if err != nil {
 		return false
 	}
-	v3_6 := semver.Version{Major: 3, Minor: 6}
-	return v.LessThan(v3_6)
+	return !v.LessThan(version.V3_6)
 }

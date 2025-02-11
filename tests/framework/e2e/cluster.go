@@ -457,10 +457,6 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		if cfg.Version == LastVersion && !CouldSetSnapshotCatchupEntries(BinPath.EtcdLastRelease) {
 			return nil, fmt.Errorf("cannot set SnapshotCatchUpEntries for last etcd version: %s", BinPath.EtcdLastRelease)
 		}
-		if cfg.Version != CurrentVersion && UsesExperimentalSnapshotCatchupEntriesFlag(BinPath.EtcdLastRelease) {
-			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
-			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
-		}
 	}
 
 	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
@@ -639,26 +635,13 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		args = append(args, "--discovery="+cfg.Discovery)
 	}
 
-	var execPath string
-	switch cfg.Version {
-	case CurrentVersion:
-		execPath = BinPath.Etcd
-	case MinorityLastVersion:
-		if i <= cfg.ClusterSize/2 {
-			execPath = BinPath.Etcd
-		} else {
-			execPath = BinPath.EtcdLastRelease
+	execPath := cfg.binaryPath(i)
+
+	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
+		if !IsSnapshotCatchupEntriesFlagAvailable(execPath) {
+			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
+			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
 		}
-	case QuorumLastVersion:
-		if i <= cfg.ClusterSize/2 {
-			execPath = BinPath.EtcdLastRelease
-		} else {
-			execPath = BinPath.Etcd
-		}
-	case LastVersion:
-		execPath = BinPath.EtcdLastRelease
-	default:
-		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
 	}
 
 	defaultValues := values(*embed.NewConfig())
@@ -700,6 +683,32 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		Proxy:               proxyCfg,
 		LazyFSEnabled:       cfg.LazyFSEnabled,
 	}
+}
+
+func (cfg *EtcdProcessClusterConfig) binaryPath(i int) string {
+	var execPath string
+	switch cfg.Version {
+	case CurrentVersion:
+		execPath = BinPath.Etcd
+	case MinorityLastVersion:
+		if i <= cfg.ClusterSize/2 {
+			execPath = BinPath.Etcd
+		} else {
+			execPath = BinPath.EtcdLastRelease
+		}
+	case QuorumLastVersion:
+		if i <= cfg.ClusterSize/2 {
+			execPath = BinPath.EtcdLastRelease
+		} else {
+			execPath = BinPath.Etcd
+		}
+	case LastVersion:
+		execPath = BinPath.EtcdLastRelease
+	default:
+		panic(fmt.Sprintf("Unknown cluster version %v", cfg.Version))
+	}
+
+	return execPath
 }
 
 func values(cfg embed.Config) map[string]string {
