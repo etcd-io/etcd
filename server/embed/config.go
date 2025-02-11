@@ -156,6 +156,7 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
 		"experimental-max-learners":                         "max-learners",
 		"experimental-memory-mlock":                         "memory-mlock",
+		"experimental-snapshot-catchup-entries":             "snapshot-catchup-entries",
 		"experimental-compaction-sleep-interval":            "compaction-sleep-interval",
 		"experimental-downgrade-check-time":                 "downgrade-check-time",
 		"experimental-peer-skip-client-san-verification":    "peer-skip-client-san-verification",
@@ -199,12 +200,23 @@ type Config struct {
 	// TODO: remove it in 3.7.
 	SnapshotCount uint64 `json:"snapshot-count"`
 
-	// SnapshotCatchUpEntries is the number of entries for a slow follower
+	// ExperimentalSnapshotCatchUpEntries is the number of entries for a slow follower
 	// to catch-up after compacting the raft storage entries.
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
-	SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+	// Deprecated in v3.6 and will be removed in v3.7.
+	// TODO: remove in v3.7.
+	// Note we made a mistake in https://github.com/etcd-io/etcd/pull/15033. The json tag
+	// `*-catch-up-*` isn't consistent with the command line flag `*-catchup-*`.
+	ExperimentalSnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+
+	// SnapshotCatchUpEntries is the number of entires for a slow follower
+	// to catch-up after compacting the raft storage entries.
+	// We expect the follower has a millisecond level latency with the leader.
+	// The max throughput is around 10K. Keep a 5K entries is enough for helping
+	// follower to catch up.
+	SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 
 	// MaxSnapFiles is deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: remove it in 3.7.
@@ -631,8 +643,9 @@ func NewConfig() *Config {
 
 		Name: DefaultName,
 
-		SnapshotCount:          etcdserver.DefaultSnapshotCount,
-		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+		SnapshotCount:                      etcdserver.DefaultSnapshotCount,
+		ExperimentalSnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
+		SnapshotCatchUpEntries:             etcdserver.DefaultSnapshotCatchUpEntries,
 
 		MaxTxnOps:            DefaultMaxTxnOps,
 		MaxRequestBytes:      DefaultMaxRequestBytes,
@@ -935,7 +948,8 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// TODO: delete in v3.7
 	fs.IntVar(&cfg.ExperimentalMaxLearners, "experimental-max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership. Deprecated in v3.6 and will be decommissioned in v3.7. Use --max-learners instead.")
 	fs.IntVar(&cfg.MaxLearners, "max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
-	fs.Uint64Var(&cfg.SnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries.")
+	fs.Uint64Var(&cfg.ExperimentalSnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.ExperimentalSnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries. Deprecated in v3.6 and will be decommissioned in v3.7. Use --snapshot-catchup-entries instead.")
+	fs.Uint64Var(&cfg.SnapshotCatchUpEntries, "snapshot-catchup-entries", cfg.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries.")
 
 	// unsafe
 	fs.BoolVar(&cfg.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")
@@ -992,6 +1006,15 @@ func (cfg *configYAML) configFromFile(path string) error {
 		for k := range peerTransportSecurityMap {
 			cfg.FlagsExplicitlySet[fmt.Sprintf("peer-%s", k)] = true
 		}
+	}
+
+	// attempt to fix a bug introduced in https://github.com/etcd-io/etcd/pull/15033
+	// both `experimental-snapshot-catch-up-entries` and `experimental-snapshot-catchup-entries` refer to the same field,
+	// 	map the YAML field "experimental-snapshot-catch-up-entries" to the flag "experimental-snapshot-catchup-entries".
+	if val, ok := cfgMap["experimental-snapshot-catch-up-entries"]; ok {
+		cfgMap["experimental-snapshot-catchup-entries"] = val
+		cfg.ExperimentalSnapshotCatchUpEntries = uint64(val.(float64))
+		cfg.FlagsExplicitlySet["experimental-snapshot-catchup-entries"] = true
 	}
 
 	getBoolFlagVal := func(flagName string) *bool {
