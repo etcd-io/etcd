@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/features"
 )
 
@@ -67,7 +68,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 		MaxWALFiles            uint   `json:"max-wals"`
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
-		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+		SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 		ListenPeerURLs         string `json:"listen-peer-urls"`
 		ListenClientURLs       string `json:"listen-client-urls"`
 		ListenClientHTTPURLs   string `json:"listen-client-http-urls"`
@@ -318,6 +319,73 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 		if err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
 			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
 		}
+	}
+}
+
+// TestExperimentalSnapshotCatchUpEntriesFlagMigration tests the migration from
+// --experimental-snapshot-catch-up-entries to --snapshot-catch-up-entries
+func TestExperimentalSnapshotCatchUpEntriesFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                               string
+		snapshotCatchUpEntries             uint64
+		experimentalSnapshotCatchUpEntries uint64
+		wantErr                            bool
+		wantConfig                         uint64
+	}{
+		{
+			name:       "default",
+			wantConfig: etcdserver.DefaultSnapshotCatchUpEntries,
+		},
+		{
+			name:                               "cannot set both experimental flag and non experimental flag",
+			experimentalSnapshotCatchUpEntries: 1000,
+			snapshotCatchUpEntries:             2000,
+			wantErr:                            true,
+		},
+		{
+			name:                               "can set experimental flag",
+			experimentalSnapshotCatchUpEntries: 1000,
+			wantConfig:                         1000,
+		},
+		{
+			name:                   "can set non-experimental flag",
+			snapshotCatchUpEntries: 2000,
+			wantConfig:             2000,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalSnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries,omitempty"`
+				SnapshotCatchUpEntries             uint64 `json:"snapshot-catchup-entries,omitempty"`
+			}{}
+
+			if tc.snapshotCatchUpEntries > 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--snapshot-catchup-entries=%d", tc.snapshotCatchUpEntries))
+				yc.SnapshotCatchUpEntries = tc.snapshotCatchUpEntries
+			}
+
+			if tc.experimentalSnapshotCatchUpEntries > 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-snapshot-catchup-entries=%d", tc.experimentalSnapshotCatchUpEntries))
+				yc.ExperimentalSnapshotCatchUpEntries = tc.experimentalSnapshotCatchUpEntries
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.wantErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.wantConfig, cfgFromCmdLine.ec.SnapshotCatchUpEntries)
+			require.Equal(t, tc.wantConfig, cfgFromFile.ec.SnapshotCatchUpEntries)
+		})
 	}
 }
 
@@ -1274,6 +1342,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
 		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
+		ExperimentalSnapshotCatchUpEntries            uint64        `json:"experimental-snapshot-catch-up-entries,omitempty"`
 		ExperimentalCompactionSleepInterval           time.Duration `json:"experimental-compaction-sleep-interval,omitempty"`
 		ExperimentalDowngradeCheckTime                time.Duration `json:"experimental-downgrade-check-time,omitempty"`
 	}
@@ -1300,6 +1369,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
 				ExperimentalMaxLearners:                       1,
+				ExperimentalSnapshotCatchUpEntries:            1000,
 				ExperimentalCompactionSleepInterval:           30 * time.Second,
 				ExperimentalDowngradeCheckTime:                1 * time.Minute,
 			},
@@ -1312,6 +1382,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
 				"experimental-max-learners":                         {},
+				"experimental-snapshot-catchup-entries":             {},
 				"experimental-compaction-sleep-interval":            {},
 				"experimental-downgrade-check-time":                 {},
 			},
