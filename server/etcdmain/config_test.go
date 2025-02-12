@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/features"
 )
 
@@ -67,7 +68,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 		MaxWALFiles            uint   `json:"max-wals"`
 		Name                   string `json:"name"`
 		SnapshotCount          uint64 `json:"snapshot-count"`
-		SnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
+		SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 		ListenPeerURLs         string `json:"listen-peer-urls"`
 		ListenClientURLs       string `json:"listen-client-urls"`
 		ListenClientHTTPURLs   string `json:"listen-client-http-urls"`
@@ -318,6 +319,73 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 		if err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
 			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
 		}
+	}
+}
+
+// TestExperimentalSnapshotCatchUpEntriesFlagMigration tests the migration from
+// --experimental-snapshot-catch-up-entries to --snapshot-catch-up-entries
+func TestExperimentalSnapshotCatchUpEntriesFlagMigration(t *testing.T) {
+	testCases := []struct {
+		name                               string
+		snapshotCatchUpEntries             uint64
+		experimentalSnapshotCatchUpEntries uint64
+		wantErr                            bool
+		wantConfig                         uint64
+	}{
+		{
+			name:       "default",
+			wantConfig: etcdserver.DefaultSnapshotCatchUpEntries,
+		},
+		{
+			name:                               "cannot set both experimental flag and non experimental flag",
+			experimentalSnapshotCatchUpEntries: 1000,
+			snapshotCatchUpEntries:             2000,
+			wantErr:                            true,
+		},
+		{
+			name:                               "can set experimental flag",
+			experimentalSnapshotCatchUpEntries: 1000,
+			wantConfig:                         1000,
+		},
+		{
+			name:                   "can set non-experimental flag",
+			snapshotCatchUpEntries: 2000,
+			wantConfig:             2000,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalSnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries,omitempty"`
+				SnapshotCatchUpEntries             uint64 `json:"snapshot-catchup-entries,omitempty"`
+			}{}
+
+			if tc.snapshotCatchUpEntries > 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--snapshot-catchup-entries=%d", tc.snapshotCatchUpEntries))
+				yc.SnapshotCatchUpEntries = tc.snapshotCatchUpEntries
+			}
+
+			if tc.experimentalSnapshotCatchUpEntries > 0 {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-snapshot-catchup-entries=%d", tc.experimentalSnapshotCatchUpEntries))
+				yc.ExperimentalSnapshotCatchUpEntries = tc.experimentalSnapshotCatchUpEntries
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.wantErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatal("expect parse error")
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			require.Equal(t, tc.wantConfig, cfgFromCmdLine.ec.SnapshotCatchUpEntries)
+			require.Equal(t, tc.wantConfig, cfgFromFile.ec.SnapshotCatchUpEntries)
+		})
 	}
 }
 
@@ -1274,6 +1342,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
 		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
+		ExperimentalSnapshotCatchUpEntries            uint64        `json:"experimental-snapshot-catch-up-entries,omitempty"`
 		ExperimentalCompactionSleepInterval           time.Duration `json:"experimental-compaction-sleep-interval,omitempty"`
 		ExperimentalDowngradeCheckTime                time.Duration `json:"experimental-downgrade-check-time,omitempty"`
 	}
@@ -1300,6 +1369,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
 				ExperimentalMaxLearners:                       1,
+				ExperimentalSnapshotCatchUpEntries:            1000,
 				ExperimentalCompactionSleepInterval:           30 * time.Second,
 				ExperimentalDowngradeCheckTime:                1 * time.Minute,
 			},
@@ -1312,6 +1382,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
 				"experimental-max-learners":                         {},
+				"experimental-snapshot-catchup-entries":             {},
 				"experimental-compaction-sleep-interval":            {},
 				"experimental-downgrade-check-time":                 {},
 			},
@@ -1461,6 +1532,246 @@ func TestPeerSkipClientSanVerificationFlagMigration(t *testing.T) {
 					tc.expectedPeerSkipClientSanVerification,
 					cfgFromFile.ec.PeerTLSInfo.SkipClientSANVerify)
 			}
+		})
+	}
+}
+
+// TestDistributedTracingFlagsMigration tests the migration from
+// --experimental-distributed-tracing-* to --distributed-tracing-*
+// TODO: delete in v3.7
+func TestDistributedTracingFlagsMigration(t *testing.T) {
+	testCases := []struct {
+		name string
+
+		enableDistributedTracing                 string
+		distributedTracingAddress                string
+		distributedTracingServiceName            string
+		distributedTracingServiceInstanceID      string
+		distributedTracingSamplingRatePerMillion string
+
+		experimentalEnableDistributedTracing                 string
+		experimentalDistributedTracingAddress                string
+		experimentalDistributedTracingServiceName            string
+		experimentalDistributedTracingServiceInstanceID      string
+		experimentalDistributedTracingSamplingRatePerMillion string
+
+		expectedEnableDistributedTracing                 bool
+		expectedDistributedTracingAddress                string
+		expectedDistributedTracingServiceName            string
+		expectedDistributedTracingServiceInstanceID      string
+		expectedDistributedTracingSamplingRatePerMillion int
+
+		expectErr bool
+	}{
+		// cannot set both experimental flags and non-experimental flags
+		{
+			name:                                 "cannot set both experimental flag and non experimental flag 1",
+			enableDistributedTracing:             "true",
+			experimentalEnableDistributedTracing: "true",
+			expectErr:                            true,
+		},
+		{
+			name:                                  "cannot set both experimental flag and non experimental flag 2",
+			distributedTracingAddress:             "localhost:4317",
+			experimentalDistributedTracingAddress: "localhost:4318",
+			expectErr:                             true,
+		},
+		{
+			name:                          "cannot set both experimental flag and non experimental flag 3",
+			distributedTracingServiceName: "etcd1",
+			experimentalDistributedTracingServiceName: "etcd2",
+			expectErr: true,
+		},
+		{
+			name:                                "cannot set both experimental flag and non experimental flag 4",
+			distributedTracingServiceInstanceID: "fakeID",
+			experimentalDistributedTracingServiceInstanceID: "fakeID",
+			expectErr: true,
+		},
+		{
+			name:                                     "cannot set both experimental flag and non experimental flag 5",
+			distributedTracingSamplingRatePerMillion: "100",
+			experimentalDistributedTracingSamplingRatePerMillion: "100",
+			expectErr: true,
+		},
+		// can set either --experimental-enable-distributed-tracing or --enable-distributed-tracing
+		{
+			name:                                 "can set experimental-enable-distributed-tracing to true",
+			experimentalEnableDistributedTracing: "true",
+			expectedEnableDistributedTracing:     true,
+		},
+		{
+			name:                                 "can set experimental-enable-distributed-tracing to false",
+			experimentalEnableDistributedTracing: "false",
+			expectedEnableDistributedTracing:     false,
+		},
+		{
+			name:                             "can set enable-distributed-tracing to true",
+			enableDistributedTracing:         "true",
+			expectedEnableDistributedTracing: true,
+		},
+		{
+			name:                             "can set enable-distributed-tracing to false",
+			enableDistributedTracing:         "false",
+			expectedEnableDistributedTracing: false,
+		},
+		// can set either --experimental-distributed-tracing-address or --distributed-tracing-address
+		{
+			name:                                  "can set experimental-distributed-tracing-address",
+			experimentalDistributedTracingAddress: "localhost:1234",
+			expectedDistributedTracingAddress:     "localhost:1234",
+		},
+		{
+			name:                              "can set distributed-tracing-address",
+			distributedTracingAddress:         "localhost:1234",
+			expectedDistributedTracingAddress: "localhost:1234",
+		},
+		// can set either --experimental-distributed-tracing-service-name or --distributed-tracing-service-name
+		{
+			name: "can set experimental-distributed-tracing-service-name",
+			experimentalDistributedTracingServiceName: "fakeSererName",
+			expectedDistributedTracingServiceName:     "fakeSererName",
+		},
+		{
+			name:                                  "can set distributed-tracing-service-name",
+			distributedTracingServiceName:         "fakeSererName",
+			expectedDistributedTracingServiceName: "fakeSererName",
+		},
+		// can set either --experimental-distributed-tracing-instance-id or --distributed-tracing-instance-id
+		{
+			name: "can set experimental-distributed-tracing-instance-id",
+			experimentalDistributedTracingServiceInstanceID: "fakeID",
+			expectedDistributedTracingServiceInstanceID:     "fakeID",
+		},
+		{
+			name:                                "can set distributed-tracing-instance-id",
+			distributedTracingServiceInstanceID: "fakeID",
+			expectedDistributedTracingServiceInstanceID: "fakeID",
+		},
+		// can set either --experimental-distributed-tracing-sampling-rate or --distributed-tracing-sampling-rate
+		{
+			name: "can set experimental-distributed-tracing-sampling-rate",
+			experimentalDistributedTracingSamplingRatePerMillion: "200",
+			expectedDistributedTracingSamplingRatePerMillion:     200,
+		},
+		{
+			name:                                     "can set distributed-tracing-sampling-rate",
+			distributedTracingSamplingRatePerMillion: "300",
+			expectedDistributedTracingSamplingRatePerMillion: 300,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmdLineArgs := []string{}
+			yc := struct {
+				ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing,omitempty"`
+				EnableDistributedTracing             bool `json:"enable-distributed-tracing,omitempty"`
+
+				ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address,omitempty"`
+				DistributedTracingAddress             string `json:"distributed-tracing-address,omitempty"`
+
+				ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name,omitempty"`
+				DistributedTracingServiceName             string `json:"distributed-tracing-service-name,omitempty"`
+
+				ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id,omitempty"`
+				DistributedTracingServiceInstanceID             string `json:"distributed-tracing-instance-id,omitempty"`
+
+				ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate,omitempty"`
+				DistributedTracingSamplingRatePerMillion             int `json:"distributed-tracing-sampling-rate,omitempty"`
+			}{}
+
+			// --enable-distributed-tracing and --experimental-enable-distributed-tracing
+			if tc.enableDistributedTracing != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--enable-distributed-tracing=%s", tc.enableDistributedTracing))
+				val, err := strconv.ParseBool(tc.enableDistributedTracing)
+				require.NoError(t, err)
+				yc.EnableDistributedTracing = val
+			}
+			if tc.experimentalEnableDistributedTracing != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-enable-distributed-tracing=%s", tc.experimentalEnableDistributedTracing))
+				val, err := strconv.ParseBool(tc.experimentalEnableDistributedTracing)
+				require.NoError(t, err)
+				yc.ExperimentalEnableDistributedTracing = val
+			}
+
+			// --distributed-tracing-address and --experimental-distributed-tracing-address
+			if tc.distributedTracingAddress != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--distributed-tracing-address=%s", tc.distributedTracingAddress))
+				yc.DistributedTracingAddress = tc.distributedTracingAddress
+			}
+			if tc.experimentalDistributedTracingAddress != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-distributed-tracing-address=%s", tc.experimentalDistributedTracingAddress))
+				yc.ExperimentalDistributedTracingAddress = tc.experimentalDistributedTracingAddress
+			}
+
+			// --distributed-tracing-service-name and --experimental-distributed-tracing-service-name
+			if tc.distributedTracingServiceName != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--distributed-tracing-service-name=%s", tc.distributedTracingServiceName))
+				yc.DistributedTracingServiceName = tc.distributedTracingServiceName
+			}
+			if tc.experimentalDistributedTracingServiceName != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-distributed-tracing-service-name=%s", tc.experimentalDistributedTracingServiceName))
+				yc.ExperimentalDistributedTracingServiceName = tc.experimentalDistributedTracingServiceName
+			}
+
+			// --distributed-tracing-instance-id and --experimental-distributed-tracing-instance-id
+			if tc.distributedTracingServiceInstanceID != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--distributed-tracing-instance-id=%s", tc.distributedTracingServiceInstanceID))
+				yc.DistributedTracingServiceInstanceID = tc.distributedTracingServiceInstanceID
+			}
+			if tc.experimentalDistributedTracingServiceInstanceID != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-distributed-tracing-instance-id=%s", tc.experimentalDistributedTracingServiceInstanceID))
+				yc.ExperimentalDistributedTracingServiceInstanceID = tc.experimentalDistributedTracingServiceInstanceID
+			}
+
+			// --distributed-tracing-sampling-rate and --experimental-distributed-tracing-sampling-rate
+			if tc.distributedTracingSamplingRatePerMillion != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--distributed-tracing-sampling-rate=%s", tc.distributedTracingSamplingRatePerMillion))
+				val, err := strconv.ParseInt(tc.distributedTracingSamplingRatePerMillion, 10, 64)
+				require.NoError(t, err)
+				yc.DistributedTracingSamplingRatePerMillion = int(val)
+			}
+			if tc.experimentalDistributedTracingSamplingRatePerMillion != "" {
+				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-distributed-tracing-sampling-rate=%s", tc.experimentalDistributedTracingSamplingRatePerMillion))
+				val, err := strconv.ParseInt(tc.experimentalDistributedTracingSamplingRatePerMillion, 10, 64)
+				require.NoError(t, err)
+				yc.ExperimentalDistributedTracingSamplingRatePerMillion = int(val)
+			}
+
+			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
+
+			if tc.expectErr {
+				if errFromCmdLine == nil || errFromFile == nil {
+					t.Fatalf("expect parse error, got errFromCmdLine=%v, errFromFile=%v", errFromCmdLine, errFromFile)
+				}
+				return
+			}
+			if errFromCmdLine != nil || errFromFile != nil {
+				t.Fatal("error parsing config")
+			}
+
+			// verify the expected values
+			require.Equal(t, tc.expectedEnableDistributedTracing, cfgFromCmdLine.ec.EnableDistributedTracing)
+			require.Equal(t, tc.expectedEnableDistributedTracing, cfgFromFile.ec.EnableDistributedTracing)
+
+			if tc.expectedDistributedTracingAddress != "" {
+				require.Equal(t, tc.expectedDistributedTracingAddress, cfgFromCmdLine.ec.DistributedTracingAddress)
+				require.Equal(t, tc.expectedDistributedTracingAddress, cfgFromFile.ec.DistributedTracingAddress)
+			}
+
+			if tc.expectedDistributedTracingServiceName != "" {
+				require.Equal(t, tc.expectedDistributedTracingServiceName, cfgFromCmdLine.ec.DistributedTracingServiceName)
+				require.Equal(t, tc.expectedDistributedTracingServiceName, cfgFromFile.ec.DistributedTracingServiceName)
+			}
+
+			if tc.expectedDistributedTracingServiceInstanceID != "" {
+				require.Equal(t, tc.expectedDistributedTracingServiceInstanceID, cfgFromCmdLine.ec.DistributedTracingServiceInstanceID)
+				require.Equal(t, tc.expectedDistributedTracingServiceInstanceID, cfgFromFile.ec.DistributedTracingServiceInstanceID)
+			}
+
+			require.Equal(t, tc.expectedDistributedTracingSamplingRatePerMillion, cfgFromCmdLine.ec.DistributedTracingSamplingRatePerMillion)
+			require.Equal(t, tc.expectedDistributedTracingSamplingRatePerMillion, cfgFromFile.ec.DistributedTracingSamplingRatePerMillion)
 		})
 	}
 }

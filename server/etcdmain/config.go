@@ -72,8 +72,14 @@ var (
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
 		"experimental-max-learners":                         "--experimental-max-learners is deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.",
 		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
+		"experimental-snapshot-catchup-entries":             "--experimental-snapshot-catchup-entries is deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.",
 		"experimental-compaction-sleep-interval":            "--experimental-compaction-sleep-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-sleep-interval' instead.",
 		"experimental-downgrade-check-time":                 "--experimental-downgrade-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--downgrade-check-time' instead.",
+		"experimental-enable-distributed-tracing":           "--experimental-enable-distributed-tracing is deprecated in 3.6 and will be decommissioned in 3.7. Use --enable-distributed-tracing instead.",
+		"experimental-distributed-tracing-address":          "--experimental-distributed-tracing-address is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-address instead.",
+		"experimental-distributed-tracing-service-name":     "--experimental-distributed-tracing-service-name is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-service-name instead.",
+		"experimental-distributed-tracing-instance-id":      "--experimental-distributed-tracing-instance-id is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-instance-id instead.",
+		"experimental-distributed-tracing-sampling-rate":    "--experimental-distributed-tracing-sampling-rate is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-sampling-rate instead.",
 	}
 )
 
@@ -214,12 +220,36 @@ func (cfg *config) parse(arguments []string) error {
 		cfg.ec.MemoryMlock = cfg.ec.ExperimentalMemoryMlock
 	}
 
+	if cfg.ec.FlagsExplicitlySet["experimental-snapshot-catchup-entries"] {
+		cfg.ec.SnapshotCatchUpEntries = cfg.ec.ExperimentalSnapshotCatchUpEntries
+	}
+
 	if cfg.ec.FlagsExplicitlySet["experimental-compaction-sleep-interval"] {
 		cfg.ec.CompactionSleepInterval = cfg.ec.ExperimentalCompactionSleepInterval
 	}
 
 	if cfg.ec.FlagsExplicitlySet["experimental-downgrade-check-time"] {
 		cfg.ec.DowngradeCheckTime = cfg.ec.ExperimentalDowngradeCheckTime
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-enable-distributed-tracing"] {
+		cfg.ec.EnableDistributedTracing = cfg.ec.ExperimentalEnableDistributedTracing
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-address"] {
+		cfg.ec.DistributedTracingAddress = cfg.ec.ExperimentalDistributedTracingAddress
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-service-name"] {
+		cfg.ec.DistributedTracingServiceName = cfg.ec.ExperimentalDistributedTracingServiceName
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-instance-id"] {
+		cfg.ec.DistributedTracingServiceInstanceID = cfg.ec.ExperimentalDistributedTracingServiceInstanceID
+	}
+
+	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-sampling-rate"] {
+		cfg.ec.DistributedTracingSamplingRatePerMillion = cfg.ec.ExperimentalDistributedTracingSamplingRatePerMillion
 	}
 
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.

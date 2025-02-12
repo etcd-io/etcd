@@ -264,15 +264,25 @@ Logging:
 
 Experimental distributed tracing:
   --experimental-enable-distributed-tracing 'false'
-    Enable experimental distributed tracing.
+    Enable experimental distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --enable-distributed-tracing instead.
+  --enable-distributed-tracing 'false'
+    Enable distributed tracing.
   --experimental-distributed-tracing-address 'localhost:4317'
+    Distributed tracing collector address. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-address instead.
+  --distributed-tracing-address 'localhost:4317'
     Distributed tracing collector address.
   --experimental-distributed-tracing-service-name 'etcd'
+    Distributed tracing service name, must be same across all etcd instances. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-service-name instead.
+  --distributed-tracing-service-name 'etcd'
     Distributed tracing service name, must be same across all etcd instances.
   --experimental-distributed-tracing-instance-id ''
+    Distributed tracing instance ID, must be unique per each etcd instance. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-instance-id instead.
+  --distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
   --experimental-distributed-tracing-sampling-rate '0'
-    Number of samples to collect per million spans for distributed tracing. Disabled by default.
+    Number of samples to collect per million spans for distributed tracing. Disabled by default. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-sampling-rate instead.
+  --distributed-tracing-sampling-rate '0'
+    Number of samples to collect per million spans for distributed tracing.
 
 Experimental feature:
   --experimental-initial-corrupt-check 'false'. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=InitialCorruptCheck=true' instead.
@@ -332,6 +342,8 @@ Experimental feature:
   --experimental-memory-mlock
     Enable to enforce etcd pages (in particular bbolt) to stay in RAM. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.
   --experimental-snapshot-catchup-entries
+    Number of entries for a slow follower to catch up after compacting the raft storage entries. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.
+  --snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-stop-grpc-service-on-defrag
     Enable etcd gRPC service to stop serving client requests on defragmentation. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=StopGRPCServiceOnDefrag=true' instead.

@@ -89,14 +89,14 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CatchUpEntriesNoVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
 			expectArgsNotContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
+				"--snapshot-catchup-entries=100",
 			},
 		},
 		{
 			name:   "CatchUpEntriesOldVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
 			expectArgsNotContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
+				"--snapshot-catchup-entries=100",
 			},
 			mockBinaryVersion: &v3_5_12,
 		},
