@@ -216,12 +216,6 @@ func NewZapLoggerBuilder(lg *zap.Logger) func(*Config) error {
 	}
 }
 
-// NewZapCoreLoggerBuilder - is a deprecated setter for the logger.
-// Deprecated: Use simpler NewZapLoggerBuilder. To be removed in etcd-3.6.
-func NewZapCoreLoggerBuilder(lg *zap.Logger, _ zapcore.Core, _ zapcore.WriteSyncer) func(*Config) error {
-	return NewZapLoggerBuilder(lg)
-}
-
 // SetupGlobalLoggers configures 'global' loggers (grpc, zapGlobal) based on the cfg.
 //
 // The method is not executed by embed server by default (since 3.5) to
