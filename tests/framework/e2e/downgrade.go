@@ -117,6 +117,9 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 			return err
 		}
 	}
+
+	time.Sleep(5 * time.Second)
+
 	lg.Info("Validating versions")
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
