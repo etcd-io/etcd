@@ -127,6 +127,12 @@ func (m *Monitor) UpdateStorageVersionIfNeeded() {
 				zap.String("target-version", d.TargetVersion),
 				zap.String("server-version", version.Version),
 			)
+		} else if d != nil && !d.Enabled {
+			m.lg.Info(
+				"The server is in downgrade cancellation state",
+				zap.String("target-version", d.TargetVersion),
+				zap.String("server-version", version.Version),
+			)
 		}
 	}
 }
