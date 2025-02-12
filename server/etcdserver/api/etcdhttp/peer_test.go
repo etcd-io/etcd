@@ -27,6 +27,8 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -99,17 +101,12 @@ func TestNewPeerHandlerOnRaftPrefix(t *testing.T) {
 	}
 	for i, tt := range tests {
 		resp, err := http.Get(srv.URL + tt)
-		if err != nil {
-			t.Fatalf("unexpected http.Get error: %v", err)
-		}
+		require.NoErrorf(t, err, "unexpected http.Get error: %v", err)
 		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			t.Fatalf("unexpected io.ReadAll error: %v", err)
-		}
+		require.NoErrorf(t, err, "unexpected io.ReadAll error: %v", err)
 		resp.Body.Close()
-		if w := "test data"; string(body) != w {
-			t.Errorf("#%d: body = %s, want %s", i, body, w)
-		}
+		w := "test data"
+		assert.Equalf(t, string(body), w, "#%d: body = %s, want %s", i, body, w)
 	}
 }
 
@@ -140,13 +137,9 @@ func TestServeMembersFails(t *testing.T) {
 		rw := httptest.NewRecorder()
 		h := newPeerMembersHandler(nil, &fakeCluster{})
 		req, err := http.NewRequest(tt.method, "", nil)
-		if err != nil {
-			t.Fatalf("#%d: failed to create http request: %v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: failed to create http request: %v", i, err)
 		h.ServeHTTP(rw, req)
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
+		assert.Equalf(t, rw.Code, tt.wcode, "#%d: code=%d, want %d", i, rw.Code, tt.wcode)
 	}
 }
 
@@ -159,9 +152,7 @@ func TestServeMembersGet(t *testing.T) {
 	}
 	h := newPeerMembersHandler(nil, cluster)
 	msb, err := json.Marshal([]membership.Member{memb1, memb2})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wms := string(msb) + "\n"
 
 	tests := []struct {
@@ -176,26 +167,17 @@ func TestServeMembersGet(t *testing.T) {
 
 	for i, tt := range tests {
 		req, err := http.NewRequest(http.MethodGet, testutil.MustNewURL(t, tt.path).String(), nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		rw := httptest.NewRecorder()
 		h.ServeHTTP(rw, req)
 
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
-		if gct := rw.Header().Get("Content-Type"); gct != tt.wct {
-			t.Errorf("#%d: content-type = %s, want %s", i, gct, tt.wct)
-		}
-		if rw.Body.String() != tt.wbody {
-			t.Errorf("#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
-		}
+		assert.Equalf(t, rw.Code, tt.wcode, "#%d: code=%d, want %d", i, rw.Code, tt.wcode)
+		gct := rw.Header().Get("Content-Type")
+		assert.Equalf(t, gct, tt.wct, "#%d: content-type = %s, want %s", i, gct, tt.wct)
+		assert.Equalf(t, rw.Body.String(), tt.wbody, "#%d: body = %s, want %s", i, rw.Body.String(), tt.wbody)
 		gcid := rw.Header().Get("X-Etcd-Cluster-ID")
 		wcid := cluster.ID().String()
-		if gcid != wcid {
-			t.Errorf("#%d: cid = %s, want %s", i, gcid, wcid)
-		}
+		assert.Equalf(t, gcid, wcid, "#%d: cid = %s, want %s", i, gcid, wcid)
 	}
 }
 
@@ -226,13 +208,9 @@ func TestServeMemberPromoteFails(t *testing.T) {
 		rw := httptest.NewRecorder()
 		h := newPeerMemberPromoteHandler(nil, &fakeServer{cluster: &fakeCluster{}})
 		req, err := http.NewRequest(tt.method, "", nil)
-		if err != nil {
-			t.Fatalf("#%d: failed to create http request: %v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: failed to create http request: %v", i, err)
 		h.ServeHTTP(rw, req)
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code=%d, want %d", i, rw.Code, tt.wcode)
-		}
+		assert.Equalf(t, rw.Code, tt.wcode, "#%d: code=%d, want %d", i, rw.Code, tt.wcode)
 	}
 }
 
@@ -265,21 +243,13 @@ func TestNewPeerHandlerOnMembersPromotePrefix(t *testing.T) {
 	}
 	for i, tt := range tests {
 		req, err := http.NewRequest(http.MethodPost, srv.URL+tt.path, nil)
-		if err != nil {
-			t.Fatalf("failed to create request: %v", err)
-		}
+		require.NoErrorf(t, err, "failed to create request: %v", err)
 		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("failed to get http response: %v", err)
-		}
+		require.NoErrorf(t, err, "failed to get http response: %v", err)
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if err != nil {
-			t.Fatalf("unexpected io.ReadAll error: %v", err)
-		}
-		if resp.StatusCode != tt.wcode {
-			t.Fatalf("#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
-		}
+		require.NoErrorf(t, err, "unexpected io.ReadAll error: %v", err)
+		require.Equalf(t, resp.StatusCode, tt.wcode, "#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
 		if tt.checkBody && strings.Contains(string(body), tt.wKeyWords) {
 			t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
 		}

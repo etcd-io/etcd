@@ -20,6 +20,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 )
 
@@ -49,9 +51,7 @@ func TestMemberTime(t *testing.T) {
 		{NewMember("mem1", []url.URL{{Scheme: "http", Host: "10.0.0.2:2379"}, {Scheme: "http", Host: "10.0.0.1:2379"}}, "", nil), 16552244735972308939},
 	}
 	for i, tt := range tests {
-		if tt.mem.ID != tt.id {
-			t.Errorf("#%d: mem.ID = %v, want %v", i, tt.mem.ID, tt.id)
-		}
+		assert.Equalf(t, tt.mem.ID, tt.id, "#%d: mem.ID = %v, want %v", i, tt.mem.ID, tt.id)
 	}
 }
 
@@ -64,12 +64,8 @@ func TestMemberClone(t *testing.T) {
 	}
 	for i, tt := range tests {
 		nm := tt.Clone()
-		if nm == tt {
-			t.Errorf("#%d: the pointers are the same, and clone doesn't happen", i)
-		}
-		if !reflect.DeepEqual(nm, tt) {
-			t.Errorf("#%d: member = %+v, want %+v", i, nm, tt)
-		}
+		assert.NotSamef(t, nm, tt, "#%d: the pointers are the same, and clone doesn't happen", i)
+		assert.Truef(t, reflect.DeepEqual(nm, tt), "#%d: member = %+v, want %+v", i, nm, tt)
 	}
 }
 

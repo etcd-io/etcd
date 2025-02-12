@@ -14,15 +14,17 @@
 
 package v2store
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestWatcher(t *testing.T) {
 	s := newStore()
 	wh := s.WatcherHub
 	w, err := wh.watch("/foo", true, false, 1, 1)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
+	require.Nil(t, err)
 	c := w.EventChan()
 
 	select {
@@ -38,9 +40,7 @@ func TestWatcher(t *testing.T) {
 
 	re := <-c
 
-	if e != re {
-		t.Fatal("recv != send")
-	}
+	require.Samef(t, e, re, "recv != send")
 
 	w, _ = wh.watch("/foo", false, false, 2, 1)
 	c = w.EventChan()
@@ -62,9 +62,7 @@ func TestWatcher(t *testing.T) {
 
 	re = <-c
 
-	if e != re {
-		t.Fatal("recv != send")
-	}
+	require.Samef(t, e, re, "recv != send")
 
 	// ensure we are doing exact matching rather than prefix matching
 	w, _ = wh.watch("/fo", true, false, 1, 1)
@@ -83,7 +81,5 @@ func TestWatcher(t *testing.T) {
 
 	re = <-c
 
-	if e != re {
-		t.Fatal("recv != send")
-	}
+	require.Samef(t, e, re, "recv != send")
 }

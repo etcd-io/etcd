@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -88,9 +90,7 @@ func TestGetIDs(t *testing.T) {
 			snap.Metadata.ConfState = *tt.confState
 		}
 		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, &snap, tt.ents)
-		if !reflect.DeepEqual(idSet, tt.widSet) {
-			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
-		}
+		assert.Truef(t, reflect.DeepEqual(idSet, tt.widSet), "#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 	}
 }
 
@@ -101,9 +101,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 		RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
 	}
 	ctx, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	addcc1 := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 1, Context: ctx}
 	removecc2 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
 	removecc3 := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 3}
@@ -169,9 +167,7 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 
 	for i, tt := range tests {
 		gents := serverstorage.CreateConfigChangeEnts(lg, tt.ids, tt.self, tt.term, tt.index)
-		if !reflect.DeepEqual(gents, tt.wents) {
-			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
-		}
+		assert.Truef(t, reflect.DeepEqual(gents, tt.wents), "#%d: ents = %v, want %v", i, gents, tt.wents)
 	}
 }
 
@@ -297,18 +293,14 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	}}
 
 	got, want := <-sendc, 1
-	if got != want {
-		t.Errorf("count = %d, want %d", got, want)
-	}
+	assert.Equalf(t, want, got, "count = %d, want %d", got, want)
 }
 
 // TestExpvarWithNoRaftStatus to test that none of the expvars that get added during init panic.
 // This matters if another package imports etcdserver, doesn't use it, but does use expvars.
 func TestExpvarWithNoRaftStatus(t *testing.T) {
 	defer func() {
-		if err := recover(); err != nil {
-			t.Fatal(err)
-		}
+		require.Nil(t, recover())
 	}()
 	expvar.Do(func(kv expvar.KeyValue) {
 		_ = kv.Value.String()

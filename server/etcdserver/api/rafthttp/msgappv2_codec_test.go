@@ -19,6 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"go.etcd.io/raft/v3/raftpb"
@@ -116,8 +118,6 @@ func TestMsgAppV2(t *testing.T) {
 			t.Errorf("#%d: unexpected decode message error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(m, tt) {
-			t.Errorf("#%d: message = %+v, want %+v", i, m, tt)
-		}
+		assert.Truef(t, reflect.DeepEqual(m, tt), "#%d: message = %+v, want %+v", i, m, tt)
 	}
 }
