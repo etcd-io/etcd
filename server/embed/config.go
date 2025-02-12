@@ -102,14 +102,14 @@ const (
 	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
 
 	// ExperimentalDistributedTracingAddress is the default collector address.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DefaultDistributedTracingAddress instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DefaultDistributedTracingAddress instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingAddress = "localhost:4317"
 	// DefaultDistributedTracingAddress is the default collector address.
 	DefaultDistributedTracingAddress = "localhost:4317"
 	// ExperimentalDistributedTracingServiceName is the default etcd service name.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DefaultDistributedTracingServiceName instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DefaultDistributedTracingServiceName instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingServiceName = "etcd"
 	// DefaultDistributedTracingServiceName is the default etcd service name.
 	DefaultDistributedTracingServiceName = "etcd"
@@ -196,8 +196,9 @@ type Config struct {
 	//revive:disable-next-line:var-naming
 	WalDir string `json:"wal-dir"`
 
-	// SnapshotCount is deprecated in v3.6 and will be decommissioned in v3.7.
+	// SnapshotCount is the number of committed transactions that trigger a snapshot to disk.
 	// TODO: remove it in 3.7.
+	// Deprecated: Will be decommissioned in v3.7.
 	SnapshotCount uint64 `json:"snapshot-count"`
 
 	// ExperimentalSnapshotCatchUpEntries is the number of entries for a slow follower
@@ -205,10 +206,10 @@ type Config struct {
 	// We expect the follower has a millisecond level latency with the leader.
 	// The max throughput is around 10K. Keep a 5K entries is enough for helping
 	// follower to catch up.
-	// Deprecated in v3.6 and will be removed in v3.7.
 	// TODO: remove in v3.7.
 	// Note we made a mistake in https://github.com/etcd-io/etcd/pull/15033. The json tag
 	// `*-catch-up-*` isn't consistent with the command line flag `*-catchup-*`.
+	// Deprecated: Use SnapshotCatchUpEntries instead. Will be removed in v3.7.
 	ExperimentalSnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
 
 	// SnapshotCatchUpEntries is the number of entires for a slow follower
@@ -218,8 +219,9 @@ type Config struct {
 	// follower to catch up.
 	SnapshotCatchUpEntries uint64 `json:"snapshot-catchup-entries"`
 
-	// MaxSnapFiles is deprecated in v3.6 and will be decommissioned in v3.7.
+	// MaxSnapFiles is the maximum number of snapshot files.
 	// TODO: remove it in 3.7.
+	// Deprecated: Will be removed in v3.7.
 	MaxSnapFiles uint `json:"max-snapshots"`
 	//revive:disable-next-line:var-naming
 	MaxWalFiles uint `json:"max-wals"`
@@ -407,65 +409,74 @@ type Config struct {
 
 	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
 	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
+	// Deprecated: Use CorruptCheckTime instead. Will be decommissioned in v3.7.
 	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
-	CorruptCheckTime             time.Duration `json:"corrupt-check-time"`
+	// CorruptCheckTime is the duration of time between cluster corruption check passes.
+	CorruptCheckTime time.Duration `json:"corrupt-check-time"`
 	// ExperimentalCompactHashCheckEnabled enables leader to periodically check followers compaction hashes.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
+	// Deprecated: Use CompactHashCheck Feature Gate. Will be decommissioned in v3.7.
 	ExperimentalCompactHashCheckEnabled bool `json:"experimental-compact-hash-check-enabled"`
 	// ExperimentalCompactHashCheckTime is the duration of time between leader checks followers compaction hashes.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: delete in v3.7
+	// Deprecated: Use CompactHashCheckTime instead. Will be decommissioned in v3.7.
 	ExperimentalCompactHashCheckTime time.Duration `json:"experimental-compact-hash-check-time"`
-	CompactHashCheckTime             time.Duration `json:"compact-hash-check-time"`
+	// CompactHashCheckTime is the duration of time between leader checks followers compaction hashes.
+	CompactHashCheckTime time.Duration `json:"compact-hash-check-time"`
 
 	// ExperimentalEnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
 	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
 	// ExperimentalEnableLeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
 	// Requires experimental-enable-lease-checkpoint to be enabled.
-	// Deprecated in v3.6.
 	// TODO: Delete in v3.7
+	// Deprecated: To be decommissioned in v3.7.
 	ExperimentalEnableLeaseCheckpointPersist bool `json:"experimental-enable-lease-checkpoint-persist"`
 	// ExperimentalCompactionBatchLimit Sets the maximum revisions deleted in each compaction batch.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use CompactionBatchLimit instead. Will be decommissioned in v3.7.
 	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
-	CompactionBatchLimit             int `json:"compaction-batch-limit"`
+	// CompactionBatchLimit Sets the maximum revisions deleted in each compaction batch.
+	CompactionBatchLimit int `json:"compaction-batch-limit"`
 	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use CompactionSleepInterval instead. Will be decommissioned in v3.7.
 	ExperimentalCompactionSleepInterval time.Duration `json:"experimental-compaction-sleep-interval"`
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// ExperimentalWatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use WatchProgressNotifyInterval instead. Will be decommissioned in v3.7.
 	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
-	WatchProgressNotifyInterval             time.Duration `json:"watch-progress-notify-interval"`
+	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
+	WatchProgressNotifyInterval time.Duration `json:"watch-progress-notify-interval"`
 	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
 	// takes more time than this value.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use WarningApplyDuration instead. Will be decommissioned in v3.7.
 	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
-	WarningApplyDuration             time.Duration `json:"warning-apply-duration"`
+	// WarningApplyDuration is the time duration after which a warning is generated if applying request
+	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
 	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use BootstrapDefragThresholdMegabytes instead. Will be decommissioned in v3.7.
 	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
-	BootstrapDefragThresholdMegabytes             uint `json:"bootstrap-defrag-threshold-megabytes"`
+	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
+	BootstrapDefragThresholdMegabytes uint `json:"bootstrap-defrag-threshold-megabytes"`
 	// WarningUnaryRequestDuration is the time duration after which a warning is generated if applying
 	// unary request takes more time than this value.
 	WarningUnaryRequestDuration time.Duration `json:"warning-unary-request-duration"`
-	// ExperimentalWarningUnaryRequestDuration is deprecated, please use WarningUnaryRequestDuration instead.
+	// ExperimentalWarningUnaryRequestDuration is the time duration after which a warning is generated if applying
+	// TODO: Delete in v3.7
+	// Deprecated: Use WarningUnaryRequestDuration. Will be decommissioned in v3.7.
 	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
 	// ExperimentalMaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use MaxLearners instead. Will be decommissioned in v3.7.
 	ExperimentalMaxLearners int `json:"experimental-max-learners"`
-	MaxLearners             int `json:"max-learners"`
+	// MaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
+	MaxLearners int `json:"max-learners"`
 
 	// ForceNewCluster starts a new cluster even if previously started; unsafe.
 	ForceNewCluster bool `json:"force-new-cluster"`
@@ -476,23 +487,23 @@ type Config struct {
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
 	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use EnableDistributedTracing instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use EnableDistributedTracing instead. Will be decommissioned in v3.7.
 	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
 	// EnableDistributedTracing indicates if tracing using OpenTelemetry is enabled.
 	EnableDistributedTracing bool `json:"enable-distributed-tracing"`
 	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
 	// Can only be set if ExperimentalEnableDistributedTracing is true.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingAddress instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DistributedTracingAddress instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
 	// DistributedTracingAddress is the address of the OpenTelemetry Collector.
 	// Can only be set if EnableDistributedTracing is true.
 	DistributedTracingAddress string `json:"distributed-tracing-address"`
 	// ExperimentalDistributedTracingServiceName is the name of the service.
 	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingServiceName instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DistributedTracingServiceName instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
 	// DistributedTracingServiceName is the name of the service.
 	// Can only be used if EnableDistributedTracing is true.
@@ -501,8 +512,8 @@ type Config struct {
 	// This ID must be unique, as helps to distinguish instances of the same service
 	// that exist at the same time.
 	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingServiceInstanceID instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DistributedTracingServiceInstanceID instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
 	// DistributedTracingServiceInstanceID is the ID key of the service.
 	// This ID must be unique, as helps to distinguish instances of the same service
@@ -511,8 +522,8 @@ type Config struct {
 	DistributedTracingServiceInstanceID string `json:"distributed-tracing-instance-id"`
 	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use DistributedTracingSamplingRatePerMillion instead.
 	// TODO: delete in v3.7
+	// Deprecated: Use DistributedTracingSamplingRatePerMillion instead. Will be decommissioned in v3.7.
 	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 	// DistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
@@ -520,8 +531,8 @@ type Config struct {
 
 	// ExperimentalPeerSkipClientSanVerification determines whether to skip verification of SAN field
 	// in client certificate for peer connections.
-	// Deprecated in v3.6 and will be decommissioned in v3.7.
 	// TODO: Delete in v3.7
+	// Deprecated: Use `peer-skip-client-san-verification` instead. Will be decommissioned in v3.7.
 	ExperimentalPeerSkipClientSanVerification bool `json:"experimental-peer-skip-client-san-verification"`
 
 	// Logger is logger options: currently only supports "zap".
@@ -559,8 +570,8 @@ type Config struct {
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
 	// ExperimentalDowngradeCheckTime is the duration between two downgrade status checks (in seconds).
-	// Deprecated in v3.6 and scheduled to be removed in v3.7.
 	// TODO: Delete `ExperimentalDowngradeCheckTime` in v3.7.
+	// Deprecated: Use DowngradeCheckTime instead. Will be decommissioned in v3.7.
 	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
 	// DowngradeCheckTime is the duration between two downgrade status checks (in seconds).
 	DowngradeCheckTime time.Duration `json:"downgrade-check-time"`
@@ -574,8 +585,8 @@ type Config struct {
 	MemoryMlock bool `json:"memory-mlock"`
 
 	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
-	// Deprecated in v3.6 and will be decommissioned in v3.7. Use MemoryMlock instead.
 	// TODO: Delete in v3.7
+	// Deprecated: Use MemoryMlock instad. To be decommissioned in v3.7.
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
@@ -585,8 +596,9 @@ type Config struct {
 	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
 	// V2Deprecation describes phase of API & Storage V2 support.
-	// Deprecated and scheduled for removal in v3.8.
 	// Do not set this field for embedded use cases, as it has no effect. However, setting it will not cause any harm.
+	// TODO: Delete in v3.8
+	// Deprecated: The default value is enforced, to be removed in v3.8.
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 
 	// ServerFeatureGate is a server level feature gate
