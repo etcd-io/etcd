@@ -315,8 +315,8 @@ Experimental feature:
     Warning is generated if requests take more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'warning-apply-duration' instead.
   --warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
-  --experimental-txn-mode-write-with-shared-buffer 'true'. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.
-    Enable the write transaction to use a shared buffer in its readonly check operations.
+  --experimental-txn-mode-write-with-shared-buffer 'true'
+    Enable the write transaction to use a shared buffer in its readonly check operations. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.
   --experimental-bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. Deprecated in v3.6 and will be decommissioned in v3.7. Use 'bootstrap-defrag-threshold-megabytes' instead.
   --bootstrap-defrag-threshold-megabytes
