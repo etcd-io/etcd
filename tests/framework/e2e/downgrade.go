@@ -120,17 +120,10 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 	lg.Info("Validating versions")
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
-		if isDowngrade || len(membersToChange) == len(clus.Procs) {
-			ValidateVersion(t, clus.Cfg, member, version.Versions{
-				Cluster: targetVersion.String(),
-				Server:  targetVersion.String(),
-			})
-		} else {
-			ValidateVersion(t, clus.Cfg, member, version.Versions{
-				Cluster: currentVersion.String(),
-				Server:  targetVersion.String(),
-			})
-		}
+		ValidateVersion(t, clus.Cfg, member, version.Versions{
+			Cluster: targetVersion.String(),
+			Server:  targetVersion.String(),
+		})
 	}
 	return nil
 }
