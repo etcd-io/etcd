@@ -73,7 +73,7 @@ func TestConfigFromFile(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		tmpfile, err := os.CreateTemp("", "clientcfg")
+		tmpfile, err := os.CreateTemp(t.TempDir(), "clientcfg")
 		if err != nil {
 			log.Fatal(err)
 		}
