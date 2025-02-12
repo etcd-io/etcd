@@ -590,6 +590,8 @@ type Config struct {
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
+	// TODO: Delete in v3.7
+	// Deprecated: Use TxnModeWriteWithSharedBuffer Feature Flag. Will be decommissioned in v3.7.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
 	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
