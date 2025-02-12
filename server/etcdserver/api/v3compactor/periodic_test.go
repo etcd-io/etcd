@@ -15,13 +15,14 @@
 package v3compactor
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -51,13 +52,9 @@ func TestPeriodicHourly(t *testing.T) {
 
 	// very first compaction
 	a, err := waitWithRetry(t, compactable)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expectedRevision := int64(1)
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 
 	// simulate 3 hours
 	// now compactor kicks in, every hour
@@ -69,14 +66,10 @@ func TestPeriodicHourly(t *testing.T) {
 		}
 
 		a, err = waitWithRetry(t, compactable)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expectedRevision = int64((i + 1) * 10)
-		if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-			t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-		}
+		assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 	}
 }
 
@@ -102,13 +95,9 @@ func TestPeriodicMinutes(t *testing.T) {
 
 	// very first compaction
 	a, err := waitWithRetry(t, compactable)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expectedRevision := int64(1)
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 
 	// compaction happens at every interval
 	for i := 0; i < 5; i++ {
@@ -119,14 +108,10 @@ func TestPeriodicMinutes(t *testing.T) {
 		}
 
 		a, err := waitWithRetry(t, compactable)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		expectedRevision = int64((i + 1) * 10)
-		if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-			t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-		}
+		assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 	}
 }
 
@@ -164,15 +149,11 @@ func TestPeriodicPause(t *testing.T) {
 
 	// T=3h6m
 	a, err := waitWithRetry(t, compactable)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// compact the revision from hour 2:06
 	wreq := &pb.CompactionRequest{Revision: int64(1 + 2*n + 1)}
-	if !reflect.DeepEqual(a[0].Params[0], wreq) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], wreq.Revision)
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], wreq), "compact request = %v, want %v", a[0].Params[0], wreq.Revision)
 }
 
 func TestPeriodicSkipRevNotChange(t *testing.T) {
@@ -199,15 +180,11 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 
 	// very first compaction
 	a, err := waitWithRetry(t, compactable)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// first compaction the compact revision will be 100+1
 	expectedRevision := int64(100 + 1)
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 
 	// compaction doesn't happens at every interval since revision not change
 	for i := 0; i < 5; i++ {
@@ -218,9 +195,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 		}
 
 		_, err = compactable.Wait(1)
-		if err == nil {
-			t.Fatal(errors.New("should not compact since the revision not change"))
-		}
+		require.Errorf(t, err, "should not compact since the revision not change")
 	}
 
 	// when revision changed, compaction is normally
@@ -230,20 +205,15 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 	}
 
 	a, err = waitWithRetry(t, compactable)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	expectedRevision = int64(100 + 2)
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 }
 
 func waitOneAction(t *testing.T, r testutil.Recorder) {
-	if actions, _ := r.Wait(1); len(actions) != 1 {
-		t.Errorf("expect 1 action, got %v instead", len(actions))
-	}
+	actions, _ := r.Wait(1)
+	assert.Lenf(t, actions, 1, "expect 1 action, got %v instead", len(actions))
 }
 
 func waitWithRetry(t *testing.T, compactable *fakeCompactable) ([]testutil.Action, error) {

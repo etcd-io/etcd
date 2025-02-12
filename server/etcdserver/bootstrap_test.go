@@ -27,6 +27,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -100,9 +101,7 @@ func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
 			}
 			_, err = bootstrapExistingClusterNoWAL(cfg, mockBootstrapRoundTrip(tt.members))
 			hasError := err != nil
-			if hasError != tt.hasError {
-				t.Errorf("expected error: %v got: %v", tt.hasError, err)
-			}
+			assert.Equalf(t, hasError, tt.hasError, "expected error: %v got: %v", tt.hasError, err)
 			if hasError {
 				require.Containsf(t, err.Error(), tt.expectedError.Error(), "expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
 			}
@@ -200,16 +199,12 @@ func TestBootstrapBackend(t *testing.T) {
 
 			hasError := err != nil
 			expectedHasError := tt.expectedError != nil
-			if hasError != expectedHasError {
-				t.Errorf("expected error: %v got: %v", expectedHasError, err)
-			}
+			assert.Equalf(t, expectedHasError, hasError, "expected error: %v got: %v", expectedHasError, err)
 			if hasError {
 				require.Containsf(t, err.Error(), tt.expectedError.Error(), "expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
 			}
 
-			if backend.ci.ConsistentIndex() != tt.expectedConsistentIdx {
-				t.Errorf("expected consistent index: %d, got: %d", tt.expectedConsistentIdx, backend.ci.ConsistentIndex())
-			}
+			assert.Equalf(t, tt.expectedConsistentIdx, backend.ci.ConsistentIndex(), "expected consistent index: %d, got: %d", tt.expectedConsistentIdx, backend.ci.ConsistentIndex())
 		})
 	}
 }

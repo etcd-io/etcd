@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestErrorWriteTo(t *testing.T) {
@@ -28,22 +30,16 @@ func TestErrorWriteTo(t *testing.T) {
 		rr := httptest.NewRecorder()
 		err.WriteTo(rr)
 
-		if err.StatusCode() != rr.Code {
-			t.Errorf("HTTP status code %d, want %d", rr.Code, err.StatusCode())
-		}
+		assert.Equalf(t, err.StatusCode(), rr.Code, "HTTP status code %d, want %d", rr.Code, err.StatusCode())
 
 		gbody := strings.TrimSuffix(rr.Body.String(), "\n")
-		if err.toJSONString() != gbody {
-			t.Errorf("HTTP body %q, want %q", gbody, err.toJSONString())
-		}
+		assert.Equalf(t, err.toJSONString(), gbody, "HTTP body %q, want %q", gbody, err.toJSONString())
 
 		wheader := http.Header(map[string][]string{
 			"Content-Type": {"application/json"},
 			"X-Etcd-Index": {"1"},
 		})
 
-		if !reflect.DeepEqual(wheader, rr.HeaderMap) {
-			t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
-		}
+		assert.Truef(t, reflect.DeepEqual(wheader, rr.HeaderMap), "HTTP headers %v, want %v", rr.HeaderMap, wheader)
 	}
 }

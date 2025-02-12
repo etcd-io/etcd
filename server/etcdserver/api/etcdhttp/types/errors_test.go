@@ -19,14 +19,16 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHTTPErrorWriteTo(t *testing.T) {
 	err := NewHTTPError(http.StatusBadRequest, "what a bad request you made!")
 	rr := httptest.NewRecorder()
-	if e := err.WriteTo(rr); e != nil {
-		t.Fatalf("HTTPError.WriteTo error (%v)", e)
-	}
+	e := err.WriteTo(rr)
+	require.NoErrorf(t, e, "HTTPError.WriteTo error (%v)", e)
 
 	wcode := http.StatusBadRequest
 	wheader := http.Header(map[string][]string{
@@ -34,16 +36,10 @@ func TestHTTPErrorWriteTo(t *testing.T) {
 	})
 	wbody := `{"message":"what a bad request you made!"}`
 
-	if wcode != rr.Code {
-		t.Errorf("HTTP status code %d, want %d", rr.Code, wcode)
-	}
+	assert.Equalf(t, wcode, rr.Code, "HTTP status code %d, want %d", rr.Code, wcode)
 
-	if !reflect.DeepEqual(wheader, rr.HeaderMap) {
-		t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
-	}
+	assert.Truef(t, reflect.DeepEqual(wheader, rr.HeaderMap), "HTTP headers %v, want %v", rr.HeaderMap, wheader)
 
 	gbody := rr.Body.String()
-	if wbody != gbody {
-		t.Errorf("HTTP body %q, want %q", gbody, wbody)
-	}
+	assert.Equalf(t, wbody, gbody, "HTTP body %q, want %q", gbody, wbody)
 }

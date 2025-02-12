@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/raft/v3"
@@ -393,17 +395,11 @@ func TestLearnerReadyCheck(t *testing.T) {
 
 func checkHTTPResponse(t *testing.T, ts *httptest.Server, url string, expectStatusCode int, inResult []string, notInResult []string) {
 	res, err := ts.Client().Do(&http.Request{Method: http.MethodGet, URL: testutil.MustNewURL(t, ts.URL+url)})
-	if err != nil {
-		t.Fatalf("fail serve http request %s %v", url, err)
-	}
-	if res.StatusCode != expectStatusCode {
-		t.Errorf("want statusCode %d but got %d", expectStatusCode, res.StatusCode)
-	}
+	require.NoErrorf(t, err, "fail serve http request %s %v", url, err)
+	assert.Equalf(t, res.StatusCode, expectStatusCode, "want statusCode %d but got %d", expectStatusCode, res.StatusCode)
 	defer res.Body.Close()
 	b, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response for %s", url)
-	}
+	require.NoErrorf(t, err, "Failed to read response for %s", url)
 	result := string(b)
 	for _, substr := range inResult {
 		if !strings.Contains(result, substr) {
@@ -459,13 +455,9 @@ func checkMetrics(t *testing.T, url, checkName string, expectStatusCode int) {
 			continue
 		}
 		if statusLabel, found := labelMap["status"]; found && statusLabel == HealthStatusError {
-			if val != expectedErrorCount {
-				t.Fatalf("%s got errorCount %d, wanted %d\n", name, val, expectedErrorCount)
-			}
+			require.Equalf(t, expectedErrorCount, val, "%s got errorCount %d, wanted %d\n", name, val, expectedErrorCount)
 		} else {
-			if val != expectedSuccessCount {
-				t.Fatalf("%s got expectedSuccessCount %d, wanted %d\n", name, val, expectedSuccessCount)
-			}
+			require.Equalf(t, expectedSuccessCount, val, "%s got expectedSuccessCount %d, wanted %d\n", name, val, expectedSuccessCount)
 		}
 	}
 }

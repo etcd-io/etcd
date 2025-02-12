@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -60,9 +62,7 @@ func TestSendMessage(t *testing.T) {
 	defer tr.Stop()
 	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
-	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
-		t.Fatalf("stream from 1 to 2 is not in work as expected")
-	}
+	require.Truef(t, waitStreamWorking(tr.Get(types.ID(2)).(*peer)), "stream from 1 to 2 is not in work as expected")
 
 	data := []byte("some data")
 	tests := []raftpb.Message{
@@ -79,9 +79,7 @@ func TestSendMessage(t *testing.T) {
 	for i, tt := range tests {
 		tr.Send([]raftpb.Message{tt})
 		msg := <-recvc
-		if !reflect.DeepEqual(msg, tt) {
-			t.Errorf("#%d: msg = %+v, want %+v", i, msg, tt)
-		}
+		assert.Truef(t, reflect.DeepEqual(msg, tt), "#%d: msg = %+v, want %+v", i, msg, tt)
 	}
 }
 
@@ -118,9 +116,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 	defer tr.Stop()
 	tr2.AddPeer(types.ID(1), []string{srv.URL})
 	defer tr2.Stop()
-	if !waitStreamWorking(tr.Get(types.ID(2)).(*peer)) {
-		t.Fatalf("stream from 1 to 2 is not in work as expected")
-	}
+	require.Truef(t, waitStreamWorking(tr.Get(types.ID(2)).(*peer)), "stream from 1 to 2 is not in work as expected")
 
 	// break the stream
 	srv.CloseClientConnections()
@@ -133,9 +129,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 			n++
 			tr.Send([]raftpb.Message{{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3}})
 		case <-recvc:
-			if n > 50 {
-				t.Errorf("disconnection time = %dms, want < 50ms", n)
-			}
+			assert.LessOrEqualf(t, n, 50, "disconnection time = %dms, want < 50ms", n)
 			return
 		}
 	}

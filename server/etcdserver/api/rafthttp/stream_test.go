@@ -25,6 +25,8 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"golang.org/x/time/rate"
 
@@ -41,9 +43,8 @@ import (
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWriter is not working
-	if _, ok := sw.writec(); ok {
-		t.Errorf("initial working status = %v, want false", ok)
-	}
+	_, ok := sw.writec()
+	assert.Falsef(t, ok, "initial working status = %v, want false", ok)
 
 	// repeat tests to ensure streamWriter can use last attached connection
 	var wfc *fakeWriteFlushCloser
@@ -73,19 +74,15 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 			t.Errorf("#%d: failed to write to the underlying connection", i)
 		}
 		// write chan is still available
-		if _, ok := sw.writec(); !ok {
-			t.Errorf("#%d: working status = %v, want true", i, ok)
-		}
+		_, ok = sw.writec()
+		assert.Truef(t, ok, "#%d: working status = %v, want true", i, ok)
 	}
 
 	sw.stop()
 	// write chan is unavailable since the writer is stopped.
-	if _, ok := sw.writec(); ok {
-		t.Errorf("working status after stop = %v, want false", ok)
-	}
-	if !wfc.Closed() {
-		t.Errorf("failed to close the underlying connection")
-	}
+	_, ok = sw.writec()
+	assert.Falsef(t, ok, "working status after stop = %v, want false", ok)
+	assert.Truef(t, wfc.Closed(), "failed to close the underlying connection")
 }
 
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
@@ -103,9 +100,8 @@ func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
 		t.Errorf("failed to close the underlying connection in time")
 	}
 	// no longer working
-	if _, ok := sw.writec(); ok {
-		t.Errorf("working = %v, want false", ok)
-	}
+	_, ok := sw.writec()
+	assert.Falsef(t, ok, "working = %v, want false", ok)
 }
 
 func TestStreamReaderDialRequest(t *testing.T) {
@@ -120,24 +116,17 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		sr.dial(tt)
 
 		act, err := tr.rec.Wait(1)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		req := act[0].Params[0].(*http.Request)
 
 		wurl := "http://localhost:2380" + tt.endpoint(zaptest.NewLogger(t)) + "/1"
-		if req.URL.String() != wurl {
-			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
-		}
-		if w := "GET"; req.Method != w {
-			t.Errorf("#%d: method = %s, want %s", i, req.Method, w)
-		}
-		if g := req.Header.Get("X-Etcd-Cluster-ID"); g != "1" {
-			t.Errorf("#%d: header X-Etcd-Cluster-ID = %s, want 1", i, g)
-		}
-		if g := req.Header.Get("X-Raft-To"); g != "2" {
-			t.Errorf("#%d: header X-Raft-To = %s, want 2", i, g)
-		}
+		assert.Equalf(t, req.URL.String(), wurl, "#%d: url = %s, want %s", i, req.URL.String(), wurl)
+		w := "GET"
+		assert.Equalf(t, req.Method, w, "#%d: method = %s, want %s", i, req.Method, w)
+		g := req.Header.Get("X-Etcd-Cluster-ID")
+		assert.Equalf(t, "1", g, "#%d: header X-Etcd-Cluster-ID = %s, want 1", i, g)
+		g = req.Header.Get("X-Raft-To")
+		assert.Equalf(t, "2", g, "#%d: header X-Raft-To = %s, want 2", i, g)
 	}
 }
 
@@ -174,12 +163,10 @@ func TestStreamReaderDialResult(t *testing.T) {
 		}
 
 		_, err := sr.dial(streamTypeMessage)
-		if ok := err == nil; ok != tt.wok {
-			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
-		}
-		if halt := len(sr.errorc) > 0; halt != tt.whalt {
-			t.Errorf("#%d: halt = %v, want %v", i, halt, tt.whalt)
-		}
+		ok := err == nil
+		assert.Equalf(t, ok, tt.wok, "#%d: ok = %v, want %v", i, ok, tt.wok)
+		halt := len(sr.errorc) > 0
+		assert.Equalf(t, halt, tt.whalt, "#%d: halt = %v, want %v", i, halt, tt.whalt)
 	}
 }
 
@@ -256,9 +243,7 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 		}
 
 		_, err := sr.dial(typ)
-		if !errors.Is(err, errUnsupportedStreamType) {
-			t.Errorf("#%d: error = %v, want %v", i, err, errUnsupportedStreamType)
-		}
+		assert.ErrorIsf(t, err, errUnsupportedStreamType, "#%d: error = %v, want %v", i, err, errUnsupportedStreamType)
 	}
 }
 
@@ -339,9 +324,7 @@ func TestStream(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatalf("#%d: failed to receive message from the channel", i)
 		}
-		if !reflect.DeepEqual(m, tt.m) {
-			t.Fatalf("#%d: message = %+v, want %+v", i, m, tt.m)
-		}
+		require.Truef(t, reflect.DeepEqual(m, tt.m), "#%d: message = %+v, want %+v", i, m, tt.m)
 
 		sr.stop()
 	}
@@ -373,18 +356,16 @@ func TestCheckStreamSupport(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		if g := checkStreamSupport(tt.v, tt.t); g != tt.w {
-			t.Errorf("#%d: check = %v, want %v", i, g, tt.w)
-		}
+		g := checkStreamSupport(tt.v, tt.t)
+		assert.Equalf(t, g, tt.w, "#%d: check = %v, want %v", i, g, tt.w)
 	}
 }
 
 func TestStreamSupportCurrentVersion(t *testing.T) {
 	cv := version.Cluster(version.Version)
 	cv = cv + ".0"
-	if _, ok := supportedStream[cv]; !ok {
-		t.Errorf("Current version does not have stream support.")
-	}
+	_, ok := supportedStream[cv]
+	assert.Truef(t, ok, "Current version does not have stream support.")
 }
 
 type fakeWriteFlushCloser struct {

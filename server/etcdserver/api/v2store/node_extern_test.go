@@ -20,13 +20,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNodeExternClone(t *testing.T) {
 	var eNode *NodeExtern
-	if g := eNode.Clone(); g != nil {
-		t.Fatalf("nil.Clone=%v, want nil", g)
-	}
+	g := eNode.Clone()
+	require.Nilf(t, g, "nil.Clone=%v, want nil", g)
 
 	const (
 		key string = "/foo/bar"
@@ -66,15 +66,9 @@ func TestNodeExternClone(t *testing.T) {
 	assert.Len(t, gNode.Nodes, len(childs))
 	assert.Equal(t, child, *gNode.Nodes[0])
 	// but pointers should differ
-	if gNode.Value == eNode.Value {
-		t.Fatalf("expected value pointers to differ, but got same!")
-	}
-	if gNode.Expiration == eNode.Expiration {
-		t.Fatalf("expected expiration pointers to differ, but got same!")
-	}
-	if sameSlice(gNode.Nodes, eNode.Nodes) {
-		t.Fatalf("expected nodes pointers to differ, but got same!")
-	}
+	require.NotSamef(t, gNode.Value, eNode.Value, "expected value pointers to differ, but got same!")
+	require.NotSamef(t, gNode.Expiration, eNode.Expiration, "expected expiration pointers to differ, but got same!")
+	require.Falsef(t, sameSlice(gNode.Nodes, eNode.Nodes), "expected nodes pointers to differ, but got same!")
 	// Original should be the same
 	assert.Equal(t, key, eNode.Key)
 	assert.Equal(t, ttl, eNode.TTL)
@@ -82,9 +76,7 @@ func TestNodeExternClone(t *testing.T) {
 	assert.Equal(t, mi, eNode.ModifiedIndex)
 	assert.Equal(t, valp, eNode.Value)
 	assert.Equal(t, expp, eNode.Expiration)
-	if !sameSlice(eNode.Nodes, childs) {
-		t.Fatalf("expected nodes pointer to same, but got different!")
-	}
+	require.Truef(t, sameSlice(eNode.Nodes, childs), "expected nodes pointer to same, but got different!")
 	// Change the clone and ensure the original is not affected
 	gNode.Key = "/baz"
 	gNode.TTL = 0

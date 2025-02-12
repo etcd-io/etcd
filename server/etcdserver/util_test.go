@@ -19,6 +19,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -30,23 +31,15 @@ import (
 
 func TestLongestConnected(t *testing.T) {
 	umap, err := types.NewURLsMap("mem1=http://10.1:2379,mem2=http://10.2:2379,mem3=http://10.3:2379")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	clus, err := membership.NewClusterFromURLsMap(zaptest.NewLogger(t), "test", umap)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	memberIDs := clus.MemberIDs()
 
 	tr := newNopTransporterWithActiveTime(memberIDs)
 	transferee, ok := longestConnected(tr, memberIDs)
-	if !ok {
-		t.Fatalf("unexpected ok %v", ok)
-	}
-	if memberIDs[0] != transferee {
-		t.Fatalf("expected first member %s to be transferee, got %s", memberIDs[0], transferee)
-	}
+	require.Truef(t, ok, "unexpected ok %v", ok)
+	require.Equalf(t, memberIDs[0], transferee, "expected first member %s to be transferee, got %s", memberIDs[0], transferee)
 
 	// make all members non-active
 	amap := make(map[types.ID]time.Time)
@@ -56,9 +49,7 @@ func TestLongestConnected(t *testing.T) {
 	tr.(*nopTransporterWithActiveTime).reset(amap)
 
 	_, ok2 := longestConnected(tr, memberIDs)
-	if ok2 {
-		t.Fatalf("unexpected ok %v", ok)
-	}
+	require.Falsef(t, ok2, "unexpected ok %v", ok)
 }
 
 type nopTransporterWithActiveTime struct {
@@ -95,14 +86,12 @@ func TestPanicAlternativeStringer(t *testing.T) {
 	p := panicAlternativeStringer{alternative: func() string { return "alternative" }}
 
 	p.stringer = testStringerFunc(func() string { panic("here") })
-	if s := p.String(); s != "alternative" {
-		t.Fatalf("expected 'alternative', got %q", s)
-	}
+	s := p.String()
+	require.Equalf(t, "alternative", s, "expected 'alternative', got %q", s)
 
 	p.stringer = testStringerFunc(func() string { return "test" })
-	if s := p.String(); s != "test" {
-		t.Fatalf("expected 'test', got %q", s)
-	}
+	s = p.String()
+	require.Equalf(t, "test", s, "expected 'test', got %q", s)
 }
 
 type testStringerFunc func() string

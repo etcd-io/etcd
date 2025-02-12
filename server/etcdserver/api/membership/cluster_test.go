@@ -16,13 +16,13 @@ package membership
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -48,9 +48,8 @@ func TestClusterMember(t *testing.T) {
 	for i, tt := range tests {
 		c := newTestCluster(t, membs)
 		m := c.Member(tt.id)
-		if g := m != nil; g != tt.match {
-			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
-		}
+		g := m != nil
+		assert.Equalf(t, g, tt.match, "#%d: find member = %v, want %v", i, g, tt.match)
 		if m != nil && m.ID != tt.id {
 			t.Errorf("#%d: id = %x, want %x", i, m.ID, tt.id)
 		}
@@ -73,9 +72,8 @@ func TestClusterMemberByName(t *testing.T) {
 	for i, tt := range tests {
 		c := newTestCluster(t, membs)
 		m := c.MemberByName(tt.name)
-		if g := m != nil; g != tt.match {
-			t.Errorf("#%d: find member = %v, want %v", i, g, tt.match)
-		}
+		g := m != nil
+		assert.Equalf(t, g, tt.match, "#%d: find member = %v, want %v", i, g, tt.match)
 		if m != nil && m.Name != tt.name {
 			t.Errorf("#%d: name = %v, want %v", i, m.Name, tt.name)
 		}
@@ -90,9 +88,7 @@ func TestClusterMemberIDs(t *testing.T) {
 	})
 	w := []types.ID{1, 4, 100}
 	g := c.MemberIDs()
-	if !reflect.DeepEqual(w, g) {
-		t.Errorf("IDs = %+v, want %+v", g, w)
-	}
+	assert.Truef(t, reflect.DeepEqual(w, g), "IDs = %+v, want %+v", g, w)
 }
 
 func TestClusterPeerURLs(t *testing.T) {
@@ -144,9 +140,7 @@ func TestClusterPeerURLs(t *testing.T) {
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.mems)
 		urls := c.PeerURLs()
-		if !reflect.DeepEqual(urls, tt.wurls) {
-			t.Errorf("#%d: PeerURLs = %v, want %v", i, urls, tt.wurls)
-		}
+		assert.Truef(t, reflect.DeepEqual(urls, tt.wurls), "#%d: PeerURLs = %v, want %v", i, urls, tt.wurls)
 	}
 }
 
@@ -199,9 +193,7 @@ func TestClusterClientURLs(t *testing.T) {
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.mems)
 		urls := c.ClientURLs()
-		if !reflect.DeepEqual(urls, tt.wurls) {
-			t.Errorf("#%d: ClientURLs = %v, want %v", i, urls, tt.wurls)
-		}
+		assert.Truef(t, reflect.DeepEqual(urls, tt.wurls), "#%d: ClientURLs = %v, want %v", i, urls, tt.wurls)
 	}
 }
 
@@ -241,9 +233,8 @@ func TestClusterValidateAndAssignIDsBad(t *testing.T) {
 	for i, tt := range tests {
 		ecl := newTestCluster(t, tt.clmembs)
 		lcl := newTestCluster(t, tt.membs)
-		if err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl); err == nil {
-			t.Errorf("#%d: unexpected update success", i)
-		}
+		err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl)
+		assert.Errorf(t, err, "#%d: unexpected update success", i)
 	}
 }
 
@@ -268,12 +259,9 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 	for i, tt := range tests {
 		lcl := newTestCluster(t, tt.clmembs)
 		ecl := newTestCluster(t, tt.membs)
-		if err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl); err != nil {
-			t.Errorf("#%d: unexpect update error: %v", i, err)
-		}
-		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
-			t.Errorf("#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)
-		}
+		err := ValidateClusterAndAssignIDs(zaptest.NewLogger(t), lcl, ecl)
+		require.NoErrorf(t, err, "#%d: unexpect update error: %v", i, err)
+		assert.Truef(t, reflect.DeepEqual(lcl.MemberIDs(), tt.wids), "#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)
 	}
 }
 
@@ -302,55 +290,37 @@ func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldAp
 
 	attr := RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx1, err := json.Marshal(&Member{ID: types.ID(1), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx5, err := json.Marshal(&Member{ID: types.ID(5), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 3)}}
 	ctx2to3, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx2to5, err := json.Marshal(&Member{ID: types.ID(2), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx3, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(3), RaftAttributes: attr}, IsPromote: true})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	ctx6, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(6), RaftAttributes: attr}, IsPromote: true})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 7)}, IsLearner: true}
 	ctx7, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(7), RaftAttributes: attr}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}, IsLearner: true}
 	ctx8, err := json.Marshal(&ConfigChangeContext{Member: Member{ID: types.ID(1), RaftAttributes: attr}, IsPromote: true})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	tests := []struct {
 		cc   raftpb.ConfChange
 		werr error
@@ -467,9 +437,7 @@ func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldAp
 	}
 	for i, tt := range tests {
 		err := cl.ValidateConfigurationChange(tt.cc, shouldApplyV3)
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
-		}
+		assert.ErrorIsf(t, err, tt.werr, "#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 	}
 }
 
@@ -483,17 +451,13 @@ func TestClusterGenID(t *testing.T) {
 	cs.SetBackend(be)
 
 	cs.genID()
-	if cs.ID() == 0 {
-		t.Fatalf("cluster.ID = %v, want not 0", cs.ID())
-	}
+	require.NotEqualf(t, 0, cs.ID(), "cluster.ID = %v, want not 0", cs.ID())
 	previd := cs.ID()
 
 	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
-	if cs.ID() == previd {
-		t.Fatalf("cluster.ID = %v, want not %v", cs.ID(), previd)
-	}
+	require.NotEqualf(t, cs.ID(), previd, "cluster.ID = %v, want not %v", cs.ID(), previd)
 }
 
 func TestNodeToMemberBad(t *testing.T) {
@@ -522,9 +486,8 @@ func TestNodeToMemberBad(t *testing.T) {
 		}},
 	}
 	for i, tt := range tests {
-		if _, err := nodeToMember(zaptest.NewLogger(t), tt); err == nil {
-			t.Errorf("#%d: unexpected nil error", i)
-		}
+		_, err := nodeToMember(zaptest.NewLogger(t), tt)
+		assert.Errorf(t, err, "#%d: unexpected nil error", i)
 	}
 }
 
@@ -546,9 +509,8 @@ func TestClusterAddMember(t *testing.T) {
 			},
 		},
 	}
-	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("actions = %v, want %v", g, wactions)
-	}
+	g := st.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wactions), "actions = %v, want %v", g, wactions)
 }
 
 func TestClusterAddMemberAsLearner(t *testing.T) {
@@ -569,9 +531,8 @@ func TestClusterAddMemberAsLearner(t *testing.T) {
 			},
 		},
 	}
-	if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-		t.Errorf("actions = %v, want %v", g, wactions)
-	}
+	g := st.Action()
+	assert.Truef(t, reflect.DeepEqual(g, wactions), "actions = %v, want %v", g, wactions)
 }
 
 func TestClusterMembers(t *testing.T) {
@@ -589,9 +550,8 @@ func TestClusterMembers(t *testing.T) {
 		{ID: 50},
 		{ID: 100},
 	}
-	if g := cls.Members(); !reflect.DeepEqual(g, w) {
-		t.Fatalf("Members()=%#v, want %#v", g, w)
-	}
+	g := cls.Members()
+	require.Truef(t, reflect.DeepEqual(g, w), "Members()=%#v, want %#v", g, w)
 }
 
 func TestClusterRemoveMember(t *testing.T) {
@@ -604,9 +564,7 @@ func TestClusterRemoveMember(t *testing.T) {
 		{Name: "Delete", Params: []any{MemberStoreKey(1), true, true}},
 		{Name: "Create", Params: []any{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
 	}
-	if !reflect.DeepEqual(st.Action(), wactions) {
-		t.Errorf("actions = %v, want %v", st.Action(), wactions)
-	}
+	assert.Truef(t, reflect.DeepEqual(st.Action(), wactions), "actions = %v, want %v", st.Action(), wactions)
 }
 
 func TestClusterUpdateAttributes(t *testing.T) {
@@ -639,9 +597,8 @@ func TestClusterUpdateAttributes(t *testing.T) {
 		c.removed = tt.removed
 
 		c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs}, true)
-		if g := c.Members(); !reflect.DeepEqual(g, tt.wmems) {
-			t.Errorf("#%d: members = %+v, want %+v", i, g, tt.wmems)
-		}
+		g := c.Members()
+		assert.Truef(t, reflect.DeepEqual(g, tt.wmems), "#%d: members = %+v, want %+v", i, g, tt.wmems)
 	}
 }
 
@@ -652,12 +609,8 @@ func TestNodeToMember(t *testing.T) {
 	}}
 	wm := &Member{ID: 0x1234, RaftAttributes: RaftAttributes{}, Attributes: Attributes{Name: "node1"}}
 	m, err := nodeToMember(zaptest.NewLogger(t), n)
-	if err != nil {
-		t.Fatalf("unexpected nodeToMember error: %v", err)
-	}
-	if !reflect.DeepEqual(m, wm) {
-		t.Errorf("member = %+v, want %+v", m, wm)
-	}
+	require.NoErrorf(t, err, "unexpected nodeToMember error: %v", err)
+	assert.Truef(t, reflect.DeepEqual(m, wm), "member = %+v, want %+v", m, wm)
 }
 
 func newTestCluster(tb testing.TB, membs []*Member) *RaftCluster {
@@ -766,9 +719,8 @@ func TestIsReadyToAddVotingMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.members)
-		if got := c.IsReadyToAddVotingMember(); got != tt.want {
-			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
-		}
+		got := c.IsReadyToAddVotingMember()
+		assert.Equalf(t, tt.want, got, "%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 	}
 }
 
@@ -898,9 +850,8 @@ func TestIsReadyToRemoveVotingMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.members)
-		if got := c.IsReadyToRemoveVotingMember(tt.removeID); got != tt.want {
-			t.Errorf("%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
-		}
+		got := c.IsReadyToRemoveVotingMember(tt.removeID)
+		assert.Equalf(t, tt.want, got, "%d: isReadyToAddNewMember returned %t, want %t", i, got, tt.want)
 	}
 }
 
@@ -985,9 +936,8 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 	}
 	for i, tt := range tests {
 		c := newTestCluster(t, tt.members)
-		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
-			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
-		}
+		got := c.IsReadyToPromoteMember(tt.promoteID)
+		assert.Equalf(t, tt.want, got, "%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 	}
 }
 
