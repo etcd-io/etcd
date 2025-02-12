@@ -45,7 +45,7 @@ func TestDataReports(t *testing.T) {
 
 			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
 			require.NoError(t, err)
-			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute).Visualize
 
 			err = visualize(filepath.Join(path, "history.html"))
 			require.NoError(t, err)
