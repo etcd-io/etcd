@@ -67,11 +67,11 @@ const (
 	LeaseCheckpoint featuregate.Feature = "LeaseCheckpoint"
 	// LeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
 	// Requires EnableLeaseCheckpoint featuragate to be enabled.
-	// Deprecated in v3.6.
 	// TODO: Delete in v3.7
 	// owner: @serathius
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/13508
+	// Deprecated: Enabled by default in v3.6, to be removed in v3.7.
 	LeaseCheckpointPersist featuregate.Feature = "LeaseCheckpointPersist"
 )
 
@@ -87,7 +87,7 @@ var (
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
-	// Deprecated: only add existing experimental features here. DO NOT use for new features.
+	// Deprecated: Only add existing experimental features here. DO NOT use for new features.
 	ExperimentalFlagToFeatureMap = map[string]featuregate.Feature{
 		"experimental-stop-grpc-service-on-defrag":       StopGRPCServiceOnDefrag,
 		"experimental-initial-corrupt-check":             InitialCorruptCheck,

@@ -212,7 +212,7 @@ var (
 	ErrInvalidAuthMgmt      = Error(ErrGRPCInvalidAuthMgmt)
 	ErrClusterIDMismatch    = Error(ErrGRPCClusterIDMismatch)
 	//revive:disable:var-naming
-	// Deprecated: Please use ErrGRPCClusterIDMismatch.
+	// Deprecated: Please use ErrClusterIDMismatch.
 	ErrClusterIdMismatch = ErrClusterIDMismatch
 	//revive:enable:var-naming
 
