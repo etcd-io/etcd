@@ -346,7 +346,7 @@ Experimental feature:
   --snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-stop-grpc-service-on-defrag
-    Enable etcd gRPC service to stop serving client requests on defragmentation. It's deprecated, and will be decommissioned in v3.7. Use '--feature-gates=StopGRPCServiceOnDefrag=true' instead.
+    Enable etcd gRPC service to stop serving client requests on defragmentation. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=StopGRPCServiceOnDefrag=true' instead.
 
 Unsafe feature:
   --force-new-cluster 'false'

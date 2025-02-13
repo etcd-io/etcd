@@ -595,6 +595,8 @@ type Config struct {
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
 	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
+	// TODO: Delete in v3.7
+	// Deprecated: Use StopGRPCServiceOnDefrag Feature Flag. Will be decommissioned in v3.7.
 	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
 	// V2Deprecation describes phase of API & Storage V2 support.
