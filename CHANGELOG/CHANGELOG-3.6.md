@@ -78,7 +78,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - Decreased [`--snapshot-count` default value from 100,000 to 10,000](https://github.com/etcd-io/etcd/pull/15408)
 - Add [`etcd --tls-min-version --tls-max-version`](https://github.com/etcd-io/etcd/pull/15156) to enable support for TLS 1.3.
 - Add [quota to endpoint status response](https://github.com/etcd-io/etcd/pull/17877)
-- Add ['etcd --experimental-set-member-localaddr'](https://github.com/etcd-io/etcd/pull/17661) to enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer.
+- Add [feature gate `SetMemberLocalAddr`](https://github.com/etcd-io/etcd/pull/19413) to [enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer]((https://github.com/etcd-io/etcd/pull/17661))
 - Add [Support multiple values for allowed client and peer TLS identities](https://github.com/etcd-io/etcd/pull/18015)
 - Add [`embed.Config.GRPCAdditionalServerOptions`](https://github.com/etcd-io/etcd/pull/14066) to support updating the default internal gRPC configuration for embedded use cases.
 
