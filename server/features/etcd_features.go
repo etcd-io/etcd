@@ -73,6 +73,12 @@ const (
 	// main PR: https://github.com/etcd-io/etcd/pull/13508
 	// Deprecated: Enabled by default in v3.6, to be removed in v3.7.
 	LeaseCheckpointPersist featuregate.Feature = "LeaseCheckpointPersist"
+	// SetMemberLocalAddr enables using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer.
+	// Requires SetMemberLocalAddr featuragate to be enabled.
+	// owner: @flawedmatrix
+	// alpha: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/17661
+	SetMemberLocalAddr featuregate.Feature = "SetMemberLocalAddr"
 )
 
 var (
@@ -84,6 +90,7 @@ var (
 		TxnModeWriteWithSharedBuffer: {Default: true, PreRelease: featuregate.Beta},
 		LeaseCheckpoint:              {Default: false, PreRelease: featuregate.Alpha},
 		LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
+		SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	}
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
