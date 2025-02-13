@@ -7,6 +7,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### etcd server
 - Backport [add learner status check to readyz endpoint](https://github.com/etcd-io/etcd/pull/19280).
+- Fix [performance regression due to uncertain compaction sleep interval](https://github.com/etcd-io/etcd/pull/19405).
 
 ### `tools/benchmark`
 - Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
