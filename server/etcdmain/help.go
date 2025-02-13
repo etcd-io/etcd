@@ -113,8 +113,6 @@ Member:
 Clustering:
   --initial-advertise-peer-urls 'http://localhost:2380'
     List of this member's peer URLs to advertise to the rest of the cluster.
-  --experimental-set-member-localaddr 'false'
-    Enable using the first specified and non-loopback local address from initial-advertise-peer-urls as the local address when communicating with a peer.
   --initial-cluster 'default=http://localhost:2380'
     Initial cluster configuration for bootstrapping.
   --initial-cluster-state 'new'

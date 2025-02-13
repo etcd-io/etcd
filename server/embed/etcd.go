@@ -348,7 +348,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.Strings("advertise-client-urls", ec.getAdvertiseClientURLs()),
 		zap.Strings("listen-client-urls", ec.getListenClientURLs()),
 		zap.Strings("listen-metrics-urls", ec.getMetricsURLs()),
-		zap.Bool("experimental-set-member-localaddr", ec.ExperimentalSetMemberLocalAddr),
 		zap.String("experimental-local-address", sc.ExperimentalLocalAddress),
 		zap.Strings("cors", cors),
 		zap.Strings("host-whitelist", hss),

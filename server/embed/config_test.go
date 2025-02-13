@@ -149,7 +149,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		},
 		{
 			name:                                "ok to set different multiple experimental flags and feature gate flags",
-			serverFeatureGatesJSON:              "StopGRPCServiceOnDefrag=true,TxnModeWriteWithSharedBuffer=true,LeaseCheckpoint=true",
+			serverFeatureGatesJSON:              "StopGRPCServiceOnDefrag=true,TxnModeWriteWithSharedBuffer=true,LeaseCheckpoint=true,SetMemberLocalAddr=true",
 			experimentalCompactHashCheckEnabled: "true",
 			experimentalInitialCorruptCheck:     "true",
 			expectedFeatures: map[featuregate.Feature]bool{
@@ -158,6 +158,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.InitialCorruptCheck:          true,
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.LeaseCheckpoint:              true,
+				features.SetMemberLocalAddr:           true,
 			},
 		},
 		{
@@ -440,117 +441,117 @@ func TestInferLocalAddr(t *testing.T) {
 	tests := []struct {
 		name               string
 		advertisePeerURLs  []string
-		setMemberLocalAddr bool
+		serverFeatureGates string
 		expectedLocalAddr  string
 	}{
 		{
 			"defaults, ExperimentalSetMemberLocalAddr=false ",
 			[]string{DefaultInitialAdvertisePeerURLs},
-			false,
+			"SetMemberLocalAddr=false",
 			"",
 		},
 		{
 			"IPv4 address, ExperimentalSetMemberLocalAddr=false ",
 			[]string{"https://192.168.100.110:2380"},
-			false,
+			"SetMemberLocalAddr=false",
 			"",
 		},
 		{
 			"defaults, ExperimentalSetMemberLocalAddr=true",
 			[]string{DefaultInitialAdvertisePeerURLs},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"IPv4 unspecified address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://0.0.0.0:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"IPv6 unspecified address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://[::]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"IPv4 loopback address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://127.0.0.1:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"IPv6 loopback address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://[::1]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"IPv4 address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://192.168.100.110:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"Hostname only, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://123-host-3.corp.internal:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"",
 		},
 		{
 			"Hostname and IPv4 address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://123-host-3.corp.internal:2380", "https://192.168.100.110:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"IPv4 address and Hostname, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://192.168.100.110:2380", "https://123-host-3.corp.internal:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"IPv4 and IPv6 addresses, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://192.168.100.110:2380", "https://[2001:db8:85a3::8a2e:370:7334]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"IPv6 and IPv4 addresses, ExperimentalSetMemberLocalAddr=true",
 			// IPv4 addresses will always sort before IPv6 ones anyway
 			[]string{"https://[2001:db8:85a3::8a2e:370:7334]:2380", "https://192.168.100.110:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"Hostname, IPv4 and IPv6 addresses, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://123-host-3.corp.internal:2380", "https://192.168.100.110:2380", "https://[2001:db8:85a3::8a2e:370:7334]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"Hostname, IPv6 and IPv4 addresses, ExperimentalSetMemberLocalAddr=true",
 			// IPv4 addresses will always sort before IPv6 ones anyway
 			[]string{"https://123-host-3.corp.internal:2380", "https://[2001:db8:85a3::8a2e:370:7334]:2380", "https://192.168.100.110:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"192.168.100.110",
 		},
 		{
 			"IPv6 address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://[2001:db8:85a3::8a2e:370:7334]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"2001:db8:85a3::8a2e:370:7334",
 		},
 		{
 			"Hostname and IPv6 address, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://123-host-3.corp.internal:2380", "https://[2001:db8:85a3::8a2e:370:7334]:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"2001:db8:85a3::8a2e:370:7334",
 		},
 		{
 			"IPv6 address and Hostname, ExperimentalSetMemberLocalAddr=true",
 			[]string{"https://[2001:db8:85a3::8a2e:370:7334]:2380", "https://123-host-3.corp.internal:2380"},
-			true,
+			"SetMemberLocalAddr=true",
 			"2001:db8:85a3::8a2e:370:7334",
 		},
 	}
@@ -559,10 +560,33 @@ func TestInferLocalAddr(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cfg := NewConfig()
 			cfg.AdvertisePeerUrls = types.MustNewURLs(tt.advertisePeerURLs)
-			cfg.ExperimentalSetMemberLocalAddr = tt.setMemberLocalAddr
+			cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(tt.serverFeatureGates)
 
 			require.NoError(t, cfg.Validate())
 			require.Equal(t, tt.expectedLocalAddr, cfg.InferLocalAddr())
+		})
+	}
+}
+
+func TestSetMemberLocalAddrValidate(t *testing.T) {
+	tcs := []struct {
+		name               string
+		serverFeatureGates string
+	}{
+		{
+			name: "Default config should pass",
+		},
+		{
+			name:               "Enabling SetMemberLocalAddr should pass",
+			serverFeatureGates: "SetMemberLocalAddr=true",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := *NewConfig()
+			cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(tc.serverFeatureGates)
+			err := cfg.Validate()
+			require.NoError(t, err)
 		})
 	}
 }

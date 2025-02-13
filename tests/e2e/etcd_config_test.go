@@ -427,7 +427,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 		os.RemoveAll(tempDir)
 	}()
 
-	// node 0 (127.0.0.1) does not set `--experimental-set-member-localaddr`,
+	// node 0 (127.0.0.1) does not set `--feature-gates=SetMemberLocalAddr=true`,
 	// while nodes 1 and nodes 2 do.
 	//
 	// node 0's peer certificate is signed for 127.0.0.1, but it uses the host
@@ -437,7 +437,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 	// Both node 1 and node 2's peer certificates are signed for the host IP,
 	// and they also communicate with peers using the host IP (explicitly set
 	// with --initial-advertise-peer-urls and
-	// --experimental-set-member-localaddr), so node 0 has no issue connecting
+	// --feature-gates=SetMemberLocalAddr=true), so node 0 has no issue connecting
 	// to them.
 	//
 	// Refer to https://github.com/etcd-io/etcd/issues/17068.
@@ -472,7 +472,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 				"--peer-key-file", keyFiles[1],
 				"--peer-trusted-ca-file", caFile,
 				"--peer-client-cert-auth",
-				"--experimental-set-member-localaddr",
+				"--feature-gates=SetMemberLocalAddr=true",
 			}
 		}
 
