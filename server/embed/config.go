@@ -407,6 +407,9 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
+	// ExperimentalInitialCorruptCheck defines to check data corrution on boot.
+	// TODO: delete in v3.7
+	// Deprecated: Use InitialCorruptCheck Feature Gate instead. Will be decommissioned in v3.7.
 	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
 	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
 	// TODO: delete in v3.7
