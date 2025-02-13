@@ -190,6 +190,8 @@ type ServerConfig struct {
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
 	// a shared buffer in its readonly check operations.
+	// TODO: Delete in v3.7
+	// Deprecated: Use TxnModeWriteWithSharedBuffer Feature Gate instead. Will be decommissioned in v3.7.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to

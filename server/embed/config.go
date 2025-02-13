@@ -407,6 +407,9 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
+	// ExperimentalInitialCorruptCheck defines to check data corrution on boot.
+	// TODO: delete in v3.7
+	// Deprecated: Use InitialCorruptCheck Feature Gate instead. Will be decommissioned in v3.7.
 	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
 	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
 	// TODO: delete in v3.7
@@ -590,9 +593,13 @@ type Config struct {
 	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
 
 	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
+	// TODO: Delete in v3.7
+	// Deprecated: Use TxnModeWriteWithSharedBuffer Feature Flag. Will be decommissioned in v3.7.
 	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
 
 	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
+	// TODO: Delete in v3.7
+	// Deprecated: Use StopGRPCServiceOnDefrag Feature Flag. Will be decommissioned in v3.7.
 	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
 	// V2Deprecation describes phase of API & Storage V2 support.
