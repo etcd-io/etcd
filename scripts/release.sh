@@ -364,7 +364,8 @@ main() {
     release_notes_temp_file=$(mktemp)
 
     local release_version=${RELEASE_VERSION#v} # Remove the v prefix from the release version (i.e., v3.6.1 -> 3.6.1)
-    local release_version_major_minor=${release_version%.*} # Remove the patch from the version (i.e., 3.6)
+    local release_version_major_minor
+    release_version_major_minor=$(echo "${release_version}" | cut -d. -f1-2) # Remove the patch from the version (i.e., 3.6)
     local release_version_major=${release_version_major_minor%.*} # Extract the major (i.e., 3)
     local release_version_minor=${release_version_major_minor/*./} # Extract the minor (i.e., 6)
 
