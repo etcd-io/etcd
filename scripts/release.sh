@@ -254,7 +254,7 @@ main() {
 
   # Upload artifacts.
   if [ "${DRY_RUN}" == "true" ] || [ "${NO_UPLOAD}" == 1 ]; then
-    log_callout "Skipping artifact upload to gs://etcd. --no-upload flat is set."
+    log_callout "Skipping artifact upload to gs://etcd. --no-upload flag is set."
   else
     read -p "Upload etcd ${RELEASE_VERSION} release artifacts to gs://etcd [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
@@ -266,7 +266,7 @@ main() {
 
   # Push images.
   if [ "${DRY_RUN}" == "true" ] || [ "${NO_DOCKER_PUSH}" == 1 ]; then
-    log_callout "Skipping docker push. --no-docker-push flat is set."
+    log_callout "Skipping docker push. --no-docker-push flag is set."
   else
     read -p "Publish etcd ${RELEASE_VERSION} docker images to quay.io [y/N]? " -r confirm
     [[ "${confirm,,}" == "y" ]] || exit 1
