@@ -17,7 +17,8 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"go.uber.org/zap"
 
@@ -52,19 +53,12 @@ func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage c
 // If `self` is not inside the given ids, it creates a Raft entry to add a
 // default member with the given `self`.
 func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, index uint64) []raftpb.Entry {
-	found := false
-	for _, id := range ids {
-		if id == self {
-			found = true
-		}
-	}
-
 	var ents []raftpb.Entry
 	next := index + 1
 
 	// NB: always add self first, then remove other nodes. Raft will panic if the
 	// set of voters ever becomes empty.
-	if !found {
+	if !slices.Contains(ids, self) {
 		m := membership.Member{
 			ID:             types.ID(self),
 			RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://localhost:2380"}},
@@ -124,7 +118,7 @@ func GetEffectiveNodeIdsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will Be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will Be removed from the set.
-// - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
+// - ConfChangeAddLearnerNode, in which case the contained ID will Be added into the set.
 func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
 	ids := make(map[uint64]bool)
 	if snap != nil {
@@ -151,10 +145,8 @@ func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 			lg.Panic("unknown ConfChange Type", zap.String("type", cc.Type.String()))
 		}
 	}
-	sids := make(types.Uint64Slice, 0, len(ids))
-	for id := range ids {
-		sids = append(sids, id)
+	if len(ids) == 0 {
+		return []uint64{} // To pass the test; maybe it's OK to return nil.
 	}
-	sort.Sort(sids)
-	return sids
+	return slices.Sorted(maps.Keys(ids))
 }
