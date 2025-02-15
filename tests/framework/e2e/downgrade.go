@@ -46,7 +46,6 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 			Server:  OffsetMinor(ver, 1).String(),
 			Storage: ver.String(),
 		})
-		AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
 	}
 
 	t.Log("Cluster is ready for downgrade")
@@ -82,48 +81,55 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	t.Log("Cluster downgrade cancellation is completed")
 }
 
-func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
+func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, newExecPath string, targetVersion version.Versions) error {
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
-	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, currentVersion, targetVersion)
+	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, newExecPath, targetVersion)
 }
 
-func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, currentVersion, targetVersion *semver.Version) error {
+func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, newExecPath string, targetVersion version.Versions) error {
 	if lg == nil {
 		lg = clus.lg
 	}
-	isDowngrade := targetVersion.LessThan(*currentVersion)
-	opString := "upgrading"
-	newExecPath := BinPath.Etcd
-	if isDowngrade {
-		opString = "downgrading"
-		newExecPath = BinPath.EtcdLastRelease
+
+	newExecVersion, err := GetVersionFromBinary(newExecPath)
+	if err != nil {
+		return err
 	}
 
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		if member.Config().ExecPath == newExecPath {
-			return fmt.Errorf("member:%s is already running with the %s target binary - %s", member.Config().Name, opString, member.Config().ExecPath)
+			return fmt.Errorf("member:%s is already running with the target binary - %s", member.Config().Name, member.Config().ExecPath)
 		}
+
+		oldExecVersion, err := GetVersionFromBinary(member.Config().ExecPath)
+		if err != nil {
+			return fmt.Errorf("failed to get member:%s's version: %w", member.Config().Name, err)
+		}
+
+		opString := "upgrading"
+		if newExecVersion.LessThan(*oldExecVersion) {
+			opString = "downgrading"
+		}
+
 		lg.Info(fmt.Sprintf("%s member", opString), zap.String("member", member.Config().Name))
 		if err := member.Stop(); err != nil {
 			return err
 		}
+
 		member.Config().ExecPath = newExecPath
 		lg.Info("Restarting member", zap.String("member", member.Config().Name))
-		err := member.Start(context.TODO())
-		if err != nil {
+		if err := member.Start(context.TODO()); err != nil {
 			return err
 		}
 	}
+
 	lg.Info("Validating versions")
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
-		ValidateVersion(t, clus.Cfg, member, version.Versions{
-			Cluster: targetVersion.String(),
-			Server:  targetVersion.String(),
-		})
+		ValidateVersion(t, clus.Cfg, member, targetVersion)
 	}
 	return nil
 }

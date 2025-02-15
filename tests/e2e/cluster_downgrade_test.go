@@ -162,7 +162,10 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, e2e.BinPath.EtcdLastRelease, version.Versions{
+		Cluster: lastVersionStr,
+		Server:  lastVersionStr,
+	})
 	require.NoError(t, err)
 	if len(membersToChange) == len(epc.Procs) {
 		e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
@@ -197,8 +200,16 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	require.NoError(t, err)
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
+	// TODO: It will fail if triggerCancellation is noCancellation.
+	// By default, the leader cancels the downgrade process once all members
+	// have reached the target version. However, if membersToChange is smaller
+	// than the cluster size, the leader will not cancel the downgrade process.
+	// In this case, the cluster should remain on the previous version rather than the current version.
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, lastClusterVersion, currentVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, e2e.BinPath.Etcd, version.Versions{
+		Cluster: currentVersionStr,
+		Server:  currentVersionStr,
+	})
 	require.NoError(t, err)
 	t.Log("Upgrade complete")
 
