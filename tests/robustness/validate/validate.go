@@ -40,8 +40,9 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 		return results
 	}
 
-	// TODO: Use requests from linearization for replay.
-	replay := model.NewReplay(persistedRequests)
+	// Use linearization results from operations
+	linearizedRequests := getLinearizedRequests(linearizableOperations, reports, persistedRequests)
+	replay := model.NewReplay(linearizedRequests)
 
 	err = validateWatch(lg, cfg, reports, replay)
 	if err != nil {
@@ -52,6 +53,41 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 		t.Errorf("Failed validating serializable operations, err: %s", err)
 	}
 	return results
+}
+
+// getLinearizedRequests converts linearizable operations to a sequence of requests
+// while preserving error responses from the client reports
+func getLinearizedRequests(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) []model.EtcdRequest {
+	result := make([]model.EtcdRequest, 0, len(persistedRequests))
+
+	// Build map of failed operations from client reports
+	failedOps := make(map[int]bool)
+	for _, report := range reports {
+		for _, op := range report.KeyValue {
+			response := op.Output.(model.MaybeEtcdResponse)
+			if response.Error != "" {
+				failedOps[op.ClientId] = true
+			}
+		}
+	}
+
+	// Track processed operations
+	opIndex := 0
+
+	// Build sequence combining linearized operations and error responses
+	for i := range persistedRequests {
+		if failedOps[i] {
+			// Keep failed operations in their original position
+			result = append(result, persistedRequests[i])
+		} else if opIndex < len(operations) {
+			// Use operations order for successful requests
+			originalIndex := operations[opIndex].Input.(int)
+			result = append(result, persistedRequests[originalIndex])
+			opIndex++
+		}
+	}
+
+	return result
 }
 
 type Config struct {
