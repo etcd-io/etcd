@@ -62,7 +62,7 @@ for file in "${changed_files[@]}"; do
     end_ranges["${i}"]=$(echo "${range}" | awk -F: '{print $2}')
     i=$((1 + i))
   done
-	if [ -z "${ranges}" ]; then
+  if [ -z "${ranges}" ]; then
     start_ranges[0]=0
     end_ranges[0]=0
   fi
