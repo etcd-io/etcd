@@ -2689,7 +2689,7 @@
         "count": {
           "type": "string",
           "format": "int64",
-          "description": "count is set to the number of keys within the range when requested."
+          "description": "count is set to the actual number of keys within the range when requested.\nUnlike Kvs, it is unaffected by limits and filters (e.g., Min/Max, Create/Modify, Revisions)\nand reflects the full count within the specified range."
         }
       }
     },
