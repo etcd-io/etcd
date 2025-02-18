@@ -507,7 +507,9 @@ message RangeResponse {
   repeated mvccpb.KeyValue kvs = 2;
   // more indicates if there are more keys to return in the requested range.
   bool more = 3;
-  // count is set to the number of keys within the range when requested.
+  // count is set to the actual number of keys within the range when requested.
+  // Unlike Kvs, it is unaffected by limits and filters (e.g., Min/Max, Create/Modify, Revisions)
+  // and reflects the full count within the specified range.
   int64 count = 4;
 }
 
