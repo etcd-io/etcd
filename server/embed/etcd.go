@@ -797,6 +797,7 @@ func (e *Etcd) serveClients() {
 	for _, sctx := range e.sctxs {
 		if sctx.httpOnly {
 			splitHTTP = true
+			break
 		}
 	}
 
