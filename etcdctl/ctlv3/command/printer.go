@@ -17,6 +17,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -220,7 +221,7 @@ func makeEndpointHealthTable(healthList []epHealth) (hdr []string, rows [][]stri
 func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]string) {
 	hdr = []string{
 		"endpoint", "ID", "version", "storage version", "db size", "in use", "percentage not in use", "quota", "is leader", "is learner", "raft term",
-		"raft index", "raft applied index", "errors",
+		"raft index", "raft applied index", "errors", "downgrade target version", "downgrade enabled",
 	}
 	for _, status := range statusList {
 		rows = append(rows, []string{
@@ -238,6 +239,8 @@ func makeEndpointStatusTable(statusList []epStatus) (hdr []string, rows [][]stri
 			fmt.Sprint(status.Resp.RaftIndex),
 			fmt.Sprint(status.Resp.RaftAppliedIndex),
 			fmt.Sprint(strings.Join(status.Resp.Errors, ", ")),
+			status.Resp.DowngradeInfo.GetTargetVersion(),
+			strconv.FormatBool(status.Resp.DowngradeInfo.GetEnabled()),
 		})
 	}
 	return hdr, rows

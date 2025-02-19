@@ -203,6 +203,8 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 		fmt.Println(`"RaftAppliedIndex" :`, ep.Resp.RaftAppliedIndex)
 		fmt.Println(`"Errors" :`, ep.Resp.Errors)
 		fmt.Printf("\"Endpoint\" : %q\n", ep.Ep)
+		fmt.Printf("\"DowngradeTargetVersion\" : %q\n", ep.Resp.DowngradeInfo.GetTargetVersion())
+		fmt.Println(`"DowngradeEnabled" :`, ep.Resp.DowngradeInfo.GetEnabled())
 		fmt.Println()
 	}
 }
