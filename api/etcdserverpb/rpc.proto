@@ -1198,6 +1198,15 @@ message StatusResponse {
   string storageVersion = 11 [(versionpb.etcd_version_field)="3.6"];
   // dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)
   int64 dbSizeQuota = 12 [(versionpb.etcd_version_field)="3.6"];
+  // downgradeInfo indicates if there is downgrade process.
+  DowngradeInfo downgradeInfo = 13 [(versionpb.etcd_version_field)="3.6"];
+}
+
+message DowngradeInfo {
+	// enabled indicates whether the cluster is enabled to downgrade.
+  bool enabled = 1;
+	// targetVersion is the target downgrade version.
+  string targetVersion = 2;
 }
 
 message AuthEnableRequest {

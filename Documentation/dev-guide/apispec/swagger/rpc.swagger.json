@@ -2135,6 +2135,19 @@
         }
       }
     },
+    "etcdserverpbDowngradeInfo": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "enabled indicates whether the cluster is enabled to downgrade."
+        },
+        "targetVersion": {
+          "type": "string",
+          "description": "targetVersion is the target downgrade version."
+        }
+      }
+    },
     "etcdserverpbDowngradeRequest": {
       "type": "object",
       "properties": {
@@ -2840,6 +2853,10 @@
           "type": "string",
           "format": "int64",
           "title": "dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)"
+        },
+        "downgradeInfo": {
+          "$ref": "#/definitions/etcdserverpbDowngradeInfo",
+          "description": "downgradeInfo indicates if there is downgrade process."
         }
       }
     },
