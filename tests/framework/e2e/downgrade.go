@@ -28,6 +28,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -58,7 +59,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	var err error
 	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
-			t.Logf("etcdctl downgrade cancel")
+			t.Log("etcdctl downgrade cancel")
 			err = c.DowngradeCancel(context.TODO())
 			if err != nil {
 				if strings.Contains(err.Error(), "no inflight downgrade job") {
@@ -72,7 +73,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 				continue
 			}
 
-			t.Logf("etcdctl downgrade cancel executed successfully")
+			t.Log("etcdctl downgrade cancel executed successfully")
 			break
 		}
 	})
@@ -80,6 +81,19 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	require.NoError(t, err)
 
 	t.Log("Cluster downgrade cancellation is completed")
+}
+
+func DowngradeAutoCancelCheck(t *testing.T, epc *EtcdProcessCluster) {
+	c := epc.Etcdctl()
+
+	var err error
+	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+		t.Log("etcdctl downgrade cancel")
+		err = c.DowngradeCancel(context.TODO())
+		require.Errorf(t, err, "no inflight downgrade job")
+	})
+
+	t.Log("Cluster downgrade is completed")
 }
 
 func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
@@ -117,6 +131,16 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 			return err
 		}
 	}
+
+	if opString == "downgrading" && len(membersToChange) == len(clus.Procs) {
+		testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
+			lg.Info("Waiting for downgrade completion log line")
+			leader := clus.WaitLeader(t)
+			_, err := clus.Procs[leader].Logs().ExpectWithContext(context.Background(), expect.ExpectedResponse{Value: "the cluster has been downgraded"})
+			require.NoError(t, err)
+		})
+	}
+
 	lg.Info("Validating versions")
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
