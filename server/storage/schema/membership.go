@@ -37,7 +37,7 @@ type membershipBackend struct {
 	be backend.Backend
 }
 
-func NewMembershipBackend(lg *zap.Logger, be backend.Backend) *membershipBackend {
+func NewMembershipBackend(lg *zap.Logger, be backend.Backend) membership.MembershipBackend {
 	return &membershipBackend{
 		lg: lg,
 		be: be,
