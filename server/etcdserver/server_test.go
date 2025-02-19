@@ -24,12 +24,15 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/golang/protobuf/proto"
+	"github.com/prometheus/client_golang/prometheus"
+	ptestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -42,6 +45,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/pkg/v3/verify"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/idutil"
 	"go.etcd.io/etcd/pkg/v3/notify"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
@@ -1682,4 +1686,31 @@ func TestIsActive(t *testing.T) {
 
 		require.Equal(t, tc.expectActive, s.isActive())
 	}
+}
+
+func TestAddFeatureGateMetrics(t *testing.T) {
+	const testAlphaGate featuregate.Feature = "TestAlpha"
+	const testBetaGate featuregate.Feature = "TestBeta"
+	const testGAGate featuregate.Feature = "TestGA"
+
+	featuremap := map[featuregate.Feature]featuregate.FeatureSpec{
+		testGAGate:    {Default: true, PreRelease: featuregate.GA},
+		testAlphaGate: {Default: true, PreRelease: featuregate.Alpha},
+		testBetaGate:  {Default: false, PreRelease: featuregate.Beta},
+	}
+	fg := featuregate.New("test", zaptest.NewLogger(t))
+	fg.Add(featuremap)
+
+	addFeatureGateMetrics(fg, serverFeatureEnabled)
+
+	expected := `# HELP etcd_server_feature_enabled Whether or not a feature is enabled. 1 is enabled, 0 is not.
+	# TYPE etcd_server_feature_enabled gauge
+	etcd_server_feature_enabled{name="AllAlpha",stage="ALPHA"} 0
+	etcd_server_feature_enabled{name="AllBeta",stage="BETA"} 0
+	etcd_server_feature_enabled{name="TestAlpha",stage="ALPHA"} 1
+	etcd_server_feature_enabled{name="TestBeta",stage="BETA"} 0
+	etcd_server_feature_enabled{name="TestGA",stage=""} 1
+	`
+	err := ptestutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "etcd_server_feature_enabled")
+	require.NoErrorf(t, err, "unexpected metric collection result: \n%s", err)
 }

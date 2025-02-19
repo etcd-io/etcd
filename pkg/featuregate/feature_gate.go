@@ -112,8 +112,6 @@ type MutableFeatureGate interface {
 	Add(features map[Feature]FeatureSpec) error
 	// GetAll returns a copy of the map of known feature names to feature specs.
 	GetAll() map[Feature]FeatureSpec
-	// AddMetrics adds feature enablement metrics
-	AddMetrics()
 	// OverrideDefault sets a local override for the registered default value of a named
 	// feature. If the feature has not been previously registered (e.g. by a call to Add), has a
 	// locked default, or if the gate has already registered itself with a FlagSet, a non-nil
@@ -361,10 +359,6 @@ func (f *featureGate) AddFlag(fs *flag.FlagSet, flagName string) {
 	fs.Var(f, flagName, ""+
 		"A set of key=value pairs that describe feature gates for alpha/experimental features. "+
 		"Options are:\n"+strings.Join(known, "\n"))
-}
-
-func (f *featureGate) AddMetrics() {
-	// TODO(henrybear327): implement this.
 }
 
 // KnownFeatures returns a slice of strings describing the FeatureGate's known features.
