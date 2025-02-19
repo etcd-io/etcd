@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anishathalye/porcupine"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -1834,6 +1835,155 @@ func TestValidateWatch(t *testing.T) {
 				putRequest("ac", "3"),
 			},
 			expectError: errBrokeFilter.Error(),
+		},
+		{
+			name: "Linearizable - ordered events match linearization - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 3, true),
+									},
+								},
+							},
+						},
+					},
+					KeyValue: []porcupine.Operation{
+						{
+							Input:  putRequest("a", "1"),
+							Call:   1,
+							Return: 2,
+						},
+						{
+							Input:  putRequest("b", "2"),
+							Call:   3,
+							Return: 4,
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
+		},
+		{
+			name: "Linearizable - concurrent atomic txn - pass",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("a", "1", 2, true),
+										putWatchEvent("b", "2", 2, true),
+									},
+								},
+							},
+						},
+					},
+					KeyValue: []porcupine.Operation{
+						{
+							Input: model.EtcdRequest{
+								Type: model.Txn,
+								Txn: &model.TxnRequest{
+									OperationsOnSuccess: []model.EtcdOperation{
+										{
+											Type: model.PutOperation,
+											Put: model.PutOptions{
+												Key:   "a",
+												Value: model.ToValueOrHash("1"),
+											},
+										},
+										{
+											Type: model.PutOperation,
+											Put: model.PutOptions{
+												Key:   "b",
+												Value: model.ToValueOrHash("2"),
+											},
+										},
+									},
+								},
+							},
+							Call:   1,
+							Return: 2,
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				{
+					Type: model.Txn,
+					Txn: &model.TxnRequest{
+						OperationsOnSuccess: []model.EtcdOperation{
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:   "a",
+									Value: model.ToValueOrHash("1"),
+								},
+							},
+							{
+								Type: model.PutOperation,
+								Put: model.PutOptions{
+									Key:   "b",
+									Value: model.ToValueOrHash("2"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "Linearizable - non-atomic unordered events - fail",
+			reports: []report.ClientReport{
+				{
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{
+								WithPrefix: true,
+							},
+							Responses: []model.WatchResponse{
+								{
+									Events: []model.WatchEvent{
+										putWatchEvent("b", "2", 3, true),
+										putWatchEvent("a", "1", 2, true),
+									},
+								},
+							},
+						},
+					},
+					KeyValue: []porcupine.Operation{
+						{
+							Input:  putRequest("a", "1"),
+							Call:   1,
+							Return: 2,
+						},
+						{
+							Input:  putRequest("b", "2"),
+							Call:   3,
+							Return: 4,
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{
+				putRequest("a", "1"),
+				putRequest("b", "2"),
+			},
+			expectError: errBrokeOrdered.Error(),
 		},
 	}
 	for _, tc := range tcs {
