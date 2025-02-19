@@ -319,6 +319,25 @@ func TestPatchHistory(t *testing.T) {
 			},
 		},
 		{
+			name: "retried txn remains if there is matching persisted event, other failed txn time rebased accordingly",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendTxn([]clientv3.Cmp{clientv3.Compare(clientv3.ModRevision("key1"), "=", 0)}, []clientv3.Op{clientv3.OpPut("key1", "value1")}, []clientv3.Op{}, 100, infinite, nil, errors.New("rpc error: code = Unavailable desc = error reading from server: EOF"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key2", "value2")}, []clientv3.Op{clientv3.OpDelete("key2")}, 200, infinite, nil, errors.New("failed"))
+				h.AppendTxn([]clientv3.Cmp{clientv3.Compare(clientv3.ModRevision("key1"), "=", 0)}, []clientv3.Op{clientv3.OpPut("key1", "value1")}, []clientv3.Op{}, 400, 500, &clientv3.TxnResponse{Succeeded: false}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				putRequest("key1", "value1"),
+				putRequest("key2", "value2"),
+				putRequest("key1", "value1"),
+			},
+			watchOperations: watchResponse(150, putEvent("key1", "value1", 1)),
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: infinite + 500, Output: model.MaybeEtcdResponse{Error: "rpc error: code = Unavailable desc = error reading from server: EOF"}},
+				{Return: infinite + 498, Output: model.MaybeEtcdResponse{Error: "failed"}},
+				{Return: 500, Output: model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Txn: &model.TxnResponse{Failure: true}}}},
+			},
+		},
+		{
 			name: "failed txn empty/delete remains",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpDelete("key")}, 100, infinite, nil, errors.New("failed"))

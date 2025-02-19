@@ -26,9 +26,9 @@ import (
 func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	allOperations := relevantOperations(reports)
 	putRevision := putRevision(reports)
-	putReturnTime := putReturnTime(allOperations, reports, persistedRequests)
-	clientPutCount := countClientPuts(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
+	putReturnTime := putReturnTime(allOperations, reports, persistedRequests, persistedPutCount)
+	clientPutCount := countClientPuts(reports)
 	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
@@ -155,7 +155,7 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[k
 	return false
 }
 
-func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
+func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest, persistedPutCount map[keyValue]int64) map[keyValue]int64 {
 	earliestReturnTime := map[keyValue]int64{}
 	var lastReturnTime int64
 	for _, op := range allOperations {
@@ -214,6 +214,9 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					continue
 				}
 				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
+				if count := persistedPutCount[kv]; count > 1 {
+					continue
+				}
 				returnTime, ok := earliestReturnTime[kv]
 				if ok {
 					lastReturnTime = min(returnTime, lastReturnTime)
