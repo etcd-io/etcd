@@ -27,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -147,10 +148,6 @@ func (f memberReplace) Available(config e2e.EtcdProcessClusterConfig, member e2e
 type memberDowngrade struct{}
 
 func (f memberDowngrade) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
-	currentVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
-	if err != nil {
-		return nil, err
-	}
 	lastVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
 	if err != nil {
 		return nil, err
@@ -174,7 +171,10 @@ func (f memberDowngrade) Inject(ctx context.Context, t *testing.T, lg *zap.Logge
 	time.Sleep(etcdserver.HealthInterval)
 	e2e.DowngradeEnable(t, clus, lastVersion)
 
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToDowngrade, currentVersion, lastVersion)
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToDowngrade, e2e.BinPath.EtcdLastRelease, version.Versions{
+		Cluster: lastVersion.String(),
+		Server:  lastVersion.String(),
+	})
 	time.Sleep(etcdserver.HealthInterval)
 	return nil, err
 }
@@ -208,6 +208,7 @@ func (f memberDowngradeUpgrade) Inject(ctx context.Context, t *testing.T, lg *za
 	if err != nil {
 		return nil, err
 	}
+
 	lastVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
 	if err != nil {
 		return nil, err
@@ -228,13 +229,32 @@ func (f memberDowngradeUpgrade) Inject(ctx context.Context, t *testing.T, lg *za
 
 	e2e.DowngradeEnable(t, clus, lastVersion)
 	// downgrade all members first
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, len(clus.Procs), currentVersion, lastVersion)
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, len(clus.Procs), e2e.BinPath.EtcdLastRelease, version.Versions{
+		Cluster: lastVersion.String(),
+		Server:  lastVersion.String(),
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	// NOTE: By default, the leader can cancel the downgrade once all members
+	// have reached the target version. However, determining the final stable
+	// cluster version after an upgrade can be challenging. To ensure stability,
+	// we should cancel downgrade process manually after downgrade.
+	e2e.DowngradeCancel(t, clus)
+
 	// partial upgrade the cluster
 	numberOfMembersToUpgrade := rand.Int()%len(clus.Procs) + 1
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToUpgrade, lastVersion, currentVersion)
+
+	targetClusterVersion := lastVersion.String()
+	if numberOfMembersToUpgrade == len(clus.Procs) {
+		targetClusterVersion = currentVersion.String()
+	}
+
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToUpgrade, e2e.BinPath.Etcd, version.Versions{
+		Cluster: targetClusterVersion,
+		Server:  currentVersion.String(),
+	})
 	time.Sleep(etcdserver.HealthInterval)
 	return nil, err
 }
