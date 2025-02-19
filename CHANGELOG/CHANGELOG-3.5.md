@@ -13,7 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
 
 ### Dependencies
-- Compile binaries using [go 1.22.12](https://github.com/etcd-io/etcd/pull/19336).
+- Compile binaries using [go 1.23.6](https://github.com/etcd-io/etcd/pull/19430).
 
 <hr>
 

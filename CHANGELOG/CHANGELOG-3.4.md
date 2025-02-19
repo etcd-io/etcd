@@ -14,7 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [runtime panic that occurs when KeepAlive is called with a Context implemented by an uncomparable type](https://github.com/etcd-io/etcd/pull/18936)
 
 ### Dependencies
-- Compile binaries using [go 1.22.12](https://github.com/etcd-io/etcd/pull/19337)
+- Compile binaries using [go 1.23.6](https://github.com/etcd-io/etcd/pull/19429)
 - Bump [golang.org/x/crypto to 0.32.0 to address CVE-2024-45337 and golang.org/x/net to 0.34.0 to address CVE-2024-45338](https://github.com/etcd-io/etcd/pull/19197).
 
 <hr>
