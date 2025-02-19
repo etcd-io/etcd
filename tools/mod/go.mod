@@ -5,7 +5,7 @@ go 1.23
 toolchain go1.23.6
 
 require (
-	github.com/alexfalkowski/gocovmerge v1.3.18
+	github.com/alexfalkowski/gocovmerge v1.4.0
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
 	github.com/chzchzchz/goword v0.0.0-20170907005317-a9744cb52b03
 	github.com/cloudflare/cfssl v1.6.5
@@ -217,13 +217,13 @@ require (
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20241108190413-2d47ceb2692f // indirect
-	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/tools v0.29.0 // indirect
+	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250204164813-702378808489 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250204164813-702378808489 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
