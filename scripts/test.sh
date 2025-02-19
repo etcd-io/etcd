@@ -483,7 +483,7 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  output=$(run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -508,7 +508,7 @@ function bom_pass {
 
 function dump_deps_of_module() {
   local module
-  if ! module=$(run go list -m); then
+  if ! module=$(run go mod edit -json | jq -r .Module.Path); then
     return 255
   fi
   run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
@@ -615,6 +615,17 @@ function proto_annotations_pass {
 
 function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
+}
+
+function go_workspace_pass {
+  log_callout "Ensuring go workspace is in sync."
+
+  run go mod download
+  if [ -n "$(git status --porcelain go.work.sum)" ]; then
+    log_error "Go workspace not in sync."
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
+  fi
 }
 
 ########### MAIN ###############################################################

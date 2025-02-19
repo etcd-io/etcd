@@ -75,10 +75,10 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions
+	verify-govet-shadow verify-markdown-marker verify-go-versions verify-go-workspace
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
+fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive update-go-workspace
 	./scripts/fix.sh
 
 .PHONY: verify-gofmt
@@ -215,6 +215,14 @@ clean:
 verify-go-versions:
 	./scripts/verify_go_versions.sh
 
+.PHONY: verify-go-workspace
+verify-go-workspace:
+	PASSES="go_workspace" ./scripts/test.sh
+
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
 	./scripts/sync_go_toolchain_directive.sh
+
+.PHONY: update-go-workspace
+update-go-workspace:
+	./scripts/update_go_workspace.sh
