@@ -1,3 +1,5 @@
+SHELL = /usr/bin/env bash
+
 .PHONY: all
 all: build
 include tests/robustness/makefile.mk
@@ -67,7 +69,7 @@ upload-coverage-report: test-coverage
 	./scripts/codecov_upload.sh
 
 .PHONY: fuzz
-fuzz: 
+fuzz:
 	./scripts/fuzzing.sh
 
 # Static analysis
