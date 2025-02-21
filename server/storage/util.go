@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -26,7 +27,6 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 // AssertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
@@ -126,10 +126,10 @@ func GetEffectiveNodeIdsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 // - ConfChangeRemoveNode, in which case the contained ID will Be removed from the set.
 // - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
 func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
-	ids := make(map[uint64]bool)
+	ids := make(map[uint64]struct{})
 	if snap != nil {
 		for _, id := range snap.Metadata.ConfState.Voters {
-			ids[id] = true
+			ids[id] = struct{}{}
 		}
 	}
 	for _, e := range ents {
@@ -140,9 +140,9 @@ func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 		pbutil.MustUnmarshal(&cc, e.Data)
 		switch cc.Type {
 		case raftpb.ConfChangeAddLearnerNode:
-			ids[cc.NodeID] = true
+			ids[cc.NodeID] = struct{}{}
 		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
+			ids[cc.NodeID] = struct{}{}
 		case raftpb.ConfChangeRemoveNode:
 			delete(ids, cc.NodeID)
 		case raftpb.ConfChangeUpdateNode:
