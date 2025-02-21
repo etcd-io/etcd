@@ -23,18 +23,11 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 )
 
 type BackendGetter interface {
 	Backend() backend.Backend
-}
-
-type AlarmBackend interface {
-	CreateAlarmBucket()
-	MustPutAlarm(member *pb.AlarmMember)
-	MustDeleteAlarm(alarm *pb.AlarmMember)
-	GetAllAlarms() ([]*pb.AlarmMember, error)
-	ForceCommit()
 }
 
 type alarmSet map[types.ID]*pb.AlarmMember
@@ -45,10 +38,10 @@ type AlarmStore struct {
 	mu    sync.Mutex
 	types map[pb.AlarmType]alarmSet
 
-	be AlarmBackend
+	be schema.AlarmBackend
 }
 
-func NewAlarmStore(lg *zap.Logger, be AlarmBackend) (*AlarmStore, error) {
+func NewAlarmStore(lg *zap.Logger, be schema.AlarmBackend) (*AlarmStore, error) {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
