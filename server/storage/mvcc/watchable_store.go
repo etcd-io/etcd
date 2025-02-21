@@ -381,30 +381,28 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 			w.minRev = eb.moreRev
 		}
 
-		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}) {
-			pendingEventsGauge.Add(float64(len(eb.evs)))
-		} else {
+		isVictim := !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev})
+		if isVictim {
 			w.victim = true
-		}
-
-		if w.victim {
 			victims[w] = eb
 		} else {
-			if eb.moreRev != 0 {
+			pendingEventsGauge.Add(float64(len(eb.evs)))
+			if eb.moreRev == 0 {
+				s.synced.add(w)
+			} else {
 				// stay unsynced; more to read
 				continue
 			}
-			s.synced.add(w)
 		}
 		s.unsynced.delete(w)
 	}
 	s.addVictim(victims)
 
-	vsz := 0
+	victimSize := 0
 	for _, v := range s.victims {
-		vsz += len(v)
+		victimSize += len(v)
 	}
-	slowWatcherGauge.Set(float64(s.unsynced.size() + vsz))
+	slowWatcherGauge.Set(float64(s.unsynced.size() + victimSize))
 
 	return s.unsynced.size(), evs
 }
