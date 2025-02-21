@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"sort"
 
-	"go.etcd.io/raft/v3/raftpb"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -27,6 +26,7 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
 // AssertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
