@@ -21,12 +21,13 @@ import (
 
 	"go.uber.org/zap"
 
+	"go.etcd.io/raft/v3/raftpb"
+
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 // AssertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
@@ -107,16 +108,6 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 	}
 
 	return ents
-}
-
-// GetEffectiveNodeIdsFromWalEntries returns an ordered set of IDs included in the given snapshot and
-// the entries.
-//
-// Deprecated: use GetEffectiveNodeIDsFromWALEntries instead.
-//
-//revive:disable-next-line:var-naming
-func GetEffectiveNodeIdsFromWalEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
-	return GetEffectiveNodeIDsFromWALEntries(lg, snap, ents)
 }
 
 // GetEffectiveNodeIDsFromWALEntries returns an ordered set of IDs included in the given snapshot and
