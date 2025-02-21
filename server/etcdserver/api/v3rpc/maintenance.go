@@ -262,9 +262,16 @@ func (ms *maintenanceServer) Status(ctx context.Context, ar *pb.StatusRequest) (
 		DbSizeInUse:      ms.bg.Backend().SizeInUse(),
 		IsLearner:        ms.cs.IsLearner(),
 		DbSizeQuota:      ms.cg.Config().QuotaBackendBytes,
+		DowngradeInfo:    &pb.DowngradeInfo{Enabled: false},
 	}
 	if storageVersion := ms.vs.GetStorageVersion(); storageVersion != nil {
 		resp.StorageVersion = storageVersion.String()
+	}
+	if downgradeInfo := ms.vs.GetDowngradeInfo(); downgradeInfo != nil {
+		resp.DowngradeInfo = &pb.DowngradeInfo{
+			Enabled:       downgradeInfo.Enabled,
+			TargetVersion: downgradeInfo.TargetVersion,
+		}
 	}
 	if resp.Leader == raft.None {
 		resp.Errors = append(resp.Errors, errors.ErrNoLeader.Error())
