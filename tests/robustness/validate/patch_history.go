@@ -26,9 +26,9 @@ import (
 func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	allOperations := relevantOperations(reports)
 	putRevision := putRevision(reports)
-	putReturnTime := putReturnTime(allOperations, reports, persistedRequests)
-	clientPutCount := countClientPuts(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
+	putReturnTime := uniquePutReturnTime(allOperations, reports, persistedRequests, persistedPutCount)
+	clientPutCount := countClientPuts(reports)
 	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
@@ -155,7 +155,7 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[k
 	return false
 }
 
-func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
+func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest, clientPutCount map[keyValue]int64) map[keyValue]int64 {
 	earliestReturnTime := map[keyValue]int64{}
 	var lastReturnTime int64
 	for _, op := range allOperations {
@@ -167,6 +167,9 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					continue
 				}
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
+				if count := clientPutCount[kv]; count > 1 {
+					continue
+				}
 				if returnTime, ok := earliestReturnTime[kv]; !ok || returnTime > op.Return {
 					earliestReturnTime[kv] = op.Return
 				}
@@ -192,6 +195,9 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					case model.RangeOperation:
 					case model.PutOperation:
 						kv := keyValue{Key: event.Key, Value: event.Value}
+						if count := clientPutCount[kv]; count > 1 {
+							continue
+						}
 						if t, ok := earliestReturnTime[kv]; !ok || t > resp.Time.Nanoseconds() {
 							earliestReturnTime[kv] = resp.Time.Nanoseconds()
 						}
@@ -214,6 +220,9 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					continue
 				}
 				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
+				if count := clientPutCount[kv]; count > 1 {
+					continue
+				}
 				returnTime, ok := earliestReturnTime[kv]
 				if ok {
 					lastReturnTime = min(returnTime, lastReturnTime)
