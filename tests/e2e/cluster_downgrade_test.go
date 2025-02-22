@@ -174,7 +174,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, true, currentVersion, lastClusterVersion)
 	require.NoError(t, err)
 	if len(membersToChange) == len(epc.Procs) {
 		e2e.AssertProcessLogs(t, epc.Procs[epc.WaitLeader(t)], "the cluster has been downgraded")
@@ -210,11 +210,12 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, lastClusterVersion, currentVersion)
+	downgradeEnabled := triggerCancellation == noCancellation && numberOfMembersToDowngrade < clusterSize
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, downgradeEnabled, lastClusterVersion, currentVersion)
 	require.NoError(t, err)
 	t.Log("Upgrade complete")
 
-	if triggerCancellation == noCancellation && numberOfMembersToDowngrade < clusterSize {
+	if downgradeEnabled {
 		t.Log("Downgrade should be still enabled")
 		e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: true, TargetVersion: lastClusterVersion.String()})
 	} else {

@@ -28,6 +28,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -709,6 +710,21 @@ func (cfg *EtcdProcessClusterConfig) binaryPath(i int) string {
 	}
 
 	return execPath
+}
+
+func (epc *EtcdProcessCluster) MinServerVersion() (*semver.Version, error) {
+	var minVersion *semver.Version
+	for _, member := range epc.Procs {
+		ver, err := GetVersionFromBinary(member.Config().ExecPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get version from member %s binary: %w", member.Config().Name, err)
+		}
+
+		if minVersion == nil || ver.LessThan(*minVersion) {
+			minVersion = ver
+		}
+	}
+	return minVersion, nil
 }
 
 func values(cfg embed.Config) map[string]string {
