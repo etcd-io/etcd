@@ -174,7 +174,7 @@ func (f memberDowngrade) Inject(ctx context.Context, t *testing.T, lg *zap.Logge
 	time.Sleep(etcdserver.HealthInterval)
 	e2e.DowngradeEnable(t, clus, lastVersion)
 
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToDowngrade, currentVersion, lastVersion)
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToDowngrade, true, currentVersion, lastVersion)
 	time.Sleep(etcdserver.HealthInterval)
 	return nil, err
 }
@@ -228,7 +228,7 @@ func (f memberDowngradeUpgrade) Inject(ctx context.Context, t *testing.T, lg *za
 
 	e2e.DowngradeEnable(t, clus, lastVersion)
 	// downgrade all members first
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, len(clus.Procs), currentVersion, lastVersion)
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, len(clus.Procs), true, currentVersion, lastVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (f memberDowngradeUpgrade) Inject(ctx context.Context, t *testing.T, lg *za
 
 	// partial upgrade the cluster
 	numberOfMembersToUpgrade := rand.Int()%len(clus.Procs) + 1
-	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToUpgrade, lastVersion, currentVersion)
+	err = e2e.DowngradeUpgradeMembers(t, lg, clus, numberOfMembersToUpgrade, false, lastVersion, currentVersion)
 	time.Sleep(etcdserver.HealthInterval)
 	return nil, err
 }

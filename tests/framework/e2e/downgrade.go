@@ -29,6 +29,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -127,14 +128,14 @@ func ValidateDowngradeInfo(t *testing.T, clus *EtcdProcessCluster, expected *pb.
 	}
 }
 
-func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
+func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, downgradeEnabled bool, currentVersion, targetVersion *semver.Version) error {
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
-	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, currentVersion, targetVersion)
+	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, downgradeEnabled, currentVersion, targetVersion)
 }
 
-func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, currentVersion, targetVersion *semver.Version) error {
+func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, downgradeEnabled bool, currentVersion, targetVersion *semver.Version) error {
 	if lg == nil {
 		lg = clus.lg
 	}
@@ -162,15 +163,32 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		}
 	}
 
-	clusterVersion := targetVersion.String()
-	if !isDowngrade && len(membersToChange) != len(clus.Procs) {
-		clusterVersion = currentVersion.String()
-	}
+	t.Log("Waiting health interval to make sure the leader propagates version to new processes")
+	time.Sleep(etcdserver.HealthInterval)
+
 	lg.Info("Validating versions")
+	clusterVersion := targetVersion
+	if !isDowngrade {
+		if downgradeEnabled {
+			// If the downgrade isn't cancelled yet, then the cluster
+			// version will always stay at the lower version, no matter
+			// what's the binary version of each member.
+			clusterVersion = currentVersion
+		} else {
+			// If the downgrade has already been cancelled, then the
+			// cluster version is the minimal server version.
+			minVer, err := clus.MinServerVersion()
+			if err != nil {
+				return fmt.Errorf("failed to get min server version: %w", err)
+			}
+			clusterVersion = minVer
+		}
+	}
+
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		ValidateVersion(t, clus.Cfg, member, version.Versions{
-			Cluster: clusterVersion,
+			Cluster: clusterVersion.String(),
 			Server:  targetVersion.String(),
 		})
 	}
