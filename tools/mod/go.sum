@@ -32,8 +32,8 @@ github.com/alecthomas/go-check-sumtype v0.3.1 h1:u9aUvbGINJxLVXiFvHUlPEaD7VDULsr
 github.com/alecthomas/go-check-sumtype v0.3.1/go.mod h1:A8TSiN3UPRw3laIgWEUOHHLPa6/r9MtoigdlP5h3K/E=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
 github.com/alecthomas/repr v0.4.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/alexfalkowski/gocovmerge v1.3.18 h1:GRJz7uNUHuumvWQtS2zBjDkLdIiCcYE1rfxYYWwYvs8=
-github.com/alexfalkowski/gocovmerge v1.3.18/go.mod h1:TnngCLiVe3kIrJ8v12zHP8aQkRWpjTomZm18uQrRDvE=
+github.com/alexfalkowski/gocovmerge v1.4.0 h1:sKiQYXR4CYdKOxwcZbVVHka0Pv8qADVule33pxcMz0M=
+github.com/alexfalkowski/gocovmerge v1.4.0/go.mod h1:v1ugjLQktGsqJ8WPOooeKvd6eJlucF/wmHBpPp+kals=
 github.com/alexkohler/nakedret/v2 v2.0.5 h1:fP5qLgtwbx9EJE8dGEERT02YwS8En4r9nnZ71RK+EVU=
 github.com/alexkohler/nakedret/v2 v2.0.5/go.mod h1:bF5i0zF2Wo2o4X4USt9ntUWve6JbFv02Ff4vlkmS/VU=
 github.com/alexkohler/prealloc v1.0.0 h1:Hbq0/3fJPQhNkN0dR95AVrr6R7tou91y0uHG5pOcUuw=
