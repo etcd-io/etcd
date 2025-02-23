@@ -18,16 +18,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"slices"
 )
 
 type jsonPrinter struct {
 	isHex bool
 	printer
 }
+
+var hexFields = []string{"cluster_id", "member_id", "ID", "leader"}
 
 func newJSONPrinter(isHex bool) printer {
 	return &jsonPrinter{
@@ -37,12 +38,32 @@ func newJSONPrinter(isHex bool) printer {
 }
 
 func (p *jsonPrinter) EndpointHealth(r []epHealth) { printJSON(r) }
-func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
-func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
+func (p *jsonPrinter) EndpointStatus(r []epStatus) {
+	if p.isHex {
+		printWithHexJSON(r)
+	} else {
+		printJSON(r)
+	}
+}
+func (p *jsonPrinter) EndpointHashKV(r []epHashKV) {
+	if p.isHex {
+		printWithHexJSON(r)
+	} else {
+		printJSON(r)
+	}
+}
+
+func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse) {
+	if p.isHex {
+		printWithHexJSON(r)
+	} else {
+		printJSON(r)
+	}
+}
 
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
 	if p.isHex {
-		printMemberListWithHexJSON(r)
+		printWithHexJSON(r)
 	} else {
 		printJSON(r)
 	}
@@ -57,44 +78,47 @@ func printJSON(v any) {
 	fmt.Println(string(b))
 }
 
-func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
-	var buffer strings.Builder
-	var b []byte
-	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"member_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"raft_term\":")
-	b = strconv.AppendUint(nil, r.Header.RaftTerm, 10)
-	buffer.Write(b)
-	buffer.WriteByte('}')
-	for i := 0; i < len(r.Members); i++ {
-		if i == 0 {
-			buffer.WriteString(",\"members\":[{\"ID\":\"")
-		} else {
-			buffer.WriteString(",{\"ID\":\"")
+func convertFieldsToHex(data interface{}, keysToConvert []string) {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for key, val := range v {
+			if contains(keysToConvert, key) {
+				if num, ok := val.(float64); ok {
+					v[key] = fmt.Sprintf("%x", uint64(num))
+				}
+			}
+			convertFieldsToHex(val, keysToConvert)
 		}
-		b = strconv.AppendUint(nil, r.Members[i].ID, 16)
-		buffer.Write(b)
-		buffer.WriteString("\",\"name\":\"" + r.Members[i].Name + "\"," + "\"peerURLs\":")
-		b, err := json.Marshal(r.Members[i].PeerURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteString(",\"clientURLs\":")
-		b, err = json.Marshal(r.Members[i].ClientURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteByte('}')
-		if i == len(r.Members)-1 {
-			buffer.WriteString("]")
+	case []interface{}:
+		for _, item := range v {
+			convertFieldsToHex(item, keysToConvert)
 		}
 	}
-	buffer.WriteString("}")
-	fmt.Println(buffer.String())
+}
+
+func contains(slice []string, s string) bool {
+	return slices.Contains(slice, s)
+}
+
+func printWithHexJSON(v any) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+
+	var data interface{}
+	if err := json.Unmarshal(b, &data); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+
+	convertFieldsToHex(data, hexFields)
+
+	b, err = json.Marshal(data)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return
+	}
+	fmt.Println(string(b))
 }
