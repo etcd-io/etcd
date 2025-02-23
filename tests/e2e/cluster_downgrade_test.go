@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -49,6 +50,10 @@ const (
 
 func TestDowngradeUpgradeClusterOf1(t *testing.T) {
 	testDowngradeUpgrade(t, 1, 1, false, noCancellation)
+}
+
+func TestDowngradeUpgrade2InClusterOf3(t *testing.T) {
+	testDowngradeUpgrade(t, 2, 3, false, noCancellation)
 }
 
 func TestDowngradeUpgradeClusterOf3(t *testing.T) {
@@ -128,6 +133,9 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 		time.Sleep(etcdserver.HealthInterval)
 	}
 
+	t.Log("Downgrade should be disabled")
+	e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: false})
+
 	t.Log("Adding member to test membership, but a learner avoid breaking quorum")
 	resp, err := cc.MemberAddAsLearner(context.Background(), "fake1", []string{"http://127.0.0.1:1001"})
 	require.NoError(t, err)
@@ -150,6 +158,10 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 		return // No need to perform downgrading, end the test here
 	}
 	e2e.DowngradeEnable(t, epc, lastVersion)
+
+	t.Log("Downgrade should be enabled")
+	e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: true, TargetVersion: lastClusterVersion.String()})
+
 	if triggerCancellation == cancelRightAfterEnable {
 		t.Logf("Cancelling downgrade right after enabling (no node is downgraded yet)")
 		e2e.DowngradeCancel(t, epc)
@@ -162,10 +174,10 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
 	t.Logf("Starting downgrade process to %q", lastVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, currentVersion, lastClusterVersion)
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, true, currentVersion, lastClusterVersion)
 	require.NoError(t, err)
 	if len(membersToChange) == len(epc.Procs) {
-		e2e.AssertProcessLogs(t, leader(t, epc), "the cluster has been downgraded")
+		e2e.AssertProcessLogs(t, epc.Procs[epc.WaitLeader(t)], "the cluster has been downgraded")
 	}
 
 	t.Log("Downgrade complete")
@@ -198,9 +210,18 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
 	t.Logf("Starting upgrade process to %q", currentVersionStr)
-	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, lastClusterVersion, currentVersion)
+	downgradeEnabled := triggerCancellation == noCancellation && numberOfMembersToDowngrade < clusterSize
+	err = e2e.DowngradeUpgradeMembersByID(t, nil, epc, membersToChange, downgradeEnabled, lastClusterVersion, currentVersion)
 	require.NoError(t, err)
 	t.Log("Upgrade complete")
+
+	if downgradeEnabled {
+		t.Log("Downgrade should be still enabled")
+		e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: true, TargetVersion: lastClusterVersion.String()})
+	} else {
+		t.Log("Downgrade should be disabled")
+		e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: false})
+	}
 
 	afterMembers, afterKV = getMembersAndKeys(t, cc)
 	assert.Equal(t, beforeKV.Kvs, afterKV.Kvs)
@@ -222,27 +243,6 @@ func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdPr
 		}
 	})
 	return epc
-}
-
-func leader(t *testing.T, epc *e2e.EtcdProcessCluster) e2e.EtcdProcess {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	for i := 0; i < len(epc.Procs); i++ {
-		endpoints := epc.Procs[i].EndpointsGRPC()
-		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   endpoints,
-			DialTimeout: 3 * time.Second,
-		})
-		require.NoError(t, err)
-		defer cli.Close()
-		resp, err := cli.Status(ctx, endpoints[0])
-		require.NoError(t, err)
-		if resp.Header.GetMemberId() == resp.Leader {
-			return epc.Procs[i]
-		}
-	}
-	t.Fatal("Leader not found")
-	return nil
 }
 
 func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {

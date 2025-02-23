@@ -27,7 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -46,7 +48,6 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 			Server:  OffsetMinor(ver, 1).String(),
 			Storage: ver.String(),
 		})
-		AssertProcessLogs(t, epc.Procs[i], "The server is ready to downgrade")
 	}
 
 	t.Log("Cluster is ready for downgrade")
@@ -82,14 +83,59 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	t.Log("Cluster downgrade cancellation is completed")
 }
 
-func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, currentVersion, targetVersion *semver.Version) error {
+func ValidateDowngradeInfo(t *testing.T, clus *EtcdProcessCluster, expected *pb.DowngradeInfo) {
+	cfg := clus.Cfg
+
+	for i := 0; i < len(clus.Procs); i++ {
+		member := clus.Procs[i]
+		mc := member.Etcdctl()
+		mName := member.Config().Name
+
+		testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+			for {
+				statuses, err := mc.Status(context.Background())
+				if err != nil {
+					cfg.Logger.Warn("failed to get member status and retrying",
+						zap.Error(err),
+						zap.String("member", mName))
+
+					time.Sleep(time.Second)
+					continue
+				}
+
+				require.Lenf(t, statuses, 1, "member %s", mName)
+				got := (*pb.StatusResponse)(statuses[0]).GetDowngradeInfo()
+
+				if got.GetEnabled() == expected.GetEnabled() && got.GetTargetVersion() == expected.GetTargetVersion() {
+					cfg.Logger.Info("DowngradeInfo match", zap.String("member", mName))
+					break
+				}
+
+				cfg.Logger.Warn("DowngradeInfo didn't match retrying",
+					zap.String("member", mName),
+					zap.Dict("expected",
+						zap.Bool("Enabled", expected.GetEnabled()),
+						zap.String("TargetVersion", expected.GetTargetVersion()),
+					),
+					zap.Dict("got",
+						zap.Bool("Enabled", got.GetEnabled()),
+						zap.String("TargetVersion", got.GetTargetVersion()),
+					),
+				)
+				time.Sleep(time.Second)
+			}
+		})
+	}
+}
+
+func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, downgradeEnabled bool, currentVersion, targetVersion *semver.Version) error {
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
 	t.Logf("Elect members for operations on members: %v", membersToChange)
 
-	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, currentVersion, targetVersion)
+	return DowngradeUpgradeMembersByID(t, lg, clus, membersToChange, downgradeEnabled, currentVersion, targetVersion)
 }
 
-func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, currentVersion, targetVersion *semver.Version) error {
+func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, membersToChange []int, downgradeEnabled bool, currentVersion, targetVersion *semver.Version) error {
 	if lg == nil {
 		lg = clus.lg
 	}
@@ -100,7 +146,6 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		opString = "downgrading"
 		newExecPath = BinPath.EtcdLastRelease
 	}
-
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		if member.Config().ExecPath == newExecPath {
@@ -117,11 +162,33 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 			return err
 		}
 	}
+
+	t.Log("Waiting health interval to make sure the leader propagates version to new processes")
+	time.Sleep(etcdserver.HealthInterval)
+
 	lg.Info("Validating versions")
+	clusterVersion := targetVersion
+	if !isDowngrade {
+		if downgradeEnabled {
+			// If the downgrade isn't cancelled yet, then the cluster
+			// version will always stay at the lower version, no matter
+			// what's the binary version of each member.
+			clusterVersion = currentVersion
+		} else {
+			// If the downgrade has already been cancelled, then the
+			// cluster version is the minimal server version.
+			minVer, err := clus.MinServerVersion()
+			if err != nil {
+				return fmt.Errorf("failed to get min server version: %w", err)
+			}
+			clusterVersion = minVer
+		}
+	}
+
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		ValidateVersion(t, clus.Cfg, member, version.Versions{
-			Cluster: targetVersion.String(),
+			Cluster: clusterVersion.String(),
 			Server:  targetVersion.String(),
 		})
 	}
