@@ -22,11 +22,11 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockLease_grant() {
+func mockLeaseGrant() {
 }
 
 func ExampleLease_grant() {
-	forUnitTestsRunInMockedContext(mockLease_grant, func() {
+	forUnitTestsRunInMockedContext(mockLeaseGrant, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -51,12 +51,12 @@ func ExampleLease_grant() {
 	// Output:
 }
 
-func mockLease_revoke() {
+func mockLeaseRevoke() {
 	fmt.Println("number of keys: 0")
 }
 
 func ExampleLease_revoke() {
-	forUnitTestsRunInMockedContext(mockLease_revoke, func() {
+	forUnitTestsRunInMockedContext(mockLeaseRevoke, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -91,12 +91,12 @@ func ExampleLease_revoke() {
 	// Output: number of keys: 0
 }
 
-func mockLease_keepAlive() {
+func mockLeaseKeepAlive() {
 	fmt.Println("ttl: 5")
 }
 
 func ExampleLease_keepAlive() {
-	forUnitTestsRunInMockedContext(mockLease_keepAlive, func() {
+	forUnitTestsRunInMockedContext(mockLeaseKeepAlive, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -132,12 +132,12 @@ func ExampleLease_keepAlive() {
 	// Output: ttl: 5
 }
 
-func mockLease_keepAliveOnce() {
+func mockLeaseKeepAliveOnce() {
 	fmt.Println("ttl: 5")
 }
 
 func ExampleLease_keepAliveOnce() {
-	forUnitTestsRunInMockedContext(mockLease_keepAliveOnce, func() {
+	forUnitTestsRunInMockedContext(mockLeaseKeepAliveOnce, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
