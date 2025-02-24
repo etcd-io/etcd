@@ -6,16 +6,18 @@ The procedure includes some manual steps for sanity checking, but it can probabl
 
 ## Release management
 
-The following pool of release candidates manages the release of each etcd major/minor version as well as manages patches
+Under the leadership of **James Blair** [@jmhbnz](https://github.com/jmhbnz) and **Ivan Valdes Castillo** [@ivanvc](https://github.com/ivanvc), the following pool of release candidates manages the release of each etcd major/minor version as well as manages patches
 to each stable release branch. They are responsible for communicating the timelines and status of each release and
 for ensuring the stability of the release branch.
 
 - Benjamin Wang [@ahrtr](https://github.com/ahrtr)
+- Fu Wei [@fuweid](https://github.com/fuweid)
 - James Blair [@jmhbnz](https://github.com/jmhbnz)
+- Ivan Valdes Castillo [@ivanvc](https://github.com/ivanvc)
 - Marek Siarkowicz [@serathius](https://github.com/serathius)
 - Sahdev Zala [@spzala](https://github.com/spzala)
+- Siyuan Zhang [@siyuanfoundation](https://github.com/siyuanfoundation)
 - Wenjia Zhang [@wenjiaswe](https://github.com/wenjiaswe)
-- Ivan Valdes Castillo [@ivanvc](https://github.com/ivanvc)
 
 All release version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
