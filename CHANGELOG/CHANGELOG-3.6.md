@@ -8,6 +8,16 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 <hr>
 
+## v3.6.0-rc.1 (TBD)
+
+### etcdctl v3
+
+- Add [`DowngradeInfo` in result of endpoint status](https://github.com/etcd-io/etcd/pull/19471)
+
+### etcd server
+
+- Add [`DowngradeInfo` to endpoint status response](https://github.com/etcd-io/etcd/pull/19471)
+
 ## v3.6.0-rc.0 (2025-02-13)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
