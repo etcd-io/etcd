@@ -26,28 +26,28 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 )
 
-func NewTmpBackendFromCfg(t testing.TB, bcfg backend.BackendConfig) (backend.Backend, string) {
-	dir, err := os.MkdirTemp(t.TempDir(), "etcd_backend_test")
+func NewTmpBackendFromCfg(tb testing.TB, bcfg backend.BackendConfig) (backend.Backend, string) {
+	dir, err := os.MkdirTemp(tb.TempDir(), "etcd_backend_test")
 	if err != nil {
 		panic(err)
 	}
 	tmpPath := filepath.Join(dir, "database")
 	bcfg.Path = tmpPath
-	bcfg.Logger = zaptest.NewLogger(t)
+	bcfg.Logger = zaptest.NewLogger(tb)
 	return backend.New(bcfg), tmpPath
 }
 
 // NewTmpBackend creates a backend implementation for testing.
-func NewTmpBackend(t testing.TB, batchInterval time.Duration, batchLimit int) (backend.Backend, string) {
-	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))
+func NewTmpBackend(tb testing.TB, batchInterval time.Duration, batchLimit int) (backend.Backend, string) {
+	bcfg := backend.DefaultBackendConfig(zaptest.NewLogger(tb))
 	bcfg.BatchInterval, bcfg.BatchLimit = batchInterval, batchLimit
-	return NewTmpBackendFromCfg(t, bcfg)
+	return NewTmpBackendFromCfg(tb, bcfg)
 }
 
-func NewDefaultTmpBackend(t testing.TB) (backend.Backend, string) {
-	return NewTmpBackendFromCfg(t, backend.DefaultBackendConfig(zaptest.NewLogger(t)))
+func NewDefaultTmpBackend(tb testing.TB) (backend.Backend, string) {
+	return NewTmpBackendFromCfg(tb, backend.DefaultBackendConfig(zaptest.NewLogger(tb)))
 }
 
-func Close(t testing.TB, b backend.Backend) {
-	assert.NoError(t, b.Close())
+func Close(tb testing.TB, b backend.Backend) {
+	assert.NoError(tb, b.Close())
 }
