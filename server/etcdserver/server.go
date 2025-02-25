@@ -342,6 +342,8 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
 	}
+
+	srv.setServerFeatureGateMetrics()
 	serverID.With(prometheus.Labels{"server_id": b.cluster.nodeID.String()}).Set(1)
 	srv.cluster.SetVersionChangedNotifier(srv.clusterVersionChanged)
 
@@ -2518,4 +2520,17 @@ func (s *EtcdServer) getTxPostLockInsideApplyHook() func() {
 
 func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
 	return s.corruptionChecker
+}
+
+func (s *EtcdServer) setServerFeatureGateMetrics() {
+	f := s.Cfg.ServerFeatureGate.(featuregate.MutableFeatureGate)
+	for feature, featureSpec := range f.GetAll() {
+		var metricVal float64
+		if f.Enabled(feature) {
+			metricVal = 1
+		} else {
+			metricVal = 0
+		}
+		etcdServerFeatureEnabled.With(prometheus.Labels{"name": string(feature), "stage": string(featureSpec.PreRelease)}).Set(metricVal)
+	}
 }
