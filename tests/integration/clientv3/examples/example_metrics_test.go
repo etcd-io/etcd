@@ -31,12 +31,12 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockClient_metrics() {
+func mockClientMetrics() {
 	fmt.Println(`grpc_client_started_total{grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"} 1`)
 }
 
 func ExampleClient_metrics() {
-	forUnitTestsRunInMockedContext(mockClient_metrics, func() {
+	forUnitTestsRunInMockedContext(mockClientMetrics, func() {
 		clientMetrics := grpcprom.NewClientMetrics()
 		prometheus.Register(clientMetrics)
 		cli, err := clientv3.New(clientv3.Config{

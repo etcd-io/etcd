@@ -23,12 +23,12 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockWatcher_watch() {
+func mockWatcherWatch() {
 	fmt.Println(`PUT "foo" : "bar"`)
 }
 
 func ExampleWatcher_watch() {
-	forUnitTestsRunInMockedContext(mockWatcher_watch, func() {
+	forUnitTestsRunInMockedContext(mockWatcherWatch, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -48,12 +48,12 @@ func ExampleWatcher_watch() {
 	// PUT "foo" : "bar"
 }
 
-func mockWatcher_watchWithPrefix() {
+func mockWatcherWatchWithPrefix() {
 	fmt.Println(`PUT "foo1" : "bar"`)
 }
 
 func ExampleWatcher_watchWithPrefix() {
-	forUnitTestsRunInMockedContext(mockWatcher_watchWithPrefix, func() {
+	forUnitTestsRunInMockedContext(mockWatcherWatchWithPrefix, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -73,14 +73,14 @@ func ExampleWatcher_watchWithPrefix() {
 	// PUT "foo1" : "bar"
 }
 
-func mockWatcher_watchWithRange() {
+func mockWatcherWatchWithRange() {
 	fmt.Println(`PUT "foo1" : "bar1"`)
 	fmt.Println(`PUT "foo2" : "bar2"`)
 	fmt.Println(`PUT "foo3" : "bar3"`)
 }
 
 func ExampleWatcher_watchWithRange() {
-	forUnitTestsRunInMockedContext(mockWatcher_watchWithRange, func() {
+	forUnitTestsRunInMockedContext(mockWatcherWatchWithRange, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -121,12 +121,12 @@ func ExampleWatcher_watchWithRange() {
 	// PUT "foo3" : "bar3"
 }
 
-func mockWatcher_watchWithProgressNotify() {
+func mockWatcherWatchWithProgressNotify() {
 	fmt.Println(`wresp.IsProgressNotify: true`)
 }
 
 func ExampleWatcher_watchWithProgressNotify() {
-	forUnitTestsRunInMockedContext(mockWatcher_watchWithProgressNotify, func() {
+	forUnitTestsRunInMockedContext(mockWatcherWatchWithProgressNotify, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,

@@ -16,6 +16,7 @@ package clientv3_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -23,10 +24,10 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockKV_put() {}
+func mockKVPut() {}
 
 func ExampleKV_put() {
-	forUnitTestsRunInMockedContext(mockKV_put, func() {
+	forUnitTestsRunInMockedContext(mockKVPut, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -46,12 +47,12 @@ func ExampleKV_put() {
 	// Output:
 }
 
-func mockKV_putErrorHandling() {
+func mockKVPutErrorHandling() {
 	fmt.Println("client-side error: etcdserver: key is not provided")
 }
 
 func ExampleKV_putErrorHandling() {
-	forUnitTestsRunInMockedContext(mockKV_putErrorHandling, func() {
+	forUnitTestsRunInMockedContext(mockKVPutErrorHandling, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -65,14 +66,13 @@ func ExampleKV_putErrorHandling() {
 		_, err = cli.Put(ctx, "", "sample_value")
 		cancel()
 		if err != nil {
-			switch err {
-			case context.Canceled:
+			if errors.Is(err, context.Canceled) {
 				fmt.Printf("ctx is canceled by another routine: %v\n", err)
-			case context.DeadlineExceeded:
+			} else if errors.Is(err, context.DeadlineExceeded) {
 				fmt.Printf("ctx is attached with a deadline is exceeded: %v\n", err)
-			case rpctypes.ErrEmptyKey:
+			} else if errors.Is(err, rpctypes.ErrEmptyKey) {
 				fmt.Printf("client-side error: %v\n", err)
-			default:
+			} else {
 				fmt.Printf("bad cluster endpoints, which are not etcd servers: %v\n", err)
 			}
 		}
@@ -80,12 +80,12 @@ func ExampleKV_putErrorHandling() {
 	// Output: client-side error: etcdserver: key is not provided
 }
 
-func mockKV_get() {
+func mockKVGet() {
 	fmt.Println("foo : bar")
 }
 
 func ExampleKV_get() {
-	forUnitTestsRunInMockedContext(mockKV_get, func() {
+	forUnitTestsRunInMockedContext(mockKVGet, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -113,12 +113,12 @@ func ExampleKV_get() {
 	// Output: foo : bar
 }
 
-func mockKV_getWithRev() {
+func mockKVGetWithRev() {
 	fmt.Println("foo : bar1")
 }
 
 func ExampleKV_getWithRev() {
-	forUnitTestsRunInMockedContext(mockKV_getWithRev, func() {
+	forUnitTestsRunInMockedContext(mockKVGetWithRev, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -150,14 +150,14 @@ func ExampleKV_getWithRev() {
 	// Output: foo : bar1
 }
 
-func mockKV_getSortedPrefix() {
+func mockKVGetSortedPrefix() {
 	fmt.Println(`key_2 : value`)
 	fmt.Println(`key_1 : value`)
 	fmt.Println(`key_0 : value`)
 }
 
 func ExampleKV_getSortedPrefix() {
-	forUnitTestsRunInMockedContext(mockKV_getSortedPrefix, func() {
+	forUnitTestsRunInMockedContext(mockKVGetSortedPrefix, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -192,12 +192,12 @@ func ExampleKV_getSortedPrefix() {
 	// key_0 : value
 }
 
-func mockKV_delete() {
+func mockKVDelete() {
 	fmt.Println("Deleted all keys: true")
 }
 
 func ExampleKV_delete() {
-	forUnitTestsRunInMockedContext(mockKV_delete, func() {
+	forUnitTestsRunInMockedContext(mockKVDelete, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -228,10 +228,10 @@ func ExampleKV_delete() {
 	// Deleted all keys: true
 }
 
-func mockKV_compact() {}
+func mockKVCompact() {}
 
 func ExampleKV_compact() {
-	forUnitTestsRunInMockedContext(mockKV_compact, func() {
+	forUnitTestsRunInMockedContext(mockKVCompact, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -259,12 +259,12 @@ func ExampleKV_compact() {
 	// Output:
 }
 
-func mockKV_txn() {
+func mockKVTxn() {
 	fmt.Println("key : XYZ")
 }
 
 func ExampleKV_txn() {
-	forUnitTestsRunInMockedContext(mockKV_txn, func() {
+	forUnitTestsRunInMockedContext(mockKVTxn, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -306,10 +306,10 @@ func ExampleKV_txn() {
 	// Output: key : XYZ
 }
 
-func mockKV_do() {}
+func mockKVDo() {}
 
 func ExampleKV_do() {
-	forUnitTestsRunInMockedContext(mockKV_do, func() {
+	forUnitTestsRunInMockedContext(mockKVDo, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,

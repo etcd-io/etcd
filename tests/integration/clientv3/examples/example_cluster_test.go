@@ -22,12 +22,12 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockCluster_memberList() {
+func mockClusterMemberList() {
 	fmt.Println("members: 3")
 }
 
 func ExampleCluster_memberList() {
-	forUnitTestsRunInMockedContext(mockCluster_memberList, func() {
+	forUnitTestsRunInMockedContext(mockClusterMemberList, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -46,13 +46,13 @@ func ExampleCluster_memberList() {
 	// Output: members: 3
 }
 
-func mockCluster_memberAdd() {
+func mockClusterMemberAdd() {
 	fmt.Println("added member.PeerURLs: [http://localhost:32380]")
 	fmt.Println("members count: 4")
 }
 
 func ExampleCluster_memberAdd() {
-	forUnitTestsRunInMockedContext(mockCluster_memberAdd, func() {
+	forUnitTestsRunInMockedContext(mockClusterMemberAdd, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -81,13 +81,13 @@ func ExampleCluster_memberAdd() {
 	// members count: 4
 }
 
-func mockCluster_memberAddAsLearner() {
+func mockClusterMemberAddAsLearner() {
 	fmt.Println("members count: 4")
 	fmt.Println("added member.IsLearner: true")
 }
 
 func ExampleCluster_memberAddAsLearner() {
-	forUnitTestsRunInMockedContext(mockCluster_memberAddAsLearner, func() {
+	forUnitTestsRunInMockedContext(mockClusterMemberAddAsLearner, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -116,10 +116,10 @@ func ExampleCluster_memberAddAsLearner() {
 	// added member.IsLearner: true
 }
 
-func mockCluster_memberRemove() {}
+func mockClusterMemberRemove() {}
 
 func ExampleCluster_memberRemove() {
-	forUnitTestsRunInMockedContext(mockCluster_memberRemove, func() {
+	forUnitTestsRunInMockedContext(mockClusterMemberRemove, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -147,10 +147,10 @@ func ExampleCluster_memberRemove() {
 	})
 }
 
-func mockCluster_memberUpdate() {}
+func mockClusterMemberUpdate() {}
 
 func ExampleCluster_memberUpdate() {
-	forUnitTestsRunInMockedContext(mockCluster_memberUpdate, func() {
+	forUnitTestsRunInMockedContext(mockClusterMemberUpdate, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
