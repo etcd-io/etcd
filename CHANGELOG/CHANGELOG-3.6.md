@@ -18,6 +18,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Add [`DowngradeInfo` to endpoint status response](https://github.com/etcd-io/etcd/pull/19471)
 
+### Dependencies
+
+- Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19480).
+
 ## v3.6.0-rc.0 (2025-02-13)
 
 See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
