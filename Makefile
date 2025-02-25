@@ -63,8 +63,8 @@ test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: upload-coverage-report
-upload-coverage-report: test-coverage
-	./scripts/codecov_upload.sh
+upload-coverage-report:
+	COVERDIR=covdir ./scripts/codecov_upload.sh
 
 .PHONY: fuzz
 fuzz: 
