@@ -16,6 +16,7 @@ package v3rpc
 
 import (
 	"context"
+	"go.uber.org/zap/zapcore"
 	"sync"
 	"time"
 	"unicode/utf8"
@@ -75,13 +76,12 @@ func newUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
 	}
 }
 
-func newLogUnaryInterceptor(s *etcdserver.EtcdServer) grpc.UnaryServerInterceptor {
+func newLogUnaryInterceptor(lg *zap.Logger, warnLatency time.Duration) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		startTime := time.Now()
 		resp, err := handler(ctx, req)
-		lg := s.Logger()
 		if lg != nil { // acquire stats if debug level is enabled or RequestInfo is expensive
-			defer logUnaryRequestStats(ctx, lg, s.Cfg.WarningUnaryRequestDuration, info, startTime, req, resp)
+			defer logUnaryRequestStats(ctx, lg, warnLatency, info, startTime, req, resp)
 		}
 		return resp, err
 	}
@@ -173,43 +173,57 @@ func logUnaryRequestStats(ctx context.Context, lg *zap.Logger, warnLatency time.
 		respSize = -1
 	}
 
+	rs := requestStats{
+		startTime:    startTime,
+		timeSpent:    duration,
+		remote:       remote,
+		responseType: responseType,
+		reqCount:     reqCount,
+		reqSize:      reqSize,
+		respCount:    respCount,
+		respSize:     respSize,
+		reqContent:   reqContent,
+	}
+
 	if enabledDebugLevel {
-		logGenericRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+		logGenericRequestStats(lg, rs)
 	} else if expensiveRequest {
-		logExpensiveRequestStats(lg, startTime, duration, remote, responseType, reqCount, reqSize, respCount, respSize, reqContent)
+		logExpensiveRequestStats(lg, rs)
 	}
 }
 
-func logGenericRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
-) {
-	lg.Debug("request stats",
-		zap.Time("start time", startTime),
-		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
-		zap.String("response type", responseType),
-		zap.Int64("request count", reqCount),
-		zap.Int("request size", reqSize),
-		zap.Int64("response count", respCount),
-		zap.Int("response size", respSize),
-		zap.String("request content", reqContent),
-	)
+type requestStats struct {
+	startTime    time.Time
+	timeSpent    time.Duration
+	remote       string
+	responseType string
+	reqCount     int64
+	reqSize      int
+	respCount    int64
+	respSize     int
+	reqContent   string
 }
 
-func logExpensiveRequestStats(lg *zap.Logger, startTime time.Time, duration time.Duration, remote string, responseType string,
-	reqCount int64, reqSize int, respCount int64, respSize int, reqContent string,
-) {
-	lg.Warn("request stats",
-		zap.Time("start time", startTime),
-		zap.Duration("time spent", duration),
-		zap.String("remote", remote),
-		zap.String("response type", responseType),
-		zap.Int64("request count", reqCount),
-		zap.Int("request size", reqSize),
-		zap.Int64("response count", respCount),
-		zap.Int("response size", respSize),
-		zap.String("request content", reqContent),
-	)
+func (rs requestStats) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	enc.AddTime("start time", rs.startTime)
+	enc.AddDuration("time spent", rs.timeSpent)
+	enc.AddString("remote", rs.remote)
+	enc.AddString("response type", rs.responseType)
+	enc.AddInt64("request count", rs.reqCount)
+	enc.AddInt("request size", rs.reqSize)
+	enc.AddInt64("response count", rs.respCount)
+	enc.AddInt("response size", rs.respSize)
+	enc.AddString("request content", rs.reqContent)
+
+	return nil
+}
+
+func logGenericRequestStats(lg *zap.Logger, rs requestStats) {
+	lg.Debug("request stats", zap.Inline(rs))
+}
+
+func logExpensiveRequestStats(lg *zap.Logger, rs requestStats) {
+	lg.Warn("request stats", zap.Inline(rs))
 }
 
 func newStreamInterceptor(s *etcdserver.EtcdServer) grpc.StreamServerInterceptor {
