@@ -29,6 +29,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -59,7 +60,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	var err error
 	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
-			t.Logf("etcdctl downgrade cancel")
+			t.Log("etcdctl downgrade cancel")
 			err = c.DowngradeCancel(context.TODO())
 			if err != nil {
 				if strings.Contains(err.Error(), "no inflight downgrade job") {
@@ -73,7 +74,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 				continue
 			}
 
-			t.Logf("etcdctl downgrade cancel executed successfully")
+			t.Log("etcdctl downgrade cancel executed successfully")
 			break
 		}
 	})
@@ -128,6 +129,19 @@ func ValidateDowngradeInfo(t *testing.T, clus *EtcdProcessCluster, expected *pb.
 	}
 }
 
+func DowngradeAutoCancelCheck(t *testing.T, epc *EtcdProcessCluster) {
+	c := epc.Etcdctl()
+
+	var err error
+	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+		t.Log("etcdctl downgrade cancel")
+		err = c.DowngradeCancel(context.TODO())
+		require.ErrorContains(t, err, "no inflight downgrade job")
+	})
+
+	t.Log("Cluster downgrade is completed")
+}
+
 func DowngradeUpgradeMembers(t *testing.T, lg *zap.Logger, clus *EtcdProcessCluster, numberOfMembersToChange int, downgradeEnabled bool, currentVersion, targetVersion *semver.Version) error {
 	membersToChange := rand.Perm(len(clus.Procs))[:numberOfMembersToChange]
 	t.Logf("Elect members for operations on members: %v", membersToChange)
@@ -165,6 +179,15 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 
 	t.Log("Waiting health interval to make sure the leader propagates version to new processes")
 	time.Sleep(etcdserver.HealthInterval)
+
+	if opString == "downgrading" && len(membersToChange) == len(clus.Procs) {
+		testutils.ExecuteWithTimeout(t, 30*time.Second, func() {
+			lg.Info("Waiting for downgrade completion log line")
+			leader := clus.WaitLeader(t)
+			_, err := clus.Procs[leader].Logs().ExpectWithContext(context.Background(), expect.ExpectedResponse{Value: "the cluster has been downgraded"})
+			require.NoError(t, err)
+		})
+	}
 
 	lg.Info("Validating versions")
 	clusterVersion := targetVersion
