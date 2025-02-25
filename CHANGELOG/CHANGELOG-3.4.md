@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.36 (TBC)
+## v3.4.37 (TBC)
+
+<hr>
+
+## v3.4.36 (2025-02-25)
 
 ### etcd server
 - [Avoid deadlock in etcd.Close when stopping during bootstrapping](https://github.com/etcd-io/etcd/pull/19166)
