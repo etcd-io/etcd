@@ -28,14 +28,14 @@ require (
 	github.com/prometheus/common v0.62.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/etcd/api/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/client/v2 v2.306.0-rc.0
-	go.etcd.io/etcd/client/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/etcdctl/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/etcdutl/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/pkg/v3 v3.6.0-rc.0
-	go.etcd.io/etcd/server/v3 v3.6.0-rc.0
+	go.etcd.io/etcd/api/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/client/v2 v2.306.0-rc.1
+	go.etcd.io/etcd/client/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/etcdctl/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/etcdutl/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/pkg/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/server/v3 v3.6.0-rc.1
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/raft/v3 v3.6.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.59.0
