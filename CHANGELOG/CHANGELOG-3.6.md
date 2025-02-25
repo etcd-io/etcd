@@ -8,7 +8,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 <hr>
 
-## v3.6.0-rc.1 (TBD)
+## v3.6.0-rc.2 (TBD)
+
+<hr>
+
+## v3.6.0-rc.1 (2025-02-25)
 
 ### etcdctl v3
 
@@ -21,6 +25,8 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### Dependencies
 
 - Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19480).
+
+<hr>
 
 ## v3.6.0-rc.0 (2025-02-13)
 
