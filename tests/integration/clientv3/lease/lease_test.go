@@ -189,7 +189,7 @@ func TestLeaseKeepAlive(t *testing.T) {
 	}
 }
 
-func TestLeaseKeepAliveOneSecond(t *testing.T) {
+func TestLeaseKeepAliveSeconds(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -197,7 +197,7 @@ func TestLeaseKeepAliveOneSecond(t *testing.T) {
 
 	cli := clus.Client(0)
 
-	resp, err := cli.Grant(context.Background(), 1)
+	resp, err := cli.Grant(context.Background(), 3)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
@@ -208,7 +208,7 @@ func TestLeaseKeepAliveOneSecond(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		if _, ok := <-rc; !ok {
-			t.Errorf("chan is closed, want not closed")
+			t.Errorf("[%d] chan is closed, want not closed", i)
 		}
 	}
 }
