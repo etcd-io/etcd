@@ -122,7 +122,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
@@ -139,7 +139,23 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, int64(1), getResp.Count)
 
-				time.Sleep(3 * time.Second)
+				// When leader changes, old leader steps back to follower
+				// and may ignore the lease revoking. The new leader will
+				// restart TTL counting. If so, we should call time.Sleep
+				// again and wait for revoking. It can't completely avoid
+				// flaky but reduce flaky possibility.
+				for i := 0; i < 3; i++ {
+					currentLeader := clus.WaitLeader(t)
+					t.Logf("[%d] current leader index %d", i, currentLeader)
+
+					time.Sleep(3 * time.Second)
+
+					newLeader := clus.WaitLeader(t)
+					if newLeader == currentLeader {
+						break
+					}
+					t.Logf("[%d] leader changed, new leader index %d", i, newLeader)
+				}
 
 				ttlResp, err := cc.TimeToLive(ctx, leaseResp.ID, config.LeaseOption{})
 				require.NoError(t, err)
