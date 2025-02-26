@@ -222,3 +222,4 @@ sync-toolchain-directive:
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
 	./scripts/markdown_diff_lint.sh
+	

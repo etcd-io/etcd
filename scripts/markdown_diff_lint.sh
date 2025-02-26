@@ -4,24 +4,18 @@
 
 set -eo pipefail
 
+# We source ./scripts/test_lib.sh, it sets the log functions and color variables.
+source ./scripts/test_lib.sh
+
 if ! command markdownlint-cli2 dummy.md &>/dev/null; then
   echo "markdownlint-cli2 needs to be installed."
   echo "Please refer to https://github.com/DavidAnson/markdownlint-cli2?tab=readme-ov-file#install for installation instructions."
   exit 1
 fi
 
-COLOR_RED='\033[0;31m'
-COLOR_BOLD='\033[1m'
-COLOR_ORANGE='\033[0;33m'
-COLOR_NONE='\033[0m' # No Color
-
-function log_error {
-  echo -n -e "${COLOR_BOLD}${COLOR_RED}$*${COLOR_NONE}\n"
-}
-
-function log_warning {
-  echo -n -e "${COLOR_ORANGE}$*${COLOR_NONE}\n"
-}
+# When we source ./scripts/test_lib.sh, it has the line set -u which treats unset variables as errors.
+# We need to unset the variable to avoid the error.
+set +u
 
 if [ -z "${PULL_BASE_SHA}" ]; then
   echo "Empty base reference (\$PULL_BASE_SHA), assuming: main"
@@ -97,3 +91,5 @@ done
 if [ "${#files_with_failures[@]}" -gt "0" ]; then
   exit 1
 fi
+
+set -u
