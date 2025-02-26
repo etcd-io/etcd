@@ -843,7 +843,7 @@ func TestLogRotation(t *testing.T) {
 			logOutputs:        []string{"/tmp/path"},
 			logRotationConfig: `{"maxsize": true}`,
 			wantErr:           true,
-			wantErrMsg:        errors.New("invalid log rotation config: json: cannot unmarshal bool into Go struct field logRotationConfig.maxsize of type int"),
+			wantErrMsg:        errors.New("invalid log rotation config: json: cannot unmarshal bool into Go struct field logRotationConfig.Logger.maxsize of type int"),
 		},
 		{
 			name:              "improperly formatted logger config",
