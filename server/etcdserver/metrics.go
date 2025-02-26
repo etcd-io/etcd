@@ -140,6 +140,13 @@ var (
 		},
 		[]string{"server_id"},
 	)
+	serverFeatureEnabled = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "etcd_server_feature_enabled",
+			Help: "Whether or not a feature is enabled. 1 is enabled, 0 is not.",
+		},
+		[]string{"name", "stage"},
+	)
 	fdUsed = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "os",
 		Subsystem: "fd",
@@ -170,6 +177,7 @@ func init() {
 	prometheus.MustRegister(currentVersion)
 	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
+	prometheus.MustRegister(serverFeatureEnabled)
 	prometheus.MustRegister(learnerPromoteSucceed)
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)
