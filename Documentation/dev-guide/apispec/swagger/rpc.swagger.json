@@ -2847,7 +2847,7 @@
         },
         "storageVersion": {
           "type": "string",
-          "description": "storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version."
+          "description": "storageVersion is the version of the db file. It might be updated with delay in relationship to the target cluster version."
         },
         "dbSizeQuota": {
           "type": "string",

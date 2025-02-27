@@ -318,7 +318,7 @@
         "name": {
           "type": "string",
           "format": "byte",
-          "description": "name is the election identifier that correponds to the leadership key."
+          "description": "name is the election identifier that corresponds to the leadership key."
         },
         "key": {
           "type": "string",
