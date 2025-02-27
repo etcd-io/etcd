@@ -1244,7 +1244,7 @@ func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) 
 }
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
-	tmpfile, err := os.CreateTemp("", "servercfg")
+	tmpfile, err := os.CreateTemp(t.TempDir(), "servercfg")
 	if err != nil {
 		t.Fatal(err)
 	}

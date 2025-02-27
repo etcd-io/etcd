@@ -23,7 +23,7 @@ import (
 )
 
 func TestLockAndUnlock(t *testing.T) {
-	f, err := os.CreateTemp("", "lock")
+	f, err := os.CreateTemp(t.TempDir(), "lock")
 	require.NoError(t, err)
 	f.Close()
 	defer func() {
