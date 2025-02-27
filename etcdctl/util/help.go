@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2025 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 // copied from https://github.com/rkt/rkt/blob/master/rkt/help.go
 
-package cobrautl
+package util
 
 import (
 	"fmt"
@@ -151,8 +151,6 @@ func getSubCommands(cmd *cobra.Command) []*cobra.Command {
 	return subCommands
 }
 
-// UsageFunc is the usage function for the cobra command.
-// Deprecated: Please use go.etcd.io/etcd/etcdctl/v3/util instead.
 func UsageFunc(cmd *cobra.Command, version, APIVersion string) error {
 	subCommands := getSubCommands(cmd)
 	tabOut := getTabOutWithWriter(os.Stdout)

@@ -23,6 +23,7 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
+	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -102,7 +103,7 @@ func init() {
 }
 
 func usageFunc(c *cobra.Command) error {
-	return cobrautl.UsageFunc(c, version.Version, version.APIVersion)
+	return util.UsageFunc(c, version.Version, version.APIVersion)
 }
 
 func Start() error {
