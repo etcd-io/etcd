@@ -157,7 +157,7 @@ func (m *CampaignResponse) GetLeader() *LeaderKey {
 }
 
 type LeaderKey struct {
-	// name is the election identifier that correponds to the leadership key.
+	// name is the election identifier that corresponds to the leadership key.
 	Name []byte `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// key is an opaque key representing the ownership of the election. If the key
 	// is deleted, then leadership is lost.

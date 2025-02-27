@@ -4301,7 +4301,7 @@ type StatusResponse struct {
 	DbSizeInUse int64 `protobuf:"varint,9,opt,name=dbSizeInUse,proto3" json:"dbSizeInUse,omitempty"`
 	// isLearner indicates if the member is raft learner.
 	IsLearner bool `protobuf:"varint,10,opt,name=isLearner,proto3" json:"isLearner,omitempty"`
-	// storageVersion is the version of the db file. It might be get updated with delay in relationship to the target cluster version.
+	// storageVersion is the version of the db file. It might be updated with delay in relationship to the target cluster version.
 	StorageVersion string `protobuf:"bytes,11,opt,name=storageVersion,proto3" json:"storageVersion,omitempty"`
 	// dbSizeQuota is the configured etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)
 	DbSizeQuota int64 `protobuf:"varint,12,opt,name=dbSizeQuota,proto3" json:"dbSizeQuota,omitempty"`
