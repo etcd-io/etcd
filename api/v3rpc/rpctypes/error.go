@@ -239,8 +239,9 @@ var (
 // EtcdError defines gRPC server errors.
 // (https://github.com/grpc/grpc-go/blob/master/rpc_util.go#L319-L323)
 type EtcdError struct {
-	code codes.Code
-	desc string
+	code         codes.Code
+	desc         string
+	wrappedError error
 }
 
 // Code returns grpc/codes.Code.
@@ -251,6 +252,10 @@ func (e EtcdError) Code() codes.Code {
 
 func (e EtcdError) Error() string {
 	return e.desc
+}
+
+func (e EtcdError) Unwrap() error {
+	return e.wrappedError
 }
 
 func Error(err error) error {
@@ -268,7 +273,7 @@ func Error(err error) error {
 	} else {
 		desc = verr.Error()
 	}
-	return EtcdError{code: ev.Code(), desc: desc}
+	return EtcdError{code: ev.Code(), desc: desc, wrappedError: err}
 }
 
 func ErrorDesc(err error) string {

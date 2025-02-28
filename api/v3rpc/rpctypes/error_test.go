@@ -39,3 +39,20 @@ func TestConvert(t *testing.T) {
 		require.Equal(t, ev2.Code(), e3.Code())
 	}
 }
+
+func TestComparingWrappedError(t *testing.T) {
+	errTest := errors.New("test error")
+	e1 := Error(ErrGRPCEmptyKey)
+	e2 := Error(status.Error(codes.InvalidArgument, "etcdserver: key is not provided"))
+	e3 := Error(errTest)
+
+	if !errors.Is(e1, ErrGRPCEmptyKey) {
+		t.Fatalf("expected %v to be an ErrGRPCEmptyKey wrapped error", e1)
+	}
+	if !errors.Is(e2, ErrGRPCEmptyKey) {
+		t.Fatalf("expected %v to be an ErrGRPCEmptyKey wrapped error", e1)
+	}
+	if !errors.Is(e3, errTest) {
+		t.Fatalf("expected %v to be an errTest wrapped error", e3)
+	}
+}
