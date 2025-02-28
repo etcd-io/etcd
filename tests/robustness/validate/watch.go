@@ -245,26 +245,31 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 		}
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
-				// Get state state just before the current event.
-				state, err2 := replay.StateForRevision(event.Revision - 1)
+				// Get state just before the current event.
+				prevState, err2 := replay.StateForRevision(event.Revision - 1)
 				if err2 != nil {
 					panic(err2)
 				}
-				// TODO(MadhavJivrajani): check if compaction has been run as part
-				// of failpoint injection. If compaction has run, prevKV can be nil
-				// even if it is not a create event.
-				//
-				// Considering that Kubernetes opens watches to etcd using WithPrevKV()
-				// option, ideally we would want to explicitly check the condition that
-				// Kubernetes does while parsing events received from etcd:
-				// https://github.com/kubernetes/kubernetes/blob/a9e4f5b7862e84c4152eabe2e960f3f6fb9a4867/staging/src/k8s.io/apiserver/pkg/storage/etcd3/event.go#L59
-				// i.e. prevKV is nil iff the event is a create event, we cannot reliably
-				// check that without knowing if compaction has run.
 
-				// We allow PrevValue to be nil since in the face of compaction, etcd does not
-				// guarantee its presence.
-				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
-					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.KeyValues[event.Key]))
+				// Considering that Kubernetes opens watches to etcd using WithPrevKV() option, we explicitly
+				// check the condition that Kubernetes does while parsing events received from etcd:
+				// https://github.com/kubernetes/kubernetes/blob/a9e4f5b7862e84c4152eabe2e960f3f6fb9a4867/staging/src/k8s.io/apiserver/pkg/storage/etcd3/event.go#L59
+				// i.e. for create events, prevKV is nil.
+				if event.IsCreate && event.PrevValue != nil {
+					lg.Error("prevValue field shold be nil in create event", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", prevState.KeyValues[event.Key]))
+					err = errBrokePrevKV
+				}
+
+				// If compaction took place in the previous state, prevKV should be nil for all types of events in the current state:
+				// https://github.com/etcd-io/etcd/blob/43d675997772bee9cf9d6bd4804ef05cc0cecb01/api/etcdserverpb/rpc.proto#L799-L801
+				if prevState.CompactRevision >= 0 && event.PrevValue != nil {
+					lg.Error("prevValue field should be nil after compaction in any event", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", prevState.KeyValues[event.Key]), zap.Int64("CompactionRevision", prevState.CompactRevision))
+					err = errBrokePrevKV
+				}
+
+				// Validate that PrevValue actually matches value of the key in the previous state.
+				if event.PrevValue != nil && *event.PrevValue != prevState.KeyValues[event.Key] {
+					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", prevState.KeyValues[event.Key]))
 					err = errBrokePrevKV
 				}
 			}
