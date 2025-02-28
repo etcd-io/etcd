@@ -105,7 +105,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 
 		args := Argify(l)
 		if len(args) < 1 {
-			fmt.Fprintf(os.Stderr, "Invalid command: %s (watch and progress supported)\n", l)
+			fmt.Fprintf(os.Stderr, "Invalid command: %s (only `watch` and `progress` supported)\n", l)
 			continue
 		}
 		switch args[0] {
@@ -131,7 +131,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "Invalid command %s (only support watch)\n", l)
+			fmt.Fprintf(os.Stderr, "Invalid command %s (only support `watch` & `progress`)\n", l)
 			continue
 		}
 	}
