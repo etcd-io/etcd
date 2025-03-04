@@ -1332,6 +1332,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
+	// gofail: var applyBeforeOpenSnapshot struct{}
 	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
@@ -2242,7 +2243,7 @@ func (s *EtcdServer) apply(
 				s.consistIndex.SetConsistentApplyingIndex(e.Index, e.Term)
 				shouldApplyV3 = membership.ApplyBoth
 			}
-
+			// gofail: var beforeApplyOneConfChange struct{}
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState, shouldApplyV3)
