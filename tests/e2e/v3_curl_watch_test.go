@@ -15,8 +15,11 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -45,4 +48,27 @@ func testCurlV3Watch(cx ctlCtx) {
 	require.NoErrorf(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/kv/put", Value: string(putreq), Expected: expect.ExpectedResponse{Value: "revision"}}), "failed testCurlV3Watch put with curl")
 	// expects "bar", timeout after 2 seconds since stream waits forever
 	require.ErrorContains(cx.t, e2e.CURLPost(cx.epc, e2e.CURLReq{Endpoint: "/v3/watch", Value: wstr, Expected: expect.ExpectedResponse{Value: `"YmFy"`}, Timeout: 2}), "unexpected exit code")
+}
+
+// TestCurlWatchIssue19509 tries to reproduce https://github.com/etcd-io/etcd/issues/19509
+func TestCurlWatchIssue19509(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(e2e.NewConfigClientTLS()), e2e.WithClusterSize(1))
+	require.NoError(t, err)
+	defer epc.Close()
+
+	curlCmdAndArgs := e2e.CURLPrefixArgsCluster(epc.Cfg, epc.Procs[0], "POST", e2e.CURLReq{Endpoint: "/v3/watch", Timeout: 3})
+	for i := 0; i < 10; i++ {
+		curlProc, err := e2e.SpawnCmd(curlCmdAndArgs, nil)
+		require.NoError(t, err)
+		time.Sleep(100 * time.Millisecond)
+
+		_ = curlProc.Signal(syscall.SIGKILL)
+		_ = curlProc.Close()
+
+		require.Truef(t, epc.Procs[0].IsRunning(), "etcdserver already exited after %d curl watch requests", i+1)
+	}
 }
