@@ -119,6 +119,7 @@ require (
 	github.com/kisielk/errcheck v1.8.0 // indirect
 	github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46 // indirect
 	github.com/kkHAIKE/contextcheck v1.1.5 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kulti/thelper v0.6.3 // indirect
 	github.com/kunwardeep/paralleltest v1.0.10 // indirect
 	github.com/lasiar/canonicalheader v1.1.2 // indirect
