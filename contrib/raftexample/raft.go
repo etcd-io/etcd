@@ -127,6 +127,7 @@ func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
 	if err := rc.snapshotter.SaveSnap(snap); err != nil {
 		return err
 	}
+	// gofail: var raftBeforeWALSaveSnaphot struct{}
 	if err := rc.wal.SaveSnapshot(walSnap); err != nil {
 		return err
 	}
