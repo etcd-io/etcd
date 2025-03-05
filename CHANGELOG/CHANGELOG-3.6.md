@@ -10,6 +10,16 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.0-rc.2 (TBD)
 
+### etcd server
+
+- Add [Prometheus metric to query server feature gates](https://github.com/etcd-io/etcd/pull/19495).
+
+### Dependencies
+
+- Compile binaries using [go 1.23.7](https://github.com/etcd-io/etcd/pull/19527).
+- Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19531).
+- Bump [github.com/grpc-ecosystem/grpc-gateway/v2 to v2.26.3 to fix the issue of etcdserver crashing on receiving REST watch stream requests](https://github.com/etcd-io/etcd/pull/19522).
+
 <hr>
 
 ## v3.6.0-rc.1 (2025-02-25)
