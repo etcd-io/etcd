@@ -13,8 +13,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Backport [add mixed read-write performance evaluation scripts](https://github.com/etcd-io/etcd/pull/19275).
 
 ### Dependencies
-- Compile binaries using [go 1.23.6](https://github.com/etcd-io/etcd/pull/19430).
+- Compile binaries using [go 1.23.7](https://github.com/etcd-io/etcd/pull/19528).
 - Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19478).
+- Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19530).
 
 <hr>
 

@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.37 (TBC)
 
+### Dependencies
+- Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19529).
+- Compile binaries using [go 1.23.7](https://github.com/etcd-io/etcd/pull/19533)
+
 <hr>
 
 ## v3.4.36 (2025-02-25)
