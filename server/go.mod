@@ -26,11 +26,11 @@ require (
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2
 	go.etcd.io/bbolt v1.4.0
-	go.etcd.io/etcd/api/v3 v3.6.0-rc.1
-	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.1
-	go.etcd.io/etcd/client/v2 v2.306.0-rc.1
-	go.etcd.io/etcd/client/v3 v3.6.0-rc.1
-	go.etcd.io/etcd/pkg/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/api/v3 v3.6.0-rc.2
+	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.2
+	go.etcd.io/etcd/client/v2 v2.306.0-rc.2
+	go.etcd.io/etcd/client/v3 v3.6.0-rc.2
+	go.etcd.io/etcd/pkg/v3 v3.6.0-rc.2
 	go.etcd.io/raft/v3 v3.6.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.59.0
 	go.opentelemetry.io/otel v1.34.0

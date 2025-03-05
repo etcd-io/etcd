@@ -6,8 +6,8 @@ toolchain go1.23.7
 
 require (
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/etcd/api/v3 v3.6.0-rc.1
-	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.1
+	go.etcd.io/etcd/api/v3 v3.6.0-rc.2
+	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.2
 	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6
 )
 
