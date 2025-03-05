@@ -2,7 +2,7 @@ module go.etcd.io/etcd/client/pkg/v3
 
 go 1.23
 
-toolchain go1.23.6
+toolchain go1.23.7
 
 require (
 	github.com/coreos/go-systemd/v22 v22.3.2
