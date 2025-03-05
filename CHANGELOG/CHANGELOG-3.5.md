@@ -3,7 +3,11 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 <hr>
 
-## v3.5.19 (TBC)
+## v3.5.20 (TBC)
+
+<hr>
+
+## v3.5.19 (2025-03-05)
 
 ### etcd server
 - Backport [add learner status check to readyz endpoint](https://github.com/etcd-io/etcd/pull/19280).
