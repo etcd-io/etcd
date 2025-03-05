@@ -173,8 +173,8 @@ func (s *hashStorage) Store(hash KeyValueHash) {
 func (s *hashStorage) Hashes() []KeyValueHash {
 	s.hashMu.RLock()
 	// Copy out hashes under lock just to be safe
-	hashes := make([]KeyValueHash, 0, len(s.hashes))
-	hashes = append(hashes, s.hashes...)
+	hashes := make([]KeyValueHash, len(s.hashes))
+	copy(hashes, s.hashes)
 	s.hashMu.RUnlock()
 	return hashes
 }
