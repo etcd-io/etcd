@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/client/v3
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.6
 
@@ -28,7 +28,7 @@ require (
 	github.com/prometheus/procfs v0.6.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
