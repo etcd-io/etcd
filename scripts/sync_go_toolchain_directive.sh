@@ -12,3 +12,4 @@ source ./scripts/test_lib.sh
 
 TARGET_GO_VERSION="${TARGET_GO_VERSION:-"$(cat "${ETCD_ROOT_DIR}/.go-version")"}"
 find . -name 'go.mod' -exec go mod edit -toolchain=go"${TARGET_GO_VERSION}" {} \;
+go work edit -toolchain=go"${TARGET_GO_VERSION}"
