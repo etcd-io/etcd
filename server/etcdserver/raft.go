@@ -101,6 +101,9 @@ type raftNode struct {
 
 	stopped chan struct{}
 	done    chan struct{}
+
+	// used by liveness probe to check whether the raftloop is blocked.
+	dummyc chan struct{}
 }
 
 type raftNodeConfig struct {
@@ -145,6 +148,7 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		applyc:     make(chan toApply),
 		stopped:    make(chan struct{}),
 		done:       make(chan struct{}),
+		dummyc:     make(chan struct{}),
 	}
 	if r.heartbeat == 0 {
 		r.ticker = &time.Ticker{}
@@ -332,6 +336,8 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// notify etcdserver that raft has already been notified or advanced.
 					raftAdvancedC <- struct{}{}
 				}
+			case <-r.dummyc:
+				r.lg.Debug("Received dummy event")
 			case <-r.stopped:
 				return
 			}
@@ -422,6 +428,17 @@ func (r *raftNode) onStop() {
 		r.lg.Panic("failed to close Raft storage", zap.Error(err))
 	}
 	close(r.done)
+}
+
+func (r *raftNode) trySendDummyEvent(timeout time.Duration) error {
+	select {
+	case r.dummyc <- struct{}{}:
+	case <-r.done:
+	case <-time.After(timeout):
+		return fmt.Errorf("failed to send dummy event in %s", timeout.String())
+	}
+
+	return nil
 }
 
 // for testing
