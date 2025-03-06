@@ -31,7 +31,7 @@ function update_module_version() {
   local v2version="${2}"
   local modules
   run go mod tidy
-  modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
+  modules=$(go mod edit -json | jq -r '.Require[] | select(.Indirect | not) | .Path')
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
@@ -97,16 +97,16 @@ function push_mod_tags_cmd {
 
   # Any module ccan be used for this
   local main_version
-  main_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
+  main_version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${ROOT_MODULE}"'/api/v3") | .Version')
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
 
   for module in $(modules); do
     local version
-    version=$(go list -f '{{.Version}}' -m "${module}")
+    version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Version')
     local path
-    path=$(go list -f '{{.Path}}' -m "${module}")
+    path=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Path')
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
@@ -121,7 +121,7 @@ function push_mod_tags_cmd {
     # consider main-module's tag as the latest.
     run sleep 2
     run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
-    tags=("${tags[@]}" "${tag}")
+    tags+=("${tag}")
   done
   maybe_run git push -f "${REMOTE_REPO}" "${tags[@]}"
 }
