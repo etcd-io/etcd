@@ -111,7 +111,7 @@ func watchInteractiveFunc(cmd *cobra.Command, osArgs []string, envKey, envRange 
 		switch args[0] {
 		case "watch":
 			if len(args) < 2 && envKey == "" {
-				fmt.Fprintf(os.Stderr, "Invalid command: '%s' (the key is not provided)\n", l)
+				fmt.Fprintf(os.Stderr, "Invalid command: '%s' (the key/prefix is not provided)\n", l)
 				continue
 			}
 			watchArgs, execArgs, perr := parseWatchArgs(osArgs, args, envKey, envRange, true)
