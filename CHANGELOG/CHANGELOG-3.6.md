@@ -24,6 +24,17 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19531).
 - Bump [github.com/grpc-ecosystem/grpc-gateway/v2 to v2.26.3 to fix the issue of etcdserver crashing on receiving REST watch stream requests](https://github.com/etcd-io/etcd/pull/19522).
 
+### Removed Deprecated Flags
+In this release, we have removed several flags that were available in etcd 3.5. These flags were previously marked as deprecated and are now fully decommissioned in 3.6. The removed flags are as follows:
+
+- `--enable-v2`
+- `--experimental-enable-v2v3`
+- `--proxy`
+- `--proxy-failure-wait`
+- `--proxy-refresh-interval`
+- `--proxy-dial-timeout`
+- `--proxy-write-timeout`
+- `--proxy-read-timeout`
 <hr>
 
 ## v3.6.0-rc.1 (2025-02-25)
