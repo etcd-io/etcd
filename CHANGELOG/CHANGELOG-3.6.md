@@ -35,6 +35,7 @@ In this release, we have removed several flags that were available in etcd 3.5. 
 - `--proxy-dial-timeout`
 - `--proxy-write-timeout`
 - `--proxy-read-timeout`
+
 <hr>
 
 ## v3.6.0-rc.1 (2025-02-25)
