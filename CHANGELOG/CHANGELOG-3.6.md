@@ -26,7 +26,6 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ### Removed Deprecated Flags
 In this release, we have removed several flags that were available in etcd 3.5. These flags were previously marked as deprecated and are now fully decommissioned in 3.6. The removed flags are as follows:
-
 - `--enable-v2`
 - `--experimental-enable-v2v3`
 - `--proxy`
