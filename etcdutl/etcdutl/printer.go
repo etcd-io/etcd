@@ -16,7 +16,7 @@ package etcdutl
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
@@ -68,9 +68,9 @@ func (p *printerUnsupported) DBHashKV(HashKV)          { p.p(nil) }
 func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 	hdr = []string{"hash", "revision", "total keys", "total size", "version"}
 	rows = append(rows, []string{
-		fmt.Sprintf("%x", ds.Hash),
-		fmt.Sprint(ds.Revision),
-		fmt.Sprint(ds.TotalKey),
+		strconv.FormatUint(uint64(ds.Hash), 16),
+		strconv.FormatInt(ds.Revision, 10),
+		strconv.Itoa(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
 		ds.Version,
 	})
@@ -80,9 +80,9 @@ func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
 func makeDBHashKVTable(ds HashKV) (hdr []string, rows [][]string) {
 	hdr = []string{"hash", "hash revision", "compact revision"}
 	rows = append(rows, []string{
-		fmt.Sprint(ds.Hash),
-		fmt.Sprint(ds.HashRevision),
-		fmt.Sprint(ds.CompactRevision),
+		strconv.FormatUint(uint64(ds.Hash), 10),
+		strconv.FormatInt(ds.HashRevision, 10),
+		strconv.FormatInt(ds.CompactRevision, 10),
 	})
 	return hdr, rows
 }
