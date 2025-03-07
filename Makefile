@@ -218,3 +218,8 @@ verify-go-versions:
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
 	./scripts/sync_go_toolchain_directive.sh
+
+.PHONY: markdown-diff-lint
+markdown-diff-lint:
+	./scripts/markdown_diff_lint.sh
+	
