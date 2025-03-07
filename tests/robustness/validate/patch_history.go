@@ -27,8 +27,8 @@ func patchLinearizableOperations(reports []report.ClientReport, persistedRequest
 	allOperations := relevantOperations(reports)
 	putRevision := putRevision(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
-	putReturnTime := uniquePutReturnTime(allOperations, reports, persistedRequests, persistedPutCount)
 	clientPutCount := countClientPuts(reports)
+	putReturnTime := uniquePutReturnTime(allOperations, reports, persistedRequests, clientPutCount)
 	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
