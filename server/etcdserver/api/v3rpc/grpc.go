@@ -53,7 +53,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 	}
 
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
-		newLogUnaryInterceptor(s),
+		newLogUnaryInterceptor(s.Logger(), s.Cfg.WarningUnaryRequestDuration),
 		newUnaryInterceptor(s),
 		serverMetrics.UnaryServerInterceptor(),
 	}
