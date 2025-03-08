@@ -1090,70 +1090,6 @@ func TestBootstrapDefragThresholdMegabytesFlagMigration(t *testing.T) {
 	}
 }
 
-// TestMaxLearnersFlagMigration tests the migration from
-// --experimental-max-learners to --max-learners
-// TODO: delete in v3.7
-func TestMaxLearnersFlagMigration(t *testing.T) {
-	testCases := []struct {
-		name                    string
-		maxLearners             int
-		experimentalMaxLearners int
-		expectErr               bool
-		expectedMaxLearners     int
-	}{
-		{
-			name:                    "cannot set both experimental flag and non experimental flag",
-			maxLearners:             1,
-			experimentalMaxLearners: 2,
-			expectErr:               true,
-		},
-		{
-			name:                    "can set experimental flag",
-			experimentalMaxLearners: 2,
-			expectedMaxLearners:     2,
-		},
-		{
-			name:                "can set non experimental flag",
-			maxLearners:         1,
-			expectedMaxLearners: 1,
-		},
-	}
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			cmdLineArgs := []string{}
-			yc := struct {
-				ExperimentalMaxLearners int `json:"experimental-max-learners,omitempty"`
-				MaxLearners             int `json:"max-learners,omitempty"`
-			}{}
-
-			if tc.maxLearners != 0 {
-				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--max-learners=%d", tc.maxLearners))
-				yc.MaxLearners = tc.maxLearners
-			}
-
-			if tc.experimentalMaxLearners != 0 {
-				cmdLineArgs = append(cmdLineArgs, fmt.Sprintf("--experimental-max-learners=%d", tc.experimentalMaxLearners))
-				yc.ExperimentalMaxLearners = tc.experimentalMaxLearners
-			}
-
-			cfgFromCmdLine, errFromCmdLine, cfgFromFile, errFromFile := generateCfgsFromFileAndCmdLine(t, yc, cmdLineArgs)
-
-			if tc.expectErr {
-				if errFromCmdLine == nil || errFromFile == nil {
-					t.Fatal("expect parse error")
-				}
-				return
-			}
-			if errFromCmdLine != nil || errFromFile != nil {
-				t.Fatal("error parsing config")
-			}
-
-			require.Equal(t, tc.expectedMaxLearners, cfgFromCmdLine.ec.MaxLearners)
-			require.Equal(t, tc.expectedMaxLearners, cfgFromFile.ec.MaxLearners)
-		})
-	}
-}
-
 // TestMemoryMlockFlagMigration tests the migration from
 // --experimental-memory-mlock to --memory-mlock
 // TODO: delete in v3.7
@@ -1341,7 +1277,6 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		ExperimentalWatchProgressNotifyInterval       time.Duration `json:"experimental-watch-progress-notify-interval,omitempty"`
 		ExperimentalWarningApplyDuration              time.Duration `json:"experimental-warning-apply-duration,omitempty"`
 		ExperimentalBootstrapDefragThresholdMegabytes uint          `json:"experimental-bootstrap-defrag-threshold-megabytes,omitempty"`
-		ExperimentalMaxLearners                       int           `json:"experimental-max-learners,omitempty"`
 		ExperimentalSnapshotCatchUpEntries            uint64        `json:"experimental-snapshot-catch-up-entries,omitempty"`
 		ExperimentalCompactionSleepInterval           time.Duration `json:"experimental-compaction-sleep-interval,omitempty"`
 		ExperimentalDowngradeCheckTime                time.Duration `json:"experimental-downgrade-check-time,omitempty"`
@@ -1368,7 +1303,6 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				ExperimentalWatchProgressNotifyInterval:       3 * time.Minute,
 				ExperimentalWarningApplyDuration:              3 * time.Minute,
 				ExperimentalBootstrapDefragThresholdMegabytes: 100,
-				ExperimentalMaxLearners:                       1,
 				ExperimentalSnapshotCatchUpEntries:            1000,
 				ExperimentalCompactionSleepInterval:           30 * time.Second,
 				ExperimentalDowngradeCheckTime:                1 * time.Minute,
@@ -1381,7 +1315,6 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				"experimental-watch-progress-notify-interval":       {},
 				"experimental-warning-apply-duration":               {},
 				"experimental-bootstrap-defrag-threshold-megabytes": {},
-				"experimental-max-learners":                         {},
 				"experimental-snapshot-catchup-entries":             {},
 				"experimental-compaction-sleep-interval":            {},
 				"experimental-downgrade-check-time":                 {},
