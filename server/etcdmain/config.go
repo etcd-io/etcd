@@ -70,7 +70,6 @@ var (
 		"experimental-watch-progress-notify-interval":       "--experimental-watch-progress-notify-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.",
 		"experimental-warning-apply-duration":               "--experimental-warning-apply-duration is deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.",
 		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
-		"experimental-max-learners":                         "--experimental-max-learners is deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.",
 		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
 		"experimental-snapshot-catchup-entries":             "--experimental-snapshot-catchup-entries is deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.",
 		"experimental-compaction-sleep-interval":            "--experimental-compaction-sleep-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-sleep-interval' instead.",
@@ -210,10 +209,6 @@ func (cfg *config) parse(arguments []string) error {
 	}
 	if cfg.ec.FlagsExplicitlySet["experimental-peer-skip-client-san-verification"] {
 		cfg.ec.PeerTLSInfo.SkipClientSANVerify = cfg.ec.ExperimentalPeerSkipClientSanVerification
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-max-learners"] {
-		cfg.ec.MaxLearners = cfg.ec.ExperimentalMaxLearners
 	}
 
 	if cfg.ec.FlagsExplicitlySet["experimental-memory-mlock"] {
