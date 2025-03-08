@@ -59,9 +59,9 @@ Decide if an experimental feature is ready for graduation to the stable stage.
 #### Provide implementation
 If an experimental feature is found ready for graduation to the stable stage, open a Pull Request (PR) with the following changes.
 - Add robust e2e tests if not already provided.
-- Add a new stable feature flag identical to the experimental feature flag but without the `--experimental` prefix.
+- Add a new stable feature gate identical to the experimental feature gate but without the `--experimental` prefix.
 - Deprecate the experimental feature following the [feature deprecation policy](#Deprecating-a-feature).
-- Implementation must ensure that both the graduated and deprecated experimental feature flags work as expected. Note that both these flags will co-exist for the timeframe described in the feature deprecation policy.
+- Implementation must ensure that both the graduated and deprecated experimental feature gate work as expected. Note that both these flags will co-exist for the timeframe described in the feature deprecation policy.
 - Enable the graduated feature by default if needed.
 
 At least two maintainers must approve the work. Patch releases should not be considered for graduation.
