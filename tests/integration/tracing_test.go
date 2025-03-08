@@ -34,7 +34,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-// TestTracing ensures that distributed tracing is setup when the feature flag is enabled.
+// TestTracing ensures that distributed tracing is setup when the feature gate is enabled.
 func TestTracing(t *testing.T) {
 	testutil.SkipTestIfShortMode(t,
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
