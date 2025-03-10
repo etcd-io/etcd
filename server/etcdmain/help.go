@@ -321,8 +321,6 @@ Experimental feature:
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
   --experimental-warning-unary-request-duration '300ms'
     Set time duration after which a warning is generated if a unary request takes more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-unary-request-duration' instead.
-  --experimental-max-learners '1'
-    Set the max number of learner members allowed in the cluster membership. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--max-learners' instead.
   --max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
   --experimental-snapshot-catch-up-entries '5000'
