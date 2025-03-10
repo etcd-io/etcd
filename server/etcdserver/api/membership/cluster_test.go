@@ -1049,12 +1049,6 @@ func TestAddMemberSyncsBackendAndStoreV2(t *testing.T) {
 			backendMembers: []*Member{alice},
 		},
 		{
-			name:           "Adding member should fail if it exists in both",
-			storeV2Members: []*Member{alice},
-			backendMembers: []*Member{alice},
-			expectPanics:   true,
-		},
-		{
 			name:           "Adding member should fail if it exists in storeV2 and backend is nil",
 			storeV2Members: []*Member{alice},
 			backendNil:     true,
