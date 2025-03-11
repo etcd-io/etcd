@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -228,6 +229,10 @@ func TestUtlCtlV2Backup(t *testing.T) {
 
 func testUtlCtlV2Backup(t *testing.T, snapCount int, v3 bool, utl bool) {
 	BeforeTestV2(t)
+
+	// disable the verification because this case updated the db offline
+	revertFunc := verify.DisableVerification()
+	defer revertFunc()
 
 	backupDir, err := ioutil.TempDir(t.TempDir(), "testbackup0.etcd")
 	if err != nil {

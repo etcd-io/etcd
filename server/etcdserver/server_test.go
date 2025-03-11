@@ -655,6 +655,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
+	cl.SetBackend(be)
 	cindex.CreateMetaBucket(be.BatchTx())
 
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
