@@ -38,12 +38,12 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:        "When the context does not have trace",
-			inputCtx:    context.TODO(),
+			inputCtx:    t.Context(),
 			outputTrace: TODO(),
 		},
 		{
 			name:        "When the context has trace",
-			inputCtx:    context.WithValue(context.Background(), TraceKey{}, traceForTest),
+			inputCtx:    context.WithValue(t.Context(), TraceKey{}, traceForTest),
 			outputTrace: traceForTest,
 		},
 	}

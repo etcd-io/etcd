@@ -31,7 +31,7 @@ func TestExpectFunc(t *testing.T) {
 	ep, err := NewExpect("echo", "hello world")
 	require.NoError(t, err)
 	wstr := "hello world\r\n"
-	l, eerr := ep.ExpectFunc(context.Background(), func(a string) bool { return len(a) > 10 })
+	l, eerr := ep.ExpectFunc(t.Context(), func(a string) bool { return len(a) > 10 })
 	require.NoError(t, eerr)
 	require.Equalf(t, l, wstr, `got "%v", expected "%v"`, l, wstr)
 	require.NoError(t, ep.Close())
@@ -49,7 +49,7 @@ func TestExpectFuncTimeout(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
 	_, err = ep.ExpectFunc(ctx, func(a string) bool { return false })
@@ -66,7 +66,7 @@ func TestExpectFuncExitFailure(t *testing.T) {
 	ep, err := NewExpect("tail", "-x")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
 	_, err = ep.ExpectFunc(ctx, func(s string) bool {
@@ -81,7 +81,7 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 	ep, err := NewExpect("tail", "-x")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 
 	_, err = ep.ExpectFunc(ctx, func(s string) bool {
@@ -101,7 +101,7 @@ func TestExpectFuncExitFailureStop(t *testing.T) {
 func TestEcho(t *testing.T) {
 	ep, err := NewExpect("echo", "hello world")
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	l, eerr := ep.ExpectWithContext(ctx, ExpectedResponse{Value: "world"})
 	require.NoError(t, eerr)
 	wstr := "hello world"
@@ -115,7 +115,7 @@ func TestLineCount(t *testing.T) {
 	ep, err := NewExpect("printf", "1\n2\n3")
 	require.NoError(t, err)
 	wstr := "3"
-	l, eerr := ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: wstr})
+	l, eerr := ep.ExpectWithContext(t.Context(), ExpectedResponse{Value: wstr})
 	require.NoError(t, eerr)
 	require.Equalf(t, l, wstr, `got "%v", expected "%v"`, l, wstr)
 	require.Equalf(t, 3, ep.LineCount(), "got %d, expected 3", ep.LineCount())
@@ -127,7 +127,7 @@ func TestSend(t *testing.T) {
 	require.NoError(t, err)
 	err = ep.Send("a\r")
 	require.NoError(t, err)
-	_, err = ep.ExpectWithContext(context.Background(), ExpectedResponse{Value: "b"})
+	_, err = ep.ExpectWithContext(t.Context(), ExpectedResponse{Value: "b"})
 	require.NoError(t, err)
 	require.NoError(t, ep.Stop())
 }
@@ -208,7 +208,7 @@ func TestResponseMatchRegularExpr(t *testing.T) {
 			ep, err := NewExpect("echo", "-n", tc.mockOutput)
 			require.NoError(t, err)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			defer cancel()
 			l, err := ep.ExpectWithContext(ctx, tc.expectedResp)
 
