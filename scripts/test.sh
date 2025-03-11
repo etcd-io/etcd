@@ -67,6 +67,18 @@ if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
 fi
 
+if [ -z "${OS:-}" ]; then
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -z "${ARCH:-}" ]; then
+  ARCH=$(uname -m)
+
+  if [ "$ARCH" = "arm64" ]; then
+    ARCH="aarch64"
+  fi
+fi
+
 # determine whether target supports race detection
 if [ -z "${RACE:-}" ] ; then
   if [ "$GOARCH" == "amd64" ] || [ "$GOARCH" == "arm64" ]; then
@@ -331,7 +343,7 @@ function shellcheck_pass {
   SHELLCHECK=shellcheck
   if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
     log_callout "Installing shellcheck $SHELLCHECK_VERSION"
-    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
+    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.${OS}.${ARCH}.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
     mkdir -p ./bin
     mv /tmp/shellcheck ./bin/
     SHELLCHECK=./bin/shellcheck
@@ -356,7 +368,14 @@ function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if ! tool_exists "$marker" "https://crates.io/crates/marker"; then
     log_callout "Installing markdown marker $MARKDOWN_MARKER_VERSION"
-    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
+    MARKER_OS=$OS
+    if [ "$OS" = "darwin" ]; then
+      MARKER_OS="apple-darwin"
+    elif [ "$OS" = "linux" ]; then
+      MARKER_OS="unknown-linux-musl"
+    fi
+
+    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-${ARCH}-${MARKER_OS}.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
     mkdir -p ./bin
     mv /tmp/marker ./bin/
     marker=./bin/marker
