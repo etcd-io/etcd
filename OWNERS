@@ -2,11 +2,11 @@
 
 approvers:
   - ahrtr            # Benjamin Wang <benjamin.ahrtr@gmail.com> <benjamin.wang@broadcom.com>
+  - fuweid           # Wei Fu <fuweid89@gmail.com>
   - jmhbnz           # James Blair <jablair@redhat.com> <mail@jamesblair.net>
   - serathius        # Marek Siarkowicz <siarkowicz@google.com> <marek.siarkowicz@gmail.com>
   - spzala           # Sahdev Zala <spzala@us.ibm.com>
   - wenjiaswe        # Wenjia Zhang <wenjiazhang@google.com> <wenjia.swe@gmail.com>
 reviewers:
-  - fuweid           # Wei Fu <fuweid89@gmail.com>
   - ivanvc           # Ivan Valdes <ivan@vald.es>
   - siyuanfoundation # Siyuan Zhang <sizhang@google.com> <physicsbug@gmail.com>
