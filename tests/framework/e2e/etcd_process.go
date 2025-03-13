@@ -321,7 +321,7 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	t.Helper()
 	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	_, err = ep.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: expectLog})
 	if err != nil {

@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -37,7 +36,7 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 	t.Logf("etcdctl downgrade enable %s", ver.String())
 	c := epc.Etcdctl()
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
-		err := c.DowngradeEnable(context.TODO(), ver.String())
+		err := c.DowngradeEnable(t.Context(), ver.String())
 		require.NoError(t, err)
 	})
 
@@ -60,7 +59,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
 			t.Logf("etcdctl downgrade cancel")
-			err = c.DowngradeCancel(context.TODO())
+			err = c.DowngradeCancel(t.Context())
 			if err != nil {
 				if strings.Contains(err.Error(), "no inflight downgrade job") {
 					// cancellation has been performed successfully
@@ -93,7 +92,7 @@ func ValidateDowngradeInfo(t *testing.T, clus *EtcdProcessCluster, expected *pb.
 
 		testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 			for {
-				statuses, err := mc.Status(context.Background())
+				statuses, err := mc.Status(t.Context())
 				if err != nil {
 					cfg.Logger.Warn("failed to get member status and retrying",
 						zap.Error(err),
@@ -157,7 +156,7 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		}
 		member.Config().ExecPath = newExecPath
 		lg.Info("Restarting member", zap.String("member", member.Config().Name))
-		err := member.Start(context.TODO())
+		err := member.Start(t.Context())
 		if err != nil {
 			return err
 		}
