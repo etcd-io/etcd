@@ -15,7 +15,6 @@
 package snapshot
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"strconv"
@@ -136,7 +135,7 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 							Key:   []byte(key),
 							Value: val,
 						}
-						_, err := srv.Put(context.TODO(), &req)
+						_, err := srv.Put(t.Context(), &req)
 						require.NoError(t, err)
 					}
 				}
@@ -150,10 +149,10 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 				key := []byte("key1")
 				for i := 0; i < 3; i++ {
 					if i < 2 {
-						_, err := srv.Put(context.TODO(), &etcdserverpb.PutRequest{Key: key, Value: []byte(strconv.Itoa(i))})
+						_, err := srv.Put(t.Context(), &etcdserverpb.PutRequest{Key: key, Value: []byte(strconv.Itoa(i))})
 						require.NoError(t, err)
 					} else {
-						_, err := srv.DeleteRange(context.TODO(), &etcdserverpb.DeleteRangeRequest{Key: key})
+						_, err := srv.DeleteRange(t.Context(), &etcdserverpb.DeleteRangeRequest{Key: key})
 						require.NoError(t, err)
 					}
 				}
@@ -166,9 +165,9 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 				// key1: create -> delete -> re-create -> delete
 				key := []byte("key1")
 				for i := 0; i < 2; i++ {
-					_, err := srv.Put(context.TODO(), &etcdserverpb.PutRequest{Key: key, Value: make([]byte, 1)})
+					_, err := srv.Put(t.Context(), &etcdserverpb.PutRequest{Key: key, Value: make([]byte, 1)})
 					require.NoError(t, err)
-					_, err = srv.DeleteRange(context.TODO(), &etcdserverpb.DeleteRangeRequest{Key: key})
+					_, err = srv.DeleteRange(t.Context(), &etcdserverpb.DeleteRangeRequest{Key: key})
 					require.NoError(t, err)
 				}
 			},
@@ -181,10 +180,10 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 				key := []byte("key1")
 				for i := 0; i < 5; i++ {
 					if i%2 == 0 {
-						_, err := srv.Put(context.TODO(), &etcdserverpb.PutRequest{Key: key, Value: make([]byte, 1)})
+						_, err := srv.Put(t.Context(), &etcdserverpb.PutRequest{Key: key, Value: make([]byte, 1)})
 						require.NoError(t, err)
 					} else {
-						_, err := srv.DeleteRange(context.TODO(), &etcdserverpb.DeleteRangeRequest{Key: key})
+						_, err := srv.DeleteRange(t.Context(), &etcdserverpb.DeleteRangeRequest{Key: key})
 						require.NoError(t, err)
 					}
 				}
@@ -195,11 +194,11 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 			name: "mixed deletions",
 			prepare: func(srv *etcdserver.EtcdServer) {
 				// Put("key1") -> Put("key2")-> Delete("key1")
-				_, err := srv.Put(context.TODO(), &etcdserverpb.PutRequest{Key: []byte("key1"), Value: make([]byte, 1)})
+				_, err := srv.Put(t.Context(), &etcdserverpb.PutRequest{Key: []byte("key1"), Value: make([]byte, 1)})
 				require.NoError(t, err)
-				_, err = srv.Put(context.TODO(), &etcdserverpb.PutRequest{Key: []byte("key2"), Value: make([]byte, 1)})
+				_, err = srv.Put(t.Context(), &etcdserverpb.PutRequest{Key: []byte("key2"), Value: make([]byte, 1)})
 				require.NoError(t, err)
-				_, err = srv.DeleteRange(context.TODO(), &etcdserverpb.DeleteRangeRequest{Key: []byte("key1")})
+				_, err = srv.DeleteRange(t.Context(), &etcdserverpb.DeleteRangeRequest{Key: []byte("key1")})
 				require.NoError(t, err)
 			},
 			expected: 1,
@@ -228,7 +227,7 @@ func insertKeys(t *testing.T, numKeys, valueSize int) func(*etcdserver.EtcdServe
 				Key:   []byte(strconv.Itoa(i)),
 				Value: val,
 			}
-			_, err := srv.Put(context.TODO(), &req)
+			_, err := srv.Put(t.Context(), &req)
 			require.NoError(t, err)
 		}
 	}
