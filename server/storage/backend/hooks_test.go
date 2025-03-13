@@ -69,7 +69,7 @@ func write(tx backend.BatchTx, k, v []byte) {
 }
 
 func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 
 	cfg := backend.DefaultBackendConfig(zaptest.NewLogger(t))

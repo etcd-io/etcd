@@ -986,7 +986,7 @@ func TestAddMember(t *testing.T) {
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
-	_, err := s.AddMember(context.Background(), m)
+	_, err := s.AddMember(t.Context(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1052,7 +1052,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	if types.ID(m.To) == s.MemberID() {
 		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	}
-	err := s.Process(context.Background(), m)
+	err := s.Process(t.Context(), m)
 	if err == nil {
 		t.Fatalf("Must ignore the message and return an error")
 	}
@@ -1092,7 +1092,7 @@ func TestRemoveMember(t *testing.T) {
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
-	_, err := s.RemoveMember(context.Background(), 1234)
+	_, err := s.RemoveMember(t.Context(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1142,7 +1142,7 @@ func TestUpdateMember(t *testing.T) {
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
-	_, err := s.UpdateMember(context.Background(), wm)
+	_, err := s.UpdateMember(t.Context(), wm)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1166,7 +1166,7 @@ func TestPublishV3(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
@@ -1208,7 +1208,7 @@ func TestPublishV3(t *testing.T) {
 
 // TestPublishV3Stopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	r := newRaftNode(raftNodeConfig{
 		lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
@@ -1236,7 +1236,7 @@ func TestPublishV3Stopped(t *testing.T) {
 
 // TestPublishV3Retry tests that publish will keep retry until success.
 func TestPublishV3Retry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
@@ -1290,7 +1290,7 @@ func TestUpdateVersionV3(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)

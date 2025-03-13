@@ -15,7 +15,6 @@
 package auth
 
 import (
-	"context"
 	"fmt"
 	"maps"
 	"testing"
@@ -96,7 +95,7 @@ func testJWTInfo(t *testing.T, opts map[string]string) {
 		t.Fatal(err)
 	}
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	token, aerr := jwt.assign(ctx, "abc", 123)
 	if aerr != nil {
@@ -196,7 +195,7 @@ func TestJWTTokenWithMissingFields(t *testing.T) {
 			// verify the token
 			jwtProvider, err := newTokenProviderJWT(zap.NewNop(), optsMap)
 			require.NoError(t, err)
-			ai, ok := jwtProvider.info(context.TODO(), token, 123)
+			ai, ok := jwtProvider.info(t.Context(), token, 123)
 
 			require.Equal(t, tc.expectValid, ok)
 			if ok {
