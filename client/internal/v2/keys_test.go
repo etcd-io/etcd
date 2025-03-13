@@ -15,7 +15,6 @@
 package client
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -875,7 +874,7 @@ func TestHTTPWatcherNextWaitAction(t *testing.T) {
 		nextWait: initAction,
 	}
 
-	resp, err := watcher.Next(context.Background())
+	resp, err := watcher.Next(t.Context())
 	if err != nil {
 		t.Errorf("non-nil error: %#v", err)
 	}
@@ -925,7 +924,7 @@ func TestHTTPWatcherNextFail(t *testing.T) {
 			nextWait: act,
 		}
 
-		resp, err := watcher.Next(context.Background())
+		resp, err := watcher.Next(t.Context())
 		if err == nil {
 			t.Errorf("#%d: expected non-nil error", i)
 		}
@@ -1073,7 +1072,7 @@ func TestHTTPKeysAPISetAction(t *testing.T) {
 	for i, tt := range tests {
 		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
 		kAPI := httpKeysAPI{client: client}
-		kAPI.Set(context.Background(), tt.key, tt.value, tt.opts)
+		kAPI.Set(t.Context(), tt.key, tt.value, tt.opts)
 	}
 }
 
@@ -1102,7 +1101,7 @@ func TestHTTPKeysAPISetError(t *testing.T) {
 
 	for i, tt := range tests {
 		kAPI := httpKeysAPI{client: tt}
-		resp, err := kAPI.Set(context.Background(), "/foo", "bar", nil)
+		resp, err := kAPI.Set(t.Context(), "/foo", "bar", nil)
 		if err == nil {
 			t.Errorf("#%d: received nil error", i)
 		}
@@ -1129,7 +1128,7 @@ func TestHTTPKeysAPISetResponse(t *testing.T) {
 	}
 
 	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
-	resp, err := kAPI.Set(context.Background(), "/foo/bar/baz", "snarf", nil)
+	resp, err := kAPI.Set(t.Context(), "/foo/bar/baz", "snarf", nil)
 	if err != nil {
 		t.Errorf("non-nil error: %#v", err)
 	}
@@ -1184,7 +1183,7 @@ func TestHTTPKeysAPIGetAction(t *testing.T) {
 	for i, tt := range tests {
 		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
 		kAPI := httpKeysAPI{client: client}
-		kAPI.Get(context.Background(), tt.key, tt.opts)
+		kAPI.Get(t.Context(), tt.key, tt.opts)
 	}
 }
 
@@ -1213,7 +1212,7 @@ func TestHTTPKeysAPIGetError(t *testing.T) {
 
 	for i, tt := range tests {
 		kAPI := httpKeysAPI{client: tt}
-		resp, err := kAPI.Get(context.Background(), "/foo", nil)
+		resp, err := kAPI.Get(t.Context(), "/foo", nil)
 		if err == nil {
 			t.Errorf("#%d: received nil error", i)
 		}
@@ -1246,7 +1245,7 @@ func TestHTTPKeysAPIGetResponse(t *testing.T) {
 	}
 
 	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
-	resp, err := kAPI.Get(context.Background(), "/foo/bar", &GetOptions{Recursive: true})
+	resp, err := kAPI.Get(t.Context(), "/foo/bar", &GetOptions{Recursive: true})
 	if err != nil {
 		t.Errorf("non-nil error: %#v", err)
 	}
@@ -1303,7 +1302,7 @@ func TestHTTPKeysAPIDeleteAction(t *testing.T) {
 	for i, tt := range tests {
 		client := &actionAssertingHTTPClient{t: t, num: i, act: tt.wantAction}
 		kAPI := httpKeysAPI{client: client}
-		kAPI.Delete(context.Background(), tt.key, tt.opts)
+		kAPI.Delete(t.Context(), tt.key, tt.opts)
 	}
 }
 
@@ -1332,7 +1331,7 @@ func TestHTTPKeysAPIDeleteError(t *testing.T) {
 
 	for i, tt := range tests {
 		kAPI := httpKeysAPI{client: tt}
-		resp, err := kAPI.Delete(context.Background(), "/foo", nil)
+		resp, err := kAPI.Delete(t.Context(), "/foo", nil)
 		if err == nil {
 			t.Errorf("#%d: received nil error", i)
 		}
@@ -1359,7 +1358,7 @@ func TestHTTPKeysAPIDeleteResponse(t *testing.T) {
 	}
 
 	kAPI := &httpKeysAPI{client: client, prefix: "/pants"}
-	resp, err := kAPI.Delete(context.Background(), "/foo/bar/baz", nil)
+	resp, err := kAPI.Delete(t.Context(), "/foo/bar/baz", nil)
 	if err != nil {
 		t.Errorf("non-nil error: %#v", err)
 	}
@@ -1379,7 +1378,7 @@ func TestHTTPKeysAPICreateAction(t *testing.T) {
 	}
 
 	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
-	kAPI.Create(context.Background(), "/foo", "bar")
+	kAPI.Create(t.Context(), "/foo", "bar")
 }
 
 func TestHTTPKeysAPICreateInOrderAction(t *testing.T) {
@@ -1389,7 +1388,7 @@ func TestHTTPKeysAPICreateInOrderAction(t *testing.T) {
 		TTL:   0,
 	}
 	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
-	kAPI.CreateInOrder(context.Background(), "/foo", "bar", nil)
+	kAPI.CreateInOrder(t.Context(), "/foo", "bar", nil)
 }
 
 func TestHTTPKeysAPIUpdateAction(t *testing.T) {
@@ -1403,7 +1402,7 @@ func TestHTTPKeysAPIUpdateAction(t *testing.T) {
 	}
 
 	kAPI := httpKeysAPI{client: &actionAssertingHTTPClient{t: t, act: act}}
-	kAPI.Update(context.Background(), "/foo", "bar")
+	kAPI.Update(t.Context(), "/foo", "bar")
 }
 
 func TestNodeTTLDuration(t *testing.T) {
