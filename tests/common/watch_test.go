@@ -31,7 +31,7 @@ func TestWatch(t *testing.T) {
 	watchTimeout := 1 * time.Second
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 
