@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ import (
 func TestWarningApplyDuration(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithWarningUnaryRequestDuration(time.Microsecond),
 	)
@@ -42,7 +41,7 @@ func TestWarningApplyDuration(t *testing.T) {
 	})
 
 	cc := epc.Etcdctl()
-	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
+	err = cc.Put(t.Context(), "foo", "bar", config.PutOptions{})
 	require.NoErrorf(t, err, "error on put")
 
 	// verify warning
@@ -55,7 +54,7 @@ func TestWarningApplyDuration(t *testing.T) {
 func TestExperimentalWarningApplyDuration(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithExperimentalWarningUnaryRequestDuration(time.Microsecond),
 	)
@@ -69,7 +68,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 	})
 
 	cc := epc.Etcdctl()
-	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
+	err = cc.Put(t.Context(), "foo", "bar", config.PutOptions{})
 	require.NoErrorf(t, err, "error on put")
 
 	// verify warning
@@ -79,7 +78,7 @@ func TestExperimentalWarningApplyDuration(t *testing.T) {
 func TestBothWarningApplyDurationFlagsFail(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	_, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	_, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithWarningUnaryRequestDuration(time.Second),
 		e2e.WithExperimentalWarningUnaryRequestDuration(time.Second),

@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -69,7 +68,7 @@ func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
 func TestCtlV3ConsistentMemberList(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
@@ -290,7 +289,7 @@ func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 
 func TestRemoveNonExistingMember(t *testing.T) {
 	e2e.BeforeTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))

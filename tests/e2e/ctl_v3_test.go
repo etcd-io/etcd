@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -60,7 +59,7 @@ func TestClusterVersion(t *testing.T) {
 				e2e.WithRollingStart(tt.rollingStart),
 			)
 
-			epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+			epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 			if err != nil {
 				t.Fatalf("could not start etcd process cluster (%v)", err)
 			}
@@ -232,7 +231,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 		ret.cfg.KeepDataDir = true
 	}
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(&ret.cfg))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(&ret.cfg))
 	if err != nil {
 		t.Fatalf("could not start etcd process cluster (%v)", err)
 	}

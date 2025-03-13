@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -89,7 +88,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg *e2e.EtcdProcessClu
 	}
 
 	t.Logf("Create an etcd cluster with %d member", cfg.ClusterSize)
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithConfig(cfg),
 		e2e.WithSnapshotCount(10),
 	)
@@ -107,9 +106,9 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg *e2e.EtcdProcessClu
 	newCfg.Version = newInstanceVersion
 	newCfg.ServerConfig.SnapshotCatchUpEntries = 10
 	t.Log("Starting a new etcd instance")
-	_, err = epc.StartNewProc(context.TODO(), &newCfg, t, false /* addAsLearner */)
+	_, err = epc.StartNewProc(t.Context(), &newCfg, t, false /* addAsLearner */)
 	require.NoErrorf(t, err, "failed to start the new etcd instance")
-	defer epc.CloseProc(context.TODO(), nil)
+	defer epc.CloseProc(t.Context(), nil)
 
 	assertKVHash(t, epc)
 }
@@ -136,7 +135,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 		e2e.WithSnapshotCatchUpEntries(10),
 	}
 	t.Logf("Create an etcd cluster with %d member", cfg.ClusterSize)
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, clusterOptions...)
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, clusterOptions...)
 	require.NoErrorf(t, err, "failed to start etcd cluster")
 	defer func() {
 		derr := epc.Close()
@@ -156,7 +155,7 @@ func mixVersionsSnapshotTestByMockPartition(t *testing.T, cfg *e2e.EtcdProcessCl
 	e2e.AssertProcessLogs(t, leaderEPC, "saved snapshot")
 
 	t.Log("Restart the partitioned member")
-	err = toPartitionedMember.Restart(context.TODO())
+	err = toPartitionedMember.Restart(t.Context())
 	require.NoError(t, err)
 
 	assertKVHash(t, epc)
@@ -170,7 +169,7 @@ func writeKVs(t *testing.T, etcdctl *e2e.EtcdctlV3, startIdx, endIdx int) {
 	for i := startIdx; i < endIdx; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := etcdctl.Put(context.TODO(), key, value, config.PutOptions{})
+		err := etcdctl.Put(t.Context(), key, value, config.PutOptions{})
 		require.NoErrorf(t, err, "failed to put %q", key)
 	}
 }
@@ -182,7 +181,7 @@ func assertKVHash(t *testing.T, epc *e2e.EtcdProcessCluster) {
 	}
 	t.Log("Verify all nodes have exact same revision and hash")
 	assert.Eventually(t, func() bool {
-		hashKvs, err := epc.Etcdctl().HashKV(context.TODO(), 0)
+		hashKvs, err := epc.Etcdctl().HashKV(t.Context(), 0)
 		if err != nil {
 			t.Logf("failed to get HashKV: %v", err)
 			return false

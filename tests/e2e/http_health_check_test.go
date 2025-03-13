@@ -150,7 +150,7 @@ func TestHTTPHealthHandler(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, tc.clusterOptions...)
 			require.NoError(t, err)
@@ -313,7 +313,7 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 			defer cancel()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t, tc.clusterOptions...)
 			require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestHTTPLivezReadyzHandler(t *testing.T) {
 }
 
 func doHealthCheckAndVerify(t *testing.T, client *http.Client, url string, expectTimeoutError bool, expectStatusCode int, expectRespSubStrings []string) {
-	ctx, cancel := context.WithTimeout(context.Background(), healthCheckTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), healthCheckTimeout)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	require.NoErrorf(t, err, "failed to creat request %+v", err)
 	resp, herr := client.Do(req)

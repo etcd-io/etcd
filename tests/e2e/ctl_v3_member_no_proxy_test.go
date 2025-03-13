@@ -33,7 +33,7 @@ import (
 
 func TestMemberReplace(t *testing.T) {
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t)
@@ -100,7 +100,7 @@ func TestMemberReplace(t *testing.T) {
 
 func TestMemberReplaceWithLearner(t *testing.T) {
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t)

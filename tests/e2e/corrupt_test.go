@@ -99,7 +99,7 @@ func corruptTest(cx ctlCtx) {
 func TestInPlaceRecovery(t *testing.T) {
 	basePort := 20000
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	// Initialize the cluster.
@@ -198,7 +198,7 @@ func TestPeriodicCheckDetectsCorruptionWithExperimentalFlag(t *testing.T) {
 func testPeriodicCheckDetectsCorruption(t *testing.T, useExperimentalFlag bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var corruptCheckTime e2e.EPClusterOption
 	if useExperimentalFlag {
@@ -233,7 +233,7 @@ func testPeriodicCheckDetectsCorruption(t *testing.T, useExperimentalFlag bool) 
 	err = testutil.CorruptBBolt(datadir.ToBackendFileName(epc.Procs[0].Config().DataDirPath))
 	require.NoError(t, err)
 
-	err = epc.Procs[0].Restart(context.TODO())
+	err = epc.Procs[0].Restart(t.Context())
 	require.NoError(t, err)
 	time.Sleep(checkTime * 11 / 10)
 	alarmResponse, err := cc.AlarmList(ctx)
@@ -252,7 +252,7 @@ func TestCompactHashCheckDetectCorruptionWithFeatureGate(t *testing.T) {
 func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	opts := []e2e.EPClusterOption{e2e.WithKeepDataDir(true), e2e.WithCompactHashCheckTime(checkTime)}
 	if useFeatureGate {
@@ -308,7 +308,7 @@ func TestCompactHashCheckDetectCorruptionInterruptWithExperimentalFlag(t *testin
 func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool, useExperimentalFlag bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 	defer cancel()
 
 	slowCompactionNodeIndex := 1
@@ -407,7 +407,7 @@ func TestCtlV3LinearizableRead(t *testing.T) {
 func testCtlV3ReadAfterWrite(t *testing.T, ops ...clientv3.OpOption) {
 	e2e.BeforeTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),

@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -109,7 +108,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			epc, err := e2e.NewEtcdProcessCluster(ctx, t, tc.options...)
 			require.NoError(t, err)

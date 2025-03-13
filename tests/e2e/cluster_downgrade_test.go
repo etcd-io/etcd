@@ -137,7 +137,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	e2e.ValidateDowngradeInfo(t, epc, &pb.DowngradeInfo{Enabled: false})
 
 	t.Log("Adding member to test membership, but a learner avoid breaking quorum")
-	resp, err := cc.MemberAddAsLearner(context.Background(), "fake1", []string{"http://127.0.0.1:1001"})
+	resp, err := cc.MemberAddAsLearner(t.Context(), "fake1", []string{"http://127.0.0.1:1001"})
 	require.NoError(t, err)
 	if triggerSnapshot {
 		t.Logf("Generating snapshot")
@@ -145,7 +145,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 		verifySnapshot(t, epc)
 	}
 	t.Log("Removing learner to test membership")
-	_, err = cc.MemberRemove(context.Background(), resp.Member.ID)
+	_, err = cc.MemberRemove(t.Context(), resp.Member.ID)
 	require.NoError(t, err)
 	beforeMembers, beforeKV := getMembersAndKeys(t, cc)
 
@@ -197,7 +197,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 	}
 
 	t.Log("Adding learner to test membership, but avoid breaking quorum")
-	resp, err = cc.MemberAddAsLearner(context.Background(), "fake2", []string{"http://127.0.0.1:1002"})
+	resp, err = cc.MemberAddAsLearner(t.Context(), "fake2", []string{"http://127.0.0.1:1002"})
 	require.NoError(t, err)
 	if triggerSnapshot {
 		t.Logf("Generating snapshot")
@@ -205,7 +205,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 		verifySnapshot(t, epc)
 	}
 	t.Log("Removing learner to test membership")
-	_, err = cc.MemberRemove(context.Background(), resp.Member.ID)
+	_, err = cc.MemberRemove(t.Context(), resp.Member.ID)
 	require.NoError(t, err)
 	beforeMembers, beforeKV = getMembersAndKeys(t, cc)
 
@@ -229,7 +229,7 @@ func testDowngradeUpgrade(t *testing.T, numberOfMembersToDowngrade int, clusterS
 }
 
 func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdProcessCluster {
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(clusterSize),
 		e2e.WithSnapshotCount(snapshotCount),
 		e2e.WithKeepDataDir(true),
@@ -246,7 +246,7 @@ func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdPr
 }
 
 func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	var i uint64
@@ -286,7 +286,7 @@ func verifySnapshotMembers(t *testing.T, epc *e2e.EtcdProcessCluster, expectedMe
 }
 
 func getMembersAndKeys(t *testing.T, cc *e2e.EtcdctlV3) (*clientv3.MemberListResponse, *clientv3.GetResponse) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	kvs, err := cc.Get(ctx, "", config.GetOptions{Prefix: true})
