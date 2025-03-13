@@ -277,6 +277,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			return e, err
 		}
 	}
+
+	e.Server.SyncLearnerPromotionIfNeeded()
+
 	e.Server.Start()
 
 	if err = e.servePeers(); err != nil {
