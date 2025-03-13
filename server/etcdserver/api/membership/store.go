@@ -58,6 +58,22 @@ func unsafeSaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) er
 	return nil
 }
 
+// unsafeHackySaveMemberToBackend updates the member in a hacky way.
+// It's only used to workaround https://github.com/etcd-io/etcd/issues/19557.
+func unsafeHackySaveMemberToBackend(lg *zap.Logger, be backend.Backend, m *Member) error {
+	mkey := backendMemberKey(m.ID)
+	mvalue, err := json.Marshal(m)
+	if err != nil {
+		lg.Panic("failed to marshal member", zap.Error(err))
+	}
+
+	tx := be.BatchTx()
+	tx.LockOutsideApply()
+	defer tx.Unlock()
+	tx.UnsafePut(buckets.Members, mkey, mvalue)
+	return nil
+}
+
 // TrimClusterFromBackend removes all information about cluster (versions)
 // from the v3 backend.
 func TrimClusterFromBackend(be backend.Backend) error {

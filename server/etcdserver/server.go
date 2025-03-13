@@ -2931,3 +2931,15 @@ func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
 func (s *EtcdServer) CorruptionChecker() CorruptionChecker {
 	return s.corruptionChecker
 }
+
+// SyncLearnerPromotionIfNeeded provides a workaround for the users who have
+// already been affected by https://github.com/etcd-io/etcd/issues/19557.
+// It automatically syncs the v3store (bbolt) from v2store iff all the
+// conditions below are true for each member,
+//  1. IsLearner is the only field that differs between v2store and v3store.
+//  2. v2store.IsLearner == false && v3store.IsLearner == true.
+func (s *EtcdServer) SyncLearnerPromotionIfNeeded() {
+	s.Logger().Info("Trying to sync the learner promotion operations for v3store if needed")
+	s.cluster.SyncLearnerPromotionIfNeeded()
+	s.Logger().Info("Finished syncing the learner promotion operations for v3store")
+}

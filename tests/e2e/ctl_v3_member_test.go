@@ -24,7 +24,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
+	"go.etcd.io/etcd/server/v3/verify"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -230,13 +236,29 @@ func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
 }
 
-func TestCtlV3PromotingLearner(t *testing.T) {
+func TestCtlV3PromotingLearnerOnBootstrap(t *testing.T) {
 	e2e.BeforeTest(t)
 
+	testCtlV3PromotingLearner(t, 10)
+}
+
+func TestCtlV3PromotingLearnerOnApply(t *testing.T) {
+	e2e.BeforeTest(t)
+	// We call `LockOutsideApply` in apply, so we have to disable the verification.
+	revertFunc := verify.DisableVerification()
+	defer revertFunc()
+
+	testCtlV3PromotingLearner(t, 0)
+}
+
+func testCtlV3PromotingLearner(t *testing.T, snapshotCount int) {
 	t.Log("Create a single node etcd cluster")
 	cfg := e2e.NewConfigNoTLS()
 	cfg.BasePeerScheme = "unix"
 	cfg.ClusterSize = 1
+	if snapshotCount != 0 {
+		cfg.SnapshotCount = snapshotCount
+	}
 
 	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
 	require.NoError(t, err, "failed to start etcd cluster: %v", err)
@@ -255,6 +277,87 @@ func TestCtlV3PromotingLearner(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Logf("Promoting the learner %x", learnerID)
-	_, err = etcdctl.MemberPromote(learnerID)
+	resp, err := etcdctl.MemberPromote(learnerID)
 	require.NoError(t, err)
+
+	var promotedMember *etcdserverpb.Member
+	for _, m := range resp.Members {
+		if m.ID == learnerID {
+			promotedMember = m
+			break
+		}
+	}
+	require.NotNil(t, promotedMember)
+	t.Logf("The promoted member: %+v", promotedMember)
+
+	t.Log("Ensure all members are voting members")
+	ensureAllMembersAreVotingMembers(t, etcdctl)
+
+	if snapshotCount != 0 {
+		t.Logf("Write %d keys to trigger a snapshot", snapshotCount)
+		for i := 0; i < snapshotCount; i++ {
+			err = etcdctl.Put(fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i))
+			require.NoError(t, err)
+		}
+	}
+
+	t.Logf("Stopping the first member")
+	require.NoError(t, epc.Procs[0].Stop())
+
+	t.Log("Manually changing the already promoted learner to a learner again")
+	promotedMember.IsLearner = true
+	mustSaveMemberIntoBbolt(t, epc.Procs[0].Config().DataDirPath, promotedMember)
+
+	t.Log("Starting the first member again")
+	require.NoError(t, epc.Procs[0].Start())
+
+	t.Log("Checking the auto-sync learner log message")
+	if snapshotCount != 0 {
+		e2e.AssertProcessLogs(t, epc.Procs[0], "Syncing member in v3store")
+	} else {
+		e2e.AssertProcessLogs(t, epc.Procs[0], "Forcibly apply member promotion")
+	}
+
+	t.Log("Ensure all members are voting members again")
+	ensureAllMembersAreVotingMembers(t, etcdctl)
+}
+
+func mustSaveMemberIntoBbolt(t *testing.T, dataDir string, protoMember *etcdserverpb.Member) {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	db, err := bbolt.Open(dbPath, 0666, nil)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	m := &membership.Member{
+		ID: types.ID(protoMember.ID),
+		RaftAttributes: membership.RaftAttributes{
+			PeerURLs:  protoMember.PeerURLs,
+			IsLearner: protoMember.IsLearner,
+		},
+		Attributes: membership.Attributes{
+			Name:       protoMember.Name,
+			ClientURLs: protoMember.ClientURLs,
+		},
+	}
+
+	err = db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(buckets.Members.Name())
+
+		mkey := []byte(m.ID.String())
+		mvalue, err := json.Marshal(m)
+		require.NoError(t, err)
+
+		return b.Put(mkey, mvalue)
+	})
+	require.NoError(t, err)
+}
+
+func ensureAllMembersAreVotingMembers(t *testing.T, etcdctl *e2e.Etcdctl) {
+	memberListResp, err := etcdctl.MemberList()
+	require.NoError(t, err)
+	for _, m := range memberListResp.Members {
+		require.False(t, m.IsLearner)
+	}
 }
