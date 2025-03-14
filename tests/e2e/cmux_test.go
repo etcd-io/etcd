@@ -69,7 +69,7 @@ func TestConnectionMultiplexing(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 			cfg := e2e.NewConfig(e2e.WithClusterSize(1))
 			cfg.Client.ConnectionType = tc.serverTLS
 			cfg.ClientHTTPSeparate = tc.separateHTTPPort

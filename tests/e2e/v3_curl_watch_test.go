@@ -54,7 +54,7 @@ func testCurlV3Watch(cx ctlCtx) {
 func TestCurlWatchIssue19509(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(e2e.NewConfigClientTLS()), e2e.WithClusterSize(1))
 	require.NoError(t, err)

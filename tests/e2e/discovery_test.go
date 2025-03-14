@@ -47,7 +47,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
-	dc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	dc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithVersion(e2e.LastVersion),
 		e2e.WithClusterSize(1),
@@ -60,12 +60,12 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 
 	dcc := MustNewHTTPClient(t, dc.EndpointsHTTP(), nil)
 	dkapi := client.NewKeysAPI(dcc)
-	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 	_, err = dkapi.Create(ctx, "/_config/size", fmt.Sprintf("%d", size))
 	require.NoError(t, err)
 	cancel()
 
-	c, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	c, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithBasePort(3000),
 		e2e.WithClusterSize(size),
 		e2e.WithIsPeerTLS(peerTLS),

@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -48,7 +47,7 @@ func TestDefragNoSpace(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
 
-			clus, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+			clus, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 				e2e.WithClusterSize(1),
 				e2e.WithGoFailEnabled(true),
 			)
@@ -57,12 +56,12 @@ func TestDefragNoSpace(t *testing.T) {
 
 			member := clus.Procs[0]
 
-			require.NoError(t, member.Failpoints().SetupHTTP(context.Background(), tc.failpoint, fmt.Sprintf(`return("%s")`, tc.err)))
-			require.ErrorContains(t, member.Etcdctl().Defragment(context.Background(), config.DefragOption{Timeout: time.Minute}), tc.err)
+			require.NoError(t, member.Failpoints().SetupHTTP(t.Context(), tc.failpoint, fmt.Sprintf(`return("%s")`, tc.err)))
+			require.ErrorContains(t, member.Etcdctl().Defragment(t.Context(), config.DefragOption{Timeout: time.Minute}), tc.err)
 
 			// Make sure etcd continues to run even after the failed defrag attempt
-			require.NoError(t, member.Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{}))
-			value, err := member.Etcdctl().Get(context.Background(), "foo", config.GetOptions{})
+			require.NoError(t, member.Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{}))
+			value, err := member.Etcdctl().Get(t.Context(), "foo", config.GetOptions{})
 			require.NoError(t, err)
 			require.Len(t, value.Kvs, 1)
 			require.Equal(t, "bar", string(value.Kvs[0].Value))

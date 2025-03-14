@@ -40,7 +40,7 @@ func TestEtcdExampleConfig(t *testing.T) {
 
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--config-file", exampleConfigFile}, nil)
 	require.NoError(t, err)
-	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines))
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines))
 	require.NoError(t, proc.Stop())
 }
 
@@ -80,7 +80,7 @@ func TestEtcdMultiPeer(t *testing.T) {
 	}
 
 	for _, p := range procs {
-		err := e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines)
+		err := e2e.WaitReadyExpectProc(t.Context(), p, e2e.EtcdServerReadyLines)
 		require.NoError(t, err)
 	}
 }
@@ -102,7 +102,7 @@ func TestEtcdUnixPeers(t *testing.T) {
 	)
 	defer os.Remove("etcd.unix:1")
 	require.NoError(t, err)
-	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines))
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines))
 	require.NoError(t, proc.Stop())
 }
 
@@ -150,7 +150,7 @@ func TestEtcdListenMetricsURLsWithMissingClientTLSInfo(t *testing.T) {
 		_ = proc.Close()
 	}()
 
-	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{embed.ErrMissingClientTLSInfoForMetricsURL.Error()}))
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{embed.ErrMissingClientTLSInfoForMetricsURL.Error()}))
 }
 
 // TestEtcdPeerCNAuth checks that the inter peer auth based on CN of cert is working correctly.
@@ -224,7 +224,7 @@ func TestEtcdPeerCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		err := e2e.WaitReadyExpectProc(t.Context(), p, expect)
 		require.NoError(t, err)
 	}
 }
@@ -311,7 +311,7 @@ func TestEtcdPeerMultiCNAuth(t *testing.T) {
 		} else {
 			expect = []string{"remote error: tls: bad certificate"}
 		}
-		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		err := e2e.WaitReadyExpectProc(t.Context(), p, expect)
 		require.NoError(t, err)
 	}
 }
@@ -384,7 +384,7 @@ func TestEtcdPeerNameAuth(t *testing.T) {
 		} else {
 			expect = []string{"client certificate authentication failed"}
 		}
-		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		err := e2e.WaitReadyExpectProc(t.Context(), p, expect)
 		require.NoError(t, err)
 	}
 }
@@ -490,7 +490,7 @@ func TestEtcdPeerLocalAddr(t *testing.T) {
 		} else {
 			expect = []string{"x509: certificate is valid for 127.0.0.1, not "}
 		}
-		err := e2e.WaitReadyExpectProc(context.TODO(), p, expect)
+		err := e2e.WaitReadyExpectProc(t.Context(), p, expect)
 		require.NoError(t, err)
 	}
 }
@@ -570,7 +570,7 @@ func TestBootstrapDefragFlag(t *testing.T) {
 
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
 	require.NoError(t, err)
-	require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{"Skipping defragmentation"}))
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{"Skipping defragmentation"}))
 	require.NoError(t, proc.Stop())
 
 	// wait for the process to exit, otherwise test will have leaked goroutine
@@ -582,7 +582,7 @@ func TestBootstrapDefragFlag(t *testing.T) {
 func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
@@ -600,7 +600,7 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 // TestEtcdHealthyWithTinySnapshotCatchupEntries ensures multi-node etcd cluster remains healthy with 1 snapshot catch up entry
 func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	e2e.BeforeTest(t)
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(3),
 		e2e.WithSnapshotCount(1),
 		e2e.WithSnapshotCatchUpEntries(1),
@@ -613,7 +613,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 	})
 
 	// simulate 10 clients keep writing to etcd in parallel with no error
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	g, ctx := errgroup.WithContext(ctx)
 	for i := 0; i < 10; i++ {
@@ -655,7 +655,7 @@ func TestEtcdTLSVersion(t *testing.T) {
 		}, nil,
 	)
 	assert.NoError(t, err)
-	assert.NoErrorf(t, e2e.WaitReadyExpectProc(context.TODO(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
+	assert.NoErrorf(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines), "did not receive expected output from etcd process")
 	assert.NoError(t, proc.Stop())
 
 	proc.Wait() // ensure the port has been released
@@ -699,7 +699,7 @@ func TestEtcdDeprecatedFlags(t *testing.T) {
 				tc.args, nil,
 			)
 			require.NoError(t, err)
-			require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{tc.expectedMsg}))
+			require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{tc.expectedMsg}))
 			require.NoError(t, proc.Stop())
 
 			proc.Wait() // ensure the port has been released
@@ -727,7 +727,7 @@ func TestV2DeprecationEnforceDefaultValue(t *testing.T) {
 				append(commonArgs, "--v2-deprecation", optionLevel), nil,
 			)
 			require.NoError(t, err)
-			require.NoError(t, e2e.WaitReadyExpectProc(context.TODO(), proc, []string{expectedDeprecationLevelMsg}))
+			require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{expectedDeprecationLevelMsg}))
 			require.NoError(t, proc.Stop())
 
 			proc.Wait() // ensure the port has been released

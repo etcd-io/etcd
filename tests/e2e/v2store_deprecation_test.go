@@ -72,7 +72,7 @@ func TestV2DeprecationWriteOnlyWAL(t *testing.T) {
 		e2e.WithEnableV2(true),
 		e2e.WithDataDirPath(dataDirPath),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 	require.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
 
@@ -101,7 +101,7 @@ func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
 		e2e.WithDataDirPath(dataDirPath),
 		e2e.WithSnapshotCount(10),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 	require.NoError(t, err)
 	memberDataDir := epc.Procs[0].Config().DataDirPath
 
@@ -123,7 +123,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	e2e.BeforeTest(t)
 	lastReleaseData := t.TempDir()
 	currentReleaseData := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
@@ -156,7 +156,7 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	e2e.BeforeTest(t)
 	dataDir := t.TempDir()
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
@@ -176,7 +176,7 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 		e2e.WithVersion(e2e.CurrentVersion),
 		e2e.WithDataDirPath(dataDir),
 	))
-	epc, err = e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	epc, err = e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 	require.NoError(t, err)
 
 	cc = epc.Etcdctl()
@@ -198,7 +198,7 @@ func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, da
 		e2e.WithSnapshotCount(snapshotCount),
 		e2e.WithKeepDataDir(true),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 	assert.NoError(t, err)
 	return epc
 }

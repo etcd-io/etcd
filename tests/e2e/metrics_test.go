@@ -307,7 +307,7 @@ func TestNoMetricsMissing(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 
 			epc, err := e2e.NewEtcdProcessCluster(ctx, t, tc.options...)

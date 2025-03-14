@@ -56,7 +56,7 @@ func TestLeaseRevoke_ClientSwitchToOtherMember(t *testing.T) {
 func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bool) {
 	e2e.BeforeTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Log("Starting a new etcd cluster")
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
@@ -126,7 +126,7 @@ func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bo
 	err = epc.Procs[leaderIdx].Failpoints().SetupHTTP(ctx, "raftBeforeSave", `sleep("30s")`)
 	require.NoError(t, err)
 
-	cctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	cctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Logf("Waiting for a new leader to be elected, old leader index: %d, old leader ID: %d", leaderIdx, oldLeaderID)
 	testutils.ExecuteUntil(cctx, t, func() {
 		for {
