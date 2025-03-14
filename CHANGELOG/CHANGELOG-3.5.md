@@ -5,6 +5,9 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.20 (TBC)
 
+### etcdctl
+- Fix [command `etcdctl member promote` doesn't support json output](https://github.com/etcd-io/etcd/pull/19602)
+
 <hr>
 
 ## v3.5.19 (2025-03-05)
