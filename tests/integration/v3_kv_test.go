@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -34,15 +33,15 @@ func TestKVWithEmptyValue(t *testing.T) {
 
 	client := clus.RandClient()
 
-	_, err := client.Put(context.Background(), "my-namespace/foobar", "data")
+	_, err := client.Put(t.Context(), "my-namespace/foobar", "data")
 	require.NoError(t, err)
-	_, err = client.Put(context.Background(), "my-namespace/foobar1", "data")
+	_, err = client.Put(t.Context(), "my-namespace/foobar1", "data")
 	require.NoError(t, err)
-	_, err = client.Put(context.Background(), "namespace/foobar1", "data")
+	_, err = client.Put(t.Context(), "namespace/foobar1", "data")
 	require.NoError(t, err)
 
 	// Range over all keys.
-	resp, err := client.Get(context.Background(), "", clientv3.WithFromKey())
+	resp, err := client.Get(t.Context(), "", clientv3.WithFromKey())
 	require.NoError(t, err)
 	for _, kv := range resp.Kvs {
 		t.Log(string(kv.Key), "=", string(kv.Value))
@@ -50,18 +49,18 @@ func TestKVWithEmptyValue(t *testing.T) {
 
 	// Range over all keys in a namespace.
 	client.KV = namespace.NewKV(client.KV, "my-namespace/")
-	resp, err = client.Get(context.Background(), "", clientv3.WithFromKey())
+	resp, err = client.Get(t.Context(), "", clientv3.WithFromKey())
 	require.NoError(t, err)
 	for _, kv := range resp.Kvs {
 		t.Log(string(kv.Key), "=", string(kv.Value))
 	}
 
 	// Remove all keys without WithFromKey/WithPrefix func
-	_, err = client.Delete(context.Background(), "")
+	_, err = client.Delete(t.Context(), "")
 	// fatal error duo to without WithFromKey/WithPrefix func called.
 	require.Error(t, err)
 
-	respDel, err := client.Delete(context.Background(), "", clientv3.WithFromKey())
+	respDel, err := client.Delete(t.Context(), "", clientv3.WithFromKey())
 	// fatal error duo to with WithFromKey/WithPrefix func called.
 	require.NoError(t, err)
 	t.Logf("delete keys:%d", respDel.Deleted)

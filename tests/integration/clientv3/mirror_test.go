@@ -15,7 +15,6 @@
 package clientv3test
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -36,11 +35,11 @@ func TestMirrorSync(t *testing.T) {
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
-	_, err := c.KV.Put(context.TODO(), "foo", "bar")
+	_, err := c.KV.Put(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 
 	syncer := mirror.NewSyncer(c, "", 0)
-	gch, ech := syncer.SyncBase(context.TODO())
+	gch, ech := syncer.SyncBase(t.Context())
 	wkvs := []*mvccpb.KeyValue{{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}
 
 	for g := range gch {
@@ -53,9 +52,9 @@ func TestMirrorSync(t *testing.T) {
 		t.Fatalf("unexpected error %v", e)
 	}
 
-	wch := syncer.SyncUpdates(context.TODO())
+	wch := syncer.SyncUpdates(t.Context())
 
-	_, err = c.KV.Put(context.TODO(), "foo", "bar")
+	_, err = c.KV.Put(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 
 	select {
@@ -76,7 +75,7 @@ func TestMirrorSyncBase(t *testing.T) {
 	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	keyCh := make(chan string)
 	var wg sync.WaitGroup

@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -33,18 +32,18 @@ func TestV3LockLockWaiter(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err1)
-	lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err2)
 
 	lc := integration.ToGRPC(clus.Client(0)).Lock
-	l1, lerr1 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
+	l1, lerr1 := lc.Lock(t.Context(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
 	require.NoError(t, lerr1)
 
 	lockc := make(chan struct{})
 	go func() {
-		l2, lerr2 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease2.ID})
+		l2, lerr2 := lc.Lock(t.Context(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease2.ID})
 		if lerr2 != nil {
 			t.Error(lerr2)
 		}
@@ -60,7 +59,7 @@ func TestV3LockLockWaiter(t *testing.T) {
 		t.Fatalf("locked before unlock")
 	}
 
-	_, uerr := lc.Unlock(context.TODO(), &lockpb.UnlockRequest{Key: l1.Key})
+	_, uerr := lc.Unlock(t.Context(), &lockpb.UnlockRequest{Key: l1.Key})
 	require.NoError(t, uerr)
 
 	select {
