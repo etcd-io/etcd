@@ -15,7 +15,6 @@
 package clientv3
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).If(cmp).If(cmp)
+				kv.Txn(t.Context()).If(cmp).If(cmp)
 			},
 
 			err: "cannot call If twice!",
@@ -52,7 +51,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).Then(op).If(cmp)
+				kv.Txn(t.Context()).Then(op).If(cmp)
 			},
 
 			err: "cannot call If after Then!",
@@ -60,7 +59,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).Else(op).If(cmp)
+				kv.Txn(t.Context()).Else(op).If(cmp)
 			},
 
 			err: "cannot call If after Else!",
@@ -68,7 +67,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).Then(op).Then(op)
+				kv.Txn(t.Context()).Then(op).Then(op)
 			},
 
 			err: "cannot call Then twice!",
@@ -76,7 +75,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).Else(op).Then(op)
+				kv.Txn(t.Context()).Else(op).Then(op)
 			},
 
 			err: "cannot call Then after Else!",
@@ -84,7 +83,7 @@ func TestTxnPanics(t *testing.T) {
 		{
 			f: func(errc chan string) {
 				defer df(errc)
-				kv.Txn(context.TODO()).Else(op).Else(op)
+				kv.Txn(t.Context()).Else(op).Else(op)
 			},
 
 			err: "cannot call Else twice!",

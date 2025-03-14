@@ -196,18 +196,18 @@ func TestBackoffJitterFraction(t *testing.T) {
 
 func TestIsHaltErr(t *testing.T) {
 	assert.Truef(t,
-		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		isHaltErr(t.Context(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should be unavailable error",
 	)
 	assert.Falsef(t,
-		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		isHaltErr(t.Context(), rpctypes.ErrGRPCStopped),
 		`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped,
 	)
 	assert.Falsef(t,
-		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
+		isHaltErr(t.Context(), rpctypes.ErrGRPCNoLeader),
 		`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader,
 	)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	assert.Falsef(t,
 		isHaltErr(ctx, nil),
 		"no error and active context should be halt error",
@@ -221,18 +221,18 @@ func TestIsHaltErr(t *testing.T) {
 
 func TestIsUnavailableErr(t *testing.T) {
 	assert.Falsef(t,
-		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		isUnavailableErr(t.Context(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should not be unavailable error",
 	)
 	assert.Truef(t,
-		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		isUnavailableErr(t.Context(), rpctypes.ErrGRPCStopped),
 		`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped,
 	)
 	assert.Falsef(t,
-		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCNotCapable),
+		isUnavailableErr(t.Context(), rpctypes.ErrGRPCNotCapable),
 		"error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable,
 	)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	assert.Falsef(t,
 		isUnavailableErr(ctx, nil),
 		"no error and active context should not be unavailable error",
@@ -245,7 +245,7 @@ func TestIsUnavailableErr(t *testing.T) {
 }
 
 func TestCloseCtxClient(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c := NewCtxClient(ctx)
 	err := c.Close()
 	// Close returns ctx.toErr, a nil error means an open Done channel
@@ -255,7 +255,7 @@ func TestCloseCtxClient(t *testing.T) {
 }
 
 func TestWithLogger(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c := NewCtxClient(ctx)
 	if c.lg == nil {
 		t.Errorf("unexpected nil in *zap.Logger")
@@ -268,7 +268,7 @@ func TestWithLogger(t *testing.T) {
 }
 
 func TestZapWithLogger(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lg := zap.NewNop()
 	c := NewCtxClient(ctx, WithZapLogger(lg))
 
@@ -327,7 +327,7 @@ func TestSyncFiltersMembers(t *testing.T) {
 			{ID: 2, Name: "isStartedAndNotLearner", ClientURLs: []string{"http://254.0.0.3:12345"}, IsLearner: false},
 		},
 	}
-	c.Sync(context.Background())
+	c.Sync(t.Context())
 
 	endpoints := c.Endpoints()
 	if len(endpoints) != 1 || endpoints[0] != "http://254.0.0.3:12345" {
@@ -421,7 +421,7 @@ func TestClientRejectOldCluster(t *testing.T) {
 				endpointToVersion[tt.endpoints[j]] = tt.versions[j]
 			}
 			c := &Client{
-				ctx:       context.Background(),
+				ctx:       t.Context(),
 				endpoints: tt.endpoints,
 				epMu:      new(sync.RWMutex),
 				Maintenance: &mockMaintenance{

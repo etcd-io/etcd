@@ -15,7 +15,6 @@
 package client
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -340,7 +339,7 @@ func TestHTTPMembersAPIAddSuccess(t *testing.T) {
 		PeerURLs: []string{"http://127.0.0.1:7002"},
 	}
 
-	m, err := mAPI.Add(context.Background(), "http://127.0.0.1:7002")
+	m, err := mAPI.Add(t.Context(), "http://127.0.0.1:7002")
 	if err != nil {
 		t.Errorf("got non-nil err: %#v", err)
 	}
@@ -415,7 +414,7 @@ func TestHTTPMembersAPIAddError(t *testing.T) {
 
 	for i, tt := range tests {
 		mAPI := &httpMembersAPI{client: tt.client}
-		m, err := mAPI.Add(context.Background(), tt.peerURL)
+		m, err := mAPI.Add(t.Context(), tt.peerURL)
 		if err == nil {
 			t.Errorf("#%d: got nil err", i)
 		}
@@ -443,7 +442,7 @@ func TestHTTPMembersAPIRemoveSuccess(t *testing.T) {
 		},
 	}
 
-	if err := mAPI.Remove(context.Background(), "94088180e21eb87b"); err != nil {
+	if err := mAPI.Remove(t.Context(), "94088180e21eb87b"); err != nil {
 		t.Errorf("got non-nil err: %#v", err)
 	}
 }
@@ -465,7 +464,7 @@ func TestHTTPMembersAPIRemoveFail(t *testing.T) {
 
 	for i, tt := range tests {
 		mAPI := &httpMembersAPI{client: tt}
-		if err := mAPI.Remove(context.Background(), "94088180e21eb87b"); err == nil {
+		if err := mAPI.Remove(t.Context(), "94088180e21eb87b"); err == nil {
 			t.Errorf("#%d: got nil err", i)
 		}
 	}
@@ -493,7 +492,7 @@ func TestHTTPMembersAPIListSuccess(t *testing.T) {
 		},
 	}
 
-	m, err := mAPI.List(context.Background())
+	m, err := mAPI.List(t.Context())
 	if err != nil {
 		t.Errorf("got non-nil err: %#v", err)
 	}
@@ -523,7 +522,7 @@ func TestHTTPMembersAPIListError(t *testing.T) {
 
 	for i, tt := range tests {
 		mAPI := &httpMembersAPI{client: tt}
-		ms, err := mAPI.List(context.Background())
+		ms, err := mAPI.List(t.Context())
 		if err == nil {
 			t.Errorf("#%d: got nil err", i)
 		}
@@ -553,7 +552,7 @@ func TestHTTPMembersAPILeaderSuccess(t *testing.T) {
 		ClientURLs: []string{"http://127.0.0.1:4002"},
 	}
 
-	m, err := mAPI.Leader(context.Background())
+	m, err := mAPI.Leader(t.Context())
 	if err != nil {
 		t.Errorf("err = %v, want %v", err, nil)
 	}
@@ -583,7 +582,7 @@ func TestHTTPMembersAPILeaderError(t *testing.T) {
 
 	for i, tt := range tests {
 		mAPI := &httpMembersAPI{client: tt}
-		m, err := mAPI.Leader(context.Background())
+		m, err := mAPI.Leader(t.Context())
 		if err == nil {
 			t.Errorf("#%d: err = nil, want not nil", i)
 		}

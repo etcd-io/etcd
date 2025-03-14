@@ -131,7 +131,7 @@ func TestSimpleHTTPClientDoSuccess(t *testing.T) {
 		Body:       io.NopCloser(strings.NewReader("foo")),
 	}
 
-	resp, body, err := c.Do(context.Background(), &fakeAction{})
+	resp, body, err := c.Do(t.Context(), &fakeAction{})
 	require.NoErrorf(t, err, "incorrect error value")
 	wantCode := http.StatusTeapot
 	require.Equalf(t, wantCode, resp.StatusCode, "invalid response code: want=%d got=%d", wantCode, resp.StatusCode)
@@ -146,7 +146,7 @@ func TestSimpleHTTPClientDoError(t *testing.T) {
 
 	tr.errchan <- errors.New("fixture")
 
-	_, _, err := c.Do(context.Background(), &fakeAction{})
+	_, _, err := c.Do(t.Context(), &fakeAction{})
 	assert.Errorf(t, err, "expected non-nil error, got nil")
 }
 
@@ -162,7 +162,7 @@ func TestSimpleHTTPClientDoNilRequest(t *testing.T) {
 
 	tr.errchan <- errors.New("fixture")
 
-	_, _, err := c.Do(context.Background(), &nilAction{})
+	_, _, err := c.Do(t.Context(), &nilAction{})
 	require.ErrorIsf(t, err, ErrNoRequest, "expected non-nil error, got nil")
 }
 
@@ -173,7 +173,7 @@ func TestSimpleHTTPClientDoCancelContext(t *testing.T) {
 	tr.startCancel <- struct{}{}
 	tr.finishCancel <- struct{}{}
 
-	_, _, err := c.Do(context.Background(), &fakeAction{})
+	_, _, err := c.Do(t.Context(), &fakeAction{})
 	assert.Errorf(t, err, "expected non-nil error, got nil")
 }
 
@@ -195,7 +195,7 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosed(t *testing.T) {
 	c := &simpleHTTPClient{transport: tr}
 
 	// create an already-cancelled context
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	body := &checkableReadCloser{ReadCloser: io.NopCloser(strings.NewReader("foo"))}
@@ -232,7 +232,7 @@ func TestSimpleHTTPClientDoCancelContextResponseBodyClosedWithBlockingBody(t *te
 	tr := newFakeTransport()
 	c := &simpleHTTPClient{transport: tr}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	body := &checkableReadCloser{ReadCloser: &blockingBody{c: make(chan struct{})}}
 	go func() {
 		tr.respchan <- &http.Response{Body: body}
@@ -252,7 +252,7 @@ func TestSimpleHTTPClientDoCancelContextWaitForRoundTrip(t *testing.T) {
 	c := &simpleHTTPClient{transport: tr}
 
 	donechan := make(chan struct{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	go func() {
 		c.Do(ctx, &fakeAction{})
 		close(donechan)
@@ -285,7 +285,7 @@ func TestSimpleHTTPClientDoHeaderTimeout(t *testing.T) {
 
 	errc := make(chan error, 1)
 	go func() {
-		_, _, err := c.Do(context.Background(), &fakeAction{})
+		_, _, err := c.Do(t.Context(), &fakeAction{})
 		errc <- err
 	}()
 
@@ -407,7 +407,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 				),
 				rand: rand.New(rand.NewSource(0)),
 			},
-			ctx:        context.WithValue(context.Background(), &oneShotCtxValue, &oneShotCtxValue),
+			ctx:        context.WithValue(t.Context(), &oneShotCtxValue, &oneShotCtxValue),
 			wantErr:    errors.New("client: etcd member  returns server error [Bad Gateway]"),
 			wantPinned: 1,
 		},
@@ -415,7 +415,7 @@ func TestHTTPClusterClientDo(t *testing.T) {
 
 	for i, tt := range tests {
 		if tt.ctx == nil {
-			tt.ctx = context.Background()
+			tt.ctx = t.Context()
 		}
 		resp, _, err := tt.client.Do(tt.ctx, nil)
 		if (tt.wantErr == nil && !errors.Is(err, tt.wantErr)) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
@@ -450,7 +450,7 @@ func TestHTTPClusterClientDoDeadlineExceedContext(t *testing.T) {
 
 	errc := make(chan error, 1)
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Millisecond)
 		defer cancel()
 		_, _, err := c.Do(ctx, &fakeAction{})
 		errc <- err
@@ -722,7 +722,7 @@ func TestRedirectFollowingHTTPClient(t *testing.T) {
 
 	for i, tt := range tests {
 		client := &redirectFollowingHTTPClient{client: tt.client, checkRedirect: tt.checkRedirect}
-		resp, _, err := client.Do(context.Background(), nil)
+		resp, _, err := client.Do(t.Context(), nil)
 		if (tt.wantErr == nil && !errors.Is(err, tt.wantErr)) || (tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
 			t.Errorf("#%d: got err=%v, want=%v", i, err, tt.wantErr)
 			continue
@@ -781,7 +781,7 @@ func TestHTTPClusterClientSync(t *testing.T) {
 	got := hc.Endpoints()
 	require.Truef(t, reflect.DeepEqual(want, got), "incorrect endpoints: want=%#v got=%#v", want, got)
 
-	err = hc.Sync(context.Background())
+	err = hc.Sync(t.Context())
 	require.NoErrorf(t, err, "unexpected error during Sync: %#v", err)
 
 	want = []string{"http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002", "http://127.0.0.1:4003"}
@@ -813,7 +813,7 @@ func TestHTTPClusterClientSyncFail(t *testing.T) {
 	got := hc.Endpoints()
 	require.Truef(t, reflect.DeepEqual(want, got), "incorrect endpoints: want=%#v got=%#v", want, got)
 
-	err = hc.Sync(context.Background())
+	err = hc.Sync(t.Context())
 	require.Errorf(t, err, "got nil error during Sync")
 
 	got = hc.Endpoints()
@@ -835,7 +835,7 @@ func TestHTTPClusterClientAutoSyncCancelContext(t *testing.T) {
 	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	require.NoErrorf(t, err, "unexpected error during setup")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	err = hc.AutoSync(ctx, time.Hour)
@@ -854,7 +854,7 @@ func TestHTTPClusterClientAutoSyncFail(t *testing.T) {
 	err := hc.SetEndpoints([]string{"http://127.0.0.1:2379"})
 	require.NoErrorf(t, err, "unexpected error during setup")
 
-	err = hc.AutoSync(context.Background(), time.Hour)
+	err = hc.AutoSync(t.Context(), time.Hour)
 	require.Truef(t, strings.HasPrefix(err.Error(), ErrClusterUnavailable.Error()), "incorrect error value: want=%v got=%v", ErrClusterUnavailable, err)
 }
 
@@ -874,7 +874,7 @@ func TestHTTPClusterClientGetVersion(t *testing.T) {
 	err := hc.SetEndpoints([]string{"http://127.0.0.1:4003", "http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"})
 	require.NoErrorf(t, err, "unexpected error during setup")
 
-	actual, err := hc.GetVersion(context.Background())
+	actual, err := hc.GetVersion(t.Context())
 	if err != nil {
 		t.Errorf("non-nil error: %#v", err)
 	}
@@ -911,7 +911,7 @@ func TestHTTPClusterClientSyncPinEndpoint(t *testing.T) {
 	pinnedEndpoint := hc.endpoints[hc.pinned]
 
 	for i := 0; i < 3; i++ {
-		err = hc.Sync(context.Background())
+		err = hc.Sync(t.Context())
 		require.NoErrorf(t, err, "#%d: unexpected error during Sync", i)
 
 		if g := hc.endpoints[hc.pinned]; g != pinnedEndpoint {
@@ -947,7 +947,7 @@ func TestHTTPClusterClientSyncUnpinEndpoint(t *testing.T) {
 	wants := []string{"http://127.0.0.1:2379", "http://127.0.0.1:4001", "http://127.0.0.1:4002"}
 
 	for i := 0; i < 3; i++ {
-		err = hc.Sync(context.Background())
+		err = hc.Sync(t.Context())
 		require.NoErrorf(t, err, "#%d: unexpected error during Sync", i)
 
 		if g := hc.endpoints[hc.pinned]; g.String() != wants[i] {
@@ -988,7 +988,7 @@ func TestHTTPClusterClientSyncPinLeaderEndpoint(t *testing.T) {
 	wants := []string{"http://127.0.0.1:4003", "http://127.0.0.1:4002"}
 
 	for i, want := range wants {
-		err := hc.Sync(context.Background())
+		err := hc.Sync(t.Context())
 		require.NoErrorf(t, err, "#%d: unexpected error during Sync", i)
 
 		pinned := hc.endpoints[hc.pinned].String()
