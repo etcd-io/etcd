@@ -30,7 +30,7 @@ import (
 
 func TestAlarm(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t,
 		config.WithClusterSize(1),
@@ -97,7 +97,7 @@ func TestAlarm(t *testing.T) {
 
 func TestAlarmlistOnMemberRestart(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t,
 		config.WithClusterSize(1),
