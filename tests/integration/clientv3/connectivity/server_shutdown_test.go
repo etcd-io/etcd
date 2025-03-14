@@ -58,7 +58,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	watchCli.SetEndpoints(eps...)
 
 	key, val := "foo", "bar"
-	wch := watchCli.Watch(context.Background(), key, clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(t.Context(), key, clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
 	case <-time.After(integration2.RequestWaitTimeout):
@@ -94,7 +94,7 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	require.NoError(t, err)
 	defer putCli.Close()
 	for {
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 		_, err = putCli.Put(ctx, key, val)
 		cancel()
 		if err == nil {
@@ -170,7 +170,7 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	// TODO: remove this (expose client connection state?)
 	time.Sleep(time.Second)
 
-	cctx, ccancel := context.WithTimeout(context.Background(), time.Second)
+	cctx, ccancel := context.WithTimeout(t.Context(), time.Second)
 	err = op(cli, cctx)
 	ccancel()
 	require.NoError(t, err)
@@ -222,7 +222,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 
 	// switched to others when eps[0] was explicitly shut down
 	// and following request should succeed
-	cctx, ccancel := context.WithTimeout(context.Background(), timeout)
+	cctx, ccancel := context.WithTimeout(t.Context(), timeout)
 	err = op(cli, cctx)
 	ccancel()
 	if err != nil {
@@ -329,7 +329,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	donec, readyc := make(chan struct{}), make(chan struct{}, 1)
 	go func() {
 		defer close(donec)
-		ctx, cancel := context.WithTimeout(context.TODO(), clientTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), clientTimeout)
 		readyc <- struct{}{}
 
 		// TODO: The new grpc load balancer will not pin to an endpoint
