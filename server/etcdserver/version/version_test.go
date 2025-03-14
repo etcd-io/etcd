@@ -65,7 +65,7 @@ func TestDowngradeSingleNode(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 1, version.V3_6), c)
 
-	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(t.Context(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 
@@ -81,7 +81,7 @@ func TestDowngradeThreeNode(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(t.Context(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 
@@ -101,7 +101,7 @@ func TestNewerMemberCanReconnectDuringDowngrade(t *testing.T) {
 	c.StepMonitors()
 	assert.Equal(t, newCluster(lg, 3, version.V3_6), c)
 
-	require.NoError(t, c.Version().DowngradeEnable(context.Background(), &version.V3_5))
+	require.NoError(t, c.Version().DowngradeEnable(t.Context(), &version.V3_5))
 	c.StepMonitors()
 	assert.Equal(t, version.V3_5, c.clusterVersion)
 

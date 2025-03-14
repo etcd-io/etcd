@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -70,7 +69,7 @@ func benchmarkStoreRange(b *testing.B, n int) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Range(context.TODO(), begin, end, RangeOptions{})
+		s.Range(b.Context(), begin, end, RangeOptions{})
 	}
 }
 

@@ -16,7 +16,6 @@ package mvcc
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
@@ -218,7 +217,7 @@ func TestStoreRange(t *testing.T) {
 		b.tx.rangeRespc <- tt.r
 		fi.indexRangeRespc <- tt.idxr
 
-		ret, err := s.Range(context.TODO(), []byte("foo"), []byte("goo"), ro)
+		ret, err := s.Range(t.Context(), []byte("foo"), []byte("goo"), ro)
 		if err != nil {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 		}
@@ -469,7 +468,7 @@ func TestRestoreDelete(t *testing.T) {
 	defer s.Close()
 	for i := 0; i < 20; i++ {
 		ks := fmt.Sprintf("foo-%d", i)
-		r, err := s.Range(context.TODO(), []byte(ks), nil, RangeOptions{})
+		r, err := s.Range(t.Context(), []byte(ks), nil, RangeOptions{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -519,7 +518,7 @@ func TestRestoreContinueUnfinishedCompaction(t *testing.T) {
 			// wait for scheduled compaction to be finished
 			time.Sleep(100 * time.Millisecond)
 
-			if _, err := s.Range(context.TODO(), []byte("foo"), nil, RangeOptions{Rev: 1}); !errors.Is(err, ErrCompacted) {
+			if _, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: 1}); !errors.Is(err, ErrCompacted) {
 				t.Errorf("range on compacted rev error = %v, want %v", err, ErrCompacted)
 			}
 			// check the key in backend is deleted
@@ -757,7 +756,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	// readTx2 simulates a short read request
 	readTx2 := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 	ro := RangeOptions{Limit: 1, Rev: 0, Count: false}
-	ret, err := readTx2.Range(context.TODO(), []byte("foo"), nil, ro)
+	ret, err := readTx2.Range(t.Context(), []byte("foo"), nil, ro)
 	if err != nil {
 		t.Fatalf("failed to range: %v", err)
 	}
@@ -774,7 +773,7 @@ func TestConcurrentReadNotBlockingWrite(t *testing.T) {
 	}
 	readTx2.End()
 
-	ret, err = readTx1.Range(context.TODO(), []byte("foo"), nil, ro)
+	ret, err = readTx1.Range(t.Context(), []byte("foo"), nil, ro)
 	if err != nil {
 		t.Fatalf("failed to range: %v", err)
 	}
@@ -841,7 +840,7 @@ func TestConcurrentReadTxAndWrite(t *testing.T) {
 			tx := s.Read(ConcurrentReadTxMode, traceutil.TODO())
 			mu.Unlock()
 			// get all keys in backend store, and compare with wKVs
-			ret, err := tx.Range(context.TODO(), []byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})
+			ret, err := tx.Range(t.Context(), []byte("\x00000000"), []byte("\xffffffff"), RangeOptions{})
 			tx.End()
 			if err != nil {
 				t.Errorf("failed to range keys: %v", err)
