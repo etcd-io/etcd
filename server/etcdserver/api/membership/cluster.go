@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -540,6 +541,53 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		zap.String("local-member-id", c.localID.String()),
 		zap.String("promoted-member-id", id.String()),
 	)
+}
+
+func (c *RaftCluster) SyncLearnerPromotionIfNeeded() {
+	c.Lock()
+	defer c.Unlock()
+
+	v2Members, _ := membersFromStore(c.lg, c.v2store)
+	v3Members, _ := membersFromBackend(c.lg, c.be)
+
+	for id, v2Member := range v2Members {
+		v3Member, ok := v3Members[id]
+
+		if !ok {
+			c.lg.Error("Detected member only in v2store but missing in v3store", zap.String("member", fmt.Sprintf("%+v", *v2Member)))
+			continue
+		}
+
+		// A peerURL list is considered the same regardless of order.
+		clonedV2Member := v2Member.Clone()
+		sort.Strings(clonedV2Member.PeerURLs)
+
+		clonedV3Member := v3Member.Clone()
+		sort.Strings(clonedV3Member.PeerURLs)
+
+		if reflect.DeepEqual(clonedV2Member.RaftAttributes, clonedV3Member.RaftAttributes) {
+			c.lg.Info("Member's RaftAttributes is consistent between v2store and v3store", zap.String("member", fmt.Sprintf("%+v", *v2Member)))
+			continue
+		}
+
+		// Sync member iff both conditions below are true,
+		//  1. IsLearner is the only field in RaftAttributes that differs between v2store and v3store.
+		//  2. v2store.IsLearner == false && v3store.IsLearner == true.
+		clonedV3Member.IsLearner = false
+		if reflect.DeepEqual(clonedV2Member.RaftAttributes, clonedV3Member.RaftAttributes) {
+			syncedV3Member := v3Member.Clone()
+			syncedV3Member.IsLearner = false
+			c.lg.Warn("Syncing member in v3store", zap.String("member", fmt.Sprintf("%+v", *syncedV3Member)))
+			unsafeHackySaveMemberToBackend(c.lg, c.be, syncedV3Member)
+			c.be.ForceCommit()
+			continue
+		}
+
+		c.lg.Error("Cannot sync member in v3store due to IsLearner not being the only field that differs between v2store amd v3store",
+			zap.String("v2member", fmt.Sprintf("%+v", *v2Member)),
+			zap.String("v3member", fmt.Sprintf("%+v", *v3Member)),
+		)
+	}
 }
 
 func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes, shouldApplyV3 ShouldApplyV3) {

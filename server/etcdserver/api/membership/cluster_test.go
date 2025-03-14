@@ -24,7 +24,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
-	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 )
 
 func TestClusterMember(t *testing.T) {
@@ -1207,6 +1208,163 @@ func TestRemoveMemberSyncsBackendAndStoreV2(t *testing.T) {
 				beMembers, _ := mustReadMembersFromBackend(lg, be)
 				assert.Equal(t, map[types.ID]*Member{}, beMembers)
 			}
+		})
+	}
+}
+
+func TestSyncLearnerPromotion(t *testing.T) {
+	tcs := []struct {
+		name string
+
+		storeV2Members []*Member
+		backendMembers []*Member
+
+		expectV3Members map[types.ID]*Member
+	}{
+		{
+			name: "v3store should keep unchanged if IsLearner isn't the only field that differs",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.100:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+		},
+		{
+			name: "v3store should keep unchanged if IsLearner is the only field that differs but v3store.IsLearner is false",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+		},
+		{
+			name: "v3store should be updated if IsLearner is the only field that differs and v3store.IsLearner is true",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+		},
+		{
+			name: "v3store should be updated if IsLearner is the only field that differs and peerURLs are in different order in v2store and v3store",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380", "http://127.0.0.1:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://127.0.0.1:2380", "http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://127.0.0.1:2380", "http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			defer be.Close()
+			mustCreateBackendBuckets(be)
+			for _, m := range tc.backendMembers {
+				unsafeSaveMemberToBackend(lg, be, m)
+			}
+			be.ForceCommit()
+
+			st := v2store.New()
+			for _, m := range tc.storeV2Members {
+				mustSaveMemberToStore(lg, st, m)
+			}
+
+			cluster := NewCluster(lg)
+			cluster.SetBackend(be)
+			cluster.SetStore(st)
+
+			cluster.SyncLearnerPromotionIfNeeded()
+			v3Members, _ := cluster.MembersFromBackend()
+			require.Equal(t, tc.expectV3Members, v3Members)
 		})
 	}
 }

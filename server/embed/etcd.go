@@ -299,6 +299,9 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		zap.Strings("listen-metrics-urls", e.cfg.getMetricsURLs()),
 	)
 	serving = true
+
+	e.Server.SyncLearnerPromotionIfNeeded()
+
 	return e, nil
 }
 
