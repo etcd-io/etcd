@@ -1079,7 +1079,7 @@ func findMemberIDByEndpoint(members []*etcdserverpb.Member, endpoint string) (ui
 // WaitLeader returns index of the member in c.Members() that is leader
 // or fails the test (if not established in 30s).
 func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
 }
