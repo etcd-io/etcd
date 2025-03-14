@@ -174,6 +174,15 @@ func (ctl *Etcdctl) MemberRemove(id uint64) (*clientv3.MemberRemoveResponse, err
 	return &resp, err
 }
 
+func (ctl *Etcdctl) MemberPromote(id uint64) (*clientv3.MemberPromoteResponse, error) {
+	if ctl.v2 {
+		panic("Unsupported method for v2")
+	}
+	var resp clientv3.MemberPromoteResponse
+	err := ctl.spawnJsonCmd(&resp, "member", "promote", fmt.Sprintf("%x", id))
+	return &resp, err
+}
+
 func (ctl *Etcdctl) Compact(rev int64) (*clientv3.CompactResponse, error) {
 	if ctl.v2 {
 		panic("Unsupported method for v2")

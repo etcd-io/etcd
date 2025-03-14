@@ -101,7 +101,7 @@ func mixVersionsSnapshotTestByAddingMember(t *testing.T, cfg e2e.EtcdProcessClus
 	newCfg := *epc.Cfg
 	newCfg.Version = newInstanceVersion
 	t.Log("Starting a new etcd instance")
-	_, err = epc.StartNewProc(&newCfg, t)
+	_, err = epc.StartNewProc(&newCfg, false, t)
 	require.NoError(t, err, "failed to start the new etcd instance: %v", err)
 	defer epc.Close()
 
