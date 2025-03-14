@@ -22,6 +22,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -226,4 +228,33 @@ func memberUpdateTest(cx ctlCtx) {
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
+}
+
+func TestCtlV3PromotingLearner(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	t.Log("Create a single node etcd cluster")
+	cfg := e2e.NewConfigNoTLS()
+	cfg.BasePeerScheme = "unix"
+	cfg.ClusterSize = 1
+
+	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
+	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+	defer func() {
+		derr := epc.Close()
+		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+	}()
+
+	t.Log("Add and start a learner")
+	learnerID, err := epc.StartNewProc(nil, true, t)
+	require.NoError(t, err)
+
+	t.Log("Write a key to ensure the cluster is healthy so far")
+	etcdctl := epc.Procs[0].Etcdctl(e2e.ClientNonTLS, false, false)
+	err = etcdctl.Put("foo", "bar")
+	require.NoError(t, err)
+
+	t.Logf("Promoting the learner %x", learnerID)
+	_, err = etcdctl.MemberPromote(learnerID)
+	require.NoError(t, err)
 }

@@ -107,6 +107,9 @@ func (p *printerRPC) MemberAdd(r v3.MemberAddResponse) { p.p((*pb.MemberAddRespo
 func (p *printerRPC) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
 	p.p((*pb.MemberRemoveResponse)(&r))
 }
+func (p *printerRPC) MemberPromote(id uint64, r v3.MemberPromoteResponse) {
+	p.p((*pb.MemberPromoteResponse)(&r))
+}
 func (p *printerRPC) MemberUpdate(id uint64, r v3.MemberUpdateResponse) {
 	p.p((*pb.MemberUpdateResponse)(&r))
 }

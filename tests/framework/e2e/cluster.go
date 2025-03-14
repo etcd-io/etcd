@@ -645,11 +645,10 @@ func (epc *EtcdProcessCluster) StartNewProc(cfg *EtcdProcessClusterConfig, isLea
 
 // AddMember adds a new member to the cluster without starting it.
 func (epc *EtcdProcessCluster) AddMember(cfg *EtcdProcessClusterConfig, isLearner bool, tb testing.TB) (memberID uint64, serverCfg *EtcdServerProcessConfig, err error) {
-	if cfg != nil {
-		serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
-	} else {
-		serverCfg = epc.Cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
+	if cfg == nil {
+		cfg = epc.Cfg
 	}
+	serverCfg = cfg.EtcdServerProcessConfig(tb, epc.nextSeq)
 
 	epc.nextSeq++
 
