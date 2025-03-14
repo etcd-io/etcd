@@ -64,7 +64,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// spawn a watcher before shutdown, and put it in synced watcher
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, errW := integration.ToGRPC(clus.Client(0)).Watch.Watch(ctx)
 	require.NoError(t, errW)
@@ -92,7 +92,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 
 	// to trigger snapshot from the leader to the stopped follower
 	for i := 0; i < 15; i++ {
-		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 		if err != nil {
 			t.Errorf("#%d: couldn't put key (%v)", i, err)
 		}
@@ -177,7 +177,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 }
 
 func expectMemberLog(t *testing.T, m *integration.Member, timeout time.Duration, s string, count int) {
-	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 
 	lines, err := m.LogObserver.Expect(ctx, s, count)

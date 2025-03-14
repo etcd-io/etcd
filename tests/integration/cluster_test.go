@@ -130,14 +130,14 @@ func TestForceNewCluster(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer c.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 	resp, err := c.Members[0].Client.Put(ctx, "/foo", "bar")
 	if err != nil {
 		t.Fatalf("unexpected create error: %v", err)
 	}
 	cancel()
 	// ensure create has been applied in this machine
-	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel = context.WithTimeout(t.Context(), integration.RequestTimeout)
 	watch := c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
 	for resp := range watch {
 		if len(resp.Events) != 0 {
@@ -164,7 +164,7 @@ func TestForceNewCluster(t *testing.T) {
 
 	// use new http client to init new connection
 	// ensure force restart keep the old data, and new Cluster can make progress
-	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel = context.WithTimeout(t.Context(), integration.RequestTimeout)
 	watch = c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
 	for resp := range watch {
 		if len(resp.Events) != 0 {
@@ -252,7 +252,7 @@ func TestIssue2904(t *testing.T) {
 	c.Members[2].Stop(t)
 
 	// send remove member-1 request to the Cluster.
-	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 	// the proposal is not committed because member 1 is stopped, but the
 	// proposal is appended to leader'Server raft log.
 	c.Members[0].Client.MemberRemove(ctx, uint64(c.Members[2].Server.MemberID()))
@@ -324,7 +324,7 @@ func TestIssue3699(t *testing.T) {
 
 	t.Logf("Expecting successful put...")
 	// try to participate in Cluster
-	ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 	if _, err := c.Members[0].Client.Put(ctx, "/foo", "bar"); err != nil {
 		t.Fatalf("unexpected error on Put (%v)", err)
 	}
@@ -464,7 +464,7 @@ func clusterMustProgress(t *testing.T, members []*integration.Member) {
 	)
 	// retry in case of leader loss induced by slow CI
 	for i := 0; i < 3; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 		resp, err = members[0].Client.Put(ctx, key, "bar")
 		cancel()
 		if err == nil {
@@ -477,7 +477,7 @@ func clusterMustProgress(t *testing.T, members []*integration.Member) {
 	}
 
 	for i, m := range members {
-		mctx, mcancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		mctx, mcancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 		watch := m.Client.Watcher.Watch(mctx, key, clientv3.WithRev(resp.Header.Revision-1))
 		for resp := range watch {
 			if len(resp.Events) != 0 {
@@ -523,16 +523,16 @@ func TestConcurrentRemoveMember(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer c.Terminate(t)
 
-	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
+	addResp, err := c.Members[0].Client.MemberAddAsLearner(t.Context(), []string{"http://localhost:123"})
 	require.NoError(t, err)
 	removeID := addResp.Member.ID
 	done := make(chan struct{})
 	go func() {
 		time.Sleep(time.Second / 2)
-		c.Members[0].Client.MemberRemove(context.Background(), removeID)
+		c.Members[0].Client.MemberRemove(t.Context(), removeID)
 		close(done)
 	}()
-	_, err = c.Members[0].Client.MemberRemove(context.Background(), removeID)
+	_, err = c.Members[0].Client.MemberRemove(t.Context(), removeID)
 	require.NoError(t, err)
 	<-done
 }
@@ -542,16 +542,16 @@ func TestConcurrentMoveLeader(t *testing.T) {
 	c := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer c.Terminate(t)
 
-	addResp, err := c.Members[0].Client.MemberAddAsLearner(context.Background(), []string{"http://localhost:123"})
+	addResp, err := c.Members[0].Client.MemberAddAsLearner(t.Context(), []string{"http://localhost:123"})
 	require.NoError(t, err)
 	removeID := addResp.Member.ID
 	done := make(chan struct{})
 	go func() {
 		time.Sleep(time.Second / 2)
-		c.Members[0].Client.MoveLeader(context.Background(), removeID)
+		c.Members[0].Client.MoveLeader(t.Context(), removeID)
 		close(done)
 	}()
-	_, err = c.Members[0].Client.MemberRemove(context.Background(), removeID)
+	_, err = c.Members[0].Client.MemberRemove(t.Context(), removeID)
 	require.NoError(t, err)
 	<-done
 }
