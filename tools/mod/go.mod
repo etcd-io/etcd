@@ -19,7 +19,7 @@ require (
 	go.etcd.io/raft/v3 v3.6.0
 	gotest.tools/gotestsum v1.12.0
 	gotest.tools/v3 v3.5.2
-	honnef.co/go/tools v0.6.0
+	honnef.co/go/tools v0.6.1
 )
 
 require (
