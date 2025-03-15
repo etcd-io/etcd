@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -1844,9 +1845,7 @@ func TestValidateWatch(t *testing.T) {
 			if err != nil {
 				errStr = err.Error()
 			}
-			if errStr != tc.expectError {
-				t.Errorf("validateWatch(...), got: %q, want: %q", err, tc.expectError)
-			}
+			assert.Equalf(t, errStr, tc.expectError, "validateWatch(...), got: %q, want: %q", err, tc.expectError)
 		})
 	}
 }

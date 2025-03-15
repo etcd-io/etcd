@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -243,9 +244,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 			if err != nil {
 				errStr = err.Error()
 			}
-			if errStr != tc.expectError {
-				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", err, tc.expectError)
-			}
+			assert.Equalf(t, errStr, tc.expectError, "validateSerializableOperations(...), got: %q, want: %q", err, tc.expectError)
 		})
 	}
 }
