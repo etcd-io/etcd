@@ -110,7 +110,7 @@ func putWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 		// put data test
 		err := func() error {
 			t.Log("Sanity test, putting data")
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 
 			if _, putErr := cli.Put(ctx, key, val); putErr != nil {
@@ -135,7 +135,7 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 		// get data test
 		err := func() error {
 			t.Log("Sanity test, getting data")
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 			resp, getErr := cli.Get(ctx, key)
 			if getErr != nil {

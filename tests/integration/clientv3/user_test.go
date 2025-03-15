@@ -36,20 +36,20 @@ func TestUserError(t *testing.T) {
 
 	authapi := clus.RandClient()
 
-	_, err := authapi.UserAdd(context.TODO(), "foo", "bar")
+	_, err := authapi.UserAdd(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 
-	_, err = authapi.UserAdd(context.TODO(), "foo", "bar")
+	_, err = authapi.UserAdd(t.Context(), "foo", "bar")
 	if !errors.Is(err, rpctypes.ErrUserAlreadyExist) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
 	}
 
-	_, err = authapi.UserDelete(context.TODO(), "not-exist-user")
+	_, err = authapi.UserDelete(t.Context(), "not-exist-user")
 	if !errors.Is(err, rpctypes.ErrUserNotFound) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
 	}
 
-	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
+	_, err = authapi.UserGrantRole(t.Context(), "foo", "test-role-does-not-exist")
 	if !errors.Is(err, rpctypes.ErrRoleNotFound) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 	}
@@ -74,34 +74,34 @@ func TestAddUserAfterDelete(t *testing.T) {
 	defer authed.Close()
 
 	// add user
-	_, err = authed.UserAdd(context.TODO(), "foo", "bar")
+	_, err = authed.UserAdd(t.Context(), "foo", "bar")
 	require.NoError(t, err)
-	_, err = authapi.Authenticate(context.TODO(), "foo", "bar")
+	_, err = authapi.Authenticate(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 	// delete user
-	_, err = authed.UserDelete(context.TODO(), "foo")
+	_, err = authed.UserDelete(t.Context(), "foo")
 	require.NoError(t, err)
-	if _, err = authed.Authenticate(context.TODO(), "foo", "bar"); err == nil {
+	if _, err = authed.Authenticate(t.Context(), "foo", "bar"); err == nil {
 		t.Errorf("expect Authenticate error for old password")
 	}
 	// add user back
-	_, err = authed.UserAdd(context.TODO(), "foo", "bar")
+	_, err = authed.UserAdd(t.Context(), "foo", "bar")
 	require.NoError(t, err)
-	_, err = authed.Authenticate(context.TODO(), "foo", "bar")
+	_, err = authed.Authenticate(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 	// change password
-	_, err = authed.UserChangePassword(context.TODO(), "foo", "bar2")
+	_, err = authed.UserChangePassword(t.Context(), "foo", "bar2")
 	require.NoError(t, err)
-	_, err = authed.UserChangePassword(context.TODO(), "foo", "bar1")
+	_, err = authed.UserChangePassword(t.Context(), "foo", "bar1")
 	require.NoError(t, err)
 
-	if _, err = authed.Authenticate(context.TODO(), "foo", "bar"); err == nil {
+	if _, err = authed.Authenticate(t.Context(), "foo", "bar"); err == nil {
 		t.Errorf("expect Authenticate error for old password")
 	}
-	if _, err = authed.Authenticate(context.TODO(), "foo", "bar2"); err == nil {
+	if _, err = authed.Authenticate(t.Context(), "foo", "bar2"); err == nil {
 		t.Errorf("expect Authenticate error for old password")
 	}
-	_, err = authed.Authenticate(context.TODO(), "foo", "bar1")
+	_, err = authed.Authenticate(t.Context(), "foo", "bar1")
 	require.NoError(t, err)
 }
 
@@ -115,7 +115,7 @@ func TestUserErrorAuth(t *testing.T) {
 	authSetupRoot(t, authapi.Auth)
 
 	// unauthenticated client
-	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); !errors.Is(err, rpctypes.ErrUserEmpty) {
+	if _, err := authapi.UserAdd(t.Context(), "foo", "bar"); !errors.Is(err, rpctypes.ErrUserEmpty) {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrUserEmpty, err)
 	}
 
@@ -139,18 +139,18 @@ func TestUserErrorAuth(t *testing.T) {
 	require.NoError(t, err)
 	defer authed.Close()
 
-	_, err = authed.UserList(context.TODO())
+	_, err = authed.UserList(t.Context())
 	require.NoError(t, err)
 }
 
 func authSetupRoot(t *testing.T, auth clientv3.Auth) {
-	_, err := auth.UserAdd(context.TODO(), "root", "123")
+	_, err := auth.UserAdd(t.Context(), "root", "123")
 	require.NoError(t, err)
-	_, err = auth.RoleAdd(context.TODO(), "root")
+	_, err = auth.RoleAdd(t.Context(), "root")
 	require.NoError(t, err)
-	_, err = auth.UserGrantRole(context.TODO(), "root", "root")
+	_, err = auth.UserGrantRole(t.Context(), "root", "root")
 	require.NoError(t, err)
-	_, err = auth.AuthEnable(context.TODO())
+	_, err = auth.AuthEnable(t.Context())
 	require.NoError(t, err)
 }
 
@@ -168,7 +168,7 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	var client *clientv3.Client
 
 	// make sure "auth" was disabled
-	_, err = authapi.AuthDisable(context.TODO())
+	_, err = authapi.AuthDisable(t.Context())
 	require.NoError(t, err)
 
 	// "Username" and "Password" must be used

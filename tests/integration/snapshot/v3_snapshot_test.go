@@ -86,7 +86,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	defer cli.Close()
 	for i := range kvs {
 		var gresp *clientv3.GetResponse
-		gresp, err = cli.Get(context.Background(), kvs[i].k)
+		gresp, err = cli.Get(t.Context(), kvs[i].k)
 		require.NoError(t, err)
 		if string(gresp.Kvs[0].Value) != kvs[i].v {
 			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
@@ -119,7 +119,7 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 		defer cli.Close()
 		for i := range kvs {
 			var gresp *clientv3.GetResponse
-			gresp, err = cli.Get(context.Background(), kvs[i].k)
+			gresp, err = cli.Get(t.Context(), kvs[i].k)
 			require.NoError(t, err)
 			if string(gresp.Kvs[0].Value) != kvs[i].v {
 				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
@@ -187,7 +187,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
-		ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 		_, err = cli.Put(ctx, kvs[i].k, kvs[i].v)
 		cancel()
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	_, err = sp.Save(context.Background(), ccfg, dpPath)
+	_, err = sp.Save(t.Context(), ccfg, dpPath)
 	require.NoError(t, err)
 	return dpPath
 }
