@@ -60,13 +60,9 @@ func TestClusterVersion(t *testing.T) {
 			)
 
 			epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-			if err != nil {
-				t.Fatalf("could not start etcd process cluster (%v)", err)
-			}
+			require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 			defer func() {
-				if errC := epc.Close(); errC != nil {
-					t.Fatalf("error closing etcd processes (%v)", errC)
-				}
+				require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 			}()
 
 			ctx := ctlCtx{
@@ -81,9 +77,7 @@ func TestClusterVersion(t *testing.T) {
 }
 
 func versionTest(cx ctlCtx) {
-	if err := ctlV3Version(cx); err != nil {
-		cx.t.Fatalf("versionTest ctlV3Version error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3Version(cx), "versionTest ctlV3Version error")
 }
 
 func clusterVersionTest(cx ctlCtx, expected string) {
@@ -96,9 +90,7 @@ func clusterVersionTest(cx ctlCtx, expected string) {
 		}
 		break
 	}
-	if err != nil {
-		cx.t.Fatalf("failed cluster version test expected %v got (%v)", expected, err)
-	}
+	require.NoErrorf(cx.t, err, "failed cluster version test expected %v got (%v)", expected, err)
 }
 
 func ctlV3Version(cx ctlCtx) error {
@@ -232,9 +224,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	}
 
 	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(&ret.cfg))
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	ret.epc = epc
 	ret.dataDir = epc.Procs[0].Config().DataDirPath
 

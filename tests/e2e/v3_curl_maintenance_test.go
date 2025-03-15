@@ -51,9 +51,8 @@ func testCurlV3MaintenanceStatus(cx ctlCtx) {
 
 	requiredFields := []string{"version", "dbSize", "leader", "raftIndex", "raftTerm", "raftAppliedIndex", "dbSizeInUse", "storageVersion"}
 	for _, field := range requiredFields {
-		if _, ok := resp[field]; !ok {
-			cx.t.Fatalf("Field %q not found in (%v)", field, resp)
-		}
+		_, ok := resp[field]
+		require.Truef(cx.t, ok, "Field %q not found in (%v)", field, resp)
 	}
 
 	require.Equal(cx.t, version.Version, resp["version"])
@@ -88,9 +87,8 @@ func testCurlV3MaintenanceHash(cx ctlCtx) {
 
 	requiredFields := []string{"header", "hash"}
 	for _, field := range requiredFields {
-		if _, ok := resp[field]; !ok {
-			cx.t.Fatalf("Field %q not found in (%v)", field, resp)
-		}
+		_, ok := resp[field]
+		require.Truef(cx.t, ok, "Field %q not found in (%v)", field, resp)
 	}
 }
 
@@ -109,9 +107,8 @@ func testCurlV3MaintenanceHashKV(cx ctlCtx) {
 
 	requiredFields := []string{"header", "hash", "compact_revision", "hash_revision"}
 	for _, field := range requiredFields {
-		if _, ok := resp[field]; !ok {
-			cx.t.Fatalf("Field %q not found in (%v)", field, resp)
-		}
+		_, ok := resp[field]
+		require.Truef(cx.t, ok, "Field %q not found in (%v)", field, resp)
 	}
 }
 

@@ -17,9 +17,9 @@
 package e2e
 
 import (
-	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -51,7 +51,5 @@ func authTestCVE2021_28235(cx ctlCtx) {
 	respData, err := curl(httpEndpoint, "GET", req, e2e.ClientNonTLS)
 	require.NoError(cx.t, err)
 
-	if strings.Contains(respData, rootPass) {
-		cx.t.Errorf("The root password is included in the request.\n %s", respData)
-	}
+	assert.NotContainsf(cx.t, respData, rootPass, "The root password is included in the request.\n %s", respData)
 }
