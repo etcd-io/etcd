@@ -20,6 +20,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -57,12 +59,8 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 	q := recipe.NewQueue(etcdc, "testq")
 	for i := 0; i < 5; i++ {
 		s, err := q.Dequeue()
-		if err != nil {
-			t.Fatalf("error dequeueing (%v)", err)
-		}
-		if s != fmt.Sprintf("%d", i) {
-			t.Fatalf("expected dequeue value %v, got %v", s, i)
-		}
+		require.NoErrorf(t, err, "error dequeueing (%v)", err)
+		require.Equalf(t, s, fmt.Sprintf("%d", i), "expected dequeue value %v, got %v", s, i)
 	}
 }
 
@@ -103,25 +101,18 @@ func TestPrQueueOneReaderOneWriter(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		// [0, 2] priority for priority collision to test seq keys
 		pr := uint16(rand.Intn(3))
-		if err := q.Enqueue(fmt.Sprintf("%d", pr), pr); err != nil {
-			t.Fatalf("error enqueuing (%v)", err)
-		}
+		require.NoErrorf(t, q.Enqueue(fmt.Sprintf("%d", pr), pr), "error enqueuing")
 	}
 
 	// read back items; confirm priority order is respected
 	lastPr := -1
 	for i := 0; i < 5; i++ {
 		s, err := q.Dequeue()
-		if err != nil {
-			t.Fatalf("error dequeueing (%v)", err)
-		}
+		require.NoErrorf(t, err, "error dequeueing (%v)", err)
 		curPr := 0
-		if _, err := fmt.Sscanf(s, "%d", &curPr); err != nil {
-			t.Fatalf(`error parsing item "%s" (%v)`, s, err)
-		}
-		if lastPr > curPr {
-			t.Fatalf("expected priority %v > %v", curPr, lastPr)
-		}
+		_, err = fmt.Sscanf(s, "%d", &curPr)
+		require.NoErrorf(t, err, `error parsing item "%s" (%v)`, s, err)
+		require.LessOrEqualf(t, lastPr, curPr, "expected priority %v > %v", curPr, lastPr)
 	}
 }
 

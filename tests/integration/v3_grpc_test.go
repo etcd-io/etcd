@@ -52,32 +52,22 @@ func TestV3PutOverwrite(t *testing.T) {
 	reqput := &pb.PutRequest{Key: key, Value: []byte("bar"), PrevKv: true}
 
 	respput, err := kvc.Put(context.TODO(), reqput)
-	if err != nil {
-		t.Fatalf("couldn't put key (%v)", err)
-	}
+	require.NoErrorf(t, err, "couldn't put key")
 
 	// overwrite
 	reqput.Value = []byte("baz")
 	respput2, err := kvc.Put(context.TODO(), reqput)
-	if err != nil {
-		t.Fatalf("couldn't put key (%v)", err)
-	}
-	if respput2.Header.Revision <= respput.Header.Revision {
-		t.Fatalf("expected newer revision on overwrite, got %v <= %v",
-			respput2.Header.Revision, respput.Header.Revision)
-	}
+	require.NoErrorf(t, err, "couldn't put key")
+	require.Greaterf(t, respput2.Header.Revision, respput.Header.Revision, "expected newer revision on overwrite, got %v <= %v",
+		respput2.Header.Revision, respput.Header.Revision)
 	if pkv := respput2.PrevKv; pkv == nil || string(pkv.Value) != "bar" {
 		t.Fatalf("expected PrevKv=bar, got response %+v", respput2)
 	}
 
 	reqrange := &pb.RangeRequest{Key: key}
 	resprange, err := kvc.Range(context.TODO(), reqrange)
-	if err != nil {
-		t.Fatalf("couldn't get key (%v)", err)
-	}
-	if len(resprange.Kvs) != 1 {
-		t.Fatalf("expected 1 key, got %v", len(resprange.Kvs))
-	}
+	require.NoErrorf(t, err, "couldn't get key")
+	require.Lenf(t, resprange.Kvs, 1, "expected 1 key, got %v", len(resprange.Kvs))
 
 	kv := resprange.Kvs[0]
 	if kv.ModRevision <= kv.CreateRevision {
@@ -107,9 +97,7 @@ func TestV3PutRestart(t *testing.T) {
 	clus.Members[stopIdx].Stop(t)
 	clus.Members[stopIdx].Restart(t)
 	c, cerr := integration.NewClientV3(clus.Members[stopIdx])
-	if cerr != nil {
-		t.Fatalf("cannot create client: %v", cerr)
-	}
+	require.NoErrorf(t, cerr, "cannot create client")
 	clus.Members[stopIdx].ServerClient = c
 
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
@@ -130,28 +118,21 @@ func TestV3CompactCurrentRev(t *testing.T) {
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
 	for i := 0; i < 3; i++ {
-		if _, err := kvc.Put(context.Background(), preq); err != nil {
-			t.Fatalf("couldn't put key (%v)", err)
-		}
+		_, err := kvc.Put(context.Background(), preq)
+		require.NoErrorf(t, err, "couldn't put key")
 	}
 	// get key to add to proxy cache, if any
 	_, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	// compact on current revision
 	_, err = kvc.Compact(context.Background(), &pb.CompactionRequest{Revision: 4})
-	if err != nil {
-		t.Fatalf("couldn't compact kv space (%v)", err)
-	}
+	require.NoErrorf(t, err, "couldn't compact kv space")
 	// key still exists when linearized?
 	_, err = kvc.Range(context.Background(), &pb.RangeRequest{Key: []byte("foo")})
-	if err != nil {
-		t.Fatalf("couldn't get key after compaction (%v)", err)
-	}
+	require.NoErrorf(t, err, "couldn't get key after compaction")
 	// key still exists when serialized?
 	_, err = kvc.Range(context.Background(), &pb.RangeRequest{Key: []byte("foo"), Serializable: true})
-	if err != nil {
-		t.Fatalf("couldn't get serialized key after compaction (%v)", err)
-	}
+	require.NoErrorf(t, err, "couldn't get serialized key after compaction")
 }
 
 // TestV3HashKV ensures that multiple calls of HashKV on same node return same hash and compact rev.

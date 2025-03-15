@@ -110,23 +110,20 @@ func TestV3StorageQuotaApply(t *testing.T) {
 	defer cancel()
 
 	// small quota machine should reject put
-	if _, err := kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
-		t.Fatalf("past-quota instance should reject put")
-	}
+	_, err = kvc0.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf})
+	require.Errorf(t, err, "past-quota instance should reject put")
 
 	// large quota machine should reject put
-	if _, err := kvc1.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
-		t.Fatalf("past-quota instance should reject put")
-	}
+	_, err = kvc1.Put(ctx, &pb.PutRequest{Key: key, Value: smallbuf})
+	require.Errorf(t, err, "past-quota instance should reject put")
 
 	// reset large quota node to ensure alarm persisted
 	clus.Members[1].Stop(t)
 	clus.Members[1].Restart(t)
 	clus.WaitMembersForLeader(t, clus.Members)
 
-	if _, err := kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf}); err == nil {
-		t.Fatalf("alarmed instance should reject put after reset")
-	}
+	_, err = kvc1.Put(context.TODO(), &pb.PutRequest{Key: key, Value: smallbuf})
+	require.Errorf(t, err, "alarmed instance should reject put after reset")
 }
 
 // TestV3AlarmDeactivate ensures that space alarms can be deactivated so puts go through.
@@ -221,9 +218,7 @@ func TestV3CorruptAlarm(t *testing.T) {
 	resp1, err1 := clus.Client(1).Get(context.TODO(), "abc")
 	require.NoError(t, err1)
 
-	if resp0.Kvs[0].ModRevision == resp1.Kvs[0].ModRevision {
-		t.Fatalf("matching ModRevision values")
-	}
+	require.NotEqualf(t, resp0.Kvs[0].ModRevision, resp1.Kvs[0].ModRevision, "matching ModRevision values")
 
 	for i := 0; i < 5; i++ {
 		presp, perr := clus.Client(0).Put(context.TODO(), "abc", "aaa")
@@ -307,9 +302,7 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	resp1, err1 := clus.Members[2].Client.KV.Get(context.TODO(), "foo")
 	require.NoError(t, err1)
 
-	if resp0.Header.Revision == resp1.Header.Revision {
-		t.Fatalf("matching Revision values")
-	}
+	require.NotEqualf(t, resp0.Header.Revision, resp1.Header.Revision, "matching Revision values")
 
 	// Wait for CorruptCheckTime
 	time.Sleep(time.Second)

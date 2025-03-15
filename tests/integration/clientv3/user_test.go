@@ -40,19 +40,13 @@ func TestUserError(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = authapi.UserAdd(context.TODO(), "foo", "bar")
-	if !errors.Is(err, rpctypes.ErrUserAlreadyExist) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
-	}
+	require.ErrorIsf(t, err, rpctypes.ErrUserAlreadyExist, "expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
 
 	_, err = authapi.UserDelete(context.TODO(), "not-exist-user")
-	if !errors.Is(err, rpctypes.ErrUserNotFound) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
-	}
+	require.ErrorIsf(t, err, rpctypes.ErrUserNotFound, "expected %v, got %v", rpctypes.ErrUserNotFound, err)
 
 	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
-	if !errors.Is(err, rpctypes.ErrRoleNotFound) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
-	}
+	require.ErrorIsf(t, err, rpctypes.ErrRoleNotFound, "expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 }
 
 func TestAddUserAfterDelete(t *testing.T) {
@@ -115,9 +109,8 @@ func TestUserErrorAuth(t *testing.T) {
 	authSetupRoot(t, authapi.Auth)
 
 	// unauthenticated client
-	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); !errors.Is(err, rpctypes.ErrUserEmpty) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrUserEmpty, err)
-	}
+	_, err := authapi.UserAdd(context.TODO(), "foo", "bar")
+	require.ErrorIsf(t, err, rpctypes.ErrUserEmpty, "expected %v, got %v", rpctypes.ErrUserEmpty, err)
 
 	// wrong id or password
 	cfg := clientv3.Config{
@@ -126,13 +119,11 @@ func TestUserErrorAuth(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
-	if _, err := integration2.NewClient(t, cfg); !errors.Is(err, rpctypes.ErrAuthFailed) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
-	}
+	_, err = integration2.NewClient(t, cfg)
+	require.ErrorIsf(t, err, rpctypes.ErrAuthFailed, "expected %v, got %v", rpctypes.ErrAuthFailed, err)
 	cfg.Username, cfg.Password = "root", "wrong-pass"
-	if _, err := integration2.NewClient(t, cfg); !errors.Is(err, rpctypes.ErrAuthFailed) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
-	}
+	_, err = integration2.NewClient(t, cfg)
+	require.ErrorIsf(t, err, rpctypes.ErrAuthFailed, "expected %v, got %v", rpctypes.ErrAuthFailed, err)
 
 	cfg.Username, cfg.Password = "root", "123"
 	authed, err := integration2.NewClient(t, cfg)

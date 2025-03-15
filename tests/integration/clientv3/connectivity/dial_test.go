@@ -63,9 +63,7 @@ func TestDialTLSExpired(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
-	if !clientv3test.IsClientTimeout(err) {
-		t.Fatalf("expected dial timeout error, got %v", err)
-	}
+	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
 }
 
 // TestDialTLSNoConfig ensures the client fails to dial / times out
@@ -85,9 +83,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 			c.Close()
 		}
 	}()
-	if !clientv3test.IsClientTimeout(err) {
-		t.Fatalf("expected dial timeout error, got %v", err)
-	}
+	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
 }
 
 // TestDialSetEndpointsBeforeFail ensures SetEndpoints can replace unavailable
