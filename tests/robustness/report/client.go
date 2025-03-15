@@ -138,11 +138,11 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to open watch operation file: %q, err: %w", path, err)
+		return nil, fmt.Errorf("failed to open KV operation file: %q, err: %w", path, err)
 	}
 	file, err := os.OpenFile(path, os.O_RDONLY, 0o755)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open watch operation file: %q, err: %w", path, err)
+		return nil, fmt.Errorf("failed to open KV operation file: %q, err: %w", path, err)
 	}
 	defer file.Close()
 	decoder := json.NewDecoder(file)
@@ -156,7 +156,7 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 		}
 		err = decoder.Decode(&operation)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode watch operation, err: %w", err)
+			return nil, fmt.Errorf("failed to decode KV operation, err: %w", err)
 		}
 		operations = append(operations, porcupine.Operation{
 			ClientId: operation.ClientID,
@@ -190,7 +190,7 @@ func persistKeyValueOperations(t *testing.T, lg *zap.Logger, path string, operat
 	lg.Info("Saving operation history", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o755)
 	if err != nil {
-		t.Errorf("Failed to save operation history: %v", err)
+		t.Errorf("Failed to save KV operation history: %v", err)
 		return
 	}
 	defer file.Close()
@@ -198,7 +198,7 @@ func persistKeyValueOperations(t *testing.T, lg *zap.Logger, path string, operat
 	for _, op := range operations {
 		err := encoder.Encode(op)
 		if err != nil {
-			t.Errorf("Failed to encode operation: %v", err)
+			t.Errorf("Failed to encode KV operation: %v", err)
 		}
 	}
 }
