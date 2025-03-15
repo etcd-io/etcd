@@ -19,7 +19,6 @@ import (
 	"crypto/sha256"
 	"io"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
@@ -234,9 +233,7 @@ func TestCheckTxn(t *testing.T) {
 			if err != nil {
 				gotErr = err.Error()
 			}
-			if gotErr != tc.expectError {
-				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
-			}
+			assert.Equalf(t, gotErr, tc.expectError, "Error not matching, got %q, expected %q", gotErr, tc.expectError)
 		})
 	}
 }
@@ -254,9 +251,7 @@ func TestCheckPut(t *testing.T) {
 			if err != nil {
 				gotErr = err.Error()
 			}
-			if gotErr != tc.expectError {
-				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
-			}
+			assert.Equalf(t, gotErr, tc.expectError, "Error not matching, got %q, expected %q", gotErr, tc.expectError)
 		})
 	}
 }
@@ -274,9 +269,7 @@ func TestCheckRange(t *testing.T) {
 			if err != nil {
 				gotErr = err.Error()
 			}
-			if gotErr != tc.expectError {
-				t.Errorf("Error not matching, got %q, expected %q", gotErr, tc.expectError)
-			}
+			assert.Equalf(t, gotErr, tc.expectError, "Error not matching, got %q, expected %q", gotErr, tc.expectError)
 		})
 	}
 }
@@ -334,9 +327,7 @@ func TestReadonlyTxnError(t *testing.T) {
 	}
 
 	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
-	if err == nil || !strings.Contains(err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled") {
-		t.Fatalf("Expected context canceled error, got %v", err)
-	}
+	require.Containsf(t, err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled", "Expected context canceled error, got %v", err)
 }
 
 func TestWriteTxnPanicWithoutApply(t *testing.T) {

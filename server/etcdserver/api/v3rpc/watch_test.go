@@ -16,9 +16,11 @@ package v3rpc
 
 import (
 	"bytes"
-	"errors"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -70,13 +72,9 @@ func TestSendFragment(t *testing.T) {
 			return nil
 		}
 		err := sendFragments(tt[i].wr, tt[i].maxRequestBytes, testSend)
-		if !errors.Is(err, tt[i].werr) {
-			t.Errorf("#%d: expected error %v, got %v", i, tt[i].werr, err)
-		}
+		require.ErrorIsf(t, err, tt[i].werr, "#%d: expected error %v, got %v", i, tt[i].werr, err)
 		got := len(fragmentedResp)
-		if got != tt[i].fragments {
-			t.Errorf("#%d: expected response number %d, got %d", i, tt[i].fragments, got)
-		}
+		assert.Equalf(t, got, tt[i].fragments, "#%d: expected response number %d, got %d", i, tt[i].fragments, got)
 		if got > 0 && fragmentedResp[got-1].Fragment {
 			t.Errorf("#%d: expected fragment=false in last response, got %+v", i, fragmentedResp[got-1])
 		}

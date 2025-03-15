@@ -21,6 +21,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -89,9 +90,7 @@ func TestIsCompatibleWithVers(t *testing.T) {
 
 	for i, tt := range tests {
 		ok := isCompatibleWithVers(zaptest.NewLogger(t), tt.vers, tt.local, tt.minV, tt.maxV)
-		if ok != tt.wok {
-			t.Errorf("#%d: ok = %+v, want %+v", i, ok, tt.wok)
-		}
+		assert.Equalf(t, ok, tt.wok, "#%d: ok = %+v, want %+v", i, ok, tt.wok)
 	}
 }
 
@@ -125,9 +124,7 @@ func TestConvertToClusterVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ver, err := convertToClusterVersion(tt.inputVerStr)
 			hasError := err != nil
-			if hasError != tt.hasError {
-				t.Errorf("Expected error status is %v; Got %v", tt.hasError, err)
-			}
+			assert.Equalf(t, hasError, tt.hasError, "Expected error status is %v; Got %v", tt.hasError, err)
 			if tt.hasError {
 				return
 			}
@@ -166,13 +163,9 @@ func TestDecideAllowedVersionRange(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			minV, maxV := allowedVersionRange(tt.downgradeEnabled)
-			if !minV.Equal(*tt.expectedMinV) {
-				t.Errorf("Expected minV is %v; Got %v", tt.expectedMinV.String(), minV.String())
-			}
+			assert.Truef(t, minV.Equal(*tt.expectedMinV), "Expected minV is %v; Got %v", tt.expectedMinV.String(), minV.String())
 
-			if !maxV.Equal(*tt.expectedMaxV) {
-				t.Errorf("Expected maxV is %v; Got %v", tt.expectedMaxV.String(), maxV.String())
-			}
+			assert.Truef(t, maxV.Equal(*tt.expectedMaxV), "Expected maxV is %v; Got %v", tt.expectedMaxV.String(), maxV.String())
 		})
 	}
 }
