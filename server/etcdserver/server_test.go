@@ -1514,12 +1514,12 @@ func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange
 	return &raftpb.ConfState{}
 }
 
-func newTestCluster(t testing.TB) *membership.RaftCluster {
-	return membership.NewCluster(zaptest.NewLogger(t))
+func newTestCluster(tb testing.TB) *membership.RaftCluster {
+	return membership.NewCluster(zaptest.NewLogger(tb))
 }
 
-func newTestClusterWithBackend(t testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
-	lg := zaptest.NewLogger(t)
+func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
+	lg := zaptest.NewLogger(tb)
 	c := membership.NewCluster(lg)
 	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
