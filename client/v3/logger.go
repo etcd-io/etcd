@@ -33,8 +33,8 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+		grpclog.SetLoggerV2(zapgrpc.NewLogger(lg.Named("grpc")))
 		lg = lg.Named("etcd-client")
-		grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 	}
 }
 
