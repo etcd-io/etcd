@@ -20,11 +20,17 @@ import (
 	"io"
 	"reflect"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -257,4 +263,86 @@ func TestCtlV3PromotingLearner(t *testing.T) {
 	t.Logf("Promoting the learner %x", learnerID)
 	_, err = etcdctl.MemberPromote(learnerID)
 	require.NoError(t, err)
+}
+
+func TestIssue19557FixMemberDataAfterUpgrade(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	v3518Binary := downloadReleaseBinary(t, "v3.5.18")
+
+	t.Log("Create a single node etcd cluster with v3.5.18")
+	cfg := e2e.NewConfigNoTLS()
+	cfg.BasePeerScheme = "unix"
+	cfg.ClusterSize = 1
+	cfg.ExecPath = v3518Binary
+	cfg.KeepDataDir = true
+	cfg.BackendBatchLimit = 1
+	cfg.SnapshotCount = 10
+	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
+	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+	defer func() {
+		derr := epc.Close()
+		require.NoError(t, derr, "failed to close etcd cluster")
+	}()
+
+	t.Log("Add and start a learner")
+	learnerID, err := epc.StartNewProc(nil, true, t)
+	require.NoError(t, err)
+
+	t.Logf("Promoting the learner %x", learnerID)
+	etcdctl := epc.Procs[0].Etcdctl(e2e.ClientNonTLS, false, false)
+	_, err = etcdctl.MemberPromote(learnerID)
+	require.NoError(t, err)
+
+	t.Logf("Adding 10 key/value to trigger snapshot")
+	etcdctl = epc.Procs[1].Etcdctl(e2e.ClientNonTLS, false, false)
+	for i := 0; i < 10; i++ {
+		err = etcdctl.Put("foo", "bar")
+		require.NoError(t, err, "failed to ensure cluster is healthy")
+	}
+
+	t.Logf("Stopping the cluster with %s", e2e.BinPath)
+	for _, proc := range epc.Procs {
+		proc.WithStopSignal(syscall.SIGTERM)
+	}
+	require.NoError(t, epc.Stop(), "failed to close etcd cluster")
+	for _, proc := range epc.Procs {
+		t.Logf("Checking %s v3-backend", proc.Config().Name)
+		dbPath := datadir.ToBackendFileName(proc.Config().DataDirPath)
+		mInfo := membershipInfoFromBackend(t, dbPath, learnerID)
+		require.True(t, mInfo.IsLearner, "%x is learner (%+v)", learnerID, mInfo)
+	}
+
+	t.Log("Upgrade to current release")
+	for i := range epc.Procs {
+		epc.Procs[i].Config().ExecPath = e2e.BinPath
+	}
+	require.NoError(t, epc.Restart(), "failed to restart etcd cluster")
+	require.NoError(t, epc.Stop(), "failed to close etcd cluster")
+
+	for _, proc := range epc.Procs {
+		t.Logf("Checking %s v3-backend", proc.Config().Name)
+		dbPath := datadir.ToBackendFileName(proc.Config().DataDirPath)
+		mInfo := membershipInfoFromBackend(t, dbPath, learnerID)
+		require.False(t, mInfo.IsLearner, "%x should not be learner (%+v)", learnerID, mInfo)
+	}
+}
+
+func membershipInfoFromBackend(t *testing.T, dbPath string, memberID uint64) *membership.Member {
+	db, err := bbolt.Open(dbPath, 0666, nil)
+	require.NoError(t, err, "failed to open backend %s", dbPath)
+
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	m := &membership.Member{}
+	err = db.View(func(tx *bbolt.Tx) error {
+		value := tx.Bucket(buckets.Members.Name()).
+			Get([]byte(types.ID(memberID).String()))
+
+		return json.Unmarshal(value, m)
+	})
+	require.NoError(t, err, "failed to read membership info for %x", memberID)
+	return m
 }

@@ -148,6 +148,7 @@ type EtcdProcessClusterConfig struct {
 	PeerProxy                    bool
 	EnvVars                      map[string]string
 	Version                      ClusterVersion
+	ExecPath                     string // NOTE: only applicable when Version is ClusterVersion
 	NextClusterVersionCompatible bool
 
 	ClusterSize int
@@ -192,6 +193,7 @@ type EtcdProcessClusterConfig struct {
 	CompactHashCheckTime       time.Duration
 	WatchProcessNotifyInterval time.Duration
 	CompactionBatchLimit       int
+	BackendBatchLimit          int
 
 	ExperimentalStopGRPCServiceOnDefrag bool
 }
@@ -377,6 +379,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if cfg.CompactionBatchLimit != 0 {
 		args = append(args, "--experimental-compaction-batch-limit", fmt.Sprintf("%d", cfg.CompactionBatchLimit))
 	}
+	if cfg.BackendBatchLimit != 0 {
+		args = append(args, "--backend-batch-limit", fmt.Sprintf("%d", cfg.BackendBatchLimit))
+	}
 
 	envVars := map[string]string{}
 	for key, value := range cfg.EnvVars {
@@ -392,6 +397,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	switch cfg.Version {
 	case CurrentVersion:
 		execPath = BinPath
+		if cfg.ExecPath != "" {
+			execPath = cfg.ExecPath
+		}
 	case MinorityLastVersion:
 		if i <= cfg.ClusterSize/2 {
 			execPath = BinPath

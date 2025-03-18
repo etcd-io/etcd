@@ -378,7 +378,7 @@
 		]
 	},
 	{
-		"project": "github.com/stretchr/testify/assert",
+		"project": "github.com/stretchr/testify",
 		"licenses": [
 			{
 				"type": "MIT License",
