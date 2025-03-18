@@ -16,6 +16,7 @@ package validate
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/anishathalye/porcupine"
 
@@ -115,6 +116,8 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 				op.Output = model.MaybeEtcdResponse{Persisted: true}
 			}
 		}
+		op.Return = math.MaxInt64
+
 		// Leave operation as it is as we cannot discard it.
 		newOperations = append(newOperations, op)
 	}
