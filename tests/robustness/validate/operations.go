@@ -17,6 +17,7 @@ package validate
 import (
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -53,6 +54,8 @@ func validateLinearizableOperationsAndVisualize(
 	operations []porcupine.Operation,
 	timeout time.Duration,
 ) (results Results) {
+	operations = patchResponseTimeOfFailedOperations(operations)
+
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
 	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
@@ -73,6 +76,20 @@ func validateLinearizableOperationsAndVisualize(
 		Linearizable: result,
 		Lg:           lg,
 	}
+}
+
+// Failed writes can still be persisted, but we don't know when request has took effect, so we override it with MaxInt64
+func patchResponseTimeOfFailedOperations(operations []porcupine.Operation) []porcupine.Operation {
+	patchedOperations := make([]porcupine.Operation, 0, len(operations))
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		resp := op.Output.(model.MaybeEtcdResponse)
+		if resp.Error != "" && !request.IsRead() {
+			op.Return = math.MaxInt64
+			patchedOperations = append(patchedOperations, op)
+		}
+	}
+	return patchedOperations
 }
 
 func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
