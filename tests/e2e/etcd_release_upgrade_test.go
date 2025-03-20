@@ -15,7 +15,9 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -23,10 +25,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
+	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 // TestReleaseUpgrade ensures that changes to master branch does not affect
@@ -164,4 +169,128 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	wg.Wait()
 
 	require.NoError(t, ctlV3Get(cx, []string{kvs[0].key}, []kv{kvs[0]}...))
+}
+
+func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+
+	e2e.BeforeTest(t)
+
+	currentVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	require.NoErrorf(t, err, "failed to get version from binary")
+
+	lastClusterVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
+	require.NoErrorf(t, err, "failed to get version from last release binary")
+
+	clusterSize := 3
+
+	for _, tc := range []struct {
+		name     string
+		snapshot int
+	}{
+		{
+			name:     "create snapshot after promoted",
+			snapshot: 10,
+		},
+		{
+			name: "no snapshot after promoted",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			epc, _ := mustCreateNewClusterByPromotingMembers(t, e2e.LastVersion, clusterSize,
+				e2e.WithSnapshotCount(uint64(tc.snapshot)))
+			defer func() {
+				require.NoError(t, epc.Close())
+			}()
+
+			for i := 0; i < tc.snapshot; i++ {
+				err = epc.Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+			}
+
+			err = e2e.DowngradeUpgradeMembers(t, nil, epc, clusterSize, false, lastClusterVersion, currentVersion)
+			require.NoError(t, err)
+
+			t.Logf("Checking all members' status after upgrading")
+			ensureAllMembersAreVotingMembers(t, epc)
+
+			t.Logf("Checking all members are ready to serve client requests")
+			for i := 0; i < clusterSize; i++ {
+				err = epc.Procs[i].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func mustCreateNewClusterByPromotingMembers(t *testing.T, clusterVersion e2e.ClusterVersion, clusterSize int, opts ...e2e.EPClusterOption) (*e2e.EtcdProcessCluster, []*etcdserverpb.Member) {
+	require.GreaterOrEqualf(t, clusterSize, 1, "clusterSize must be at least 1")
+
+	ctx := context.Background()
+
+	t.Logf("Creating new etcd cluster - version: %s, clusterSize: %v", clusterVersion, clusterSize)
+	opts = append(opts, e2e.WithVersion(clusterVersion), e2e.WithClusterSize(1))
+	epc, err := e2e.NewEtcdProcessCluster(ctx, t, opts...)
+	require.NoErrorf(t, err, "failed to start first etcd process")
+	defer func() {
+		if t.Failed() {
+			epc.Close()
+		}
+	}()
+
+	var promotedMembers []*etcdserverpb.Member
+	for i := 1; i < clusterSize; i++ {
+		var (
+			memberID uint64
+			aerr     error
+		)
+
+		// NOTE: New promoted member needs time to get connected.
+		t.Logf("[%d] Adding new member as learner", i)
+		testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+			for {
+				memberID, aerr = epc.StartNewProc(ctx, nil, t, true)
+				if aerr != nil {
+					if strings.Contains(aerr.Error(), "etcdserver: unhealthy cluster") {
+						time.Sleep(1 * time.Second)
+						continue
+					}
+				}
+				break
+			}
+		})
+		require.NoError(t, aerr)
+
+		t.Logf("[%d] Promoting member (%x)", i, memberID)
+		etcdctl := epc.Procs[0].Etcdctl()
+		resp, merr := etcdctl.MemberPromote(ctx, memberID)
+		require.NoError(t, merr)
+
+		for _, m := range resp.Members {
+			if m.ID == memberID {
+				promotedMembers = append(promotedMembers, m)
+			}
+		}
+	}
+
+	t.Log("Ensure all members are voting members from user perspective")
+	ensureAllMembersAreVotingMembers(t, epc)
+
+	return epc, promotedMembers
+}
+
+func ensureAllMembersAreVotingMembers(t *testing.T, epc *e2e.EtcdProcessCluster) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := epc.Etcdctl().MemberList(ctx, false)
+	require.NoError(t, err)
+	require.Len(t, resp.Members, len(epc.Procs))
+	for _, m := range resp.Members {
+		require.Falsef(t, m.IsLearner, "node(%x)", m.ID)
+	}
 }
