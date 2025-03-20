@@ -24,7 +24,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/bbolt"
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/mvcc/buckets"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -230,31 +235,185 @@ func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
 }
 
+// TestCtlV3PromotingLearner tests whether etcd can automatically fix the
+// issue caused by https://github.com/etcd-io/etcd/issues/19557.
 func TestCtlV3PromotingLearner(t *testing.T) {
-	e2e.BeforeTest(t)
+	testCases := []struct {
+		name                  string
+		snapshotCount         int
+		writeToV3StoreSuccess bool
+	}{
+		{
+			name:          "create snapshot after learner promotion which is not saved to v3store",
+			snapshotCount: 10,
+		},
+		{
+			name:          "not create snapshot and learner promotion is not saved to v3store",
+			snapshotCount: 0,
+		},
+		{
+			name:                  "not create snapshot and learner promotion is saved to v3store",
+			snapshotCount:         0,
+			writeToV3StoreSuccess: true,
+		},
+	}
 
-	t.Log("Create a single node etcd cluster")
-	cfg := e2e.NewConfigNoTLS()
-	cfg.BasePeerScheme = "unix"
-	cfg.ClusterSize = 1
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Log("Create a single node etcd cluster")
+			cfg := e2e.NewConfigNoTLS()
+			cfg.BasePeerScheme = "unix"
+			cfg.ClusterSize = 1
+			cfg.InitialCorruptCheck = true
+			if tc.snapshotCount != 0 {
+				cfg.SnapshotCount = tc.snapshotCount
+			}
 
-	epc, err := e2e.NewEtcdProcessCluster(t, cfg)
-	require.NoError(t, err, "failed to start etcd cluster: %v", err)
+			epc, err := e2e.NewEtcdProcessCluster(t, cfg)
+			require.NoError(t, err, "failed to start etcd cluster: %v", err)
+			defer func() {
+				derr := epc.Close()
+				require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+			}()
+
+			t.Log("Add and start a learner")
+			learnerID, err := epc.StartNewProc(nil, true, t)
+			require.NoError(t, err)
+
+			t.Log("Write a key to ensure the cluster is healthy so far")
+			etcdctl := epc.Procs[0].Etcdctl(e2e.ClientNonTLS, false, false)
+			err = etcdctl.Put("foo", "bar")
+			require.NoError(t, err)
+
+			t.Logf("Promoting the learner %x", learnerID)
+			resp, err := etcdctl.MemberPromote(learnerID)
+			require.NoError(t, err)
+
+			var promotedMember *etcdserverpb.Member
+			for _, m := range resp.Members {
+				if m.ID == learnerID {
+					promotedMember = m
+					break
+				}
+			}
+			require.NotNil(t, promotedMember)
+			t.Logf("The promoted member: %+v", promotedMember)
+
+			t.Log("Ensure all members are voting members from user perspective")
+			ensureAllMembersAreVotingMembers(t, etcdctl)
+
+			if tc.snapshotCount != 0 {
+				t.Logf("Write %d keys to trigger a snapshot", tc.snapshotCount)
+				for i := 0; i < tc.snapshotCount; i++ {
+					err = etcdctl.Put(fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i))
+					require.NoError(t, err)
+				}
+			}
+
+			if tc.writeToV3StoreSuccess {
+				t.Log("Skip manually changing the already promoted learner to a learner in v3store")
+			} else {
+				t.Logf("Stopping the already promoted member")
+				require.NoError(t, epc.Procs[1].Stop())
+
+				t.Log("Manually changing the already promoted member to a learner again in v3store")
+				promotedMember.IsLearner = true
+				mustSaveMemberIntoBbolt(t, epc.Procs[1].Config().DataDirPath, promotedMember)
+
+				t.Log("Starting the member again")
+				require.NoError(t, epc.Procs[1].Start())
+			}
+
+			t.Log("Checking all members are ready to serve client requests")
+			for i := 0; i < len(epc.Procs); i++ {
+				e2e.AssertProcessLogs(t, epc.Procs[i], e2e.EtcdServerReadyLines[0])
+			}
+
+			// Wait for the learner published attribute to be applied by all members in the cluster
+			t.Log("Write a key to ensure the the learner published attribute has been applied by all members")
+			for i := 0; i < len(epc.Procs); i++ {
+				cli := epc.Procs[i].Etcdctl(e2e.ClientNonTLS, false, false)
+				err = cli.Put("foo", "bar")
+				require.NoError(t, err)
+			}
+
+			t.Log("Ensure all members in v3store are voting members again")
+			for i := 0; i < len(epc.Procs); i++ {
+				t.Logf("Stopping the member: %d", i)
+				require.NoError(t, epc.Procs[i].Stop())
+
+				t.Logf("Checking all members in member's backend store: %d", i)
+				ensureAllMembersFromV3StoreAreVotingMembers(t, epc.Procs[i].Config().DataDirPath)
+
+				t.Logf("Starting the member again: %d", i)
+				require.NoError(t, epc.Procs[i].Start())
+			}
+		})
+	}
+}
+
+func mustSaveMemberIntoBbolt(t *testing.T, dataDir string, protoMember *etcdserverpb.Member) {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	db, err := bbolt.Open(dbPath, 0666, nil)
+	require.NoError(t, err)
 	defer func() {
-		derr := epc.Close()
-		require.NoError(t, derr, "failed to close etcd cluster: %v", derr)
+		require.NoError(t, db.Close())
 	}()
 
-	t.Log("Add and start a learner")
-	learnerID, err := epc.StartNewProc(nil, true, t)
-	require.NoError(t, err)
+	m := &membership.Member{
+		ID: types.ID(protoMember.ID),
+		RaftAttributes: membership.RaftAttributes{
+			PeerURLs:  protoMember.PeerURLs,
+			IsLearner: protoMember.IsLearner,
+		},
+		Attributes: membership.Attributes{
+			Name:       protoMember.Name,
+			ClientURLs: protoMember.ClientURLs,
+		},
+	}
 
-	t.Log("Write a key to ensure the cluster is healthy so far")
-	etcdctl := epc.Procs[0].Etcdctl(e2e.ClientNonTLS, false, false)
-	err = etcdctl.Put("foo", "bar")
-	require.NoError(t, err)
+	err = db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(buckets.Members.Name())
 
-	t.Logf("Promoting the learner %x", learnerID)
-	_, err = etcdctl.MemberPromote(learnerID)
+		mkey := []byte(m.ID.String())
+		mvalue, err := json.Marshal(m)
+		require.NoError(t, err)
+
+		return b.Put(mkey, mvalue)
+	})
 	require.NoError(t, err)
+}
+
+func ensureAllMembersAreVotingMembers(t *testing.T, etcdctl *e2e.Etcdctl) {
+	memberListResp, err := etcdctl.MemberList()
+	require.NoError(t, err)
+	for _, m := range memberListResp.Members {
+		require.False(t, m.IsLearner)
+	}
+}
+
+func ensureAllMembersFromV3StoreAreVotingMembers(t *testing.T, dataDir string) {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	db, err := bbolt.Open(dbPath, 0400, &bbolt.Options{ReadOnly: true})
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	var members []membership.Member
+	_ = db.View(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(buckets.Members.Name())
+		_ = b.ForEach(func(k, v []byte) error {
+			m := membership.Member{}
+			err := json.Unmarshal(v, &m)
+			require.NoError(t, err)
+			members = append(members, m)
+			return nil
+		})
+		return nil
+	})
+
+	for _, m := range members {
+		require.Falsef(t, m.IsLearner, "member is still learner: %+v", m)
+	}
 }
