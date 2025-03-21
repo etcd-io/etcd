@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -1045,6 +1046,131 @@ func TestClusterStore(t *testing.T) {
 
 			// Verify that removed members are correctly stored
 			assert.Equal(t, tt.removed, rst)
+		})
+	}
+}
+
+func TestSyncLearnerPromotion(t *testing.T) {
+	tcs := []struct {
+		name string
+
+		storeV2Members []*Member
+		backendMembers []*Member
+
+		expectV3Members map[types.ID]*Member
+	}{
+		{
+			name: "v3store should keep unchanged if the member doesn't exist in v2store",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.10:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 200,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				200: {
+					ID: 200,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+		},
+		{
+			name: "v3store should keep unchanged if v2store.IsLearner is true",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+		},
+		{
+			name: "v3store should be updated if v2.IsLearner is false and v3store.IsLearner is true",
+			storeV2Members: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+			backendMembers: []*Member{
+				{
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: true,
+					},
+				},
+			},
+			expectV3Members: map[types.ID]*Member{
+				100: {
+					ID: 100,
+					RaftAttributes: RaftAttributes{
+						PeerURLs:  []string{"http://10.0.0.9:2380"},
+						IsLearner: false,
+					},
+				},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			be := newMembershipBackend()
+
+			for _, m := range tc.backendMembers {
+				be.MustSaveMemberToBackend(m)
+			}
+
+			st := v2store.New()
+			for _, m := range tc.storeV2Members {
+				mustSaveMemberToStore(lg, st, m)
+			}
+
+			cluster := NewCluster(lg)
+			cluster.SetBackend(be)
+			cluster.SetStore(st)
+
+			cluster.SyncLearnerPromotionIfNeeded()
+			v3Members, _ := cluster.be.MustReadMembersFromBackend()
+			require.Equal(t, tc.expectV3Members, v3Members)
 		})
 	}
 }

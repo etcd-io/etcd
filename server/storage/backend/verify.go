@@ -62,6 +62,14 @@ func verifyLockEnabled() bool {
 
 func insideApply() bool {
 	stackTraceStr := string(debug.Stack())
+
+	// Exclude the case of `MustHackySaveMemberToBackend`, which is
+	// used to workaround the situations which are already affected
+	// by https://github.com/etcd-io/etcd/issues/19557.
+	if strings.Contains(stackTraceStr, "MustHackySaveMemberToBackend") {
+		return false
+	}
+
 	return strings.Contains(stackTraceStr, ".applyEntries")
 }
 

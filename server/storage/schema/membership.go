@@ -57,6 +57,22 @@ func (s *membershipBackend) MustSaveMemberToBackend(m *membership.Member) {
 	tx.UnsafePut(Members, mkey, mvalue)
 }
 
+// MustHackySaveMemberToBackend updates the member in a hacky way.
+// It's only used to fix the issues which are already affected by
+// https://github.com/etcd-io/etcd/issues/19557.
+func (s *membershipBackend) MustHackySaveMemberToBackend(m *membership.Member) {
+	mkey := BackendMemberKey(m.ID)
+	mvalue, err := json.Marshal(m)
+	if err != nil {
+		s.lg.Panic("failed to marshal member", zap.Error(err))
+	}
+
+	tx := s.be.BatchTx()
+	tx.LockOutsideApply()
+	defer tx.Unlock()
+	tx.UnsafePut(Members, mkey, mvalue)
+}
+
 // TrimClusterFromBackend removes all information about cluster (versions)
 // from the v3 backend.
 func (s *membershipBackend) TrimClusterFromBackend() error {

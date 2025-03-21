@@ -448,6 +448,11 @@ func (c *bootstrappedCluster) Finalize(cfg config.ServerConfig, s *bootstrappedS
 	}
 	c.cl.SetStore(s.st)
 	c.cl.SetBackend(schema.NewMembershipBackend(cfg.Logger, s.backend.be))
+
+	// Workaround the issues which have already been affected
+	// by https://github.com/etcd-io/etcd/issues/19557.
+	c.cl.SyncLearnerPromotionIfNeeded()
+
 	if s.wal.haveWAL {
 		c.cl.Recover(api.UpdateCapability)
 		if c.databaseFileMissing(s) {
