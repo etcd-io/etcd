@@ -66,7 +66,7 @@ test-coverage:
 
 .PHONY: upload-coverage-report
 upload-coverage-report: test-coverage
-	./scripts/codecov_upload.sh
+	COVERDIR=covdir ./scripts/codecov_upload.sh
 
 .PHONY: fuzz
 fuzz: 
