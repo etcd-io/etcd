@@ -23,6 +23,13 @@ const (
 	LastVersion         ClusterVersion = "last-version"
 )
 
+func (cv ClusterVersion) String() string {
+	if cv == CurrentVersion {
+		return "current-version"
+	}
+	return string(cv)
+}
+
 type ClusterContext struct {
 	Version ClusterVersion
 }
