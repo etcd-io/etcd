@@ -25,6 +25,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -145,6 +146,8 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		opString = "downgrading"
 		newExecPath = BinPath.EtcdLastRelease
 	}
+
+	g := new(errgroup.Group)
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		if member.Config().ExecPath == newExecPath {
@@ -156,10 +159,15 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		}
 		member.Config().ExecPath = newExecPath
 		lg.Info("Restarting member", zap.String("member", member.Config().Name))
-		err := member.Start(t.Context())
-		if err != nil {
-			return err
-		}
+		// We shouldn't block on waiting for the member to be ready,
+		// otherwise it will be blocked forever if other members are
+		// not started yet.
+		g.Go(func() error {
+			return member.Start(t.Context())
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	t.Log("Waiting health interval to make sure the leader propagates version to new processes")
