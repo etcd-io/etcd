@@ -138,7 +138,5 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if !errors.Is(err, ordering.ErrNoGreaterRev) {
-		t.Fatalf("expected %v, got %v", ordering.ErrNoGreaterRev, err)
-	}
+	require.ErrorIsf(t, err, ordering.ErrNoGreaterRev, "expected %v, got %v", ordering.ErrNoGreaterRev, err)
 }

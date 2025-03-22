@@ -44,14 +44,10 @@ func TestSaveSnapshotFilePermissions(t *testing.T) {
 	defer os.RemoveAll(dbPath)
 
 	dbInfo, err := os.Stat(dbPath)
-	if err != nil {
-		t.Fatalf("failed to get test snapshot file status: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to get test snapshot file status: %v", err)
 	actualFileMode := dbInfo.Mode()
 
-	if expectedFileMode != actualFileMode {
-		t.Fatalf("expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
-	}
+	require.Equalf(t, expectedFileMode, actualFileMode, "expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
 }
 
 // TestSaveSnapshotVersion ensures that the snapshot returns proper storage version.
@@ -67,9 +63,7 @@ func TestSaveSnapshotVersion(t *testing.T) {
 	ver, dbPath := createSnapshotFile(t, cfg, kvs)
 	defer os.RemoveAll(dbPath)
 
-	if ver != "3.6.0" {
-		t.Fatalf("expected snapshot version %s, got %s:", "3.6.0", ver)
-	}
+	require.Equalf(t, "3.6.0", ver, "expected snapshot version %s, got %s:", "3.6.0", ver)
 }
 
 type kv struct {

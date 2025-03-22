@@ -94,9 +94,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		_, err = m.Client.Put(ctx, "/"+key, "bar")
-		if err != nil {
-			t.Fatalf("#%d: create on %s error: %v", i, m.URL(), err)
-		}
+		require.NoErrorf(t, err, "#%d: create on %s error", i, m.URL())
 		cancel()
 	}
 	m.Stop(t)
@@ -107,9 +105,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		resp, err := m.Client.Get(ctx, "/"+key)
-		if err != nil {
-			t.Fatalf("#%d: get on %s error: %v", i, m.URL(), err)
-		}
+		require.NoErrorf(t, err, "#%d: get on %s error", i, m.URL())
 		cancel()
 
 		if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {

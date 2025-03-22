@@ -88,9 +88,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 		var gresp *clientv3.GetResponse
 		gresp, err = cli.Get(context.Background(), kvs[i].k)
 		require.NoError(t, err)
-		if string(gresp.Kvs[0].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
-		}
+		require.Equalf(t, string(gresp.Kvs[0].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 	}
 }
 
@@ -121,9 +119,7 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 			var gresp *clientv3.GetResponse
 			gresp, err = cli.Get(context.Background(), kvs[i].k)
 			require.NoError(t, err)
-			if string(gresp.Kvs[0].Value) != kvs[i].v {
-				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
-			}
+			require.Equalf(t, string(gresp.Kvs[0].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 		}
 	}
 }
@@ -132,12 +128,11 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 func TestCorruptedBackupFileCheck(t *testing.T) {
 	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
 	integration2.BeforeTest(t)
-	if _, err := os.Stat(dbPath); err != nil {
-		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
-	}
+	_, err := os.Stat(dbPath)
+	require.NoErrorf(t, err, "test file [%s] does not exist: %v", dbPath, err)
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
-	_, err := sp.Status(dbPath)
+	_, err = sp.Status(dbPath)
 	expectedErrKeywords := "snapshot file integrity check failed"
 	/* example error message:
 	snapshot file integrity check failed. 2 errors found.
