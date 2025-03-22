@@ -47,14 +47,10 @@ func TestUpgradeDowngrade(t *testing.T) {
 			UnsafeCreateMetaBucket(tx)
 
 			_, err := tc.change.upgradeAction().unsafeDo(tx)
-			if err != nil {
-				t.Errorf("Failed to upgrade, err: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to upgrade, err: %v", err)
 			assertBucketState(t, tx, Meta, tc.expectStateAfterUpgrade)
 			_, err = tc.change.downgradeAction().unsafeDo(tx)
-			if err != nil {
-				t.Errorf("Failed to downgrade, err: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to downgrade, err: %v", err)
 			assertBucketState(t, tx, Meta, tc.expectStateAfterDowngrade)
 		})
 	}

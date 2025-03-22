@@ -16,7 +16,6 @@ package mvcc
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -26,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -130,15 +130,9 @@ func testKVRange(t *testing.T, f rangeFunc) {
 
 	for i, tt := range tests {
 		r, err := f(s, tt.key, tt.end, RangeOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if r.Rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
-		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
-		}
+		require.NoError(t, err)
+		assert.Equalf(t, r.Rev, wrev, "#%d: rev = %d, want %d", i, r.Rev, wrev)
+		assert.Truef(t, reflect.DeepEqual(r.KVs, tt.wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 	}
 }
 
@@ -166,15 +160,9 @@ func testKVRangeRev(t *testing.T, f rangeFunc) {
 
 	for i, tt := range tests {
 		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Rev: tt.rev})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if r.Rev != tt.wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, tt.wrev)
-		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
-		}
+		require.NoError(t, err)
+		assert.Equalf(t, r.Rev, tt.wrev, "#%d: rev = %d, want %d", i, r.Rev, tt.wrev)
+		assert.Truef(t, reflect.DeepEqual(r.KVs, tt.wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 	}
 }
 
@@ -187,9 +175,8 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	defer cleanup(s, b)
 
 	put3TestKVs(s)
-	if _, err := s.Compact(traceutil.TODO(), 4); err != nil {
-		t.Fatalf("compact error (%v)", err)
-	}
+	_, err := s.Compact(traceutil.TODO(), 4)
+	require.NoErrorf(t, err, "compact error (%v)", err)
 
 	tests := []struct {
 		rev  int64
@@ -205,9 +192,7 @@ func testKVRangeBadRev(t *testing.T, f rangeFunc) {
 	}
 	for i, tt := range tests {
 		_, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Rev: tt.rev})
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: error = %v, want %v", i, err, tt.werr)
-		}
+		assert.ErrorIsf(t, err, tt.werr, "#%d: error = %v, want %v", i, err, tt.werr)
 	}
 }
 
@@ -238,19 +223,11 @@ func testKVRangeLimit(t *testing.T, f rangeFunc) {
 	}
 	for i, tt := range tests {
 		r, err := f(s, []byte("foo"), []byte("foo3"), RangeOptions{Limit: tt.limit})
-		if err != nil {
-			t.Fatalf("#%d: range error (%v)", i, err)
-		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
-		}
-		if r.Rev != wrev {
-			t.Errorf("#%d: rev = %d, want %d", i, r.Rev, wrev)
-		}
+		require.NoErrorf(t, err, "#%d: range error (%v)", i, err)
+		assert.Truef(t, reflect.DeepEqual(r.KVs, tt.wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
+		assert.Equalf(t, r.Rev, wrev, "#%d: rev = %d, want %d", i, r.Rev, wrev)
 		if tt.limit <= 0 || int(tt.limit) > len(kvs) {
-			if r.Count != len(kvs) {
-				t.Errorf("#%d: count = %d, want %d", i, r.Count, len(kvs))
-			}
+			assert.Lenf(t, kvs, r.Count, "#%d: count = %d, want %d", i, r.Count, len(kvs))
 		} else if r.Count != int(tt.wcounts) {
 			t.Errorf("#%d: count = %d, want %d", i, r.Count, tt.limit)
 		}
@@ -269,20 +246,14 @@ func testKVPutMultipleTimes(t *testing.T, f putFunc) {
 		base := int64(i + 1)
 
 		rev := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(base))
-		if rev != base+1 {
-			t.Errorf("#%d: rev = %d, want %d", i, rev, base+1)
-		}
+		assert.Equalf(t, rev, base+1, "#%d: rev = %d, want %d", i, rev, base+1)
 
 		r, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: base + 1, Version: base, Lease: base},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
-		}
+		assert.Truef(t, reflect.DeepEqual(r.KVs, wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
 	}
 }
 
@@ -373,27 +344,19 @@ func testKVPutWithSameLease(t *testing.T, f putFunc) {
 
 	// put foo
 	rev := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(leaseID))
-	if rev != 2 {
-		t.Errorf("rev = %d, want %d", 2, rev)
-	}
+	assert.Equalf(t, int64(2), rev, "rev = %d, want %d", 2, rev)
 
 	// put foo with same lease again
 	rev2 := f(s, []byte("foo"), []byte("bar"), lease.LeaseID(leaseID))
-	if rev2 != 3 {
-		t.Errorf("rev = %d, want %d", 3, rev2)
-	}
+	assert.Equalf(t, int64(3), rev2, "rev = %d, want %d", 3, rev2)
 
 	// check leaseID
 	r, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wkvs := []mvccpb.KeyValue{
 		{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 3, Version: 2, Lease: leaseID},
 	}
-	if !reflect.DeepEqual(r.KVs, wkvs) {
-		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
-	}
+	assert.Truef(t, reflect.DeepEqual(r.KVs, wkvs), "kvs = %+v, want %+v", r.KVs, wkvs)
 }
 
 // TestKVOperationInSequence tests that range, put, delete on single key in
@@ -408,23 +371,15 @@ func TestKVOperationInSequence(t *testing.T) {
 
 		// put foo
 		rev := s.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-		if rev != base+1 {
-			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
-		}
+		assert.Equalf(t, rev, base+1, "#%d: put rev = %d, want %d", i, rev, base+1)
 
 		r, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: base + 1})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
-		}
-		if r.Rev != base+1 {
-			t.Errorf("#%d: range rev = %d, want %d", i, rev, base+1)
-		}
+		assert.Truef(t, reflect.DeepEqual(r.KVs, wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
+		assert.Equalf(t, r.Rev, base+1, "#%d: range rev = %d, want %d", i, rev, base+1)
 
 		// delete foo
 		n, rev := s.DeleteRange([]byte("foo"), nil)
@@ -433,15 +388,9 @@ func TestKVOperationInSequence(t *testing.T) {
 		}
 
 		r, err = s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: base + 2})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if r.KVs != nil {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, nil)
-		}
-		if r.Rev != base+2 {
-			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+2)
-		}
+		require.NoError(t, err)
+		assert.Nilf(t, r.KVs, "#%d: kvs = %+v, want %+v", i, r.KVs, nil)
+		assert.Equalf(t, r.Rev, base+2, "#%d: range rev = %d, want %d", i, r.Rev, base+2)
 	}
 }
 
@@ -512,23 +461,15 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 
 		// put foo
 		rev := txn.Put([]byte("foo"), []byte("bar"), lease.NoLease)
-		if rev != base+1 {
-			t.Errorf("#%d: put rev = %d, want %d", i, rev, base+1)
-		}
+		assert.Equalf(t, rev, base+1, "#%d: put rev = %d, want %d", i, rev, base+1)
 
 		r, err := txn.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: base + 1})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		wkvs := []mvccpb.KeyValue{
 			{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: base + 1, ModRevision: base + 1, Version: 1, Lease: int64(lease.NoLease)},
 		}
-		if !reflect.DeepEqual(r.KVs, wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
-		}
-		if r.Rev != base+1 {
-			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+1)
-		}
+		assert.Truef(t, reflect.DeepEqual(r.KVs, wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, wkvs)
+		assert.Equalf(t, r.Rev, base+1, "#%d: range rev = %d, want %d", i, r.Rev, base+1)
 
 		// delete foo
 		n, rev := txn.DeleteRange([]byte("foo"), nil)
@@ -537,15 +478,9 @@ func TestKVTxnOperationInSequence(t *testing.T) {
 		}
 
 		r, err = txn.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: base + 1})
-		if err != nil {
-			t.Errorf("#%d: range error (%v)", i, err)
-		}
-		if r.KVs != nil {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, nil)
-		}
-		if r.Rev != base+1 {
-			t.Errorf("#%d: range rev = %d, want %d", i, r.Rev, base+1)
-		}
+		require.NoErrorf(t, err, "#%d: range error (%v)", i, err)
+		assert.Nilf(t, r.KVs, "#%d: kvs = %+v, want %+v", i, r.KVs, nil)
+		assert.Equalf(t, r.Rev, base+1, "#%d: range rev = %d, want %d", i, r.Rev, base+1)
 
 		txn.End()
 	}
@@ -592,16 +527,10 @@ func TestKVCompactReserveLastValue(t *testing.T) {
 	}
 	for i, tt := range tests {
 		_, err := s.Compact(traceutil.TODO(), tt.rev)
-		if err != nil {
-			t.Errorf("#%d: unexpect compact error %v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: unexpect compact error %v", i, err)
 		r, err := s.Range(t.Context(), []byte("foo"), nil, RangeOptions{Rev: tt.rev + 1})
-		if err != nil {
-			t.Errorf("#%d: unexpect range error %v", i, err)
-		}
-		if !reflect.DeepEqual(r.KVs, tt.wkvs) {
-			t.Errorf("#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
-		}
+		require.NoErrorf(t, err, "#%d: unexpect range error %v", i, err)
+		assert.Truef(t, reflect.DeepEqual(r.KVs, tt.wkvs), "#%d: kvs = %+v, want %+v", i, r.KVs, tt.wkvs)
 	}
 }
 
@@ -628,9 +557,7 @@ func TestKVCompactBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		_, err := s.Compact(traceutil.TODO(), tt.rev)
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: compact error = %v, want %v", i, err, tt.werr)
-		}
+		assert.ErrorIsf(t, err, tt.werr, "#%d: compact error = %v, want %v", i, err, tt.werr)
 	}
 }
 
@@ -644,16 +571,12 @@ func TestKVHash(t *testing.T) {
 		kv.Put([]byte("foo0"), []byte("bar0"), lease.NoLease)
 		kv.Put([]byte("foo1"), []byte("bar0"), lease.NoLease)
 		hashes[i], _, err = kv.hash()
-		if err != nil {
-			t.Fatalf("failed to get hash: %v", err)
-		}
+		require.NoErrorf(t, err, "failed to get hash: %v", err)
 		cleanup(kv, b)
 	}
 
 	for i := 1; i < len(hashes); i++ {
-		if hashes[i-1] != hashes[i] {
-			t.Errorf("hash[%d](%d) != hash[%d](%d)", i-1, hashes[i-1], i, hashes[i])
-		}
+		assert.Equalf(t, hashes[i-1], hashes[i], "hash[%d](%d) != hash[%d](%d)", i-1, hashes[i-1], i, hashes[i])
 	}
 }
 
@@ -707,9 +630,8 @@ func TestKVRestore(t *testing.T) {
 		// ns should recover the previous state from backend.
 		ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{CompactionBatchLimit: compactBatchLimit})
 
-		if keysRestore := readGaugeInt(keysGauge); keysBefore != keysRestore {
-			t.Errorf("#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
-		}
+		keysRestore := readGaugeInt(keysGauge)
+		assert.Equalf(t, keysBefore, keysRestore, "#%d: got %d key count, expected %d", i, keysRestore, keysBefore)
 
 		// wait for possible compaction to finish
 		testutil.WaitSchedule()
@@ -720,9 +642,7 @@ func TestKVRestore(t *testing.T) {
 		}
 		cleanup(ns, b)
 
-		if !reflect.DeepEqual(nkvss, kvss) {
-			t.Errorf("#%d: kvs history = %+v, want %+v", i, nkvss, kvss)
-		}
+		assert.Truef(t, reflect.DeepEqual(nkvss, kvss), "#%d: kvs history = %+v, want %+v", i, nkvss, kvss)
 	}
 }
 
@@ -744,31 +664,21 @@ func TestKVSnapshot(t *testing.T) {
 
 	newPath := "new_test"
 	f, err := os.Create(newPath)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.Remove(newPath)
 
 	snap := s.b.Snapshot()
 	defer snap.Close()
 	_, err = snap.WriteTo(f)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 
 	ns := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 	defer ns.Close()
 	r, err := ns.Range(t.Context(), []byte("a"), []byte("z"), RangeOptions{})
-	if err != nil {
-		t.Errorf("unexpect range error (%v)", err)
-	}
-	if !reflect.DeepEqual(r.KVs, wkvs) {
-		t.Errorf("kvs = %+v, want %+v", r.KVs, wkvs)
-	}
-	if r.Rev != 4 {
-		t.Errorf("rev = %d, want %d", r.Rev, 4)
-	}
+	require.NoErrorf(t, err, "unexpect range error (%v)", err)
+	assert.Truef(t, reflect.DeepEqual(r.KVs, wkvs), "kvs = %+v, want %+v", r.KVs, wkvs)
+	assert.Equalf(t, int64(4), r.Rev, "rev = %d, want %d", r.Rev, 4)
 }
 
 func TestWatchableKVWatch(t *testing.T) {
@@ -820,13 +730,9 @@ func TestWatchableKVWatch(t *testing.T) {
 	s.Put([]byte("foo"), []byte("bar"), 1)
 	select {
 	case resp := <-w.Chan():
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
+		assert.Equalf(t, resp.WatchID, wid, "resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[0]) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev[0])
-		}
+		assert.Truef(t, reflect.DeepEqual(ev, wev[0]), "watched event = %+v, want %+v", ev, wev[0])
 	case <-time.After(5 * time.Second):
 		// CPU might be too slow, and the routine is not able to switch around
 		testutil.FatalStack(t, "failed to watch the event")
@@ -835,13 +741,9 @@ func TestWatchableKVWatch(t *testing.T) {
 	s.Put([]byte("foo1"), []byte("bar1"), 2)
 	select {
 	case resp := <-w.Chan():
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
+		assert.Equalf(t, resp.WatchID, wid, "resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[1]) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
-		}
+		assert.Truef(t, reflect.DeepEqual(ev, wev[1]), "watched event = %+v, want %+v", ev, wev[1])
 	case <-time.After(5 * time.Second):
 		testutil.FatalStack(t, "failed to watch the event")
 	}
@@ -851,13 +753,9 @@ func TestWatchableKVWatch(t *testing.T) {
 
 	select {
 	case resp := <-w.Chan():
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
+		assert.Equalf(t, resp.WatchID, wid, "resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[1]) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev[1])
-		}
+		assert.Truef(t, reflect.DeepEqual(ev, wev[1]), "watched event = %+v, want %+v", ev, wev[1])
 	case <-time.After(5 * time.Second):
 		testutil.FatalStack(t, "failed to watch the event")
 	}
@@ -865,13 +763,9 @@ func TestWatchableKVWatch(t *testing.T) {
 	s.Put([]byte("foo1"), []byte("bar11"), 3)
 	select {
 	case resp := <-w.Chan():
-		if resp.WatchID != wid {
-			t.Errorf("resp.WatchID got = %d, want = %d", resp.WatchID, wid)
-		}
+		assert.Equalf(t, resp.WatchID, wid, "resp.WatchID got = %d, want = %d", resp.WatchID, wid)
 		ev := resp.Events[0]
-		if !reflect.DeepEqual(ev, wev[2]) {
-			t.Errorf("watched event = %+v, want %+v", ev, wev[2])
-		}
+		assert.Truef(t, reflect.DeepEqual(ev, wev[2]), "watched event = %+v, want %+v", ev, wev[2])
 	case <-time.After(5 * time.Second):
 		testutil.FatalStack(t, "failed to watch the event")
 	}
