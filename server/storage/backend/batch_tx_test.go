@@ -393,9 +393,9 @@ func checkUnsafeForEach(t *testing.T, tx backend.UnsafeReader, expectedKeys, exp
 
 // runWriteback is used test the txWriteBuffer.writeback function, which is called inside tx.Unlock().
 // The parameters are chosen based on defaultBatchLimit = 10000
-func runWriteback(t testing.TB, kss, vss [][]string, isSeq bool) {
-	b, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
-	defer betesting.Close(t, b)
+func runWriteback(tb testing.TB, kss, vss [][]string, isSeq bool) {
+	b, _ := betesting.NewTmpBackend(tb, time.Hour, 10000)
+	defer betesting.Close(tb, b)
 
 	tx := b.BatchTx()
 
