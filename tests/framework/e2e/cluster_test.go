@@ -25,6 +25,11 @@ import (
 func TestEtcdServerProcessConfig(t *testing.T) {
 	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
 	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
+
+	v3_4 := semver.Version{Major: 3, Minor: 4}
+	v3_5 := semver.Version{Major: 3, Minor: 5}
+	v3_6 := semver.Version{Major: 3, Minor: 6}
+
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -106,6 +111,30 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--listen-client-http-urls=http://localhost:4",
 			},
+		},
+		{
+			name:   "CompactionBatchLimit_v3.6",
+			config: NewConfig(WithCompactionBatchLimit(10)),
+			expectArgsContain: []string{
+				"--compaction-batch-limit",
+			},
+			mockBinaryVersion: &v3_6,
+		},
+		{
+			name:   "CompactionBatchLimit_v3.5",
+			config: NewConfig(WithCompactionBatchLimit(10)),
+			expectArgsContain: []string{
+				"--experimental-compaction-batch-limit",
+			},
+			mockBinaryVersion: &v3_5,
+		},
+		{
+			name:   "CompactionBatchLimit_v3.4",
+			config: NewConfig(WithCompactionBatchLimit(10)),
+			expectArgsContain: []string{
+				"--experimental-compaction-batch-limit",
+			},
+			mockBinaryVersion: &v3_4,
 		},
 		{
 			name:   "ForceNewCluster",
