@@ -85,6 +85,10 @@ func (b *backendMock) MustSaveMemberToBackend(m *Member) {
 	b.members[m.ID] = m
 }
 
+func (b *backendMock) MustHackySaveMemberToBackend(m *Member) {
+	b.members[m.ID] = m
+}
+
 func (b *backendMock) TrimMembershipFromBackend() error {
 	b.members = make(map[types.ID]*Member)
 	b.removed = make(map[types.ID]bool)
