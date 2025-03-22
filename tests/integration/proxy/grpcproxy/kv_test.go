@@ -15,7 +15,6 @@
 package grpcproxy
 
 import (
-	"context"
 	"net"
 	"testing"
 	"time"
@@ -47,7 +46,7 @@ func TestKVProxyRange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}
-	_, err = client.Get(context.Background(), "foo")
+	_, err = client.Get(t.Context(), "foo")
 	if err != nil {
 		t.Fatalf("err = %v, want nil", err)
 	}

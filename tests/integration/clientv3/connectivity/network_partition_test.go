@@ -136,7 +136,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(t.Context(), timeout)
 		err = op(cli, ctx)
 		t.Logf("Op returned error: %v", err)
 		t.Log("Cancelling...")
@@ -191,7 +191,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	// expects balancer to round robin to leader within two attempts
 	for i := 0; i < 2; i++ {
-		ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+		ctx, cancel := context.WithTimeout(t.Context(), timeout)
 		_, err = cli.Get(ctx, "a")
 		cancel()
 		if err == nil {
@@ -240,7 +240,7 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	// under the cover to other available eps, but expose the failure to the
 	// caller (test assertion).
 
-	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(clientv3.WithRequireLeader(t.Context()), "foo", clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
 	case <-time.After(integration2.RequestWaitTimeout):
@@ -299,7 +299,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 
 	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])
 	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), nil)
-	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()
 	if !errors.Is(err, rpctypes.ErrLeaderChanged) {
@@ -307,7 +307,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		ctx, cancel = context.WithTimeout(context.TODO(), 10*time.Second)
+		ctx, cancel = context.WithTimeout(t.Context(), 10*time.Second)
 		_, err = kvc.Get(ctx, "a")
 		cancel()
 		if err != nil {

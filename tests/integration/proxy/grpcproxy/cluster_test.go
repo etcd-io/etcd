@@ -15,7 +15,6 @@
 package grpcproxy
 
 import (
-	"context"
 	"net"
 	"os"
 	"testing"
@@ -61,7 +60,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	var mresp *clientv3.MemberListResponse
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
 	}
@@ -81,7 +80,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// check add member succ
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
 	}
@@ -96,7 +95,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// check delete member succ
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	if err != nil {
 		t.Fatalf("err %v, want nil", err)
 	}
