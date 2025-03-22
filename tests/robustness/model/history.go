@@ -290,8 +290,6 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 	}
 	isRead := request.IsRead()
 	if !isRead {
-		// Failed writes can still be persisted, setting -1 for now as don't know when request has took effect.
-		op.Return = -1
 		// Operations of single client needs to be sequential.
 		// As we don't know return time of failed operations, all new writes need to be done with new stream id.
 		h.streamID = h.idProvider.NewStreamID()
@@ -300,7 +298,7 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 }
 
 func (h *AppendableHistory) append(op porcupine.Operation) {
-	if op.Return != -1 && op.Call >= op.Return {
+	if op.Call >= op.Return {
 		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
 	}
 	if len(h.operations) > 0 {
@@ -488,34 +486,8 @@ func (h History) Len() int {
 
 func (h History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.operations))
-	maxTime := h.lastObservedTime()
-	for _, op := range h.operations {
-		// Failed requests don't have a known return time.
-		if op.Return == -1 {
-			// Simulate Infinity by using last observed time.
-			op.Return = maxTime + time.Second.Nanoseconds()
-		}
-		operations = append(operations, op)
-	}
+	operations = append(operations, h.operations...)
 	return operations
-}
-
-func (h History) lastObservedTime() int64 {
-	var maxTime int64
-	for _, op := range h.operations {
-		if op.Return == -1 {
-			// Collect call time from failed operations
-			if op.Call > maxTime {
-				maxTime = op.Call
-			}
-		} else {
-			// Collect return time from successful operations
-			if op.Return > maxTime {
-				maxTime = op.Return
-			}
-		}
-	}
-	return maxTime
 }
 
 func (h History) MaxRevision() int64 {

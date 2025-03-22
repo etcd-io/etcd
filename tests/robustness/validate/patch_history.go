@@ -28,7 +28,7 @@ func patchLinearizableOperations(reports []report.ClientReport, persistedRequest
 	putRevision := putRevision(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
-	putReturnTime := uniquePutReturnTime(allOperations, reports, persistedRequests, clientPutCount)
+	putReturnTime := uniquePutReturnTime(allOperations, reports, clientPutCount)
 	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
@@ -96,7 +96,7 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 					txnRevision = revision
 				}
 				if returnTime, ok := putReturnTime[kv]; ok {
-					op.Return = min(op.Return, returnTime)
+					op.Return = returnTime
 				}
 			case model.DeleteOperation:
 			case model.RangeOperation:
@@ -110,9 +110,9 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 				continue
 			}
 			if txnRevision != 0 {
-				op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision}
+				op.Output = model.MaybeEtcdResponse{Persisted: true, PersistedRevision: txnRevision, Error: resp.Error}
 			} else {
-				op.Output = model.MaybeEtcdResponse{Persisted: true}
+				op.Output = model.MaybeEtcdResponse{Persisted: true, Error: resp.Error}
 			}
 		}
 		// Leave operation as it is as we cannot discard it.
@@ -155,11 +155,13 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[k
 	return false
 }
 
-func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest, clientPutCount map[keyValue]int64) map[keyValue]int64 {
+func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, clientPutCount map[keyValue]int64) map[keyValue]int64 {
 	earliestReturnTime := map[keyValue]int64{}
-	var lastReturnTime int64
+	failedRequest := map[keyValue]bool{}
+
 	for _, op := range allOperations {
 		request := op.Input.(model.EtcdRequest)
+		resp := op.Output.(model.MaybeEtcdResponse)
 		switch request.Type {
 		case model.Txn:
 			for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
@@ -170,10 +172,14 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 				if count := clientPutCount[kv]; count > 1 {
 					continue
 				}
+				if resp.Error != "" {
+					failedRequest[kv] = true
+				}
 				if returnTime, ok := earliestReturnTime[kv]; !ok || returnTime > op.Return {
+					// The time that the response is received
+					// This doesn't mean anything for the failed request, as the request might have actually succeeded (e.g. connection dropped, etc.)
 					earliestReturnTime[kv] = op.Return
 				}
-				earliestReturnTime[kv] = op.Return
 			}
 		case model.Range:
 		case model.LeaseGrant:
@@ -182,11 +188,11 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}
-		if op.Return > lastReturnTime {
-			lastReturnTime = op.Return
-		}
 	}
 
+	// for failed requests, we use the time that the watch is received as the return time
+	// since the values returned by the watch are the values that are actually written in the database
+	// notice that the time that the value is sent by the watch might be earlier or later than the response received time due to issues such as network problems
 	for _, client := range reports {
 		for _, watch := range client.Watch {
 			for _, resp := range watch.Responses {
@@ -198,8 +204,12 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 						if count := clientPutCount[kv]; count > 1 {
 							continue
 						}
-						if t, ok := earliestReturnTime[kv]; !ok || t > resp.Time.Nanoseconds() {
+						if _, ok := failedRequest[kv]; ok {
 							earliestReturnTime[kv] = resp.Time.Nanoseconds()
+						} else {
+							if t, ok := earliestReturnTime[kv]; !ok || t > resp.Time.Nanoseconds() {
+								earliestReturnTime[kv] = resp.Time.Nanoseconds()
+							}
 						}
 					case model.DeleteOperation:
 					default:
@@ -210,32 +220,6 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 		}
 	}
 
-	for i := len(persistedRequests) - 1; i >= 0; i-- {
-		request := persistedRequests[i]
-		switch request.Type {
-		case model.Txn:
-			lastReturnTime--
-			for _, op := range request.Txn.OperationsOnSuccess {
-				if op.Type != model.PutOperation {
-					continue
-				}
-				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
-				if count := clientPutCount[kv]; count > 1 {
-					continue
-				}
-				returnTime, ok := earliestReturnTime[kv]
-				if ok {
-					lastReturnTime = min(returnTime, lastReturnTime)
-					earliestReturnTime[kv] = lastReturnTime
-				}
-			}
-		case model.LeaseGrant:
-		case model.LeaseRevoke:
-		case model.Compact:
-		default:
-			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
-		}
-	}
 	return earliestReturnTime
 }
 
