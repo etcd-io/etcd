@@ -109,13 +109,9 @@ func TestInPlaceRecovery(t *testing.T) {
 		e2e.WithCorruptCheckTime(time.Second),
 		e2e.WithBasePort(basePort),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster")
 	t.Cleanup(func() {
-		if errC := epcOld.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epcOld.Close(), "error closing etcd processes")
 	})
 	t.Log("old cluster started.")
 
@@ -138,13 +134,9 @@ func TestInPlaceRecovery(t *testing.T) {
 		e2e.WithInitialCorruptCheck(true),
 	)
 	epcNew, err := e2e.InitEtcdProcessCluster(t, epcNewConfig)
-	if err != nil {
-		t.Fatalf("could not init etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not init etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epcNew.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epcNew.Close(), "error closing etcd processes")
 	})
 
 	newCc, err := e2e.NewEtcdctl(epcNew.Cfg.Client, epcNew.EndpointsGRPC())
@@ -155,20 +147,14 @@ func TestInPlaceRecovery(t *testing.T) {
 	t.Log("rolling updating servers in place...")
 	for i := range epcNew.Procs {
 		oldProc := epcOld.Procs[i]
-		err = oldProc.Close()
-		if err != nil {
-			t.Fatalf("could not stop etcd process (%v)", err)
-		}
+		require.NoErrorf(t, oldProc.Close(), "could not stop etcd process")
 		t.Logf("old cluster server %d: %s stopped.", i, oldProc.Config().Name)
 		wg.Add(1)
 		// Start servers in background to avoid blocking on server start.
 		// EtcdProcess.Start waits until etcd becomes healthy, which will not happen here until we restart at least 2 members.
 		go func(proc e2e.EtcdProcess) {
 			defer wg.Done()
-			err = proc.Start(ctx)
-			if err != nil {
-				t.Errorf("could not start etcd process (%v)", err)
-			}
+			assert.NoErrorf(t, proc.Start(ctx), "could not start etcd process")
 			t.Logf("new cluster server: %s started in-place with blank db.", proc.Config().Name)
 		}(epcNew.Procs[i])
 		t.Log("sleeping 5 sec to let nodes do periodical check...")
@@ -180,9 +166,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	alarmResponse, err := newCc.AlarmList(ctx)
 	require.NoErrorf(t, err, "error on alarm list")
 	for _, alarm := range alarmResponse.Alarms {
-		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
-			t.Fatalf("there is no corruption after in-place recovery, but corruption reported.")
-		}
+		require.NotEqualf(t, etcdserverpb.AlarmType_CORRUPT, alarm.Alarm, "there is no corruption after in-place recovery, but corruption reported.")
 	}
 	t.Log("no corruption detected.")
 }
@@ -210,13 +194,9 @@ func testPeriodicCheckDetectsCorruption(t *testing.T, useExperimentalFlag bool) 
 		e2e.WithKeepDataDir(true),
 		corruptCheckTime,
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 
 	cc := epc.Etcdctl()
@@ -261,13 +241,9 @@ func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 		opts = append(opts, e2e.WithCompactHashCheckEnabled(true))
 	}
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t, opts...)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 
 	cc := epc.Etcdctl()
@@ -351,9 +327,7 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 
 	// Put 10 identical keys to the cluster, so that the compaction will drop some stale values.
@@ -389,9 +363,7 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 	alarmResponse, err := cc.AlarmList(ctx)
 	require.NoErrorf(t, err, "error on alarm list")
 	for _, alarm := range alarmResponse.Alarms {
-		if alarm.Alarm == etcdserverpb.AlarmType_CORRUPT {
-			t.Fatal("there should be no corruption after resuming the compaction, but corruption detected")
-		}
+		require.NotEqualf(t, etcdserverpb.AlarmType_CORRUPT, alarm.Alarm, "there should be no corruption after resuming the compaction, but corruption detected")
 	}
 	t.Log("no corruption detected.")
 }
