@@ -3,9 +3,20 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 <hr>
 
-## v3.5.20 (TBC)
+## v3.5.21 (TBC)
+
+<hr>
+
+## v3.5.20 (2025-03-21)
+
+### etcd server
+
+- Fix [grpcproxy can get stuck in and endless loop causing high CPU usage](https://github.com/etcd-io/etcd/pull/19562)
+- Fix [the learner promotion changes not being persisted into v3store (bbolt)](https://github.com/etcd-io/etcd/pull/19563)
+- Update [the RLock in Demoted method for read-only access to expiry](https://github.com/etcd-io/etcd/pull/19445)
 
 ### etcdctl
+
 - Fix [command `etcdctl member promote` doesn't support json output](https://github.com/etcd-io/etcd/pull/19602)
 
 <hr>
