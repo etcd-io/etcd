@@ -15,6 +15,7 @@
 package e2e
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -29,6 +30,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -59,7 +61,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	var err error
 	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
-			t.Logf("etcdctl downgrade cancel")
+			t.Log("etcdctl downgrade cancel")
 			err = c.DowngradeCancel(t.Context())
 			if err != nil {
 				if strings.Contains(err.Error(), "no inflight downgrade job") {
@@ -73,7 +75,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 				continue
 			}
 
-			t.Logf("etcdctl downgrade cancel executed successfully")
+			t.Log("etcdctl downgrade cancel executed successfully")
 			break
 		}
 	})
@@ -172,6 +174,23 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 
 	t.Log("Waiting health interval to make sure the leader propagates version to new processes")
 	time.Sleep(etcdserver.HealthInterval)
+
+	if opString == "downgrading" && len(membersToChange) == len(clus.Procs) {
+		noError := false
+		var err error
+		for i := 0; i < 3 && !noError; i++ {
+			testutils.ExecuteWithTimeout(t, 15*time.Second, func() {
+				lg.Info("Waiting for downgrade completion log line")
+				leader := clus.WaitLeader(t)
+				_, err = clus.Procs[leader].Logs().ExpectWithContext(context.Background(), expect.ExpectedResponse{Value: "the cluster has been downgraded"})
+				if err == nil {
+					noError = true
+				}
+			})
+		}
+
+		require.NoError(t, err)
+	}
 
 	lg.Info("Validating versions")
 	clusterVersion := targetVersion
