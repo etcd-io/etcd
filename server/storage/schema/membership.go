@@ -37,6 +37,9 @@ type membershipBackend struct {
 	be backend.Backend
 }
 
+// NewMembershipBackend returns a new membership backend
+// Refer to https://github.com/etcd-io/etcd/pull/19343#discussion_r1958056718
+// revive:disable-next-line:unexported-return
 func NewMembershipBackend(lg *zap.Logger, be backend.Backend) *membershipBackend {
 	return &membershipBackend{
 		lg: lg,
