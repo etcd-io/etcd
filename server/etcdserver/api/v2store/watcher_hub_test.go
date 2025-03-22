@@ -14,7 +14,11 @@
 
 package v2store
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 // TestIsHidden tests isHidden functions.
 func TestIsHidden(t *testing.T) {
@@ -24,41 +28,31 @@ func TestIsHidden(t *testing.T) {
 	watch := "/"
 	key := "/_foo"
 	hidden := isHidden(watch, key)
-	if !hidden {
-		t.Fatalf("%v should be hidden to %v\n", key, watch)
-	}
+	require.Truef(t, hidden, "%v should be hidden to %v\n", key, watch)
 
 	// watch at "/_foo"
 	// key is "/_foo", not hidden to "/_foo"
 	// expected: hidden = false
 	watch = "/_foo"
 	hidden = isHidden(watch, key)
-	if hidden {
-		t.Fatalf("%v should not be hidden to %v\n", key, watch)
-	}
+	require.Falsef(t, hidden, "%v should not be hidden to %v\n", key, watch)
 
 	// watch at "/_foo/"
 	// key is "/_foo/foo", not hidden to "/_foo"
 	key = "/_foo/foo"
 	hidden = isHidden(watch, key)
-	if hidden {
-		t.Fatalf("%v should not be hidden to %v\n", key, watch)
-	}
+	require.Falsef(t, hidden, "%v should not be hidden to %v\n", key, watch)
 
 	// watch at "/_foo/"
 	// key is "/_foo/_foo", hidden to "/_foo"
 	key = "/_foo/_foo"
 	hidden = isHidden(watch, key)
-	if !hidden {
-		t.Fatalf("%v should be hidden to %v\n", key, watch)
-	}
+	require.Truef(t, hidden, "%v should be hidden to %v\n", key, watch)
 
 	// watch at "/_foo/foo"
 	// key is "/_foo"
 	watch = "_foo/foo"
 	key = "/_foo/"
 	hidden = isHidden(watch, key)
-	if hidden {
-		t.Fatalf("%v should not be hidden to %v\n", key, watch)
-	}
+	require.Falsef(t, hidden, "%v should not be hidden to %v\n", key, watch)
 }

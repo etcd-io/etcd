@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestHeapPushPop(t *testing.T) {
@@ -36,9 +38,7 @@ func TestHeapPushPop(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		node := h.pop()
-		if node.ExpireTime.Before(min) {
-			t.Fatal("heap sort wrong!")
-		}
+		require.Falsef(t, node.ExpireTime.Before(min), "heap sort wrong!")
 		min = node.ExpireTime
 	}
 }
@@ -71,21 +71,15 @@ func TestHeapUpdate(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		node := h.pop()
-		if node.ExpireTime.Before(min) {
-			t.Fatal("heap sort wrong!")
-		}
+		require.Falsef(t, node.ExpireTime.Before(min), "heap sort wrong!")
 		min = node.ExpireTime
 
 		if i == 8 {
-			if node.Path != "7" {
-				t.Fatal("heap sort wrong!", node.Path)
-			}
+			require.Equalf(t, "7", node.Path, "heap sort wrong!")
 		}
 
 		if i == 9 {
-			if node.Path != "5" {
-				t.Fatal("heap sort wrong!")
-			}
+			require.Equalf(t, "5", node.Path, "heap sort wrong!")
 		}
 	}
 }
