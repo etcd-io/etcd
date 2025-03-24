@@ -34,11 +34,11 @@ import (
 
 const (
 	connPerPipeline = 4
-	// pipelineBufSize is the size of pipeline buffer, which helps hold the
+	// defaultPipelineBufSize is the default size of pipeline buffer, which helps hold the
 	// temporary network latency.
 	// The size ensures that pipeline does not drop messages when the network
 	// is out of work for less than 1 second in good path.
-	pipelineBufSize = 64
+	defaultPipelineBufSize = 64
 )
 
 var errStopped = errors.New("stopped")
@@ -62,7 +62,11 @@ type pipeline struct {
 
 func (p *pipeline) start() {
 	p.stopc = make(chan struct{})
-	p.msgc = make(chan raftpb.Message, pipelineBufSize)
+	bufSize := defaultPipelineBufSize
+	if p.tr != nil && p.tr.PipelineBufferSize > 0 {
+		bufSize = p.tr.PipelineBufferSize
+	}
+	p.msgc = make(chan raftpb.Message, bufSize)
 	p.wg.Add(connPerPipeline)
 	for i := 0; i < connPerPipeline; i++ {
 		go p.handle()
@@ -73,6 +77,7 @@ func (p *pipeline) start() {
 			"started HTTP pipelining with remote peer",
 			zap.String("local-member-id", p.tr.ID.String()),
 			zap.String("remote-peer-id", p.peerID.String()),
+			zap.Int("pipeline-buffer-size", bufSize),
 		)
 	}
 }

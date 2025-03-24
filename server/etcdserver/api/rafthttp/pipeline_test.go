@@ -76,7 +76,7 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 
 	// keep the sender busy and make the buffer full
 	// nothing can go out as we block the sender
-	for i := 0; i < connPerPipeline+pipelineBufSize; i++ {
+	for i := 0; i < connPerPipeline+defaultPipelineBufSize; i++ {
 		select {
 		case p.msgc <- raftpb.Message{}:
 		case <-time.After(time.Second):
@@ -84,7 +84,46 @@ func TestPipelineExceedMaximumServing(t *testing.T) {
 		}
 	}
 
-	// try to send a data when we are sure the buffer is full
+	// try to send data when we are sure the buffer is full
+	select {
+	case p.msgc <- raftpb.Message{}:
+		t.Errorf("unexpected message sendout")
+	default:
+	}
+
+	// unblock the senders and force them to send out the data
+	rt.unblock()
+
+	// It could send new data after previous ones succeed
+	select {
+	case p.msgc <- raftpb.Message{}:
+	case <-time.After(time.Second):
+		t.Errorf("failed to send out message")
+	}
+}
+
+func TestPipelineCustomBufferSize(t *testing.T) {
+	rt := newRoundTripperBlocker()
+	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
+	customBufSize := 128
+	tp := &Transport{
+		pipelineRt:         rt,
+		PipelineBufferSize: customBufSize,
+	}
+	p := startTestPipeline(t, tp, picker)
+	defer p.stop()
+
+	// keep the sender busy and make the buffer full
+	// nothing can go out as we block the sender
+	for i := 0; i < connPerPipeline+customBufSize; i++ {
+		select {
+		case p.msgc <- raftpb.Message{}:
+		case <-time.After(time.Second):
+			t.Errorf("failed to send out message")
+		}
+	}
+
+	// try to send data when we are sure the buffer is full
 	select {
 	case p.msgc <- raftpb.Message{}:
 		t.Errorf("unexpected message sendout")

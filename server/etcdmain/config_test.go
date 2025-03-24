@@ -1708,3 +1708,57 @@ func TestDistributedTracingFlagsMigration(t *testing.T) {
 		})
 	}
 }
+
+func TestConfigParsingPipelineBufferSize(t *testing.T) {
+	tests := []struct {
+		name         string
+		args         []string
+		expectedSize int
+		expectErr    bool
+	}{
+		{
+			name:         "default value",
+			args:         []string{},
+			expectedSize: 64,
+			expectErr:    false,
+		},
+		{
+			name:         "custom value",
+			args:         []string{"--pipeline-buffer-size=128"},
+			expectedSize: 128,
+			expectErr:    false,
+		},
+		{
+			name:         "zero value",
+			args:         []string{"--pipeline-buffer-size=0"},
+			expectedSize: 0,
+			expectErr:    true,
+		},
+		{
+			name:         "negative value",
+			args:         []string{"--pipeline-buffer-size=-1"},
+			expectedSize: 0,
+			expectErr:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := newConfig()
+			err := cfg.parse(tc.args)
+			if tc.expectErr {
+				if err == nil {
+					t.Error("expected error but got none")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+				return
+			}
+			if cfg.ec.PipelineBufferSize != tc.expectedSize {
+				t.Errorf("expected PipelineBufferSize=%d, got %d", tc.expectedSize, cfg.ec.PipelineBufferSize)
+			}
+		})
+	}
+}

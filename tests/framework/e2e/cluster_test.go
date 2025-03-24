@@ -175,6 +175,13 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
+			name:   "PipelineBufferSize",
+			config: NewConfig(WithPipelineBufferSize(128)),
+			expectArgsContain: []string{
+				"--pipeline-buffer-size=128",
+			},
+		},
+		{
 			name:   "PeerTLS",
 			config: NewConfig(WithIsPeerTLS(true)),
 			expectArgsContain: []string{
