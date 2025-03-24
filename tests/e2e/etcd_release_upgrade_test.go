@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -165,4 +166,60 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 	wg.Wait()
 
 	require.NoError(t, ctlV3Get(cx, []string{kvs[0].key}, []kv{kvs[0]}...))
+}
+
+func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
+	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
+	}
+
+	e2e.BeforeTest(t)
+
+	currentVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
+	require.NoErrorf(t, err, "failed to get version from binary")
+
+	lastClusterVersion, err := e2e.GetVersionFromBinary(e2e.BinPath.EtcdLastRelease)
+	require.NoErrorf(t, err, "failed to get version from last release binary")
+
+	clusterSize := 3
+
+	for _, tc := range []struct {
+		name     string
+		snapshot int
+	}{
+		{
+			name:     "create snapshot after promoted",
+			snapshot: 10,
+		},
+		{
+			name: "no snapshot after promoted",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			epc, _ := mustCreateNewClusterByPromotingMembers(t, e2e.LastVersion, clusterSize,
+				e2e.WithSnapshotCount(uint64(tc.snapshot)))
+			defer func() {
+				require.NoError(t, epc.Close())
+			}()
+
+			for i := 0; i < tc.snapshot; i++ {
+				err = epc.Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+			}
+
+			err = e2e.DowngradeUpgradeMembers(t, nil, epc, clusterSize, false, lastClusterVersion, currentVersion)
+			require.NoError(t, err)
+
+			t.Logf("Checking all members' status after upgrading")
+			ensureAllMembersAreVotingMembers(t, epc)
+
+			t.Logf("Checking all members are ready to serve client requests")
+			for i := 0; i < clusterSize; i++ {
+				err = epc.Procs[i].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{})
+				require.NoError(t, err)
+			}
+		})
+	}
 }
