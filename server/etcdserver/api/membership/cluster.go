@@ -524,23 +524,69 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		isLearner.Set(0)
 	}
 
-	if c.be != nil && shouldApplyV3 {
-		c.members[id].RaftAttributes.IsLearner = false
-		c.updateMembershipMetric(id, true)
-		c.be.MustSaveMemberToBackend(c.members[id])
+	if c.be != nil {
+		m := c.members[id]
+		if shouldApplyV3 {
+			m.RaftAttributes.IsLearner = false
+			c.updateMembershipMetric(id, true)
+			c.be.MustSaveMemberToBackend(m)
 
-		c.lg.Info(
-			"promote member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("promoted-member-id", id.String()),
-		)
+			c.lg.Info(
+				"promote member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("promoted-member-id", id.String()),
+			)
+		} else {
+			// Workaround the issues which have already been affected by
+			// https://github.com/etcd-io/etcd/issues/19557. The learner
+			// promotion request had been applied to v3store, but not saved
+			// to v2snapshot yet when in 3.5. Once upgrading to 3.6, the
+			// patch here ensure the issue can be automatically fixed.
+			if m.IsLearner {
+				m.RaftAttributes.IsLearner = false
+				c.lg.Info("Forcibly apply member promotion request", zap.String("member", fmt.Sprintf("%+v", *m)))
+				c.be.MustHackySaveMemberToBackend(m)
+			} else {
+				c.lg.Info(
+					"ignore already promoted member",
+					zap.String("cluster-id", c.cid.String()),
+					zap.String("local-member-id", c.localID.String()),
+				)
+			}
+		}
 	} else {
 		c.lg.Info(
-			"ignore already promoted member",
+			"ignore already promoted member due to backend being nil",
 			zap.String("cluster-id", c.cid.String()),
 			zap.String("local-member-id", c.localID.String()),
 		)
+	}
+}
+
+// SyncLearnerPromotionIfNeeded provides a workaround solution to fix the issues
+// which have already been affected by https://github.com/etcd-io/etcd/issues/19557.
+func (c *RaftCluster) SyncLearnerPromotionIfNeeded() {
+	c.Lock()
+	defer c.Unlock()
+
+	v2Members, _ := membersFromStore(c.lg, c.v2store)
+	v3Members, _ := c.be.MustReadMembersFromBackend()
+
+	for id, v3Member := range v3Members {
+		v2Member, ok := v2Members[id]
+		if !ok {
+			// This isn't an error. The conf change on the member hasn't been saved to the v2 snapshot yet.
+			c.lg.Info("Detected member only in v3store but missing in v2store", zap.String("member", fmt.Sprintf("%+v", *v3Member)))
+			continue
+		}
+
+		if !v2Member.IsLearner && v3Member.IsLearner {
+			syncedV3Member := v3Member.Clone()
+			syncedV3Member.IsLearner = false
+			c.lg.Warn("Syncing member in v3store", zap.String("member", fmt.Sprintf("%+v", *syncedV3Member)))
+			c.be.MustHackySaveMemberToBackend(syncedV3Member)
+		}
 	}
 }
 
