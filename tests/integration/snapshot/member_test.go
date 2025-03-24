@@ -93,9 +93,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	mresp, err := cli2.MemberList(ctx)
 	cancel()
 	require.NoError(t, err)
-	if len(mresp.Members) != 4 {
-		t.Fatalf("expected 4 members, got %+v", mresp)
-	}
+	require.Lenf(t, mresp.Members, 4, "expected 4 members, got %+v", mresp)
 
 	// make sure restored cluster has kept all data on recovery
 	var gresp *clientv3.GetResponse
@@ -104,11 +102,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	cancel()
 	require.NoError(t, err)
 	for i := range gresp.Kvs {
-		if string(gresp.Kvs[i].Key) != kvs[i].k {
-			t.Fatalf("#%d: key expected %s, got %s", i, kvs[i].k, gresp.Kvs[i].Key)
-		}
-		if string(gresp.Kvs[i].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[i].Value)
-		}
+		require.Equalf(t, string(gresp.Kvs[i].Key), kvs[i].k, "#%d: key expected %s, got %s", i, kvs[i].k, gresp.Kvs[i].Key)
+		require.Equalf(t, string(gresp.Kvs[i].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[i].Value)
 	}
 }

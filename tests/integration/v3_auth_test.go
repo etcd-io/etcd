@@ -44,9 +44,7 @@ func TestV3AuthEmptyUserGet(t *testing.T) {
 	authSetupRoot(t, api.Auth)
 
 	_, err := api.KV.Range(ctx, &pb.RangeRequest{Key: []byte("abc")})
-	if !eqErrGRPC(err, rpctypes.ErrUserEmpty) {
-		t.Fatalf("got %v, expected %v", err, rpctypes.ErrUserEmpty)
-	}
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrUserEmpty), "got %v, expected %v", err, rpctypes.ErrUserEmpty)
 }
 
 // TestV3AuthEmptyUserPut ensures that a put with an empty user will return an empty user error,
@@ -70,9 +68,7 @@ func TestV3AuthEmptyUserPut(t *testing.T) {
 	// cluster terminating.
 	for i := 0; i < 10; i++ {
 		_, err := api.KV.Put(ctx, &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-		if !eqErrGRPC(err, rpctypes.ErrUserEmpty) {
-			t.Fatalf("got %v, expected %v", err, rpctypes.ErrUserEmpty)
-		}
+		require.Truef(t, eqErrGRPC(err, rpctypes.ErrUserEmpty), "got %v, expected %v", err, rpctypes.ErrUserEmpty)
 	}
 }
 
@@ -124,9 +120,7 @@ func TestV3AuthRevision(t *testing.T) {
 	aresp, aerr := api.Auth.UserAdd(ctx, &pb.AuthUserAddRequest{Name: "root", Password: "123", Options: &authpb.UserAddOptions{NoPassword: false}})
 	cancel()
 	require.NoError(t, aerr)
-	if aresp.Header.Revision != rev {
-		t.Fatalf("revision expected %d, got %d", rev, aresp.Header.Revision)
-	}
+	require.Equalf(t, aresp.Header.Revision, rev, "revision expected %d, got %d", rev, aresp.Header.Revision)
 }
 
 // TestV3AuthWithLeaseRevokeWithRoot ensures that granted leases
@@ -333,16 +327,12 @@ func TestV3AuthNonAuthorizedRPCs(t *testing.T) {
 	key := "foo"
 	val := "bar"
 	_, err := nonAuthedKV.Put(context.TODO(), key, val)
-	if err != nil {
-		t.Fatalf("couldn't put key (%v)", err)
-	}
+	require.NoErrorf(t, err, "couldn't put key (%v)", err)
 
 	authSetupRoot(t, integration.ToGRPC(clus.Client(0)).Auth)
 
 	respput, err := nonAuthedKV.Put(context.TODO(), key, val)
-	if !eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty) {
-		t.Fatalf("could put key (%v), it should cause an error of permission denied", respput)
-	}
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty), "could put key (%v), it should cause an error of permission denied", respput)
 }
 
 func TestV3AuthOldRevConcurrent(t *testing.T) {
@@ -428,9 +418,7 @@ func TestV3AuthWatchErrorAndWatchId0(t *testing.T) {
 	require.Error(t, watchResponse.Err()) // permission denied
 
 	_, err := c.Put(ctx, "k1", "val")
-	if err != nil {
-		t.Fatalf("Unexpected error from Put: %v", err)
-	}
+	require.NoErrorf(t, err, "Unexpected error from Put: %v", err)
 
 	<-watchEndCh
 }

@@ -132,9 +132,7 @@ func getWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 		if resp == nil {
 			continue
 		}
-		if prevRev > resp.Header.Revision {
-			t.Fatalf("rev is less than previously observed revision, rev: %d, prevRev: %d", resp.Header.Revision, prevRev)
-		}
+		require.LessOrEqualf(t, prevRev, resp.Header.Revision, "rev is less than previously observed revision, rev: %d, prevRev: %d", resp.Header.Revision, prevRev)
 		prevRev = resp.Header.Revision
 	}
 }

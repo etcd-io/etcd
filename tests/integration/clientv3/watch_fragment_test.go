@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
@@ -87,9 +89,8 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 		}(i)
 	}
 	for i := 0; i < 10; i++ {
-		if err := <-errc; err != nil {
-			t.Fatalf("failed to put: %v", err)
-		}
+		err := <-errc
+		require.NoErrorf(t, err, "failed to put")
 	}
 
 	opts := []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(1)}
@@ -103,23 +104,15 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 	case ws := <-wch:
 		// without fragment, should exceed gRPC client receive limit
 		if !fragment && exceedRecvLimit {
-			if len(ws.Events) != 0 {
-				t.Fatalf("expected 0 events with watch fragmentation, got %d", len(ws.Events))
-			}
+			require.Emptyf(t, ws.Events, "expected 0 events with watch fragmentation")
 			exp := "code = ResourceExhausted desc = grpc: received message larger than max ("
-			if !strings.Contains(ws.Err().Error(), exp) {
-				t.Fatalf("expected 'ResourceExhausted' error, got %v", ws.Err())
-			}
+			require.Containsf(t, ws.Err().Error(), exp, "expected 'ResourceExhausted' error")
 			return
 		}
 
 		// still expect merged watch events
-		if len(ws.Events) != 10 {
-			t.Fatalf("expected 10 events with watch fragmentation, got %d", len(ws.Events))
-		}
-		if ws.Err() != nil {
-			t.Fatalf("unexpected error %v", ws.Err())
-		}
+		require.Lenf(t, ws.Events, 10, "expected 10 events with watch fragmentation")
+		require.NoErrorf(t, ws.Err(), "unexpected error")
 
 	case <-time.After(testutil.RequestTimeout):
 		t.Fatalf("took too long to receive events")

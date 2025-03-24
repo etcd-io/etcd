@@ -41,9 +41,7 @@ func TestLeaseNotFoundError(t *testing.T) {
 	kv := clus.RandClient()
 
 	_, err := kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(clientv3.LeaseID(500)))
-	if !errors.Is(err, rpctypes.ErrLeaseNotFound) {
-		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
-	}
+	require.ErrorIsf(t, err, rpctypes.ErrLeaseNotFound, "expected %v, got %v", rpctypes.ErrLeaseNotFound, err)
 }
 
 func TestLeaseGrant(t *testing.T) {
@@ -57,9 +55,7 @@ func TestLeaseGrant(t *testing.T) {
 	kv := clus.RandClient()
 
 	_, merr := lapi.Grant(context.Background(), clientv3.MaxLeaseTTL+1)
-	if !errors.Is(merr, rpctypes.ErrLeaseTTLTooLarge) {
-		t.Fatalf("err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
-	}
+	require.ErrorIsf(t, merr, rpctypes.ErrLeaseTTLTooLarge, "err = %v, want %v", merr, rpctypes.ErrLeaseTTLTooLarge)
 
 	resp, err := lapi.Grant(context.Background(), 10)
 	if err != nil {
@@ -67,9 +63,7 @@ func TestLeaseGrant(t *testing.T) {
 	}
 
 	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
-	if err != nil {
-		t.Fatalf("failed to create key with lease %v", err)
-	}
+	require.NoErrorf(t, err, "failed to create key with lease %v", err)
 }
 
 func TestLeaseRevoke(t *testing.T) {
@@ -93,9 +87,7 @@ func TestLeaseRevoke(t *testing.T) {
 	}
 
 	_, err = kv.Put(context.TODO(), "foo", "bar", clientv3.WithLease(resp.ID))
-	if !errors.Is(err, rpctypes.ErrLeaseNotFound) {
-		t.Fatalf("err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
-	}
+	require.ErrorIsf(t, err, rpctypes.ErrLeaseNotFound, "err = %v, want %v", err, rpctypes.ErrLeaseNotFound)
 }
 
 func TestLeaseKeepAliveOnce(t *testing.T) {
@@ -153,9 +145,7 @@ func TestLeaseKeepAlive(t *testing.T) {
 		t.Errorf("chan is closed, want not closed")
 	}
 
-	if kresp == nil {
-		t.Fatalf("unexpected null response")
-	}
+	require.NotNilf(t, kresp, "unexpected null response")
 
 	if kresp.ID != resp.ID {
 		t.Errorf("ID = %x, want %x", kresp.ID, resp.ID)
@@ -341,9 +331,7 @@ func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
 
 	// expect lease keepalive every 10-second
 	lresp, err := lapi.Grant(context.Background(), 30)
-	if err != nil {
-		t.Fatalf("failed to create lease %v", err)
-	}
+	require.NoErrorf(t, err, "failed to create lease %v", err)
 	id := lresp.ID
 
 	old := clientv3.LeaseResponseChSize
@@ -354,18 +342,14 @@ func TestLeaseKeepAliveFullResponseQueue(t *testing.T) {
 
 	// never fetch from response queue, and let it become full
 	_, err = lapi.KeepAlive(context.Background(), id)
-	if err != nil {
-		t.Fatalf("failed to keepalive lease %v", err)
-	}
+	require.NoErrorf(t, err, "failed to keepalive lease %v", err)
 
 	// TTL should not be refreshed after 3 seconds
 	// expect keepalive to be triggered after TTL/3
 	time.Sleep(3 * time.Second)
 
 	tr, terr := lapi.TimeToLive(context.Background(), id)
-	if terr != nil {
-		t.Fatalf("failed to get lease information %v", terr)
-	}
+	require.NoErrorf(t, terr, "failed to get lease information %v", terr)
 	if tr.TTL >= 29 {
 		t.Errorf("unexpected kept-alive lease TTL %d", tr.TTL)
 	}
@@ -423,9 +407,7 @@ func TestLeaseRevokeNewAfterClose(t *testing.T) {
 	case <-time.After(integration2.RequestWaitTimeout):
 		t.Fatal("le.Revoke took too long")
 	case errMsg := <-errMsgCh:
-		if errMsg != "" {
-			t.Fatalf("%v", errMsg)
-		}
+		require.Empty(t, errMsg)
 	}
 }
 
@@ -445,9 +427,7 @@ func TestLeaseKeepAliveCloseAfterDisconnectRevoke(t *testing.T) {
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
 	require.NoError(t, kerr)
 	kresp := <-rc
-	if kresp.ID != resp.ID {
-		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
-	}
+	require.Equalf(t, kresp.ID, resp.ID, "ID = %x, want %x", kresp.ID, resp.ID)
 
 	// keep client disconnected
 	clus.Members[0].Stop(t)
@@ -489,9 +469,7 @@ func TestLeaseKeepAliveInitTimeout(t *testing.T) {
 	require.NoError(t, kerr)
 	select {
 	case ka, ok := <-rc:
-		if ok {
-			t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
-		}
+		require.Falsef(t, ok, "unexpected keepalive %v, expected closed channel", ka)
 	case <-time.After(10 * time.Second):
 		t.Fatalf("keepalive channel did not close")
 	}
@@ -514,17 +492,14 @@ func TestLeaseKeepAliveTTLTimeout(t *testing.T) {
 	require.NoError(t, err)
 	rc, kerr := cli.KeepAlive(context.Background(), resp.ID)
 	require.NoError(t, kerr)
-	if kresp := <-rc; kresp.ID != resp.ID {
-		t.Fatalf("ID = %x, want %x", kresp.ID, resp.ID)
-	}
+	kresp := <-rc
+	require.Equalf(t, kresp.ID, resp.ID, "ID = %x, want %x", kresp.ID, resp.ID)
 
 	// keep client disconnected
 	clus.Members[0].Stop(t)
 	select {
 	case ka, ok := <-rc:
-		if ok {
-			t.Fatalf("unexpected keepalive %v, expected closed channel", ka)
-		}
+		require.Falsef(t, ok, "unexpected keepalive %v, expected closed channel", ka)
 	case <-time.After(10 * time.Second):
 		t.Fatalf("keepalive channel did not close")
 	}
@@ -559,12 +534,8 @@ func TestLeaseTimeToLive(t *testing.T) {
 
 	lresp, lerr := lapi.TimeToLive(context.Background(), resp.ID, clientv3.WithAttachedKeys())
 	require.NoError(t, lerr)
-	if lresp.ID != resp.ID {
-		t.Fatalf("leaseID expected %d, got %d", resp.ID, lresp.ID)
-	}
-	if lresp.GrantedTTL != int64(10) {
-		t.Fatalf("GrantedTTL expected %d, got %d", 10, lresp.GrantedTTL)
-	}
+	require.Equalf(t, lresp.ID, resp.ID, "leaseID expected %d, got %d", resp.ID, lresp.ID)
+	require.Equalf(t, int64(10), lresp.GrantedTTL, "GrantedTTL expected %d, got %d", 10, lresp.GrantedTTL)
 	if lresp.TTL == 0 || lresp.TTL > lresp.GrantedTTL {
 		t.Fatalf("unexpected TTL %d (granted %d)", lresp.TTL, lresp.GrantedTTL)
 	}
@@ -573,15 +544,11 @@ func TestLeaseTimeToLive(t *testing.T) {
 		ks[i] = string(lresp.Keys[i])
 	}
 	sort.Strings(ks)
-	if !reflect.DeepEqual(ks, keys) {
-		t.Fatalf("keys expected %v, got %v", keys, ks)
-	}
+	require.Truef(t, reflect.DeepEqual(ks, keys), "keys expected %v, got %v", keys, ks)
 
 	lresp, lerr = lapi.TimeToLive(context.Background(), resp.ID)
 	require.NoError(t, lerr)
-	if len(lresp.Keys) != 0 {
-		t.Fatalf("unexpected keys %+v", lresp.Keys)
-	}
+	require.Emptyf(t, lresp.Keys, "unexpected keys %+v", lresp.Keys)
 }
 
 func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
@@ -602,21 +569,11 @@ func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
 
 	lresp, err := cli.TimeToLive(context.Background(), resp.ID)
 	// TimeToLive() should return a response with TTL=-1.
-	if err != nil {
-		t.Fatalf("expected err to be nil")
-	}
-	if lresp == nil {
-		t.Fatalf("expected lresp not to be nil")
-	}
-	if lresp.ResponseHeader == nil {
-		t.Fatalf("expected ResponseHeader not to be nil")
-	}
-	if lresp.ID != resp.ID {
-		t.Fatalf("expected Lease ID %v, but got %v", resp.ID, lresp.ID)
-	}
-	if lresp.TTL != -1 {
-		t.Fatalf("expected TTL %v, but got %v", lresp.TTL, lresp.TTL)
-	}
+	require.NoErrorf(t, err, "expected err to be nil")
+	require.NotNilf(t, lresp, "expected lresp not to be nil")
+	require.NotNilf(t, lresp.ResponseHeader, "expected ResponseHeader not to be nil")
+	require.Equalf(t, lresp.ID, resp.ID, "expected Lease ID %v, but got %v", resp.ID, lresp.ID)
+	require.Equalf(t, lresp.TTL, int64(-1), "expected TTL %v, but got %v", lresp.TTL, lresp.TTL)
 }
 
 func TestLeaseLeases(t *testing.T) {
@@ -638,13 +595,9 @@ func TestLeaseLeases(t *testing.T) {
 
 	resp, err := cli.Leases(context.Background())
 	require.NoError(t, err)
-	if len(resp.Leases) != 5 {
-		t.Fatalf("len(resp.Leases) expected 5, got %d", len(resp.Leases))
-	}
+	require.Lenf(t, resp.Leases, 5, "len(resp.Leases) expected 5, got %d", len(resp.Leases))
 	for i := range resp.Leases {
-		if ids[i] != resp.Leases[i].ID {
-			t.Fatalf("#%d: lease ID expected %d, got %d", i, ids[i], resp.Leases[i].ID)
-		}
+		require.Equalf(t, ids[i], resp.Leases[i].ID, "#%d: lease ID expected %d, got %d", i, ids[i], resp.Leases[i].ID)
 	}
 }
 
@@ -686,9 +639,7 @@ func TestLeaseRenewLostQuorum(t *testing.T) {
 
 	select {
 	case _, ok := <-ka:
-		if !ok {
-			t.Fatalf("keepalive closed")
-		}
+		require.Truef(t, ok, "keepalive closed")
 	case <-time.After(time.Duration(r.TTL) * time.Second):
 		t.Fatalf("timed out waiting for keepalive")
 	}
@@ -710,9 +661,7 @@ func TestLeaseKeepAliveLoopExit(t *testing.T) {
 
 	_, err = cli.KeepAlive(ctx, resp.ID)
 	var keepAliveHaltedErr clientv3.ErrKeepAliveHalted
-	if !errors.As(err, &keepAliveHaltedErr) {
-		t.Fatalf("expected %T, got %v(%T)", clientv3.ErrKeepAliveHalted{}, err, err)
-	}
+	require.ErrorAsf(t, err, &keepAliveHaltedErr, "expected %T, got %v(%T)", clientv3.ErrKeepAliveHalted{}, err, err)
 }
 
 // TestV3LeaseFailureOverlap issues Grant and KeepAlive requests to a cluster
@@ -813,17 +762,13 @@ func TestLeaseWithRequireLeader(t *testing.T) {
 
 	select {
 	case resp, ok := <-kaReqLeader:
-		if ok {
-			t.Fatalf("expected closed require leader, got response %+v", resp)
-		}
+		require.Falsef(t, ok, "expected closed require leader, got response %+v", resp)
 	case <-time.After(5 * time.Second):
 		t.Fatal("keepalive with require leader took too long to close")
 	}
 	select {
 	case _, ok := <-kaWait:
-		if !ok {
-			t.Fatalf("got closed channel with no require leader, expected non-closed")
-		}
+		require.Truef(t, ok, "got closed channel with no require leader, expected non-closed")
 	case <-time.After(10 * time.Millisecond):
 		// wait some to detect any closes happening soon after kaReqLeader closing
 	}
