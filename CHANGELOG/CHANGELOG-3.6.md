@@ -10,6 +10,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.0-rc.3 (TBD)
 
+### etcd server
+
+- [Auto sync members in v3store for the issues which have already been affected by #19557](https://github.com/etcd-io/etcd/pull/19636).
+
+
 <hr>
 
 ## v3.6.0-rc.2 (2025-03-05)
