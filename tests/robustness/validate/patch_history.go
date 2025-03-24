@@ -16,6 +16,7 @@ package validate
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/anishathalye/porcupine"
 
@@ -214,7 +215,9 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 		request := persistedRequests[i]
 		switch request.Type {
 		case model.Txn:
-			lastReturnTime--
+			if lastReturnTime != math.MaxInt64 {
+				lastReturnTime--
+			}
 			for _, op := range request.Txn.OperationsOnSuccess {
 				if op.Type != model.PutOperation {
 					continue
