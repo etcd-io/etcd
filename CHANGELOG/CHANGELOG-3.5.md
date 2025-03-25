@@ -5,6 +5,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.21 (TBC)
 
+### Dependencies
+
+- Bump [github.com/golang-jwt/jwt/v4 from 4.5.1 to 4.5.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19646).
+
 <hr>
 
 ## v3.5.20 (2025-03-21)
