@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### etcd server
 
 - [Auto sync members in v3store for the issues which have already been affected by #19557](https://github.com/etcd-io/etcd/pull/19636).
+- [Move `client/internal/v2` into `server/internel/clientv2`](https://github.com/etcd-io/etcd/pull/19673).
 
 ### Dependencies
 
