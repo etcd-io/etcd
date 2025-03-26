@@ -42,14 +42,17 @@ type AppendableHistory struct {
 	streamID int
 	// If needed a new streamId is requested from idProvider.
 	idProvider identity.Provider
+	// lastOperation holds the last operation of each stream.
+	lastOperation map[int]*porcupine.Operation
 
 	History
 }
 
 func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	return &AppendableHistory{
-		streamID:   ids.NewStreamID(),
-		idProvider: ids,
+		streamID:      ids.NewStreamID(),
+		idProvider:    ids,
+		lastOperation: make(map[int]*porcupine.Operation),
 		History: History{
 			operations: []porcupine.Operation{},
 		},
@@ -305,8 +308,7 @@ func (h *AppendableHistory) append(op porcupine.Operation) {
 		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
 	}
 
-	if len(h.operations) > 0 && op.ClientId == h.operations[len(h.operations)-1].ClientId {
-		prev := h.operations[len(h.operations)-1]
+	if prev, ok := h.lastOperation[op.ClientId]; ok {
 		if op.Call <= prev.Call {
 			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", op.Call, prev.Call))
 		}
@@ -314,6 +316,8 @@ func (h *AppendableHistory) append(op porcupine.Operation) {
 			panic(fmt.Sprintf("Overlapping operations, new.call(%d) <= prev.return(%d)", op.Call, prev.Return))
 		}
 	}
+	h.lastOperation[op.ClientId] = &op
+
 	h.operations = append(h.operations, op)
 }
 
