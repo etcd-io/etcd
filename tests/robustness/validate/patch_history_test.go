@@ -405,13 +405,14 @@ func TestPatchHistory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			history := model.NewAppendableHistory(identity.NewIDProvider())
 			tc.historyFunc(history)
-			operations := patchLinearizableOperations([]report.ClientReport{
+			reports := []report.ClientReport{
 				{
 					ClientID: 0,
 					KeyValue: history.History.Operations(),
 					Watch:    tc.watchOperations,
 				},
-			}, tc.persistedRequest)
+			}
+			operations := patchLinearizableOperations(relevantOperations(patchFailedRequestWithInfiniteReturnTime(reports)), reports, tc.persistedRequest)
 			if diff := cmp.Diff(tc.expectedRemainingOperations, operations,
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(porcupine.Operation{}, "Input", "Call", "ClientId"),

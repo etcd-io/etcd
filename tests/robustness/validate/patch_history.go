@@ -24,28 +24,12 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
-	allOperations := relevantOperations(reports)
+func patchLinearizableOperations(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	putRevision := putRevision(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
-	putReturnTime := uniquePutReturnTime(allOperations, reports, persistedRequests, clientPutCount)
-	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
-}
-
-func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
-	var ops []porcupine.Operation
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			resp := op.Output.(model.MaybeEtcdResponse)
-			// Remove failed read requests as they are not relevant for linearization.
-			if resp.Error == "" || !request.IsRead() {
-				ops = append(ops, op)
-			}
-		}
-	}
-	return ops
+	putReturnTime := uniquePutReturnTime(operations, reports, persistedRequests, clientPutCount)
+	return patchOperations(operations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
 func putRevision(reports []report.ClientReport) map[keyValue]int64 {

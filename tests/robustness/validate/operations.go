@@ -24,7 +24,6 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 var (
@@ -86,19 +85,6 @@ func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Opera
 		}
 	}
 	return lastErr
-}
-
-func filterSerializableOperations(clients []report.ClientReport) []porcupine.Operation {
-	resp := []porcupine.Operation{}
-	for _, client := range clients {
-		for _, op := range client.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			if request.Type == model.Range && request.Range.Revision != 0 {
-				resp = append(resp, op)
-			}
-		}
-	}
-	return resp
 }
 
 func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) error {
