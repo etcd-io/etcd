@@ -24,11 +24,10 @@ function _cmd() {
   log_info "  - push_mod_tags    - Tags HEAD with all modules versions tags and pushes it to \${REMOTE_REPO}."
 }
 
-# update_module_version [v2version] [v3version]
+# update_module_version [v3version]
 #   Updates versions of cross-references in all internal references in current module.
 function update_module_version() {
   local v3version="${1}"
-  local v2version="${2}"
   local modules
   run go mod tidy
   modules=$(go mod edit -json | jq -r '.Require[] | select(.Indirect | not) | .Path')
@@ -36,11 +35,6 @@ function update_module_version() {
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
     run go mod edit -require "${dep}@${v3version}"
-  done
-
-  v2deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v2")
-  for dep in ${v2deps}; do
-    run go mod edit -require "${dep}@${v2version}"
   done
 
   run go mod tidy
@@ -61,18 +55,13 @@ function update_versions_cmd() {
   fi
 
   local v3version="${TARGET_VERSION}"
-  local v2version
-  # converts e.g. v3.5.0-alpha.0 --> v2.305.0-alpha.0
-  # shellcheck disable=SC2001
-  v2version="$(echo "${TARGET_VERSION}" | sed 's|^v3.\([0-9]*\).|v2.30\1.|g')"
 
   log_info "DRY_RUN       : ${DRY_RUN}"
   log_info "TARGET_VERSION: ${TARGET_VERSION}"
   log_info ""
   log_info "v3version: ${v3version}"
-  log_info "v2version: ${v2version}"
 
-  run_for_modules update_module_version "${v3version}" "${v2version}"
+  run_for_modules update_module_version "${v3version}"
   run_for_modules mod_tidy_fix || exit 2
 }
 
