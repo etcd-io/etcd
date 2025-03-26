@@ -7,7 +7,6 @@ toolchain go1.23.7
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
 	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
-	go.etcd.io/etcd/client/v2 => ./../client/internal/v2
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 	go.etcd.io/etcd/server/v3 => ../server
@@ -71,7 +70,6 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	go.etcd.io/etcd/client/v2 v2.306.0-rc.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.59.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect

@@ -28,7 +28,6 @@ require (
 	go.etcd.io/bbolt v1.4.0
 	go.etcd.io/etcd/api/v3 v3.6.0-rc.2
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.2
-	go.etcd.io/etcd/client/v2 v2.306.0-rc.2
 	go.etcd.io/etcd/client/v3 v3.6.0-rc.2
 	go.etcd.io/etcd/pkg/v3 v3.6.0-rc.2
 	go.etcd.io/raft/v3 v3.6.0
@@ -44,6 +43,7 @@ require (
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.5
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -76,13 +76,11 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	sigs.k8s.io/json v0.0.0-20211020170558-c049b76a60c6 // indirect
 )
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
 	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
-	go.etcd.io/etcd/client/v2 => ./../client/internal/v2
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/pkg/v3 => ../pkg
 )
