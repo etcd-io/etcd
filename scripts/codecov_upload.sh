@@ -10,7 +10,7 @@ curl -sf -o ./bin/codecov.sh https://codecov.io/bash
 
 bash ./bin/codecov.sh -f "${COVERDIR}/all.coverprofile" \
   -cF all \
-  -C "${PULL_PULL_SHA}" \
+  -C "${PULL_PULL_SHA:-${PULL_BASE_SHA}}" \
   -r "${REPO_OWNER}/${REPO_NAME}" \
   -P "${PULL_NUMBER}" \
   -b "${BUILD_ID}" \
