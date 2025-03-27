@@ -2,8 +2,6 @@ module go.etcd.io/etcd/v3
 
 go 1.24
 
-toolchain go1.24.1
-
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
 	go.etcd.io/etcd/client/pkg/v3 => ./client/pkg
@@ -74,7 +72,7 @@ require (
 	github.com/prometheus/client_golang v1.21.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.63.0 // indirect
-	github.com/prometheus/procfs v0.15.1 // indirect
+	github.com/prometheus/procfs v0.16.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
