@@ -412,8 +412,9 @@ func TestPatchHistory(t *testing.T) {
 					Watch:    tc.watchOperations,
 				},
 			}
-			operations := patchLinearizableOperations(relevantOperations(patchFailedRequestWithInfiniteReturnTime(reports)), reports, tc.persistedRequest)
-			if diff := cmp.Diff(tc.expectedRemainingOperations, operations,
+			operations, _ := prepareAndCategorizeOperations(reports)
+			patched := patchLinearizableOperations(operations, reports, tc.persistedRequest)
+			if diff := cmp.Diff(tc.expectedRemainingOperations, patched,
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(porcupine.Operation{}, "Input", "Call", "ClientId"),
 			); diff != "" {

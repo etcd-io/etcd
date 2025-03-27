@@ -62,47 +62,27 @@ type Config struct {
 	ExpectRevisionUnique bool
 }
 
-func prepareAndCategorizeOperations(reports []report.ClientReport) ([]porcupine.Operation, []porcupine.Operation) {
-	patchedOperations := patchFailedRequestWithInfiniteReturnTime(reports)
-	return relevantOperations(patchedOperations), filterSerializableOperations(patchedOperations)
-}
-
-func relevantOperations(operations []porcupine.Operation) []porcupine.Operation {
-	var ops []porcupine.Operation
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		resp := op.Output.(model.MaybeEtcdResponse)
-		// Remove failed read requests as they are not relevant for linearization.
-		if resp.Error == "" || !request.IsRead() {
-			ops = append(ops, op)
-		}
-	}
-	return ops
-}
-
-func filterSerializableOperations(operations []porcupine.Operation) []porcupine.Operation {
-	resp := []porcupine.Operation{}
-	for _, op := range operations {
-		request := op.Input.(model.EtcdRequest)
-		if request.Type == model.Range && request.Range.Revision != 0 {
-			resp = append(resp, op)
-		}
-	}
-	return resp
-}
-
-func patchFailedRequestWithInfiniteReturnTime(reports []report.ClientReport) []porcupine.Operation {
-	operations := make([]porcupine.Operation, 0)
+func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable []porcupine.Operation, serializable []porcupine.Operation) {
 	for _, report := range reports {
-		for _, operation := range report.KeyValue {
-			// Failed writes can still be persisted, setting to infinite for now as we don't know when request has taken effect.
-			if operation.Output.(model.MaybeEtcdResponse).Error != "" {
-				operation.Return = math.MaxInt64
+		for _, op := range report.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			response := op.Output.(model.MaybeEtcdResponse)
+			// serializable operations include only Range requests on non-zero revision
+			if request.Type == model.Range && request.Range.Revision != 0 {
+				serializable = append(serializable, op)
 			}
-			operations = append(operations, operation)
+			// Remove failed read requests as they are not relevant for linearization.
+			if response.Error == "" || !request.IsRead() {
+				// For linearization, we set the return time of failed requests to MaxInt64.
+				// Failed requests can still be persisted, however we don't know when request has taken effect.
+				if response.Error != "" {
+					op.Return = math.MaxInt64
+				}
+				linearizable = append(linearizable, op)
+			}
 		}
 	}
-	return operations
+	return linearizable, serializable
 }
 
 func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
