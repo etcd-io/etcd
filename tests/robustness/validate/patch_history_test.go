@@ -65,7 +65,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put remains if there is a matching event, return time untouched",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPut("key", "value", 100, infinite, nil, errors.New("failed"))
+				h.AppendPut("key", "value", 100, 200, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
@@ -77,7 +77,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put remains if there is a matching event, uniqueness allows for return time to be based on next persisted request",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPut("key1", "value", 100, infinite, nil, errors.New("failed"))
+				h.AppendPut("key1", "value", 100, 200, nil, errors.New("failed"))
 				h.AppendPut("key2", "value", 300, 400, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -92,7 +92,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put remains if there is a matching persisted request, uniqueness allows for revision and return time to be based on watch",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPut("key", "value", 100, infinite, nil, errors.New("failed"))
+				h.AppendPut("key", "value", 100, 200, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
@@ -122,7 +122,7 @@ func TestPatchHistory(t *testing.T) {
 			name: "failed put is dropped if event has different key",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key2", "value", 100, 200, &clientv3.PutResponse{}, nil)
-				h.AppendPut("key1", "value", 300, infinite, nil, errors.New("failed"))
+				h.AppendPut("key1", "value", 300, 400, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key2", "value"),
@@ -135,7 +135,7 @@ func TestPatchHistory(t *testing.T) {
 			name: "failed put is dropped if event has different value",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key", "value2", 100, 200, &clientv3.PutResponse{}, nil)
-				h.AppendPut("key", "value1", 300, infinite, nil, errors.New("failed"))
+				h.AppendPut("key", "value1", 300, 400, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value2"),
@@ -147,7 +147,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put with lease remains if there is a matching event, return time untouched",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPutWithLease("key", "value", 123, 100, infinite, nil, errors.New("failed"))
+				h.AppendPutWithLease("key", "value", 123, 100, 200, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequestWithLease("key", "value", 123),
@@ -159,7 +159,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put with lease remains if there is a matching event, uniqueness allows return time to be based on next persisted request",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPutWithLease("key1", "value", 123, 100, infinite, nil, errors.New("failed"))
+				h.AppendPutWithLease("key1", "value", 123, 100, 200, nil, errors.New("failed"))
 				h.AppendPutWithLease("key2", "value", 234, 300, 400, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -203,14 +203,14 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPut("key", "value", 100, infinite, nil, errors.New("failed"))
+				h.AppendPut("key", "value", 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed put with lease is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPutWithLease("key", "value", 123, 100, infinite, nil, errors.New("failed"))
+				h.AppendPutWithLease("key", "value", 123, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
@@ -226,7 +226,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed delete remains, time untouched regardless of persisted event and watch",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendDelete("key", 100, infinite, nil, errors.New("failed"))
+				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
 				h.AppendPut("key", "value", 300, 400, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -241,21 +241,21 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed empty txn is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed txn put is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed txn put remains if there is a matching event",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
@@ -267,7 +267,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn delete remains",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
@@ -285,7 +285,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn put/delete remains",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{clientv3.OpDelete("key")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{clientv3.OpDelete("key")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
@@ -294,7 +294,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn delete/put remains",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
@@ -303,14 +303,14 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn empty/put is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed txn empty/put remains if there is a matching event",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			persistedRequest: []model.EtcdRequest{
 				putRequest("key", "value"),
@@ -322,7 +322,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed put remains if there is a matching persisted request, uniqueness of this operation and following operation allows patching based on following operation",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendPut("key1", "value1", 300, infinite, nil, errors.New("failed"))
+				h.AppendPut("key1", "value1", 300, 400, nil, errors.New("failed"))
 				h.AppendPut("key2", "value2", 500, 600, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -338,7 +338,7 @@ func TestPatchHistory(t *testing.T) {
 			name: "failed put remains if there is a matching persisted request, lack of uniqueness of this operation prevents patching based on following operation",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key1", "value1", 100, 200, &clientv3.PutResponse{}, nil)
-				h.AppendPut("key1", "value1", 300, infinite, nil, errors.New("failed"))
+				h.AppendPut("key1", "value1", 300, 400, nil, errors.New("failed"))
 				h.AppendPut("key2", "value2", 500, 600, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -356,7 +356,7 @@ func TestPatchHistory(t *testing.T) {
 			name: "failed put remains if there is a matching persisted request, lack of uniqueness of following operation prevents patching based on following operation",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key2", "value2", 100, 200, &clientv3.PutResponse{}, nil)
-				h.AppendPut("key1", "value1", 300, infinite, nil, errors.New("failed"))
+				h.AppendPut("key1", "value1", 300, 400, nil, errors.New("failed"))
 				h.AppendPut("key2", "value2", 500, 600, &clientv3.PutResponse{}, nil)
 			},
 			persistedRequest: []model.EtcdRequest{
@@ -374,7 +374,7 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn empty/delete remains",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpDelete("key")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpDelete("key")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
@@ -383,21 +383,21 @@ func TestPatchHistory(t *testing.T) {
 		{
 			name: "failed txn put&delete is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed txn empty/put&delete is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{}, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
 		{
 			name: "failed txn put&delete/put&delete is dropped",
 			historyFunc: func(h *model.AppendableHistory) {
-				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value2"), clientv3.OpDelete("key")}, 100, infinite, nil, errors.New("failed"))
+				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value1"), clientv3.OpDelete("key")}, []clientv3.Op{clientv3.OpPut("key", "value2"), clientv3.OpDelete("key")}, 100, 200, nil, errors.New("failed"))
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
