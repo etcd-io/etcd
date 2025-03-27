@@ -16,7 +16,6 @@ package model
 
 import (
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -294,8 +293,6 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 	}
 	isRead := request.IsRead()
 	if !isRead {
-		// Failed writes can still be persisted, setting -1 for now as don't know when request has took effect.
-		op.Return = math.MaxInt64
 		// Operations of single client needs to be sequential.
 		// As we don't know return time of failed operations, all new writes need to be done with new stream id.
 		h.streamID = h.idProvider.NewStreamID()
@@ -304,7 +301,7 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 }
 
 func (h *AppendableHistory) append(op porcupine.Operation) {
-	if op.Return != math.MaxInt64 && op.Call >= op.Return {
+	if op.Call >= op.Return {
 		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
 	}
 

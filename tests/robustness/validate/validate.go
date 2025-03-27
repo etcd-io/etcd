@@ -17,6 +17,7 @@ package validate
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -31,10 +32,13 @@ import (
 func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Results {
 	err := checkValidationAssumptions(reports, persistedRequests)
 	require.NoErrorf(t, err, "Broken validation assumptions")
-	linearizableOperations := patchLinearizableOperations(reports, persistedRequests)
-	serializableOperations := filterSerializableOperations(reports)
+	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
+	// We are passing in the original reports and linearizableOperations with modified return time.
+	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
+	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
+	patchedLinearizableOperations := patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 
-	results := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	results := validateLinearizableOperationsAndVisualize(lg, patchedLinearizableOperations, timeout)
 	if results.Linearizable != porcupine.Ok {
 		t.Error("Failed linearization, skipping further validation")
 		return results
@@ -56,6 +60,49 @@ func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, report
 
 type Config struct {
 	ExpectRevisionUnique bool
+}
+
+func prepareAndCategorizeOperations(reports []report.ClientReport) ([]porcupine.Operation, []porcupine.Operation) {
+	patchedOperations := patchFailedRequestWithInfiniteReturnTime(reports)
+	return relevantOperations(patchedOperations), filterSerializableOperations(patchedOperations)
+}
+
+func relevantOperations(operations []porcupine.Operation) []porcupine.Operation {
+	var ops []porcupine.Operation
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		resp := op.Output.(model.MaybeEtcdResponse)
+		// Remove failed read requests as they are not relevant for linearization.
+		if resp.Error == "" || !request.IsRead() {
+			ops = append(ops, op)
+		}
+	}
+	return ops
+}
+
+func filterSerializableOperations(operations []porcupine.Operation) []porcupine.Operation {
+	resp := []porcupine.Operation{}
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		if request.Type == model.Range && request.Range.Revision != 0 {
+			resp = append(resp, op)
+		}
+	}
+	return resp
+}
+
+func patchFailedRequestWithInfiniteReturnTime(reports []report.ClientReport) []porcupine.Operation {
+	operations := make([]porcupine.Operation, 0)
+	for _, report := range reports {
+		for _, operation := range report.KeyValue {
+			// Failed writes can still be persisted, setting to infinite for now as we don't know when request has taken effect.
+			if operation.Output.(model.MaybeEtcdResponse).Error != "" {
+				operation.Return = math.MaxInt64
+			}
+			operations = append(operations, operation)
+		}
+	}
+	return operations
 }
 
 func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
