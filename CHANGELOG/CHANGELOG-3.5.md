@@ -3,11 +3,16 @@
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
 <hr>
 
-## v3.5.21 (TBC)
+## v3.5.22 (TBC)
+
+<hr>
+
+## v3.5.21 (2025-03-27)
 
 ### Dependencies
 
 - Bump [github.com/golang-jwt/jwt/v4 from 4.5.1 to 4.5.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19646).
+- Bump [bump golang.org/x/net from v0.36.0 to v0.38.0 to address CVE-2025-22870 and CVE-2025-22872](https://github.com/etcd-io/etcd/pull/19686).
 
 <hr>
 
@@ -15,13 +20,16 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### etcd server
 
-- Fix [grpcproxy can get stuck in and endless loop causing high CPU usage](https://github.com/etcd-io/etcd/pull/19562)
 - Fix [the learner promotion changes not being persisted into v3store (bbolt)](https://github.com/etcd-io/etcd/pull/19563)
 - Update [the RLock in Demoted method for read-only access to expiry](https://github.com/etcd-io/etcd/pull/19445)
 
 ### etcdctl
 
 - Fix [command `etcdctl member promote` doesn't support json output](https://github.com/etcd-io/etcd/pull/19602)
+
+### etcd grpc-proxy
+
+- Fix [grpcproxy can get stuck in and endless loop causing high CPU usage](https://github.com/etcd-io/etcd/pull/19562)
 
 <hr>
 

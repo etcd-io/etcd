@@ -8,16 +8,26 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 <hr>
 
-## v3.6.0-rc.3 (TBD)
+## v3.6.0-rc.4 (TBC)
+
+<hr>
+
+## v3.6.0-rc.3 (2025-03-27)
 
 ### etcd server
 
 - [Auto sync members in v3store for the issues which have already been affected by #19557](https://github.com/etcd-io/etcd/pull/19636).
 - [Move `client/internal/v2` into `server/internel/clientv2`](https://github.com/etcd-io/etcd/pull/19673).
+- [Replace ExperimentalMaxLearners with a Feature Gate](https://github.com/etcd-io/etcd/pull/19560).
+
+### etcd grpc-proxy
+
+- Fix [grpcproxy can get stuck in and endless loop causing high CPU usage](https://github.com/etcd-io/etcd/pull/19562)
 
 ### Dependencies
 
 - Bump [github.com/golang-jwt/jwt/v5 from 5.2.1 to 5.2.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19647).
+- Bump [bump golang.org/x/net from v0.37.0 to v0.38.0 to address CVE-2025-22872](https://github.com/etcd-io/etcd/pull/19687).
 
 <hr>
 
