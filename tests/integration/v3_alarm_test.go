@@ -297,9 +297,9 @@ func TestV3CorruptAlarmWithLeaseCorrupted(t *testing.T) {
 	// Revoke lease should remove key except the member with corruption
 	_, err = integration.ToGRPC(clus.Members[0].Client).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp.ID})
 	require.NoError(t, err)
-	resp0, err0 := clus.Members[1].Client.KV.Get(context.TODO(), "foo")
+	resp0, err0 := clus.Members[1].Client.Get(context.TODO(), "foo")
 	require.NoError(t, err0)
-	resp1, err1 := clus.Members[2].Client.KV.Get(context.TODO(), "foo")
+	resp1, err1 := clus.Members[2].Client.Get(context.TODO(), "foo")
 	require.NoError(t, err1)
 
 	require.NotEqualf(t, resp0.Header.Revision, resp1.Header.Revision, "matching Revision values")

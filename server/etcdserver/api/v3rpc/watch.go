@@ -498,7 +498,7 @@ func (sws *serverWatchStream) sendLoop() {
 			// track id creation
 			wid := mvcc.WatchID(c.WatchId)
 
-			verify.Assert(!(c.Canceled && c.Created) || wid == clientv3.InvalidWatchID, "unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true", wid, clientv3.InvalidWatchID)
+			verify.Assert((!c.Canceled || !c.Created) || wid == clientv3.InvalidWatchID, "unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true", wid, clientv3.InvalidWatchID)
 
 			if c.Canceled && wid != clientv3.InvalidWatchID {
 				delete(ids, wid)

@@ -45,7 +45,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 	err := DefragData(defragDataDir)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError,
-			fmt.Errorf("Failed to defragment etcd data[%s] (%w)", defragDataDir, err))
+			fmt.Errorf("failed to defragment etcd data[%s] (%w)", defragDataDir, err))
 	}
 }
 

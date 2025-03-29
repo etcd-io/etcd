@@ -48,7 +48,7 @@ func (kv *kvPrefix) Put(ctx context.Context, key, val string, opts ...clientv3.O
 }
 
 func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
+	if len(key) == 0 && (!clientv3.IsOptsWithFromKey(opts) && !clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
 	}
 	getOp := clientv3.OpGet(key, opts...)
@@ -65,7 +65,7 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 }
 
 func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
-	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
+	if len(key) == 0 && (!clientv3.IsOptsWithFromKey(opts) && !clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
 	}
 	r, err := kv.KV.Do(ctx, kv.prefixOp(clientv3.OpDelete(key, opts...)))

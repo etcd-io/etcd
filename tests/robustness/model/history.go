@@ -109,7 +109,7 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 	}
 	var revision int64
 	if resp != nil && resp.ResponseHeader != nil {
-		revision = resp.ResponseHeader.Revision
+		revision = resp.Revision
 	}
 	h.appendSuccessful(request, start, end, leaseGrantResponse(revision))
 }

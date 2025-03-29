@@ -102,12 +102,12 @@ func (tc hashTestCase) Delete(ctx context.Context, key string) error {
 }
 
 func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyValueHash, error) {
-	resp, err := tc.Client.HashKV(ctx, tc.url, rev)
+	resp, err := tc.HashKV(ctx, tc.url, rev)
 	return testutil.KeyValueHash{Hash: resp.Hash, CompactRevision: resp.CompactRevision, Revision: resp.Header.Revision}, err
 }
 
 func (tc hashTestCase) Defrag(ctx context.Context) error {
-	_, err := tc.Client.Defragment(ctx, tc.url)
+	_, err := tc.Defragment(ctx, tc.url)
 	return err
 }
 

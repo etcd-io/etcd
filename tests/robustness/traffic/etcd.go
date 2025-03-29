@@ -293,7 +293,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 			resp, err = c.client.LeaseGrant(opCtx, c.leaseTTL)
 			if resp != nil {
 				leaseID = int64(resp.ID)
-				rev = resp.ResponseHeader.Revision
+				rev = resp.Revision
 			}
 			if err == nil {
 				c.leaseStorage.AddLeaseID(c.client.ID, leaseID)

@@ -222,7 +222,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		tw.storeTxnCommon.s.lg.Fatal(
+		tw.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
 			zap.Error(err),
 		)
@@ -245,7 +245,7 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 		}
 		err = tw.s.le.Detach(oldLease, []lease.LeaseItem{{Key: string(key)}})
 		if err != nil {
-			tw.storeTxnCommon.s.lg.Error(
+			tw.s.lg.Error(
 				"failed to detach old lease from a key",
 				zap.Error(err),
 			)
@@ -287,7 +287,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 
 	d, err := kv.Marshal()
 	if err != nil {
-		tw.storeTxnCommon.s.lg.Fatal(
+		tw.s.lg.Fatal(
 			"failed to marshal mvccpb.KeyValue",
 			zap.Error(err),
 		)
@@ -296,7 +296,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
 	err = tw.s.kvindex.Tombstone(key, idxRev.Revision)
 	if err != nil {
-		tw.storeTxnCommon.s.lg.Fatal(
+		tw.s.lg.Fatal(
 			"failed to tombstone an existing key",
 			zap.String("key", string(key)),
 			zap.Error(err),
@@ -310,7 +310,7 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	if leaseID != lease.NoLease {
 		err = tw.s.le.Detach(leaseID, []lease.LeaseItem{item})
 		if err != nil {
-			tw.storeTxnCommon.s.lg.Error(
+			tw.s.lg.Error(
 				"failed to detach old lease from a key",
 				zap.Error(err),
 			)

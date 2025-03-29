@@ -45,7 +45,7 @@ var (
 		},
 		"indent": func(s string) string {
 			pad := strings.Repeat(" ", 2)
-			return pad + strings.Replace(s, "\n", "\n"+pad, -1)
+			return pad + strings.ReplaceAll(s, "\n", "\n"+pad)
 		},
 	}
 )

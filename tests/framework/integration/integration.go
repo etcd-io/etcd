@@ -110,7 +110,7 @@ func (m integrationMember) Client() intf.Client {
 }
 
 func (m integrationMember) Start(ctx context.Context) error {
-	return m.Member.Restart(m.t)
+	return m.Restart(m.t)
 }
 
 func (m integrationMember) Stop() {
@@ -210,7 +210,7 @@ func (c integrationClient) Compact(ctx context.Context, rev int64, o config.Comp
 }
 
 func (c integrationClient) Status(ctx context.Context) ([]*clientv3.StatusResponse, error) {
-	endpoints := c.Client.Endpoints()
+	endpoints := c.Endpoints()
 	var resp []*clientv3.StatusResponse
 	for _, ep := range endpoints {
 		status, err := c.Client.Status(ctx, ep)
@@ -223,7 +223,7 @@ func (c integrationClient) Status(ctx context.Context) ([]*clientv3.StatusRespon
 }
 
 func (c integrationClient) HashKV(ctx context.Context, rev int64) ([]*clientv3.HashKVResponse, error) {
-	endpoints := c.Client.Endpoints()
+	endpoints := c.Endpoints()
 	var resp []*clientv3.HashKVResponse
 	for _, ep := range endpoints {
 		hashKV, err := c.Client.HashKV(ctx, ep, rev)
@@ -236,7 +236,7 @@ func (c integrationClient) HashKV(ctx context.Context, rev int64) ([]*clientv3.H
 }
 
 func (c integrationClient) Health(ctx context.Context) error {
-	cli := healthpb.NewHealthClient(c.Client.ActiveConnection())
+	cli := healthpb.NewHealthClient(c.ActiveConnection())
 	resp, err := cli.Check(ctx, &healthpb.HealthCheckRequest{})
 	if err != nil {
 		return err
@@ -298,7 +298,7 @@ func (c integrationClient) AuthStatus(ctx context.Context) (*clientv3.AuthStatus
 }
 
 func (c integrationClient) UserAdd(ctx context.Context, name, password string, opts config.UserAddOptions) (*clientv3.AuthUserAddResponse, error) {
-	return c.Client.UserAddWithOptions(ctx, name, password, &clientv3.UserAddOptions{
+	return c.UserAddWithOptions(ctx, name, password, &clientv3.UserAddOptions{
 		NoPassword: opts.NoPassword,
 	})
 }
@@ -316,7 +316,7 @@ func (c integrationClient) UserDelete(ctx context.Context, name string) (*client
 }
 
 func (c integrationClient) UserChangePass(ctx context.Context, user, newPass string) error {
-	_, err := c.Client.UserChangePassword(ctx, user, newPass)
+	_, err := c.UserChangePassword(ctx, user, newPass)
 	return err
 }
 

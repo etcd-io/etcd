@@ -139,12 +139,12 @@ func (txr *txReadBuffer) ForEach(bucket Bucket, visitor func(k, v []byte) error)
 func (txr *txReadBuffer) unsafeCopy() txReadBuffer {
 	txrCopy := txReadBuffer{
 		txBuffer: txBuffer{
-			buckets: make(map[BucketID]*bucketBuffer, len(txr.txBuffer.buckets)),
+			buckets: make(map[BucketID]*bucketBuffer, len(txr.buckets)),
 		},
 		bufVersion: 0,
 	}
-	for bucketName, bucket := range txr.txBuffer.buckets {
-		txrCopy.txBuffer.buckets[bucketName] = bucket.CopyUsed()
+	for bucketName, bucket := range txr.buckets {
+		txrCopy.buckets[bucketName] = bucket.CopyUsed()
 	}
 	return txrCopy
 }

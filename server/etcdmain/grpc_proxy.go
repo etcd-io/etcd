@@ -472,7 +472,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 		client.KV = ordering.NewKV(client.KV, vf)
 		lg.Info("waiting for linearized read from cluster to recover ordering")
 		for {
-			_, err := client.KV.Get(context.TODO(), "_", clientv3.WithKeysOnly())
+			_, err := client.Get(context.TODO(), "_", clientv3.WithKeysOnly())
 			if err == nil {
 				break
 			}

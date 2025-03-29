@@ -57,7 +57,7 @@ func (kv *kvOrdering) Get(ctx context.Context, key string, opts ...clientv3.OpOp
 	prevRev := kv.getPrevRev()
 	op := clientv3.OpGet(key, opts...)
 	for {
-		r, err := kv.KV.Do(ctx, op)
+		r, err := kv.Do(ctx, op)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +132,7 @@ func (txn *txnOrdering) Commit() (*clientv3.TxnResponse, error) {
 	prevRev := txn.getPrevRev()
 	opTxn := clientv3.OpTxn(txn.cmps, txn.thenOps, txn.elseOps)
 	for {
-		opResp, err := txn.KV.Do(txn.ctx, opTxn)
+		opResp, err := txn.Do(txn.ctx, opTxn)
 		if err != nil {
 			return nil, err
 		}

@@ -588,7 +588,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 		// once serve, overwrite with 'http.Server.Shutdown'
 		peers[i].close = func(context.Context) error {
-			return peers[i].Listener.Close()
+			return peers[i].Close()
 		}
 	}
 	return peers, nil

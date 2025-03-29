@@ -95,8 +95,8 @@ func newWatchableStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg S
 		synced:   newWatcherGroup(),
 		stopc:    make(chan struct{}),
 	}
-	s.store.ReadView = &readView{s}
-	s.store.WriteView = &writeView{s}
+	s.ReadView = &readView{s}
+	s.WriteView = &writeView{s}
 	if s.le != nil {
 		// use this store as the deleter so revokes trigger watch events
 		s.le.SetRangeDeleter(func() lease.TxnDelete { return s.Write(traceutil.TODO()) })
@@ -132,9 +132,9 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 	s.mu.Lock()
 	s.revMu.RLock()
-	synced := startRev > s.store.currentRev || startRev == 0
+	synced := startRev > s.currentRev || startRev == 0
 	if synced {
-		wa.minRev = s.store.currentRev + 1
+		wa.minRev = s.currentRev + 1
 		if startRev > wa.minRev {
 			wa.minRev = startRev
 		}
@@ -303,8 +303,8 @@ func (s *watchableStore) moveVictims() (moved int) {
 
 		// assign completed victim watchers to unsync/sync
 		s.mu.Lock()
-		s.store.revMu.RLock()
-		curRev := s.store.currentRev
+		s.revMu.RLock()
+		curRev := s.currentRev
 		for w, eb := range wb {
 			if newVictim != nil && newVictim[w] != nil {
 				// couldn't send watch response; stays victim
@@ -321,7 +321,7 @@ func (s *watchableStore) moveVictims() (moved int) {
 				s.synced.add(w)
 			}
 		}
-		s.store.revMu.RUnlock()
+		s.revMu.RUnlock()
 		s.mu.Unlock()
 	}
 
@@ -347,17 +347,17 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 		return 0, []mvccpb.Event{}
 	}
 
-	s.store.revMu.RLock()
-	defer s.store.revMu.RUnlock()
+	s.revMu.RLock()
+	defer s.revMu.RUnlock()
 
 	// in order to find key-value pairs from unsynced watchers, we need to
 	// find min revision index, and these revisions can be used to
 	// query the backend store of key-value pairs
-	curRev := s.store.currentRev
-	compactionRev := s.store.compactMainRev
+	curRev := s.currentRev
+	compactionRev := s.compactMainRev
 
 	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
-	evs = rangeEventsWithReuse(s.store.lg, s.store.b, evs, minRev, curRev+1)
+	evs = rangeEventsWithReuse(s.lg, s.b, evs, minRev, curRev+1)
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
@@ -485,7 +485,7 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 	victim := make(watcherBatch)
 	for w, eb := range newWatcherBatch(&s.synced, evs) {
 		if eb.revs != 1 {
-			s.store.lg.Panic(
+			s.lg.Panic(
 				"unexpected multiple revisions in watch notification",
 				zap.Int("number-of-revisions", eb.revs),
 			)
@@ -518,7 +518,7 @@ func (s *watchableStore) addVictim(victim watcherBatch) {
 	}
 }
 
-func (s *watchableStore) rev() int64 { return s.store.Rev() }
+func (s *watchableStore) rev() int64 { return s.Rev() }
 
 func (s *watchableStore) progress(w *watcher) {
 	s.progressIfSync(map[WatchID]*watcher{w.id: w}, w.id)

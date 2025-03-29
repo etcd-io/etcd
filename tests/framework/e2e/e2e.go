@@ -105,7 +105,7 @@ func (c *e2eCluster) Endpoints() []string {
 }
 
 func (c *e2eCluster) Members() (ms []intf.Member) {
-	for _, proc := range c.EtcdProcessCluster.Procs {
+	for _, proc := range c.Procs {
 		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})
 	}
 	return ms

@@ -99,7 +99,7 @@ func (l *Lease) forever() {
 func (l *Lease) Demoted() bool {
 	l.expiryMu.RLock()
 	defer l.expiryMu.RUnlock()
-	return l.expiry == forever
+	return l.expiry.Equal(forever)
 }
 
 // Keys returns all the keys attached to the lease.

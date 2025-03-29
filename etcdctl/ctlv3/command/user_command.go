@@ -161,7 +161,7 @@ func userAddCommandFunc(cmd *cobra.Command, args []string) {
 		options.NoPassword = true
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserAddWithOptions(context.TODO(), user, password, options)
+	resp, err := mustClientFromCmd(cmd).UserAddWithOptions(context.TODO(), user, password, options)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -175,7 +175,7 @@ func userDeleteCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("user delete command requires user name as its argument"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserDelete(context.TODO(), args[0])
+	resp, err := mustClientFromCmd(cmd).UserDelete(context.TODO(), args[0])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -190,7 +190,7 @@ func userGetCommandFunc(cmd *cobra.Command, args []string) {
 
 	name := args[0]
 	client := mustClientFromCmd(cmd)
-	resp, err := client.Auth.UserGet(context.TODO(), name)
+	resp, err := client.UserGet(context.TODO(), name)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -199,7 +199,7 @@ func userGetCommandFunc(cmd *cobra.Command, args []string) {
 		fmt.Printf("User: %s\n", name)
 		for _, role := range resp.Roles {
 			fmt.Print("\n")
-			roleResp, err := client.Auth.RoleGet(context.TODO(), role)
+			roleResp, err := client.RoleGet(context.TODO(), role)
 			if err != nil {
 				cobrautl.ExitWithError(cobrautl.ExitError, err)
 			}
@@ -216,7 +216,7 @@ func userListCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("user list command requires no arguments"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserList(context.TODO())
+	resp, err := mustClientFromCmd(cmd).UserList(context.TODO())
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -238,7 +238,7 @@ func userChangePasswordCommandFunc(cmd *cobra.Command, args []string) {
 		password = readPasswordInteractive(args[0])
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserChangePassword(context.TODO(), args[0], password)
+	resp, err := mustClientFromCmd(cmd).UserChangePassword(context.TODO(), args[0], password)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -252,7 +252,7 @@ func userGrantRoleCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("user grant command requires user name and role name as its argument"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserGrantRole(context.TODO(), args[0], args[1])
+	resp, err := mustClientFromCmd(cmd).UserGrantRole(context.TODO(), args[0], args[1])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -266,7 +266,7 @@ func userRevokeRoleCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("user revoke-role requires user name and role name as its argument"))
 	}
 
-	resp, err := mustClientFromCmd(cmd).Auth.UserRevokeRole(context.TODO(), args[0], args[1])
+	resp, err := mustClientFromCmd(cmd).UserRevokeRole(context.TODO(), args[0], args[1])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}

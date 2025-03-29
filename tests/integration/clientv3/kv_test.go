@@ -590,7 +590,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(IsCanceled(err) || IsClientTimeout(err)) {
+	if err != nil && (!IsCanceled(err) && !IsClientTimeout(err)) {
 		t.Fatal(err)
 	}
 }
@@ -612,7 +612,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// grpc finds out the original connection is down due to the member shutdown.
 	_, err := cli.Get(ctx, "abc")
 	cancel()
-	if err != nil && !(IsCanceled(err) || IsClientTimeout(err)) {
+	if err != nil && (!IsCanceled(err) && !IsClientTimeout(err)) {
 		t.Fatal(err)
 	}
 
@@ -620,7 +620,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
-	if err != nil && !(IsCanceled(err) || IsClientTimeout(err) || IsUnavailable(err)) {
+	if err != nil && (!IsCanceled(err) && !IsClientTimeout(err) && !IsUnavailable(err)) {
 		t.Fatal(err)
 	}
 }

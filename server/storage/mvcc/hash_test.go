@@ -151,7 +151,7 @@ func (tc hashTestCase) Put(ctx context.Context, key, value string) error {
 }
 
 func (tc hashTestCase) Delete(ctx context.Context, key string) error {
-	tc.store.DeleteRange([]byte(key), nil)
+	tc.DeleteRange([]byte(key), nil)
 	return nil
 }
 
@@ -161,7 +161,7 @@ func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyVa
 }
 
 func (tc hashTestCase) Defrag(ctx context.Context) error {
-	return tc.store.b.Defrag()
+	return tc.b.Defrag()
 }
 
 func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {

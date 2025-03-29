@@ -232,9 +232,10 @@ func (f *featureGate) SetFromMap(m map[string]bool) error {
 			fn(known, enabled, v)
 		}
 
-		if featureSpec.PreRelease == Deprecated {
+		switch featureSpec.PreRelease {
+		case Deprecated:
 			f.lg.Warn(fmt.Sprintf("Setting deprecated feature gate %s=%t. It will be removed in a future release.", k, v))
-		} else if featureSpec.PreRelease == GA {
+		case GA:
 			f.lg.Warn(fmt.Sprintf("Setting GA feature gate %s=%t. It will be removed in a future release.", k, v))
 		}
 	}

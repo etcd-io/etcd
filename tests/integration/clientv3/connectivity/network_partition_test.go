@@ -172,7 +172,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	lead := clus.WaitLeader(t)
 
-	timeout := 3 * clus.Members[(lead+1)%2].ServerConfig.ReqTimeout()
+	timeout := 3 * clus.Members[(lead+1)%2].ReqTimeout()
 
 	cli, err := integration2.NewClient(t, clientv3.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},

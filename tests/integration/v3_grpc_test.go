@@ -1962,7 +1962,7 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 }
 
 func eqErrGRPC(err1 error, err2 error) bool {
-	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+	return (err1 != nil || err2 == nil) || err1.Error() == err2.Error()
 }
 
 // waitForRestart tries a range request until the client's server responds.

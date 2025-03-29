@@ -53,7 +53,7 @@ func authStatusCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	result, err := mustClientFromCmd(cmd).Auth.AuthStatus(ctx)
+	result, err := mustClientFromCmd(cmd).AuthStatus(ctx)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -115,7 +115,7 @@ func authDisableCommandFunc(cmd *cobra.Command, args []string) {
 	}
 
 	ctx, cancel := commandCtx(cmd)
-	_, err := mustClientFromCmd(cmd).Auth.AuthDisable(ctx)
+	_, err := mustClientFromCmd(cmd).AuthDisable(ctx)
 	cancel()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)

@@ -183,18 +183,18 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
-					newLeader := rd.SoftState.Lead != raft.None && rh.getLead() != rd.SoftState.Lead
+					newLeader := rd.Lead != raft.None && rh.getLead() != rd.Lead
 					if newLeader {
 						leaderChanges.Inc()
 					}
 
-					if rd.SoftState.Lead == raft.None {
+					if rd.Lead == raft.None {
 						hasLeader.Set(0)
 					} else {
 						hasLeader.Set(1)
 					}
 
-					rh.updateLead(rd.SoftState.Lead)
+					rh.updateLead(rd.Lead)
 					islead = rd.RaftState == raft.StateLeader
 					if islead {
 						isLeader.Set(1)
@@ -255,7 +255,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
-					proposalsCommitted.Set(float64(rd.HardState.Commit))
+					proposalsCommitted.Set(float64(rd.Commit))
 				}
 				// gofail: var raftAfterSave struct{}
 
