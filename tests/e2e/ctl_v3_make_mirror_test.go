@@ -87,15 +87,11 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 	}
 
 	mirrorepc, err := e2e.NewEtcdProcessCluster(context.TODO(), cx.t, e2e.WithConfig(&mirrorctx.cfg))
-	if err != nil {
-		cx.t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "could not start etcd process cluster (%v)", err)
 	mirrorctx.epc = mirrorepc
 
 	defer func() {
-		if err = mirrorctx.epc.Close(); err != nil {
-			cx.t.Fatalf("error closing etcd processes (%v)", err)
-		}
+		require.NoErrorf(cx.t, mirrorctx.epc.Close(), "error closing etcd processes")
 	}()
 
 	cmdArgs := append(cx.PrefixArgs(), "make-mirror")

@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -60,13 +62,9 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 		e2e.WithClientConnType(e2e.ClientTLS),
 		e2e.WithClientCertAuthority(true),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster")
 	defer func() {
-		if err := epc.Close(); err != nil {
-			t.Fatalf("could not close test cluster (%v)", err)
-		}
+		require.NoErrorf(t, epc.Close(), "could not close test cluster")
 	}()
 
 	epcClient := epc.Etcdctl()
@@ -74,9 +72,7 @@ func TestCtlV3AuthCertCNWithWithConcurrentOperation(t *testing.T) {
 	createUsers(ctx, t, epcClient)
 
 	t.Log("Enable auth")
-	if err := epcClient.AuthEnable(ctx); err != nil {
-		t.Fatalf("could not enable Auth: (%v)", err)
-	}
+	require.NoErrorf(t, epcClient.AuthEnable(ctx), "could not enable Auth")
 
 	// Create two goroutines, one goroutine keeps creating & deleting users,
 	// and the other goroutine keeps writing & deleting K/V entries.

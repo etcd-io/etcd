@@ -145,13 +145,9 @@ func TestEtctlutlMigrate(t *testing.T) {
 				// Set low SnapshotCount to ensure wal snapshot is done
 				e2e.WithSnapshotCount(1),
 			)
-			if err != nil {
-				t.Fatalf("could not start etcd process cluster (%v)", err)
-			}
+			require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 			defer func() {
-				if errC := epc.Close(); errC != nil {
-					t.Fatalf("error closing etcd processes (%v)", errC)
-				}
+				require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 			}()
 
 			dialTimeout := 10 * time.Second

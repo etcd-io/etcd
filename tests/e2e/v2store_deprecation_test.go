@@ -41,12 +41,11 @@ import (
 
 func writeCustomV2Data(t testing.TB, epc *e2e.EtcdProcessCluster, count int) {
 	for i := 0; i < count; i++ {
-		if err := e2e.CURLPut(epc, e2e.CURLReq{
+		err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
 			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)},
-		}); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
-		}
+		})
+		require.NoErrorf(t, err, "failed put with curl (%v)", err)
 	}
 }
 
@@ -248,7 +247,7 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 	require.NoError(t, err)
 	assert.NotEmpty(t, firstFiles)
 	assert.NotEmpty(t, secondFiles)
-	assert.Equal(t, len(firstFiles), len(secondFiles))
+	assert.Len(t, secondFiles, len(firstFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
