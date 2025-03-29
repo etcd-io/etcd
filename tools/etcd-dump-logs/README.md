@@ -53,6 +53,8 @@ Flags:
 	    IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke
   -start-index uint
     	The index to start dumping
+  -end-index uint
+      The index to stop dumping
   -start-snap string
     	The base name of snapshot file to start dumping
   -stream-decoder string
@@ -162,4 +164,23 @@ term	     index	type	data
   27	        34	norm	???
 Entry types () count is : 4
 ```
+
+####  etcd-dump-logs -start-index <INDEX NUMBER> -end-index <INDEX NUMBER> [data dir]
+
+Only shows WAL log entries from the specified start-index number (exclusively) to the specified end-index number (inclusively).
+
+```
+$ etcd-dump-logs -start-index 930 -end-index 932  /tmp/datadir
+Start dumping log entries from index 930.
+WAL metadata:
+nodeID=0 clusterID=0 term=5 commitIndex=2448 vote=0
+WAL entries: 2
+lastIndex=934
+term	     index	type	data
+   3	       931	norm	header:<ID:6577953459306661672 > put:<key:"key8" value:"924" >
+   3	       932	norm	header:<ID:62089223431686295 > put:<key:"key2" value:"925" >
+
+Entry types (Normal,ConfigChange) count is : 2
+```
+
 [decoder_correctoutputformat.sh]: ./testdecoder/decoder_correctoutputformat.sh
