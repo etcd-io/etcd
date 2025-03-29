@@ -94,11 +94,11 @@ func TestBackendAutoCommitBatchIntervalHook(t *testing.T) {
 	waitUntil(ctx, t, func() bool { return getCommitsKey(t, be) == ">ccc" })
 }
 
-func waitUntil(ctx context.Context, t testing.TB, f func() bool) {
+func waitUntil(ctx context.Context, tb testing.TB, f func() bool) {
 	for !f() {
 		select {
 		case <-ctx.Done():
-			t.Fatalf("Context cancelled/timedout without condition met: %v", ctx.Err())
+			tb.Fatalf("Context cancelled/timedout without condition met: %v", ctx.Err())
 		default:
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -112,28 +112,28 @@ func prepareBuckenAndKey(tx backend.BatchTx) {
 	tx.UnsafePut(bucket, key, []byte(">"))
 }
 
-func newTestHooksBackend(t testing.TB, baseConfig backend.BackendConfig) backend.Backend {
+func newTestHooksBackend(tb testing.TB, baseConfig backend.BackendConfig) backend.Backend {
 	cfg := baseConfig
 	cfg.Hooks = backend.NewHooks(func(tx backend.UnsafeReadWriter) {
 		k, v := tx.UnsafeRange(bucket, key, nil, 1)
-		t.Logf("OnPreCommit executed: %v %v", string(k[0]), string(v[0]))
-		assert.Len(t, k, 1)
-		assert.Len(t, v, 1)
+		tb.Logf("OnPreCommit executed: %v %v", string(k[0]), string(v[0]))
+		assert.Len(tb, k, 1)
+		assert.Len(tb, v, 1)
 		tx.UnsafePut(bucket, key, append(v[0], byte('c')))
 	})
 
-	be, _ := betesting.NewTmpBackendFromCfg(t, cfg)
-	t.Cleanup(func() {
-		betesting.Close(t, be)
+	be, _ := betesting.NewTmpBackendFromCfg(tb, cfg)
+	tb.Cleanup(func() {
+		betesting.Close(tb, be)
 	})
 	return be
 }
 
-func getCommitsKey(t testing.TB, be backend.Backend) string {
+func getCommitsKey(tb testing.TB, be backend.Backend) string {
 	rtx := be.BatchTx()
 	rtx.Lock()
 	defer rtx.Unlock()
 	_, v := rtx.UnsafeRange(bucket, key, nil, 1)
-	assert.Len(t, v, 1)
+	assert.Len(tb, v, 1)
 	return string(v[0])
 }

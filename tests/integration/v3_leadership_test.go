@@ -236,14 +236,14 @@ func TestFirstCommitNotification(t *testing.T) {
 
 func checkFirstCommitNotification(
 	ctx context.Context,
-	t testing.TB,
+	tb testing.TB,
 	member *integration.Member,
 	leaderAppliedIndex uint64,
 	notifier <-chan struct{},
 ) error {
 	// wait until server applies all the changes of leader
 	for member.Server.AppliedIndex() < leaderAppliedIndex {
-		t.Logf("member.Server.AppliedIndex():%v <= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
+		tb.Logf("member.Server.AppliedIndex():%v <= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -261,7 +261,7 @@ func checkFirstCommitNotification(
 			)
 		}
 	default:
-		t.Logf("member.Server.AppliedIndex():%v >= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
+		tb.Logf("member.Server.AppliedIndex():%v >= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
 		return fmt.Errorf(
 			"notification was not triggered, member ID: %d",
 			member.ID(),
