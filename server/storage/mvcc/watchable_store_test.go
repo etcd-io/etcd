@@ -44,10 +44,8 @@ func TestWatch(t *testing.T) {
 	defer w.Close()
 
 	w.Watch(0, testKey, nil, 0)
-	if !s.(*watchableStore).synced.contains(string(testKey)) {
-		// the key must have had an entry in synced
-		t.Errorf("existence = false, want true")
-	}
+	// the key must have had an entry in synced
+	assert.Truef(t, s.(*watchableStore).synced.contains(string(testKey)), "existence = false, want true")
 }
 
 func TestNewWatcherCancel(t *testing.T) {
@@ -63,14 +61,9 @@ func TestNewWatcherCancel(t *testing.T) {
 	defer w.Close()
 
 	wt, _ := w.Watch(0, testKey, nil, 0)
-	if err := w.Cancel(wt); err != nil {
-		t.Error(err)
-	}
-
-	if s.(*watchableStore).synced.contains(string(testKey)) {
-		// the key shoud have been deleted
-		t.Errorf("existence = true, want false")
-	}
+	require.NoError(t, w.Cancel(wt))
+	// the key shoud have been deleted
+	assert.Falsef(t, s.(*watchableStore).synced.contains(string(testKey)), "existence = true, want false")
 }
 
 // TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
@@ -106,18 +99,14 @@ func TestCancelUnsynced(t *testing.T) {
 	}
 
 	for _, idx := range watchIDs {
-		if err := w.Cancel(idx); err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, w.Cancel(idx))
 	}
 
 	// After running CancelFunc
 	//
 	// unsynced should be empty
 	// because cancel removes watcher from unsynced
-	if size := s.unsynced.size(); size != 0 {
-		t.Errorf("unsynced size = %d, want 0", size)
-	}
+	assert.Zero(t, s.unsynced.size())
 }
 
 // TestSyncWatchers populates unsynced watcher map and tests syncWatchers
@@ -283,9 +272,7 @@ func TestWatchCompacted(t *testing.T) {
 		s.Put(testKey, testValue, lease.NoLease)
 	}
 	_, err := s.Compact(traceutil.TODO(), compactRev)
-	if err != nil {
-		t.Fatalf("failed to compact kv (%v)", err)
-	}
+	require.NoErrorf(t, err, "failed to compact kv (%v)", err)
 
 	w := s.NewWatchStream()
 	defer w.Close()
@@ -293,12 +280,8 @@ func TestWatchCompacted(t *testing.T) {
 	wt, _ := w.Watch(0, testKey, nil, compactRev-1)
 	select {
 	case resp := <-w.Chan():
-		if resp.WatchID != wt {
-			t.Errorf("resp.WatchID = %x, want %x", resp.WatchID, wt)
-		}
-		if resp.CompactRevision == 0 {
-			t.Errorf("resp.Compacted = %v, want %v", resp.CompactRevision, compactRev)
-		}
+		assert.Equalf(t, resp.WatchID, wt, "resp.WatchID = %x, want %x", resp.WatchID, wt)
+		assert.NotEqualf(t, 0, resp.CompactRevision, "resp.Compacted = %v, want %v", resp.CompactRevision, compactRev)
 	case <-time.After(1 * time.Second):
 		t.Fatalf("failed to receive response (timeout)")
 	}
@@ -386,15 +369,9 @@ func TestWatchFutureRev(t *testing.T) {
 
 	select {
 	case resp := <-w.Chan():
-		if resp.Revision != wrev {
-			t.Fatalf("rev = %d, want %d", resp.Revision, wrev)
-		}
-		if len(resp.Events) != 1 {
-			t.Fatalf("failed to get events from the response")
-		}
-		if resp.Events[0].Kv.ModRevision != wrev {
-			t.Fatalf("kv.rev = %d, want %d", resp.Events[0].Kv.ModRevision, wrev)
-		}
+		require.Equalf(t, resp.Revision, wrev, "rev = %d, want %d", resp.Revision, wrev)
+		require.Lenf(t, resp.Events, 1, "failed to get events from the response")
+		require.Equalf(t, resp.Events[0].Kv.ModRevision, wrev, "kv.rev = %d, want %d", resp.Events[0].Kv.ModRevision, wrev)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive event in 1 second.")
 	}
@@ -418,12 +395,8 @@ func TestWatchRestore(t *testing.T) {
 
 			s.Restore(b)
 			events := readEventsForSecond(w.Chan())
-			if len(events) != 1 {
-				t.Errorf("Expected only one event, got %d", len(events))
-			}
-			if events[0].Kv.ModRevision != wantRev {
-				t.Errorf("Expected revision to match, got %d, want %d", events[0].Kv.ModRevision, wantRev)
-			}
+			assert.Lenf(t, events, 1, "Expected only one event, got %d", len(events))
+			assert.Equalf(t, wantRev, events[0].Kv.ModRevision, "Expected revision to match, got %d, want %d", events[0].Kv.ModRevision, wantRev)
 		}
 	}
 
@@ -473,9 +446,7 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 	s2.Put(testKey, testValue, lease.NoLease)
 
 	// overwrite storage with higher revisions
-	if err := s1.Restore(b2); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, s1.Restore(b2))
 
 	// wait for next "syncWatchersLoop" iteration
 	// and the unsynced watcher should be chosen
@@ -486,15 +457,9 @@ func TestWatchRestoreSyncedWatcher(t *testing.T) {
 
 	select {
 	case resp := <-w1.Chan():
-		if resp.Revision != startRev {
-			t.Fatalf("resp.Revision expect %d, got %d", startRev, resp.Revision)
-		}
-		if len(resp.Events) != 1 {
-			t.Fatalf("len(resp.Events) expect 1, got %d", len(resp.Events))
-		}
-		if resp.Events[0].Kv.ModRevision != startRev {
-			t.Fatalf("resp.Events[0].Kv.ModRevision expect %d, got %d", startRev, resp.Events[0].Kv.ModRevision)
-		}
+		require.Equalf(t, resp.Revision, startRev, "resp.Revision expect %d, got %d", startRev, resp.Revision)
+		require.Lenf(t, resp.Events, 1, "len(resp.Events) expect 1, got %d", len(resp.Events))
+		require.Equalf(t, resp.Events[0].Kv.ModRevision, startRev, "resp.Events[0].Kv.ModRevision expect %d, got %d", startRev, resp.Events[0].Kv.ModRevision)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive event in 1 second")
 	}
@@ -661,17 +626,11 @@ func TestNewMapwatcherToEventMap(t *testing.T) {
 		}
 
 		gwe := newWatcherBatch(&wg, tt.evs)
-		if len(gwe) != len(tt.wwe) {
-			t.Errorf("#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
-		}
+		assert.Lenf(t, tt.wwe, len(gwe), "#%d: len(gwe) got = %d, want = %d", i, len(gwe), len(tt.wwe))
 		// compare gwe and tt.wwe
 		for w, eb := range gwe {
-			if len(eb.evs) != len(tt.wwe[w]) {
-				t.Errorf("#%d: len(eb.evs) got = %d, want = %d", i, len(eb.evs), len(tt.wwe[w]))
-			}
-			if !reflect.DeepEqual(eb.evs, tt.wwe[w]) {
-				t.Errorf("#%d: reflect.DeepEqual events got = %v, want = true", i, false)
-			}
+			assert.Lenf(t, tt.wwe[w], len(eb.evs), "#%d: len(eb.evs) got = %d, want = %d", i, len(eb.evs), len(tt.wwe[w]))
+			assert.Truef(t, reflect.DeepEqual(eb.evs, tt.wwe[w]), "#%d: reflect.DeepEqual events got = %v, want = true", i, false)
 		}
 	}
 }
