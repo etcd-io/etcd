@@ -123,17 +123,17 @@ func verifyClusterHealth(ctx context.Context, _ *testing.T, clus *e2e.EtcdProces
 			DialKeepAliveTimeout: 100 * time.Millisecond,
 		})
 		if err != nil {
-			return fmt.Errorf("Error creating client for cluster %s: %w", clus.Procs[i].Config().Name, err)
+			return fmt.Errorf("error creating client for cluster %s: %w", clus.Procs[i].Config().Name, err)
 		}
 		defer clusterClient.Close()
 
 		cli := healthpb.NewHealthClient(clusterClient.ActiveConnection())
 		resp, err := cli.Check(ctx, &healthpb.HealthCheckRequest{})
 		if err != nil {
-			return fmt.Errorf("Error checking member %s health: %w", clus.Procs[i].Config().Name, err)
+			return fmt.Errorf("error checking member %s health: %w", clus.Procs[i].Config().Name, err)
 		}
 		if resp.Status != healthpb.HealthCheckResponse_SERVING {
-			return fmt.Errorf("Member %s health status expected %s, got %s",
+			return fmt.Errorf("member %s health status expected %s, got %s",
 				clus.Procs[i].Config().Name,
 				healthpb.HealthCheckResponse_SERVING,
 				resp.Status)

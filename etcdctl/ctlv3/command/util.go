@@ -64,10 +64,11 @@ func Argify(s string) []string {
 		if len(args[i]) == 0 {
 			continue
 		}
-		if args[i][0] == '\'' {
+		switch args[i][0] {
+		case '\'':
 			// 'single-quoted string'
 			args[i] = args[i][1 : len(args)-1]
-		} else if args[i][0] == '"' {
+		case '"':
 			// "double quoted string"
 			if _, err := fmt.Sscanf(args[i], "%q", &args[i]); err != nil {
 				cobrautl.ExitWithError(cobrautl.ExitInvalidInput, err)

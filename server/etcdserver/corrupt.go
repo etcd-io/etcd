@@ -73,15 +73,15 @@ type hasherAdapter struct {
 }
 
 func (h hasherAdapter) ReqTimeout() time.Duration {
-	return h.EtcdServer.Cfg.ReqTimeout()
+	return h.Cfg.ReqTimeout()
 }
 
 func (h hasherAdapter) PeerHashByRev(rev int64) []*peerHashKVResp {
-	return h.EtcdServer.getPeerHashKVs(rev)
+	return h.getPeerHashKVs(rev)
 }
 
 func (h hasherAdapter) TriggerCorruptAlarm(memberID types.ID) {
-	h.EtcdServer.triggerCorruptAlarm(memberID)
+	h.triggerCorruptAlarm(memberID)
 }
 
 // InitialCheck compares initial hash values with its peers
@@ -602,14 +602,15 @@ func HashByRev(ctx context.Context, cid types.ID, cc *http.Client, url string, r
 		return nil, err
 	}
 
-	if resp.StatusCode == http.StatusBadRequest {
+	switch resp.StatusCode {
+	case http.StatusBadRequest:
 		if strings.Contains(string(b), mvcc.ErrCompacted.Error()) {
 			return nil, rpctypes.ErrCompacted
 		}
 		if strings.Contains(string(b), mvcc.ErrFutureRev.Error()) {
 			return nil, rpctypes.ErrFutureRev
 		}
-	} else if resp.StatusCode == http.StatusPreconditionFailed {
+	case http.StatusPreconditionFailed:
 		if strings.Contains(string(b), rafthttp.ErrClusterIDMismatch.Error()) {
 			return nil, rpctypes.ErrClusterIDMismatch
 		}

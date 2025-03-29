@@ -479,7 +479,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		d, err := io.ReadAll(req.Body)
 		req.Body.Close()
 		require.NoError(t, err) //nolint:testifylint //FIXME
-		_, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d))))
+		_, err = fmt.Fprintf(w, "%q(confirmed)", string(d))
 		require.NoError(t, err) //nolint:testifylint //FIXME
 	})
 	tlsInfo := createTLSInfo(lg, secure)

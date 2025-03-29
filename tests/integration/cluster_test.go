@@ -136,7 +136,7 @@ func TestForceNewCluster(t *testing.T) {
 	cancel()
 	// ensure create has been applied in this machine
 	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
-	watch := c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
+	watch := c.Members[0].Client.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
 	for resp := range watch {
 		if len(resp.Events) != 0 {
 			break
@@ -157,7 +157,7 @@ func TestForceNewCluster(t *testing.T) {
 	// use new http client to init new connection
 	// ensure force restart keep the old data, and new Cluster can make progress
 	ctx, cancel = context.WithTimeout(context.Background(), integration.RequestTimeout)
-	watch = c.Members[0].Client.Watcher.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
+	watch = c.Members[0].Client.Watch(ctx, "/foo", clientv3.WithRev(resp.Header.Revision-1))
 	for resp := range watch {
 		if len(resp.Events) != 0 {
 			break
@@ -416,12 +416,12 @@ func TestRestartRemoved(t *testing.T) {
 
 	// 4. restart first member with 'initial-cluster-state=new'
 	// wrong config, expects exit within ReqTimeout
-	firstMember.ServerConfig.NewCluster = false
+	firstMember.NewCluster = false
 	err = firstMember.Restart(t)
 	require.NoErrorf(t, err, "unexpected ForceRestart error")
 	defer func() {
 		firstMember.Close()
-		os.RemoveAll(firstMember.ServerConfig.DataDir)
+		os.RemoveAll(firstMember.DataDir)
 	}()
 	select {
 	case <-firstMember.Server.StopNotify():
@@ -453,7 +453,7 @@ func clusterMustProgress(t *testing.T, members []*integration.Member) {
 
 	for i, m := range members {
 		mctx, mcancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
-		watch := m.Client.Watcher.Watch(mctx, key, clientv3.WithRev(resp.Header.Revision-1))
+		watch := m.Client.Watch(mctx, key, clientv3.WithRev(resp.Header.Revision-1))
 		for resp := range watch {
 			if len(resp.Events) != 0 {
 				break

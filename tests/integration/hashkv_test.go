@@ -72,7 +72,7 @@ func (tc hashTestCase) HashByRev(ctx context.Context, rev int64) (testutil.KeyVa
 }
 
 func (tc hashTestCase) Defrag(ctx context.Context) error {
-	_, err := tc.Client.Defragment(ctx, tc.url)
+	_, err := tc.Defragment(ctx, tc.url)
 	return err
 }
 

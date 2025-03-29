@@ -516,10 +516,7 @@ func (c *Cluster) WaitMembersNoLeader(membs []*Member) {
 
 func (c *Cluster) waitVersion() {
 	for _, m := range c.Members {
-		for {
-			if m.Server.ClusterVersion() != nil {
-				break
-			}
+		for m.Server.ClusterVersion() == nil {
 			time.Sleep(framecfg.TickDuration)
 		}
 	}
@@ -1309,7 +1306,7 @@ func (m *Member) Terminate(t testutil.TB) {
 	)
 	m.Close()
 	if !m.KeepDataDirTerminate {
-		if err := os.RemoveAll(m.ServerConfig.DataDir); err != nil {
+		if err := os.RemoveAll(m.DataDir); err != nil {
 			t.Fatal(err)
 		}
 	}

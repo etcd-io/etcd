@@ -523,7 +523,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	defer srv.r.raftNodeConfig.Stop()
+	defer srv.r.Stop()
 
 	// create EntryConfChange entry
 	now := time.Now()
@@ -1028,7 +1028,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 			},
 		},
 	})
-	defer r.raftNodeConfig.Stop()
+	defer r.Stop()
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,

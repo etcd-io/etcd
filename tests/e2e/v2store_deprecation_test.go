@@ -144,10 +144,10 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
 		// Patch members ids
 		for i, mid := range members1 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
+			data = bytes.ReplaceAll(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)))
 		}
 		for i, mid := range members2 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
+			data = bytes.ReplaceAll(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)))
 		}
 		return data
 	})
@@ -248,7 +248,7 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 	require.NoError(t, err)
 	assert.NotEmpty(t, firstFiles)
 	assert.NotEmpty(t, secondFiles)
-	assert.Equal(t, len(firstFiles), len(secondFiles))
+	assert.Len(t, secondFiles, len(firstFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {

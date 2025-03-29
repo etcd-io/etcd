@@ -85,7 +85,7 @@ func NewConfig(fpath string) (*clientv3.Config, error) {
 	if cert != nil {
 		tlscfg.Certificates = []tls.Certificate{*cert}
 	}
-	yc.Config.TLS = tlscfg
+	yc.TLS = tlscfg
 
 	return &yc.Config, nil
 }

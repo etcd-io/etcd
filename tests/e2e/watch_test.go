@@ -287,27 +287,27 @@ func TestDeleteEventDrop_Issue18089(t *testing.T) {
 	)
 
 	t.Logf("PUT key=%s, val=%s", key, v2)
-	_, err = c.KV.Put(ctx, key, v2)
+	_, err = c.Put(ctx, key, v2)
 	require.NoError(t, err)
 
 	t.Logf("PUT key=%s, val=%s", key, v3)
-	_, err = c.KV.Put(ctx, key, v3)
+	_, err = c.Put(ctx, key, v3)
 	require.NoError(t, err)
 
 	t.Logf("PUT key=%s, val=%s", key, v4)
-	_, err = c.KV.Put(ctx, key, v4)
+	_, err = c.Put(ctx, key, v4)
 	require.NoError(t, err)
 
 	t.Logf("DELTE key=%s", key)
-	deleteResp, err := c.KV.Delete(ctx, key)
+	deleteResp, err := c.Delete(ctx, key)
 	require.NoError(t, err)
 
 	t.Logf("PUT key=%s, val=%s", key, v6)
-	_, err = c.KV.Put(ctx, key, v6)
+	_, err = c.Put(ctx, key, v6)
 	require.NoError(t, err)
 
 	t.Logf("COMPACT rev=%d", deleteResp.Header.Revision)
-	_, err = c.KV.Compact(ctx, deleteResp.Header.Revision, clientv3.WithCompactPhysical())
+	_, err = c.Compact(ctx, deleteResp.Header.Revision, clientv3.WithCompactPhysical())
 	require.NoError(t, err)
 
 	watchChan := c.Watch(ctx, key, clientv3.WithRev(deleteResp.Header.Revision))
@@ -386,7 +386,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 			if vi%compactionStep == 0 && performCompactOnTombstone {
 				t.Logf("DELETE key=%s", key)
 
-				resp, derr := c.KV.Delete(ctx, key)
+				resp, derr := c.Delete(ctx, key)
 				assert.NoError(t, derr)
 				respHeader = resp.Header
 
@@ -395,7 +395,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 				value := fmt.Sprintf("%d", vi)
 
 				t.Logf("PUT key=%s, val=%s", key, value)
-				resp, perr := c.KV.Put(ctx, key, value)
+				resp, perr := c.Put(ctx, key, value)
 				assert.NoError(t, perr)
 				respHeader = resp.Header
 
@@ -408,7 +408,7 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 				compactionRevChan <- lastRevision
 
 				t.Logf("COMPACT rev=%d", lastRevision)
-				_, err = c.KV.Compact(ctx, lastRevision, clientv3.WithCompactPhysical())
+				_, err = c.Compact(ctx, lastRevision, clientv3.WithCompactPhysical())
 				assert.NoError(t, err)
 			}
 		}
@@ -518,13 +518,13 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		value := fmt.Sprintf("%d", i)
 
 		t.Logf("PUT key=%s, val=%s", key, value)
-		_, err = c1.KV.Put(ctx, key, value)
+		_, err = c1.Put(ctx, key, value)
 		require.NoError(t, err)
 	}
 
 	firstKey := keyPrefix + "0"
 	t.Logf("DELETE key=%s", firstKey)
-	deleteResp, err := c1.KV.Delete(ctx, firstKey)
+	deleteResp, err := c1.Delete(ctx, firstKey)
 	require.NoError(t, err)
 
 	var deleteEvent *clientv3.Event
@@ -544,7 +544,7 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "compactBeforeSetFinishedCompact", `panic`))
 
 	t.Logf("COMPACT rev=%d", deleteResp.Header.Revision)
-	_, err = c1.KV.Compact(ctx, deleteResp.Header.Revision, clientv3.WithCompactPhysical())
+	_, err = c1.Compact(ctx, deleteResp.Header.Revision, clientv3.WithCompactPhysical())
 	require.Error(t, err)
 
 	require.NoError(t, clus.Restart(ctx))

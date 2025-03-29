@@ -317,7 +317,7 @@ func (s *stmSerializable) Get(keys ...string) string {
 			s.rset[key] = resp
 		}
 	}
-	resp := s.stm.fetch(keys...)
+	resp := s.fetch(keys...)
 	if firstRead {
 		// txn's base revision is defined by the first read
 		s.getOpts = []v3.OpOption{

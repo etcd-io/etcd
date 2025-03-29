@@ -788,12 +788,11 @@ type visitedInterval struct {
 
 func (vi visitedInterval) String() string {
 	bd := new(strings.Builder)
-	bd.WriteString(fmt.Sprintf("root [%v,%v,%v], left [%v,%v], right [%v,%v], depth %d",
+	fmt.Fprintf(bd, "root [%v,%v,%v], left [%v,%v], right [%v,%v], depth %d",
 		vi.root.Begin, vi.root.End, vi.color,
 		vi.left.Begin, vi.left.End,
 		vi.right.Begin, vi.right.End,
-		vi.depth,
-	))
+		vi.depth)
 	return bd.String()
 }
 

@@ -66,11 +66,12 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 		end = args[1]
 	}
 
-	if rangeConsistency == "l" {
+	switch rangeConsistency {
+	case "l":
 		fmt.Println("bench with linearizable range")
-	} else if rangeConsistency == "s" {
+	case "s":
 		fmt.Println("bench with serializable range")
-	} else {
+	default:
 		fmt.Fprintln(os.Stderr, cmd.Usage())
 		os.Exit(1)
 	}

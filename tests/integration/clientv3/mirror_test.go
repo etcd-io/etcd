@@ -36,7 +36,7 @@ func TestMirrorSync(t *testing.T) {
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
-	_, err := c.KV.Put(context.TODO(), "foo", "bar")
+	_, err := c.Put(context.TODO(), "foo", "bar")
 	require.NoError(t, err)
 
 	syncer := mirror.NewSyncer(c, "", 0)
@@ -55,7 +55,7 @@ func TestMirrorSync(t *testing.T) {
 
 	wch := syncer.SyncUpdates(context.TODO())
 
-	_, err = c.KV.Put(context.TODO(), "foo", "bar")
+	_, err = c.Put(context.TODO(), "foo", "bar")
 	require.NoError(t, err)
 
 	select {

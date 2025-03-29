@@ -78,7 +78,7 @@ func (c *RecordingClient) Close() error {
 func (c *RecordingClient) Report() report.ClientReport {
 	return report.ClientReport{
 		ClientID: c.ID,
-		KeyValue: c.kvOperations.History.Operations(),
+		KeyValue: c.kvOperations.Operations(),
 		Watch:    c.watchOperations,
 	}
 }
@@ -178,7 +178,7 @@ func (c *RecordingClient) LeaseGrant(ctx context.Context, ttl int64) (*clientv3.
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.client.Lease.Grant(ctx, ttl)
+	resp, err := c.client.Grant(ctx, ttl)
 	returnTime := time.Since(c.baseTime)
 	c.kvOperations.AppendLeaseGrant(callTime, returnTime, resp, err)
 	return resp, err
@@ -188,7 +188,7 @@ func (c *RecordingClient) LeaseRevoke(ctx context.Context, leaseID int64) (*clie
 	c.kvMux.Lock()
 	defer c.kvMux.Unlock()
 	callTime := time.Since(c.baseTime)
-	resp, err := c.client.Lease.Revoke(ctx, clientv3.LeaseID(leaseID))
+	resp, err := c.client.Revoke(ctx, clientv3.LeaseID(leaseID))
 	returnTime := time.Since(c.baseTime)
 	c.kvOperations.AppendLeaseRevoke(leaseID, callTime, returnTime, resp, err)
 	return resp, err

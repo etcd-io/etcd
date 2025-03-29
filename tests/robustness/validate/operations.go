@@ -102,7 +102,7 @@ func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request 
 
 	_, expectResp := state.Step(request)
 
-	if diff := cmp.Diff(response.EtcdResponse.Range, expectResp.Range); diff != "" {
+	if diff := cmp.Diff(response.Range, expectResp.Range); diff != "" {
 		lg.Error("Failed validating serializable operation", zap.Any("request", request), zap.String("diff", diff))
 		return errRespNotMatched
 	}

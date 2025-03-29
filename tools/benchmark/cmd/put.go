@@ -138,14 +138,14 @@ func putFunc(cmd *cobra.Command, _ []string) {
 
 func compactKV(clients []*v3.Client) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	resp, err := clients[0].KV.Get(ctx, "foo")
+	resp, err := clients[0].Get(ctx, "foo")
 	cancel()
 	if err != nil {
 		panic(err)
 	}
 	revToCompact := max(0, resp.Header.Revision-compactIndexDelta)
 	ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-	_, err = clients[0].KV.Compact(ctx, revToCompact)
+	_, err = clients[0].Compact(ctx, revToCompact)
 	cancel()
 	if err != nil {
 		panic(err)

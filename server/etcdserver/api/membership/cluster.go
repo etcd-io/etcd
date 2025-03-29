@@ -347,13 +347,13 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 					urls[u] = true
 				}
 			}
-			for _, u := range confChangeContext.Member.PeerURLs {
+			for _, u := range confChangeContext.PeerURLs {
 				if urls[u] {
 					return ErrPeerURLexists
 				}
 			}
 
-			if confChangeContext.Member.RaftAttributes.IsLearner && cc.Type == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
+			if confChangeContext.IsLearner && cc.Type == raftpb.ConfChangeAddLearnerNode { // the new member is a learner
 				scaleUpLearners := true
 				if err := ValidateMaxLearnerConfig(c.maxLearners, members, scaleUpLearners); err != nil {
 					return err
@@ -516,7 +516,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 
 	if c.v2store != nil {
 		m := *(c.members[id])
-		m.RaftAttributes.IsLearner = false
+		m.IsLearner = false
 		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	}
 
@@ -525,7 +525,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 
 	if c.be != nil && shouldApplyV3 {
-		c.members[id].RaftAttributes.IsLearner = false
+		c.members[id].IsLearner = false
 		c.updateMembershipMetric(id, true)
 		c.be.MustSaveMemberToBackend(c.members[id])
 

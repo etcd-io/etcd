@@ -660,7 +660,7 @@ func TestWatchEventType(t *testing.T) {
 	require.NoErrorf(t, err, "Put failed: %v", err)
 	_, err = client.Delete(ctx, "/toDelete")
 	require.NoErrorf(t, err, "Delete failed: %v", err)
-	lcr, err := client.Lease.Grant(ctx, 1)
+	lcr, err := client.Grant(ctx, 1)
 	require.NoErrorf(t, err, "lease create failed: %v", err)
 	_, err = client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID))
 	require.NoErrorf(t, err, "Put failed: %v", err)

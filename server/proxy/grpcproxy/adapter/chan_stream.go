@@ -89,7 +89,7 @@ func (cs *chanClientStream) Trailer() metadata.MD {
 }
 
 func (cs *chanClientStream) CloseSend() error {
-	close(cs.chanStream.sendc)
+	close(cs.sendc)
 	return nil
 }
 

@@ -107,7 +107,7 @@ func TestMemberRemove(t *testing.T) {
 	// find member that is not the client to remove
 	for _, m := range resp.Members {
 		mURLs, _ := types.NewURLs(m.PeerURLs)
-		if !reflect.DeepEqual(mURLs, clus.Members[1].ServerConfig.PeerURLs) {
+		if !reflect.DeepEqual(mURLs, clus.Members[1].PeerURLs) {
 			rmvID = m.ID
 			break
 		}

@@ -136,12 +136,12 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 
 	sortByOrder := clientv3.SortNone
 	sortOrder := strings.ToUpper(getSortOrder)
-	switch {
-	case sortOrder == "ASCEND":
+	switch sortOrder {
+	case "ASCEND":
 		sortByOrder = clientv3.SortAscend
-	case sortOrder == "DESCEND":
+	case "DESCEND":
 		sortByOrder = clientv3.SortDescend
-	case sortOrder == "":
+	case "":
 		// nothing
 	default:
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("bad sort order %v", getSortOrder))
@@ -149,18 +149,18 @@ func getGetOp(args []string) (string, []clientv3.OpOption) {
 
 	sortByTarget := clientv3.SortByKey
 	sortTarget := strings.ToUpper(getSortTarget)
-	switch {
-	case sortTarget == "CREATE":
+	switch sortTarget {
+	case "CREATE":
 		sortByTarget = clientv3.SortByCreateRevision
-	case sortTarget == "KEY":
+	case "KEY":
 		sortByTarget = clientv3.SortByKey
-	case sortTarget == "MODIFY":
+	case "MODIFY":
 		sortByTarget = clientv3.SortByModRevision
-	case sortTarget == "VALUE":
+	case "VALUE":
 		sortByTarget = clientv3.SortByValue
-	case sortTarget == "VERSION":
+	case "VERSION":
 		sortByTarget = clientv3.SortByVersion
-	case sortTarget == "":
+	case "":
 		// nothing
 	default:
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, fmt.Errorf("bad sort target %v", getSortTarget))

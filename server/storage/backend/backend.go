@@ -703,7 +703,7 @@ type snapshot struct {
 func (s *snapshot) Close() error {
 	close(s.stopc)
 	<-s.donec
-	return s.Tx.Rollback()
+	return s.Rollback()
 }
 
 func newBoltLoggerZap(bcfg BackendConfig) bolt.Logger {
@@ -716,9 +716,9 @@ type zapBoltLogger struct {
 }
 
 func (zl *zapBoltLogger) Warning(args ...any) {
-	zl.SugaredLogger.Warn(args...)
+	zl.Warn(args...)
 }
 
 func (zl *zapBoltLogger) Warningf(format string, args ...any) {
-	zl.SugaredLogger.Warnf(format, args...)
+	zl.Warnf(format, args...)
 }

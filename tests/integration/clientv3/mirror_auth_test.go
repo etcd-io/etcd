@@ -45,7 +45,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 	initialClient.UserGrantRole(context.Background(), "syncer", "syncer")
 
 	// Seed /syncpath with some initial data
-	_, err := initialClient.KV.Put(context.TODO(), "/syncpath/foo", "bar")
+	_, err := initialClient.Put(context.TODO(), "/syncpath/foo", "bar")
 	require.NoError(t, err)
 
 	// Require authentication
@@ -82,7 +82,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 	wch := syncer.SyncUpdates(context.TODO())
 
 	// Update state
-	_, err = syncClient.KV.Put(context.TODO(), "/syncpath/foo", "baz")
+	_, err = syncClient.Put(context.TODO(), "/syncpath/foo", "baz")
 	require.NoError(t, err)
 
 	// Wait for the updated state to sync

@@ -985,8 +985,8 @@ func (cfg *configYAML) configFromFile(path string) error {
 		return err
 	}
 
-	if cfg.configJSON.ServerFeatureGatesJSON != "" {
-		err = cfg.Config.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(cfg.configJSON.ServerFeatureGatesJSON)
+	if cfg.ServerFeatureGatesJSON != "" {
+		err = cfg.Config.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(cfg.ServerFeatureGatesJSON)
 		if err != nil {
 			return err
 		}
@@ -1030,54 +1030,54 @@ func (cfg *configYAML) configFromFile(path string) error {
 		boolVal := flagVal.(bool)
 		return &boolVal
 	}
-	err = SetFeatureGatesFromExperimentalFlags(cfg.ServerFeatureGate, getBoolFlagVal, cfg.configJSON.ServerFeatureGatesJSON)
+	err = SetFeatureGatesFromExperimentalFlags(cfg.ServerFeatureGate, getBoolFlagVal, cfg.ServerFeatureGatesJSON)
 	if err != nil {
 		return err
 	}
 
-	if cfg.configJSON.ListenPeerURLs != "" {
-		u, err := types.NewURLs(strings.Split(cfg.configJSON.ListenPeerURLs, ","))
+	if cfg.ListenPeerURLs != "" {
+		u, err := types.NewURLs(strings.Split(cfg.ListenPeerURLs, ","))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.Config.ListenPeerUrls = u
+		cfg.ListenPeerUrls = u
 	}
 
-	if cfg.configJSON.ListenClientURLs != "" {
-		u, err := types.NewURLs(strings.Split(cfg.configJSON.ListenClientURLs, ","))
+	if cfg.ListenClientURLs != "" {
+		u, err := types.NewURLs(strings.Split(cfg.ListenClientURLs, ","))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-client-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.Config.ListenClientUrls = u
+		cfg.ListenClientUrls = u
 	}
 
-	if cfg.configJSON.ListenClientHTTPURLs != "" {
-		u, err := types.NewURLs(strings.Split(cfg.configJSON.ListenClientHTTPURLs, ","))
+	if cfg.ListenClientHTTPURLs != "" {
+		u, err := types.NewURLs(strings.Split(cfg.ListenClientHTTPURLs, ","))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up listen-client-http-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.Config.ListenClientHttpUrls = u
+		cfg.ListenClientHttpUrls = u
 	}
 
-	if cfg.configJSON.AdvertisePeerURLs != "" {
-		u, err := types.NewURLs(strings.Split(cfg.configJSON.AdvertisePeerURLs, ","))
+	if cfg.AdvertisePeerURLs != "" {
+		u, err := types.NewURLs(strings.Split(cfg.AdvertisePeerURLs, ","))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up initial-advertise-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.Config.AdvertisePeerUrls = u
+		cfg.AdvertisePeerUrls = u
 	}
 
-	if cfg.configJSON.AdvertiseClientURLs != "" {
-		u, err := types.NewURLs(strings.Split(cfg.configJSON.AdvertiseClientURLs, ","))
+	if cfg.AdvertiseClientURLs != "" {
+		u, err := types.NewURLs(strings.Split(cfg.AdvertiseClientURLs, ","))
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unexpected error setting up advertise-peer-urls: %v\n", err)
 			os.Exit(1)
 		}
-		cfg.Config.AdvertiseClientUrls = u
+		cfg.AdvertiseClientUrls = u
 	}
 
 	if cfg.ListenMetricsUrlsJSON != "" {

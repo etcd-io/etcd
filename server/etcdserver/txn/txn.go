@@ -209,24 +209,24 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	}
 	if sortOrder != pb.RangeRequest_NONE {
 		var sorter sort.Interface
-		switch {
-		case r.SortTarget == pb.RangeRequest_KEY:
+		switch r.SortTarget {
+		case pb.RangeRequest_KEY:
 			sorter = &kvSortByKey{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VERSION:
+		case pb.RangeRequest_VERSION:
 			sorter = &kvSortByVersion{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_CREATE:
+		case pb.RangeRequest_CREATE:
 			sorter = &kvSortByCreate{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_MOD:
+		case pb.RangeRequest_MOD:
 			sorter = &kvSortByMod{&kvSort{rr.KVs}}
-		case r.SortTarget == pb.RangeRequest_VALUE:
+		case pb.RangeRequest_VALUE:
 			sorter = &kvSortByValue{&kvSort{rr.KVs}}
 		default:
 			lg.Panic("unexpected sort target", zap.Int32("sort-target", int32(r.SortTarget)))
 		}
-		switch {
-		case sortOrder == pb.RangeRequest_ASCEND:
+		switch sortOrder {
+		case pb.RangeRequest_ASCEND:
 			sort.Sort(sorter)
-		case sortOrder == pb.RangeRequest_DESCEND:
+		case pb.RangeRequest_DESCEND:
 			sort.Sort(sort.Reverse(sorter))
 		}
 	}

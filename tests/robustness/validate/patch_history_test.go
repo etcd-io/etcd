@@ -408,7 +408,7 @@ func TestPatchHistory(t *testing.T) {
 			reports := []report.ClientReport{
 				{
 					ClientID: 0,
-					KeyValue: history.History.Operations(),
+					KeyValue: history.Operations(),
 					Watch:    tc.watchOperations,
 				},
 			}

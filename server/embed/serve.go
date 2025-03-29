@@ -444,7 +444,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 
 	if req.TLS == nil { // check origin if client connection is not secure
 		host := httputil.GetHostname(req)
-		if !ac.s.AccessController.IsHostWhitelisted(host) {
+		if !ac.s.IsHostWhitelisted(host) {
 			ac.lg.Warn(
 				"rejecting HTTP request to prevent DNS rebinding attacks",
 				zap.String("host", host),
@@ -466,7 +466,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 	}
 
 	// Write CORS header.
-	if ac.s.AccessController.OriginAllowed("*") {
+	if ac.s.OriginAllowed("*") {
 		addCORSHeader(rw, "*")
 	} else if origin := req.Header.Get("Origin"); ac.s.OriginAllowed(origin) {
 		addCORSHeader(rw, origin)

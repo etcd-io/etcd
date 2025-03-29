@@ -2091,20 +2091,20 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if err := json.Unmarshal(cc.Context, confChangeContext); err != nil {
 			lg.Panic("failed to unmarshal member", zap.Error(err))
 		}
-		if cc.NodeID != uint64(confChangeContext.Member.ID) {
+		if cc.NodeID != uint64(confChangeContext.ID) {
 			lg.Panic(
 				"got different member ID",
 				zap.String("member-id-from-config-change-entry", types.ID(cc.NodeID).String()),
-				zap.String("member-id-from-message", confChangeContext.Member.ID.String()),
+				zap.String("member-id-from-message", confChangeContext.ID.String()),
 			)
 		}
 		if confChangeContext.IsPromote {
-			s.cluster.PromoteMember(confChangeContext.Member.ID, shouldApplyV3)
+			s.cluster.PromoteMember(confChangeContext.ID, shouldApplyV3)
 		} else {
 			s.cluster.AddMember(&confChangeContext.Member, shouldApplyV3)
 
-			if confChangeContext.Member.ID != s.MemberID() {
-				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
+			if confChangeContext.ID != s.MemberID() {
+				s.r.transport.AddPeer(confChangeContext.ID, confChangeContext.PeerURLs)
 			}
 		}
 
@@ -2502,7 +2502,7 @@ func (s *EtcdServer) IsMemberExist(id types.ID) bool {
 
 // raftStatus returns the raft status of this etcd node.
 func (s *EtcdServer) raftStatus() raft.Status {
-	return s.r.Node.Status()
+	return s.r.Status()
 }
 
 func (s *EtcdServer) Version() *serverversion.Manager {
