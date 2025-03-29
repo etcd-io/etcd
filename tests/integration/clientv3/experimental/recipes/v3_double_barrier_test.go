@@ -15,7 +15,6 @@
 package recipes_test
 
 import (
-	"context"
 	"errors"
 	"sync"
 	"testing"
@@ -153,7 +152,7 @@ func TestDoubleBarrierTooManyClients(t *testing.T) {
 		t.Errorf("Unexcepted error, expected: ErrTooManyClients, got: %v", err)
 	}
 
-	resp, err := clus.RandClient().Get(context.TODO(), "test-barrier/waiters", clientv3.WithPrefix())
+	resp, err := clus.RandClient().Get(t.Context(), "test-barrier/waiters", clientv3.WithPrefix())
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

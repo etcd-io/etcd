@@ -76,7 +76,7 @@ func TestTracing(t *testing.T) {
 
 	// create a client that has tracing enabled
 	tracer := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
-	defer tracer.Shutdown(context.TODO())
+	defer tracer.Shutdown(t.Context())
 	tp := trace.TracerProvider(tracer)
 
 	tracingOpts := []otelgrpc.Option{
@@ -101,7 +101,7 @@ func TestTracing(t *testing.T) {
 	defer cli.Close()
 
 	// make a request with the instrumented client
-	resp, err := cli.Get(context.TODO(), "key")
+	resp, err := cli.Get(t.Context(), "key")
 	require.NoError(t, err)
 	require.Empty(t, resp.Kvs)
 

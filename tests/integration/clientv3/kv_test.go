@@ -49,7 +49,7 @@ func TestKVPutError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Put(ctx, "", "bar")
 	if !errors.Is(err, rpctypes.ErrEmptyKey) {
@@ -81,9 +81,9 @@ func TestKVPutWithLease(t *testing.T) {
 	lapi := clus.RandClient()
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
-	lease, err := lapi.Grant(context.Background(), 10)
+	lease, err := lapi.Grant(t.Context(), 10)
 	if err != nil {
 		t.Fatalf("failed to create lease %v", err)
 	}
@@ -117,17 +117,17 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 
 	kv := clus.RandClient()
 
-	_, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	_, err := kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
 	if !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar")
+	_, err = kv.Put(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 
-	_, err = kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	_, err = kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
 	require.NoError(t, err)
-	rr, rerr := kv.Get(context.TODO(), "foo")
+	rr, rerr := kv.Get(t.Context(), "foo")
 	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
@@ -148,22 +148,22 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 
 	lapi := clus.RandClient()
 
-	resp, err := lapi.Grant(context.Background(), 10)
+	resp, err := lapi.Grant(t.Context(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	if _, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
+	if _, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	_, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID))
+	_, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithLease(resp.ID))
 	require.NoError(t, err)
 
-	_, err = kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease())
+	_, err = kv.Put(t.Context(), "zoo", "bar1", clientv3.WithIgnoreLease())
 	require.NoError(t, err)
 
-	rr, rerr := kv.Get(context.TODO(), "zoo")
+	rr, rerr := kv.Get(t.Context(), "zoo")
 	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
@@ -190,7 +190,7 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
 
 	kv := clus.Client(0)
-	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
+	_, err := kv.Put(clientv3.WithRequireLeader(t.Context()), "foo", "bar")
 	if !errors.Is(err, rpctypes.ErrNoLeader) {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestKVRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
@@ -290,7 +290,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 
 	go func() {
 		defer close(donec)
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -315,7 +315,7 @@ func TestKVNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -335,7 +335,7 @@ func TestKVDeleteRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	tests := []struct {
 		key   string
@@ -384,7 +384,7 @@ func TestKVCompactError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	for i := 0; i < 5; i++ {
 		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
@@ -414,7 +414,7 @@ func TestKVCompact(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	for i := 0; i < 10; i++ {
 		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
@@ -474,7 +474,7 @@ func TestKVGetRetry(t *testing.T) {
 	fIdx := (clus.WaitLeader(t) + 1) % clusterSize
 
 	kv := clus.Client(fIdx)
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Put(ctx, "foo", "bar")
 	require.NoError(t, err)
@@ -524,7 +524,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	kv := clus.Client(0)
 	clus.Members[0].Stop(t)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	_, err := kv.Put(ctx, "foo", "bar")
 	if err == nil {
@@ -534,7 +534,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(context.TODO(), "foo")
+		gresp, gerr := kv.Get(t.Context(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -564,7 +564,7 @@ func TestKVGetCancel(t *testing.T) {
 	oldconn := clus.Client(0).ActiveConnection()
 	kv := clus.Client(0)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	resp, err := kv.Get(ctx, "abc")
@@ -586,7 +586,7 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
@@ -605,7 +605,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	// get retries on all errors.
 	// so here we use it to eat the potential broken pipe error for the next put.
 	// grpc client might see a broken pipe error when we issue the get request before
@@ -616,7 +616,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, cancel = context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
@@ -632,7 +632,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
-	_, err := clus.Client(0).Put(context.TODO(), "k", "1")
+	_, err := clus.Client(0).Put(t.Context(), "k", "1")
 	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -645,14 +645,14 @@ func TestKVPutAtMostOnce(t *testing.T) {
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
-		_, err = clus.Client(0).Put(context.TODO(), "k", "v")
+		_, err = clus.Client(0).Put(t.Context(), "k", "v")
 		<-donec
 		if err != nil {
 			break
 		}
 	}
 
-	resp, err := clus.Client(0).Get(context.TODO(), "k")
+	resp, err := clus.Client(0).Get(t.Context(), "k")
 	require.NoError(t, err)
 	if resp.Kvs[0].Version > 11 {
 		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
@@ -727,7 +727,7 @@ func TestKVLargeRequests(t *testing.T) {
 			},
 		)
 		cli := clus.Client(0)
-		_, err := cli.Put(context.TODO(), "foo", strings.Repeat("a", test.valueSize))
+		_, err := cli.Put(t.Context(), "foo", strings.Repeat("a", test.valueSize))
 
 		var etcdErr rpctypes.EtcdError
 		if errors.As(err, &etcdErr) {
@@ -740,7 +740,7 @@ func TestKVLargeRequests(t *testing.T) {
 
 		// put request went through, now expects large response back
 		if err == nil {
-			_, err = cli.Get(context.TODO(), "foo")
+			_, err = cli.Get(t.Context(), "foo")
 			if err != nil {
 				t.Errorf("#%d: get expected no error, got %v", i, err)
 			}
@@ -819,7 +819,7 @@ func TestKVForLearner(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-		_, err := cli.Do(context.TODO(), test.op)
+		_, err := cli.Do(t.Context(), test.op)
 		if err != nil && !test.wErr {
 			t.Errorf("%d: expect no error, got %v", idx, err)
 		}
@@ -864,14 +864,14 @@ func TestBalancerSupportLearner(t *testing.T) {
 	// wait until learner member is ready
 	<-clus.Members[3].ReadyNotify()
 
-	if _, err = cli.Get(context.Background(), "foo"); err == nil {
+	if _, err = cli.Get(t.Context(), "foo"); err == nil {
 		t.Fatalf("expect Get request to learner to fail, got no error")
 	}
 	t.Logf("Expected: Read from learner error: %v", err)
 
 	eps := []string{learnerEp, clus.Members[0].GRPCURL}
 	cli.SetEndpoints(eps...)
-	if _, err := cli.Get(context.Background(), "foo"); err != nil {
+	if _, err := cli.Get(t.Context(), "foo"); err != nil {
 		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)
 	}
 }

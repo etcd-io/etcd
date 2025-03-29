@@ -63,7 +63,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 
 	// Once the cluster version has been updated, any entity's storage
 	// version should be align with cluster version.
-	ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 	_, err = cli.AuthStatus(ctx)
 	cancel()
 	if err != nil {
