@@ -33,6 +33,8 @@ var (
 	ErrMissingInputFileArg = fmt.Errorf("missing input file argument")
 	// ErrInvalidOutputFormat is returned when the output format is invalid.
 	ErrInvalidOutputFormat = fmt.Errorf("invalid output format, must be one of png, jpg, jpeg, tiff")
+	// ErrInvalidChartTYpe is returned when the chart type is invalid.
+	ErrInvalidChartType = fmt.Errorf("invalid chart type, must be one of line, heatmap")
 )
 
 // NewRootCommand returns the root command for the rw-heatmaps tool.
@@ -56,6 +58,10 @@ func NewRootCommand() *cobra.Command {
 				}
 			}
 
+			if o.chartType == "line" {
+				return chart.PlotLineCharts(datasets, o.title, o.outputImageFile, o.outputFormat)
+			}
+
 			return chart.PlotHeatMaps(datasets, o.title, o.outputImageFile, o.outputFormat, o.zeroCentered)
 		},
 	}
@@ -70,6 +76,7 @@ type options struct {
 	outputImageFile string
 	outputFormat    string
 	zeroCentered    bool
+	chartType       string
 }
 
 // newOptions returns a new options for the command with the default values applied.
@@ -77,6 +84,7 @@ func newOptions() options {
 	return options{
 		outputFormat: "jpg",
 		zeroCentered: true,
+		chartType:    "heatmap",
 	}
 }
 
@@ -86,6 +94,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&o.outputImageFile, "output-image-file", "o", o.outputImageFile, "output image filename (required)")
 	fs.StringVarP(&o.outputFormat, "output-format", "f", o.outputFormat, "output image file format")
 	fs.BoolVar(&o.zeroCentered, "zero-centered", o.zeroCentered, "plot the improvement graph with white color represents 0.0")
+	fs.StringVarP(&o.chartType, "chart-type", "c", o.chartType, `type of chart to plot ["line", or "heatmap"]`)
 }
 
 // Validate returns an error if the options are invalid.
@@ -100,6 +109,11 @@ func (o *options) Validate() error {
 	case "png", "jpg", "jpeg", "tiff":
 	default:
 		return ErrInvalidOutputFormat
+	}
+	switch o.chartType {
+	case "line", "heatmap":
+	default:
+		return ErrInvalidChartType
 	}
 	return nil
 }
