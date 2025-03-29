@@ -320,7 +320,7 @@ function tool_pkg_dir {
 # tool_get_bin [tool]
 function run_go_tool {
   local cmdbin
-  if ! cmdbin=$(GOARCH="" tool_get_bin "${1}"); then
+  if ! cmdbin=$(GOARCH="" GOOS="" tool_get_bin "${1}"); then
     log_warning "Failed to install tool '${1}'"
     return 2
   fi

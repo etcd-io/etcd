@@ -502,7 +502,10 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
+  # results in certain dependencies being excluded from the BOM file, such as procfs. 
+  # For more info, https://github.com/etcd-io/etcd/issues/19665
+  output=$(GOOS=linux GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
