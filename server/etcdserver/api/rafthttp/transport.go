@@ -119,6 +119,11 @@ type Transport struct {
 	// machine and thus stop the Transport.
 	ErrorC chan error
 
+	// PipelineBufferSize is the size of the pipeline buffer for each peer.
+	// It helps hold temporary network latency and prevents message drops.
+	// Default value is 64 messages.
+	PipelineBufferSize int
+
 	streamRt   http.RoundTripper // roundTripper used by streams
 	pipelineRt http.RoundTripper // roundTripper used by pipelines
 
@@ -151,6 +156,12 @@ func (t *Transport) Start() error {
 	if t.DialRetryFrequency == 0 {
 		t.DialRetryFrequency = rate.Every(100 * time.Millisecond)
 	}
+
+	// If PipelineBufferSize is not set, use the default value
+	if t.PipelineBufferSize <= 0 {
+		t.PipelineBufferSize = defaultPipelineBufSize
+	}
+
 	return nil
 }
 
