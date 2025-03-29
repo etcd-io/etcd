@@ -17,6 +17,8 @@ package v3rpc
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
@@ -52,10 +54,8 @@ func TestCheckRangeRequest(t *testing.T) {
 		}
 
 		actualRet := checkRangeRequest(&rangeReq)
-		if getError(actualRet) != getError(req.expectedError) {
-			t.Errorf("expected sortOrder (%d) and sortTarget (%d) to be %q, but got %q",
-				req.sortOrder, req.sortTarget, getError(req.expectedError), getError(actualRet))
-		}
+		assert.Equalf(t, getError(actualRet), getError(req.expectedError), "expected sortOrder (%d) and sortTarget (%d) to be %q, but got %q",
+			req.sortOrder, req.sortTarget, getError(req.expectedError), getError(actualRet))
 	}
 }
 

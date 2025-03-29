@@ -113,9 +113,7 @@ func TestIsValidDowngrade(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			res := isValidDowngrade(
 				semver.Must(semver.NewVersion(tt.verFrom)), semver.Must(semver.NewVersion(tt.verTo)))
-			if res != tt.result {
-				t.Errorf("Expected downgrade valid is %v; Got %v", tt.result, res)
-			}
+			assert.Equalf(t, res, tt.result, "Expected downgrade valid is %v; Got %v", tt.result, res)
 		})
 	}
 }
