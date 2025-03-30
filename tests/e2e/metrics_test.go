@@ -167,7 +167,6 @@ func TestNoMetricsMissing(t *testing.T) {
 			"etcd_debugging_snap_save_marshalling_duration_seconds",
 			"etcd_debugging_snap_save_total_duration_seconds",
 			"etcd_debugging_store_expires_total",
-			"etcd_debugging_store_reads_total",
 			"etcd_debugging_store_watch_requests_total",
 			"etcd_debugging_store_watchers",
 			"etcd_debugging_store_writes_total",
