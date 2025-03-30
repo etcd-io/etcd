@@ -666,6 +666,7 @@ func newTestCluster(tb testing.TB, membs []*Member) *RaftCluster {
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 		be:      newMembershipBackend(),
+		v2store: v2store.New(),
 	}
 	for _, m := range membs {
 		c.members[m.ID] = m
