@@ -26,7 +26,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -69,7 +68,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.NoError(t, corrupt(p, offset))
 
 	// verify we broke the wal
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, Position{})
 	require.NoError(t, err)
 
 	_, _, _, err = w.ReadAll()
@@ -88,7 +87,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.Equalf(t, expectedPerms, actualPerms, "unexpected file permissions on .broken wal")
 
 	// read it back
-	w, err = Open(lg, p, walpb.Snapshot{})
+	w, err = Open(lg, p, Position{})
 	require.NoError(t, err)
 
 	_, _, walEnts, err := w.ReadAll()
@@ -103,7 +102,7 @@ func testRepair(t *testing.T, ents [][]raftpb.Entry, corrupt corruptFunc, expect
 	require.NoError(t, w.Close())
 
 	// read back entries following repair, ensure it's all there
-	w, err = Open(lg, p, walpb.Snapshot{})
+	w, err = Open(lg, p, Position{})
 	require.NoError(t, err)
 	_, _, walEnts, err = w.ReadAll()
 	require.NoError(t, err)
@@ -197,7 +196,7 @@ func TestRepairFailDeleteDir(t *testing.T) {
 	}
 	f.Close()
 
-	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	w, err = Open(zaptest.NewLogger(t), p, Position{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -582,7 +582,6 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 
 // openWALFromSnapshot reads the WAL at the given snap and returns the wal, its latest HardState and cluster ID, and all entries that appear
 // after the position of the given snap in the WAL.
-// The snap must have been previously saved to the WAL, or this call will panic.
 func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*wal.WAL, *raftpb.HardState, []raftpb.Entry, *raftpb.Snapshot, *snapshotMetadata) {
 	var walsnap walpb.Snapshot
 	if snapshot != nil {
@@ -590,7 +589,7 @@ func openWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) (*w
 	}
 	repaired := false
 	for {
-		w, err := wal.Open(cfg.Logger, cfg.WALDir(), walsnap)
+		w, err := wal.Open(cfg.Logger, cfg.WALDir(), wal.Position{Index: walsnap.Index, Term: walsnap.Term})
 		if err != nil {
 			cfg.Logger.Fatal("failed to open WAL", zap.Error(err))
 		}

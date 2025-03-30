@@ -37,7 +37,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -115,7 +114,7 @@ and output a hex encoded line of binary for each input line`)
 
 func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, endIndex *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
 	var (
-		walsnap  walpb.Snapshot
+		pos      wal.Position
 		snapshot *raftpb.Snapshot
 		err      error
 	)
@@ -127,7 +126,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		if *startIndex > 0 {
 			*startIndex--
 		}
-		walsnap.Index = *startIndex
+		pos.Index = *startIndex
 	} else {
 		if *snapfile == "" {
 			ss := snap.New(lg, snapDir(dataDir))
@@ -138,7 +137,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 
 		switch {
 		case err == nil:
-			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+			pos.Index, pos.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
 			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
 
 			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
@@ -146,7 +145,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", merr))
 			}
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
-				walsnap.Term, walsnap.Index, nodes, confStateJSON)
+				pos.Term, pos.Index, nodes, confStateJSON)
 		case errors.Is(err, snap.ErrNoSnapshot):
 			fmt.Print("Snapshot:\nempty\n")
 		default:
@@ -160,7 +159,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		wd = walDir(dataDir)
 	}
 
-	w, err := wal.OpenForRead(zap.NewExample(), wd, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), wd, pos)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
