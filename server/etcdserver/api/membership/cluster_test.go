@@ -661,7 +661,12 @@ func TestNodeToMember(t *testing.T) {
 }
 
 func newTestCluster(tb testing.TB, membs []*Member) *RaftCluster {
-	c := &RaftCluster{lg: zaptest.NewLogger(tb), members: make(map[types.ID]*Member), removed: make(map[types.ID]bool)}
+	c := &RaftCluster{
+		lg:      zaptest.NewLogger(tb),
+		members: make(map[types.ID]*Member),
+		removed: make(map[types.ID]bool),
+		be:      newMembershipBackend(),
+	}
 	for _, m := range membs {
 		c.members[m.ID] = m
 	}
