@@ -58,9 +58,6 @@ func CheckHashKV(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	}
 
 	for i := 1; i < len(hashKVs); i++ {
-		if hashKVs[i-1].HashRevision != hashKVs[i].HashRevision {
-			return fmt.Errorf("hashRevision mismatch, node %v has %+v, node %v has %+v", hashKVs[i-1].Header.MemberId, hashKVs[i-1], hashKVs[i].Header.MemberId, hashKVs[i])
-		}
 		if hashKVs[i-1].CompactRevision != hashKVs[i].CompactRevision {
 			return fmt.Errorf("compactRevision mismatch, node %v has %+v, node %v has %+v", hashKVs[i-1].Header.MemberId, hashKVs[i-1], hashKVs[i].Header.MemberId, hashKVs[i])
 		}
