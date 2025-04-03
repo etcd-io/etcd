@@ -60,7 +60,10 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string, meta any) {
 		Addr:     s1.Addr(),
 		Metadata: meta,
 	}
-	e2 := endpoints.Endpoint{Addr: s2.Addr()}
+	e2 := endpoints.Endpoint{
+		Addr:     s2.Addr(),
+		Metadata: meta,
+	}
 
 	err = em.AddEndpoint(context.TODO(), "foo/e1", e1)
 	if err != nil {
@@ -148,7 +151,7 @@ type testMetaInfo struct {
 	Metadata   any
 }
 
-// TestEtcdGrpcResolverPickFirst mimics scenarios described in grpc_naming.md doc.
+// TestEtcdGrpcResolverPickFirstWithMetaInfo mimics scenarios described in grpc_naming.md doc.
 func TestEtcdGrpcResolverPickFirstWithMetaInfo(t *testing.T) {
 	integration2.BeforeTest(t)
 
@@ -159,7 +162,7 @@ func TestEtcdGrpcResolverPickFirstWithMetaInfo(t *testing.T) {
 	})
 }
 
-// TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
+// TestEtcdGrpcResolverRoundRobinWithMetaInfo mimics scenarios described in grpc_naming.md doc.
 func TestEtcdGrpcResolverRoundRobinWithMetaInfo(t *testing.T) {
 	integration2.BeforeTest(t)
 
