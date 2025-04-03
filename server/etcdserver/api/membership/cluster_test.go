@@ -277,7 +277,15 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 	}
 }
 
+func TestClusterValidateConfigurationChangeV3(t *testing.T) {
+	testClusterValidateConfigurationChange(t, true)
+}
+
 func TestClusterValidateConfigurationChangeV2(t *testing.T) {
+	testClusterValidateConfigurationChange(t, false)
+}
+
+func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldApplyV3) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
 	be := newMembershipBackend()
 	cl.SetBackend(be)
@@ -458,7 +466,7 @@ func TestClusterValidateConfigurationChangeV2(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc)
+		err := cl.ValidateConfigurationChange(tt.cc, shouldApplyV3)
 		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}

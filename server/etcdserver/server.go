@@ -2069,7 +2069,7 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	lg := s.Logger()
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil {
 		lg.Error("Validation on configuration change failed", zap.Bool("shouldApplyV3", bool(shouldApplyV3)), zap.Error(err))
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)
