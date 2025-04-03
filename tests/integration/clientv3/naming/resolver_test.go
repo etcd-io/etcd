@@ -23,17 +23,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	testpb "google.golang.org/grpc/interop/grpc_testing"
-
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
-func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
+func testEtcdGRPCResolver(t *testing.T, lbPolicy string, meta any) {
 	// Setup two new dummy stub servers
 	payloadBody := []byte{'1'}
 	s1 := grpctesting.NewDummyStubServer(payloadBody)
@@ -57,7 +56,10 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 		t.Fatal("failed to create EndpointManager", err)
 	}
 
-	e1 := endpoints.Endpoint{Addr: s1.Addr()}
+	e1 := endpoints.Endpoint{
+		Addr:     s1.Addr(),
+		Metadata: meta,
+	}
 	e2 := endpoints.Endpoint{Addr: s2.Addr()}
 
 	err = em.AddEndpoint(context.TODO(), "foo/e1", e1)
@@ -130,7 +132,7 @@ func TestEtcdGrpcResolverPickFirst(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Pick first is the default load balancer policy for grpc-go
-	testEtcdGRPCResolver(t, "pick_first")
+	testEtcdGRPCResolver(t, "pick_first", nil)
 }
 
 // TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
@@ -138,7 +140,34 @@ func TestEtcdGrpcResolverRoundRobin(t *testing.T) {
 	integration2.BeforeTest(t)
 
 	// Round robin is a common alternative for more production oriented scenarios
-	testEtcdGRPCResolver(t, "round_robin")
+	testEtcdGRPCResolver(t, "round_robin", nil)
+}
+
+type testMetaInfo struct {
+	ServerName string
+	Metadata   any
+}
+
+// TestEtcdGrpcResolverPickFirst mimics scenarios described in grpc_naming.md doc.
+func TestEtcdGrpcResolverPickFirstWithMetaInfo(t *testing.T) {
+	integration2.BeforeTest(t)
+
+	// Pick first is the default load balancer policy for grpc-go
+	testEtcdGRPCResolver(t, "pick_first", &testMetaInfo{
+		ServerName: "s1",
+		Metadata:   "testMeta",
+	})
+}
+
+// TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
+func TestEtcdGrpcResolverRoundRobinWithMetaInfo(t *testing.T) {
+	integration2.BeforeTest(t)
+
+	// Round robin is a common alternative for more production oriented scenarios
+	testEtcdGRPCResolver(t, "round_robin", &testMetaInfo{
+		ServerName: "s1",
+		Metadata:   "testMeta",
+	})
 }
 
 func TestEtcdEndpointManager(t *testing.T) {
