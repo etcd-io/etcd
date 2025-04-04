@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.0-rc.4 (TBC)
 
+### etcd server
+
+- [Switch to validating v3 when v2 and v3 are synchronized](https://github.com/etcd-io/etcd/pull/19703).
+
 <hr>
 
 ## v3.6.0-rc.3 (2025-03-27)
