@@ -16,6 +16,7 @@ package endpoints
 
 import (
 	"context"
+	"google.golang.org/grpc/attributes"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -32,7 +33,13 @@ type Endpoint struct {
 	// Metadata is the information associated with Addr, which may be used
 	// to make load balancing decision.
 	// Since etcd 3.1
+	// Deprecated: Use Attributes instead
 	Metadata any
+
+	// Attributes contains information associated with Addr, which may be used
+	// to make load balancing decision
+	// Since etcd 3.5
+	Attributes *attributes.Attributes
 }
 
 type Operation uint8

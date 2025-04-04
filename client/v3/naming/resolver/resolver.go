@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/attributes"
 	gresolver "google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
@@ -111,11 +112,21 @@ func convertToGRPCAddress(ups map[string]*endpoints.Update) []gresolver.Address 
 	for _, up := range ups {
 		addr := gresolver.Address{
 			Addr:     up.Endpoint.Addr,
-			Metadata: up.Endpoint.Metadata,
+			// Deprecated: Metadata field
+			// Metadata: up.Endpoint.Metadata,
+			Attributes: convertToAttributes(up),
 		}
 		addrs = append(addrs, addr)
 	}
 	return addrs
+}
+
+func convertToAttributes(up *endpoints.Update) *attributes.Attributes {
+	if up.Endpoint.Metadata != nil {
+		return attributes.New(up.Key, up.Endpoint.Metadata)
+	}
+
+	return up.Endpoint.Attributes
 }
 
 // ResolveNow is a no-op here.
