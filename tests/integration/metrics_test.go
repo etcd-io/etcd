@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -61,7 +60,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	putreq := &pb.PutRequest{Key: []byte("k"), Value: make([]byte, 4096)}
 	for i := 0; i < numPuts; i++ {
 		time.Sleep(10 * time.Millisecond) // to execute multiple backend txn
-		_, err := kvc.Put(context.TODO(), putreq)
+		_, err := kvc.Put(t.Context(), putreq)
 		require.NoError(t, err)
 	}
 
@@ -82,12 +81,12 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 
 	// clear out historical keys, in use bytes should free pages
 	creq := &pb.CompactionRequest{Revision: int64(numPuts), Physical: true}
-	_, kerr := kvc.Compact(context.TODO(), creq)
+	_, kerr := kvc.Compact(t.Context(), creq)
 	require.NoError(t, kerr)
 
 	validateAfterCompactionInUse := func() error {
 		// Put to move PendingPages to FreePages
-		_, verr := kvc.Put(context.TODO(), putreq)
+		_, verr := kvc.Put(t.Context(), putreq)
 		require.NoError(t, verr)
 		time.Sleep(500 * time.Millisecond)
 
@@ -114,7 +113,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	}
 
 	// defrag should give freed space back to fs
-	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
+	mc.Defragment(t.Context(), &pb.DefragmentRequest{})
 
 	afterDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
 	require.NoError(t, err)
@@ -174,11 +173,11 @@ func TestMetricsRangeDurationSeconds(t *testing.T) {
 		"my-namespace/foobar", "my-namespace/foobar1", "namespace/foobar1",
 	}
 	for _, key := range keys {
-		_, err := client.Put(context.Background(), key, "data")
+		_, err := client.Put(t.Context(), key, "data")
 		require.NoError(t, err)
 	}
 
-	_, err := client.Get(context.Background(), "", clientv3.WithFromKey())
+	_, err := client.Get(t.Context(), "", clientv3.WithFromKey())
 	require.NoError(t, err)
 
 	rangeDurationSeconds, err := clus.Members[0].Metric("etcd_server_range_duration_seconds")

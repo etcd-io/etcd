@@ -233,7 +233,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 			defer clus.Terminate(t)
 
 			wAPI := integration.ToGRPC(clus.RandClient()).Watch
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			wStream, err := wAPI.Watch(ctx)
 			if err != nil {
@@ -268,7 +268,7 @@ func TestV3WatchFromCurrentRevision(t *testing.T) {
 				for _, k := range tt.putKeys {
 					kvc := integration.ToGRPC(clus.RandClient()).KV
 					req := &pb.PutRequest{Key: []byte(k), Value: []byte("bar")}
-					if _, err := kvc.Put(context.TODO(), req); err != nil {
+					if _, err := kvc.Put(t.Context(), req); err != nil {
 						t.Errorf("#%d: couldn't put key (%v)", i, err)
 					}
 				}
@@ -320,7 +320,7 @@ func TestV3WatchFutureRevision(t *testing.T) {
 	defer clus.Terminate(t)
 
 	wAPI := integration.ToGRPC(clus.RandClient()).Watch
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, err := wAPI.Watch(ctx)
 	if err != nil {
@@ -349,7 +349,7 @@ func TestV3WatchFutureRevision(t *testing.T) {
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	for {
 		req := &pb.PutRequest{Key: wkey, Value: []byte("bar")}
-		resp, rerr := kvc.Put(context.TODO(), req)
+		resp, rerr := kvc.Put(t.Context(), req)
 		if rerr != nil {
 			t.Fatalf("couldn't put key (%v)", rerr)
 		}
@@ -382,7 +382,7 @@ func TestV3WatchWrongRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	wAPI := integration.ToGRPC(clus.RandClient()).Watch
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, err := wAPI.Watch(ctx)
 	if err != nil {
@@ -436,7 +436,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, errW := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if errW != nil {
@@ -478,7 +478,7 @@ func testV3WatchCancel(t *testing.T, startRev int64) {
 	}
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Errorf("couldn't put key (%v)", err)
 	}
 
@@ -496,7 +496,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if wErr != nil {
@@ -513,7 +513,7 @@ func TestV3WatchCurrentPutOverlap(t *testing.T) {
 			defer wg.Done()
 			kvc := integration.ToGRPC(clus.RandClient()).KV
 			req := &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}
-			if _, err := kvc.Put(context.TODO(), req); err != nil {
+			if _, err := kvc.Put(t.Context(), req); err != nil {
 				t.Errorf("couldn't put key (%v)", err)
 			}
 		}()
@@ -582,7 +582,7 @@ func TestV3WatchEmptyKey(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
@@ -599,7 +599,7 @@ func TestV3WatchEmptyKey(t *testing.T) {
 	// put a key with empty value
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	preq := &pb.PutRequest{Key: []byte("foo")}
-	_, err = kvc.Put(context.TODO(), preq)
+	_, err = kvc.Put(t.Context(), preq)
 	require.NoError(t, err)
 
 	// check received PUT
@@ -636,7 +636,7 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, errW := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if errW != nil {
@@ -676,7 +676,7 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 		ids[wresp.WatchId] = struct{}{}
 	}
 
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
@@ -704,7 +704,7 @@ func testV3WatchMultipleWatchers(t *testing.T, startRev int64) {
 	}
 
 	// now put one key that has only one matching watcher
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("fo"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("fo"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 	wresp, err := wStream.Recv()
@@ -740,7 +740,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if wErr != nil {
@@ -771,7 +771,7 @@ func testV3WatchMultipleEventsTxn(t *testing.T, startRev int64) {
 		txn.Success = append(txn.Success, ru)
 	}
 
-	tresp, err := kvc.Txn(context.Background(), &txn)
+	tresp, err := kvc.Txn(t.Context(), &txn)
 	if err != nil {
 		t.Fatalf("kvc.Txn error: %v", err)
 	}
@@ -829,14 +829,14 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo0"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo0"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo1"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo1"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if wErr != nil {
@@ -852,10 +852,10 @@ func TestV3WatchMultipleEventsPutUnsynced(t *testing.T) {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo0"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo0"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo1"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo1"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
@@ -916,7 +916,7 @@ func TestV3WatchProgressOnMemberRestart(t *testing.T) {
 	defer clus.Terminate(t)
 
 	client := clus.RandClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	errC := make(chan error, 1)
@@ -1029,7 +1029,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 
 	streams := make([]pb.Watch_WatchClient, 5)
 	for i := range streams {
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 		defer cancel()
 		wStream, errW := wAPI.Watch(ctx)
 		if errW != nil {
@@ -1056,7 +1056,7 @@ func testV3WatchMultipleStreams(t *testing.T, startRev int64) {
 		}
 	}
 
-	if _, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
+	if _, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")}); err != nil {
 		t.Fatalf("couldn't put key (%v)", err)
 	}
 
@@ -1129,7 +1129,7 @@ func TestWatchWithProgressNotify(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	wStream, wErr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 	if wErr != nil {
@@ -1188,7 +1188,7 @@ func TestV3WatchClose(t *testing.T) {
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
 		go func() {
-			ctx, cancel := context.WithCancel(context.TODO())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer func() {
 				wg.Done()
 				cancel()
@@ -1219,7 +1219,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
@@ -1247,7 +1247,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 	// put a key with empty value
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 	preq := &pb.PutRequest{Key: []byte("foo")}
-	_, err = kvc.Put(context.TODO(), preq)
+	_, err = kvc.Put(t.Context(), preq)
 	require.NoError(t, err)
 
 	select {
@@ -1257,7 +1257,7 @@ func TestV3WatchWithFilter(t *testing.T) {
 	}
 
 	dreq := &pb.DeleteRangeRequest{Key: []byte("foo")}
-	_, err = kvc.DeleteRange(context.TODO(), dreq)
+	_, err = kvc.DeleteRange(t.Context(), dreq)
 	require.NoError(t, err)
 
 	select {
@@ -1281,7 +1281,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	wctx, wcancel := context.WithCancel(context.Background())
+	wctx, wcancel := context.WithCancel(t.Context())
 	defer wcancel()
 
 	tests := []struct {
@@ -1299,7 +1299,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 	}}
 	for i, tt := range tests {
 		kvc := integration.ToGRPC(clus.RandClient()).KV
-		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[0])})
+		_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[0])})
 		require.NoError(t, err)
 
 		ws, werr := integration.ToGRPC(clus.RandClient()).Watch.Watch(wctx)
@@ -1317,7 +1317,7 @@ func TestV3WatchWithPrevKV(t *testing.T) {
 		_, err = ws.Recv()
 		require.NoError(t, err)
 
-		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[1])})
+		_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte(tt.key), Value: []byte(tt.vals[1])})
 		require.NoError(t, err)
 
 		recv := make(chan *pb.WatchResponse, 1)
@@ -1351,7 +1351,7 @@ func TestV3WatchCancellation(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	cli := clus.RandClient()
@@ -1391,7 +1391,7 @@ func TestV3WatchCloseCancelRace(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	cli := clus.RandClient()
@@ -1436,7 +1436,7 @@ func TestV3WatchProgressWaitsForSync(t *testing.T) {
 	defer clus.Terminate(t)
 
 	client := clus.RandClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	// Write a couple values into key to make sure there's a
@@ -1499,7 +1499,7 @@ func TestV3WatchProgressWaitsForSyncNoEvents(t *testing.T) {
 	defer clus.Terminate(t)
 
 	client := clus.RandClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	resp, err := client.Put(ctx, "bar", "1")
@@ -1547,7 +1547,7 @@ func TestV3NoEventsLostOnCompact(t *testing.T) {
 	defer clus.Terminate(t)
 
 	client := clus.RandClient()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	// sendLoop throughput is rate-limited to 1 event per second

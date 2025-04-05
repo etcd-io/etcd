@@ -20,7 +20,6 @@
 package embed_test
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -162,7 +161,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	defer cli.Close()
 
 	// open watch connection
-	cli.Watch(context.Background(), "foo")
+	cli.Watch(t.Context(), "foo")
 
 	donec := make(chan struct{})
 	go func() {
