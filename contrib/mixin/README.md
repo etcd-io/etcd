@@ -18,7 +18,7 @@ grafana7x: true,
 
 ## Background
 
-* For more information about monitoring mixins, see this [design doc](https://docs.google.com/document/d/1A9xvzwqnFVSOZ5fD3blKODXfsat5fg6ZhnKu9LK3lB4/edit#).
+* For more information about monitoring mixins, see this [design doc](https://github.com/monitoring-mixins/docs/blob/master/design.pdf).
 
 ## Testing alerts
 
