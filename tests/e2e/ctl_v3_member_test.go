@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -207,7 +208,9 @@ func memberListWithHexTest(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatalf("getMemberList error (%v)", err)
 	}
-
+	if len(resp.Members) == 0 {
+		cx.t.Fatal("member number is 0")
+	}
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
@@ -222,33 +225,54 @@ func memberListWithHexTest(cx ctlCtx) {
 	if err = proc.Close(); err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
-	hexResp := etcdserverpb.MemberListResponse{}
-	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&hexResp); errors.Is(err, io.EOF) {
-		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
-	}
-	num := len(resp.Members)
-	hexNum := len(hexResp.Members)
-	if num != hexNum {
-		cx.t.Fatalf("member number,expected %d,got %d", num, hexNum)
-	}
-	if num == 0 {
-		cx.t.Fatal("member number is 0")
+
+	decoder := json.NewDecoder(strings.NewReader(txt))
+	hexResponse := struct {
+		Header  map[string]any   `json:"header"`
+		Members []map[string]any `json:"members"`
+	}{}
+	if decodeErr := decoder.Decode(&hexResponse); errors.Is(decodeErr, io.EOF) {
+		cx.t.Fatalf("memberListWithHexTest error (%v)", decodeErr)
 	}
 
-	if resp.Header.RaftTerm != hexResp.Header.RaftTerm {
-		cx.t.Fatalf("Unexpected raft_term, expected %d, got %d", resp.Header.RaftTerm, hexResp.Header.RaftTerm)
+	if len(resp.Members) != len(hexResponse.Members) {
+		cx.t.Fatalf("member number, expected %d,got %d", len(resp.Members), len(hexResponse.Members))
 	}
 
-	for i := 0; i < num; i++ {
-		if resp.Members[i].Name != hexResp.Members[i].Name {
-			cx.t.Fatalf("Unexpected member name,expected %v, got %v", resp.Members[i].Name, hexResp.Members[i].Name)
+	if clusterID, _ := strconv.ParseUint(hexResponse.Header["cluster_id"].(string), 16, 64); resp.Header.ClusterId != clusterID {
+		cx.t.Fatalf("Unexpected Cluster ID in response header: expected %x, got %x", resp.Header.ClusterId, clusterID)
+	}
+	if memberID, _ := strconv.ParseUint(hexResponse.Header["member_id"].(string), 16, 64); resp.Header.MemberId != memberID {
+		cx.t.Fatalf("Unexpected Member ID in response header: expected %x, got %x", resp.Header.MemberId, memberID)
+	}
+	if raftTerm := uint64(hexResponse.Header["raft_term"].(float64)); resp.Header.RaftTerm != raftTerm {
+		cx.t.Fatalf("Unexpected Raft Term in response header: expected %d, got %d", resp.Header.RaftTerm, raftTerm)
+	}
+
+	for i := 0; i < len(resp.Members); i++ {
+		if id, _ := strconv.ParseUint(hexResponse.Members[i]["ID"].(string), 16, 64); resp.Members[i].ID != id {
+			cx.t.Fatalf("Unexpected Member ID: expected %x, got %x", resp.Members[i].ID, id)
 		}
-		if !reflect.DeepEqual(resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs) {
-			cx.t.Fatalf("Unexpected member peerURLs, expected %v, got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
+		if name := hexResponse.Members[i]["name"]; resp.Members[i].Name != name {
+			cx.t.Fatalf("Unexpected Member Name: expected %s, got %s", resp.Members[i].Name, name)
 		}
-		if !reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs) {
-			cx.t.Fatalf("Unexpected member clientURLs, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
+
+		urls := hexResponse.Members[i]["peerURLs"].([]any)
+		peerURLs := make([]string, len(urls))
+		for j, url := range urls {
+			peerURLs[j] = url.(string)
+		}
+		if !reflect.DeepEqual(resp.Members[i].PeerURLs, peerURLs) {
+			cx.t.Fatalf("Unexpected Member peerURLs: expected %v, got %v", resp.Members[i].ClientURLs, peerURLs)
+		}
+
+		urls = hexResponse.Members[i]["clientURLs"].([]any)
+		clientURLs := make([]string, len(urls))
+		for j, url := range urls {
+			clientURLs[j] = url.(string)
+		}
+		if !reflect.DeepEqual(resp.Members[i].ClientURLs, clientURLs) {
+			cx.t.Fatalf("Unexpected Member clientURLs: expected %v, got %v", resp.Members[i].ClientURLs, clientURLs)
 		}
 	}
 }
