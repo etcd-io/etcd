@@ -35,6 +35,8 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
+	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -256,16 +258,22 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 		require.NoError(t, err)
 		secondSnapshot, err := snap.Read(lg, secondFiles[i])
 		require.NoError(t, err)
-		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		assertMembershipEqual(t, lg, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
 	}
 }
 
-func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
+func assertMembershipEqual(t testing.TB, lg *zap.Logger, firstStore v2store.Store, secondStore v2store.Store) {
 	rc1 := membership.NewCluster(zaptest.NewLogger(t))
 	rc1.SetStore(firstStore)
+	be1, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be1)
+	rc1.SetBackend(schema.NewMembershipBackend(lg, be1))
 	rc1.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	rc2 := membership.NewCluster(zaptest.NewLogger(t))
+	be2, _ := betesting.NewDefaultTmpBackend(t)
+	defer betesting.Close(t, be2)
+	rc2.SetBackend(schema.NewMembershipBackend(lg, be2))
 	rc2.SetStore(secondStore)
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
