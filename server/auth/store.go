@@ -288,9 +288,8 @@ func (as *authStore) AuthEnable() error {
 	as.enabled = true
 	as.tokenProvider.enable()
 
+	as.commitRevision(tx)
 	as.refreshRangePermCache(tx)
-
-	as.setRevision(tx.UnsafeReadAuthRevision())
 
 	as.lg.Info("enabled authentication")
 	return nil
