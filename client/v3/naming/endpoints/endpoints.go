@@ -36,8 +36,7 @@ type Endpoint struct {
 	// Deprecated: Use Attributes instead
 	Metadata any
 
-	// Attributes contains information associated with Addr, which may be used
-	// to make load balancing decision
+	// Attributes contains arbitrary data about this address
 	// Since etcd 3.5
 	Attributes *attributes.Attributes
 }

@@ -19,8 +19,8 @@ import (
 	"strings"
 	"sync"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/attributes"
 	gresolver "google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/status"
 
@@ -82,6 +82,7 @@ type resolver struct {
 func (r *resolver) watch() {
 	defer r.wg.Done()
 
+	lg := r.c.GetLogger()
 	allUps := make(map[string]*endpoints.Update)
 	for {
 		select {
@@ -101,32 +102,29 @@ func (r *resolver) watch() {
 				}
 			}
 
-			addrs := convertToGRPCAddress(allUps)
+			addrs := convertToGRPCAddress(lg, allUps)
 			r.cc.UpdateState(gresolver.State{Addresses: addrs})
 		}
 	}
 }
 
-func convertToGRPCAddress(ups map[string]*endpoints.Update) []gresolver.Address {
+func convertToGRPCAddress(lg *zap.Logger, ups map[string]*endpoints.Update) []gresolver.Address {
 	var addrs []gresolver.Address
 	for _, up := range ups {
+		if up.Endpoint.Metadata != nil {
+			lg.Warn("using deprecated Metadata field in resolver address, please use Attributes instead")
+		}
+
 		addr := gresolver.Address{
 			Addr:     up.Endpoint.Addr,
+
 			// Deprecated: Metadata field
-			// Metadata: up.Endpoint.Metadata,
-			Attributes: convertToAttributes(up),
+			Metadata: up.Endpoint.Metadata,
+			Attributes: up.Endpoint.Attributes,
 		}
 		addrs = append(addrs, addr)
 	}
 	return addrs
-}
-
-func convertToAttributes(up *endpoints.Update) *attributes.Attributes {
-	if up.Endpoint.Metadata != nil {
-		return attributes.New(up.Key, up.Endpoint.Metadata)
-	}
-
-	return up.Endpoint.Attributes
 }
 
 // ResolveNow is a no-op here.
