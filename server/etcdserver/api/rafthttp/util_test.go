@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/raft/v3/raftpb"
@@ -45,9 +46,7 @@ func TestEntry(t *testing.T) {
 			t.Errorf("#%d: unexpected read ents error: %v", i, err)
 			continue
 		}
-		if !reflect.DeepEqual(ent, tt) {
-			t.Errorf("#%d: ent = %+v, want %+v", i, ent, tt)
-		}
+		assert.Truef(t, reflect.DeepEqual(ent, tt), "#%d: ent = %+v, want %+v", i, ent, tt)
 	}
 }
 
@@ -88,9 +87,8 @@ func TestCompareMajorMinorVersion(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		if g := compareMajorMinorVersion(tt.va, tt.vb); g != tt.w {
-			t.Errorf("#%d: compare = %d, want %d", i, g, tt.w)
-		}
+		g := compareMajorMinorVersion(tt.va, tt.vb)
+		assert.Equalf(t, g, tt.w, "#%d: compare = %d, want %d", i, g, tt.w)
 	}
 }
 
@@ -115,9 +113,7 @@ func TestServerVersion(t *testing.T) {
 	}
 	for i, tt := range tests {
 		v := serverVersion(tt.h)
-		if v.String() != tt.wv.String() {
-			t.Errorf("#%d: version = %s, want %s", i, v, tt.wv)
-		}
+		assert.Equalf(t, v.String(), tt.wv.String(), "#%d: version = %s, want %s", i, v, tt.wv)
 	}
 }
 
@@ -142,9 +138,7 @@ func TestMinClusterVersion(t *testing.T) {
 	}
 	for i, tt := range tests {
 		v := minClusterVersion(tt.h)
-		if v.String() != tt.wv.String() {
-			t.Errorf("#%d: version = %s, want %s", i, v, tt.wv)
-		}
+		assert.Equalf(t, v.String(), tt.wv.String(), "#%d: version = %s, want %s", i, v, tt.wv)
 	}
 }
 
@@ -189,9 +183,8 @@ func TestCheckVersionCompatibility(t *testing.T) {
 	}
 	for i, tt := range tests {
 		_, _, err := checkVersionCompatibility("", tt.server, tt.minCluster)
-		if ok := err == nil; ok != tt.wok {
-			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
-		}
+		ok := err == nil
+		assert.Equalf(t, ok, tt.wok, "#%d: ok = %v, want %v", i, ok, tt.wok)
 	}
 }
 

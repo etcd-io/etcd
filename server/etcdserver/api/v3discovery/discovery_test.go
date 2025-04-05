@@ -21,6 +21,8 @@ import (
 	"testing"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -204,18 +206,12 @@ func TestGetClusterMembers(t *testing.T) {
 	}
 
 	clsInfo, _, err := d.getClusterMembers()
-	if err != nil {
-		t.Errorf("Failed to get cluster members, error: %v", err)
-	}
+	require.NoErrorf(t, err, "Failed to get cluster members, error: %v", err)
 
-	if clsInfo.Len() != len(expectedMemberInfo) {
-		t.Errorf("unexpected member count, expected: %d, got: %d", len(expectedMemberInfo), clsInfo.Len())
-	}
+	assert.Equalf(t, len(expectedMemberInfo), clsInfo.Len(), "unexpected member count, expected: %d, got: %d", len(expectedMemberInfo), clsInfo.Len())
 
 	for i, m := range clsInfo.members {
-		if m != expectedMemberInfo[i] {
-			t.Errorf("unexpected member[%d], expected: %v, got: %v", i, expectedMemberInfo[i], m)
-		}
+		assert.Equalf(t, m, expectedMemberInfo[i], "unexpected member[%d], expected: %v, got: %v", i, expectedMemberInfo[i], m)
 	}
 }
 
@@ -387,23 +383,17 @@ func TestCheckCluster(t *testing.T) {
 			}
 
 			clsInfo, _, _, err := d.checkCluster()
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("Unexpected error, expected: %v, got: %v", tc.expectedError, err)
-			}
+			require.ErrorIsf(t, err, tc.expectedError, "Unexpected error, expected: %v, got: %v", tc.expectedError, err)
 
 			if err == nil {
 				if fkv.getSizeRetries != 0 || fkv.getMembersRetries != 0 {
 					t.Errorf("Discovery client did not retry checking cluster on error, remaining etries: (%d, %d)", fkv.getSizeRetries, fkv.getMembersRetries)
 				}
 
-				if clsInfo.Len() != len(expectedMemberInfo) {
-					t.Errorf("Unexpected member count, expected: %d, got: %d", len(expectedMemberInfo), clsInfo.Len())
-				}
+				assert.Equalf(t, len(expectedMemberInfo), clsInfo.Len(), "Unexpected member count, expected: %d, got: %d", len(expectedMemberInfo), clsInfo.Len())
 
 				for mIdx, m := range clsInfo.members {
-					if m != expectedMemberInfo[mIdx] {
-						t.Errorf("Unexpected member[%d], expected: %v, got: %v", mIdx, expectedMemberInfo[mIdx], m)
-					}
+					assert.Equalf(t, m, expectedMemberInfo[mIdx], "Unexpected member[%d], expected: %v, got: %v", mIdx, expectedMemberInfo[mIdx], m)
 				}
 			}
 		})
@@ -495,13 +485,10 @@ func TestRegisterSelf(t *testing.T) {
 				clock: clockwork.NewRealClock(),
 			}
 
-			if err := d.registerSelf(tc.expectedRegValue); err != nil {
-				t.Errorf("Error occuring on register member self: %v", err)
-			}
+			err := d.registerSelf(tc.expectedRegValue)
+			require.NoErrorf(t, err, "Error occuring on register member self: %v", err)
 
-			if fkv.retries != 0 {
-				t.Errorf("Discovery client did not retry registering itself on error, remaining retries: %d", fkv.retries)
-			}
+			assert.Equalf(t, 0, fkv.retries, "Discovery client did not retry registering itself on error, remaining retries: %d", fkv.retries)
 		})
 	}
 }
@@ -620,14 +607,10 @@ func TestWaitPeers(t *testing.T) {
 
 	d.waitPeers(&cls, 3, 0)
 
-	if cls.Len() != len(expectedMemberInfo) {
-		t.Errorf("unexpected member number returned by watch, expected: %d, got: %d", len(expectedMemberInfo), cls.Len())
-	}
+	assert.Equalf(t, len(expectedMemberInfo), cls.Len(), "unexpected member number returned by watch, expected: %d, got: %d", len(expectedMemberInfo), cls.Len())
 
 	for i, m := range cls.members {
-		if m != expectedMemberInfo[i] {
-			t.Errorf("unexpected member[%d] returned by watch, expected: %v, got: %v", i, expectedMemberInfo[i], m)
-		}
+		assert.Equalf(t, m, expectedMemberInfo[i], "unexpected member[%d] returned by watch, expected: %v, got: %v", i, expectedMemberInfo[i], m)
 	}
 }
 
@@ -724,14 +707,10 @@ func TestGetInitClusterStr(t *testing.T) {
 			}
 
 			retStr, err := clsInfo.getInitClusterStr(tc.clusterSize)
-			if !errors.Is(err, tc.expectedError) {
-				t.Errorf("Unexpected error, expected: %v, got: %v", tc.expectedError, err)
-			}
+			require.ErrorIsf(t, err, tc.expectedError, "Unexpected error, expected: %v, got: %v", tc.expectedError, err)
 
 			if err == nil {
-				if retStr != tc.expectedResult {
-					t.Errorf("Unexpected result, expected: %s, got: %s", tc.expectedResult, retStr)
-				}
+				assert.Equalf(t, tc.expectedResult, retStr, "Unexpected result, expected: %s, got: %s", tc.expectedResult, retStr)
 			}
 		})
 	}

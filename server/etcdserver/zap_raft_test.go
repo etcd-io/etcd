@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -46,30 +46,18 @@ func TestNewRaftLogger(t *testing.T) {
 		ErrorOutputPaths: []string{logPath},
 	}
 	gl, err := NewRaftLogger(lcfg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	gl.Info("etcd-logutil-1")
 	data, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Contains(data, []byte("etcd-logutil-1")) {
-		t.Fatalf("can't find data in log %q", string(data))
-	}
+	require.NoError(t, err)
+	require.Truef(t, bytes.Contains(data, []byte("etcd-logutil-1")), "can't find data in log %q", string(data))
 
 	gl.Warning("etcd-logutil-2")
 	data, err = os.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !bytes.Contains(data, []byte("etcd-logutil-2")) {
-		t.Fatalf("can't find data in log %q", string(data))
-	}
-	if !bytes.Contains(data, []byte("zap_raft_test.go:")) {
-		t.Fatalf("unexpected caller; %q", string(data))
-	}
+	require.NoError(t, err)
+	require.Truef(t, bytes.Contains(data, []byte("etcd-logutil-2")), "can't find data in log %q", string(data))
+	require.Truef(t, bytes.Contains(data, []byte("zap_raft_test.go:")), "unexpected caller; %q", string(data))
 }
 
 func TestNewRaftLoggerFromZapCore(t *testing.T) {
@@ -84,7 +72,5 @@ func TestNewRaftLoggerFromZapCore(t *testing.T) {
 	lg := NewRaftLoggerFromZapCore(cr, syncer)
 	lg.Info("TestNewRaftLoggerFromZapCore")
 	txt := buf.String()
-	if !strings.Contains(txt, "TestNewRaftLoggerFromZapCore") {
-		t.Fatalf("unexpected log %q", txt)
-	}
+	require.Containsf(t, txt, "TestNewRaftLoggerFromZapCore", "unexpected log %q", txt)
 }
