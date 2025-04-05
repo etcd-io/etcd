@@ -15,13 +15,13 @@
 package fileutil
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +64,7 @@ func TestCreateDirAll(t *testing.T) {
 }
 
 func TestExist(t *testing.T) {
-	fdir := filepath.Join(os.TempDir(), fmt.Sprint(time.Now().UnixNano()+rand.Int63n(1000)))
+	fdir := filepath.Join(os.TempDir(), strconv.FormatInt(time.Now().UnixNano()+rand.Int63n(1000), 10))
 	os.RemoveAll(fdir)
 	if err := os.Mkdir(fdir, 0o666); err != nil {
 		t.Skip(err)
