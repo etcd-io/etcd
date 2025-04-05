@@ -15,7 +15,6 @@
 package schema
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -80,13 +79,9 @@ func TestActionIsReversible(t *testing.T) {
 
 			assertBucketState(t, tx, Meta, tc.state)
 			reverse, err := tc.action.unsafeDo(tx)
-			if err != nil {
-				t.Errorf("Failed to upgrade, err: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to upgrade, err: %v", err)
 			_, err = reverse.unsafeDo(tx)
-			if err != nil {
-				t.Errorf("Failed to downgrade, err: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to downgrade, err: %v", err)
 			assertBucketState(t, tx, Meta, tc.state)
 		})
 	}
@@ -132,10 +127,7 @@ func TestActionListRevert(t *testing.T) {
 			defer tx.Unlock()
 
 			UnsafeCreateMetaBucket(tx)
-			err := tc.actions.unsafeExecute(lg, tx)
-			if !errors.Is(err, tc.expectError) {
-				t.Errorf("Unexpected error or lack thereof, expected: %v, got: %v", tc.expectError, err)
-			}
+			require.ErrorIs(t, tc.actions.unsafeExecute(lg, tx), tc.expectError)
 			assertBucketState(t, tx, Meta, tc.expectState)
 		})
 	}

@@ -208,9 +208,7 @@ func TestMigrate(t *testing.T) {
 			w, _ := waltesting.NewTmpWAL(t, tc.walEntries)
 			defer w.Close()
 			walVersion, err := wal.ReadWALVersion(w)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			b := backend.NewDefaultBackend(lg, dataPath)
 			defer b.Close()
@@ -264,16 +262,12 @@ func TestMigrateIsReversible(t *testing.T) {
 			assertBucketState(t, tx, Meta, tc.state)
 			w, walPath := waltesting.NewTmpWAL(t, nil)
 			walVersion, err := wal.ReadWALVersion(w)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			// Upgrade to current version
 			ver := localBinaryVersion()
 			err = UnsafeMigrate(lg, tx, walVersion, ver)
-			if err != nil {
-				t.Errorf("Migrate(lg, tx, %q) returned error %+v", ver, err)
-			}
+			require.NoErrorf(t, err, "Migrate(lg, tx, %q) returned error %+v", ver, err)
 			assert.Equal(t, &ver, UnsafeReadStorageVersion(tx))
 
 			// Downgrade back to initial version
@@ -281,13 +275,9 @@ func TestMigrateIsReversible(t *testing.T) {
 			w = waltesting.Reopen(t, walPath)
 			defer w.Close()
 			walVersion, err = wal.ReadWALVersion(w)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			err = UnsafeMigrate(lg, tx, walVersion, tc.initialVersion)
-			if err != nil {
-				t.Errorf("Migrate(lg, tx, %q) returned error %+v", tc.initialVersion, err)
-			}
+			require.NoErrorf(t, err, "Migrate(lg, tx, %q) returned error %+v", tc.initialVersion, err)
 
 			// Assert that all changes were revered
 			assertBucketState(t, tx, Meta, tc.state)

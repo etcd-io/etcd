@@ -15,7 +15,6 @@
 package schema
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -177,12 +176,8 @@ func TestMigrationStepExecute(t *testing.T) {
 			UnsafeSetStorageVersion(tx, &tc.currentVersion)
 
 			step := newMigrationStep(tc.currentVersion, tc.isUpgrade, tc.changes)
-			err := step.unsafeExecute(lg, tx)
-			if !errors.Is(err, tc.expectError) {
-				t.Errorf("Unexpected error or lack thereof, expected: %v, got: %v", tc.expectError, err)
-			}
-			v := UnsafeReadStorageVersion(tx)
-			assert.Equal(t, tc.expectVersion, v)
+			require.ErrorIs(t, step.unsafeExecute(lg, tx), tc.expectError)
+			assert.Equal(t, tc.expectVersion, UnsafeReadStorageVersion(tx))
 			assert.Equal(t, tc.expectRecordedActions, recorder.actions)
 		})
 	}
