@@ -15,7 +15,6 @@
 package etcdmain
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"net/url"
@@ -53,10 +52,7 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 	}
 
 	cfg := newConfig()
-	err := cfg.parse(args)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cfg.parse(args))
 
 	validateMemberFlags(t, cfg)
 }
@@ -87,9 +83,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 	}
 
 	b, err := yaml.Marshal(&yc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tmpfile := mustCreateCfgFile(t, b)
 	defer os.Remove(tmpfile.Name())
@@ -97,9 +91,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 	args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 	cfg := newConfig()
-	if err = cfg.parse(args); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cfg.parse(args))
 
 	validateMemberFlags(t, cfg)
 }
@@ -114,9 +106,7 @@ func TestConfigParsingClusteringFlags(t *testing.T) {
 	}
 
 	cfg := newConfig()
-	if err := cfg.parse(args); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cfg.parse(args))
 
 	validateClusteringFlags(t, cfg)
 }
@@ -137,19 +127,14 @@ func TestConfigFileClusteringFields(t *testing.T) {
 	}
 
 	b, err := yaml.Marshal(&yc)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tmpfile := mustCreateCfgFile(t, b)
 	defer os.Remove(tmpfile.Name())
 
 	args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 	cfg := newConfig()
-	err = cfg.parse(args)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, cfg.parse(args))
 
 	validateClusteringFlags(t, cfg)
 }
@@ -191,9 +176,7 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 
 	for i, tt := range tests {
 		b, err := yaml.Marshal(&tt)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tmpfile := mustCreateCfgFile(t, b)
 		defer os.Remove(tmpfile.Name())
@@ -201,9 +184,7 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); err != nil {
-			t.Errorf("%d: err = %v", i, err)
-		}
+		assert.NoErrorf(t, cfg.parse(args), "%d", i)
 	}
 }
 
@@ -230,9 +211,7 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 
 	for i, tt := range conflictArgs {
 		cfg := newConfig()
-		if err := cfg.parse(tt); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
-			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
-		}
+		assert.ErrorIsf(t, cfg.parse(tt), embed.ErrConflictBootstrapFlags, "%d", i)
 	}
 }
 
@@ -263,9 +242,7 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 
 	for i, tt := range tests {
 		b, err := yaml.Marshal(&tt)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tmpfile := mustCreateCfgFile(t, b)
 		defer os.Remove(tmpfile.Name())
@@ -273,9 +250,7 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
-			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
-		}
+		assert.ErrorIsf(t, cfg.parse(args), embed.ErrConflictBootstrapFlags, "%d", i)
 	}
 }
 
@@ -316,9 +291,7 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
-			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
-		}
+		assert.ErrorIsf(t, cfg.parse(tt.args), tt.werr, "%d", i)
 	}
 }
 
@@ -400,11 +373,9 @@ func TestConfigIsNewCluster(t *testing.T) {
 	for i, tt := range tests {
 		cfg := newConfig()
 		args := []string{"--initial-cluster-state", tests[i].state}
-		err := cfg.parse(args)
-		require.NoErrorf(t, err, "#%d: unexpected clusterState.Set error: %v", i, err)
-		if g := cfg.ec.IsNewCluster(); g != tt.wIsNew {
-			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
-		}
+		require.NoErrorf(t, cfg.parse(args), "#%d: unexpected clusterState.Set error", i)
+		g := cfg.ec.IsNewCluster()
+		assert.Equalf(t, g, tt.wIsNew, "#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
 	}
 }
 
@@ -438,9 +409,7 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 
 	for i, tt := range tests {
 		b, err := yaml.Marshal(&tt)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		tmpfile := mustCreateCfgFile(t, b)
 		defer os.Remove(tmpfile.Name())
@@ -448,9 +417,7 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); err == nil || !strings.Contains(err.Error(), tt.errStr) {
-			t.Errorf("%d: Wrong err = %v", i, err)
-		}
+		assert.ErrorContainsf(t, cfg.parse(args), tt.errStr, "%d: Wrong", i)
 	}
 }
 
@@ -532,13 +499,9 @@ func TestParseFeatureGateFlags(t *testing.T) {
 				require.Errorf(t, err, "expect parse error")
 				return
 			}
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			for k, v := range tc.expectedFeatures {
-				if cfg.ec.ServerFeatureGate.Enabled(k) != v {
-					t.Errorf("expected feature gate %s=%v, got %v", k, v, cfg.ec.ServerFeatureGate.Enabled(k))
-				}
+				assert.Equalf(t, cfg.ec.ServerFeatureGate.Enabled(k), v, "expected feature gate %s=%v, got %v", k, v, cfg.ec.ServerFeatureGate.Enabled(k))
 			}
 		})
 	}
@@ -1153,12 +1116,8 @@ func TestMemoryMlockFlagMigration(t *testing.T) {
 				t.Fatal("error parsing config")
 			}
 
-			if cfgFromCmdLine.ec.MemoryMlock != tc.expectedMemoryMlock {
-				t.Errorf("expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromCmdLine.ec.MemoryMlock)
-			}
-			if cfgFromFile.ec.MemoryMlock != tc.expectedMemoryMlock {
-				t.Errorf("expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromFile.ec.MemoryMlock)
-			}
+			assert.Equalf(t, tc.expectedMemoryMlock, cfgFromCmdLine.ec.MemoryMlock, "expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromCmdLine.ec.MemoryMlock)
+			assert.Equalf(t, tc.expectedMemoryMlock, cfgFromFile.ec.MemoryMlock, "expected MemoryMlock=%v, got %v", tc.expectedMemoryMlock, cfgFromFile.ec.MemoryMlock)
 		})
 	}
 }
@@ -1181,18 +1140,11 @@ func generateCfgsFromFileAndCmdLine(t *testing.T, yc any, cmdLineArgs []string) 
 
 func mustCreateCfgFile(t *testing.T, b []byte) *os.File {
 	tmpfile, err := os.CreateTemp(t.TempDir(), "servercfg")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, err = tmpfile.Write(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tmpfile.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, tmpfile.Close())
 
 	return tmpfile
 }
@@ -1210,33 +1162,15 @@ func validateMemberFlags(t *testing.T, cfg *config) {
 		SnapshotCatchUpEntries: 1000,
 	}
 
-	if cfg.ec.Dir != wcfg.Dir {
-		t.Errorf("dir = %v, want %v", cfg.ec.Dir, wcfg.Dir)
-	}
-	if cfg.ec.MaxSnapFiles != wcfg.MaxSnapFiles {
-		t.Errorf("maxsnap = %v, want %v", cfg.ec.MaxSnapFiles, wcfg.MaxSnapFiles)
-	}
-	if cfg.ec.MaxWalFiles != wcfg.MaxWalFiles {
-		t.Errorf("maxwal = %v, want %v", cfg.ec.MaxWalFiles, wcfg.MaxWalFiles)
-	}
-	if cfg.ec.Name != wcfg.Name {
-		t.Errorf("name = %v, want %v", cfg.ec.Name, wcfg.Name)
-	}
-	if cfg.ec.SnapshotCount != wcfg.SnapshotCount {
-		t.Errorf("snapcount = %v, want %v", cfg.ec.SnapshotCount, wcfg.SnapshotCount)
-	}
-	if cfg.ec.SnapshotCatchUpEntries != wcfg.SnapshotCatchUpEntries {
-		t.Errorf("snapshot catch up entries = %v, want %v", cfg.ec.SnapshotCatchUpEntries, wcfg.SnapshotCatchUpEntries)
-	}
-	if !reflect.DeepEqual(cfg.ec.ListenPeerUrls, wcfg.ListenPeerUrls) {
-		t.Errorf("listen-peer-urls = %v, want %v", cfg.ec.ListenPeerUrls, wcfg.ListenPeerUrls)
-	}
-	if !reflect.DeepEqual(cfg.ec.ListenClientUrls, wcfg.ListenClientUrls) {
-		t.Errorf("listen-client-urls = %v, want %v", cfg.ec.ListenClientUrls, wcfg.ListenClientUrls)
-	}
-	if !reflect.DeepEqual(cfg.ec.ListenClientHttpUrls, wcfg.ListenClientHttpUrls) {
-		t.Errorf("listen-client-http-urls = %v, want %v", cfg.ec.ListenClientHttpUrls, wcfg.ListenClientHttpUrls)
-	}
+	assert.Equalf(t, cfg.ec.Dir, wcfg.Dir, "dir = %v, want %v", cfg.ec.Dir, wcfg.Dir)
+	assert.Equalf(t, cfg.ec.MaxSnapFiles, wcfg.MaxSnapFiles, "maxsnap = %v, want %v", cfg.ec.MaxSnapFiles, wcfg.MaxSnapFiles)
+	assert.Equalf(t, cfg.ec.MaxWalFiles, wcfg.MaxWalFiles, "maxwal = %v, want %v", cfg.ec.MaxWalFiles, wcfg.MaxWalFiles)
+	assert.Equalf(t, cfg.ec.Name, wcfg.Name, "name = %v, want %v", cfg.ec.Name, wcfg.Name)
+	assert.Equalf(t, cfg.ec.SnapshotCount, wcfg.SnapshotCount, "snapcount = %v, want %v", cfg.ec.SnapshotCount, wcfg.SnapshotCount)
+	assert.Equalf(t, cfg.ec.SnapshotCatchUpEntries, wcfg.SnapshotCatchUpEntries, "snapshot catch up entries = %v, want %v", cfg.ec.SnapshotCatchUpEntries, wcfg.SnapshotCatchUpEntries)
+	assert.Truef(t, reflect.DeepEqual(cfg.ec.ListenPeerUrls, wcfg.ListenPeerUrls), "listen-peer-urls = %v, want %v", cfg.ec.ListenPeerUrls, wcfg.ListenPeerUrls)
+	assert.Truef(t, reflect.DeepEqual(cfg.ec.ListenClientUrls, wcfg.ListenClientUrls), "listen-client-urls = %v, want %v", cfg.ec.ListenClientUrls, wcfg.ListenClientUrls)
+	assert.Truef(t, reflect.DeepEqual(cfg.ec.ListenClientHttpUrls, wcfg.ListenClientHttpUrls), "listen-client-http-urls = %v, want %v", cfg.ec.ListenClientHttpUrls, wcfg.ListenClientHttpUrls)
 }
 
 func validateClusteringFlags(t *testing.T, cfg *config) {
@@ -1247,21 +1181,11 @@ func validateClusteringFlags(t *testing.T, cfg *config) {
 	wcfg.ec.InitialCluster = "0=http://localhost:8000"
 	wcfg.ec.InitialClusterToken = "etcdtest"
 
-	if cfg.ec.ClusterState != wcfg.ec.ClusterState {
-		t.Errorf("clusterState = %v, want %v", cfg.ec.ClusterState, wcfg.ec.ClusterState)
-	}
-	if cfg.ec.InitialCluster != wcfg.ec.InitialCluster {
-		t.Errorf("initialCluster = %v, want %v", cfg.ec.InitialCluster, wcfg.ec.InitialCluster)
-	}
-	if cfg.ec.InitialClusterToken != wcfg.ec.InitialClusterToken {
-		t.Errorf("initialClusterToken = %v, want %v", cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken)
-	}
-	if !reflect.DeepEqual(cfg.ec.AdvertisePeerUrls, wcfg.ec.AdvertisePeerUrls) {
-		t.Errorf("initial-advertise-peer-urls = %v, want %v", cfg.ec.AdvertisePeerUrls, wcfg.ec.AdvertisePeerUrls)
-	}
-	if !reflect.DeepEqual(cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls) {
-		t.Errorf("advertise-client-urls = %v, want %v", cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls)
-	}
+	assert.Equalf(t, cfg.ec.ClusterState, wcfg.ec.ClusterState, "clusterState = %v, want %v", cfg.ec.ClusterState, wcfg.ec.ClusterState)
+	assert.Equalf(t, cfg.ec.InitialCluster, wcfg.ec.InitialCluster, "initialCluster = %v, want %v", cfg.ec.InitialCluster, wcfg.ec.InitialCluster)
+	assert.Equalf(t, cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken, "initialClusterToken = %v, want %v", cfg.ec.InitialClusterToken, wcfg.ec.InitialClusterToken)
+	assert.Truef(t, reflect.DeepEqual(cfg.ec.AdvertisePeerUrls, wcfg.ec.AdvertisePeerUrls), "initial-advertise-peer-urls = %v, want %v", cfg.ec.AdvertisePeerUrls, wcfg.ec.AdvertisePeerUrls)
+	assert.Truef(t, reflect.DeepEqual(cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls), "advertise-client-urls = %v, want %v", cfg.ec.AdvertiseClientUrls, wcfg.ec.AdvertiseClientUrls)
 }
 
 func TestConfigFileDeprecatedOptions(t *testing.T) {
@@ -1337,19 +1261,14 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Create config file
 			b, err := yaml.Marshal(&tc.configFileYAML)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
 			tmpfile := mustCreateCfgFile(t, b)
 			defer os.Remove(tmpfile.Name())
 
 			// Parse config
 			cfg := newConfig()
-			err = cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}))
 
 			// Check which flags were set and marked as deprecated
 			foundFlags := make(map[string]struct{})
