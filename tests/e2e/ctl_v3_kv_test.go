@@ -88,27 +88,13 @@ func putTestIgnoreValue(cx ctlCtx) {
 
 func putTestIgnoreLease(cx ctlCtx) {
 	leaseID, err := ctlV3LeaseGrant(cx, 10)
-	if err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseGrant error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "foo", "bar", leaseID); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
-	}
-	if err := ctlV3Put(cx, "foo", "bar1", "", "--ignore-lease"); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Put error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar1"}); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
-	}
-	if err := ctlV3LeaseRevoke(cx, leaseID); err != nil {
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3LeaseRevok error (%v)", err)
-	}
-	if err := ctlV3Get(cx, []string{"key"}); err != nil { // expect no output
-		cx.t.Fatalf("putTestIgnoreLease: ctlV3Get error (%v)", err)
-	}
+	require.NoErrorf(cx.t, err, "putTestIgnoreLease: ctlV3LeaseGrant error")
+	require.NoErrorf(cx.t, ctlV3Put(cx, "foo", "bar", leaseID), "putTestIgnoreLease: ctlV3Put error")
+	require.NoErrorf(cx.t, ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar"}), "putTestIgnoreLease: ctlV3Get error")
+	require.NoErrorf(cx.t, ctlV3Put(cx, "foo", "bar1", "", "--ignore-lease"), "putTestIgnoreLease: ctlV3Put error")
+	require.NoErrorf(cx.t, ctlV3Get(cx, []string{"foo"}, kv{"foo", "bar1"}), "putTestIgnoreLease: ctlV3Get error")
+	require.NoErrorf(cx.t, ctlV3LeaseRevoke(cx, leaseID), "putTestIgnoreLease: ctlV3LeaseRevok error")
+	require.NoErrorf(cx.t, ctlV3Get(cx, []string{"key"}), "putTestIgnoreLease: ctlV3Get error")
 }
 
 func getTest(cx ctlCtx) {
@@ -117,9 +103,7 @@ func getTest(cx ctlCtx) {
 		revkvs = []kv{{"key3", "val3"}, {"key2", "val2"}, {"key1", "val1"}}
 	)
 	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getTest #%d: ctlV3Put error (%v)", i, err)
-		}
+		require.NoErrorf(cx.t, ctlV3Put(cx, kvs[i].key, kvs[i].val, ""), "getTest #%d: ctlV3Put error", i)
 	}
 
 	tests := []struct {
@@ -170,9 +154,7 @@ func getFormatTest(cx ctlCtx) {
 		}
 		cmdArgs = append(cmdArgs, "abc")
 		lines, err := e2e.RunUtilCompletion(cmdArgs, cx.envMap)
-		if err != nil {
-			cx.t.Errorf("#%d: error (%v)", i, err)
-		}
+		require.NoErrorf(cx.t, err, "#%d: error", i)
 		assert.Contains(cx.t, strings.Join(lines, "\n"), tt.wstr)
 	}
 }
@@ -180,9 +162,7 @@ func getFormatTest(cx ctlCtx) {
 func getRevTest(cx ctlCtx) {
 	kvs := []kv{{"key", "val1"}, {"key", "val2"}, {"key", "val3"}}
 	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
-		}
+		require.NoErrorf(cx.t, ctlV3Put(cx, kvs[i].key, kvs[i].val, ""), "getRevTest #%d: ctlV3Put error", i)
 	}
 
 	tests := []struct {
@@ -196,9 +176,7 @@ func getRevTest(cx ctlCtx) {
 	}
 
 	for i, tt := range tests {
-		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			cx.t.Errorf("getTest #%d: ctlV3Get error (%v)", i, err)
-		}
+		assert.NoErrorf(cx.t, ctlV3Get(cx, tt.args, tt.wkv...), "getTest #%d: ctlV3Get error", i)
 	}
 }
 
@@ -210,9 +188,7 @@ func getMinMaxCreateModRevTest(cx ctlCtx) {
 		{"key4", "val4"}, //     5         5           5
 	}
 	for i := range kvs {
-		if err := ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("getRevTest #%d: ctlV3Put error (%v)", i, err)
-		}
+		require.NoErrorf(cx.t, ctlV3Put(cx, kvs[i].key, kvs[i].val, ""), "getRevTest #%d: ctlV3Put error", i)
 	}
 
 	tests := []struct {
@@ -227,9 +203,7 @@ func getMinMaxCreateModRevTest(cx ctlCtx) {
 	}
 
 	for i, tt := range tests {
-		if err := ctlV3Get(cx, tt.args, tt.wkv...); err != nil {
-			cx.t.Errorf("getMinModRevTest #%d: ctlV3Get error (%v)", i, err)
-		}
+		assert.NoErrorf(cx.t, ctlV3Get(cx, tt.args, tt.wkv...), "getMinModRevTest #%d: ctlV3Get error", i)
 	}
 }
 
@@ -310,9 +284,7 @@ func delTest(cx ctlCtx) {
 
 	for i, tt := range tests {
 		for j := range tt.puts {
-			if err := ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val, ""); err != nil {
-				cx.t.Fatalf("delTest #%d-%d: ctlV3Put error (%v)", i, j, err)
-			}
+			require.NoErrorf(cx.t, ctlV3Put(cx, tt.puts[j].key, tt.puts[j].val, ""), "delTest #%d-%d: ctlV3Put error", i, j)
 		}
 		if err := ctlV3Del(cx, tt.args, tt.deletedNum); err != nil {
 			if cx.dialTimeout > 0 && !isGRPCTimedout(err) {

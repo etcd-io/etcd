@@ -57,9 +57,7 @@ func TestCtlV3MoveLeaderScenarios(t *testing.T) {
 func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars map[string]string) {
 	epc := setupEtcdctlTest(t, &cfg, true)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	var tcfg *tls.Config
@@ -86,9 +84,7 @@ func testCtlV3MoveLeader(t *testing.T, cfg e2e.EtcdProcessClusterConfig, envVars
 		require.NoError(t, err)
 		ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 		resp, err := cli.Status(ctx, ep)
-		if err != nil {
-			t.Fatalf("failed to get status from endpoint %s: %v", ep, err)
-		}
+		require.NoErrorf(t, err, "failed to get status from endpoint %s", ep)
 		cancel()
 		cli.Close()
 
@@ -146,8 +142,6 @@ func setupEtcdctlTest(t *testing.T, cfg *e2e.EtcdProcessClusterConfig, quorum bo
 		cfg = e2e.ConfigStandalone(*cfg)
 	}
 	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster")
 	return epc
 }

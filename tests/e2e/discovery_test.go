@@ -53,9 +53,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		e2e.WithClusterSize(1),
 		e2e.WithEnableV2(true),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer dc.Close()
 
 	dcc := MustNewHTTPClient(t, dc.EndpointsHTTP(), nil)
@@ -71,9 +69,7 @@ func testClusterUsingDiscovery(t *testing.T, size int, peerTLS bool) {
 		e2e.WithIsPeerTLS(peerTLS),
 		e2e.WithDiscovery(dc.EndpointsHTTP()[0]+"/v2/keys"),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer c.Close()
 
 	kubectl := []string{e2e.BinPath.Etcdctl, "--endpoints", strings.Join(c.EndpointsGRPC(), ",")}
