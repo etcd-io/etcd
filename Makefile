@@ -179,7 +179,7 @@ endif
 
 # Tools
 
-GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
+GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint/v2)
 .PHONY: install-golangci-lint
 install-golangci-lint:
 ifeq (, $(shell which golangci-lint))
