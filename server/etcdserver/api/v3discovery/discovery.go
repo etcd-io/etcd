@@ -246,12 +246,12 @@ func (d *discovery) getClusterSize() (int, error) {
 		return 0, ErrSizeNotFound
 	}
 
-	clusterSize, err := strconv.ParseInt(string(resp.Kvs[0].Value), 10, 0)
+	clusterSize, err := strconv.Atoi(string(resp.Kvs[0].Value))
 	if err != nil || clusterSize <= 0 {
 		return 0, ErrBadSizeKey
 	}
 
-	return int(clusterSize), nil
+	return clusterSize, nil
 }
 
 func (d *discovery) getClusterMembers() (*clusterInfo, int64, error) {
