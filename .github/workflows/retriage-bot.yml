@@ -1,0 +1,51 @@
+name: retriage-bot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *"
+
+permissions:
+  issues: write
+  
+jobs:
+  auto-comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: scan the issues and remove the triaged tag
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const labelsToRemove = "stage/triaged";
+            const staleDate = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); // look back for 60 days
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: "open",
+                labels: labelsToRemove,
+                per_page: 100,
+              }
+            );
+
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+
+              if (new Date(issue.updated_at) < staleDate) {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  name: labelsToRemove,
+                  });
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: "This issue has been inactive for over 60 days. Labels removed.",
+                });
+              }
+            }
