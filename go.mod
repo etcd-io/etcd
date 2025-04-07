@@ -2,7 +2,7 @@ module go.etcd.io/etcd
 
 go 1.23.0
 
-toolchain go1.23.7
+toolchain go1.23.8
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
@@ -13,7 +13,7 @@ require (
 	github.com/creack/pty v1.1.11
 	github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang-jwt/jwt v3.2.1+incompatible
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
 	github.com/golang/protobuf v1.5.4
 	github.com/google/btree v1.0.0
@@ -51,6 +51,7 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
+	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
