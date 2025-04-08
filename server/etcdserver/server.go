@@ -23,6 +23,7 @@ import (
 	"math"
 	"net/http"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"sync"
@@ -2133,7 +2134,47 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
 	}
+
+	verify.Verify(func() {
+		s.verifyV3StoreInSyncWithV2Store(shouldApplyV3)
+	})
+
 	return false, nil
+}
+
+func (s *EtcdServer) verifyV3StoreInSyncWithV2Store(shouldApplyV3 membership.ShouldApplyV3) {
+	// If shouldApplyV3 == false, then it means v2store hasn't caught up with v3store.
+	if !shouldApplyV3 {
+		return
+	}
+
+	// clean up the Attributes, and we only care about the RaftAttributes
+	cleanAttributesFunc := func(members map[types.ID]*membership.Member) map[types.ID]*membership.Member {
+		processedMembers := make(map[types.ID]*membership.Member)
+		for id, m := range members {
+			clonedMember := m.Clone()
+			clonedMember.Attributes = membership.Attributes{}
+			processedMembers[id] = clonedMember
+		}
+
+		return processedMembers
+	}
+
+	v2Members, _ := s.cluster.MembersFromStore()
+	v3Members, _ := s.cluster.MembersFromBackend()
+
+	processedV2Members := cleanAttributesFunc(v2Members)
+	processedV3Members := cleanAttributesFunc(v3Members)
+
+	if match := reflect.DeepEqual(processedV2Members, processedV3Members); !match {
+		v2Data, v2Err := json.Marshal(processedV2Members)
+		v3Data, v3Err := json.Marshal(processedV3Members)
+
+		if v2Err != nil || v3Err != nil {
+			panic("members in v2store doesn't match v3store")
+		}
+		panic(fmt.Sprintf("members in v2store doesn't match v3store, v2store: %s, v3store: %s", string(v2Data), string(v3Data)))
+	}
 }
 
 // TODO: non-blocking snapshot
