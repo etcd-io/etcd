@@ -18,6 +18,8 @@ import (
 	"context"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"google.golang.org/grpc/attributes"
 )
 
 // Endpoint represents a single address the connection can be established with.
@@ -33,6 +35,10 @@ type Endpoint struct {
 	// to make load balancing decision.
 	// Since etcd 3.1
 	Metadata any
+
+	// Attributes contains arbitrary data about this address
+	// Since etcd 3.5
+	Attributes *attributes.Attributes
 }
 
 type Operation uint8
