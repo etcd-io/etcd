@@ -767,6 +767,14 @@ func (c *RaftCluster) IsReadyToPromoteMember(id uint64) bool {
 	return true
 }
 
+func (c *RaftCluster) MembersFromBackend() (map[types.ID]*Member, map[types.ID]bool) {
+	return c.be.MustReadMembersFromBackend()
+}
+
+func (c *RaftCluster) MembersFromStore() (map[types.ID]*Member, map[types.ID]bool) {
+	return membersFromStore(c.lg, c.v2store)
+}
+
 func membersFromStore(lg *zap.Logger, st v2store.Store) (map[types.ID]*Member, map[types.ID]bool) {
 	members := make(map[types.ID]*Member)
 	removed := make(map[types.ID]bool)
