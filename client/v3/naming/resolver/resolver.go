@@ -114,12 +114,9 @@ func convertToGRPCAddress(lg *zap.Logger, ups map[string]*endpoints.Update) []gr
 		if up.Endpoint.Metadata != nil {
 			lg.Warn("using deprecated Metadata field in resolver address, please use Attributes instead")
 		}
-
 		addr := gresolver.Address{
-			Addr:     up.Endpoint.Addr,
-
-			// Deprecated: Metadata field
-			Metadata: up.Endpoint.Metadata,
+			Addr:       up.Endpoint.Addr,
+			Metadata:   up.Endpoint.Metadata,
 			Attributes: up.Endpoint.Attributes,
 		}
 		addrs = append(addrs, addr)

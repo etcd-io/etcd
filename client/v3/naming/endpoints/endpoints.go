@@ -16,9 +16,10 @@ package endpoints
 
 import (
 	"context"
-	"google.golang.org/grpc/attributes"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"google.golang.org/grpc/attributes"
 )
 
 // Endpoint represents a single address the connection can be established with.
