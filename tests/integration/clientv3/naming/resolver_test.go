@@ -23,13 +23,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	testpb "google.golang.org/grpc/interop/grpc_testing"
+
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpctesting"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
 func testEtcdGRPCResolver(t *testing.T, lbPolicy string, meta any) {
