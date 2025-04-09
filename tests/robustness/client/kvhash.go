@@ -25,7 +25,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func CheckHashKV(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
+func CheckEndOfTestHashKV(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 	c, err := clientv3.New(clientv3.Config{
 		Endpoints:            clus.EndpointsGRPC(),
 		Logger:               zap.NewNop(),
@@ -52,7 +52,7 @@ func CheckHashKV(ctx context.Context, clus *e2e.EtcdProcessCluster) error {
 			return err
 		}
 		if hashKV.Header.Revision != rev {
-			return fmt.Errorf("max revision between nodes should be the same. Want %v, get %v", rev, hashKV.Header.Revision)
+			return fmt.Errorf("latest revision at the end of the test between nodes should be the same. Want %v, get %v", rev, hashKV.Header.Revision)
 		}
 		hashKVs = append(hashKVs, hashKV)
 	}

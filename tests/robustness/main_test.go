@@ -150,7 +150,7 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	})
 	g.Wait()
 
-	err := client.CheckHashKV(ctx, clus)
+	err := client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {
 		t.Error(err)
 	}
