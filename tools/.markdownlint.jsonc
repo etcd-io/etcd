@@ -195,12 +195,7 @@
     "MD042": true,
   
     // MD043/required-headings : Required heading structure : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md043.md
-    "MD043": {
-      // List of headings
-      "headings": [],
-      // Match case of headings
-      "match_case": false
-    },
+    "MD043": false,
   
     // MD044/proper-names : Proper names should have the correct capitalization : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md044.md
     "MD044": {
