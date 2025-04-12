@@ -2,6 +2,8 @@
 
 This guide will walk through the update of etcd in Kubernetes to a new version (`kubernetes/kubernetes` repository).
 
+> Currently we bump etcd v3.5.x for K8s release-1.33 and lower versions, and we bump etcd v3.6.x for K8s release-1.34 and higher versions.
+
 You can use this [issue](https://github.com/kubernetes/kubernetes/issues/131101) as a reference when updating the etcd version in Kubernetes.
 
 Bumping the etcd version in Kubernetes consists of two steps.
