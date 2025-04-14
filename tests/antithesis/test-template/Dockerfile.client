@@ -1,0 +1,14 @@
+FROM ubuntu:latest
+
+# Update package index first, then install Python
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip
+
+# Then install additional Python packages
+RUN apt-get install -y python3-etcd3 python3-numpy python3-protobuf python3-filelock
+
+# Install Antithesis Python SDK
+RUN pip install antithesis cffi --break-system-packages
+
+# Copy your entrypoint script
+COPY ./entrypoint/entrypoint.py /entrypoint.py
