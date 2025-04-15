@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 <hr>
 
-## v3.4.37 (TBC)
+## v3.4.38 (TBC)
+
+<hr>
+
+## v3.4.37 (2025-04-15)
 
 ### Dependencies
 - Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19529).
