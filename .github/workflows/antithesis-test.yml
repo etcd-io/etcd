@@ -1,0 +1,111 @@
+---
+name: Build and trigger Antithesis exploration
+
+on:
+  # Disabled as discussed in https://github.com/etcd-io/etcd/pull/19750#issuecomment-2809840402
+  # pull_request:
+  #   branches: [main]
+  # schedule:
+  #   - cron: "0 0 * * *" # run every day at midnight
+  workflow_dispatch:
+    inputs:
+      test:
+        description: 'Test name'
+        required: false
+        default: 'etcd nightly antithesis run'
+        type: string
+      config_image:
+        description: 'Config image'
+        required: true
+        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:latest
+        type: string
+      images:
+        description: 'System images (separate with ;)'
+        required: true
+        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:latest;gcr.io/etcd-development/etcd:v3.5.21
+        type: string
+      duration:
+        description: 'Duration (exploration hours)'
+        required: true
+        type: int
+        default: 12
+      description:
+        description: 'Description (avoid quotes, please!)'
+        required: true
+        type: string
+        default: "etcd nightly antithesis run"
+      email:
+        description: 'Additional email notification recipient (separate with ;)'
+        required: true
+        type: string
+        default: ""
+
+# Declare default permissions as read only.
+permissions: read-all
+
+env:
+  REGISTRY: us-central1-docker.pkg.dev
+  REPOSITORY: molten-verve-216720/linuxfoundation-repository
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: Antithesis
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Login to Antithesis Docker Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: _json_key
+          password: ${{ secrets.ANTITHESIS_CONTAINER_REGISTRY_TOKEN }}
+
+      - name: Build and push config image
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          context: ./tests/antithesis
+          file: ./tests/antithesis/Dockerfile.config
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:latest,
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ github.sha }}
+
+      - name: Build and push client image
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4 # v6.15.0
+        with:
+          context: ./tests/antithesis/test-template
+          file: ./tests/antithesis/test-template/Dockerfile.client
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:latest,
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ github.sha }}
+
+  run-antithesis:
+    runs-on: ubuntu-latest
+    environment: Antithesis
+    needs: build-and-push
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Run Antithesis Tests
+        uses: antithesishq/antithesis-trigger-action@b7d0c9d1d9316bd4de73a44144c56636ea3a64ba # main commit on Mar 13, 2025
+        with:
+          notebook_name: etcd
+          tenant: linuxfoundation
+          username: ${{ secrets.ANTITHESIS_WEBHOOK_USERNAME }}
+          password: ${{ secrets.ANTITHESIS_WEBHOOK_PASSWORD }}
+          github_token: ${{ secrets.GH_PAT }}
+          config_image: ${{ inputs.config_image }}
+          images: ${{ inputs.images }}
+          description: ${{ inputs.description }}
+          email_recipients: ${{ inputs.email }}
+          test_name: ${{ inputs.test }}
+          additional_parameters: |-
+            custom.duration = ${{ inputs.duration }}
