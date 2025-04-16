@@ -261,33 +261,6 @@
 		]
 	},
 	{
-		"project": "github.com/klauspost/compress",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9376299376299376
-			}
-		]
-	},
-	{
-		"project": "github.com/klauspost/compress/internal/snapref",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "github.com/klauspost/compress/zstd/internal/xxhash",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/mattn/go-colorable",
 		"licenses": [
 			{
