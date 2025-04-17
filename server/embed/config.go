@@ -1216,8 +1216,7 @@ func (cfg *Config) Validate() error {
 		return fmt.Errorf(`--initial-advertise-peer-urls %q must be "host:port" (%w)`, strings.Join(addrs, ","), err)
 	}
 	if err := checkHostURLs(cfg.AdvertiseClientUrls); err != nil {
-		addrs := cfg.getAdvertiseClientURLs()
-		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%w)`, strings.Join(addrs, ","), err)
+		return err
 	}
 	// Check if conflicting flags are passed.
 	nSet := 0
