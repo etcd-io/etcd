@@ -2,11 +2,10 @@
 name: Build and trigger Antithesis exploration
 
 on:
-  # Disabled as discussed in https://github.com/etcd-io/etcd/pull/19750#issuecomment-2809840402
-  # pull_request:
-  #   branches: [main]
-  # schedule:
-  #   - cron: "0 0 * * *" # run every day at midnight
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * *" # run every day at midnight
   workflow_dispatch:
     inputs:
       test:
