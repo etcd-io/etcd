@@ -213,7 +213,6 @@ func (c *Cluster) fillClusterForMembers() error {
 }
 
 func (c *Cluster) Launch(t testutil.TB) {
-	t.Logf("Launching new cluster...")
 	errc := make(chan error)
 	for _, m := range c.Members {
 		// Members are launched in separate goroutines because if they boot
@@ -231,9 +230,6 @@ func (c *Cluster) Launch(t testutil.TB) {
 	// wait Cluster to be stable to receive future client requests
 	c.WaitMembersMatch(t, c.ProtoMembers())
 	c.waitVersion()
-	for _, m := range c.Members {
-		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL)
-	}
 }
 
 // ProtoMembers returns a list of all active members as etcdserverpb.Member
@@ -533,7 +529,6 @@ func NewLocalListener(t testutil.TB) net.Listener {
 }
 
 func NewListenerWithAddr(t testutil.TB, addr string) net.Listener {
-	t.Logf("Creating listener with addr: %v", addr)
 	l, err := transport.NewUnixListener(addr)
 	if err != nil {
 		t.Fatal(err)
@@ -749,7 +744,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 }
 
 func memberLogger(t testutil.TB, name string) (*zap.Logger, *testutils.LogObserver) {
-	level := zapcore.InfoLevel
+	level := zapcore.ErrorLevel
 	if os.Getenv("CLUSTER_DEBUG") != "" {
 		level = zapcore.DebugLevel
 	}
@@ -1410,9 +1405,6 @@ func (c *Cluster) TakeClient(idx int) {
 }
 
 func (c *Cluster) Terminate(t testutil.TB) {
-	if t != nil {
-		t.Logf("========= Cluster termination started =====================")
-	}
 	for _, m := range c.Members {
 		if m.Client != nil {
 			m.Client.Close()
@@ -1427,9 +1419,6 @@ func (c *Cluster) Terminate(t testutil.TB) {
 		}(m)
 	}
 	wg.Wait()
-	if t != nil {
-		t.Logf("========= Cluster termination succeeded ===================")
-	}
 }
 
 func (c *Cluster) RandClient() *clientv3.Client {
