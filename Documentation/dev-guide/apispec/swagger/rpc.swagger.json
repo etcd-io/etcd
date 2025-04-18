@@ -2706,6 +2706,16 @@
         }
       }
     },
+    "etcdserverpbRangeStreamResponse": {
+      "type": "object",
+      "properties": {
+        "range_response": {
+          "$ref": "#/definitions/etcdserverpbRangeResponse",
+          "description": "range_response is a partial response for the KV.RangeStream RPC.\nThe result of proto.Merge() applied on all responses should result in the\nsame RangeResponse response as to the Range() method."
+        }
+      },
+      "description": "RangeStreamResponse is the response for the RangeStream RPC.\nThis message is just a wrapper around RangeResponse but there may be a need\nin the future to add streaming specific fields (for progress status, error\npropagation, etc.)."
+    },
     "etcdserverpbRequestOp": {
       "type": "object",
       "properties": {

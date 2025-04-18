@@ -217,20 +217,41 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 
 func TestKVRange(t *testing.T) {
 	integration2.BeforeTest(t)
-
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-
-	kv := clus.RandClient()
-	ctx := t.Context()
+	client := clus.RandClient()
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, ""); err != nil {
+		if _, err := client.Put(t.Context(), key, ""); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
-	resp, err := kv.Get(ctx, keySet[0])
+	t.Run("Unary", func(t *testing.T) {
+		testKVRange(t, client.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVRange(t, StreamToUnary(client.KV))
+	})
+}
+
+type GetFunc func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error)
+
+func StreamToUnary(kv clientv3.KV) GetFunc {
+	return func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+		stream, err := kv.GetStream(ctx, key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return clientv3.GetStreamToGetResponse(stream)
+	}
+}
+
+func testKVRange(t *testing.T, get GetFunc) {
+	ctx := t.Context()
+
+	resp, err := get(ctx, "", clientv3.WithPrefix())
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -263,7 +284,7 @@ func TestKVRange(t *testing.T) {
 	for i, tt := range tests {
 		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
 		opts = append(opts, tt.opts...)
-		resp, err := kv.Get(ctx, tt.begin, opts...)
+		resp, err := get(ctx, tt.begin, opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't range (%v)", i, err)
 		}
@@ -277,6 +298,7 @@ func TestKVRange(t *testing.T) {
 }
 
 func TestKVGetErrConnClosed(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -304,6 +326,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 }
 
 func TestKVNewAfterClose(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -463,6 +486,7 @@ func TestKVCompact(t *testing.T) {
 
 // TestKVGetRetry ensures get will retry on disconnect.
 func TestKVGetRetry(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clusterSize := 3
@@ -516,6 +540,7 @@ func TestKVGetRetry(t *testing.T) {
 
 // TestKVPutFailGetRetry ensures a get will retry following a failed put.
 func TestKVPutFailGetRetry(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
@@ -556,6 +581,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 // TestKVGetCancel tests that a context cancel on a Get terminates as expected.
 func TestKVGetCancel(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -579,6 +605,7 @@ func TestKVGetCancel(t *testing.T) {
 
 // TestKVGetStoppedServerAndClose ensures closing after a failed Get works.
 func TestKVGetStoppedServerAndClose(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -661,6 +688,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 
 // TestKVLargeRequests tests various client/server side request limits.
 func TestKVLargeRequests(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 	tests := []struct {
 		// make sure that "MaxCallSendMsgSize" < server-side default send/recv limit

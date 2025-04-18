@@ -52,6 +52,24 @@ func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResp
 	return resp, nil
 }
 
+func (s *kvServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	if err := checkRangeRequest(r); err != nil {
+		return err
+	}
+	resp := &pb.RangeStreamResponse{
+		RangeResponse: &pb.RangeResponse{
+			Header: &pb.ResponseHeader{},
+		},
+	}
+	s.hdr.fill(resp.RangeResponse.Header)
+	rs.Send(resp)
+	err := s.kv.RangeStream(r, rs)
+	if err != nil {
+		return togRPCError(err)
+	}
+	return nil
+}
+
 func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
 	if err := checkPutRequest(r); err != nil {
 		return nil, err
