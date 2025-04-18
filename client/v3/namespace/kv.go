@@ -64,6 +64,10 @@ func (kv *kvPrefix) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 	return get, nil
 }
 
+func (kv *kvPrefix) GetStream(ctx context.Context, key string, opts ...clientv3.OpOption) (clientv3.GetStreamResponse, error) {
+	panic("unimplemented")
+}
+
 func (kv *kvPrefix) Delete(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
 	if len(key) == 0 && !(clientv3.IsOptsWithFromKey(opts) || clientv3.IsOptsWithPrefix(opts)) {
 		return nil, rpctypes.ErrEmptyKey
