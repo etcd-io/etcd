@@ -150,7 +150,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 }
 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.Get(ctx)
+	// trace := traceutil.Get(ctx)
 
 	resp := &pb.RangeResponse{}
 	resp.Header = &pb.ResponseHeader{}
@@ -235,7 +235,7 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
-	trace.Step("filter and sort the key-value pairs")
+	// trace.Step("filter and sort the key-value pairs")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
@@ -245,7 +245,7 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
-	trace.Step("assemble the response")
+	// trace.Step("assemble the response")
 	return resp, nil
 }
 
