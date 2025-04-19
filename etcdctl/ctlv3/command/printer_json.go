@@ -17,11 +17,9 @@ package command
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	v3 "go.etcd.io/etcd/client/v3"
 )
 
 type jsonPrinter struct {
@@ -36,65 +34,187 @@ func newJSONPrinter(isHex bool) printer {
 	}
 }
 
-func (p *jsonPrinter) EndpointHealth(r []epHealth) { printJSON(r) }
-func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
-func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
+type (
+	HexStatusResponse pb.StatusResponse
+	HexHashKVResponse pb.HashKVResponse
+	HexResponseHeader pb.ResponseHeader
+	HexMember         pb.Member
+)
 
-func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
-	if p.isHex {
-		printMemberListWithHexJSON(r)
-	} else {
-		printJSON(r)
-	}
+func (sr *HexStatusResponse) MarshalJSON() ([]byte, error) {
+	type Alias pb.StatusResponse
+
+	return json.Marshal(&struct {
+		Header HexResponseHeader `json:"header"`
+		Leader string            `json:"leader"`
+		Alias
+	}{
+		Header: (HexResponseHeader)(*sr.Header),
+		Leader: fmt.Sprintf("%x", sr.Leader),
+		Alias:  (Alias)(*sr),
+	})
 }
 
+func (hr *HexHashKVResponse) MarshalJSON() ([]byte, error) {
+	type Alias pb.HashKVResponse
+
+	return json.Marshal(&struct {
+		Header HexResponseHeader `json:"header"`
+		Alias
+	}{
+		Header: (HexResponseHeader)(*hr.Header),
+		Alias:  (Alias)(*hr),
+	})
+}
+
+func (h *HexResponseHeader) MarshalJSON() ([]byte, error) {
+	type Alias pb.ResponseHeader
+
+	return json.Marshal(&struct {
+		ClusterID string `json:"cluster_id"`
+		MemberID  string `json:"member_id"`
+		Alias
+	}{
+		ClusterID: fmt.Sprintf("%x", h.ClusterId),
+		MemberID:  fmt.Sprintf("%x", h.MemberId),
+		Alias:     (Alias)(*h),
+	})
+}
+
+func (m *HexMember) MarshalJSON() ([]byte, error) {
+	type Alias pb.Member
+
+	return json.Marshal(&struct {
+		ID string `json:"ID"`
+		Alias
+	}{
+		ID:    fmt.Sprintf("%x", m.ID),
+		Alias: (Alias)(*m),
+	})
+}
+
+func (p *jsonPrinter) EndpointHealth(r []epHealth) { p.printJSON(r) }
+func (p *jsonPrinter) EndpointStatus(r []epStatus) { p.printJSON(r) }
+func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { p.printJSON(r) }
+
+func (p *jsonPrinter) MemberAdd(r v3.MemberAddResponse)                    { p.printJSON(r) }
+func (p *jsonPrinter) MemberList(r v3.MemberListResponse)                  { p.printJSON(r) }
+func (p *jsonPrinter) MemberPromote(id uint64, r v3.MemberPromoteResponse) { p.printJSON(r) }
+func (p *jsonPrinter) MemberRemove(id uint64, r v3.MemberRemoveResponse)   { p.printJSON(r) }
+func (p *jsonPrinter) MemberUpdate(id uint64, r v3.MemberUpdateResponse)   { p.printJSON(r) }
+
 func printJSON(v any) {
-	b, err := json.Marshal(v)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		return
-	}
+	b, _ := json.Marshal(v)
 	fmt.Println(string(b))
 }
 
-func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
-	var buffer strings.Builder
-	var b []byte
-	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"member_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"raft_term\":")
-	b = strconv.AppendUint(nil, r.Header.RaftTerm, 10)
-	buffer.Write(b)
-	buffer.WriteByte('}')
-	for i := 0; i < len(r.Members); i++ {
-		if i == 0 {
-			buffer.WriteString(",\"members\":[{\"ID\":\"")
-		} else {
-			buffer.WriteString(",{\"ID\":\"")
-		}
-		b = strconv.AppendUint(nil, r.Members[i].ID, 16)
-		buffer.Write(b)
-		buffer.WriteString("\",\"name\":\"" + r.Members[i].Name + "\"," + "\"peerURLs\":")
-		b, err := json.Marshal(r.Members[i].PeerURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteString(",\"clientURLs\":")
-		b, err = json.Marshal(r.Members[i].ClientURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteByte('}')
-		if i == len(r.Members)-1 {
-			buffer.WriteString("]")
-		}
+func (p *jsonPrinter) printJSON(v any) {
+	var data any
+	if !p.isHex {
+		printJSON(v)
+		return
 	}
-	buffer.WriteString("}")
-	fmt.Println(buffer.String())
+
+	switch r := v.(type) {
+	case []epStatus:
+		type Alias epStatus
+
+		data = make([]any, len(r))
+		for i, status := range r {
+			data.([]any)[i] = &struct {
+				Resp *HexStatusResponse `json:"Status"`
+				*Alias
+			}{
+				Resp:  (*HexStatusResponse)(status.Resp),
+				Alias: (*Alias)(&status),
+			}
+		}
+	case []epHashKV:
+		type Alias epHashKV
+
+		data = make([]any, len(r))
+		for i, status := range r {
+			data.([]any)[i] = &struct {
+				Resp *HexHashKVResponse `json:"HashKV"`
+				*Alias
+			}{
+				Resp:  (*HexHashKVResponse)(status.Resp),
+				Alias: (*Alias)(&status),
+			}
+		}
+	case v3.MemberAddResponse:
+		type Alias v3.MemberAddResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Member  *HexMember         `json:"member"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Member:  (*HexMember)(r.Member),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case v3.MemberListResponse:
+		type Alias v3.MemberListResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case v3.MemberPromoteResponse:
+		type Alias v3.MemberPromoteResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case v3.MemberRemoveResponse:
+		type Alias v3.MemberRemoveResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case v3.MemberUpdateResponse:
+		type Alias v3.MemberUpdateResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	default:
+		data = v
+	}
+
+	printJSON(data)
+}
+
+func toHexMembers(members []*pb.Member) []*HexMember {
+	hexMembers := make([]*HexMember, len(members))
+	for i, member := range members {
+		hexMembers[i] = (*HexMember)(member)
+	}
+	return hexMembers
 }
