@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
 
 	bolt "go.etcd.io/bbolt"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -51,9 +52,7 @@ func TestBatchTxPut(t *testing.T) {
 		tx.Lock()
 		_, gv := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
-		if !reflect.DeepEqual(gv[0], v) {
-			t.Errorf("v = %s, want %s", gv[0], v)
-		}
+		assert.Truef(t, reflect.DeepEqual(gv[0], v), "v = %s, want %s", gv[0], v)
 		tx.Commit()
 	}
 }
@@ -120,12 +119,8 @@ func TestBatchTxRange(t *testing.T) {
 	}
 	for i, tt := range tests {
 		keys, vals := tx.UnsafeRange(schema.Test, tt.key, tt.endKey, tt.limit)
-		if !reflect.DeepEqual(keys, tt.wkeys) {
-			t.Errorf("#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
-		}
-		if !reflect.DeepEqual(vals, tt.wvals) {
-			t.Errorf("#%d: vals = %+v, want %+v", i, vals, tt.wvals)
-		}
+		assert.Truef(t, reflect.DeepEqual(keys, tt.wkeys), "#%d: keys = %+v, want %+v", i, keys, tt.wkeys)
+		assert.Truef(t, reflect.DeepEqual(vals, tt.wvals), "#%d: vals = %+v, want %+v", i, vals, tt.wvals)
 	}
 }
 
@@ -148,9 +143,7 @@ func TestBatchTxDelete(t *testing.T) {
 		tx.Lock()
 		ks, _ := tx.UnsafeRange(schema.Test, []byte("foo"), nil, 0)
 		tx.Unlock()
-		if len(ks) != 0 {
-			t.Errorf("keys on foo = %v, want nil", ks)
-		}
+		assert.Emptyf(t, ks, "keys on foo = %v, want nil", ks)
 		tx.Commit()
 	}
 }
@@ -174,10 +167,7 @@ func TestBatchTxCommit(t *testing.T) {
 			t.Errorf("bucket test does not exit")
 			return nil
 		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
+		assert.NotNilf(t, bucket.Get([]byte("foo")), "foo key failed to written in backend")
 		return nil
 	})
 }
@@ -202,10 +192,7 @@ func TestBatchTxBatchLimitCommit(t *testing.T) {
 			t.Errorf("bucket test does not exit")
 			return nil
 		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
+		assert.NotNilf(t, bucket.Get([]byte("foo")), "foo key failed to written in backend")
 		return nil
 	})
 }

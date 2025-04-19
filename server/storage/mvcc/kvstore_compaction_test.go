@@ -19,6 +19,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/pkg/v3/traceutil"
@@ -83,23 +85,17 @@ func TestScheduleCompaction(t *testing.T) {
 		tx.Unlock()
 
 		_, err := s.scheduleCompaction(tt.rev, 0)
-		if err != nil {
-			t.Error(err)
-		}
+		require.NoError(t, err)
 
 		tx.Lock()
 		for _, rev := range tt.wrevs {
 			ibytes := NewRevBytes()
 			ibytes = RevToBytes(rev, ibytes)
 			keys, _ := tx.UnsafeRange(schema.Key, ibytes, nil, 0)
-			if len(keys) != 1 {
-				t.Errorf("#%d: range on %v = %d, want 1", i, rev, len(keys))
-			}
+			assert.Lenf(t, keys, 1, "#%d: range on %v = %d, want 1", i, rev, len(keys))
 		}
 		vals, _ := UnsafeReadFinishedCompact(tx)
-		if !reflect.DeepEqual(vals, tt.rev) {
-			t.Errorf("#%d: finished compact equal %+v, want %+v", i, vals, tt.rev)
-		}
+		assert.Truef(t, reflect.DeepEqual(vals, tt.rev), "#%d: finished compact equal %+v, want %+v", i, vals, tt.rev)
 		tx.Unlock()
 
 		cleanup(s, b)
@@ -119,9 +115,7 @@ func TestCompactAllAndRestore(t *testing.T) {
 	rev := s0.Rev()
 	// compact all keys
 	done, err := s0.Compact(traceutil.TODO(), rev)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	select {
 	case <-done:
@@ -129,21 +123,11 @@ func TestCompactAllAndRestore(t *testing.T) {
 		t.Fatal("timeout waiting for compaction to finish")
 	}
 
-	err = s0.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, s0.Close())
 
 	s1 := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-	if s1.Rev() != rev {
-		t.Errorf("rev = %v, want %v", s1.Rev(), rev)
-	}
+	assert.Equalf(t, s1.Rev(), rev, "rev = %v, want %v", s1.Rev(), rev)
 	_, err = s1.Range(t.Context(), []byte("foo"), nil, RangeOptions{})
-	if err != nil {
-		t.Errorf("unexpect range error %v", err)
-	}
-	err = s1.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoErrorf(t, err, "unexpect range error %v", err)
+	require.NoError(t, s1.Close())
 }

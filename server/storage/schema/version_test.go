@@ -112,18 +112,15 @@ func TestVersionSnapshot(t *testing.T) {
 			be.ForceCommit()
 			be.Close()
 			db, err := bbolt.Open(tmpPath, 0o400, &bbolt.Options{ReadOnly: true})
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			defer db.Close()
 
 			var ver *semver.Version
-			if err = db.View(func(tx *bbolt.Tx) error {
+			err = db.View(func(tx *bbolt.Tx) error {
 				ver = ReadStorageVersionFromSnapshot(tx)
 				return nil
-			}); err != nil {
-				t.Fatal(err)
-			}
+			})
+			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectVersion, ver.String())
 		})

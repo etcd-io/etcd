@@ -37,10 +37,7 @@ func TestBackendClose(t *testing.T) {
 	// check close could work
 	done := make(chan struct{}, 1)
 	go func() {
-		err := b.Close()
-		if err != nil {
-			t.Errorf("close error = %v, want nil", err)
-		}
+		assert.NoErrorf(t, b.Close(), "close error")
 		done <- struct{}{}
 	}()
 	select {
@@ -63,14 +60,11 @@ func TestBackendSnapshot(t *testing.T) {
 
 	// write snapshot to a new file
 	f, err := os.CreateTemp(t.TempDir(), "etcd_backend_test")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	snap := b.Snapshot()
 	defer func() { assert.NoError(t, snap.Close()) }()
-	if _, err := snap.WriteTo(f); err != nil {
-		t.Fatal(err)
-	}
+	_, err = snap.WriteTo(f)
+	require.NoError(t, err)
 	require.NoError(t, f.Close())
 
 	// bootstrap new backend from the snapshot
@@ -82,9 +76,7 @@ func TestBackendSnapshot(t *testing.T) {
 	newTx := nb.BatchTx()
 	newTx.Lock()
 	ks, _ := newTx.UnsafeRange(schema.Test, []byte("foo"), []byte("goo"), 0)
-	if len(ks) != 1 {
-		t.Errorf("len(kvs) = %d, want 1", len(ks))
-	}
+	assert.Lenf(t, ks, 1, "len(kvs) = %d, want 1", len(ks))
 	newTx.Unlock()
 }
 
@@ -116,10 +108,7 @@ func TestBackendBatchIntervalCommit(t *testing.T) {
 			t.Errorf("bucket test does not exit")
 			return nil
 		}
-		v := bucket.Get([]byte("foo"))
-		if v == nil {
-			t.Errorf("foo key failed to written in backend")
-		}
+		assert.NotNilf(t, bucket.Get([]byte("foo")), "foo key failed to written in backend")
 		return nil
 	}))
 }
@@ -160,31 +149,18 @@ func TestBackendDefrag(t *testing.T) {
 
 	// shrink and check hash
 	oh, err := b.Hash(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	err = b.Defrag()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, b.Defrag())
 
 	nh, err := b.Hash(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if oh != nh {
-		t.Errorf("hash = %v, want %v", nh, oh)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, oh, nh, "hash = %v, want %v", nh, oh)
 
 	nsize := b.Size()
-	if nsize >= size {
-		t.Errorf("new size = %v, want < %d", nsize, size)
-	}
+	assert.Lessf(t, nsize, size, "new size = %v, want < %d", nsize, size)
 	db := backend.DbFromBackendForTest(b)
-	if db.FreelistType != bcfg.BackendFreelistType {
-		t.Errorf("db FreelistType = [%v], want [%v]", db.FreelistType, bcfg.BackendFreelistType)
-	}
+	assert.Equalf(t, db.FreelistType, bcfg.BackendFreelistType, "db FreelistType = [%v], want [%v]", db.FreelistType, bcfg.BackendFreelistType)
 
 	// try put more keys after shrink.
 	tx = b.BatchTx()
@@ -345,7 +321,5 @@ func TestBackendWritebackForEach(t *testing.T) {
 	require.NoError(t, tx.UnsafeForEach(schema.Key, getSeq))
 	tx.Unlock()
 
-	if seq != partialSeq {
-		t.Fatalf("expected %q, got %q", seq, partialSeq)
-	}
+	require.Equalf(t, seq, partialSeq, "expected %q, got %q", seq, partialSeq)
 }

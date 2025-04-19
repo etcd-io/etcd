@@ -26,7 +26,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -49,25 +48,19 @@ func TestNew(t *testing.T) {
 
 	w, err := Create(zaptest.NewLogger(t), p, []byte("somedata"))
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
-		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
-	}
+	g := filepath.Base(w.tail().Name())
+	assert.Equalf(t, g, walName(0, 0), "name = %+v, want %+v", g, walName(0, 0))
 	defer w.Close()
 
 	// file is preallocated to segment size; only read data written by wal
 	off, err := w.tail().Seek(0, io.SeekCurrent)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	gd := make([]byte, off)
 	f, err := os.Open(filepath.Join(p, filepath.Base(w.tail().Name())))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
-	if _, err = io.ReadFull(f, gd); err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
+	_, err = io.ReadFull(f, gd)
+	require.NoErrorf(t, err, "err = %v, want nil", err)
 
 	var wb bytes.Buffer
 	e := newEncoder(&wb, 0, 0)
@@ -82,9 +75,7 @@ func TestNew(t *testing.T) {
 	err = e.encode(r)
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	e.flush()
-	if !bytes.Equal(gd, wb.Bytes()) {
-		t.Errorf("data = %v, want %v", gd, wb.Bytes())
-	}
+	assert.Truef(t, bytes.Equal(gd, wb.Bytes()), "data = %v, want %v", gd, wb.Bytes())
 }
 
 func TestCreateNewWALFile(t *testing.T) {
@@ -167,9 +158,7 @@ func TestCreateFailFromPollutedDir(t *testing.T) {
 func TestWalCleanup(t *testing.T) {
 	testRoot := t.TempDir()
 	p, err := os.MkdirTemp(testRoot, "waltest")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	logger := zaptest.NewLogger(t)
 	w, err := Create(logger, p, []byte(""))
@@ -180,9 +169,7 @@ func TestWalCleanup(t *testing.T) {
 	require.Lenf(t, fnames, 1, "expected 1 file under %v, got %v", testRoot, len(fnames))
 	pattern := fmt.Sprintf(`%s.broken\.[\d]{8}\.[\d]{6}\.[\d]{1,6}?`, filepath.Base(p))
 	match, _ := regexp.MatchString(pattern, fnames[0])
-	if !match {
-		t.Errorf("match = false, expected true for %v with pattern %v", fnames[0], pattern)
-	}
+	assert.Truef(t, match, "match = false, expected true for %v with pattern %v", fnames[0], pattern)
 }
 
 func TestCreateFailFromNoSpaceLeft(t *testing.T) {
@@ -202,51 +189,39 @@ func TestNewForInitedDir(t *testing.T) {
 	p := t.TempDir()
 
 	os.Create(filepath.Join(p, walName(0, 0)))
-	if _, err := Create(zaptest.NewLogger(t), p, nil); err == nil || !errors.Is(err, os.ErrExist) {
-		t.Errorf("err = %v, want %v", err, os.ErrExist)
-	}
+	_, err := Create(zaptest.NewLogger(t), p, nil)
+	assert.ErrorIsf(t, err, os.ErrExist, "err = %v, want %v", err, os.ErrExist)
 }
 
 func TestOpenAtIndex(t *testing.T) {
 	dir := t.TempDir()
 
 	f, err := os.Create(filepath.Join(dir, walName(0, 0)))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 
 	w, err := Open(zaptest.NewLogger(t), dir, walpb.Snapshot{})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	if g := filepath.Base(w.tail().Name()); g != walName(0, 0) {
-		t.Errorf("name = %+v, want %+v", g, walName(0, 0))
-	}
-	if w.seq() != 0 {
-		t.Errorf("seq = %d, want %d", w.seq(), 0)
-	}
+	g := filepath.Base(w.tail().Name())
+	assert.Equalf(t, g, walName(0, 0), "name = %+v, want %+v", g, walName(0, 0))
+	assert.Zerof(t, w.seq(), "seq = %d, want %d", w.seq(), 0)
 	w.Close()
 
 	wname := walName(2, 10)
 	f, err = os.Create(filepath.Join(dir, wname))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 
 	w, err = Open(zaptest.NewLogger(t), dir, walpb.Snapshot{Index: 5})
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	if g := filepath.Base(w.tail().Name()); g != wname {
-		t.Errorf("name = %+v, want %+v", g, wname)
-	}
-	if w.seq() != 2 {
-		t.Errorf("seq = %d, want %d", w.seq(), 2)
-	}
+	g = filepath.Base(w.tail().Name())
+	assert.Equalf(t, g, wname, "name = %+v, want %+v", g, wname)
+	assert.Equalf(t, uint64(2), w.seq(), "seq = %d, want %d", w.seq(), 2)
 	w.Close()
 
 	emptydir := t.TempDir()
-	if _, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{}); !errors.Is(err, ErrFileNotFound) {
-		t.Errorf("err = %v, want %v", err, ErrFileNotFound)
-	}
+	_, err = Open(zaptest.NewLogger(t), emptydir, walpb.Snapshot{})
+	assert.ErrorIsf(t, err, ErrFileNotFound, "err = %v, want %v", err, ErrFileNotFound)
 }
 
 // TestVerify tests that Verify throws a non-nil error when the WAL is corrupted.
@@ -258,20 +233,14 @@ func TestVerify(t *testing.T) {
 
 	// create WAL
 	w, err := Create(lg, walDir, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer w.Close()
 
 	// make 5 separate files
 	for i := 0; i < 5; i++ {
 		es := []raftpb.Entry{{Index: uint64(i), Data: []byte(fmt.Sprintf("waldata%d", i+1))}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.cut(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
+		require.NoError(t, w.cut())
 	}
 
 	hs := raftpb.HardState{Term: 1, Vote: 3, Commit: 5}
@@ -279,26 +248,17 @@ func TestVerify(t *testing.T) {
 
 	// to verify the WAL is not corrupted at this point
 	hardstate, err := Verify(lg, walDir, walpb.Snapshot{})
-	if err != nil {
-		t.Errorf("expected a nil error, got %v", err)
-	}
+	require.NoErrorf(t, err, "expected a nil error, got %v", err)
 	assert.Equal(t, hs, *hardstate)
 
 	walFiles, err := os.ReadDir(walDir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// corrupt the WAL by truncating one of the WAL files completely
-	err = os.Truncate(path.Join(walDir, walFiles[2].Name()), 0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Truncate(path.Join(walDir, walFiles[2].Name()), 0))
 
 	_, err = Verify(lg, walDir, walpb.Snapshot{})
-	if err == nil {
-		t.Error("expected a non-nil error, got nil")
-	}
+	assert.Errorf(t, err, "expected a non-nil error, got nil")
 }
 
 // TestCut tests cut
@@ -307,72 +267,48 @@ func TestCut(t *testing.T) {
 	p := t.TempDir()
 
 	w, err := Create(zaptest.NewLogger(t), p, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer w.Close()
 
 	state := raftpb.HardState{Term: 1}
-	if err = w.Save(state, nil); err != nil {
-		t.Fatal(err)
-	}
-	if err = w.cut(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, w.Save(state, nil))
+	require.NoError(t, w.cut())
 	wname := walName(1, 1)
-	if g := filepath.Base(w.tail().Name()); g != wname {
-		t.Errorf("name = %s, want %s", g, wname)
-	}
+	g := filepath.Base(w.tail().Name())
+	assert.Equalf(t, g, wname, "name = %s, want %s", g, wname)
 
 	es := []raftpb.Entry{{Index: 1, Term: 1, Data: []byte{1}}}
-	if err = w.Save(raftpb.HardState{}, es); err != nil {
-		t.Fatal(err)
-	}
-	if err = w.cut(); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, w.Save(raftpb.HardState{}, es))
+	require.NoError(t, w.cut())
 	snap := walpb.Snapshot{Index: 2, Term: 1, ConfState: &confState}
-	if err = w.SaveSnapshot(snap); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, w.SaveSnapshot(snap))
 	wname = walName(2, 2)
-	if g := filepath.Base(w.tail().Name()); g != wname {
-		t.Errorf("name = %s, want %s", g, wname)
-	}
+	g = filepath.Base(w.tail().Name())
+	assert.Equalf(t, g, wname, "name = %s, want %s", g, wname)
 
 	// check the state in the last WAL
 	// We do check before closing the WAL to ensure that Cut syncs the data
 	// into the disk.
 	f, err := os.Open(filepath.Join(p, wname))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer f.Close()
 	nw := &WAL{
 		decoder: NewDecoder(fileutil.NewFileReader(f)),
 		start:   snap,
 	}
 	_, gst, _, err := nw.ReadAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(gst, state) {
-		t.Errorf("state = %+v, want %+v", gst, state)
-	}
+	require.NoError(t, err)
+	assert.Truef(t, reflect.DeepEqual(gst, state), "state = %+v, want %+v", gst, state)
 }
 
 func TestSaveWithCut(t *testing.T) {
 	p := t.TempDir()
 
 	w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	state := raftpb.HardState{Term: 1}
-	if err = w.Save(state, nil); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, w.Save(state, nil))
 	bigData := make([]byte, 500)
 	strdata := "Hello World!!"
 	copy(bigData, strdata)
@@ -384,9 +320,7 @@ func TestSaveWithCut(t *testing.T) {
 	index := uint64(0)
 	for totalSize := 0; totalSize < int(SegmentSizeBytes); totalSize += EntrySize {
 		ents := []raftpb.Entry{{Index: index, Term: 1, Data: bigData}}
-		if err = w.Save(state, ents); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(state, ents))
 		index++
 	}
 
@@ -396,25 +330,16 @@ func TestSaveWithCut(t *testing.T) {
 	require.NoErrorf(t, err, "err = %v, want nil", err)
 	defer neww.Close()
 	wname := walName(1, index)
-	if g := filepath.Base(neww.tail().Name()); g != wname {
-		t.Errorf("name = %s, want %s", g, wname)
-	}
+	g := filepath.Base(neww.tail().Name())
+	assert.Equalf(t, g, wname, "name = %s, want %s", g, wname)
 
 	_, newhardstate, entries, err := neww.ReadAll()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if !reflect.DeepEqual(newhardstate, state) {
-		t.Errorf("Hard State = %+v, want %+v", newhardstate, state)
-	}
-	if len(entries) != int(SegmentSizeBytes/int64(EntrySize)) {
-		t.Errorf("Number of entries = %d, expected = %d", len(entries), int(SegmentSizeBytes/int64(EntrySize)))
-	}
+	assert.Truef(t, reflect.DeepEqual(newhardstate, state), "Hard State = %+v, want %+v", newhardstate, state)
+	assert.Equalf(t, len(entries), int(SegmentSizeBytes/int64(EntrySize)), "Number of entries = %d, expected = %d", len(entries), int(SegmentSizeBytes/int64(EntrySize)))
 	for _, oneent := range entries {
-		if !bytes.Equal(oneent.Data, bigData) {
-			t.Errorf("the saved data does not match at Index %d : found: %s , want :%s", oneent.Index, oneent.Data, bigData)
-		}
+		assert.Truef(t, bytes.Equal(oneent.Data, bigData), "the saved data does not match at Index %d : found: %s , want :%s", oneent.Index, oneent.Data, bigData)
 	}
 }
 
@@ -442,51 +367,32 @@ func TestRecover(t *testing.T) {
 			p := t.TempDir()
 
 			w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
+			require.NoError(t, w.SaveSnapshot(walpb.Snapshot{}))
 
 			data := make([]byte, tc.size)
 			n, err := rand.Read(data)
 			assert.Equal(t, tc.size, n)
-			if err != nil {
-				t.Errorf("Unexpected error: %v", err)
-			}
+			require.NoErrorf(t, err, "Unexpected error: %v", err)
 
 			ents := []raftpb.Entry{{Index: 1, Term: 1, Data: data}, {Index: 2, Term: 2, Data: data}}
-			if err = w.Save(raftpb.HardState{}, ents); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, w.Save(raftpb.HardState{}, ents))
 			sts := []raftpb.HardState{{Term: 1, Vote: 1, Commit: 1}, {Term: 2, Vote: 2, Commit: 2}}
 			for _, s := range sts {
-				if err = w.Save(s, nil); err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, w.Save(s, nil))
 			}
 			w.Close()
 
-			if w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
-				t.Fatal(err)
-			}
+			w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
+			require.NoError(t, err)
 			metadata, state, entries, err := w.ReadAll()
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 
-			if !bytes.Equal(metadata, []byte("metadata")) {
-				t.Errorf("metadata = %s, want %s", metadata, "metadata")
-			}
-			if !reflect.DeepEqual(entries, ents) {
-				t.Errorf("ents = %+v, want %+v", entries, ents)
-			}
+			assert.Truef(t, bytes.Equal(metadata, []byte("metadata")), "metadata = %s, want %s", metadata, "metadata")
+			assert.Truef(t, reflect.DeepEqual(entries, ents), "ents = %+v, want %+v", entries, ents)
 			// only the latest state is recorded
 			s := sts[len(sts)-1]
-			if !reflect.DeepEqual(state, s) {
-				t.Errorf("state = %+v, want %+v", state, s)
-			}
+			assert.Truef(t, reflect.DeepEqual(state, s), "state = %+v, want %+v", state, s)
 			w.Close()
 		})
 	}
@@ -526,12 +432,8 @@ func TestSearchIndex(t *testing.T) {
 	}
 	for i, tt := range tests {
 		idx, ok := searchIndex(zaptest.NewLogger(t), tt.names, tt.index)
-		if idx != tt.widx {
-			t.Errorf("#%d: idx = %d, want %d", i, idx, tt.widx)
-		}
-		if ok != tt.wok {
-			t.Errorf("#%d: ok = %v, want %v", i, ok, tt.wok)
-		}
+		assert.Equalf(t, idx, tt.widx, "#%d: idx = %d, want %d", i, idx, tt.widx)
+		assert.Equalf(t, ok, tt.wok, "#%d: ok = %v, want %v", i, ok, tt.wok)
 	}
 }
 
@@ -547,15 +449,10 @@ func TestScanWalName(t *testing.T) {
 	}
 	for i, tt := range tests {
 		s, index, err := parseWALName(tt.str)
-		if g := err == nil; g != tt.wok {
-			t.Errorf("#%d: ok = %v, want %v", i, g, tt.wok)
-		}
-		if s != tt.wseq {
-			t.Errorf("#%d: seq = %d, want %d", i, s, tt.wseq)
-		}
-		if index != tt.windex {
-			t.Errorf("#%d: index = %d, want %d", i, index, tt.windex)
-		}
+		g := err == nil
+		assert.Equalf(t, g, tt.wok, "#%d: ok = %v, want %v", i, g, tt.wok)
+		assert.Equalf(t, s, tt.wseq, "#%d: seq = %d, want %d", i, s, tt.wseq)
+		assert.Equalf(t, index, tt.windex, "#%d: index = %d, want %d", i, index, tt.windex)
 	}
 }
 
@@ -563,34 +460,22 @@ func TestRecoverAfterCut(t *testing.T) {
 	p := t.TempDir()
 
 	md, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	for i := 0; i < 10; i++ {
-		if err = md.SaveSnapshot(walpb.Snapshot{Index: uint64(i), Term: 1, ConfState: &confState}); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, md.SaveSnapshot(walpb.Snapshot{Index: uint64(i), Term: 1, ConfState: &confState}))
 		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = md.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
-		if err = md.cut(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, md.Save(raftpb.HardState{}, es))
+		require.NoError(t, md.cut())
 	}
 	md.Close()
 
-	if err := os.Remove(filepath.Join(p, walName(4, 4))); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Remove(filepath.Join(p, walName(4, 4))))
 
 	for i := 0; i < 10; i++ {
 		w, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{Index: uint64(i), Term: 1})
 		if err != nil {
 			if i <= 4 {
-				if !strings.Contains(err.Error(), "do not increase continuously") {
-					t.Errorf("#%d: err = %v isn't expected, want: '* do not increase continuously'", i, err)
-				}
+				require.ErrorContainsf(t, err, "do not increase continuously", "#%d: err = %v isn't expected, want: '* do not increase continuously'", i, err)
 			} else {
 				t.Errorf("#%d: err = %v, want nil", i, err)
 			}
@@ -601,13 +486,9 @@ func TestRecoverAfterCut(t *testing.T) {
 			t.Errorf("#%d: err = %v, want nil", i, err)
 			continue
 		}
-		if !bytes.Equal(metadata, []byte("metadata")) {
-			t.Errorf("#%d: metadata = %s, want %s", i, metadata, "metadata")
-		}
+		assert.Truef(t, bytes.Equal(metadata, []byte("metadata")), "#%d: metadata = %s, want %s", i, metadata, "metadata")
 		for j, e := range entries {
-			if e.Index != uint64(j+i+1) {
-				t.Errorf("#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i+1)
-			}
+			assert.Equalf(t, e.Index, uint64(j+i+1), "#%d: ents[%d].Index = %+v, want %+v", i, j, e.Index, j+i+1)
 		}
 		w.Close()
 	}
@@ -617,25 +498,16 @@ func TestOpenAtUncommittedIndex(t *testing.T) {
 	p := t.TempDir()
 
 	w, err := Create(zaptest.NewLogger(t), p, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = w.SaveSnapshot(walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
-	if err = w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+	require.NoError(t, w.SaveSnapshot(walpb.Snapshot{}))
+	require.NoError(t, w.Save(raftpb.HardState{}, []raftpb.Entry{{Index: 0}}))
 	w.Close()
 
 	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// commit up to index 0, try to read index 1
-	if _, _, _, err = w.ReadAll(); err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
+	_, _, _, err = w.ReadAll()
+	require.NoErrorf(t, err, "err = %v, want nil", err)
 	w.Close()
 }
 
@@ -647,19 +519,13 @@ func TestOpenForRead(t *testing.T) {
 	p := t.TempDir()
 	// create WAL
 	w, err := Create(zaptest.NewLogger(t), p, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer w.Close()
 	// make 10 separate files
 	for i := 0; i < 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.cut(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
+		require.NoError(t, w.cut())
 	}
 	// release the lock to 5
 	unlockIndex := uint64(5)
@@ -667,24 +533,19 @@ func TestOpenForRead(t *testing.T) {
 
 	// All are available for read
 	w2, err := OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer w2.Close()
 	_, _, ents, err := w2.ReadAll()
 	require.NoErrorf(t, err, "err = %v, want nil", err)
-	if g := ents[len(ents)-1].Index; g != 9 {
-		t.Errorf("last index read = %d, want %d", g, 9)
-	}
+	g := ents[len(ents)-1].Index
+	assert.Equalf(t, uint64(9), g, "last index read = %d, want %d", g, 9)
 }
 
 func TestOpenWithMaxIndex(t *testing.T) {
 	p := t.TempDir()
 	// create WAL
 	w1, err := Create(zaptest.NewLogger(t), p, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer func() {
 		if w1 != nil {
 			w1.Close()
@@ -692,16 +553,12 @@ func TestOpenWithMaxIndex(t *testing.T) {
 	}()
 
 	es := []raftpb.Entry{{Index: uint64(math.MaxInt64)}}
-	if err = w1.Save(raftpb.HardState{}, es); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, w1.Save(raftpb.HardState{}, es))
 	w1.Close()
 	w1 = nil
 
 	w2, err := Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer w2.Close()
 
 	_, _, _, err = w2.ReadAll()
@@ -714,12 +571,8 @@ func TestSaveEmpty(t *testing.T) {
 	w := WAL{
 		encoder: newEncoder(&buf, 0, 0),
 	}
-	if err := w.saveState(&est); err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if len(buf.Bytes()) != 0 {
-		t.Errorf("buf.Bytes = %d, want 0", len(buf.Bytes()))
-	}
+	require.NoError(t, w.saveState(&est))
+	assert.Emptyf(t, buf.Bytes(), "buf.Bytes = %d, want 0", len(buf.Bytes()))
 }
 
 func TestReleaseLockTo(t *testing.T) {
@@ -727,48 +580,31 @@ func TestReleaseLockTo(t *testing.T) {
 	// create WAL
 	w, err := Create(zaptest.NewLogger(t), p, nil)
 	defer func() {
-		if err = w.Close(); err != nil {
-			t.Fatal(err)
-		}
+		err = w.Close()
+		require.NoError(t, err)
 	}()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// release nothing if no files
-	err = w.ReleaseLockTo(10)
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
+	require.NoError(t, w.ReleaseLockTo(10))
 
 	// make 10 separate files
 	for i := 0; i < 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.cut(); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
+		require.NoError(t, w.cut())
 	}
 	// release the lock to 5
 	unlockIndex := uint64(5)
 	w.ReleaseLockTo(unlockIndex)
 
 	// expected remaining are 4,5,6,7,8,9,10
-	if len(w.locks) != 7 {
-		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 7)
-	}
+	assert.Lenf(t, w.locks, 7, "len(w.locks) = %d, want %d", len(w.locks), 7)
 	for i, l := range w.locks {
 		var lockIndex uint64
 		_, lockIndex, err = parseWALName(filepath.Base(l.Name()))
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if lockIndex != uint64(i+4) {
-			t.Errorf("#%d: lockindex = %d, want %d", i, lockIndex, uint64(i+4))
-		}
+		require.NoError(t, err)
+		assert.Equalf(t, lockIndex, uint64(i+4), "#%d: lockindex = %d, want %d", i, lockIndex, uint64(i+4))
 	}
 
 	// release the lock to 15
@@ -776,17 +612,10 @@ func TestReleaseLockTo(t *testing.T) {
 	w.ReleaseLockTo(unlockIndex)
 
 	// expected remaining is 10
-	if len(w.locks) != 1 {
-		t.Errorf("len(w.locks) = %d, want %d", len(w.locks), 1)
-	}
+	assert.Lenf(t, w.locks, 1, "len(w.locks) = %d, want %d", len(w.locks), 1)
 	_, lockIndex, err := parseWALName(filepath.Base(w.locks[0].Name()))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if lockIndex != uint64(10) {
-		t.Errorf("lockindex = %d, want %d", lockIndex, 10)
-	}
+	require.NoError(t, err)
+	assert.Equalf(t, uint64(10), lockIndex, "lockindex = %d, want %d", lockIndex, 10)
 }
 
 // TestTailWriteNoSlackSpace ensures that tail writes append if there's no preallocated space.
@@ -795,57 +624,37 @@ func TestTailWriteNoSlackSpace(t *testing.T) {
 
 	// create initial WAL
 	w, err := Create(zaptest.NewLogger(t), p, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// write some entries
 	for i := 1; i <= 5; i++ {
 		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
-		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{Term: 1}, es))
 	}
 	// get rid of slack space by truncating file
 	off, serr := w.tail().Seek(0, io.SeekCurrent)
-	if serr != nil {
-		t.Fatal(serr)
-	}
-	if terr := w.tail().Truncate(off); terr != nil {
-		t.Fatal(terr)
-	}
+	require.NoError(t, serr)
+	require.NoError(t, w.tail().Truncate(off))
 	w.Close()
 
 	// open, write more
 	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, _, ents, rerr := w.ReadAll()
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	require.Lenf(t, ents, 5, "got entries %+v, expected 5 entries", ents)
 	// write more entries
 	for i := 6; i <= 10; i++ {
 		es := []raftpb.Entry{{Index: uint64(i), Term: 1, Data: []byte{byte(i)}}}
-		if err = w.Save(raftpb.HardState{Term: 1}, es); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{Term: 1}, es))
 	}
 	w.Close()
 
 	// confirm all writes
 	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	_, _, ents, rerr = w.ReadAll()
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
-	if len(ents) != 10 {
-		t.Fatalf("got entries %+v, expected 10 entries", ents)
-	}
+	require.NoError(t, rerr)
+	require.Lenf(t, ents, 10, "got entries %+v, expected 10 entries", ents)
 	w.Close()
 }
 
@@ -856,25 +665,17 @@ func TestRestartCreateWal(t *testing.T) {
 
 	// make temporary directory so it looks like initialization is interrupted
 	tmpdir := filepath.Clean(p) + ".tmp"
-	if err = os.Mkdir(tmpdir, fileutil.PrivateDirMode); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = os.OpenFile(filepath.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode); err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, os.Mkdir(tmpdir, fileutil.PrivateDirMode))
+	_, err = os.OpenFile(filepath.Join(tmpdir, "test"), os.O_WRONLY|os.O_CREATE, fileutil.PrivateFileMode)
+	require.NoError(t, err)
 
 	w, werr := Create(zaptest.NewLogger(t), p, []byte("abc"))
-	if werr != nil {
-		t.Fatal(werr)
-	}
+	require.NoError(t, werr)
 	w.Close()
-	if Exist(tmpdir) {
-		t.Fatalf("got %q exists, expected it to not exist", tmpdir)
-	}
+	require.Falsef(t, Exist(tmpdir), "got %q exists, expected it to not exist", tmpdir)
 
-	if w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{}); err != nil {
-		t.Fatal(err)
-	}
+	w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
+	require.NoError(t, err)
 	defer w.Close()
 
 	if meta, _, _, rerr := w.ReadAll(); rerr != nil || string(meta) != "abc" {
@@ -891,24 +692,18 @@ func TestOpenOnTornWrite(t *testing.T) {
 	p := t.TempDir()
 	w, err := Create(zaptest.NewLogger(t), p, nil)
 	defer func() {
-		if err = w.Close(); err != nil && !errors.Is(err, os.ErrInvalid) {
-			t.Fatal(err)
-		}
+		err = w.Close()
+		require.ErrorIs(t, err, os.ErrInvalid)
 	}()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// get offset of end of each saved entry
 	offsets := make([]int64, maxEntries)
 	for i := range offsets {
 		es := []raftpb.Entry{{Index: uint64(i)}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
-		if offsets[i], err = w.tail().Seek(0, io.SeekCurrent); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
+		offsets[i], err = w.tail().Seek(0, io.SeekCurrent)
+		require.NoError(t, err)
 	}
 
 	fn := filepath.Join(p, filepath.Base(w.tail().Name()))
@@ -916,52 +711,36 @@ func TestOpenOnTornWrite(t *testing.T) {
 
 	// clobber some entry with 0's to simulate a torn write
 	f, ferr := os.OpenFile(fn, os.O_WRONLY, fileutil.PrivateFileMode)
-	if ferr != nil {
-		t.Fatal(ferr)
-	}
+	require.NoError(t, ferr)
 	defer f.Close()
 	_, err = f.Seek(offsets[clobberIdx], io.SeekStart)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	zeros := make([]byte, offsets[clobberIdx+1]-offsets[clobberIdx])
 	_, err = f.Write(zeros)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 
 	w, err = Open(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	// seek up to clobbered entry
 	_, _, _, err = w.ReadAll()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// write a few entries past the clobbered entry
 	for i := 0; i < overwriteEntries; i++ {
 		// Index is different from old, truncated entries
 		es := []raftpb.Entry{{Index: uint64(i + clobberIdx), Data: []byte("new")}}
-		if err = w.Save(raftpb.HardState{}, es); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.Save(raftpb.HardState{}, es))
 	}
 	w.Close()
 
 	// read back the entries, confirm number of entries matches expectation
 	w, err = OpenForRead(zaptest.NewLogger(t), p, walpb.Snapshot{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	_, _, ents, rerr := w.ReadAll()
-	if rerr != nil {
-		// CRC error? the old entries were likely never truncated away
-		t.Fatal(rerr)
-	}
+	// CRC error? the old entries were likely never truncated away
+	require.NoError(t, rerr)
 	wEntries := (clobberIdx - 1) + overwriteEntries
 	require.Equalf(t, len(ents), wEntries, "expected len(ents) = %d, got %d", wEntries, len(ents))
 }
@@ -994,9 +773,7 @@ func TestReadAllFail(t *testing.T) {
 
 	// create initial WAL
 	f, err := Create(zaptest.NewLogger(t), dir, []byte("metadata"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	f.Close()
 	// try to read without opening the WAL
 	_, _, _, err = f.ReadAll()
@@ -1018,39 +795,21 @@ func TestValidSnapshotEntries(t *testing.T) {
 	snap4 := walpb.Snapshot{Index: 4, Term: 2, ConfState: &confState} // will be orphaned since the last committed entry will be snap3
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.Save(state1, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveSnapshot(snap2); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveSnapshot(snap3); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.Save(state2, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveSnapshot(snap4); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.SaveSnapshot(snap1))
+		require.NoError(t, w.Save(state1, nil))
+		require.NoError(t, w.SaveSnapshot(snap2))
+		require.NoError(t, w.SaveSnapshot(snap3))
+		require.NoError(t, w.Save(state2, nil))
+		require.NoError(t, w.SaveSnapshot(snap4))
 	}()
 	walSnaps, err := ValidSnapshotEntries(zaptest.NewLogger(t), p)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	expected := []walpb.Snapshot{snap0, snap1, snap2, snap3}
-	if !reflect.DeepEqual(walSnaps, expected) {
-		t.Errorf("expected walSnaps %+v, got %+v", expected, walSnaps)
-	}
+	assert.Truef(t, reflect.DeepEqual(walSnaps, expected), "expected walSnaps %+v, got %+v", expected, walSnaps)
 }
 
 // TestValidSnapshotEntriesAfterPurgeWal ensure that there are many wal files, and after cleaning the first wal file,
@@ -1070,39 +829,23 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 	state2 := raftpb.HardState{Commit: 3, Term: 2}
 	func() {
 		w, err := Create(zaptest.NewLogger(t), p, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 		defer w.Close()
 
 		// snap0 is implicitly created at index 0, term 0
-		if err = w.SaveSnapshot(snap1); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.Save(state1, nil); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveSnapshot(snap2); err != nil {
-			t.Fatal(err)
-		}
-		if err = w.SaveSnapshot(snap3); err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, w.SaveSnapshot(snap1))
+		require.NoError(t, w.Save(state1, nil))
+		require.NoError(t, w.SaveSnapshot(snap2))
+		require.NoError(t, w.SaveSnapshot(snap3))
 		for i := 0; i < 128; i++ {
-			if err = w.Save(state2, nil); err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, w.Save(state2, nil))
 		}
 	}()
 	files, _, err := selectWALFiles(nil, p, snap0)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	os.Remove(p + "/" + files[0])
 	_, err = ValidSnapshotEntries(zaptest.NewLogger(t), p)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestLastRecordLengthExceedFileEnd(t *testing.T) {
