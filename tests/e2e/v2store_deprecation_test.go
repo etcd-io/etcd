@@ -248,7 +248,7 @@ func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patc
 	require.NoError(t, err)
 	assert.NotEmpty(t, firstFiles)
 	assert.NotEmpty(t, secondFiles)
-	assert.Equal(t, len(firstFiles), len(secondFiles))
+	assert.Len(t, secondFiles, len(firstFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
