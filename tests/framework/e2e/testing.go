@@ -20,7 +20,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
-func BeforeTest(t testing.TB) {
-	SkipInShortMode(t)
-	testutil.BeforeTest(t)
+func BeforeTest(tb testing.TB) {
+	SkipInShortMode(tb)
+	testutil.BeforeTest(tb)
 }
