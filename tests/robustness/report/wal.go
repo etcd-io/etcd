@@ -107,7 +107,7 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 	walDir := datadir.ToWALDir(dataDir)
 	repaired := false
 	for {
-		w, err := wal.OpenForRead(lg, walDir, walpb.Snapshot{Index: 0})
+		w, err := wal.OpenForRead(lg, walDir, wal.Position{Index: 0, Term: 0})
 		if err != nil {
 			return state, nil, fmt.Errorf("failed to open WAL, err: %w", err)
 		}
