@@ -71,7 +71,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 				return
 			}
 			m := concurrency.NewMutex(session, "test-mutex")
-			if err := m.Lock(context.TODO()); err != nil {
+			if err := m.Lock(t.Context()); err != nil {
 				errC <- fmt.Errorf("#%d: failed to wait on lock: %w", i, err)
 				return
 			}
@@ -93,7 +93,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 				t.Fatalf("lock %d followers did not wait", i)
 			default:
 			}
-			require.NoErrorf(t, m.Unlock(context.TODO()), "could not release lock")
+			require.NoErrorf(t, m.Unlock(t.Context()), "could not release lock")
 		}
 	}
 	wg.Wait()
@@ -120,7 +120,7 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 }
 
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	lockedC := make(chan *concurrency.Mutex)
@@ -182,10 +182,10 @@ func TestMutexSessionRelock(t *testing.T) {
 	}
 
 	m := concurrency.NewMutex(session, "test-mutex")
-	require.NoError(t, m.Lock(context.TODO()))
+	require.NoError(t, m.Lock(t.Context()))
 
 	m2 := concurrency.NewMutex(session, "test-mutex")
-	require.NoError(t, m2.Lock(context.TODO()))
+	require.NoError(t, m2.Lock(t.Context()))
 }
 
 // TestMutexWaitsOnCurrentHolder ensures a mutex is only acquired once all
@@ -197,7 +197,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	cctx := context.Background()
+	cctx := t.Context()
 
 	cli := clus.Client(0)
 

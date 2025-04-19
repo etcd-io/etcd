@@ -48,7 +48,7 @@ func TestV3LeasePromote(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// create lease
-	lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 3})
+	lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 3})
 	ttl := time.Duration(lresp.TTL) * time.Second
 	afterGrant := time.Now()
 	require.NoError(t, err)
@@ -103,7 +103,7 @@ func TestV3LeaseRevoke(t *testing.T) {
 	integration.BeforeTest(t)
 	testLeaseRemoveLeasedKey(t, func(clus *integration.Cluster, leaseID int64) error {
 		lc := integration.ToGRPC(clus.RandClient()).Lease
-		_, err := lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
+		_, err := lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
 }
@@ -116,7 +116,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 
 	// create fixed lease
 	lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(
-		context.TODO(),
+		t.Context(),
 		&pb.LeaseGrantRequest{ID: 1, TTL: 1})
 	if err != nil {
 		t.Errorf("could not create lease 1 (%v)", err)
@@ -127,7 +127,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 
 	// create duplicate fixed lease
 	_, err = integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(
-		context.TODO(),
+		t.Context(),
 		&pb.LeaseGrantRequest{ID: 1, TTL: 1})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCLeaseExist) {
 		t.Error(err)
@@ -135,7 +135,7 @@ func TestV3LeaseGrantByID(t *testing.T) {
 
 	// create fresh fixed lease
 	lresp, err = integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(
-		context.TODO(),
+		t.Context(),
 		&pb.LeaseGrantRequest{ID: 2, TTL: 1})
 	if err != nil {
 		t.Errorf("could not create lease 2 (%v)", err)
@@ -179,7 +179,7 @@ func TestV3LeaseNegativeID(t *testing.T) {
 			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			cc := clus.RandClient()
 			lresp, err := integration.ToGRPC(cc).Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{ID: tc.leaseID, TTL: 300})
@@ -233,7 +233,7 @@ func TestV3LeaseExpire(t *testing.T) {
 	testLeaseRemoveLeasedKey(t, func(clus *integration.Cluster, leaseID int64) error {
 		// let lease lapse; wait for deleted key
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		wStream, err := integration.ToGRPC(clus.RandClient()).Watch.Watch(ctx)
 		if err != nil {
@@ -287,7 +287,7 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 	testLeaseRemoveLeasedKey(t, func(clus *integration.Cluster, leaseID int64) error {
 		lc := integration.ToGRPC(clus.RandClient()).Lease
 		lreq := &pb.LeaseKeepAliveRequest{ID: leaseID}
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 		lac, err := lc.LeaseKeepAlive(ctx)
 		if err != nil {
@@ -309,7 +309,7 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 			}
 			time.Sleep(time.Duration(lresp.TTL/2) * time.Second)
 		}
-		_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseID})
+		_, err = lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
 }
@@ -375,7 +375,7 @@ func TestV3LeaseCheckpoint(t *testing.T) {
 			defer clus.Terminate(t)
 
 			// create lease
-			ctx, cancel := context.WithCancel(context.Background())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			c := integration.ToGRPC(clus.RandClient())
 			lresp, err := c.Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: int64(tc.ttl.Seconds())})
@@ -428,7 +428,7 @@ func TestV3LeaseExists(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// create lease
-	ctx0, cancel0 := context.WithCancel(context.Background())
+	ctx0, cancel0 := context.WithCancel(t.Context())
 	defer cancel0()
 	lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(
 		ctx0,
@@ -447,7 +447,7 @@ func TestV3LeaseLeases(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx0, cancel0 := context.WithCancel(context.Background())
+	ctx0, cancel0 := context.WithCancel(t.Context())
 	defer cancel0()
 
 	// create leases
@@ -462,7 +462,7 @@ func TestV3LeaseLeases(t *testing.T) {
 	}
 
 	lresp, err := integration.ToGRPC(clus.RandClient()).Lease.LeaseLeases(
-		context.Background(),
+		t.Context(),
 		&pb.LeaseLeasesRequest{})
 	require.NoError(t, err)
 	for i := range lresp.Leases {
@@ -505,7 +505,7 @@ func testLeaseStress(t *testing.T, stresser func(context.Context, pb.LeaseClient
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	errc := make(chan error)
 
@@ -583,7 +583,7 @@ func TestV3PutOnNonExistLease(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	badLeaseID := int64(0x12345678)
@@ -601,14 +601,14 @@ func TestV3GetNonExistLease(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	lc := integration.ToGRPC(clus.RandClient()).Lease
 	lresp, err := lc.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: 10})
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
-	_, err = lc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+	_, err = lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
 	require.NoError(t, err)
 
 	leaseTTLr := &pb.LeaseTimeToLiveRequest{
@@ -639,7 +639,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 	key := "foo"
 
 	// create lease
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	lresp1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(ctx, &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err1)
@@ -658,7 +658,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 	_, err = integration.ToGRPC(clus.RandClient()).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp1.ID})
 	require.NoError(t, err)
 	rreq := &pb.RangeRequest{Key: []byte("foo")}
-	rresp, err := integration.ToGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
+	rresp, err := integration.ToGRPC(clus.RandClient()).KV.Range(t.Context(), rreq)
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 1 {
 		t.Fatalf("unexpect removal of key")
@@ -667,7 +667,7 @@ func TestV3LeaseSwitch(t *testing.T) {
 	// revoke lease2 should remove key
 	_, err = integration.ToGRPC(clus.RandClient()).Lease.LeaseRevoke(ctx, &pb.LeaseRevokeRequest{ID: lresp2.ID})
 	require.NoError(t, err)
-	rresp, err = integration.ToGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
+	rresp, err = integration.ToGRPC(clus.RandClient()).KV.Range(t.Context(), rreq)
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
@@ -688,7 +688,7 @@ func TestV3LeaseFailover(t *testing.T) {
 	lc := integration.ToGRPC(clus.Client(toIsolate)).Lease
 
 	// create lease
-	lresp, err := lc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 5})
+	lresp, err := lc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 5})
 	require.NoError(t, err)
 	require.Empty(t, lresp.Error)
 
@@ -698,7 +698,7 @@ func TestV3LeaseFailover(t *testing.T) {
 	lreq := &pb.LeaseKeepAliveRequest{ID: lresp.ID}
 
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	mctx := metadata.NewOutgoingContext(context.Background(), md)
+	mctx := metadata.NewOutgoingContext(t.Context(), md)
 	ctx, cancel := context.WithCancel(mctx)
 	defer cancel()
 	lac, err := lc.LeaseKeepAlive(ctx)
@@ -743,7 +743,7 @@ func TestV3LeaseRequireLeader(t *testing.T) {
 	clus.Members[2].Stop(t)
 
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	mctx := metadata.NewOutgoingContext(context.Background(), md)
+	mctx := metadata.NewOutgoingContext(t.Context(), md)
 	ctx, cancel := context.WithCancel(mctx)
 	defer cancel()
 	lac, err := lc.LeaseKeepAlive(ctx)
@@ -779,10 +779,10 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(0)).KV
 	lsc := integration.ToGRPC(clus.Client(0)).Lease
 
-	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
+	lresp, err := lsc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
 	require.Empty(t, lresp.Error)
-	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
 	// restart server and ensure lease still exists
@@ -799,9 +799,9 @@ func TestV3LeaseRecoverAndRevoke(t *testing.T) {
 	defer nc.Close()
 
 	// revoke should delete the key
-	_, err = lsc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+	_, err = lsc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
 	require.NoError(t, err)
-	rresp, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	rresp, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
@@ -818,14 +818,14 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(0)).KV
 	lsc := integration.ToGRPC(clus.Client(0)).Lease
 
-	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
+	lresp, err := lsc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
 	require.Empty(t, lresp.Error)
-	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
 	// revoke should delete the key
-	_, err = lsc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+	_, err = lsc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
 	require.NoError(t, err)
 
 	// restart server and ensure revoked key doesn't exist
@@ -840,7 +840,7 @@ func TestV3LeaseRevokeAndRecover(t *testing.T) {
 	kvc = integration.ToGRPC(nc).KV
 	defer nc.Close()
 
-	rresp, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	rresp, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
@@ -858,14 +858,14 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 	kvc := integration.ToGRPC(clus.Client(0)).KV
 	lsc := integration.ToGRPC(clus.Client(0)).Lease
 
-	lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
+	lresp, err := lsc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 	require.NoError(t, err)
 	require.Empty(t, lresp.Error)
-	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 	require.NoError(t, err)
 
 	// overwrite lease with none
-	_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 	require.NoError(t, err)
 
 	// restart server and ensure lease still exists
@@ -882,9 +882,9 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 	defer nc.Close()
 
 	// revoke the detached lease
-	_, err = lsc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: lresp.ID})
+	_, err = lsc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: lresp.ID})
 	require.NoError(t, err)
-	rresp, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	rresp, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 1 {
 		t.Fatalf("only detached lease removed, key should remain")
@@ -902,12 +902,12 @@ func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
 
 	var leaseIDs []int64
 	for i := 0; i < 2; i++ {
-		lresp, err := lsc.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
+		lresp, err := lsc.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: fiveMinTTL})
 		require.NoError(t, err)
 		require.Empty(t, lresp.Error)
 		leaseIDs = append(leaseIDs, lresp.ID)
 
-		_, err = kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
+		_, err = kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar"), Lease: lresp.ID})
 		require.NoError(t, err)
 	}
 
@@ -930,19 +930,19 @@ func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
 	defer nc.Close()
 
 	// revoke the old lease
-	_, err = lsc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseIDs[0]})
+	_, err = lsc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseIDs[0]})
 	require.NoError(t, err)
 	// key should still exist
-	rresp, err := kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	rresp, err := kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 1 {
 		t.Fatalf("only detached lease removed, key should remain")
 	}
 
 	// revoke the latest lease
-	_, err = lsc.LeaseRevoke(context.TODO(), &pb.LeaseRevokeRequest{ID: leaseIDs[1]})
+	_, err = lsc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseIDs[1]})
 	require.NoError(t, err)
-	rresp, err = kvc.Range(context.TODO(), &pb.RangeRequest{Key: []byte("foo")})
+	rresp, err = kvc.Range(t.Context(), &pb.RangeRequest{Key: []byte("foo")})
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
@@ -969,7 +969,7 @@ func testV3LeaseTimeToLiveWithLeaderChanged(t *testing.T, fpName string) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -1055,7 +1055,7 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*integration.Cluster, int64
 
 	// confirm no key
 	rreq := &pb.RangeRequest{Key: []byte("foo")}
-	rresp, err := integration.ToGRPC(clus.RandClient()).KV.Range(context.TODO(), rreq)
+	rresp, err := integration.ToGRPC(clus.RandClient()).KV.Range(t.Context(), rreq)
 	require.NoError(t, err)
 	if len(rresp.Kvs) != 0 {
 		t.Fatalf("lease removed but key remains")
@@ -1065,9 +1065,9 @@ func testLeaseRemoveLeasedKey(t *testing.T, act func(*integration.Cluster, int64
 func leaseExist(t *testing.T, clus *integration.Cluster, leaseID int64) bool {
 	l := integration.ToGRPC(clus.RandClient()).Lease
 
-	_, err := l.LeaseGrant(context.Background(), &pb.LeaseGrantRequest{ID: leaseID, TTL: 5})
+	_, err := l.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{ID: leaseID, TTL: 5})
 	if err == nil {
-		_, err = l.LeaseRevoke(context.Background(), &pb.LeaseRevokeRequest{ID: leaseID})
+		_, err = l.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseID})
 		if err != nil {
 			t.Fatalf("failed to check lease %v", err)
 		}

@@ -15,7 +15,6 @@
 package grpcproxy
 
 import (
-	"context"
 	"net"
 	"os"
 	"testing"
@@ -59,7 +58,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	var mresp *clientv3.MemberListResponse
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	require.NoErrorf(t, err, "err %v, want nil", err)
 
 	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
@@ -73,7 +72,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// check add member succ
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	require.NoErrorf(t, err, "err %v, want nil", err)
 	require.Lenf(t, mresp.Members, 2, "len(mresp.Members) expected 2, got %d (%+v)", len(mresp.Members), mresp.Members)
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{newMemberAddr}})
@@ -84,7 +83,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// check delete member succ
-	mresp, err = client.Cluster.MemberList(context.Background())
+	mresp, err = client.Cluster.MemberList(t.Context())
 	require.NoErrorf(t, err, "err %v, want nil", err)
 	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
 	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
