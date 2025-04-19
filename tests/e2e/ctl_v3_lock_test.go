@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -47,9 +48,7 @@ func testLock(cx ctlCtx) {
 	case <-time.After(2 * time.Second):
 		cx.t.Fatalf("timed out locking")
 	case l1 = <-ch:
-		if !strings.HasPrefix(l1, name) {
-			cx.t.Errorf("got %q, expected %q prefix", l1, name)
-		}
+		assert.Truef(cx.t, strings.HasPrefix(l1, name), "got %q, expected %q prefix", l1, name)
 	}
 
 	// blocked process that won't acquire the lock

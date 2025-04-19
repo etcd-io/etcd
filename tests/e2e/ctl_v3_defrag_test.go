@@ -41,7 +41,5 @@ func ctlV3OfflineDefrag(cx ctlCtx) error {
 }
 
 func defragOfflineTest(cx ctlCtx) {
-	if err := ctlV3OfflineDefrag(cx); err != nil {
-		cx.t.Fatalf("defragTest ctlV3Defrag error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3OfflineDefrag(cx), "defragTest ctlV3Defrag error")
 }

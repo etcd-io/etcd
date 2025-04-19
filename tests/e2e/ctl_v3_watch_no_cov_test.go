@@ -18,6 +18,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -115,9 +117,7 @@ func watchTest(cx ctlCtx) {
 		donec := make(chan struct{})
 		go func(i int, puts []kv) {
 			for j := range puts {
-				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
-					cx.t.Errorf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
-				}
+				assert.NoErrorf(cx.t, ctlV3Put(cx, puts[j].key, puts[j].val, ""), "watchTest #%d-%d: ctlV3Put error", i, j)
 			}
 			close(donec)
 		}(i, tt.puts)

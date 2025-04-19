@@ -48,13 +48,9 @@ func TestReleaseUpgrade(t *testing.T) {
 		e2e.WithSnapshotCount(3),
 		e2e.WithBasePeerScheme("unix"), // to avoid port conflict
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	cx := ctlCtx{
@@ -69,26 +65,23 @@ func TestReleaseUpgrade(t *testing.T) {
 		kvs = append(kvs, kv{key: fmt.Sprintf("foo%d", i), val: "bar"})
 	}
 	for i := range kvs {
-		if err = ctlV3Put(cx, kvs[i].key, kvs[i].val, ""); err != nil {
-			cx.t.Fatalf("#%d: ctlV3Put error (%v)", i, err)
-		}
+		err = ctlV3Put(cx, kvs[i].key, kvs[i].val, "")
+		require.NoErrorf(cx.t, err, "#%d: ctlV3Put error (%v)", i, err)
 	}
 
 	t.Log("Cluster of etcd in old version running")
 
 	for i := range epc.Procs {
 		t.Logf("Stopping node: %v", i)
-		if err = epc.Procs[i].Stop(); err != nil {
-			t.Fatalf("#%d: error closing etcd process (%v)", i, err)
-		}
+		err = epc.Procs[i].Stop()
+		require.NoErrorf(t, err, "#%d: error closing etcd process (%v)", i, err)
 		t.Logf("Stopped node: %v", i)
 		epc.Procs[i].Config().ExecPath = e2e.BinPath.Etcd
 		epc.Procs[i].Config().KeepDataDir = true
 
 		t.Logf("Restarting node in the new version: %v", i)
-		if err = epc.Procs[i].Restart(t.Context()); err != nil {
-			t.Fatalf("error restarting etcd process (%v)", err)
-		}
+		err = epc.Procs[i].Restart(t.Context())
+		require.NoErrorf(t, err, "error restarting etcd process (%v)", err)
 
 		t.Logf("Testing reads after node restarts: %v", i)
 		for j := range kvs {
@@ -110,9 +103,7 @@ func TestReleaseUpgrade(t *testing.T) {
 		}
 		break
 	}
-	if err != nil {
-		t.Fatalf("cluster version is not upgraded (%v)", err)
-	}
+	require.NoErrorf(t, err, "cluster version is not upgraded (%v)", err)
 	t.Log("TestReleaseUpgrade businessLogic DONE")
 }
 
@@ -128,13 +119,9 @@ func TestReleaseUpgradeWithRestart(t *testing.T) {
 		e2e.WithSnapshotCount(10),
 		e2e.WithBasePeerScheme("unix"),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	}()
 
 	cx := ctlCtx{

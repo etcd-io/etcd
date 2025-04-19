@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -37,44 +38,33 @@ func TestAuthCluster(t *testing.T) {
 		e2e.WithClusterSize(1),
 		e2e.WithSnapshotCount(2),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer func() {
-		if err := epc.Close(); err != nil {
-			t.Fatalf("could not close test cluster (%v)", err)
-		}
+		require.NoErrorf(t, epc.Close(), "could not close test cluster")
 	}()
 
 	epcClient := epc.Etcdctl()
 	createUsers(ctx, t, epcClient)
 
-	if err := epcClient.AuthEnable(ctx); err != nil {
-		t.Fatalf("could not enable Auth: (%v)", err)
-	}
+	require.NoErrorf(t, epcClient.AuthEnable(ctx), "could not enable Auth")
 
 	testUserClientOpts := e2e.WithAuth("test", "testPassword")
 	rootUserClientOpts := e2e.WithAuth("root", "rootPassword")
 
 	// write more than SnapshotCount keys to single leader to make sure snapshot is created
 	for i := 0; i <= 10; i++ {
-		if err := epc.Etcdctl(testUserClientOpts).Put(ctx, fmt.Sprintf("/test/%d", i), "test", config.PutOptions{}); err != nil {
-			t.Fatalf("failed to Put (%v)", err)
-		}
+		require.NoErrorf(t, epc.Etcdctl(testUserClientOpts).Put(ctx, fmt.Sprintf("/test/%d", i), "test", config.PutOptions{}), "failed to Put")
 	}
 
 	// start second process
-	if _, err := epc.StartNewProc(ctx, nil, t, false /* addAsLearner */, rootUserClientOpts); err != nil {
-		t.Fatalf("could not start second etcd process (%v)", err)
-	}
+	_, err = epc.StartNewProc(ctx, nil, t, false /* addAsLearner */, rootUserClientOpts)
+	require.NoErrorf(t, err, "could not start second etcd process")
 
 	// make sure writes to both endpoints are successful
 	endpoints := epc.EndpointsGRPC()
 	assert.Len(t, endpoints, 2)
 	for _, endpoint := range epc.EndpointsGRPC() {
-		if err := epc.Etcdctl(testUserClientOpts, e2e.WithEndpoints([]string{endpoint})).Put(ctx, "/test/key", endpoint, config.PutOptions{}); err != nil {
-			t.Fatalf("failed to write to Put to %q (%v)", endpoint, err)
-		}
+		require.NoErrorf(t, epc.Etcdctl(testUserClientOpts, e2e.WithEndpoints([]string{endpoint})).Put(ctx, "/test/key", endpoint, config.PutOptions{}), "failed to write to Put to %q", endpoint)
 	}
 
 	// verify all nodes have exact same revision and hash
@@ -120,26 +110,19 @@ func applyTLSWithRootCommonName() func() {
 }
 
 func createUsers(ctx context.Context, t *testing.T, client *e2e.EtcdctlV3) {
-	if _, err := client.UserAdd(ctx, "root", "rootPassword", config.UserAddOptions{}); err != nil {
-		t.Fatalf("could not add root user (%v)", err)
-	}
-	if _, err := client.RoleAdd(ctx, "root"); err != nil {
-		t.Fatalf("could not create 'root' role (%v)", err)
-	}
-	if _, err := client.UserGrantRole(ctx, "root", "root"); err != nil {
-		t.Fatalf("could not grant root role to root user (%v)", err)
-	}
+	_, err := client.UserAdd(ctx, "root", "rootPassword", config.UserAddOptions{})
+	require.NoErrorf(t, err, "could not add root user")
+	_, err = client.RoleAdd(ctx, "root")
+	require.NoErrorf(t, err, "could not create 'root' role")
+	_, err = client.UserGrantRole(ctx, "root", "root")
+	require.NoErrorf(t, err, "could not grant root role to root user")
 
-	if _, err := client.RoleAdd(ctx, "test"); err != nil {
-		t.Fatalf("could not create 'test' role (%v)", err)
-	}
-	if _, err := client.RoleGrantPermission(ctx, "test", "/test/", "/test0", clientv3.PermissionType(clientv3.PermReadWrite)); err != nil {
-		t.Fatalf("could not RoleGrantPermission (%v)", err)
-	}
-	if _, err := client.UserAdd(ctx, "test", "testPassword", config.UserAddOptions{}); err != nil {
-		t.Fatalf("could not add user test (%v)", err)
-	}
-	if _, err := client.UserGrantRole(ctx, "test", "test"); err != nil {
-		t.Fatalf("could not grant test role user (%v)", err)
-	}
+	_, err = client.RoleAdd(ctx, "test")
+	require.NoErrorf(t, err, "could not create 'test' role")
+	_, err = client.RoleGrantPermission(ctx, "test", "/test/", "/test0", clientv3.PermissionType(clientv3.PermReadWrite))
+	require.NoErrorf(t, err, "could not RoleGrantPermission")
+	_, err = client.UserAdd(ctx, "test", "testPassword", config.UserAddOptions{})
+	require.NoErrorf(t, err, "could not add user test")
+	_, err = client.UserGrantRole(ctx, "test", "test")
+	require.NoErrorf(t, err, "could not grant test role user")
 }
