@@ -49,6 +49,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 
 		tx := s.b.BatchTx()
 		tx.LockOutsideApply()
+		// gofail: var compactAfterAcquiredBatchTxLock struct{}
 		keys, values := tx.UnsafeRange(schema.Key, last, end, int64(batchNum))
 		for i := range keys {
 			rev = BytesToRev(keys[i])
