@@ -146,6 +146,7 @@ type EtcdProcessClusterConfig struct {
 	GoFailClientTimeout time.Duration
 	LazyFSEnabled       bool
 	PeerProxy           bool
+	PipelineBufferSize  int
 
 	// Process config
 
@@ -423,6 +424,10 @@ func WithExtensiveMetrics() EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.Metrics = "extensive" }
 }
 
+func WithPipelineBufferSize(size int) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.PipelineBufferSize = size }
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -656,6 +661,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		}
 		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
 	}
+
+	if cfg.PipelineBufferSize > 0 {
+		args = append(args, fmt.Sprintf("--pipeline-buffer-size=%d", cfg.PipelineBufferSize))
+	}
+
 	envVars := map[string]string{}
 	maps.Copy(envVars, cfg.EnvVars)
 	var gofailPort int
