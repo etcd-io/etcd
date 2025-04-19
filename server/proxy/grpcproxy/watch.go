@@ -271,6 +271,11 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CancelRequest:
 			wps.delete(uv.CancelRequest.WatchId)
 			wps.lg.Debug("cancel watcher", zap.Int64("watcherId", uv.CancelRequest.WatchId))
+		case *pb.WatchRequest_ProgressRequest:
+			err := wps.requestProgressAll()
+			if err != nil {
+				return err
+			}
 		default:
 			// Panic or Fatalf would allow to network clients to crash the serve remotely.
 			wps.lg.Error("not supported request type by gRPC proxy", zap.Stringer("request", req))
@@ -310,4 +315,26 @@ func (wps *watchProxyStream) delete(id int64) {
 		Canceled: true,
 	}
 	wps.watchCh <- resp
+}
+
+func (wps *watchProxyStream) requestProgressAll() error {
+	wps.mu.Lock()
+	defer wps.mu.Unlock()
+
+	for _, w := range wps.watchers {
+		// Enable the progress notify on the watcher, otherwise the send()
+		// method may drop progress events.
+		w.progress = true
+		wps.lg.Debug("enabled process notify on watcher", zap.Int64("watcherId", w.id))
+	}
+
+	if err := wps.ranges.wp.cw.RequestProgress(wps.stream.Context()); err != nil {
+		wps.lg.Error("failed to request progress", zap.Error(err))
+		// At this point, the error returned by the client isn't
+		// due to something wrong on the cluster but to closed conns.
+		// So we don't have to send a watch response.
+		return err
+	}
+
+	return nil
 }
