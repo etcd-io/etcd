@@ -18,6 +18,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
@@ -31,15 +33,11 @@ func TestURLPickerPickTwice(t *testing.T) {
 		{Scheme: "http", Host: "127.0.0.1:2380"}: true,
 		{Scheme: "http", Host: "127.0.0.1:7001"}: true,
 	}
-	if !urlmap[u] {
-		t.Errorf("url picked = %+v, want a possible url in %+v", u, urlmap)
-	}
+	assert.Truef(t, urlmap[u], "url picked = %+v, want a possible url in %+v", u, urlmap)
 
 	// pick out the same url when calling pick again
 	uu := picker.pick()
-	if u != uu {
-		t.Errorf("url picked = %+v, want %+v", uu, u)
-	}
+	assert.Equalf(t, u, uu, "url picked = %+v, want %+v", uu, u)
 }
 
 func TestURLPickerUpdate(t *testing.T) {
@@ -51,9 +49,7 @@ func TestURLPickerUpdate(t *testing.T) {
 		{Scheme: "http", Host: "localhost:2380"}: true,
 		{Scheme: "http", Host: "localhost:7001"}: true,
 	}
-	if !urlmap[u] {
-		t.Errorf("url picked = %+v, want a possible url in %+v", u, urlmap)
-	}
+	assert.Truef(t, urlmap[u], "url picked = %+v, want a possible url in %+v", u, urlmap)
 }
 
 func TestURLPickerUnreachable(t *testing.T) {
@@ -62,9 +58,7 @@ func TestURLPickerUnreachable(t *testing.T) {
 	picker.unreachable(u)
 
 	uu := picker.pick()
-	if u == uu {
-		t.Errorf("url picked = %+v, want other possible urls", uu)
-	}
+	assert.NotEqualf(t, u, uu, "url picked = %+v, want other possible urls", uu)
 }
 
 func mustNewURLPicker(t *testing.T, us []string) *urlPicker {

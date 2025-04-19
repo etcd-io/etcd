@@ -17,7 +17,6 @@ package etcdserver
 import (
 	"context"
 	"encoding/json"
-	errorspkg "errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -138,9 +137,7 @@ func TestApplyRepeat(t *testing.T) {
 
 	// only want to confirm etcdserver won't panic; no data to check
 
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	require.NotEmptyf(t, act, "expected len(act)=0, got %d", len(act))
 
 	err = <-stopc
@@ -174,9 +171,7 @@ func TestV2SetMemberAttributes(t *testing.T) {
 		Cfg:          cfg,
 	}
 	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	srv.alarmStore = as
 	srv.uberApply = srv.NewUberApplier()
 
@@ -187,16 +182,13 @@ func TestV2SetMemberAttributes(t *testing.T) {
 		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
 	}
 	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	srv.applyEntryNormal(&raftpb.Entry{
 		Data: data,
 	}, membership.ApplyV2storeOnly)
 	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
-	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
-		t.Errorf("attributes = %v, want %v", g, w)
-	}
+	g := cl.Member(1).Attributes
+	assert.Truef(t, reflect.DeepEqual(g, w), "attributes = %v, want %v", g, w)
 }
 
 // TestV2SetClusterVersion validates support of hybrid v3.5 cluster which still uses v2 request.
@@ -220,9 +212,7 @@ func TestV2SetClusterVersion(t *testing.T) {
 		Cfg:          cfg,
 	}
 	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	srv.alarmStore = as
 	srv.uberApply = srv.NewUberApplier()
 
@@ -233,15 +223,12 @@ func TestV2SetClusterVersion(t *testing.T) {
 		Val:    "3.5.0",
 	}
 	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	srv.applyEntryNormal(&raftpb.Entry{
 		Data: data,
 	}, membership.ApplyV2storeOnly)
-	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
-		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
-	}
+	g := cl.Version()
+	assert.Truef(t, reflect.DeepEqual(*g, version.V3_5), "attributes = %v, want %v", *g, version.V3_5)
 }
 
 func TestApplyConfStateWithRestart(t *testing.T) {
@@ -253,9 +240,7 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 
 	var nodeID uint64 = 1
 	memberData, err := json.Marshal(&membership.Member{ID: types.ID(nodeID), RaftAttributes: membership.RaftAttributes{PeerURLs: []string{""}}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	entries := []raftpb.Entry{
 		{
@@ -319,18 +304,16 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 
 	t.Log("Applying entries for the first time")
 	srv.apply(entries, &confState, nil)
-	if got, _ := n.Wait(len(want)); !reflect.DeepEqual(got, want) {
-		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
-	}
+	got, _ := n.Wait(len(want))
+	assert.Truef(t, reflect.DeepEqual(got, want), "actions don't match\n got  %+v\n want %+v", got, want)
 
 	t.Log("Simulating etcd restart by clearing v2 store")
 	srv.cluster.SetStore(v2store.New())
 
 	t.Log("Reapplying same entries after restart")
 	srv.apply(entries, &confState, nil)
-	if got, _ := n.Wait(2 * len(want)); !reflect.DeepEqual(got[len(want):], want) {
-		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
-	}
+	got, _ = n.Wait(2 * len(want))
+	assert.Truef(t, reflect.DeepEqual(got[len(want):], want), "actions don't match\n got  %+v\n want %+v", got, want)
 }
 
 func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
@@ -370,21 +353,15 @@ func TestApplyConfChangeError(t *testing.T) {
 
 	attr := membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 1)}}
 	ctx, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 4)}}
 	ctx4, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	attr = membership.RaftAttributes{PeerURLs: []string{fmt.Sprintf("http://127.0.0.1:%d", 5)}}
 	ctx5, err := json.Marshal(&membership.Member{ID: types.ID(1), RaftAttributes: attr})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		cc   raftpb.ConfChange
@@ -432,9 +409,7 @@ func TestApplyConfChangeError(t *testing.T) {
 			cluster: cl,
 		}
 		_, err := srv.applyConfChange(tt.cc, nil, true)
-		if !errorspkg.Is(err, tt.werr) {
-			t.Errorf("#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
-		}
+		require.ErrorIsf(t, err, tt.werr, "#%d: applyConfChange error = %v, want %v", i, err, tt.werr)
 		cc := raftpb.ConfChange{Type: tt.cc.Type, NodeID: raft.None, Context: tt.cc.Context}
 		w := []testutil.Action{
 			{
@@ -442,9 +417,8 @@ func TestApplyConfChangeError(t *testing.T) {
 				Params: []any{cc},
 			},
 		}
-		if g, _ := n.Wait(1); !reflect.DeepEqual(g, w) {
-			t.Errorf("#%d: action = %+v, want %+v", i, g, w)
-		}
+		g, _ := n.Wait(1)
+		assert.Truef(t, reflect.DeepEqual(g, w), "#%d: action = %+v, want %+v", i, g, w)
 	}
 }
 
@@ -479,22 +453,14 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	}
 	// remove non-local member
 	shouldStop, err := srv.applyConfChange(cc, &raftpb.ConfState{}, true)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if shouldStop {
-		t.Errorf("shouldStop = %t, want %t", shouldStop, false)
-	}
+	require.NoErrorf(t, err, "unexpected error %v", err)
+	assert.Falsef(t, shouldStop, "shouldStop = %t, want %t", shouldStop, false)
 
 	// remove local member
 	cc.NodeID = 1
 	shouldStop, err = srv.applyConfChange(cc, &raftpb.ConfState{}, true)
-	if err != nil {
-		t.Fatalf("unexpected error %v", err)
-	}
-	if !shouldStop {
-		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
-	}
+	require.NoErrorf(t, err, "unexpected error %v", err)
+	assert.Truef(t, shouldStop, "shouldStop = %t, want %t", shouldStop, true)
 }
 
 // TestApplyConfigChangeUpdatesConsistIndex ensures a config change also updates the consistIndex
@@ -528,15 +494,11 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	// create EntryConfChange entry
 	now := time.Now()
 	urls, err := types.NewURLs([]string{"http://whatever:123"})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	m := membership.NewMember("", urls, "", &now)
 	m.ID = types.ID(2)
 	b, err := json.Marshal(m)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	cc := &raftpb.ConfChange{Type: raftpb.ConfChangeAddNode, NodeID: 2, Context: b}
 	ents := []raftpb.Entry{{
 		Index: 2,
@@ -635,9 +597,7 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	raftAdvancedC := make(chan struct{}, 1)
 	raftAdvancedC <- struct{}{}
 	_, _, shouldStop := srv.apply(ents, &raftpb.ConfState{}, raftAdvancedC)
-	if !shouldStop {
-		t.Errorf("shouldStop = %t, want %t", shouldStop, true)
-	}
+	assert.Truef(t, shouldStop, "shouldStop = %t, want %t", shouldStop, true)
 }
 
 // TestSnapshotDisk should save the snapshot to disk and release old snapshots
@@ -759,9 +719,8 @@ func TestSnapshotOrdering(t *testing.T) {
 	testdir := t.TempDir()
 
 	snapdir := filepath.Join(testdir, "member", "snap")
-	if err := os.MkdirAll(snapdir, 0o755); err != nil {
-		t.Fatalf("couldn't make snap dir (%v)", err)
-	}
+	err := os.MkdirAll(snapdir, 0o755)
+	require.NoErrorf(t, err, "couldn't make snap dir (%v)", err)
 
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorderStream(testdir)
@@ -812,32 +771,24 @@ func TestSnapshotOrdering(t *testing.T) {
 	}()
 
 	ac := <-p.Chan()
-	if ac.Name != "Save" {
-		t.Fatalf("expected Save, got %+v", ac)
-	}
+	require.Equalf(t, "Save", ac.Name, "expected Save, got %+v", ac)
 
-	if ac := <-p.Chan(); ac.Name != "SaveSnap" {
-		t.Fatalf("expected SaveSnap, got %+v", ac)
-	}
+	ac = <-p.Chan()
+	require.Equalf(t, "SaveSnap", ac.Name, "expected SaveSnap, got %+v", ac)
 
-	if ac := <-p.Chan(); ac.Name != "Save" {
-		t.Fatalf("expected Save, got %+v", ac)
-	}
+	ac = <-p.Chan()
+	require.Equalf(t, "Save", ac.Name, "expected Save, got %+v", ac)
 
 	// confirm snapshot file still present before calling SaveSnap
 	snapPath := filepath.Join(snapdir, fmt.Sprintf("%016x.snap.db", 1))
-	if !fileutil.Exist(snapPath) {
-		t.Fatalf("expected file %q, got missing", snapPath)
-	}
+	require.Truef(t, fileutil.Exist(snapPath), "expected file %q, got missing", snapPath)
 
 	// unblock SaveSnapshot, etcdserver now permitted to move snapshot file
-	if ac := <-p.Chan(); ac.Name != "Sync" {
-		t.Fatalf("expected Sync, got %+v", ac)
-	}
+	ac = <-p.Chan()
+	require.Equalf(t, "Sync", ac.Name, "expected Sync, got %+v", ac)
 
-	if ac := <-p.Chan(); ac.Name != "Release" {
-		t.Fatalf("expected Release, got %+v", ac)
-	}
+	ac = <-p.Chan()
+	require.Equalf(t, "Release", ac.Name, "expected Release, got %+v", ac)
 }
 
 // TestConcurrentApplyAndSnapshotV3 will send out snapshots concurrently with
@@ -857,9 +808,8 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	testdir := t.TempDir()
-	if err := os.MkdirAll(testdir+"/member/snap", 0o755); err != nil {
-		t.Fatalf("Couldn't make snap dir (%v)", err)
-	}
+	err := os.MkdirAll(testdir+"/member/snap", 0o755)
+	require.NoErrorf(t, err, "Couldn't make snap dir (%v)", err)
 
 	rs := raft.NewMemoryStorage()
 	tr, snapDoneC := newSnapTransporter(lg, testdir)
@@ -944,12 +894,8 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		}
 		// don't wait for the snapshot to complete, move to next message
 	}
-	if accepted != 50 {
-		t.Errorf("accepted=%v, want 50", accepted)
-	}
-	if outdated != 0 {
-		t.Errorf("outdated=%v, want 0", outdated)
-	}
+	assert.Equalf(t, 50, accepted, "accepted=%v, want 50", accepted)
+	assert.Equalf(t, 0, outdated, "outdated=%v, want 0", outdated)
 }
 
 // TestAddMember tests AddMember can propose and perform node addition.
@@ -990,16 +936,10 @@ func TestAddMember(t *testing.T) {
 	gaction := n.Action()
 	s.Stop()
 
-	if err != nil {
-		t.Fatalf("AddMember error: %v", err)
-	}
+	require.NoErrorf(t, err, "AddMember error: %v", err)
 	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeAddNode"}, {Name: "ApplyConfChange:ConfChangeAddNode"}}
-	if !reflect.DeepEqual(gaction, wactions) {
-		t.Errorf("action = %v, want %v", gaction, wactions)
-	}
-	if cl.Member(1234) == nil {
-		t.Errorf("member with id 1234 is not added")
-	}
+	assert.Truef(t, reflect.DeepEqual(gaction, wactions), "action = %v, want %v", gaction, wactions)
+	assert.NotNilf(t, cl.Member(1234), "member with id 1234 is not added")
 }
 
 // TestProcessIgnoreMismatchMessage tests Process must ignore messages to
@@ -1049,13 +989,9 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		Term:   11,
 		Commit: 42, // Commit is larger than the last index 11.
 	}
-	if types.ID(m.To) == s.MemberID() {
-		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
-	}
+	require.NotEqualf(t, types.ID(m.To), s.MemberID(), "m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	err := s.Process(t.Context(), m)
-	if err == nil {
-		t.Fatalf("Must ignore the message and return an error")
-	}
+	require.Errorf(t, err, "Must ignore the message and return an error")
 }
 
 // TestRemoveMember tests RemoveMember can propose and perform node removal.
@@ -1096,16 +1032,10 @@ func TestRemoveMember(t *testing.T) {
 	gaction := n.Action()
 	s.Stop()
 
-	if err != nil {
-		t.Fatalf("RemoveMember error: %v", err)
-	}
+	require.NoErrorf(t, err, "RemoveMember error: %v", err)
 	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeRemoveNode"}, {Name: "ApplyConfChange:ConfChangeRemoveNode"}}
-	if !reflect.DeepEqual(gaction, wactions) {
-		t.Errorf("action = %v, want %v", gaction, wactions)
-	}
-	if cl.Member(1234) != nil {
-		t.Errorf("member with id 1234 is not removed")
-	}
+	assert.Truef(t, reflect.DeepEqual(gaction, wactions), "action = %v, want %v", gaction, wactions)
+	assert.Nilf(t, cl.Member(1234), "member with id 1234 is not removed")
 }
 
 // TestUpdateMember tests RemoveMember can propose and perform node update.
@@ -1146,16 +1076,10 @@ func TestUpdateMember(t *testing.T) {
 	gaction := n.Action()
 	s.Stop()
 
-	if err != nil {
-		t.Fatalf("UpdateMember error: %v", err)
-	}
+	require.NoErrorf(t, err, "UpdateMember error: %v", err)
 	wactions := []testutil.Action{{Name: "ProposeConfChange:ConfChangeUpdateNode"}, {Name: "ApplyConfChange:ConfChangeUpdateNode"}}
-	if !reflect.DeepEqual(gaction, wactions) {
-		t.Errorf("action = %v, want %v", gaction, wactions)
-	}
-	if !reflect.DeepEqual(cl.Member(1234), &wm) {
-		t.Errorf("member = %v, want %v", cl.Member(1234), &wm)
-	}
+	assert.Truef(t, reflect.DeepEqual(gaction, wactions), "action = %v, want %v", gaction, wactions)
+	assert.Truef(t, reflect.DeepEqual(cl.Member(1234), &wm), "member = %v, want %v", cl.Member(1234), &wm)
 }
 
 // TODO: test server could stop itself when being removed
@@ -1190,17 +1114,12 @@ func TestPublishV3(t *testing.T) {
 	srv.publishV3(time.Hour)
 
 	action := n.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
+	require.Lenf(t, action, 1, "len(action) = %d, want 1", len(action))
+	require.Equalf(t, "Propose", action[0].Name, "action = %s, want Propose", action[0].Name)
 	data := action[0].Params[0].([]byte)
 	var r pb.InternalRaftRequest
-	if err := r.Unmarshal(data); err != nil {
-		t.Fatalf("unmarshal request error: %v", err)
-	}
+	err := r.Unmarshal(data)
+	require.NoErrorf(t, err, "unmarshal request error: %v", err)
 	assert.Equal(t, &membershippb.ClusterMemberAttrSetRequest{Member_ID: 0x1, MemberAttributes: &membershippb.Attributes{
 		Name: "node1", ClientUrls: []string{"http://a", "http://b"},
 	}}, r.ClusterMemberAttrSet)
@@ -1265,9 +1184,8 @@ func TestPublishV3Retry(t *testing.T) {
 	ch := make(chan struct{})
 	go func() {
 		defer close(ch)
-		if action, err := n.Wait(2); err != nil {
-			t.Errorf("len(action) = %d, want >= 2 (%v)", len(action), err)
-		}
+		action, err := n.Wait(2)
+		assert.NoErrorf(t, err, "len(action) = %d, want >= 2 (%v)", len(action), err)
 		close(srv.stopping)
 		// drain remaining actions, if any, so publish can terminate
 		for {
@@ -1315,17 +1233,12 @@ func TestUpdateVersionV3(t *testing.T) {
 	srv.updateClusterVersionV3(ver)
 
 	action := n.Action()
-	if len(action) != 1 {
-		t.Fatalf("len(action) = %d, want 1", len(action))
-	}
-	if action[0].Name != "Propose" {
-		t.Fatalf("action = %s, want Propose", action[0].Name)
-	}
+	require.Lenf(t, action, 1, "len(action) = %d, want 1", len(action))
+	require.Equalf(t, "Propose", action[0].Name, "action = %s, want Propose", action[0].Name)
 	data := action[0].Params[0].([]byte)
 	var r pb.InternalRaftRequest
-	if err := r.Unmarshal(data); err != nil {
-		t.Fatalf("unmarshal request error: %v", err)
-	}
+	err := r.Unmarshal(data)
+	require.NoErrorf(t, err, "unmarshal request error: %v", err)
 	assert.Equal(t, &membershippb.ClusterVersionSetRequest{Ver: ver}, r.ClusterVersionSet)
 }
 
@@ -1388,9 +1301,7 @@ func TestGetOtherPeerURLs(t *testing.T) {
 		cl := membership.NewClusterFromMembers(lg, types.ID(0), tt.membs)
 		self := "1"
 		urls := getRemotePeerURLs(cl, self)
-		if !reflect.DeepEqual(urls, tt.wurls) {
-			t.Errorf("#%d: urls = %+v, want %+v", i, urls, tt.wurls)
-		}
+		assert.Truef(t, reflect.DeepEqual(urls, tt.wurls), "#%d: urls = %+v, want %+v", i, urls, tt.wurls)
 	}
 }
 
@@ -1639,9 +1550,7 @@ func TestWaitAppliedIndex(t *testing.T) {
 
 			err := s.waitAppliedIndex()
 
-			if !errorspkg.Is(err, tc.ExpectedError) {
-				t.Errorf("Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
-			}
+			assert.ErrorIsf(t, err, tc.ExpectedError, "Unexpected error, want (%v), got (%v)", tc.ExpectedError, err)
 		})
 	}
 }

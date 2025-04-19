@@ -17,6 +17,8 @@ package v2store
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 )
 
@@ -38,9 +40,7 @@ func TestEventQueue(t *testing.T) {
 	n := eh.Queue.Size
 	for ; n > 0; n-- {
 		e := eh.Queue.Events[i]
-		if e.Index() != uint64(j) {
-			t.Fatalf("queue error!")
-		}
+		require.Equalf(t, e.Index(), uint64(j), "queue error!")
 		j++
 		i = (i + 1) % eh.Queue.Capacity
 	}
@@ -84,9 +84,7 @@ func TestScanHistory(t *testing.T) {
 	}
 
 	e, _ = eh.scan("/foo/bar", true, 7)
-	if e != nil {
-		t.Fatalf("bad index shoud reuturn nil")
-	}
+	require.Nilf(t, e, "bad index shoud reuturn nil")
 }
 
 func TestEventIndexHistoryCleared(t *testing.T) {
@@ -136,25 +134,13 @@ func TestCloneEvent(t *testing.T) {
 		PrevNode:  nil,
 	}
 	e2 := e1.Clone()
-	if e2.Action != Create {
-		t.Fatalf("Action=%q, want %q", e2.Action, Create)
-	}
-	if e2.EtcdIndex != e1.EtcdIndex {
-		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, e1.EtcdIndex)
-	}
+	require.Equalf(t, Create, e2.Action, "Action=%q, want %q", e2.Action, Create)
+	require.Equalf(t, e2.EtcdIndex, e1.EtcdIndex, "EtcdIndex=%d, want %d", e2.EtcdIndex, e1.EtcdIndex)
 	// Changing the cloned node should not affect the original
 	e2.Action = Delete
 	e2.EtcdIndex = uint64(5)
-	if e1.Action != Create {
-		t.Fatalf("Action=%q, want %q", e1.Action, Create)
-	}
-	if e1.EtcdIndex != uint64(1) {
-		t.Fatalf("EtcdIndex=%d, want %d", e1.EtcdIndex, uint64(1))
-	}
-	if e2.Action != Delete {
-		t.Fatalf("Action=%q, want %q", e2.Action, Delete)
-	}
-	if e2.EtcdIndex != uint64(5) {
-		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, uint64(5))
-	}
+	require.Equalf(t, Create, e1.Action, "Action=%q, want %q", e1.Action, Create)
+	require.Equalf(t, uint64(1), e1.EtcdIndex, "EtcdIndex=%d, want %d", e1.EtcdIndex, uint64(1))
+	require.Equalf(t, Delete, e2.Action, "Action=%q, want %q", e2.Action, Delete)
+	require.Equalf(t, uint64(5), e2.EtcdIndex, "EtcdIndex=%d, want %d", e2.EtcdIndex, uint64(5))
 }
