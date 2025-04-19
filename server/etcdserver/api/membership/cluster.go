@@ -257,17 +257,9 @@ func (c *RaftCluster) SetVersionChangedNotifier(n *notify.Notifier) {
 }
 
 func (c *RaftCluster) UnsafeLoad() {
-	if c.be != nil {
-		c.version = c.be.ClusterVersionFromBackend()
-		c.members, c.removed = c.be.MustReadMembersFromBackend()
-	} else {
-		c.version = clusterVersionFromStore(c.lg, c.v2store)
-		c.members, c.removed = membersFromStore(c.lg, c.v2store)
-	}
-
-	if c.be != nil {
-		c.downgradeInfo = c.be.DowngradeInfoFromBackend()
-	}
+	c.version = c.be.ClusterVersionFromBackend()
+	c.members, c.removed = c.be.MustReadMembersFromBackend()
+	c.downgradeInfo = c.be.DowngradeInfoFromBackend()
 }
 
 func (c *RaftCluster) Recover(onSet func(*zap.Logger, *semver.Version)) {
@@ -415,7 +407,7 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 		setIsLearnerMetric(m)
 	}
 
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveMemberToBackend(m)
 
 		c.members[m.ID] = m
@@ -448,7 +440,7 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	if c.v2store != nil {
 		mustDeleteMemberFromStore(c.lg, c.v2store, id)
 	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
 
 		m, ok := c.members[id]
@@ -492,7 +484,7 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 		if c.v2store != nil {
 			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
 		}
-		if c.be != nil && shouldApplyV3 {
+		if shouldApplyV3 {
 			c.be.MustSaveMemberToBackend(m)
 		}
 		return
@@ -531,7 +523,7 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 		isLearner.Set(0)
 	}
 
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.members[id].RaftAttributes.IsLearner = false
 		c.updateMembershipMetric(id, true)
 		c.be.MustSaveMemberToBackend(c.members[id])
@@ -560,7 +552,7 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 		m.RaftAttributes = raftAttr
 		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.members[id].RaftAttributes = raftAttr
 		c.be.MustSaveMemberToBackend(c.members[id])
 
@@ -619,7 +611,7 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	if c.v2store != nil {
 		mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 	}
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveClusterVersionToBackend(ver)
 	}
 	if oldVer != nil {
@@ -821,7 +813,7 @@ func (c *RaftCluster) SetDowngradeInfo(d *serverversion.DowngradeInfo, shouldApp
 	c.Lock()
 	defer c.Unlock()
 
-	if c.be != nil && shouldApplyV3 {
+	if shouldApplyV3 {
 		c.be.MustSaveDowngradeToBackend(d)
 	}
 
