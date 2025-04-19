@@ -1,0 +1,18 @@
+// This is a generated file. Do not edit directly.
+
+go 1.24
+
+toolchain go1.24.1
+
+use (
+	.
+	./api
+	./client/internal/v2
+	./client/pkg
+	./client/v3
+	./etcdctl
+	./etcdutl
+	./pkg
+	./server
+	./tests
+)
