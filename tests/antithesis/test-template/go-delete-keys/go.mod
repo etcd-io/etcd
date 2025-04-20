@@ -7,6 +7,7 @@ toolchain go1.24.2
 require go.etcd.io/etcd/client/v3 v3.5.21
 
 require (
+	github.com/antithesishq/antithesis-sdk-go v0.4.3
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
