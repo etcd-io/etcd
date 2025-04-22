@@ -132,7 +132,7 @@ func TestStoreUpdateDirTTL(t *testing.T) {
 	assert.False(t, e.Node.Dir)
 	assert.Equal(t, eidx, e.EtcdIndex)
 	e, _ = s.Get("/foo/bar", false, false)
-	assert.Equal(t, "", *e.Node.Value)
+	assert.Empty(t, *e.Node.Value)
 	assert.Equal(t, eidx, e.EtcdIndex)
 
 	fc.Advance(600 * time.Millisecond)
