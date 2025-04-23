@@ -13,7 +13,7 @@ require (
 	go.etcd.io/etcd/api/v3 v3.6.0-rc.4
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-rc.4
 	go.uber.org/zap v1.27.0
-	google.golang.org/grpc v1.70.0
+	google.golang.org/grpc v1.71.1
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -32,8 +32,6 @@ require (
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
-	go.opentelemetry.io/otel/metric v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
