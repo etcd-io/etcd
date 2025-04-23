@@ -1,9 +1,14 @@
 
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
+
 ---
 
 ## v3.5.22 (TBC)
+
+### Package `clientv3`
+
+- [Replace `resolver.State.Addresses` with `resolver.State.Endpoint.Addresses`](https://github.com/etcd-io/etcd/pull/19783).
 
 ### Dependencies
 

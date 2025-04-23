@@ -8,6 +8,14 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
+## v3.6.0-rc.5 (tbd)
+
+### Package `clientv3`
+
+- [Replace `resolver.State.Addresses` with `resolver.State.Endpoint.Addresses`](https://github.com/etcd-io/etcd/pull/19782).
+
+---
+
 ## v3.6.0-rc.4 (2025-04-15)
 
 ### etcd server
