@@ -162,6 +162,15 @@
 		]
 	},
 	{
+		"project": "github.com/google/uuid",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "github.com/gorilla/websocket",
 		"licenses": [
 			{
@@ -523,6 +532,15 @@
 	},
 	{
 		"project": "go.etcd.io/gofail/runtime",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/auto/sdk",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
