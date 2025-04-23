@@ -42,10 +42,10 @@ func (e unitRunner) TestMain(m *testing.M) {
 	}
 }
 
-func (e unitRunner) BeforeTest(t testing.TB) {
+func (e unitRunner) BeforeTest(tb testing.TB) {
 }
 
-func (e unitRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
-	testutil.SkipTestIfShortMode(t, "Cannot create clusters in --short tests")
+func (e unitRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config.ClusterOption) intf.Cluster {
+	testutil.SkipTestIfShortMode(tb, "Cannot create clusters in --short tests")
 	return nil
 }

@@ -39,13 +39,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func writeCustomV2Data(t testing.TB, epc *e2e.EtcdProcessCluster, count int) {
+func writeCustomV2Data(tb testing.TB, epc *e2e.EtcdProcessCluster, count int) {
 	for i := 0; i < count; i++ {
 		if err := e2e.CURLPut(epc, e2e.CURLReq{
 			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
 			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)},
 		}); err != nil {
-			t.Fatalf("failed put with curl (%v)", err)
+			tb.Fatalf("failed put with curl (%v)", err)
 		}
 	}
 }
@@ -191,47 +191,47 @@ func TestV2DeprecationSnapshotRecover(t *testing.T) {
 	assert.NoError(t, epc.Close())
 }
 
-func runEtcdAndCreateSnapshot(t testing.TB, serverVersion e2e.ClusterVersion, dataDir string, snapshotCount uint64) *e2e.EtcdProcessCluster {
+func runEtcdAndCreateSnapshot(tb testing.TB, serverVersion e2e.ClusterVersion, dataDir string, snapshotCount uint64) *e2e.EtcdProcessCluster {
 	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
 		e2e.WithVersion(serverVersion),
 		e2e.WithDataDirPath(dataDir),
 		e2e.WithSnapshotCount(snapshotCount),
 		e2e.WithKeepDataDir(true),
 	))
-	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-	assert.NoError(t, err)
+	epc, err := e2e.NewEtcdProcessCluster(tb.Context(), tb, e2e.WithConfig(cfg))
+	assert.NoError(tb, err)
 	return epc
 }
 
-func addAndRemoveKeysAndMembers(ctx context.Context, t testing.TB, cc *e2e.EtcdctlV3, snapshotCount uint64) (members []uint64) {
+func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.EtcdctlV3, snapshotCount uint64) (members []uint64) {
 	// Execute some non-trivial key&member operation
 	var i uint64
 	for i = 0; i < snapshotCount*3; i++ {
 		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
-		require.NoError(t, err)
+		require.NoError(tb, err)
 	}
 	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	members = append(members, member1.Member.ID)
 
 	for i = 0; i < snapshotCount*2; i++ {
 		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
-		require.NoError(t, err)
+		require.NoError(tb, err)
 	}
 	_, err = cc.MemberRemove(ctx, member1.Member.ID)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	for i = 0; i < snapshotCount; i++ {
 		err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
-		require.NoError(t, err)
+		require.NoError(tb, err)
 	}
 	member2, err := cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	members = append(members, member2.Member.ID)
 
 	for i = 0; i < snapshotCount/2; i++ {
 		err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
-		assert.NoError(t, err)
+		assert.NoError(tb, err)
 	}
 	return members
 }
@@ -240,39 +240,39 @@ func filterSnapshotFiles(path string) bool {
 	return strings.HasSuffix(path, ".snap")
 }
 
-func assertSnapshotsMatch(t testing.TB, firstDataDir, secondDataDir string, patch func([]byte) []byte) {
-	lg := zaptest.NewLogger(t)
+func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string, patch func([]byte) []byte) {
+	lg := zaptest.NewLogger(tb)
 	firstFiles, err := fileutil.ListFiles(firstDataDir, filterSnapshotFiles)
-	require.NoError(t, err)
+	require.NoError(tb, err)
 	secondFiles, err := fileutil.ListFiles(secondDataDir, filterSnapshotFiles)
-	require.NoError(t, err)
-	assert.NotEmpty(t, firstFiles)
-	assert.NotEmpty(t, secondFiles)
-	assert.Len(t, secondFiles, len(firstFiles))
+	require.NoError(tb, err)
+	assert.NotEmpty(tb, firstFiles)
+	assert.NotEmpty(tb, secondFiles)
+	assert.Len(tb, secondFiles, len(firstFiles))
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
 		firstSnapshot, err := snap.Read(lg, firstFiles[i])
-		require.NoError(t, err)
+		require.NoError(tb, err)
 		secondSnapshot, err := snap.Read(lg, secondFiles[i])
-		require.NoError(t, err)
-		assertMembershipEqual(t, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		require.NoError(tb, err)
+		assertMembershipEqual(tb, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
 	}
 }
 
-func assertMembershipEqual(t testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
-	rc1 := membership.NewCluster(zaptest.NewLogger(t))
+func assertMembershipEqual(tb testing.TB, firstStore v2store.Store, secondStore v2store.Store) {
+	rc1 := membership.NewCluster(zaptest.NewLogger(tb))
 	rc1.SetStore(firstStore)
 	rc1.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
-	rc2 := membership.NewCluster(zaptest.NewLogger(t))
+	rc2 := membership.NewCluster(zaptest.NewLogger(tb))
 	rc2.SetStore(secondStore)
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	// membership should match
 	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
-		t.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
-		t.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
+		tb.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
+		tb.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
 	}
 }
 
