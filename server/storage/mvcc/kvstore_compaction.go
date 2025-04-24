@@ -63,6 +63,7 @@ func (s *store) scheduleCompaction(compactMainRev, prevCompactRev int64) (KeyVal
 			// gofail: var compactBeforeSetFinishedCompact struct{}
 			UnsafeSetFinishedCompact(tx, compactMainRev)
 			tx.Unlock()
+			dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 			// gofail: var compactAfterSetFinishedCompact struct{}
 			hash := h.Hash()
 			size, sizeInUse := s.b.Size(), s.b.SizeInUse()
