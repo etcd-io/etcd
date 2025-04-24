@@ -3,24 +3,26 @@ FROM ubuntu:latest
 # Install dependencies
 RUN apt-get update -y && apt-get install -y pip wget
 
-# Update package index first, then install Python
-RUN apt-get install -y python3 python3-pip
-
-# Then install additional Python packages
-RUN apt-get install -y python3-etcd3 python3-numpy python3-protobuf python3-filelock
-
-# Install Antithesis Python SDK
-RUN pip install antithesis cffi --break-system-packages
-
-# Copy your entrypoint script
-COPY ./entrypoint/entrypoint.py /entrypoint.py
-
 # GO:
 
 # Install go
 RUN wget https://golang.org/dl/go1.22.5.linux-amd64.tar.gz
 RUN tar -C /usr/local -xzf go1.22.5.linux-amd64.tar.gz
 ENV PATH=$PATH:/usr/local/go/bin 
+
+# Set working directory
+WORKDIR /opt/antithesis/entrypoint
+
+# Copy your entrypoint script
+COPY ./entrypoint/go.mod ./go.mod
+COPY ./entrypoint/go.sum ./go.sum
+COPY ./entrypoint/entrypoint.go ./entrypoint.go
+
+# Run go mod tidy to ensure the dependencies are correct
+RUN go mod tidy
+
+# Building go executable and putting it in Test Composer directory
+RUN go build -o ./entrypoint -race
 
 # Copying go script and building an executable into Test Composer directory
 WORKDIR /opt/antithesis/go-delete-keys

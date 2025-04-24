@@ -46,4 +46,4 @@ services:
   client:
     image: 'etcd-client:latest'
     container_name: client
-    entrypoint: ["/entrypoint.py"]
+    entrypoint: ["/opt/antithesis/entrypoint/entrypoint"]
