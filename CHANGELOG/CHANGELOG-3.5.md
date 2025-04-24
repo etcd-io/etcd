@@ -1,7 +1,7 @@
 
 
 Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.4.md).
-<hr>
+---
 
 ## v3.5.22 (TBC)
 
@@ -9,7 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - Compile binaries using [go 1.23.8](https://github.com/etcd-io/etcd/pull/19725)
 
-<hr>
+---
 
 ## v3.5.21 (2025-03-27)
 
@@ -18,7 +18,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Bump [github.com/golang-jwt/jwt/v4 from 4.5.1 to 4.5.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19646).
 - Bump [bump golang.org/x/net from v0.36.0 to v0.38.0 to address CVE-2025-22870 and CVE-2025-22872](https://github.com/etcd-io/etcd/pull/19686).
 
-<hr>
+---
 
 ## v3.5.20 (2025-03-21)
 
@@ -35,7 +35,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - Fix [grpcproxy can get stuck in and endless loop causing high CPU usage](https://github.com/etcd-io/etcd/pull/19562)
 
-<hr>
+---
 
 ## v3.5.19 (2025-03-05)
 
@@ -51,7 +51,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19478).
 - Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19530).
 
-<hr>
+---
 
 ## v3.5.18 (2025-01-24)
 
@@ -75,7 +75,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Bump [golang.org/x/crypto to 0.32.0 to address CVE-2024-45337](https://github.com/etcd-io/etcd/pull/19154).
 - Bump [golang.org/x/net to 0.34.0 to address CVE-2024-45338](https://github.com/etcd-io/etcd/pull/19158).
 
-<hr>
+---
 
 ## v3.5.17 (2024-11-12)
 
@@ -88,7 +88,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.22.9](https://github.com/etcd-io/etcd/pull/18849).
 
-<hr>
+---
 
 ## v3.5.16 (2024-09-10)
 
@@ -101,7 +101,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Compile binaries using [go 1.22.7](https://github.com/etcd-io/etcd/pull/18550).
 - Upgrade [bbolt to v1.3.11](https://github.com/etcd-io/etcd/pull/18489).
 
-<hr>
+---
 
 ## v3.5.15 (2024-07-19)
 
@@ -140,7 +140,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Compile binaries using [go 1.21.10](https://github.com/etcd-io/etcd/pull/17980).
 - Upgrade [bbolt to v1.3.10](https://github.com/etcd-io/etcd/pull/17943).
 
-<hr>
+---
 
 ## v3.5.13 (2024-03-29)
 
@@ -169,7 +169,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Others
 - [Make CGO_ENABLED configurable](https://github.com/etcd-io/etcd/pull/17421).
 
-<hr>
+---
 
 ## v3.5.12 (2024-01-31)
 
@@ -196,7 +196,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Compile binaries using [go 1.20.12](https://github.com/etcd-io/etcd/pull/17077)
 - Fix [CVE-2023-47108](https://github.com/advisories/GHSA-8pgv-569h-w5rw) by [bumping go.opentelemetry.io/otel to 1.20.0 and go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to 0.46.0](https://github.com/etcd-io/etcd/pull/16946).
 
-<hr>
+---
 
 ## v3.5.10 (2023-10-27)
 
@@ -227,7 +227,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Upgrade gRPC to 1.58.3 in https://github.com/etcd-io/etcd/pull/16625, https://github.com/etcd-io/etcd/pull/16781 and https://github.com/etcd-io/etcd/pull/16790. Note that gRPC server will reject requests with connection header (refer to https://github.com/grpc/grpc-go/pull/4803).
 - Upgrade [bbolt to v1.3.8](https://github.com/etcd-io/etcd/pull/16833)
 
-<hr>
+---
 
 ## v3.5.9 (2023-05-11)
 
@@ -237,7 +237,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 - Compile binaries using [go 1.19.9](https://github.com/etcd-io/etcd/pull/15822).
 
-<hr>
+---
 
 ## v3.5.8 (2023-04-13)
 
@@ -270,7 +270,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Remove nsswitch.conf from docker image](https://github.com/etcd-io/etcd/pull/15161)
 - Fix [etcd docker images all tagged with amd64 architecture](https://github.com/etcd-io/etcd/pull/15612)
 
-<hr>
+---
 
 ## v3.5.7 (2023-01-20)
 
@@ -293,7 +293,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - Use [distroless base image](https://github.com/etcd-io/etcd/pull/15016) to address critical Vulnerabilities.
 - Updated [base image from base-debian11 to static-debian11 and removed dependency on busybox](https://github.com/etcd-io/etcd/pull/15037).
 
-<hr>
+---
 
 ## v3.5.6 (2022-11-21)
 
@@ -313,7 +313,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd grpc-proxy
 - Add [`etcd grpc-proxy start --listen-cipher-suites`](https://github.com/etcd-io/etcd/pull/14500) flag to support adding configurable cipher list.
 
-<hr>
+---
 
 ## v3.5.5 (2022-09-15)
 
@@ -348,7 +348,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Bump golang.org/x/crypto to latest version](https://github.com/etcd-io/etcd/pull/13996) to address [CVE-2022-27191](https://github.com/advisories/GHSA-8c26-wmh5-6g9v).
 - [Bump OpenTelemetry to 1.0.1 and gRPC to 1.41.0](https://github.com/etcd-io/etcd/pull/14312).
 
-<hr>
+---
 
 ## v3.5.4 (2022-04-24)
 
@@ -360,7 +360,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Revert the change of trimming the trailing dot from SRV.Target](https://github.com/etcd-io/etcd/pull/13950) returned by DNS lookup
 
 
-<hr>
+---
 
 ## v3.5.3 (2022-04-13)
 
@@ -381,7 +381,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 - [Always print the raft_term in decimal](https://github.com/etcd-io/etcd/pull/13727) when displaying member list in json.
 
-<hr>
+---
 
 ## [v3.5.2](https://github.com/etcd-io/etcd/releases/tag/v3.5.2) (2022-02-01)
 
@@ -394,7 +394,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.1...v3.5.2) and 
 - Fix [assertion failed due to tx closed when recovering v3 backend from a snapshot db](https://github.com/etcd-io/etcd/pull/13501)
 - Fix [segmentation violation(SIGSEGV) error due to premature unlocking of watchableStore](https://github.com/etcd-io/etcd/pull/13541)
 
-<hr>
+---
 
 ## [v3.5.1](https://github.com/etcd-io/etcd/releases/tag/v3.5.1) (2021-10-15)
 
@@ -421,7 +421,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.5.1) and 
   - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
   - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
 
-<hr>
+---
 
 ## v3.5.0 (2021-06)
 
@@ -718,5 +718,5 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - The etcd team has added, a well defined and openly discussed, project [governance](https://github.com/etcd-io/etcd/pull/11175).
 
 
-<hr>
+---
 

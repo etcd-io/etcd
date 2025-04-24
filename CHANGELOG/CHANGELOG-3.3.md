@@ -2,7 +2,7 @@
 
 Previous change logs can be found at [CHANGELOG-3.2](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.2.md).
 
-<hr>
+---
 
 ## v3.3.27 (2021-10-15)
 
@@ -16,7 +16,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.26...v3.3.27) an
   - [CVE-2019-9893](https://nvd.nist.gov/vuln/detail/CVE-2019-9893): incorrect syscall argument generation in libseccomp
   - [CVE-2021-36159](https://nvd.nist.gov/vuln/detail/CVE-2021-36159): libfetch in apk-tools mishandles numeric strings in FTP and HTTP protocols to allow out of bound reads.
 
-<hr>
+---
 
 ## v3.3.26 (2021-10-03)
 
@@ -34,7 +34,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.25...v3.3.26) an
 
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
-<hr>
+---
 
 ## v3.3.25 (2020-08-24)
 
@@ -68,7 +68,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.23...v3.3.24) an
 
 
 
-<hr>
+---
 
 
 
@@ -96,7 +96,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.22...v3.3.23) an
 
 
 
-<hr>
+---
 
 
 ## [v3.3.22](https://github.com/etcd-io/etcd/releases/tag/v3.3.22) (2020-05-20)
@@ -113,7 +113,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.21...v3.3.22) an
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 
-<hr>
+---
 
 
 ## [v3.3.21](https://github.com/etcd-io/etcd/releases/tag/v3.3.21) (2020-05-18)
@@ -150,7 +150,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.20...v3.3.21) an
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 
-<hr>
+---
 
 
 ## [v3.3.20](https://github.com/etcd-io/etcd/releases/tag/v3.3.20) (2020-04-01)
@@ -170,7 +170,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.19...v3.3.20) an
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 
-<hr>
+---
 
 
 ## [v3.3.19](https://github.com/etcd-io/etcd/releases/tag/v3.3.19) (2020-03-18)
@@ -206,7 +206,7 @@ See [List of metrics](https://github.com/etcd-io/etcd/tree/main/Documentation/me
 - Compile with [*Go 1.12.17*](https://golang.org/doc/devel/release.html#go1.12).
 
 
-<hr>
+---
 
 
 ## [v3.3.18](https://github.com/etcd-io/etcd/releases/tag/v3.3.18) (2019-11-26)
@@ -227,7 +227,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Now, etcd makes sure the purge file loop exits before server signals stop of the raft node.
 
 
-<hr>
+---
 
 
 ## [v3.3.17](https://github.com/etcd-io/etcd/releases/tag/v3.3.17) (2019-10-11)
@@ -241,7 +241,7 @@ This release replaces 3.3.16.
 Due to the etcd 3.3.16 release being incorrectly released (see details below), please use this release instead.
 
 
-<hr>
+---
 
 
 ## [v3.3.16](https://github.com/etcd-io/etcd/releases/tag/v3.3.16) (2019-10-10)
@@ -290,7 +290,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
   - Fix ["1.16: etcd client does not parse IPv6 addresses correctly when members are joining" (kubernetes#83550)](https://github.com/kubernetes/kubernetes/issues/83550).
 
 
-<hr>
+---
 
 
 ## [v3.3.15](https://github.com/etcd-io/etcd/releases/tag/v3.3.15) (2019-08-19)
@@ -313,7 +313,7 @@ NOTE: This patch release had to include some new features from 3.4, while trying
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
 
-<hr>
+---
 
 
 ## [v3.3.14](https://github.com/etcd-io/etcd/releases/tag/v3.3.14) (2019-08-16)
@@ -416,7 +416,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.12.9*](https://golang.org/doc/devel/release.html#go1.12) including [*Go 1.12.8*](https://groups.google.com/d/msg/golang-announce/65QixT3tcmg/DrFiG6vvCwAJ) security fixes.
 
 
-<hr>
+---
 
 
 ## [v3.3.13](https://github.com/etcd-io/etcd/releases/tag/v3.3.13) (2019-05-02)
@@ -456,7 +456,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
 
 
-<hr>
+---
 
 
 ## [v3.3.12](https://github.com/etcd-io/etcd/releases/tag/v3.3.12) (2019-02-07)
@@ -474,7 +474,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.11...v3.3.12) an
 - Compile with [*Go 1.10.8*](https://golang.org/doc/devel/release.html#go1.10).
 
 
-<hr>
+---
 
 
 ## [v3.3.11](https://github.com/etcd-io/etcd/releases/tag/v3.3.11) (2019-01-11)
@@ -496,7 +496,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.10...v3.3.11) an
 - Compile with [*Go 1.10.7*](https://golang.org/doc/devel/release.html#go1.10).
 
 
-<hr>
+---
 
 
 ## [v3.3.10](https://github.com/etcd-io/etcd/releases/tag/v3.3.10) (2018-10-10)
@@ -542,7 +542,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.10.4*](https://golang.org/doc/devel/release.html#go1.10).
 
 
-<hr>
+---
 
 
 ## [v3.3.9](https://github.com/etcd-io/etcd/releases/tag/v3.3.9) (2018-07-24)
@@ -597,7 +597,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.10.3*](https://golang.org/doc/devel/release.html#go1.10).
 
 
-<hr>
+---
 
 
 ## [v3.3.8](https://github.com/etcd-io/etcd/releases/tag/v3.3.8) (2018-06-15)
@@ -619,7 +619,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.7...v3.3.8) and 
 - Compile with [*Go 1.9.7*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.7](https://github.com/etcd-io/etcd/releases/tag/v3.3.7) (2018-06-06)
@@ -645,7 +645,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.6...v3.3.7) and 
 - Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.6](https://github.com/etcd-io/etcd/releases/tag/v3.3.6) (2018-05-31)
@@ -668,7 +668,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.5...v3.3.6) and 
 - Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.5](https://github.com/etcd-io/etcd/releases/tag/v3.3.5) (2018-05-09)
@@ -687,7 +687,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.4...v3.3.5) and 
 - Compile with [*Go 1.9.6*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.4](https://github.com/etcd-io/etcd/releases/tag/v3.3.4) (2018-04-24)
@@ -735,7 +735,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.9.5*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.3](https://github.com/etcd-io/etcd/releases/tag/v3.3.3) (2018-03-29)
@@ -772,7 +772,7 @@ Note that any `etcd_debugging_*` metrics are experimental and subject to change.
 - Compile with [*Go 1.9.5*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.2](https://github.com/etcd-io/etcd/releases/tag/v3.3.2) (2018-03-08)
@@ -805,7 +805,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.1...v3.3.2) and 
 - Compile with [*Go 1.9.4*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.1](https://github.com/etcd-io/etcd/releases/tag/v3.3.1) (2018-02-12)
@@ -833,7 +833,7 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.3.0...v3.3.1) and 
 - Compile with [*Go 1.9.4*](https://golang.org/doc/devel/release.html#go1.9).
 
 
-<hr>
+---
 
 
 ## [v3.3.0](https://github.com/etcd-io/etcd/releases/tag/v3.3.0) (2018-02-01)
@@ -1117,5 +1117,5 @@ See [security doc](https://etcd.io/docs/latest/op-guide/security/) for more deta
 - Deprecate [`golang.org/x/net/context`](https://github.com/etcd-io/etcd/pull/8511).
 
 
-<hr>
+---
 
