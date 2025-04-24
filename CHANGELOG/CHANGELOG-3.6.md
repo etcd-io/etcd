@@ -2,11 +2,11 @@
 
 Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.5.md).
 
-<hr>
+---
 
 ## v3.6.0 (TBD)
 
-<hr>
+---
 
 ## v3.6.0-rc.4 (2025-04-15)
 
@@ -18,7 +18,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Compile binaries using [go 1.23.8](https://github.com/etcd-io/etcd/pull/19724)
 
-<hr>
+---
 
 ## v3.6.0-rc.3 (2025-03-27)
 
@@ -37,7 +37,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Bump [github.com/golang-jwt/jwt/v5 from 5.2.1 to 5.2.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19647).
 - Bump [bump golang.org/x/net from v0.37.0 to v0.38.0 to address CVE-2025-22872](https://github.com/etcd-io/etcd/pull/19687).
 
-<hr>
+---
 
 ## v3.6.0-rc.2 (2025-03-05)
 
@@ -51,7 +51,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19531).
 - Bump [github.com/grpc-ecosystem/grpc-gateway/v2 to v2.26.3 to fix the issue of etcdserver crashing on receiving REST watch stream requests](https://github.com/etcd-io/etcd/pull/19522).
 
-<hr>
+---
 
 ## v3.6.0-rc.1 (2025-02-25)
 
@@ -67,7 +67,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19480).
 
-<hr>
+---
 
 ## v3.6.0-rc.0 (2025-02-13)
 
@@ -174,4 +174,4 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - [Upgrade grpc-gateway from v1 to v2](https://github.com/etcd-io/etcd/pull/16595).
 - [Switch from grpc-ecosystem/go-grpc-prometheus to grpc-ecosystem/go-grpc-middleware/providers/prometheus](https://github.com/etcd-io/etcd/pull/19195).
 
-<hr>
+---
