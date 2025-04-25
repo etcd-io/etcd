@@ -269,6 +269,16 @@ func TestIntervalTreeDelete(t *testing.T) {
 	require.Truef(t, reflect.DeepEqual(expectedAfterDelete11, visitsAfterDelete11), "level order after deleting '11' expected %v, got %v", expectedAfterDelete11, visitsAfterDelete11)
 }
 
+func TestIntervalTreeFind(t *testing.T) {
+	ivt := NewIntervalTree()
+	ivl1 := NewInt64Interval(3, 6)
+	assert.Nilf(t, ivt.Find(ivl1), "find expected nil on empty tree")
+	ivt.Insert(ivl1, 123)
+	assert.Equalf(t, ivl1, ivt.Find(ivl1).Ivl, "find expected to return exact-matched interval")
+	ivl2 := NewInt64Interval(3, 7)
+	assert.Nilf(t, ivt.Find(ivl2), "find expected nil on single-matched endpoint")
+}
+
 func TestIntervalTreeIntersects(t *testing.T) {
 	ivt := NewIntervalTree()
 	ivt.Insert(NewStringInterval("1", "3"), 123)
@@ -341,7 +351,11 @@ func TestIntervalTreeRandom(t *testing.T) {
 			require.NotEmptyf(t, ivt.Stab(NewInt64Point(v)), "expected %v stab non-zero for [%+v)", v, xy)
 			require.Truef(t, ivt.Intersects(NewInt64Point(v)), "did not get %d as expected for [%+v)", v, xy)
 		}
-		assert.Truef(t, ivt.Delete(NewInt64Interval(ab.x, ab.y)), "did not delete %v as expected", ab)
+		ivl := NewInt64Interval(ab.x, ab.y)
+		iv := ivt.Find(ivl)
+		assert.NotNilf(t, iv, "expected find non-nil on %v", ab)
+		assert.Equalf(t, ivl, iv.Ivl, "find did not get matched interval %v", ab)
+		assert.Truef(t, ivt.Delete(ivl), "did not delete %v as expected", ab)
 		delete(ivs, ab)
 	}
 
