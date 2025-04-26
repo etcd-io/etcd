@@ -188,6 +188,21 @@ func (tw *storeTxnWrite) End() {
 	}
 	tw.tx.Unlock()
 	if len(tw.changes) != 0 {
+		rev := tw.beginRev + 1
+		for i, kv := range tw.changes {
+			idxRev := Revision{Main: rev, Sub: int64(i)}
+			if kv.ModRevision != 0 {
+				tw.s.kvindex.Put(kv.Key, idxRev)
+			} else {
+				if err := tw.s.kvindex.Tombstone(kv.Key, idxRev); err != nil {
+					tw.storeTxnCommon.s.lg.Fatal(
+						"failed to tombstone an existing key",
+						zap.String("key", string(kv.Key)),
+						zap.Error(err),
+					)
+				}
+			}
+		}
 		tw.s.revMu.Unlock()
 	}
 	tw.s.mu.RUnlock()
@@ -230,7 +245,6 @@ func (tw *storeTxnWrite) put(key, value []byte, leaseID lease.LeaseID) {
 
 	tw.trace.Step("marshal mvccpb.KeyValue")
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
-	tw.s.kvindex.Put(key, idxRev)
 	tw.changes = append(tw.changes, kv)
 	tw.trace.Step("store kv pair into bolt db")
 
@@ -294,14 +308,6 @@ func (tw *storeTxnWrite) delete(key []byte) {
 	}
 
 	tw.tx.UnsafeSeqPut(schema.Key, ibytes, d)
-	err = tw.s.kvindex.Tombstone(key, idxRev.Revision)
-	if err != nil {
-		tw.storeTxnCommon.s.lg.Fatal(
-			"failed to tombstone an existing key",
-			zap.String("key", string(key)),
-			zap.Error(err),
-		)
-	}
 	tw.changes = append(tw.changes, kv)
 
 	item := lease.LeaseItem{Key: string(key)}
