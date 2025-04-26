@@ -60,21 +60,22 @@ func defaultUberApplier(t *testing.T) UberApplier {
 		bcrypt.DefaultCost,
 	)
 	consistentIndex := cindex.NewConsistentIndex(be)
-	return NewUberApplier(
-		lg,
-		be,
-		kv,
-		alarmStore,
-		authStore,
-		lessor,
-		cluster,
-		&fakeRaftStatusGetter{},
-		&fakeSnapshotServer{},
-		consistentIndex,
-		1*time.Hour,
-		false,
-		16*1024*1024, // 16MB
-	)
+	opts := ApplierOptions{
+		Logger:                       lg,
+		KV:                           kv,
+		AlarmStore:                   alarmStore,
+		AuthStore:                    authStore,
+		Lessor:                       lessor,
+		Cluster:                      cluster,
+		RaftStatus:                   &fakeRaftStatusGetter{},
+		SnapshotServer:               &fakeSnapshotServer{},
+		ConsistentIndex:              consistentIndex,
+		TxnModeWriteWithSharedBuffer: false,
+		Backend:                      be,
+		QuotaBackendBytesCfg:         16 * 1024 * 1024, // 16MB
+		WarningApplyDuration:         time.Hour,
+	}
+	return NewUberApplier(opts)
 }
 
 // TestUberApplier_Alarm_Corrupt tests the applier returns ErrCorrupt after alarm CORRUPT is activated

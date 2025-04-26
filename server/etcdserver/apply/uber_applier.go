@@ -21,13 +21,8 @@ import (
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/server/v3/auth"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
-	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
@@ -48,27 +43,13 @@ type uberApplier struct {
 	applyV3base applierV3
 }
 
-func NewUberApplier(
-	lg *zap.Logger,
-	be backend.Backend,
-	kv mvcc.KV,
-	alarmStore *v3alarm.AlarmStore,
-	authStore auth.AuthStore,
-	lessor lease.Lessor,
-	cluster *membership.RaftCluster,
-	raftStatus RaftStatusGetter,
-	snapshotServer SnapshotServer,
-	consistentIndex cindex.ConsistentIndexer,
-	warningApplyDuration time.Duration,
-	txnModeWriteWithSharedBuffer bool,
-	quotaBackendBytesCfg int64,
-) UberApplier {
-	applyV3base := newApplierV3(lg, be, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer, quotaBackendBytesCfg)
+func NewUberApplier(opts ApplierOptions) UberApplier {
+	applyV3base := newApplierV3(opts)
 
 	ua := &uberApplier{
-		lg:                   lg,
-		alarmStore:           alarmStore,
-		warningApplyDuration: warningApplyDuration,
+		lg:                   opts.Logger,
+		alarmStore:           opts.AlarmStore,
+		warningApplyDuration: opts.WarningApplyDuration,
 		applyV3:              applyV3base,
 		applyV3base:          applyV3base,
 	}
@@ -76,25 +57,12 @@ func NewUberApplier(
 	return ua
 }
 
-func newApplierV3(
-	lg *zap.Logger,
-	be backend.Backend,
-	kv mvcc.KV,
-	alarmStore *v3alarm.AlarmStore,
-	authStore auth.AuthStore,
-	lessor lease.Lessor,
-	cluster *membership.RaftCluster,
-	raftStatus RaftStatusGetter,
-	snapshotServer SnapshotServer,
-	consistentIndex cindex.ConsistentIndexer,
-	txnModeWriteWithSharedBuffer bool,
-	quotaBackendBytesCfg int64,
-) applierV3 {
-	applierBackend := newApplierV3Backend(lg, kv, alarmStore, authStore, lessor, cluster, raftStatus, snapshotServer, consistentIndex, txnModeWriteWithSharedBuffer)
+func newApplierV3(opts ApplierOptions) applierV3 {
+	applierBackend := newApplierV3Backend(opts)
 	return newAuthApplierV3(
-		authStore,
-		newQuotaApplierV3(lg, quotaBackendBytesCfg, be, applierBackend),
-		lessor,
+		opts.AuthStore,
+		newQuotaApplierV3(opts.Logger, opts.QuotaBackendBytesCfg, opts.Backend, applierBackend),
+		opts.Lessor,
 	)
 }
 

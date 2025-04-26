@@ -98,18 +98,18 @@ func defaultAuthApplierV3(t *testing.T) *authApplierV3 {
 	consistentIndex := cindex.NewConsistentIndex(be)
 	return newAuthApplierV3(
 		authStore,
-		newApplierV3Backend(
-			lg,
-			kv,
-			alarmStore,
-			authStore,
-			lessor,
-			cluster,
-			&fakeRaftStatusGetter{},
-			&fakeSnapshotServer{},
-			consistentIndex,
-			false,
-		),
+		newApplierV3Backend(ApplierOptions{
+			Logger:                       lg,
+			KV:                           kv,
+			AlarmStore:                   alarmStore,
+			ConsistentIndex:              consistentIndex,
+			AuthStore:                    authStore,
+			Lessor:                       lessor,
+			Cluster:                      cluster,
+			RaftStatus:                   &fakeRaftStatusGetter{},
+			SnapshotServer:               &fakeSnapshotServer{},
+			TxnModeWriteWithSharedBuffer: false,
+		}),
 		lessor)
 }
 
