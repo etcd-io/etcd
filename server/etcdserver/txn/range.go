@@ -43,21 +43,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	trace := traceutil.Get(ctx)
 
-	resp := &pb.RangeResponse{}
-	resp.Header = &pb.ResponseHeader{}
-
-	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE ||
-		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
-		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
-		// fetch everything; sort and truncate afterwards
-		limit = 0
-	}
-	if limit > 0 {
-		// fetch one extra for 'more' flag
-		limit = limit + 1
-	}
-
+	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
 		Limit: limit,
 		Rev:   r.Revision,
@@ -69,6 +55,32 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		return nil, err
 	}
 
+	filterRangeResults(rr, r)
+	sortRangeResults(rr, r, lg)
+	trace.Step("filter and sort the key-value pairs")
+
+	resp := asembleRangeResponse(rr, r)
+	trace.Step("assemble the response")
+
+	return resp, nil
+}
+
+func rangeLimit(r *pb.RangeRequest) int64 {
+	limit := r.Limit
+	if r.SortOrder != pb.RangeRequest_NONE ||
+		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
+		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
+		// fetch everything; sort and truncate afterwards
+		limit = 0
+	}
+	if limit > 0 {
+		// fetch one extra for 'more' flag
+		limit = limit + 1
+	}
+	return limit
+}
+
+func filterRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest) {
 	if r.MaxModRevision != 0 {
 		f := func(kv *mvccpb.KeyValue) bool { return kv.ModRevision > r.MaxModRevision }
 		pruneKVs(rr, f)
@@ -85,7 +97,9 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		f := func(kv *mvccpb.KeyValue) bool { return kv.CreateRevision < r.MinCreateRevision }
 		pruneKVs(rr, f)
 	}
+}
 
+func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) {
 	sortOrder := r.SortOrder
 	if r.SortTarget != pb.RangeRequest_KEY && sortOrder == pb.RangeRequest_NONE {
 		// Since current mvcc.Range implementation returns results
@@ -121,12 +135,14 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 			sort.Sort(sort.Reverse(sorter))
 		}
 	}
+}
 
+func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeResponse {
+	resp := &pb.RangeResponse{Header: &pb.ResponseHeader{}}
 	if r.Limit > 0 && len(rr.KVs) > int(r.Limit) {
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
-	trace.Step("filter and sort the key-value pairs")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
@@ -136,8 +152,7 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
-	trace.Step("assemble the response")
-	return resp, nil
+	return resp
 }
 
 func checkRange(rv mvcc.ReadView, req *pb.RangeRequest) error {
