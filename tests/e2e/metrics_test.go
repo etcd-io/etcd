@@ -15,17 +15,12 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"testing"
 	"time"
 
-	dto "github.com/prometheus/client_model/go"
-	"github.com/prometheus/common/expfmt"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -324,7 +319,7 @@ func TestNoMetricsMissing(t *testing.T) {
 			metricsURL, err := url.JoinPath(epc.Procs[0].Config().ClientURL, "metrics")
 			require.NoError(t, err)
 
-			mfs, err := getMetrics(metricsURL)
+			mfs, err := e2e.GetMetrics(metricsURL)
 			require.NoError(t, err)
 
 			var missingMetrics []string
@@ -339,23 +334,6 @@ func TestNoMetricsMissing(t *testing.T) {
 			// t.Logf("All metrics: %v", formatMetrics(slices.Sorted(maps.Keys(mfs))))
 		})
 	}
-}
-
-func getMetrics(metricsURL string) (map[string]*dto.MetricFamily, error) {
-	httpClient := http.Client{Transport: &http.Transport{}}
-	resp, err := httpClient.Get(metricsURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var parser expfmt.TextParser
-	return parser.TextToMetricFamilies(bytes.NewReader(data))
 }
 
 // formatMetrics is only for test purpose
