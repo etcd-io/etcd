@@ -175,7 +175,12 @@ func execTransaction(t *testing.T, req *pb.RequestOp) {
 		Success: []*pb.RequestOp{req},
 	}
 
-	_, _, err := txn.Txn(ctx, zaptest.NewLogger(t), request, false, s, &lease.FakeLessor{})
+	_, _, err := txn.Txn(ctx, txn.TxnContext{
+		Logger:                       zaptest.NewLogger(t),
+		Lessor:                       &lease.FakeLessor{},
+		KV:                           s,
+		TxnModeWriteWithSharedBuffer: false,
+	}, request)
 	if err != nil {
 		t.Skipf("Application erroring. %s", err.Error())
 	}

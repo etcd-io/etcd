@@ -32,18 +32,25 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "put",
+type TxnContext struct {
+	Logger                       *zap.Logger
+	Lessor                       lease.Lessor
+	KV                           mvcc.KV
+	TxnModeWriteWithSharedBuffer bool
+}
+
+func Put(ctx context.Context, txn TxnContext, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
+	ctx, trace = ensureTrace(ctx, txn.Logger, "put",
 		traceutil.Field{Key: "key", Value: string(p.Key)},
 		traceutil.Field{Key: "req_size", Value: p.Size()},
 	)
 	leaseID := lease.LeaseID(p.Lease)
 	if leaseID != lease.NoLease {
-		if l := lessor.Lookup(leaseID); l == nil {
+		if l := txn.Lessor.Lookup(leaseID); l == nil {
 			return nil, nil, lease.ErrLeaseNotFound
 		}
 	}
-	txnWrite := kv.Write(trace)
+	txnWrite := txn.KV.Write(trace)
 	defer txnWrite.End()
 	resp, err = put(ctx, txnWrite, p)
 	return resp, trace, err
@@ -88,12 +95,12 @@ func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *p
 	return resp, nil
 }
 
-func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "delete_range",
+func DeleteRange(ctx context.Context, txn TxnContext, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
+	ctx, trace = ensureTrace(ctx, txn.Logger, "delete_range",
 		traceutil.Field{Key: "key", Value: string(dr.Key)},
 		traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
 	)
-	txnWrite := kv.Write(trace)
+	txnWrite := txn.KV.Write(trace)
 	defer txnWrite.End()
 	resp, err = deleteRange(ctx, txnWrite, dr)
 	return resp, trace, err
@@ -121,15 +128,15 @@ func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRange
 	return resp, nil
 }
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "range")
+func Range(ctx context.Context, txn TxnContext, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
+	ctx, trace = ensureTrace(ctx, txn.Logger, "range")
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(success, time.Since(start))
 	}(time.Now())
-	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
+	txnRead := txn.KV.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
-	resp, err = executeRange(ctx, lg, txnRead, r)
+	resp, err = executeRange(ctx, txn.Logger, txnRead, r)
 	return resp, trace, err
 }
 
@@ -233,18 +240,18 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	return resp, nil
 }
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "transaction")
+func Txn(ctx context.Context, txn TxnContext, rt *pb.TxnRequest) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
+	ctx, trace = ensureTrace(ctx, txn.Logger, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
 	var mode mvcc.ReadTxMode
-	if isWrite && txnModeWriteWithSharedBuffer /*a.s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer)*/ {
+	if isWrite && txn.TxnModeWriteWithSharedBuffer /*a.s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer)*/ {
 		mode = mvcc.SharedBufReadTxMode
 	} else {
 		mode = mvcc.ConcurrentReadTxMode
 	}
-	txnRead := kv.Read(mode, trace)
+	txnRead := txn.KV.Read(mode, trace)
 	var txnPath []bool
 	trace.StepWithFunction(
 		func() {
@@ -255,7 +262,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	if isWrite {
 		trace.AddField(traceutil.Field{Key: "read_only", Value: false})
 	}
-	_, err = checkTxn(txnRead, rt, lessor, txnPath)
+	_, err = checkTxn(txnRead, rt, txn.Lessor, txnPath)
 	if err != nil {
 		txnRead.End()
 		return nil, nil, err
@@ -268,11 +275,11 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	var txnWrite mvcc.TxnWrite
 	if isWrite {
 		txnRead.End()
-		txnWrite = kv.Write(trace)
+		txnWrite = txn.KV.Write(trace)
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
-	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnResp, err = assembleTxnResponse(ctx, txn.Logger, txnWrite, rt, isWrite, txnPath)
 	txnWrite.End()
 
 	trace.AddField(
@@ -282,7 +289,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	return txnResp, trace, err
 }
 
-func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {
+func assembleTxnResponse(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {
 	txnResp, _ := newTxnResp(rt, txnPath)
 	_, err := executeTxn(ctx, lg, txnWrite, rt, txnPath, txnResp)
 	if err != nil {
