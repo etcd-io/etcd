@@ -563,3 +563,10 @@ fix: sync-toolchain-directive
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
 	./scripts/sync_go_toolchain_directive.sh
+
+.PHONY: run-govulncheck
+run-govulncheck:
+ifeq (, $(shell which govulncheck))
+	$(shell go install golang.org/x/vuln/cmd/govulncheck@latest)
+endif
+	PASSES="govuln" ./test

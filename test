@@ -451,6 +451,10 @@ function markdown_marker_pass {
 	fi
 }
 
+function govuln_pass {
+  	govulncheck -show verbose ./...
+}
+
 function goword_pass {
 	if command -v goword >/dev/null; then
 		# get all go files to process
