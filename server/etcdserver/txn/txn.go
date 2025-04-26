@@ -33,16 +33,10 @@ import (
 )
 
 func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	trace = traceutil.Get(ctx)
-	// create put tracing if the trace in context is empty
-	if trace.IsEmpty() {
-		trace = traceutil.New("put",
-			lg,
-			traceutil.Field{Key: "key", Value: string(p.Key)},
-			traceutil.Field{Key: "req_size", Value: p.Size()},
-		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
-	}
+	ctx, trace = ensureTrace(ctx, lg, "put",
+		traceutil.Field{Key: "key", Value: string(p.Key)},
+		traceutil.Field{Key: "req_size", Value: p.Size()},
+	)
 	leaseID := lease.LeaseID(p.Lease)
 	if leaseID != lease.NoLease {
 		if l := lessor.Lookup(leaseID); l == nil {
@@ -95,16 +89,10 @@ func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest) (resp *p
 }
 
 func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
-	trace = traceutil.Get(ctx)
-	// create delete tracing if the trace in context is empty
-	if trace.IsEmpty() {
-		trace = traceutil.New("delete_range",
-			lg,
-			traceutil.Field{Key: "key", Value: string(dr.Key)},
-			traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
-		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
-	}
+	ctx, trace = ensureTrace(ctx, lg, "delete_range",
+		traceutil.Field{Key: "key", Value: string(dr.Key)},
+		traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
+	)
 	txnWrite := kv.Write(trace)
 	defer txnWrite.End()
 	resp, err = deleteRange(ctx, txnWrite, dr)
@@ -134,11 +122,7 @@ func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRange
 }
 
 func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
-	trace = traceutil.Get(ctx)
-	if trace.IsEmpty() {
-		trace = traceutil.New("range", lg)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
-	}
+	ctx, trace = ensureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(success, time.Since(start))
@@ -249,12 +233,8 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 	return resp, nil
 }
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (*pb.TxnResponse, *traceutil.Trace, error) {
-	trace := traceutil.Get(ctx)
-	if trace.IsEmpty() {
-		trace = traceutil.New("transaction", lg)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
-	}
+func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
+	ctx, trace = ensureTrace(ctx, lg, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
@@ -275,7 +255,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	if isWrite {
 		trace.AddField(traceutil.Field{Key: "read_only", Value: false})
 	}
-	_, err := checkTxn(txnRead, rt, lessor, txnPath)
+	_, err = checkTxn(txnRead, rt, lessor, txnPath)
 	if err != nil {
 		txnRead.End()
 		return nil, nil, err
@@ -292,7 +272,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	} else {
 		txnWrite = mvcc.NewReadOnlyTxnWrite(txnRead)
 	}
-	txnResp, err := txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
+	txnResp, err = txn(ctx, lg, txnWrite, rt, isWrite, txnPath)
 	txnWrite.End()
 
 	trace.AddField(
@@ -720,4 +700,16 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 	}
 
 	return nil
+}
+
+func ensureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...traceutil.Field) (context.Context, *traceutil.Trace) {
+	trace := traceutil.Get(ctx)
+	if trace.IsEmpty() {
+		trace = traceutil.New(operation,
+			lg,
+			fields...,
+		)
+		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
+	}
+	return ctx, trace
 }
