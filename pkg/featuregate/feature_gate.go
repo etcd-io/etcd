@@ -166,7 +166,7 @@ func setUnsetBetaGates(known map[Feature]FeatureSpec, enabled map[Feature]bool, 
 // Set, String, and Type implement pflag.Value
 var _ pflag.Value = &featureGate{}
 
-func New(name string, lg *zap.Logger) *featureGate {
+func New(name string, lg *zap.Logger) MutableFeatureGate {
 	if lg == nil {
 		lg = zap.NewNop()
 	}
