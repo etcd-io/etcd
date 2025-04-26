@@ -23,6 +23,7 @@ package tools
 import (
 	_ "github.com/alexfalkowski/gocovmerge"
 	_ "github.com/appscodelabs/license-bill-of-materials"
+	_ "github.com/aquasecurity/trivy/cmd/trivy"
 	_ "github.com/chzchzchz/goword"
 	_ "github.com/cloudflare/cfssl/cmd/cfssl"
 	_ "github.com/cloudflare/cfssl/cmd/cfssljson"
