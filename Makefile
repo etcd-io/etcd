@@ -186,6 +186,16 @@ ifeq (, $(shell which golangci-lint))
 	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
 endif
 
+TRIVY_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/aquasecurity/trivy)
+.PHONY: install-trivy
+install-trivy: bin/trivy
+bin/trivy:
+	curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b ./bin $(TRIVY_VERSION)
+
+.PHONY: run-trivy-image-scan
+run-trivy-image-scan: install-trivy
+	./scripts/scan_latest_released_image.sh
+
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
 bin/lazyfs:
