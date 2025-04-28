@@ -601,6 +601,31 @@ function release_pass {
   mv /tmp/etcd ./bin/etcd-last-release
 }
 
+function release_tests_pass {
+  VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+
+  if [ -n "${CI:-}" ]; then
+    git config user.email "prow@etcd.io"
+    git config user.name "Prow"
+
+    gpg --batch --gen-key <<EOF
+%no-protection
+Key-Type: 1
+Key-Length: 2048
+Subkey-Type: 1
+Subkey-Length: 2048
+Name-Real: Prow
+Name-Email: prow@etcd.io
+Expire-Date: 0
+EOF
+
+    git remote add origin https://github.com/etcd-io/etcd.git
+  fi
+
+  DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
+  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
+}
+
 function mod_tidy_for_module {
   run go mod tidy -diff
 }

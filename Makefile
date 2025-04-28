@@ -54,6 +54,10 @@ test-grpcproxy-e2e: build
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-release
+test-release:
+	PASSES="release_tests" CI=$$CI ./scripts/test.sh $(GO_TEST_FLAGS)
+
 .PHONY: test-robustness
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
