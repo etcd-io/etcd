@@ -46,8 +46,9 @@ func CheckHealth() bool {
 		}
 
 		defer func() {
-			if err := cli.Close(); err != nil {
-				fmt.Printf("Client [entrypoint]: error closing connection: %v\n", err)
+			cErr := cli.Close()
+			if cErr != nil {
+				fmt.Printf("Client [entrypoint]: error closing connection: %v\n", cErr)
 			}
 		}()
 
