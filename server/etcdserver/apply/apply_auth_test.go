@@ -44,7 +44,7 @@ func dummyIndexWaiter(_ uint64) <-chan struct{} {
 	return ch
 }
 
-func dummyApplyFunc(_ *pb.InternalRaftRequest) *Result {
+func dummyApplyFunc(_ *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	return &Result{}
 }
 
@@ -217,7 +217,7 @@ func TestAuthApplierV3_Apply(t *testing.T) {
 	mustCreateRolesAndEnableAuth(t, authApplier)
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result := authApplier.Apply(tc.request, dummyApplyFunc)
+			result := authApplier.Apply(tc.request, membership.ApplyBoth, dummyApplyFunc)
 			require.Equalf(t, result, tc.expectResult, "Apply: got %v, expect: %v", result, tc.expectResult)
 		})
 	}
@@ -384,7 +384,7 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 			if tc.adminPermissionNeeded {
 				tc.request.Header = &pb.RequestHeader{Username: userReadOnly}
 			}
-			result := authApplier.Apply(tc.request, dummyApplyFunc)
+			result := authApplier.Apply(tc.request, membership.ApplyBoth, dummyApplyFunc)
 			require.Equalf(t, errors.Is(result.Err, auth.ErrPermissionDenied), tc.adminPermissionNeeded, "Admin permission needed")
 		})
 	}

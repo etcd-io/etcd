@@ -62,7 +62,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -1985,7 +1984,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		ar = s.applyInternalRaftRequest(&raftReq, shouldApplyV3)
+		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
 	}
 
 	// do not re-toApply applied entries.
@@ -2019,42 +2018,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
-}
-
-func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply.Result {
-	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil && r.DowngradeVersionTest == nil {
-		if !shouldApplyV3 {
-			return nil
-		}
-		return s.uberApply.Apply(r)
-	}
-	membershipApplier := apply.NewApplierMembership(s.lg, s.cluster, s)
-	op := "unknown"
-	defer func(start time.Time) {
-		txn.ApplySecObserve("v3", op, true, time.Since(start))
-		txn.WarnOfExpensiveRequest(s.lg, s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, nil, nil)
-	}(time.Now())
-	switch {
-	case r.ClusterVersionSet != nil:
-		op = "ClusterVersionSet" // Implemented in 3.5.x
-		membershipApplier.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
-		return &apply.Result{}
-	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		membershipApplier.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
-	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		membershipApplier.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
-	case r.DowngradeVersionTest != nil:
-		op = "DowngradeVersionTest" // Implemented in 3.6 for test only
-		// do nothing, we are just to ensure etcdserver don't panic in case
-		// users(test cases) intentionally inject DowngradeVersionTestRequest
-		// into the WAL files.
-	default:
-		s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
-		return nil
-	}
-	return &apply.Result{}
 }
 
 func noSideEffect(r *pb.InternalRaftRequest) bool {

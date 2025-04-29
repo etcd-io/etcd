@@ -21,13 +21,14 @@ import (
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 type UberApplier interface {
-	Apply(r *pb.InternalRaftRequest) *Result
+	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result
 }
 
 type uberApplier struct {
@@ -78,18 +79,18 @@ func (a *uberApplier) restoreAlarms() {
 	}
 }
 
-func (a *uberApplier) Apply(r *pb.InternalRaftRequest) *Result {
+func (a *uberApplier) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	// We first execute chain of Apply() calls down the hierarchy:
 	// (i.e. CorruptApplier -> CappedApplier -> Auth -> Quota -> Backend),
 	// then dispatch() unpacks the request to a specific method (like Put),
 	// that gets executed down the hierarchy again:
 	// i.e. CorruptApplier.Put(CappedApplier.Put(...(BackendApplier.Put(...)))).
-	return a.applyV3.Apply(r, a.dispatch)
+	return a.applyV3.Apply(r, shouldApplyV3, a.dispatch)
 }
 
 // dispatch translates the request (r) into appropriate call (like Put) on
 // the underlying applyV3 object.
-func (a *uberApplier) dispatch(r *pb.InternalRaftRequest) *Result {
+func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *Result {
 	op := "unknown"
 	ar := &Result{}
 	defer func(start time.Time) {
@@ -100,6 +101,31 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest) *Result {
 			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
 		}
 	}(time.Now())
+
+	switch {
+	case r.ClusterVersionSet != nil:
+		op = "ClusterVersionSet" // Implemented in 3.5.x
+		a.applyV3.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
+		return ar
+	case r.ClusterMemberAttrSet != nil:
+		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
+		a.applyV3.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
+		return ar
+	case r.DowngradeInfoSet != nil:
+		op = "DowngradeInfoSet" // Implemented in 3.5.x
+		a.applyV3.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
+		return ar
+	case r.DowngradeVersionTest != nil:
+		op = "DowngradeVersionTest" // Implemented in 3.6 for test only
+		// do nothing, we are just to ensure etcdserver don't panic in case
+		// users(test cases) intentionally inject DowngradeVersionTestRequest
+		// into the WAL files.
+		return ar
+	default:
+	}
+	if !shouldApplyV3 {
+		return nil
+	}
 
 	switch {
 	case r.Range != nil:

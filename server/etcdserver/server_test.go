@@ -149,7 +149,7 @@ func TestApplyRepeat(t *testing.T) {
 
 type uberApplierMock struct{}
 
-func (uberApplierMock) Apply(r *pb.InternalRaftRequest) *apply2.Result {
+func (uberApplierMock) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply2.Result {
 	return &apply2.Result{}
 }
 

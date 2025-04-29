@@ -130,13 +130,13 @@ func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_CORRUPT,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request)
+			result = ua.Apply(tc.request, membership.ApplyBoth)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -232,13 +232,13 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request)
+			result = ua.Apply(tc.request, membership.ApplyBoth)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -255,11 +255,11 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.Equalf(t, errors.ErrNoSpace, result.Err, "Apply: got %v, expect: %v", result.Err, errors.ErrNoSpace)
 
@@ -270,11 +270,11 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	assert.NoError(t, result.Err)
 }
