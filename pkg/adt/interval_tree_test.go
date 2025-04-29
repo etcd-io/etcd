@@ -269,6 +269,36 @@ func TestIntervalTreeDelete(t *testing.T) {
 	require.Truef(t, reflect.DeepEqual(expectedAfterDelete11, visitsAfterDelete11), "level order after deleting '11' expected %v, got %v", expectedAfterDelete11, visitsAfterDelete11)
 }
 
+func TestIntervalTreeFind(t *testing.T) {
+	ivt := NewIntervalTree()
+	ivl1 := NewInt64Interval(3, 6)
+	val := 123
+	assert.Nilf(t, ivt.Find(ivl1), "find for %v expected nil on empty tree", ivl1)
+	// insert interval [3, 6) into tree
+	ivt.Insert(ivl1, val)
+	// check cases of expected find matches and non-matches
+	assert.NotNilf(t, ivt.Find(ivl1), "find expected not-nil on exact-matched interval %v", ivl1)
+	assert.Equalf(t, ivl1, ivt.Find(ivl1).Ivl, "find expected to return exact-matched interval %v", ivl1)
+	ivl2 := NewInt64Interval(3, 7)
+	assert.Nilf(t, ivt.Find(ivl2), "find expected nil on matched start, different end %v", ivl2)
+	ivl3 := NewInt64Interval(2, 6)
+	assert.Nilf(t, ivt.Find(ivl3), "find expected nil on different start, matched end %v", ivl3)
+	ivl4 := NewInt64Interval(10, 20)
+	assert.Nilf(t, ivt.Find(ivl4), "find expected nil on different start, different end %v", ivl4)
+	// insert the additional intervals into the tree, and check they can each be found.
+	ivls := []Interval{ivl2, ivl3, ivl4}
+	for _, ivl := range ivls {
+		ivt.Insert(ivl, val)
+		assert.NotNilf(t, ivt.Find(ivl), "find expected not-nil on exact-matched interval %v", ivl)
+		assert.Equalf(t, ivl, ivt.Find(ivl).Ivl, "find expected to return exact-matched interval %v", ivl)
+	}
+	// check additional intervals no longer found after deletion
+	for _, ivl := range ivls {
+		assert.Truef(t, ivt.Delete(ivl), "expected successful delete on %v", ivl)
+		assert.Nilf(t, ivt.Find(ivl), "find expected nil after deleted interval %v", ivl)
+	}
+}
+
 func TestIntervalTreeIntersects(t *testing.T) {
 	ivt := NewIntervalTree()
 	ivt.Insert(NewStringInterval("1", "3"), 123)
@@ -341,8 +371,14 @@ func TestIntervalTreeRandom(t *testing.T) {
 			require.NotEmptyf(t, ivt.Stab(NewInt64Point(v)), "expected %v stab non-zero for [%+v)", v, xy)
 			require.Truef(t, ivt.Intersects(NewInt64Point(v)), "did not get %d as expected for [%+v)", v, xy)
 		}
-		assert.Truef(t, ivt.Delete(NewInt64Interval(ab.x, ab.y)), "did not delete %v as expected", ab)
+		ivl := NewInt64Interval(ab.x, ab.y)
+		iv := ivt.Find(ivl)
+		assert.NotNilf(t, iv, "expected find non-nil on %v", ab)
+		assert.Equalf(t, ivl, iv.Ivl, "find did not get matched interval %v", ab)
+		assert.Truef(t, ivt.Delete(ivl), "did not delete %v as expected", ab)
 		delete(ivs, ab)
+		ivAfterDel := ivt.Find(ivl)
+		assert.Nilf(t, ivAfterDel, "expected find nil after deletion on %v", ab)
 	}
 
 	assert.Equalf(t, 0, ivt.Len(), "got ivt.Len() = %v, expected 0", ivt.Len())
