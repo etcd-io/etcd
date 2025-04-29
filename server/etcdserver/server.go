@@ -1149,8 +1149,22 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 }
 
 func (s *EtcdServer) NewUberApplier() apply.UberApplier {
-	return apply.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
-		s.Cfg.WarningApplyDuration, s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer), s.Cfg.QuotaBackendBytes)
+	opts := apply.ApplierOptions{
+		Logger:                       s.lg,
+		KV:                           s.KV(),
+		AlarmStore:                   s.alarmStore,
+		AuthStore:                    s.authStore,
+		Lessor:                       s.lessor,
+		Cluster:                      s.cluster,
+		RaftStatus:                   s,
+		SnapshotServer:               s,
+		ConsistentIndex:              s.consistIndex,
+		TxnModeWriteWithSharedBuffer: s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer),
+		Backend:                      s.be,
+		QuotaBackendBytesCfg:         s.Cfg.QuotaBackendBytes,
+		WarningApplyDuration:         s.Cfg.WarningApplyDuration,
+	}
+	return apply.NewUberApplier(opts)
 }
 
 func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {

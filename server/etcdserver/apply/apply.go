@@ -16,6 +16,7 @@ package apply
 
 import (
 	"context"
+	"time"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/gogo/protobuf/proto"
@@ -104,47 +105,33 @@ type applierV3 interface {
 	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
 }
 
+type ApplierOptions struct {
+	Logger                       *zap.Logger
+	KV                           mvcc.KV
+	AlarmStore                   *v3alarm.AlarmStore
+	AuthStore                    auth.AuthStore
+	Lessor                       lease.Lessor
+	Cluster                      *membership.RaftCluster
+	RaftStatus                   RaftStatusGetter
+	SnapshotServer               SnapshotServer
+	ConsistentIndex              cindex.ConsistentIndexer
+	TxnModeWriteWithSharedBuffer bool
+	Backend                      backend.Backend
+	QuotaBackendBytesCfg         int64
+	WarningApplyDuration         time.Duration
+}
+
 type SnapshotServer interface {
 	ForceSnapshot()
 }
 
 type applierV3backend struct {
-	lg              *zap.Logger
-	kv              mvcc.KV
-	alarmStore      *v3alarm.AlarmStore
-	authStore       auth.AuthStore
-	lessor          lease.Lessor
-	cluster         *membership.RaftCluster
-	raftStatus      RaftStatusGetter
-	snapshotServer  SnapshotServer
-	consistentIndex cindex.ConsistentIndexer
-
-	txnModeWriteWithSharedBuffer bool
+	options ApplierOptions
 }
 
-func newApplierV3Backend(
-	lg *zap.Logger,
-	kv mvcc.KV,
-	alarmStore *v3alarm.AlarmStore,
-	authStore auth.AuthStore,
-	lessor lease.Lessor,
-	cluster *membership.RaftCluster,
-	raftStatus RaftStatusGetter,
-	snapshotServer SnapshotServer,
-	consistentIndex cindex.ConsistentIndexer,
-	txnModeWriteWithSharedBuffer bool,
-) applierV3 {
+func newApplierV3Backend(opts ApplierOptions) applierV3 {
 	return &applierV3backend{
-		lg:                           lg,
-		kv:                           kv,
-		alarmStore:                   alarmStore,
-		authStore:                    authStore,
-		lessor:                       lessor,
-		cluster:                      cluster,
-		raftStatus:                   raftStatus,
-		snapshotServer:               snapshotServer,
-		consistentIndex:              consistentIndex,
-		txnModeWriteWithSharedBuffer: txnModeWriteWithSharedBuffer,
+		options: opts,
 	}
 }
 
@@ -153,41 +140,41 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc)
 }
 
 func (a *applierV3backend) Put(p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(context.TODO(), a.lg, a.lessor, a.kv, p)
+	return mvcctxn.Put(context.TODO(), a.options.Logger, a.options.Lessor, a.options.KV, p)
 }
 
 func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.DeleteRange(context.TODO(), a.lg, a.kv, dr)
+	return mvcctxn.DeleteRange(context.TODO(), a.options.Logger, a.options.KV, dr)
 }
 
 func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.lg, a.kv, r)
+	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.lg, rt, a.txnModeWriteWithSharedBuffer, a.kv, a.lessor)
+	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
 	trace := traceutil.New("compact",
-		a.lg,
+		a.options.Logger,
 		traceutil.Field{Key: "revision", Value: compaction.Revision},
 	)
 
-	ch, err := a.kv.Compact(trace, compaction.Revision)
+	ch, err := a.options.KV.Compact(trace, compaction.Revision)
 	if err != nil {
 		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
-	rr, _ := a.kv.Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
+	rr, _ := a.options.KV.Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
 	return resp, ch, trace, err
 }
 
 func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	l, err := a.lessor.Grant(lease.LeaseID(lc.ID), lc.TTL)
+	l, err := a.options.Lessor.Grant(lease.LeaseID(lc.ID), lc.TTL)
 	resp := &pb.LeaseGrantResponse{}
 	if err == nil {
 		resp.ID = int64(l.ID)
@@ -198,13 +185,13 @@ func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantR
 }
 
 func (a *applierV3backend) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	err := a.lessor.Revoke(lease.LeaseID(lc.ID))
+	err := a.options.Lessor.Revoke(lease.LeaseID(lc.ID))
 	return &pb.LeaseRevokeResponse{Header: a.newHeader()}, err
 }
 
 func (a *applierV3backend) LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error) {
 	for _, c := range lc.Checkpoints {
-		err := a.lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
+		err := a.options.Lessor.Checkpoint(lease.LeaseID(c.ID), c.Remaining_TTL)
 		if err != nil {
 			return &pb.LeaseCheckpointResponse{Header: a.newHeader()}, err
 		}
@@ -217,19 +204,19 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 
 	switch ar.Action {
 	case pb.AlarmRequest_GET:
-		resp.Alarms = a.alarmStore.Get(ar.Alarm)
+		resp.Alarms = a.options.AlarmStore.Get(ar.Alarm)
 	case pb.AlarmRequest_ACTIVATE:
 		if ar.Alarm == pb.AlarmType_NONE {
 			break
 		}
-		m := a.alarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
+		m := a.options.AlarmStore.Activate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
 		resp.Alarms = append(resp.Alarms, m)
 		alarms.WithLabelValues(types.ID(ar.MemberID).String(), m.Alarm.String()).Inc()
 	case pb.AlarmRequest_DEACTIVATE:
-		m := a.alarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
+		m := a.options.AlarmStore.Deactivate(types.ID(ar.MemberID), ar.Alarm)
 		if m == nil {
 			break
 		}
@@ -266,7 +253,7 @@ func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
-	err := a.authStore.AuthEnable()
+	err := a.options.AuthStore.AuthEnable()
 	if err != nil {
 		return nil, err
 	}
@@ -274,19 +261,19 @@ func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
 }
 
 func (a *applierV3backend) AuthDisable() (*pb.AuthDisableResponse, error) {
-	a.authStore.AuthDisable()
+	a.options.AuthStore.AuthDisable()
 	return &pb.AuthDisableResponse{Header: a.newHeader()}, nil
 }
 
 func (a *applierV3backend) AuthStatus() (*pb.AuthStatusResponse, error) {
-	enabled := a.authStore.IsAuthEnabled()
-	authRevision := a.authStore.Revision()
+	enabled := a.options.AuthStore.IsAuthEnabled()
+	authRevision := a.options.AuthStore.Revision()
 	return &pb.AuthStatusResponse{Header: a.newHeader(), Enabled: enabled, AuthRevision: authRevision}, nil
 }
 
 func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error) {
-	ctx := context.WithValue(context.WithValue(context.Background(), auth.AuthenticateParamIndex{}, a.consistentIndex.ConsistentIndex()), auth.AuthenticateParamSimpleTokenPrefix{}, r.SimpleToken)
-	resp, err := a.authStore.Authenticate(ctx, r.Name, r.Password)
+	ctx := context.WithValue(context.WithValue(context.Background(), auth.AuthenticateParamIndex{}, a.options.ConsistentIndex.ConsistentIndex()), auth.AuthenticateParamSimpleTokenPrefix{}, r.SimpleToken)
+	resp, err := a.options.AuthStore.Authenticate(ctx, r.Name, r.Password)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -294,7 +281,7 @@ func (a *applierV3backend) Authenticate(r *pb.InternalAuthenticateRequest) (*pb.
 }
 
 func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error) {
-	resp, err := a.authStore.UserAdd(r)
+	resp, err := a.options.AuthStore.UserAdd(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -302,7 +289,7 @@ func (a *applierV3backend) UserAdd(r *pb.AuthUserAddRequest) (*pb.AuthUserAddRes
 }
 
 func (a *applierV3backend) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error) {
-	resp, err := a.authStore.UserDelete(r)
+	resp, err := a.options.AuthStore.UserDelete(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -310,7 +297,7 @@ func (a *applierV3backend) UserDelete(r *pb.AuthUserDeleteRequest) (*pb.AuthUser
 }
 
 func (a *applierV3backend) UserChangePassword(r *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error) {
-	resp, err := a.authStore.UserChangePassword(r)
+	resp, err := a.options.AuthStore.UserChangePassword(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -318,7 +305,7 @@ func (a *applierV3backend) UserChangePassword(r *pb.AuthUserChangePasswordReques
 }
 
 func (a *applierV3backend) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error) {
-	resp, err := a.authStore.UserGrantRole(r)
+	resp, err := a.options.AuthStore.UserGrantRole(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -326,7 +313,7 @@ func (a *applierV3backend) UserGrantRole(r *pb.AuthUserGrantRoleRequest) (*pb.Au
 }
 
 func (a *applierV3backend) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error) {
-	resp, err := a.authStore.UserGet(r)
+	resp, err := a.options.AuthStore.UserGet(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -334,7 +321,7 @@ func (a *applierV3backend) UserGet(r *pb.AuthUserGetRequest) (*pb.AuthUserGetRes
 }
 
 func (a *applierV3backend) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error) {
-	resp, err := a.authStore.UserRevokeRole(r)
+	resp, err := a.options.AuthStore.UserRevokeRole(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -342,7 +329,7 @@ func (a *applierV3backend) UserRevokeRole(r *pb.AuthUserRevokeRoleRequest) (*pb.
 }
 
 func (a *applierV3backend) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error) {
-	resp, err := a.authStore.RoleAdd(r)
+	resp, err := a.options.AuthStore.RoleAdd(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -350,7 +337,7 @@ func (a *applierV3backend) RoleAdd(r *pb.AuthRoleAddRequest) (*pb.AuthRoleAddRes
 }
 
 func (a *applierV3backend) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error) {
-	resp, err := a.authStore.RoleGrantPermission(r)
+	resp, err := a.options.AuthStore.RoleGrantPermission(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -358,7 +345,7 @@ func (a *applierV3backend) RoleGrantPermission(r *pb.AuthRoleGrantPermissionRequ
 }
 
 func (a *applierV3backend) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error) {
-	resp, err := a.authStore.RoleGet(r)
+	resp, err := a.options.AuthStore.RoleGet(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -366,7 +353,7 @@ func (a *applierV3backend) RoleGet(r *pb.AuthRoleGetRequest) (*pb.AuthRoleGetRes
 }
 
 func (a *applierV3backend) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error) {
-	resp, err := a.authStore.RoleRevokePermission(r)
+	resp, err := a.options.AuthStore.RoleRevokePermission(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -374,7 +361,7 @@ func (a *applierV3backend) RoleRevokePermission(r *pb.AuthRoleRevokePermissionRe
 }
 
 func (a *applierV3backend) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error) {
-	resp, err := a.authStore.RoleDelete(r)
+	resp, err := a.options.AuthStore.RoleDelete(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -382,7 +369,7 @@ func (a *applierV3backend) RoleDelete(r *pb.AuthRoleDeleteRequest) (*pb.AuthRole
 }
 
 func (a *applierV3backend) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error) {
-	resp, err := a.authStore.UserList(r)
+	resp, err := a.options.AuthStore.UserList(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -390,7 +377,7 @@ func (a *applierV3backend) UserList(r *pb.AuthUserListRequest) (*pb.AuthUserList
 }
 
 func (a *applierV3backend) RoleList(r *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error) {
-	resp, err := a.authStore.RoleList(r)
+	resp, err := a.options.AuthStore.RoleList(r)
 	if resp != nil {
 		resp.Header = a.newHeader()
 	}
@@ -485,9 +472,9 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
-		ClusterId: uint64(a.cluster.ID()),
-		MemberId:  uint64(a.raftStatus.MemberID()),
-		Revision:  a.kv.Rev(),
-		RaftTerm:  a.raftStatus.Term(),
+		ClusterId: uint64(a.options.Cluster.ID()),
+		MemberId:  uint64(a.options.RaftStatus.MemberID()),
+		Revision:  a.options.KV.Rev(),
+		RaftTerm:  a.options.RaftStatus.Term(),
 	}
 }
