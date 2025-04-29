@@ -140,19 +140,28 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, applyFunc applyFunc)
 }
 
 func (a *applierV3backend) Put(p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(context.TODO(), a.options.Logger, a.options.Lessor, a.options.KV, p)
+	return mvcctxn.Put(context.TODO(), a.context(), p)
 }
 
 func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.DeleteRange(context.TODO(), a.options.Logger, a.options.KV, dr)
+	return mvcctxn.DeleteRange(context.TODO(), a.context(), dr)
 }
 
 func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
+	return mvcctxn.Range(context.TODO(), a.context(), r)
 }
 
 func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
+	return mvcctxn.Txn(context.TODO(), a.context(), rt)
+}
+
+func (a *applierV3backend) context() mvcctxn.TxnContext {
+	return mvcctxn.TxnContext{
+		Logger:                       a.options.Logger,
+		Lessor:                       a.options.Lessor,
+		KV:                           a.options.KV,
+		TxnModeWriteWithSharedBuffer: a.options.TxnModeWriteWithSharedBuffer,
+	}
 }
 
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {

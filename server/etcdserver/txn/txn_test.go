@@ -228,7 +228,12 @@ func TestCheckTxn(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+			_, _, err := Txn(ctx, TxnContext{
+				Logger:                       zaptest.NewLogger(t),
+				Lessor:                       lessor,
+				KV:                           s,
+				TxnModeWriteWithSharedBuffer: false,
+			}, tc.txn)
 
 			gotErr := ""
 			if err != nil {
@@ -248,7 +253,11 @@ func TestCheckPut(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Put(ctx, zaptest.NewLogger(t), lessor, s, tc.op.GetRequestPut())
+			_, _, err := Put(ctx, TxnContext{
+				Logger: zaptest.NewLogger(t),
+				Lessor: lessor,
+				KV:     s,
+			}, tc.op.GetRequestPut())
 
 			gotErr := ""
 			if err != nil {
@@ -268,7 +277,10 @@ func TestCheckRange(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+			_, _, err := Range(ctx, TxnContext{
+				Logger: zaptest.NewLogger(t),
+				KV:     s,
+			}, tc.op.GetRequestRange())
 
 			gotErr := ""
 			if err != nil {
@@ -333,7 +345,12 @@ func TestReadonlyTxnError(t *testing.T) {
 		},
 	}
 
-	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
+	_, _, err := Txn(ctx, TxnContext{
+		Logger:                       zaptest.NewLogger(t),
+		Lessor:                       &lease.FakeLessor{},
+		KV:                           s,
+		TxnModeWriteWithSharedBuffer: false,
+	}, txn)
 	if err == nil || !strings.Contains(err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled") {
 		t.Fatalf("Expected context canceled error, got %v", err)
 	}
@@ -376,7 +393,14 @@ func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	// we verify the following properties below:
 	// 1. server panics after a write txn aply fails (invariant: server should never try to move on from a failed write)
 	// 2. no writes from the txn are applied to the backend (invariant: failed write should have no side-effect on DB state besides panic)
-	assert.Panicsf(t, func() { Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{}) }, "Expected panic in Txn with writes")
+	assert.Panicsf(t, func() {
+		Txn(ctx, TxnContext{
+			Logger:                       zaptest.NewLogger(t),
+			Lessor:                       &lease.FakeLessor{},
+			KV:                           s,
+			TxnModeWriteWithSharedBuffer: false,
+		}, txn)
+	}, "Expected panic in Txn with writes")
 	dbHashAfter, err := computeFileHash(bePath)
 	require.NoErrorf(t, err, "failed to compute DB file hash after txn")
 	require.Equalf(t, dbHashBefore, dbHashAfter, "mismatch in DB hash before and after failed write txn")
