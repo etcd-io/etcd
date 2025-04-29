@@ -58,6 +58,7 @@ const (
 
 type RaftKV interface {
 	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error
 	Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error)
 	DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
 	Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error)
@@ -139,6 +140,78 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		return nil, err
 	}
 	return resp, err
+}
+
+func (s *EtcdServer) RangeStream(r *pb.RangeRequest, rs pb.KV_RangeStreamServer) error {
+	trace := traceutil.New("rangeStream",
+		s.Logger(),
+		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
+		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
+	)
+	ctx := context.WithValue(rs.Context(), traceutil.TraceKey{}, trace)
+
+	var resp *pb.RangeResponse
+	var err error
+	count := 0
+	defer func(start time.Time) {
+		txn.WarnOfExpensiveReadOnlyRangeRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
+		if resp != nil {
+			trace.AddField(
+				traceutil.Field{Key: "response_count", Value: count},
+				traceutil.Field{Key: "response_revision", Value: resp.Header.Revision},
+			)
+		}
+		trace.LogIfLong(traceThreshold)
+	}(time.Now())
+
+	if !r.Serializable {
+		err = s.linearizableReadNotify(ctx)
+		trace.Step("agreement among raft nodes before linearized reading")
+		if err != nil {
+			return err
+		}
+	}
+	// TODO: Handle auth
+	// TODO: Handle limit
+	r.Limit = 1
+	resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r)
+	if err != nil {
+		return err
+	}
+	count += len(resp.Kvs)
+	err = rs.Send(&pb.RangeStreamResponse{
+		RangeResponse: resp,
+	})
+	if err != nil {
+		return err
+	}
+	r.Revision = resp.Header.Revision
+	for len(resp.Kvs) != 0 {
+		// TODO: Forbit non standard order/Implement order by just loading keys
+		r.Key = append(resp.Kvs[len(resp.Kvs)-1].Key, '\x00')
+		if resp.Size() < 1024*1024 {
+			r.Limit *= 2
+		}
+		if resp.Size() > 4*1024*1024 {
+			r.Limit /= 2
+		}
+		if r.Limit == 0 {
+			r.Limit = 1
+		}
+
+		resp, _, err = txn.Range(ctx, s.Logger(), s.KV(), r)
+		if err != nil {
+			return err
+		}
+		count += len(resp.Kvs)
+		err = rs.Send(&pb.RangeStreamResponse{
+			RangeResponse: resp,
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
