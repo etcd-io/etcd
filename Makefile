@@ -63,8 +63,11 @@ test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: upload-coverage-report
-upload-coverage-report: test-coverage
-	COVERDIR=covdir ./scripts/codecov_upload.sh
+upload-coverage-report:
+	return_code=0; \
+	$(MAKE) test-coverage || return_code=$$?; \
+	COVERDIR=covdir ./scripts/codecov_upload.sh; \
+	exit $$return_code
 
 .PHONY: fuzz
 fuzz: 
