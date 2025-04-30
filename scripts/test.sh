@@ -602,7 +602,10 @@ function release_pass {
 }
 
 function release_tests_pass {
-  VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  if [ -z "${VERSION:-}" ]; then
+    VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
+     awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  fi
 
   if [ -n "${CI:-}" ]; then
     git config user.email "prow@etcd.io"
