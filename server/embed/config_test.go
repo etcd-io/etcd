@@ -111,7 +111,6 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		{
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:           false,
 				features.StopGRPCServiceOnDefrag:      false,
 				features.InitialCorruptCheck:          false,
 				features.TxnModeWriteWithSharedBuffer: true,
@@ -139,12 +138,12 @@ func TestConfigFileFeatureGates(t *testing.T) {
 		},
 		{
 			name:                                "ok to set different experimental flag and feature gate flag",
-			serverFeatureGatesJSON:              "DistributedTracing=true",
+			serverFeatureGatesJSON:              "InitialCorruptCheck=true",
 			experimentalStopGRPCServiceOnDefrag: "true",
 			expectedFeatures: map[featuregate.Feature]bool{
-				features.DistributedTracing:           true,
 				features.StopGRPCServiceOnDefrag:      true,
 				features.TxnModeWriteWithSharedBuffer: true,
+				features.InitialCorruptCheck:          true,
 			},
 		},
 		{
