@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.0-rc.5 (tbd)
 
+### etcd server
+
+- Fix [the compaction pause duration metric is not emitted for every compaction batch](https://github.com/etcd-io/etcd/pull/19770)
+
 ### Package `clientv3`
 
 - [Replace `resolver.State.Addresses` with `resolver.State.Endpoint.Addresses`](https://github.com/etcd-io/etcd/pull/19782).
