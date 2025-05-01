@@ -75,6 +75,16 @@ var (
 			{Choice: Delete, Weight: 50},
 		},
 	}
+	EtcdAntithesis Traffic = etcdTraffic{
+		keyCount:     10,
+		largePutSize: 32769,
+		leaseTTL:     DefaultLeaseTTL,
+		// Please keep the sum of weights equal 100.
+		requests: []random.ChoiceWeight[etcdRequestType]{
+			{Choice: Get, Weight: 50},
+			{Choice: Put, Weight: 50},
+		},
+	}
 )
 
 type etcdTraffic struct {
