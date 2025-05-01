@@ -126,9 +126,7 @@ func TestAuthority(t *testing.T) {
 				}
 
 				epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-				if err != nil {
-					t.Fatalf("could not start etcd process cluster (%v)", err)
-				}
+				require.NoErrorf(t, err, "could not start etcd process cluster")
 				defer epc.Close()
 
 				endpoints := templateEndpoints(t, tc.clientURLPattern, epc)

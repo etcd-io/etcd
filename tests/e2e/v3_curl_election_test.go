@@ -47,9 +47,7 @@ func testCurlV3Campaign(cx ctlCtx) {
 	})
 	lines, err := e2e.SpawnWithExpectLines(context.TODO(), cargs, cx.envMap, expect.ExpectedResponse{Value: `"leader":{"name":"`})
 	require.NoErrorf(cx.t, err, "failed post campaign request")
-	if len(lines) != 1 {
-		cx.t.Fatalf("len(lines) expected 1, got %+v", lines)
-	}
+	require.Lenf(cx.t, lines, 1, "len(lines) expected 1, got %+v", lines)
 
 	var cresp campaignResponse
 	require.NoErrorf(cx.t, json.Unmarshal([]byte(lines[0]), &cresp), "failed to unmarshal campaign response")

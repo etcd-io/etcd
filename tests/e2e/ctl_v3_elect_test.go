@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -42,9 +43,7 @@ func testElect(cx ctlCtx) {
 	case <-time.After(2 * time.Second):
 		cx.t.Fatalf("timed out electing")
 	case l1 = <-ch:
-		if !strings.HasPrefix(l1, name) {
-			cx.t.Errorf("got %q, expected %q prefix", l1, name)
-		}
+		assert.Truef(cx.t, strings.HasPrefix(l1, name), "got %q, expected %q prefix", l1, name)
 	}
 
 	// blocked process that won't win the election
@@ -109,9 +108,7 @@ func ctlV3Elect(cx ctlCtx, name, proposal string, expectFailure bool) (*expect.E
 
 		s, xerr := proc.ExpectFunc(ctx, func(string) bool { return true })
 		if xerr != nil {
-			if !expectFailure {
-				cx.t.Errorf("expect failed (%v)", xerr)
-			}
+			assert.Truef(cx.t, expectFailure, "expect failed (%v)", xerr)
 		}
 		outc <- s
 	}()

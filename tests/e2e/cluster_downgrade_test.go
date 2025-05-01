@@ -234,13 +234,9 @@ func newCluster(t *testing.T, clusterSize int, snapshotCount uint64) *e2e.EtcdPr
 		e2e.WithSnapshotCount(snapshotCount),
 		e2e.WithKeepDataDir(true),
 	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
 	})
 	return epc
 }

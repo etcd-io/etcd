@@ -60,24 +60,19 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 		e2e.WithClientConnType(clientTLSType),
 		e2e.WithClientAutoTLS(isClientAutoTLS),
 	)
-	if err != nil {
-		t.Fatalf("could not start discovery etcd cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start discovery etcd cluster (%v)", err)
 	defer ds.Close()
 
 	// step 2: configure the cluster size
 	discoveryToken := "8A591FAB-1D72-41FA-BDF2-A27162FDA1E0"
 	configSizeKey := fmt.Sprintf("/_etcd/registry/%s/_config/size", discoveryToken)
 	configSizeValStr := strconv.Itoa(targetClusterSize)
-	if err = ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, ""); err != nil {
-		t.Errorf("failed to configure cluster size to discovery serivce, error: %v", err)
-	}
+	err = ctlV3Put(ctlCtx{epc: ds}, configSizeKey, configSizeValStr, "")
+	require.NoErrorf(t, err, "failed to configure cluster size to discovery serivce, error")
 
 	// step 3: start the etcd cluster
 	epc, err := bootstrapEtcdClusterUsingV3Discovery(t, ds.EndpointsGRPC(), discoveryToken, targetClusterSize, clientTLSType, isClientAutoTLS)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
+	require.NoErrorf(t, err, "could not start etcd process cluster (%v)", err)
 	defer epc.Close()
 
 	// step 4: sanity test on the etcd cluster

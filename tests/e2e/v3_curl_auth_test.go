@@ -141,9 +141,7 @@ func testCurlV3Auth(cx ctlCtx) {
 		require.NoError(cx.t, json.Unmarshal([]byte(cURLRes), &authRes))
 
 		token, ok := authRes[rpctypes.TokenFieldNameGRPC].(string)
-		if !ok {
-			cx.t.Fatalf("failed invalid token in authenticate response using user (%v)", usernames[i])
-		}
+		require.Truef(cx.t, ok, "failed invalid token in authenticate response using user (%v)", usernames[i])
 
 		authHeader = "Authorization: " + token
 		// put with auth

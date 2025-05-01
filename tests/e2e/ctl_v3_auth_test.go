@@ -19,6 +19,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/pkg/v3/expect"
@@ -92,9 +93,7 @@ func authTestMemberUpdate(cx ctlCtx) {
 	cx.user, cx.pass = "test-user", "pass"
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
 	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
-	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err == nil {
-		cx.t.Fatalf("ordinary user must not be allowed to update a member")
-	}
+	require.Errorf(cx.t, ctlV3MemberUpdate(cx, memberID, peerURL), "ordinary user must not be allowed to update a member")
 
 	// root can update a member
 	cx.user, cx.pass = "root", "root"
@@ -115,9 +114,7 @@ func authTestCertCN(cx ctlCtx) {
 
 	// try a granted key
 	cx.user, cx.pass = "", ""
-	if err := ctlV3Put(cx, "hoo", "bar", ""); err != nil {
-		cx.t.Error(err)
-	}
+	assert.NoError(cx.t, ctlV3Put(cx, "hoo", "bar", ""))
 
 	// try a non-granted key
 	cx.user, cx.pass = "", ""
@@ -233,9 +230,7 @@ func authTestWatch(cx ctlCtx) {
 		go func(i int, puts []kv) {
 			defer close(donec)
 			for j := range puts {
-				if err := ctlV3Put(cx, puts[j].key, puts[j].val, ""); err != nil {
-					cx.t.Errorf("watchTest #%d-%d: ctlV3Put error (%v)", i, j, err)
-				}
+				assert.NoErrorf(cx.t, ctlV3Put(cx, puts[j].key, puts[j].val, ""), "watchTest #%d-%d: ctlV3Put error", i, j)
 			}
 		}(i, tt.puts)
 
@@ -276,12 +271,8 @@ func authTestSnapshot(cx ctlCtx) {
 
 	st, err := getSnapshotStatus(cx, fpath)
 	require.NoErrorf(cx.t, err, "snapshotTest getSnapshotStatus error")
-	if st.Revision != 4 {
-		cx.t.Fatalf("expected 4, got %d", st.Revision)
-	}
-	if st.TotalKey < 1 {
-		cx.t.Fatalf("expected at least 1, got %d", st.TotalKey)
-	}
+	require.Equalf(cx.t, int64(4), st.Revision, "expected 4, got %d", st.Revision)
+	require.GreaterOrEqualf(cx.t, st.TotalKey, 1, "expected at least 1, got %d", st.TotalKey)
 }
 
 func authTestEndpointHealth(cx ctlCtx) {
@@ -300,9 +291,7 @@ func authTestEndpointHealth(cx ctlCtx) {
 	cx.user, cx.pass = "root", "root"
 	require.NoError(cx.t, ctlV3RoleGrantPermission(cx, "test-role", grantingPerm{true, true, "health", "", false}))
 	cx.user, cx.pass = "test-user", "pass"
-	if err := ctlV3EndpointHealth(cx); err != nil {
-		cx.t.Fatalf("endpointStatusTest ctlV3EndpointHealth error (%v)", err)
-	}
+	require.NoErrorf(cx.t, ctlV3EndpointHealth(cx), "endpointStatusTest ctlV3EndpointHealth error")
 }
 
 func certCNAndUsername(cx ctlCtx, noPassword bool) {
