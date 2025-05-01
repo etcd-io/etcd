@@ -58,7 +58,7 @@ test-e2e-release: build
 
 .PHONY: test-release
 test-release:
-	PASSES="release_tests" CI=$$CI ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="release_tests" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-robustness
 test-robustness:
