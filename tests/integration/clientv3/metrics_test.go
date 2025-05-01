@@ -17,7 +17,6 @@ package clientv3test
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"io"
 	"net"
@@ -90,13 +89,13 @@ func TestV3ClientMetrics(t *testing.T) {
 	require.NoError(t, cerr)
 	defer cli.Close()
 
-	wc := cli.Watch(context.Background(), "foo")
+	wc := cli.Watch(t.Context(), "foo")
 
 	wBefore := sumCountersForMetricAndLabels(t, url, "grpc_client_msg_received_total", "Watch", "bidi_stream")
 
 	pBefore := sumCountersForMetricAndLabels(t, url, "grpc_client_started_total", "Put", "unary")
 
-	_, err = cli.Put(context.Background(), "foo", "bar")
+	_, err = cli.Put(t.Context(), "foo", "bar")
 	if err != nil {
 		t.Errorf("Error putting value in key store")
 	}

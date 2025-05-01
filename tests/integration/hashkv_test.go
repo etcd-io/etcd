@@ -46,7 +46,7 @@ func TestCompactionHash(t *testing.T) {
 		},
 	}
 
-	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL, client, clus.Members[0].Server}, 1000)
+	testutil.TestCompactionHash(t.Context(), t, hashTestCase{cc, clus.Members[0].GRPCURL, client, clus.Members[0].Server}, 1000)
 }
 
 type hashTestCase struct {

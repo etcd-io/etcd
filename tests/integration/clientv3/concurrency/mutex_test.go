@@ -15,7 +15,6 @@
 package concurrency_test
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -42,21 +41,21 @@ func TestMutexLockSessionExpired(t *testing.T) {
 	m2 := concurrency.NewMutex(s2, "/my-lock/")
 
 	// acquire lock for s1
-	require.NoError(t, m1.Lock(context.TODO()))
+	require.NoError(t, m1.Lock(t.Context()))
 
 	m2Locked := make(chan struct{})
 	var err2 error
 	go func() {
 		defer close(m2Locked)
 		// m2 blocks since m1 already acquired lock /my-lock/
-		if err2 = m2.Lock(context.TODO()); err2 == nil {
+		if err2 = m2.Lock(t.Context()); err2 == nil {
 			t.Error("expect session expired error")
 		}
 	}()
 
 	// revoke the session of m2 before unlock m1
 	require.NoError(t, s2.Close())
-	require.NoError(t, m1.Unlock(context.TODO()))
+	require.NoError(t, m1.Unlock(t.Context()))
 
 	<-m2Locked
 }
@@ -71,17 +70,17 @@ func TestMutexUnlock(t *testing.T) {
 	defer s1.Close()
 
 	m1 := concurrency.NewMutex(s1, "/my-lock/")
-	err = m1.Unlock(context.TODO())
+	err = m1.Unlock(t.Context())
 	require.Errorf(t, err, "expect lock released error")
 	if !errors.Is(err, concurrency.ErrLockReleased) {
 		t.Fatal(err)
 	}
 
-	require.NoError(t, m1.Lock(context.TODO()))
+	require.NoError(t, m1.Lock(t.Context()))
 
-	require.NoError(t, m1.Unlock(context.TODO()))
+	require.NoError(t, m1.Unlock(t.Context()))
 
-	err = m1.Unlock(context.TODO())
+	err = m1.Unlock(t.Context())
 	if err == nil {
 		t.Fatal("expect lock released error")
 	}

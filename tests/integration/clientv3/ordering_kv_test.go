@@ -15,7 +15,6 @@
 package clientv3test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -45,7 +44,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 	cli, err := integration2.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, cli.Close()) }()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err = clus.Client(0).Put(ctx, "foo", "bar")
 	require.NoError(t, err)
@@ -104,7 +103,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	cli, err := integration2.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, cli.Close()) }()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err = clus.Client(0).Put(ctx, "foo", "bar")
 	require.NoError(t, err)
