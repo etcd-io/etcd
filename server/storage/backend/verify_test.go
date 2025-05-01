@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/etcd/client/pkg/v3/verify"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
@@ -83,9 +85,7 @@ func TestLockVerify(t *testing.T) {
 					tc.lock(be.BatchTx())
 				}
 			}) != nil
-			if hasPaniced != tc.expectPanic {
-				t.Errorf("%v != %v", hasPaniced, tc.expectPanic)
-			}
+			assert.Equalf(t, hasPaniced, tc.expectPanic, "%v != %v", hasPaniced, tc.expectPanic)
 		})
 	}
 }

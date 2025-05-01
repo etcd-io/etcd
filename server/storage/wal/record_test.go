@@ -16,12 +16,14 @@ package wal
 
 import (
 	"bytes"
-	"errors"
 	"hash/crc32"
 	"io"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
@@ -54,17 +56,11 @@ func TestReadRecord(t *testing.T) {
 	for i, tt := range tests {
 		buf := bytes.NewBuffer(tt.data)
 		f, err := createFileWithData(t, buf)
-		if err != nil {
-			t.Errorf("Unexpected error: %v", err)
-		}
+		require.NoErrorf(t, err, "Unexpected error: %v", err)
 		decoder := NewDecoder(fileutil.NewFileReader(f))
 		e := decoder.Decode(rec)
-		if !reflect.DeepEqual(rec, tt.wr) {
-			t.Errorf("#%d: block = %v, want %v", i, rec, tt.wr)
-		}
-		if !errors.Is(e, tt.we) {
-			t.Errorf("#%d: err = %v, want %v", i, e, tt.we)
-		}
+		assert.Truef(t, reflect.DeepEqual(rec, tt.wr), "#%d: block = %v, want %v", i, rec, tt.wr)
+		assert.ErrorIsf(t, e, tt.we, "#%d: err = %v, want %v", i, e, tt.we)
 		rec = &walpb.Record{}
 	}
 }
@@ -78,20 +74,11 @@ func TestWriteRecord(t *testing.T) {
 	e.encode(&walpb.Record{Type: typ, Data: d})
 	e.flush()
 	f, err := createFileWithData(t, buf)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
+	require.NoErrorf(t, err, "Unexpected error: %v", err)
 	decoder := NewDecoder(fileutil.NewFileReader(f))
-	err = decoder.Decode(b)
-	if err != nil {
-		t.Errorf("err = %v, want nil", err)
-	}
-	if b.Type != typ {
-		t.Errorf("type = %d, want %d", b.Type, typ)
-	}
-	if !reflect.DeepEqual(b.Data, d) {
-		t.Errorf("data = %v, want %v", b.Data, d)
-	}
+	require.NoError(t, decoder.Decode(b))
+	assert.Equalf(t, b.Type, typ, "type = %d, want %d", b.Type, typ)
+	assert.Truef(t, reflect.DeepEqual(b.Data, d), "data = %v, want %v", b.Data, d)
 }
 
 func createFileWithData(t *testing.T, bf *bytes.Buffer) (*os.File, error) {

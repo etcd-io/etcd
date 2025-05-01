@@ -15,7 +15,6 @@
 package mvcc
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 
@@ -115,18 +114,10 @@ func TestKeyIndexGet(t *testing.T) {
 
 	for i, tt := range tests {
 		mod, creat, ver, err := ki.get(zaptest.NewLogger(t), tt.rev)
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if mod != tt.wmod {
-			t.Errorf("#%d: modified = %+v, want %+v", i, mod, tt.wmod)
-		}
-		if creat != tt.wcreat {
-			t.Errorf("#%d: created = %+v, want %+v", i, creat, tt.wcreat)
-		}
-		if ver != tt.wver {
-			t.Errorf("#%d: version = %d, want %d", i, ver, tt.wver)
-		}
+		require.ErrorIsf(t, err, tt.werr, "#%d: err = %v, want %v", i, err, tt.werr)
+		assert.Equalf(t, mod, tt.wmod, "#%d: modified = %+v, want %+v", i, mod, tt.wmod)
+		assert.Equalf(t, creat, tt.wcreat, "#%d: created = %+v, want %+v", i, creat, tt.wcreat)
+		assert.Equalf(t, ver, tt.wver, "#%d: version = %d, want %d", i, ver, tt.wver)
 	}
 }
 
@@ -171,9 +162,7 @@ func TestKeyIndexSince(t *testing.T) {
 
 	for i, tt := range tests {
 		revs := ki.since(zaptest.NewLogger(t), tt.rev)
-		if !reflect.DeepEqual(revs, tt.wrevs) {
-			t.Errorf("#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
-		}
+		assert.Truef(t, reflect.DeepEqual(revs, tt.wrevs), "#%d: revs = %+v, want %+v", i, revs, tt.wrevs)
 	}
 }
 
@@ -186,9 +175,7 @@ func TestKeyIndexPut(t *testing.T) {
 		modified:    Revision{Main: 5},
 		generations: []generation{{created: Revision{Main: 5}, ver: 1, revs: []Revision{{Main: 5}}}},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
 
 	ki.put(zaptest.NewLogger(t), 7, 0)
 
@@ -197,9 +184,7 @@ func TestKeyIndexPut(t *testing.T) {
 		modified:    Revision{Main: 7},
 		generations: []generation{{created: Revision{Main: 5}, ver: 2, revs: []Revision{{Main: 5}, {Main: 7}}}},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
 }
 
 func TestKeyIndexRestore(t *testing.T) {
@@ -211,35 +196,25 @@ func TestKeyIndexRestore(t *testing.T) {
 		modified:    Revision{Main: 7},
 		generations: []generation{{created: Revision{Main: 5}, ver: 2, revs: []Revision{{Main: 7}}}},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
 }
 
 func TestKeyIndexTombstone(t *testing.T) {
 	ki := &keyIndex{key: []byte("foo")}
 	ki.put(zaptest.NewLogger(t), 5, 0)
 
-	err := ki.tombstone(zaptest.NewLogger(t), 7, 0)
-	if err != nil {
-		t.Errorf("unexpected tombstone error: %v", err)
-	}
+	require.NoErrorf(t, ki.tombstone(zaptest.NewLogger(t), 7, 0), "unexpected tombstone error")
 
 	wki := &keyIndex{
 		key:         []byte("foo"),
 		modified:    Revision{Main: 7},
 		generations: []generation{{created: Revision{Main: 5}, ver: 2, revs: []Revision{{Main: 5}, {Main: 7}}}, {}},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
 
 	ki.put(zaptest.NewLogger(t), 8, 0)
 	ki.put(zaptest.NewLogger(t), 9, 0)
-	err = ki.tombstone(zaptest.NewLogger(t), 15, 0)
-	if err != nil {
-		t.Errorf("unexpected tombstone error: %v", err)
-	}
+	require.NoErrorf(t, ki.tombstone(zaptest.NewLogger(t), 15, 0), "unexpected tombstone error")
 
 	wki = &keyIndex{
 		key:      []byte("foo"),
@@ -250,14 +225,8 @@ func TestKeyIndexTombstone(t *testing.T) {
 			{},
 		},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
-
-	err = ki.tombstone(zaptest.NewLogger(t), 16, 0)
-	if !errors.Is(err, ErrRevisionNotFound) {
-		t.Errorf("tombstone error = %v, want %v", err, ErrRevisionNotFound)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
+	assert.ErrorIsf(t, ki.tombstone(zaptest.NewLogger(t), 16, 0), ErrRevisionNotFound, "tombstone error")
 }
 
 func TestKeyIndexCompactAndKeep(t *testing.T) {
@@ -535,9 +504,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		am := make(map[Revision]struct{})
 		kiclone := cloneKeyIndex(ki)
 		ki.keep(tt.compact, am)
-		if !reflect.DeepEqual(ki, kiclone) {
-			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiclone)
-		}
+		assert.Truef(t, reflect.DeepEqual(ki, kiclone), "#%d: ki = %+v, want %+v", i, ki, kiclone)
 
 		if isTombstone {
 			assert.Emptyf(t, am, "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
@@ -548,12 +515,8 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 
 		am = make(map[Revision]struct{})
 		ki.compact(zaptest.NewLogger(t), tt.compact, am)
-		if !reflect.DeepEqual(ki, tt.wki) {
-			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
-		}
-		if !reflect.DeepEqual(am, tt.wam) {
-			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
-		}
+		assert.Truef(t, reflect.DeepEqual(ki, tt.wki), "#%d: ki = %+v, want %+v", i, ki, tt.wki)
+		assert.Truef(t, reflect.DeepEqual(am, tt.wam), "#%d: am = %+v, want %+v", i, am, tt.wam)
 	}
 
 	// Jump Compaction and finding Keep
@@ -563,20 +526,12 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			am := make(map[Revision]struct{})
 			kiclone := cloneKeyIndex(ki)
 			ki.keep(tt.compact, am)
-			if !reflect.DeepEqual(ki, kiclone) {
-				t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiclone)
-			}
-			if !reflect.DeepEqual(am, tt.wam) {
-				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
-			}
+			assert.Truef(t, reflect.DeepEqual(ki, kiclone), "#%d: ki = %+v, want %+v", i, ki, kiclone)
+			assert.Truef(t, reflect.DeepEqual(am, tt.wam), "#%d: am = %+v, want %+v", i, am, tt.wam)
 			am = make(map[Revision]struct{})
 			ki.compact(zaptest.NewLogger(t), tt.compact, am)
-			if !reflect.DeepEqual(ki, tt.wki) {
-				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
-			}
-			if !reflect.DeepEqual(am, tt.wam) {
-				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
-			}
+			assert.Truef(t, reflect.DeepEqual(ki, tt.wki), "#%d: ki = %+v, want %+v", i, ki, tt.wki)
+			assert.Truef(t, reflect.DeepEqual(am, tt.wam), "#%d: am = %+v, want %+v", i, am, tt.wam)
 		}
 	}
 
@@ -586,9 +541,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		ki := newTestKeyIndex(zaptest.NewLogger(t))
 		am := make(map[Revision]struct{})
 		ki.keep(tt.compact, am)
-		if !reflect.DeepEqual(ki, kiClone) {
-			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiClone)
-		}
+		assert.Truef(t, reflect.DeepEqual(ki, kiClone), "#%d: ki = %+v, want %+v", i, ki, kiClone)
 
 		if isTombstoneRevFn(ki, tt.compact) {
 			assert.Emptyf(t, am, "#%d: ki = %d, keep result wants empty because tombstone", i, ki)
@@ -599,12 +552,8 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 
 		am = make(map[Revision]struct{})
 		ki.compact(zaptest.NewLogger(t), tt.compact, am)
-		if !reflect.DeepEqual(ki, tt.wki) {
-			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
-		}
-		if !reflect.DeepEqual(am, tt.wam) {
-			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
-		}
+		assert.Truef(t, reflect.DeepEqual(ki, tt.wki), "#%d: ki = %+v, want %+v", i, ki, tt.wki)
+		assert.Truef(t, reflect.DeepEqual(am, tt.wam), "#%d: am = %+v, want %+v", i, am, tt.wam)
 	}
 }
 
@@ -644,12 +593,8 @@ func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	wam := map[Revision]struct{}{
 		{Main: 2}: {},
 	}
-	if !reflect.DeepEqual(ki, wki) {
-		t.Errorf("ki = %+v, want %+v", ki, wki)
-	}
-	if !reflect.DeepEqual(am, wam) {
-		t.Errorf("am = %+v, want %+v", am, wam)
-	}
+	assert.Truef(t, reflect.DeepEqual(ki, wki), "ki = %+v, want %+v", ki, wki)
+	assert.Truef(t, reflect.DeepEqual(am, wam), "am = %+v, want %+v", am, wam)
 }
 
 func TestKeyIndexIsEmpty(t *testing.T) {
@@ -677,9 +622,7 @@ func TestKeyIndexIsEmpty(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := tt.ki.isEmpty()
-		if g != tt.w {
-			t.Errorf("#%d: isEmpty = %v, want %v", i, g, tt.w)
-		}
+		assert.Equalf(t, g, tt.w, "#%d: isEmpty = %v, want %v", i, g, tt.w)
 	}
 }
 
@@ -707,9 +650,7 @@ func TestKeyIndexFindGeneration(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := ki.findGeneration(tt.rev)
-		if g != tt.wg {
-			t.Errorf("#%d: generation = %+v, want %+v", i, g, tt.wg)
-		}
+		assert.Samef(t, g, tt.wg, "#%d: generation = %+v, want %+v", i, g, tt.wg)
 	}
 }
 
@@ -726,9 +667,7 @@ func TestKeyIndexLess(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := ki.Less(tt.ki)
-		if g != tt.w {
-			t.Errorf("#%d: Less = %v, want %v", i, g, tt.w)
-		}
+		assert.Equalf(t, g, tt.w, "#%d: Less = %v, want %v", i, g, tt.w)
 	}
 }
 
@@ -743,9 +682,7 @@ func TestGenerationIsEmpty(t *testing.T) {
 	}
 	for i, tt := range tests {
 		g := tt.g.isEmpty()
-		if g != tt.w {
-			t.Errorf("#%d: isEmpty = %v, want %v", i, g, tt.w)
-		}
+		assert.Equalf(t, g, tt.w, "#%d: isEmpty = %v, want %v", i, g, tt.w)
 	}
 }
 
@@ -768,9 +705,7 @@ func TestGenerationWalk(t *testing.T) {
 	}
 	for i, tt := range tests {
 		idx := g.walk(tt.f)
-		if idx != tt.wi {
-			t.Errorf("#%d: index = %d, want %d", i, idx, tt.wi)
-		}
+		assert.Equalf(t, idx, tt.wi, "#%d: index = %d, want %d", i, idx, tt.wi)
 	}
 }
 

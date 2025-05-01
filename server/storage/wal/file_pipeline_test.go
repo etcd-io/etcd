@@ -18,6 +18,7 @@ import (
 	"math"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -28,9 +29,7 @@ func TestFilePipeline(t *testing.T) {
 	defer fp.Close()
 
 	f, ferr := fp.Open()
-	if ferr != nil {
-		t.Fatal(ferr)
-	}
+	require.NoError(t, ferr)
 	f.Close()
 }
 

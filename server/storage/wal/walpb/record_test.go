@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/descriptor"
+	"github.com/stretchr/testify/assert"
 
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -25,10 +26,8 @@ import (
 func TestSnapshotMetadataCompatibility(t *testing.T) {
 	_, snapshotMetadataMd := descriptor.ForMessage(&raftpb.SnapshotMetadata{})
 	_, snapshotMd := descriptor.ForMessage(&Snapshot{})
-	if len(snapshotMetadataMd.GetField()) != len(snapshotMd.GetField()) {
-		t.Errorf("Different number of fields in raftpb.SnapshotMetadata vs. walpb.Snapshot. " +
-			"They are supposed to be in sync.")
-	}
+	assert.Lenf(t, snapshotMd.GetField(), len(snapshotMetadataMd.GetField()), "Different number of fields in raftpb.SnapshotMetadata vs. walpb.Snapshot. "+
+		"They are supposed to be in sync.")
 }
 
 func TestValidateSnapshot(t *testing.T) {
