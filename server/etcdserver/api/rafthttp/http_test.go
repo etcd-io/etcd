@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -147,9 +149,7 @@ func TestServeRaftPrefix(t *testing.T) {
 	}
 	for i, tt := range testCases {
 		req, err := http.NewRequest(tt.method, "foo", tt.body)
-		if err != nil {
-			t.Fatalf("#%d: could not create request: %#v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: could not create request: %#v", i, err)
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
@@ -166,9 +166,7 @@ func TestServeRaftPrefix(t *testing.T) {
 		}()
 		<-donec
 
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
-		}
+		assert.Equalf(t, rw.Code, tt.wcode, "#%d: got code=%d, want %d", i, rw.Code, tt.wcode)
 	}
 }
 
@@ -188,9 +186,7 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 	}
 	for i, tt := range tests {
 		req, err := http.NewRequest(http.MethodGet, "http://localhost:2380"+tt.path, nil)
-		if err != nil {
-			t.Fatalf("#%d: could not create request: %#v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: could not create request: %#v", i, err)
 		req.Header.Set("X-Etcd-Cluster-ID", "1")
 		req.Header.Set("X-Server-Version", version.Version)
 		req.Header.Set("X-Raft-To", "2")
@@ -209,12 +205,9 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 		case <-time.After(time.Second):
 			t.Fatalf("#%d: failed to attach outgoingConn", i)
 		}
-		if g := rw.Header().Get("X-Server-Version"); g != version.Version {
-			t.Errorf("#%d: X-Server-Version = %s, want %s", i, g, version.Version)
-		}
-		if conn.t != tt.wtype {
-			t.Errorf("#%d: type = %s, want %s", i, conn.t, tt.wtype)
-		}
+		g := rw.Header().Get("X-Server-Version")
+		assert.Equalf(t, g, version.Version, "#%d: X-Server-Version = %s, want %s", i, g, version.Version)
+		assert.Equalf(t, conn.t, tt.wtype, "#%d: type = %s, want %s", i, conn.t, tt.wtype)
 		conn.Close()
 	}
 }
@@ -304,9 +297,7 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 	}
 	for i, tt := range tests {
 		req, err := http.NewRequest(tt.method, "http://localhost:2380"+tt.path, nil)
-		if err != nil {
-			t.Fatalf("#%d: could not create request: %#v", i, err)
-		}
+		require.NoErrorf(t, err, "#%d: could not create request: %#v", i, err)
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		req.Header.Set("X-Raft-To", tt.remote)
@@ -317,9 +308,7 @@ func TestServeRaftStreamPrefixBad(t *testing.T) {
 		h := newStreamHandler(tr, peerGetter, r, types.ID(1), types.ID(1))
 		h.ServeHTTP(rw, req)
 
-		if rw.Code != tt.wcode {
-			t.Errorf("#%d: code = %d, want %d", i, rw.Code, tt.wcode)
-		}
+		assert.Equalf(t, rw.Code, tt.wcode, "#%d: code = %d, want %d", i, rw.Code, tt.wcode)
 	}
 }
 

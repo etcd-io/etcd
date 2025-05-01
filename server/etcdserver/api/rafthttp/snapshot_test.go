@@ -24,6 +24,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -84,12 +86,8 @@ func TestSnapshotSend(t *testing.T) {
 
 	for i, tt := range tests {
 		sent, files := testSnapshotSend(t, snap.NewMessage(tt.m, tt.rc, tt.size))
-		if tt.wsent != sent {
-			t.Errorf("#%d: snapshot expected %v, got %v", i, tt.wsent, sent)
-		}
-		if tt.wfiles != len(files) {
-			t.Fatalf("#%d: expected %d files, got %d files", i, tt.wfiles, len(files))
-		}
+		assert.Equalf(t, tt.wsent, sent, "#%d: snapshot expected %v, got %v", i, tt.wsent, sent)
+		require.Lenf(t, files, tt.wfiles, "#%d: expected %d files, got %d files", i, tt.wfiles, len(files))
 	}
 }
 
@@ -120,9 +118,7 @@ func testSnapshotSend(t *testing.T, sm *snap.Message) (bool, []os.DirEntry) {
 	<-ch
 
 	files, rerr := os.ReadDir(d)
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
+	require.NoError(t, rerr)
 	return sent, files
 }
 

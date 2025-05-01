@@ -60,9 +60,7 @@ func TestMemberMinimalVersion(t *testing.T) {
 			memberVersions: tt.memberVersions,
 		})
 		minV := monitor.membersMinimalServerVersion()
-		if !reflect.DeepEqual(minV, tt.wantVersion) {
-			t.Errorf("#%d: ver = %+v, want %+v", i, minV, tt.wantVersion)
-		}
+		assert.Truef(t, reflect.DeepEqual(minV, tt.wantVersion), "#%d: ver = %+v, want %+v", i, minV, tt.wantVersion)
 	}
 }
 
@@ -108,9 +106,7 @@ func TestDecideStorageVersion(t *testing.T) {
 			}
 			monitor := NewMonitor(zaptest.NewLogger(t), s)
 			monitor.UpdateStorageVersionIfNeeded()
-			if !reflect.DeepEqual(s.storageVersion, tt.expectStorageVersion) {
-				t.Errorf("Unexpected storage version value, got = %+v, want %+v", s.storageVersion, tt.expectStorageVersion)
-			}
+			assert.Truef(t, reflect.DeepEqual(s.storageVersion, tt.expectStorageVersion), "Unexpected storage version value, got = %+v, want %+v", s.storageVersion, tt.expectStorageVersion)
 		})
 	}
 }
@@ -160,9 +156,7 @@ func TestVersionMatchTarget(t *testing.T) {
 				memberVersions: tt.versionMap,
 			})
 			actual := monitor.versionsMatchTarget(tt.targetVersion)
-			if actual != tt.expectedFinished {
-				t.Errorf("expected downgrade finished is %v; got %v", tt.expectedFinished, actual)
-			}
+			assert.Equalf(t, tt.expectedFinished, actual, "expected downgrade finished is %v; got %v", tt.expectedFinished, actual)
 		})
 	}
 }

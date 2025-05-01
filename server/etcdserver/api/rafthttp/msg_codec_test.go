@@ -20,6 +20,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -89,9 +91,7 @@ func TestMessage(t *testing.T) {
 			continue
 		}
 		if err == nil {
-			if !reflect.DeepEqual(m, tt.msg) {
-				t.Errorf("#%d: message = %+v, want %+v", i, m, tt.msg)
-			}
+			assert.Truef(t, reflect.DeepEqual(m, tt.msg), "#%d: message = %+v, want %+v", i, m, tt.msg)
 		}
 	}
 }

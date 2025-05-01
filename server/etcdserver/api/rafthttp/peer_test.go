@@ -17,6 +17,8 @@ package rafthttp
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -80,8 +82,6 @@ func TestPeerPick(t *testing.T) {
 			pipeline:       &pipeline{},
 		}
 		_, picked := peer.pick(tt.m)
-		if picked != tt.wpicked {
-			t.Errorf("#%d: picked = %v, want %v", i, picked, tt.wpicked)
-		}
+		assert.Equalf(t, picked, tt.wpicked, "#%d: picked = %v, want %v", i, picked, tt.wpicked)
 	}
 }

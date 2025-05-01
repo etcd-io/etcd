@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -34,9 +35,7 @@ func TestConsistentIndex(t *testing.T) {
 	ci := NewConsistentIndex(be)
 
 	tx := be.BatchTx()
-	if tx == nil {
-		t.Fatal("batch tx is nil")
-	}
+	require.NotNilf(t, tx, "batch tx is nil")
 	tx.Lock()
 
 	schema.UnsafeCreateMetaBucket(tx)
@@ -46,9 +45,7 @@ func TestConsistentIndex(t *testing.T) {
 	term := uint64(234)
 	ci.SetConsistentIndex(r, term)
 	index := ci.ConsistentIndex()
-	if index != r {
-		t.Errorf("expected %d,got %d", r, index)
-	}
+	assert.Equalf(t, index, r, "expected %d,got %d", r, index)
 	tx.Lock()
 	ci.UnsafeSave(tx)
 	tx.Unlock()
@@ -135,13 +132,9 @@ func TestFakeConsistentIndex(t *testing.T) {
 	r := rand.Uint64()
 	ci := NewFakeConsistentIndex(r)
 	index := ci.ConsistentIndex()
-	if index != r {
-		t.Errorf("expected %d,got %d", r, index)
-	}
+	assert.Equalf(t, index, r, "expected %d,got %d", r, index)
 	r = rand.Uint64()
 	ci.SetConsistentIndex(r, 5)
 	index = ci.ConsistentIndex()
-	if index != r {
-		t.Errorf("expected %d,got %d", r, index)
-	}
+	assert.Equalf(t, index, r, "expected %d,got %d", r, index)
 }

@@ -23,7 +23,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -115,9 +114,7 @@ func TestInitialCheck(t *testing.T) {
 			if gotError := err != nil; gotError != tc.expectError {
 				t.Errorf("Unexpected error, got: %v, expected?: %v", err, tc.expectError)
 			}
-			if tc.hasher.alarmTriggered != tc.expectCorrupt {
-				t.Errorf("Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
-			}
+			assert.Equalf(t, tc.hasher.alarmTriggered, tc.expectCorrupt, "Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
 			assert.Equal(t, tc.expectActions, tc.hasher.actions)
 		})
 	}
@@ -239,9 +236,7 @@ func TestPeriodicCheck(t *testing.T) {
 			if gotError := err != nil; gotError != tc.expectError {
 				t.Errorf("Unexpected error, got: %v, expected?: %v", err, tc.expectError)
 			}
-			if tc.hasher.alarmTriggered != tc.expectCorrupt {
-				t.Errorf("Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
-			}
+			assert.Equalf(t, tc.hasher.alarmTriggered, tc.expectCorrupt, "Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
 			assert.Equal(t, tc.expectActions, tc.hasher.actions)
 		})
 	}
@@ -430,12 +425,8 @@ func TestCompactHashCheck(t *testing.T) {
 				hasher:                &tc.hasher,
 			}
 			monitor.CompactHashCheck()
-			if tc.hasher.alarmTriggered != tc.expectCorrupt {
-				t.Errorf("Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
-			}
-			if tc.expectLastRevisionChecked != monitor.latestRevisionChecked {
-				t.Errorf("Unexpected last revision checked, got: %v, expected?: %v", monitor.latestRevisionChecked, tc.expectLastRevisionChecked)
-			}
+			assert.Equalf(t, tc.hasher.alarmTriggered, tc.expectCorrupt, "Unexpected corrupt triggered, got: %v, expected?: %v", tc.hasher.alarmTriggered, tc.expectCorrupt)
+			assert.Equalf(t, tc.expectLastRevisionChecked, monitor.latestRevisionChecked, "Unexpected last revision checked, got: %v, expected?: %v", monitor.latestRevisionChecked, tc.expectLastRevisionChecked)
 			assert.Equal(t, tc.expectActions, tc.hasher.actions)
 		})
 	}
@@ -563,9 +554,7 @@ func TestHashKVHandler(t *testing.T) {
 			require.NoErrorf(t, err, "unexpected io.ReadAll error: %v", err)
 			require.Equalf(t, resp.StatusCode, tt.wcode, "#%d: code = %d, want %d", i, resp.StatusCode, tt.wcode)
 			if resp.StatusCode != http.StatusOK {
-				if !strings.Contains(string(body), tt.wKeyWords) {
-					t.Errorf("#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
-				}
+				assert.Containsf(t, string(body), tt.wKeyWords, "#%d: body: %s, want body to contain keywords: %s", i, body, tt.wKeyWords)
 				return
 			}
 

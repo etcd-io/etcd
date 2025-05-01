@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/version"
@@ -43,9 +45,7 @@ func TestPipelineSend(t *testing.T) {
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
 	tr.rec.Wait(1)
 	p.stop()
-	if p.followerStats.Counts.Success != 1 {
-		t.Errorf("success = %d, want 1", p.followerStats.Counts.Success)
-	}
+	assert.Equalf(t, uint64(1), p.followerStats.Counts.Success, "success = %d, want 1", p.followerStats.Counts.Success)
 }
 
 // TestPipelineKeepSendingWhenPostError tests that pipeline can keep
@@ -62,9 +62,7 @@ func TestPipelineKeepSendingWhenPostError(t *testing.T) {
 	}
 
 	_, err := tr.rec.Wait(50)
-	if err != nil {
-		t.Errorf("unexpected wait error %v", err)
-	}
+	assert.NoErrorf(t, err, "unexpected wait error %v", err)
 }
 
 func TestPipelineExceedMaximumServing(t *testing.T) {
@@ -112,15 +110,12 @@ func TestPipelineSendFailed(t *testing.T) {
 	p := startTestPipeline(t, tp, picker)
 
 	p.msgc <- raftpb.Message{Type: raftpb.MsgApp}
-	if _, err := rt.rec.Wait(1); err != nil {
-		t.Fatal(err)
-	}
+	_, err := rt.rec.Wait(1)
+	require.NoError(t, err)
 
 	p.stop()
 
-	if p.followerStats.Counts.Fail != 1 {
-		t.Errorf("fail = %d, want 1", p.followerStats.Counts.Fail)
-	}
+	assert.Equalf(t, uint64(1), p.followerStats.Counts.Fail, "fail = %d, want 1", p.followerStats.Counts.Fail)
 }
 
 func TestPipelinePost(t *testing.T) {
@@ -128,42 +123,29 @@ func TestPipelinePost(t *testing.T) {
 	picker := mustNewURLPicker(t, []string{"http://localhost:2380"})
 	tp := &Transport{ClusterID: types.ID(1), pipelineRt: tr}
 	p := startTestPipeline(t, tp, picker)
-	if err := p.post([]byte("some data")); err != nil {
-		t.Fatalf("unexpected post error: %v", err)
-	}
+	err := p.post([]byte("some data"))
+	require.NoErrorf(t, err, "unexpected post error: %v", err)
 	act, err := tr.rec.Wait(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	p.stop()
 
 	req := act[0].Params[0].(*http.Request)
 
-	if g := req.Method; g != "POST" {
-		t.Errorf("method = %s, want %s", g, "POST")
-	}
-	if g := req.URL.String(); g != "http://localhost:2380/raft" {
-		t.Errorf("url = %s, want %s", g, "http://localhost:2380/raft")
-	}
-	if g := req.Header.Get("Content-Type"); g != "application/protobuf" {
-		t.Errorf("content type = %s, want %s", g, "application/protobuf")
-	}
-	if g := req.Header.Get("X-Server-Version"); g != version.Version {
-		t.Errorf("version = %s, want %s", g, version.Version)
-	}
-	if g := req.Header.Get("X-Min-Cluster-Version"); g != version.MinClusterVersion {
-		t.Errorf("min version = %s, want %s", g, version.MinClusterVersion)
-	}
-	if g := req.Header.Get("X-Etcd-Cluster-ID"); g != "1" {
-		t.Errorf("cluster id = %s, want %s", g, "1")
-	}
+	g := req.Method
+	assert.Equalf(t, "POST", g, "method = %s, want %s", g, "POST")
+	g = req.URL.String()
+	assert.Equalf(t, "http://localhost:2380/raft", g, "url = %s, want %s", g, "http://localhost:2380/raft")
+	g = req.Header.Get("Content-Type")
+	assert.Equalf(t, "application/protobuf", g, "content type = %s, want %s", g, "application/protobuf")
+	g = req.Header.Get("X-Server-Version")
+	assert.Equalf(t, g, version.Version, "version = %s, want %s", g, version.Version)
+	g = req.Header.Get("X-Min-Cluster-Version")
+	assert.Equalf(t, g, version.MinClusterVersion, "min version = %s, want %s", g, version.MinClusterVersion)
+	g = req.Header.Get("X-Etcd-Cluster-ID")
+	assert.Equalf(t, "1", g, "cluster id = %s, want %s", g, "1")
 	b, err := io.ReadAll(req.Body)
-	if err != nil {
-		t.Fatalf("unexpected ReadAll error: %v", err)
-	}
-	if string(b) != "some data" {
-		t.Errorf("body = %s, want %s", b, "some data")
-	}
+	require.NoErrorf(t, err, "unexpected ReadAll error: %v", err)
+	assert.Equalf(t, "some data", string(b), "body = %s, want %s", b, "some data")
 }
 
 func TestPipelinePostBad(t *testing.T) {
@@ -185,9 +167,7 @@ func TestPipelinePostBad(t *testing.T) {
 		err := p.post([]byte("some data"))
 		p.stop()
 
-		if err == nil {
-			t.Errorf("#%d: err = nil, want not nil", i)
-		}
+		assert.Errorf(t, err, "#%d: err = nil, want not nil", i)
 	}
 }
 

@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -44,12 +46,8 @@ func TestRevision(t *testing.T) {
 	fc.Advance(revInterval)
 	rg.Wait(1)
 	a, err := compactable.Wait(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	require.NoError(t, err)
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 
 	// skip the same revision
 	rg.SetRev(99) // will be 100
@@ -61,12 +59,8 @@ func TestRevision(t *testing.T) {
 	fc.Advance(revInterval)
 	rg.Wait(1)
 	a, err = compactable.Wait(1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
-	}
+	require.NoError(t, err)
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision}), "compact request = %v, want %v", a[0].Params[0], &pb.CompactionRequest{Revision: expectedRevision})
 }
 
 func TestRevisionPause(t *testing.T) {
@@ -98,11 +92,7 @@ func TestRevisionPause(t *testing.T) {
 	fc.Advance(revInterval)
 	rg.Wait(1)
 	a, err := compactable.Wait(1)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	wreq := &pb.CompactionRequest{Revision: int64(90)}
-	if !reflect.DeepEqual(a[0].Params[0], wreq) {
-		t.Errorf("compact request = %v, want %v", a[0].Params[0], wreq.Revision)
-	}
+	assert.Truef(t, reflect.DeepEqual(a[0].Params[0], wreq), "compact request = %v, want %v", a[0].Params[0], wreq.Revision)
 }

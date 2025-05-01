@@ -28,6 +28,8 @@ import (
 	"time"
 
 	"github.com/jonboulle/clockwork"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -40,12 +42,8 @@ const (
 
 func TestNewProxyFuncUnset(t *testing.T) {
 	pf, err := newProxyFunc(zaptest.NewLogger(t), "")
-	if pf != nil {
-		t.Fatal("unexpected non-nil proxyFunc")
-	}
-	if err != nil {
-		t.Fatalf("unexpected non-nil err: %v", err)
-	}
+	require.Nilf(t, pf, "unexpected non-nil proxyFunc")
+	require.NoErrorf(t, err, "unexpected non-nil err: %v", err)
 }
 
 func TestNewProxyFuncBad(t *testing.T) {
@@ -55,12 +53,8 @@ func TestNewProxyFuncBad(t *testing.T) {
 	}
 	for i, in := range tests {
 		pf, err := newProxyFunc(zaptest.NewLogger(t), in)
-		if pf != nil {
-			t.Errorf("#%d: unexpected non-nil proxyFunc", i)
-		}
-		if err == nil {
-			t.Errorf("#%d: unexpected nil err", i)
-		}
+		assert.Nilf(t, pf, "#%d: unexpected non-nil proxyFunc", i)
+		assert.Errorf(t, err, "#%d: unexpected nil err", i)
 	}
 }
 
@@ -80,12 +74,8 @@ func TestNewProxyFunc(t *testing.T) {
 			continue
 		}
 		g, err := pf(&http.Request{})
-		if err != nil {
-			t.Errorf("%s: unexpected non-nil err: %v", in, err)
-		}
-		if g.String() != w {
-			t.Errorf("%s: proxyURL=%q, want %q", in, g, w)
-		}
+		require.NoErrorf(t, err, "%s: unexpected non-nil err: %v", in, err)
+		assert.Equalf(t, g.String(), w, "%s: proxyURL=%q, want %q", in, g, w)
 	}
 }
 
@@ -211,18 +201,10 @@ func TestCheckCluster(t *testing.T) {
 				}
 			}()
 			ns, size, index, err := d.checkCluster()
-			if !errors.Is(err, tt.werr) {
-				t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-			}
-			if reflect.DeepEqual(ns, tt.nodes) {
-				t.Errorf("#%d: nodes = %v, want %v", i, ns, tt.nodes)
-			}
-			if size != uint64(tt.wsize) {
-				t.Errorf("#%d: size = %v, want %d", i, size, tt.wsize)
-			}
-			if index != tt.index {
-				t.Errorf("#%d: index = %v, want %d", i, index, tt.index)
-			}
+			require.ErrorIsf(t, err, tt.werr, "#%d: err = %v, want %v", i, err, tt.werr)
+			assert.Falsef(t, reflect.DeepEqual(ns, tt.nodes), "#%d: nodes = %v, want %v", i, ns, tt.nodes)
+			assert.Equalf(t, size, uint64(tt.wsize), "#%d: size = %v, want %d", i, size, tt.wsize)
+			assert.Equalf(t, index, tt.index, "#%d: index = %v, want %d", i, index, tt.index)
 		}
 	}
 }
@@ -298,12 +280,8 @@ func TestWaitNodes(t *testing.T) {
 				}
 			}()
 			g, err := d.waitNodes(tt.nodes, uint64(3), 0) // we do not care about index in this test
-			if err != nil {
-				t.Errorf("#%d: err = %v, want %v", i, err, nil)
-			}
-			if !reflect.DeepEqual(g, all) {
-				t.Errorf("#%d: all = %v, want %v", i, g, all)
-			}
+			require.NoErrorf(t, err, "#%d: err = %v, want %v", i, err, nil)
+			assert.Truef(t, reflect.DeepEqual(g, all), "#%d: all = %v, want %v", i, g, all)
 		}
 	}
 }
@@ -335,9 +313,8 @@ func TestCreateSelf(t *testing.T) {
 
 	for i, tt := range tests {
 		d := newTestDiscovery(t, "1000", 1, tt.c)
-		if err := d.createSelf(""); !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: err = %v, want %v", i, err, nil)
-		}
+		err := d.createSelf("")
+		assert.ErrorIsf(t, err, tt.werr, "#%d: err = %v, want %v", i, err, nil)
 	}
 }
 
@@ -382,12 +359,8 @@ func TestNodesToCluster(t *testing.T) {
 
 	for i, tt := range tests {
 		cluster, err := nodesToCluster(tt.nodes, tt.size)
-		if !errors.Is(err, tt.werr) {
-			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
-		}
-		if !reflect.DeepEqual(cluster, tt.wcluster) {
-			t.Errorf("#%d: cluster = %v, want %v", i, cluster, tt.wcluster)
-		}
+		require.ErrorIsf(t, err, tt.werr, "#%d: err = %v, want %v", i, err, tt.werr)
+		assert.Truef(t, reflect.DeepEqual(cluster, tt.wcluster), "#%d: cluster = %v, want %v", i, cluster, tt.wcluster)
 	}
 }
 
@@ -408,16 +381,12 @@ func TestSortableNodes(t *testing.T) {
 	for _, n := range sns.Nodes {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if !sort.IntsAreSorted(cis) {
-		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
-	}
+	assert.Truef(t, sort.IntsAreSorted(cis), "isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 	cis = make([]int, 0)
 	for _, n := range ns {
 		cis = append(cis, int(n.CreatedIndex))
 	}
-	if !sort.IntsAreSorted(cis) {
-		t.Errorf("isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
-	}
+	assert.Truef(t, sort.IntsAreSorted(cis), "isSorted = %v, want %v", sort.IntsAreSorted(cis), true)
 }
 
 func TestRetryFailure(t *testing.T) {
@@ -434,9 +403,8 @@ func TestRetryFailure(t *testing.T) {
 			fc.Advance(time.Second * (0x1 << i))
 		}
 	}()
-	if _, _, _, err := d.checkCluster(); !errors.Is(err, ErrTooManyRetries) {
-		t.Errorf("err = %v, want %v", err, ErrTooManyRetries)
-	}
+	_, _, _, err := d.checkCluster()
+	assert.ErrorIsf(t, err, ErrTooManyRetries, "err = %v, want %v", err, ErrTooManyRetries)
 }
 
 type clientWithResp struct {
