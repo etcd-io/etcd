@@ -399,7 +399,10 @@ function release_pass {
 }
 
 function release_tests_pass {
-  	VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  	if [ -z "${VERSION:-}" ]; then
+    	VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
+     	 awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  	fi
 
   	if [ -n "${CI:-}" ]; then
 		git config user.email "prow@etcd.io"
@@ -419,8 +422,8 @@ EOF
     	git remote add origin https://github.com/etcd-io/etcd.git
   	fi
 
-	DRY_RUN=true run "./scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
-	VERSION="${VERSION}" run "./scripts/test_images.sh"
+	DRY_RUN=true "./scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
+	VERSION="${VERSION}" "./scripts/test_images.sh"
 }
 
 function shellcheck_pass {
