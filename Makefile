@@ -166,6 +166,10 @@ test-e2e:
 test-e2e-release:
 	PASSES="build release e2e" ./test $(GO_TEST_FLAGS)
 
+.PHONY: test-release
+test-release:
+	PASSES="release_tests" VERSION="3.4.99" CI=$$CI ./scripts/test.sh $(GO_TEST_FLAGS)
+
 docker-test:
 	$(info GO_VERSION: $(GO_VERSION))
 	$(info ETCD_VERSION: $(ETCD_VERSION))
