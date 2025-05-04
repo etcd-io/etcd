@@ -418,36 +418,10 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	// the hook being called during the initialization process.
 	srv.be.SetTxPostLockInsideApplyHook(srv.getTxPostLockInsideApplyHook())
 
-	// TODO: move transport initialization near the definition of remote
-	tr := &rafthttp.Transport{
-		Logger:      cfg.Logger,
-		TLSInfo:     cfg.PeerTLSInfo,
-		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.cluster.nodeID,
-		URLs:        cfg.PeerURLs,
-		ClusterID:   b.cluster.cl.ID(),
-		Raft:        srv,
-		Snapshotter: b.ss,
-		ServerStats: sstats,
-		LeaderStats: lstats,
-		ErrorC:      srv.errorc,
-	}
-	if err = tr.Start(); err != nil {
-		return nil, err
-	}
-	// add all remotes into transport
-	for _, m := range b.cluster.remotes {
-		if m.ID != b.cluster.nodeID {
-			tr.AddRemote(m.ID, m.PeerURLs)
-		}
-	}
-	for _, m := range b.cluster.cl.Members() {
-		if m.ID != b.cluster.nodeID {
-			tr.AddPeer(m.ID, m.PeerURLs)
-		}
-	}
+	tr := b.raftTransport
+	tr.Raft = srv
 	srv.r.transport = tr
-
+	tr.ErrorC = srv.errorc
 	return srv, nil
 }
 
