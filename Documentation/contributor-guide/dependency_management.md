@@ -147,11 +147,11 @@ References:
 
 [bbolt](https://github.com/etcd-io/bbolt) and [raft](https://github.com/etcd-io/raft) are two core dependencies of etcd.
 
-Both etcd 3.4.x and 3.5.x depend on bbolt 1.3.x, and etcd 3.6.x (`main` branch) depends on bbolt 1.4.x.
+Both etcd 3.4.x and 3.5.x depend on bbolt 1.3.x, and etcd 3.6.x depends on bbolt 1.4.x.
 
 raft is included in the etcd repository for release-3.4 and release-3.5 branches, so etcd 3.4.x and 3.5.x do not depend on any
-external raft module. We moved raft into [a separate repository](https://github.com/etcd-io/raft) starting from 3.6 (`main` branch), and the first raft
-release will be v3.6.0, so etcd 3.6.x will depend on raft 3.6.x.
+external raft module. We moved raft into [a separate repository](https://github.com/etcd-io/raft) starting from 3.6, and the first raft
+release is v3.6.0, so etcd 3.6.0 depends on raft v3.6.0.
 
 Please see the table below:
 
