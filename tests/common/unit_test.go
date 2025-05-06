@@ -37,6 +37,10 @@ func WithAuth(userName, password string) config.ClientOption {
 	return func(any) {}
 }
 
+func WithAuthToken(token string) config.ClientOption {
+	return func(any) {}
+}
+
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return func(any) {}
 }
