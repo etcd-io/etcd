@@ -119,13 +119,11 @@ func connect(endpoint string, ids identity.Provider, baseTime time.Time) *client
 func closeAfter(ctx context.Context, t time.Duration) <-chan struct{} {
 	out := make(chan struct{})
 	go func() {
-		for {
-			select {
-			case <-time.After(t):
-			case <-ctx.Done():
-			}
-			close(out)
+		select {
+		case <-time.After(t):
+		case <-ctx.Done():
 		}
+		close(out)
 	}()
 	return out
 }
