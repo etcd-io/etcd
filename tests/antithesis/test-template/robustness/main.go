@@ -19,18 +19,25 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/antithesishq/antithesis-sdk-go/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	robustnessrand "go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/scenarios"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
+	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 var profile = traffic.Profile{
@@ -80,6 +87,14 @@ func testRobustness(ctx context.Context, baseTime time.Time, duration time.Durat
 	wg.Wait()
 	fmt.Println("Completed robustness traffic generation")
 	assert.Reachable("Completed robustness traffic generation", nil)
+}
+
+func validateReport(ctx context.Context, lg *zap.Logger, c *e2e.EtcdProcessCluster, s scenarios.TestScenario, t *testing.T) {
+	r := report.TestReport{Logger: lg, Cluster: c}
+	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
+	require.NoError(t, err)
+	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
+	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute).Visualize
 }
 
 func connect(endpoint string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {
