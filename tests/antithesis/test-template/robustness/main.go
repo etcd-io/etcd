@@ -18,12 +18,12 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/antithesishq/antithesis-sdk-go/assert"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/robustness/client"
@@ -31,6 +31,7 @@ import (
 	robustnessrand "go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
+	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 var profile = traffic.Profile{
@@ -49,6 +50,30 @@ func main() {
 }
 
 func testRobustness(ctx context.Context, baseTime time.Time, duration time.Duration) {
+	lg, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	reports := runTraffic(ctx, baseTime, duration)
+	lg.Info("Completed robustness traffic generation")
+	assert.Reachable("Completed robustness traffic generation", nil)
+
+	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, nil, 5*time.Minute)
+	err = result.Linearization.Visualize(lg, "history.html")
+	if err != nil {
+		lg.Error("Failed to save visualization", zap.Error(result.Error))
+	}
+	if result.Error != nil {
+		lg.Error("Robustness validation failed", zap.Error(result.Error))
+		assert.Unreachable("Robustness validation failed", map[string]any{"error": result.Error})
+		return
+	}
+	lg.Info("Completed robustness validation")
+	assert.Reachable("Completed robustness validation", nil)
+}
+
+func runTraffic(ctx context.Context, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	finish := closeAfter(ctx, duration)
 	ids := identity.NewIDProvider()
@@ -78,8 +103,7 @@ func testRobustness(ctx context.Context, baseTime time.Time, duration time.Durat
 		}(c)
 	}
 	wg.Wait()
-	fmt.Println("Completed robustness traffic generation")
-	assert.Reachable("Completed robustness traffic generation", nil)
+	return reports
 }
 
 func connect(endpoint string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {

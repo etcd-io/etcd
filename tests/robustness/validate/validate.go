@@ -18,44 +18,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Results {
+func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Result {
 	err := checkValidationAssumptions(reports, persistedRequests)
-	require.NoErrorf(t, err, "Broken validation assumptions")
+	if err != nil {
+		return Result{Error: err}
+	}
 	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
 	// We are passing in the original reports and linearizableOperations with modified return time.
 	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
 	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
-	patchedLinearizableOperations := patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
-
-	results := validateLinearizableOperationsAndVisualize(lg, patchedLinearizableOperations, timeout)
-	if results.Linearizable != porcupine.Ok {
-		t.Error("Failed linearization, skipping further validation")
-		return results
+	if persistedRequests != nil {
+		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
 
-	// TODO: Use requests from linearization for replay.
-	replay := model.NewReplay(persistedRequests)
+	linearization := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	if linearization.Linearizable != porcupine.Ok {
+		return Result{Error: fmt.Errorf("Failed linearization"), Linearization: linearization}
+	}
+	if persistedRequests != nil {
+		// TODO: Use requests from linearization for replay.
+		replay := model.NewReplay(persistedRequests)
 
-	err = validateWatch(lg, cfg, reports, replay)
-	if err != nil {
-		t.Errorf("Failed validating watch history, err: %s", err)
+		err = validateWatch(lg, cfg, reports, replay)
+		if err != nil {
+			return Result{Error: fmt.Errorf("Failed validating watch history: %w", err), Linearization: linearization}
+		}
+		err = validateSerializableOperations(lg, serializableOperations, replay)
+		if err != nil {
+			return Result{Error: fmt.Errorf("Failed validating serializable operations: %w", err), Linearization: linearization}
+		}
 	}
-	err = validateSerializableOperations(lg, serializableOperations, replay)
-	if err != nil {
-		t.Errorf("Failed validating serializable operations, err: %s", err)
-	}
-	return results
+
+	return Result{Linearization: linearization}
 }
 
 type Config struct {
@@ -91,9 +94,11 @@ func checkValidationAssumptions(reports []report.ClientReport, persistedRequests
 		return err
 	}
 
-	err = validatePersistedRequestMatchClientRequests(reports, persistedRequests)
-	if err != nil {
-		return err
+	if persistedRequests != nil {
+		err = validatePersistedRequestMatchClientRequests(reports, persistedRequests)
+		if err != nil {
+			return err
+		}
 	}
 	err = validateNonConcurrentClientRequests(reports)
 	if err != nil {

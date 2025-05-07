@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anishathalye/porcupine"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -45,12 +46,131 @@ func TestDataReports(t *testing.T) {
 
 			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
 			require.NoError(t, err)
-			visualize := ValidateAndReturnVisualize(t, zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute).Visualize
+			result := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
 
-			err = visualize(filepath.Join(path, "history.html"))
+			err = result.Linearization.Visualize(lg, filepath.Join(path, "history.html"))
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestValidateAndReturnVisualize(t *testing.T) {
+	tcs := []struct {
+		name              string
+		reports           []report.ClientReport
+		persistedRequests []model.EtcdRequest
+		config            Config
+		expectError       string
+	}{
+		{
+			name:        "Empty",
+			expectError: "non empty database at start or first write didn't succeed, required by model implementation",
+		},
+		{
+			name: "Success with no persisted requests",
+			reports: []report.ClientReport{
+				{
+					KeyValue: []porcupine.Operation{
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     100,
+							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Return:   200,
+						},
+					},
+				},
+			},
+			expectError: "",
+		},
+		{
+			name: "Failure with no persisted requests",
+			reports: []report.ClientReport{
+				{
+					KeyValue: []porcupine.Operation{
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     100,
+							// First write should return revision 2
+							Output: putResponse(3, model.EtcdOperationResult{}),
+							Return: 200,
+						},
+					},
+				},
+			},
+			expectError: "non empty database at start or first write didn't succeed, required by model implementation",
+		},
+		{
+			name: "Success",
+			reports: []report.ClientReport{
+				{
+					KeyValue: []porcupine.Operation{
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     100,
+							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Return:   200,
+						},
+					},
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{Key: "key"},
+							Responses: []model.WatchResponse{
+								{Events: []model.WatchEvent{watchEvent(2, true, model.PutOperation, "key", "value")}},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
+			expectError:       "",
+		},
+		{
+			name: "Failure of watch",
+			reports: []report.ClientReport{
+				{
+					KeyValue: []porcupine.Operation{
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     100,
+							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Return:   200,
+						},
+					},
+					Watch: []model.WatchOperation{
+						{
+							Request: model.WatchRequest{Key: "key"},
+							Responses: []model.WatchResponse{
+								{Events: []model.WatchEvent{watchEvent(2, true, model.PutOperation, "bad-key", "value")}},
+							},
+						},
+					},
+				},
+			},
+			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
+			expectError:       "Failed validating watch history",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+			result := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
+			if tc.expectError != "" {
+				require.ErrorContains(t, result.Error, tc.expectError)
+			} else {
+				require.NoError(t, result.Error)
+			}
+			err := result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
+			require.NoError(t, err)
+		})
+	}
+}
+
+func watchEvent(rev int64, isCreate bool, eventType model.OperationType, key, value string) model.WatchEvent {
+	return model.WatchEvent{PersistedEvent: model.PersistedEvent{Revision: rev, IsCreate: isCreate, Event: model.Event{Type: eventType, Key: key, Value: model.ToValueOrHash(value)}}}
 }
 
 func TestValidateWatch(t *testing.T) {
