@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tools/rw-heatmaps/v3
 
 go 1.23.0
 
-toolchain go1.23.8
+toolchain go1.23.9
 
 require (
 	github.com/spf13/cobra v1.8.1
