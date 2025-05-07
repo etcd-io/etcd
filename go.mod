@@ -2,7 +2,7 @@ module go.etcd.io/etcd
 
 go 1.23.0
 
-toolchain go1.23.8
+toolchain go1.23.9
 
 require (
 	github.com/bgentry/speakeasy v0.1.0
@@ -51,7 +51,6 @@ require (
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/coreos/license-bill-of-materials v0.0.0-20190913234955-13baff47494e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
