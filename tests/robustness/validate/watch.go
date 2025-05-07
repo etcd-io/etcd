@@ -35,6 +35,7 @@ var (
 	errBrokePrevKV       = errors.New("incorrect event prevValue")
 	errBrokeIsCreate     = errors.New("incorrect event IsCreate")
 	errBrokeFilter       = errors.New("event not matching watch filter")
+	errBrokeLinearizable = errors.New("broke linearizable property: watch events don't match linearization order")
 )
 
 func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) error {
