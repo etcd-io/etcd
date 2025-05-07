@@ -8,14 +8,14 @@ source ./scripts/test_lib.sh
 
 function startContainer {
     # run docker in the background
-    docker run -d --rm --name "${RUN_NAME}" "${IMAGE}"
+    docker run -d --rm --name "${RUN_NAME}" "${TEST_IMAGE}"
 
     # wait for etcd daemon to bootstrap
     sleep 5
 }
 
 function runVersionCheck {
-    Out=$(docker run --rm "${IMAGE}" "${@}")
+    Out=$(docker run --rm "${TEST_IMAGE}" "${@}")
     foundVersion=$(echo "$Out" | head -1 | rev  | cut -d" "  -f 1 | rev )
     if [[ "${foundVersion}" != "${VERSION}" ]]; then
         echo "error: Invalid Version. Got $foundVersion, expected $VERSION. Error: $Out"
@@ -50,15 +50,15 @@ else
     echo "Terminating test, VERSION not supplied"
     exit 1
 fi
-IMAGE=${IMAGE:-"${REPOSITARY}:${TAG}"}
+TEST_IMAGE=${TEST_IMAGE:-"${REPOSITARY}:${TAG}"}
 
 # ETCD related values
 RUN_NAME="test_etcd"
 KEY="foo"
 VALUE="bar"
 
-if [[ "$(docker images -q "${IMAGE}" 2> /dev/null)" == "" ]]; then
-    echo "${IMAGE} not present locally"
+if [[ "$(docker images -q "${TEST_IMAGE}" 2> /dev/null)" == "" ]]; then
+    echo "${TEST_IMAGE} not present locally"
     exit 1
 fi
 
