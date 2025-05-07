@@ -32,7 +32,7 @@ type TestReport struct {
 	Logger    *zap.Logger
 	Cluster   *e2e.EtcdProcessCluster
 	Client    []ClientReport
-	Visualize func(path string) error
+	Visualize func(lg *zap.Logger, path string) error
 }
 
 func testResultsDirectory(t *testing.T) string {
@@ -69,7 +69,7 @@ func (r *TestReport) Report(t *testing.T, force bool) {
 		persistClientReports(t, r.Logger, path, r.Client)
 	}
 	if r.Visualize != nil {
-		err := r.Visualize(filepath.Join(path, "history.html"))
+		err := r.Visualize(r.Logger, filepath.Join(path, "history.html"))
 		if err != nil {
 			t.Error(err)
 		}
