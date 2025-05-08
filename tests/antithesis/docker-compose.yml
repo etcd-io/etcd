@@ -1,5 +1,18 @@
 ---
 services:
+  # This is needed for creating non-root data folders on host.
+  # By default, if the folders don't exist when mounting, compose creates them with root as owner.
+  # With root owner, accessing the WAL files from local tests will fail due to an unauthorized access error.
+  init:
+    image: 'ubuntu:latest'
+    user: root
+    group_add:
+      - '${GROUP_ID:-root}'
+    volumes:
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+    command: chown -R ${USER_ID:-root}:${GROUP_ID:-root} /var/etcddata0 /var/etcddata1 /var/etcddata2
 
   etcd0:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -14,8 +27,15 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+      ETCD_DATA_DIR: "/var/etcd/data"
+    user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    depends_on:
+      init:
+        condition: service_completed_successfully
     ports:
       - 12379:2379
+    volumes:
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcd/data
 
   etcd1:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -30,8 +50,15 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+      ETCD_DATA_DIR: "/var/etcd/data"
+    user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    depends_on:
+      init:
+        condition: service_completed_successfully
     ports:
       - 22379:2379
+    volumes:
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcd/data
 
   etcd2:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -46,10 +73,29 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+      ETCD_DATA_DIR: "/var/etcd/data"
+    user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    depends_on:
+      init:
+        condition: service_completed_successfully
     ports:
       - 32379:2379
+    volumes:
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcd/data
 
   client:
     image: 'etcd-client:latest'
     container_name: client
     entrypoint: ["/opt/antithesis/entrypoint/entrypoint"]
+    user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    depends_on:
+      etcd0:
+        condition: service_started
+      etcd1:
+        condition: service_started
+      etcd2:
+        condition: service_started
+    volumes:
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
