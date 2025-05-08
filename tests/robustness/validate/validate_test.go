@@ -63,19 +63,15 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 		expectError       string
 	}{
 		{
-			name:        "Empty",
-			expectError: "non empty database at start or first write didn't succeed, required by model implementation",
-		},
-		{
 			name: "Success with no persisted requests",
 			reports: []report.ClientReport{
 				{
 					KeyValue: []porcupine.Operation{
 						{
 							ClientId: 0,
-							Input:    putRequest("key", "value"),
+							Input:    getRequest("key"),
 							Call:     100,
-							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Output:   getResponse(1),
 							Return:   200,
 						},
 					},
@@ -84,22 +80,22 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 			expectError: "",
 		},
 		{
-			name: "Failure with no persisted requests",
+			name: "Failure with not empty database",
 			reports: []report.ClientReport{
 				{
 					KeyValue: []porcupine.Operation{
 						{
 							ClientId: 0,
-							Input:    putRequest("key", "value"),
+							Input:    getRequest("key"),
 							Call:     100,
-							// First write should return revision 2
-							Output: putResponse(3, model.EtcdOperationResult{}),
+							// Empty database should have revision 1
+							Output: getResponse(2),
 							Return: 200,
 						},
 					},
 				},
 			},
-			expectError: "non empty database at start or first write didn't succeed, required by model implementation",
+			expectError: "non empty database at start, required by model used for linearizability validation",
 		},
 		{
 			name: "Success",
@@ -108,10 +104,17 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 					KeyValue: []porcupine.Operation{
 						{
 							ClientId: 0,
-							Input:    putRequest("key", "value"),
+							Input:    getRequest("key"),
 							Call:     100,
-							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Output:   getResponse(1),
 							Return:   200,
+						},
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     300,
+							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Return:   400,
 						},
 					},
 					Watch: []model.WatchOperation{
@@ -134,10 +137,17 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 					KeyValue: []porcupine.Operation{
 						{
 							ClientId: 0,
-							Input:    putRequest("key", "value"),
+							Input:    getRequest("key"),
 							Call:     100,
-							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Output:   getResponse(1),
 							Return:   200,
+						},
+						{
+							ClientId: 0,
+							Input:    putRequest("key", "value"),
+							Call:     300,
+							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Return:   400,
 						},
 					},
 					Watch: []model.WatchOperation{
@@ -2033,6 +2043,21 @@ func deletePersistedEvent(key string, rev int64) model.PersistedEvent {
 		},
 		Revision: rev,
 	}
+}
+
+func getRequest(key string) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type: model.Range,
+		Range: &model.RangeRequest{
+			RangeOptions: model.RangeOptions{
+				Start: "key",
+			},
+		},
+	}
+}
+
+func getResponse(rev int64) model.MaybeEtcdResponse {
+	return model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Revision: rev, Range: &model.RangeResponse{KVs: []model.KeyValue{}}}}
 }
 
 func putRequest(key, value string) model.EtcdRequest {

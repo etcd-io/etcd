@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 var (
@@ -59,16 +60,13 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIDStorage()
-	reports := []report.ClientReport{}
 	// Use the highest MaximalQPS of all traffic profiles as burst otherwise actual traffic may be accidentally limited
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 
-	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	r, err := CheckEmptyDatabaseAtStart(ctx, lg, endpoints, ids, baseTime)
 	require.NoError(t, err)
-	defer cc.Close()
-	// Ensure that first operation succeeds
-	_, err = cc.Put(ctx, "start", "true")
-	require.NoErrorf(t, err, "First operation failed, validation requires first operation to succeed")
+	reports := []report.ClientReport{r}
+
 	wg := sync.WaitGroup{}
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := make(chan struct{})
@@ -124,6 +122,9 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	time.Sleep(time.Second)
 	// Ensure that last operation succeeds
+	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	require.NoError(t, err)
+	defer cc.Close()
 	_, err = cc.Put(ctx, "tombstone", "true")
 	require.NoErrorf(t, err, "Last operation failed, validation requires last operation to succeed")
 	reports = append(reports, cc.Report())
@@ -201,4 +202,26 @@ type Traffic interface {
 	RunTrafficLoop(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{})
 	RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{})
 	ExpectUniqueRevision() bool
+}
+
+func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, ids identity.Provider, baseTime time.Time) (report.ClientReport, error) {
+	c, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	if err != nil {
+		return report.ClientReport{}, err
+	}
+	defer c.Close()
+	for {
+		rCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := c.Get(rCtx, "key")
+		cancel()
+		if err != nil {
+			lg.Warn("Failed to check if database empty at start, retrying", zap.Error(err))
+			continue
+		}
+		if resp.Header.Revision != 1 {
+			return report.ClientReport{}, validate.ErrNotEmptyDatabase
+		}
+		break
+	}
+	return c.Report(), nil
 }

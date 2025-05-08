@@ -74,7 +74,7 @@ And it will stay running indefinitely.
 ### 4. Running the tests
 
 ```bash
-docker-compose exec client /opt/antithesis/test/v1/main/robustness`
+docker-compose exec client /opt/antithesis/test/v1/robustness/singleton_driver_main`
 ```
 
 Alternatively, with the etcd cluster from step 3, to run the tests locally without rebuilding the client image:
