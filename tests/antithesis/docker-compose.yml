@@ -14,6 +14,8 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+    ports:
+      - 12379:2379
 
   etcd1:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -28,6 +30,8 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+    ports:
+      - 22379:2379
 
   etcd2:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -42,6 +46,8 @@ services:
       ETCD_INITIAL_CLUSTER_TOKEN: "etcd-cluster-1"
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380,etcd1=http://etcd1:2380,etcd2=http://etcd2:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
+    ports:
+      - 32379:2379
 
   client:
     image: 'etcd-client:latest'

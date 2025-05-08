@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"sync"
 	"time"
@@ -42,19 +43,36 @@ var profile = traffic.Profile{
 	MaxNonUniqueRequestConcurrency: 3,
 }
 
+const (
+	defaultetcd0 = "etcd0:2379"
+	defaultetcd1 = "etcd1:2379"
+	defaultetcd2 = "etcd0:2379"
+
+	localetcd0 = "127.0.0.1:12379"
+	localetcd1 = "127.0.0.1:22379"
+	localetcd2 = "127.0.0.1:32379"
+)
+
 func main() {
+	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
+	flag.Parse()
+	hosts := []string{defaultetcd0, defaultetcd1, defaultetcd2}
+	if *local {
+		hosts = []string{localetcd0, localetcd1, localetcd2}
+	}
+
 	ctx := context.Background()
 	baseTime := time.Now()
 	duration := time.Duration(robustnessrand.RandRange(5, 60) * int64(time.Second))
-	testRobustness(ctx, baseTime, duration)
+	testRobustness(ctx, hosts, baseTime, duration)
 }
 
-func testRobustness(ctx context.Context, baseTime time.Time, duration time.Duration) {
+func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, duration time.Duration) {
 	lg, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
-	reports := runTraffic(ctx, baseTime, duration)
+	reports := runTraffic(ctx, hosts, baseTime, duration)
 	lg.Info("Completed robustness traffic generation")
 	assert.Reachable("Completed robustness traffic generation", nil)
 
@@ -73,13 +91,12 @@ func testRobustness(ctx context.Context, baseTime time.Time, duration time.Durat
 	assert.Reachable("Completed robustness validation", nil)
 }
 
-func runTraffic(ctx context.Context, baseTime time.Time, duration time.Duration) []report.ClientReport {
+func runTraffic(ctx context.Context, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	finish := closeAfter(ctx, duration)
 	ids := identity.NewIDProvider()
 	storage := identity.NewLeaseIDStorage()
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
-	hosts := []string{"etcd0:2379", "etcd1:2379", "etcd2:2379"}
 
 	reports := []report.ClientReport{}
 	var mux sync.Mutex
