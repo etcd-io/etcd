@@ -105,7 +105,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
 	r.Visualize = result.Linearization.Visualize
 	if result.Error != nil {
-		t.Error(err)
+		t.Error(result.Error)
 	}
 
 	panicked = false

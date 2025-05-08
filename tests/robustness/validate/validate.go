@@ -16,6 +16,7 @@ package validate
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -26,6 +27,8 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
+
+var ErrNotEmptyDatabase = errors.New("non empty database at start, required by model used for linearizability validation")
 
 func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Result {
 	err := checkValidationAssumptions(reports, persistedRequests)
@@ -108,16 +111,19 @@ func checkValidationAssumptions(reports []report.ClientReport, persistedRequests
 }
 
 func validateEmptyDatabaseAtStart(reports []report.ClientReport) error {
+	if len(reports) == 0 {
+		return nil
+	}
 	for _, r := range reports {
 		for _, op := range r.KeyValue {
 			request := op.Input.(model.EtcdRequest)
 			response := op.Output.(model.MaybeEtcdResponse)
-			if response.Revision == 2 && !request.IsRead() {
+			if response.Revision == 1 && request.IsRead() {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("non empty database at start or first write didn't succeed, required by model implementation")
+	return ErrNotEmptyDatabase
 }
 
 func validatePersistedRequestMatchClientRequests(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {

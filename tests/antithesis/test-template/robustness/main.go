@@ -72,9 +72,9 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 	if err != nil {
 		panic(err)
 	}
-	reports := runTraffic(ctx, hosts, baseTime, duration)
-	lg.Info("Completed robustness traffic generation")
-	assert.Reachable("Completed robustness traffic generation", nil)
+	lg.Info("Start traffic generation")
+	reports := runTraffic(ctx, lg, hosts, baseTime, duration)
+	lg.Info("Completed traffic generation")
 
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, nil, 5*time.Minute)
@@ -91,18 +91,24 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 	assert.Reachable("Completed robustness validation", nil)
 }
 
-func runTraffic(ctx context.Context, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
+func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	finish := closeAfter(ctx, duration)
 	ids := identity.NewIDProvider()
 	storage := identity.NewLeaseIDStorage()
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 
-	reports := []report.ClientReport{}
+	r, err := traffic.CheckEmptyDatabaseAtStart(ctx, lg, hosts, ids, baseTime)
+	if err != nil {
+		lg.Fatal("Failed empty database at start check", zap.Error(err))
+	}
+
+	reports := []report.ClientReport{r}
 	var mux sync.Mutex
 	var wg sync.WaitGroup
 	for i := 0; i < profile.ClientCount; i++ {
-		c := connect(hosts[i%len(hosts)], ids, baseTime)
+		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
+		defer c.Close()
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
@@ -123,11 +129,11 @@ func runTraffic(ctx context.Context, hosts []string, baseTime time.Time, duratio
 	return reports
 }
 
-func connect(endpoint string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {
-	cli, err := client.NewRecordingClient([]string{endpoint}, ids, baseTime)
+func connect(endpoints []string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {
+	cli, err := client.NewRecordingClient(endpoints, ids, baseTime)
 	if err != nil {
 		// Antithesis Assertion: client should always be able to connect to an etcd host
-		assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"host": endpoint, "error": err})
+		assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"endpoints": endpoints, "error": err})
 		os.Exit(1)
 	}
 	return cli
