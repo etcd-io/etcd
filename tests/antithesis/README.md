@@ -71,6 +71,18 @@ client  | Client [entrypoint]: cluster is healthy!
 
 And it will stay running indefinitely.
 
+### 4. Running the tests
+
+```bash
+docker-compose exec client /opt/antithesis/test/v1/main/robustness`
+```
+
+Alternatively, with the etcd cluster from step 3, to run the tests locally without rebuilding the client image:
+
+```bash
+go run ./test-template/robustness/main.go --local
+```
+
 ## Troubleshooting
 
 - **Image Pull Errors**: If Docker can’t pull `etcd-client:latest`, make sure you built it locally (see the “Build and Tag” step) or push it to a registry that Compose can access.
