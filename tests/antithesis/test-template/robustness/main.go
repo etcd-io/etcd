@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -51,23 +52,46 @@ const (
 	localetcd0 = "127.0.0.1:12379"
 	localetcd1 = "127.0.0.1:22379"
 	localetcd2 = "127.0.0.1:32379"
+	// mounted by the client in docker compose
+	defaultEtcdDataPath = "/var/etcddata%d"
+	// used by default when running the client locally
+	defaultLocalEtcdDataPath = "/tmp/etcddata%d"
+	localEtcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
+
+	defaultReportPath = "/var/report/history.html"
+	localReportPath   = "history.html"
 )
 
 func main() {
 	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
 	flag.Parse()
+
+	etcdDataPath := defaultEtcdDataPath
 	hosts := []string{defaultetcd0, defaultetcd1, defaultetcd2}
+	reportPath := defaultReportPath
 	if *local {
 		hosts = []string{localetcd0, localetcd1, localetcd2}
+		etcdDataPath = defaultLocalEtcdDataPath
+		localpath := os.Getenv(localEtcdDataPathEnv)
+		if localpath != "" {
+			etcdDataPath = localpath
+		}
+		reportPath = localReportPath
+	}
+
+	persistedRequestdirs := []string{
+		fmt.Sprintf(etcdDataPath, 0),
+		fmt.Sprintf(etcdDataPath, 1),
+		fmt.Sprintf(etcdDataPath, 2),
 	}
 
 	ctx := context.Background()
 	baseTime := time.Now()
 	duration := time.Duration(robustnessrand.RandRange(5, 60) * int64(time.Second))
-	testRobustness(ctx, hosts, baseTime, duration)
+	testRobustness(ctx, hosts, persistedRequestdirs, reportPath, baseTime, duration)
 }
 
-func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, duration time.Duration) {
+func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, reportPath string, baseTime time.Time, duration time.Duration) {
 	lg, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
@@ -76,9 +100,14 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 	reports := runTraffic(ctx, lg, hosts, baseTime, duration)
 	lg.Info("Completed traffic generation")
 
+	etcdDataDirs, err := report.PersistedRequestsDirs(lg, persistedRequestdirs)
+	if err != nil {
+		lg.Error("Failed to create PersistedRequestdirs to access etcd WAL files")
+		panic(err)
+	}
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, nil, 5*time.Minute)
-	err = result.Linearization.Visualize(lg, "history.html")
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, etcdDataDirs, 5*time.Minute)
+	err = result.Linearization.Visualize(lg, reportPath)
 	if err != nil {
 		lg.Error("Failed to save visualization", zap.Error(err))
 	}

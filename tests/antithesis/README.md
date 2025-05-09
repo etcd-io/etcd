@@ -29,7 +29,7 @@ etcd-client        latest    <IMAGE_ID>    <DATE>
 Run the following command from the root directory for Antithesis tests (`tests/antithesis`):
 
 ```bash
-docker-compose up
+make antithesis-docker-compose-up
 ```
 
 The client will continuously check the health of the etcd nodes and print logs similar to:
@@ -74,13 +74,22 @@ And it will stay running indefinitely.
 ### 4. Running the tests
 
 ```bash
-docker-compose exec client /opt/antithesis/test/v1/robustness/singleton_driver_main`
+make antithesis-run-container-tests
 ```
 
 Alternatively, with the etcd cluster from step 3, to run the tests locally without rebuilding the client image:
 
 ```bash
-go run ./test-template/robustness/main.go --local
+make antithesis-run-local-tests
+```
+
+### 5. Prepare for next run
+
+Unfortunatelly robustness tests don't support running on non empty database.
+So for now you need to cleanup the storage before repeating the run or you will get "non empty database at start, required by model used for linearizability validation" error.
+
+```bash
+make antithesis-clean
 ```
 
 ## Troubleshooting
