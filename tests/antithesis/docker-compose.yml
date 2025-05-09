@@ -53,3 +53,5 @@ services:
     image: 'etcd-client:latest'
     container_name: client
     entrypoint: ["/opt/antithesis/entrypoint/entrypoint"]
+    volumes:
+     - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report

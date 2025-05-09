@@ -51,6 +51,8 @@ const (
 	localetcd0 = "127.0.0.1:12379"
 	localetcd1 = "127.0.0.1:22379"
 	localetcd2 = "127.0.0.1:32379"
+
+	reportPath = "/var/report/histor.html"
 )
 
 func main() {
@@ -78,7 +80,7 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, nil, 5*time.Minute)
-	err = result.Linearization.Visualize(lg, "history.html")
+	err = result.Linearization.Visualize(lg, reportPath)
 	if err != nil {
 		lg.Error("Failed to save visualization", zap.Error(result.Error))
 	}
