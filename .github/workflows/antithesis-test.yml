@@ -22,7 +22,7 @@ on:
       images:
         description: 'System images (separate with ;)'
         required: true
-        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:latest;gcr.io/etcd-development/etcd:v3.5.21
+        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:latest;gcr.io/etcd-development/etcd:v3.5.21;docker.io/library/ubuntu:latest
         type: string
       duration:
         description: 'Duration (exploration hours)'
