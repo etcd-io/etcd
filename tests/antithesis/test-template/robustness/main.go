@@ -80,15 +80,10 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, nil, 5*time.Minute)
 	err = result.Linearization.Visualize(lg, "history.html")
 	if err != nil {
-		lg.Error("Failed to save visualization", zap.Error(result.Error))
+		lg.Error("Failed to save visualization", zap.Error(err))
 	}
-	if result.Error != nil {
-		lg.Error("Robustness validation failed", zap.Error(result.Error))
-		assert.Unreachable("Robustness validation failed", map[string]any{"error": result.Error})
-		return
-	}
-	lg.Info("Completed robustness validation")
-	assert.Reachable("Completed robustness validation", nil)
+	assert.Always(result.Error == nil, "Robustness validation passes", map[string]any{"error": result.Error})
+	lg.Info("Completed robustness validation", zap.Error(result.Error))
 }
 
 func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
