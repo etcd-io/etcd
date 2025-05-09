@@ -57,6 +57,9 @@ const (
 	// used by default when running the client locally
 	defaultLocalEtcdDataPath = "/tmp/etcddata%d"
 	localEtcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
+
+	defaultReportPath = "/var/report/history.html"
+	localReportPath   = "history.html"
 )
 
 func main() {
@@ -65,6 +68,7 @@ func main() {
 
 	etcdDataPath := defaultEtcdDataPath
 	hosts := []string{defaultetcd0, defaultetcd1, defaultetcd2}
+	reportPath := defaultReportPath
 	if *local {
 		hosts = []string{localetcd0, localetcd1, localetcd2}
 		etcdDataPath = defaultLocalEtcdDataPath
@@ -72,6 +76,7 @@ func main() {
 		if localpath != "" {
 			etcdDataPath = localpath
 		}
+		reportPath = localReportPath
 	}
 
 	persistedRequestdirs := []string{
@@ -83,10 +88,10 @@ func main() {
 	ctx := context.Background()
 	baseTime := time.Now()
 	duration := time.Duration(robustnessrand.RandRange(5, 60) * int64(time.Second))
-	testRobustness(ctx, hosts, persistedRequestdirs, baseTime, duration)
+	testRobustness(ctx, hosts, persistedRequestdirs, reportPath, baseTime, duration)
 }
 
-func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, baseTime time.Time, duration time.Duration) {
+func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, reportPath string, baseTime time.Time, duration time.Duration) {
 	lg, err := zap.NewProduction()
 	if err != nil {
 		panic(err)
@@ -102,7 +107,7 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, b
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, etcdDataDirs, 5*time.Minute)
-	err = result.Linearization.Visualize(lg, "history.html")
+	err = result.Linearization.Visualize(lg, reportPath)
 	if err != nil {
 		lg.Error("Failed to save visualization", zap.Error(err))
 	}

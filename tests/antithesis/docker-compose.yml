@@ -12,7 +12,8 @@ services:
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
-    command: chown -R ${USER_ID:-root}:${GROUP_ID:-root} /var/etcddata0 /var/etcddata1 /var/etcddata2
+      - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report
+    command: chown -R ${USER_ID:-root}:${GROUP_ID:-root} /var/etcddata0 /var/etcddata1 /var/etcddata2 /var/report
 
   etcd0:
     image: 'gcr.io/etcd-development/etcd:v3.5.21'
@@ -99,3 +100,4 @@ services:
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
       - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+      - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report
