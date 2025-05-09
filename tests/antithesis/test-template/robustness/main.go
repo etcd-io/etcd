@@ -88,7 +88,6 @@ func testRobustness(ctx context.Context, hosts []string, baseTime time.Time, dur
 
 func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
-	finish := closeAfter(ctx, duration)
 	ids := identity.NewIDProvider()
 	storage := identity.NewLeaseIDStorage()
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
@@ -98,6 +97,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime ti
 		lg.Fatal("Failed empty database at start check", zap.Error(err))
 	}
 
+	finish := closeAfter(ctx, duration)
 	reports := []report.ClientReport{r}
 	var mux sync.Mutex
 	var wg sync.WaitGroup
