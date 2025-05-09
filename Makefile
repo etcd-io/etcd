@@ -583,7 +583,7 @@ gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test.sh
 
 .PHONY: verify
-verify: verify-go-versions verify-dep
+verify: verify-go-versions verify-dep verify-shellcheck
 
 .PHONY: verify-go-versions
 verify-go-versions:
@@ -592,6 +592,10 @@ verify-go-versions:
 .PHONY: verify-dep
 verify-dep:
 	PASSES="dep" ./test.sh 2<&1
+
+.PHONY: verify-shellcheck
+verify-shellcheck:
+	PASSES="shellcheck" ./test.sh
 
 .PHONY: fix
 fix: sync-toolchain-directive
