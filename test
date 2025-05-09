@@ -393,7 +393,7 @@ function release_pass {
 			;;
 	esac
 
-	tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1
+	tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1 --no-same-owner
 	mkdir -p ./bin
 	mv /tmp/etcd ./bin/etcd-last-release
 }
