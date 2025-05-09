@@ -4,7 +4,7 @@ services:
   # By default, if the folders don't exist when mounting, compose creates them with root as owner.
   # With root owner, accessing the WAL files from local tests will fail due to an unauthorized access error.
   init:
-    image: 'ubuntu:latest'
+    image: 'docker.io/library/ubuntu:latest'
     user: root
     group_add:
       - '${GROUP_ID:-root}'
