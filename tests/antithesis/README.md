@@ -83,6 +83,15 @@ Alternatively, with the etcd cluster from step 3, to run the tests locally witho
 make antithesis-run-local-tests
 ```
 
+### 5. Prepare for next run
+
+Unfortunatelly robustness tests don't support running on non empty database.
+So for now you need to cleanup the storage before repeating the run or you will get "non empty database at start, required by model used for linearizability validation" error.
+
+```bash
+make antithesis-clean
+```
+
 ## Troubleshooting
 
 - **Image Pull Errors**: If Docker can’t pull `etcd-client:latest`, make sure you built it locally (see the “Build and Tag” step) or push it to a registry that Compose can access.

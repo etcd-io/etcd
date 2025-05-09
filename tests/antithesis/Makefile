@@ -7,7 +7,7 @@ antithesis-build-client-docker-image:
 	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) -f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
 
 .PHONY: antithesis-docker-compose-up
-antithesis-docker-compose-up: antithesis-build-client-docker-image
+antithesis-docker-compose-up:
 	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose up
 
 .PHONY: antithesis-run-container-tests
@@ -17,3 +17,8 @@ antithesis-run-container-tests:
 .PHONY: antithesis-run-local-tests
 antithesis-run-local-tests:
 	go run ./test-template/robustness/main.go --local
+
+.PHONY: antithesis-clean
+antithesis-clean:
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose down
+	rm -rf /tmp/etcddata0 /tmp/etcddata1 /tmp/etcddata2 /tmp/etcdreport
