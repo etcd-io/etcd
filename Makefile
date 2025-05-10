@@ -555,7 +555,19 @@ gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test
 
 .PHONY: verify
-verify: verify-go-versions
+verify: verify-fmt verify-bom verify-dep verify-go-versions
+
+.PHONY: verify-fmt
+verify-fmt:
+	PASSES="fmt" ./test
+
+.PHONY: verify-bom
+verify-bom:
+	PASSES="bom" ./test
+
+.PHONY: verify-dep
+verify-dep:
+	PASSES="dep" ./test
 
 .PHONY: verify-go-versions
 verify-go-versions:
