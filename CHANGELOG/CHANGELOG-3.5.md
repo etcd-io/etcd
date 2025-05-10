@@ -17,7 +17,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.23.8](https://github.com/etcd-io/etcd/pull/19725)
+- Compile binaries using [go 1.23.9](https://github.com/etcd-io/etcd/pull/19870)
 
 ---
 
