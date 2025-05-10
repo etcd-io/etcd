@@ -97,6 +97,19 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - `etcdctl` will sleep(2s) in case of range delete without `--range` flag. See [pull/13747](https://github.com/etcd-io/etcd/pull/13747)
 - Applications which depend on etcd v3.6 packages must be built with go version >= v1.18.
 
+#### Flags Removed
+
+- The following flags have been removed:
+
+  - `--enable-v2`
+  - `--experimental-enable-v2v3`
+  - `--proxy`
+  - `--proxy-failure-wait`
+  - `--proxy-refresh-interval`
+  - `--proxy-dial-timeout`
+  - `--proxy-write-timeout`
+  - `--proxy-read-timeout`
+
 ### Deprecations
 
 - Deprecated [V2 discovery](https://etcd.io/docs/v3.5/dev-internal/discovery_protocol/).
