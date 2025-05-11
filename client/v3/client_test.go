@@ -383,7 +383,7 @@ func TestNewOnlyJWTExclusivity(t *testing.T) {
 		Username:    "user",
 		Password:    "pass",
 	})
-	require.Errorf(t, err, "Username/Password and Token configurations are mutually exclusive")
+	require.ErrorIs(t, ErrMutuallyExclusiveCfg, err)
 }
 
 func TestSyncFiltersMembers(t *testing.T) {

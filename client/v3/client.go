@@ -43,6 +43,7 @@ import (
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
+	ErrMutuallyExclusiveCfg = errors.New("Username/Password and Token configurations are mutually exclusive")
 )
 
 // Client provides and manages an etcd v3 client session.
@@ -385,7 +386,7 @@ func newClient(cfg *Config) (*Client, error) {
 	}
 
 	if cfg.Token != "" && (cfg.Username != "" || cfg.Password != "") {
-		return nil, errors.New("Username/Password and Token configurations are mutually exclusive")
+		return nil, ErrMutuallyExclusiveCfg
 	}
 
 	// use a temporary skeleton client to bootstrap first connection
