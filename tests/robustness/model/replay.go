@@ -85,7 +85,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Delete.Key]; ok {
+				if _, ok := prevState.KeyValues.Get(KeyValue{Key: op.Delete.Key}); ok {
 					events = append(events, e)
 				}
 			case PutOperation:
@@ -102,7 +102,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Put.Key]; !ok {
+				if _, ok := prevState.KeyValues.Get(KeyValue{Key: op.Put.Key}); !ok {
 					e.IsCreate = true
 				}
 				events = append(events, e)
@@ -113,7 +113,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 	case LeaseRevoke:
 		deletedKeys := []string{}
 		for key := range prevState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			if _, ok := prevState.KeyValues[key]; ok {
+			if _, ok := prevState.KeyValues.Get(KeyValue{Key: key}); ok {
 				deletedKeys = append(deletedKeys, key)
 			}
 		}

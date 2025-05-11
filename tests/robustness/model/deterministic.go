@@ -21,9 +21,9 @@ import (
 	"hash/fnv"
 	"maps"
 	"reflect"
-	"sort"
 
 	"github.com/anishathalye/porcupine"
+	"github.com/google/btree"
 
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
@@ -69,7 +69,7 @@ var DeterministicModel = porcupine.Model{
 type EtcdState struct {
 	Revision        int64
 	CompactRevision int64
-	KeyValues       map[string]ValueRevision
+	KeyValues       *btree.BTreeG[KeyValue]
 	KeyLeases       map[string]int64
 	Leases          map[int64]EtcdLease
 }
@@ -85,7 +85,7 @@ func (s EtcdState) DeepCopy() EtcdState {
 		CompactRevision: s.CompactRevision,
 	}
 
-	newState.KeyValues = maps.Clone(s.KeyValues)
+	newState.KeyValues = s.KeyValues.Clone()
 	newState.KeyLeases = maps.Clone(s.KeyLeases)
 
 	newLeases := map[int64]EtcdLease{}
@@ -101,7 +101,7 @@ func freshEtcdState() EtcdState {
 		Revision: 1,
 		// Start from CompactRevision equal -1 as etcd allows client to compact revision 0 for some reason.
 		CompactRevision: -1,
-		KeyValues:       map[string]ValueRevision{},
+		KeyValues:       btree.NewG(4, func(a, b KeyValue) bool { return a.Key < b.Key }),
 		KeyLeases:       map[string]int64{},
 		Leases:          map[int64]EtcdLease{},
 	}
@@ -127,7 +127,7 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
-			val := newState.KeyValues[cond.Key]
+			val, _ := newState.KeyValues.Get(KeyValue{Key: cond.Key})
 			if cond.ExpectedVersion > 0 {
 				if val.Version != cond.ExpectedVersion {
 					failure = true
@@ -156,22 +156,21 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 					break
 				}
 				ver := int64(1)
-				if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
+				if val, exists := newState.KeyValues.Get(KeyValue{Key: op.Put.Key}); exists && val.Version > 0 {
 					ver = val.Version + 1
 				}
-				newState.KeyValues[op.Put.Key] = ValueRevision{
+				newState.KeyValues.ReplaceOrInsert(KeyValue{Key: op.Put.Key, ValueRevision: ValueRevision{
 					Value:       op.Put.Value,
 					ModRevision: newState.Revision + 1,
 					Version:     ver,
-				}
+				}})
 				increaseRevision = true
 				newState = detachFromOldLease(newState, op.Put.Key)
 				if leaseExists {
 					newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
 				}
 			case DeleteOperation:
-				if _, ok := newState.KeyValues[op.Delete.Key]; ok {
-					delete(newState.KeyValues, op.Delete.Key)
+				if _, ok := newState.KeyValues.Delete(KeyValue{Key: op.Delete.Key}); ok {
 					increaseRevision = true
 					newState = detachFromOldLease(newState, op.Delete.Key)
 					opResp[i].Deleted = 1
@@ -196,11 +195,10 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		keyDeleted := false
 		for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
 			// same as delete.
-			if _, ok := newState.KeyValues[key]; ok {
+			if _, ok := newState.KeyValues.Delete(KeyValue{Key: key}); ok {
 				if !keyDeleted {
 					keyDeleted = true
 				}
-				delete(newState.KeyValues, key)
 				delete(newState.KeyLeases, key)
 			}
 		}
@@ -227,30 +225,22 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 
 func (s EtcdState) getRange(options RangeOptions) RangeResponse {
 	response := RangeResponse{
-		KVs: []KeyValue{},
+		KVs: make([]KeyValue, 0, s.KeyValues.Len()),
 	}
 	if options.End != "" {
 		var count int64
-		for k, v := range s.KeyValues {
-			if k >= options.Start && k < options.End {
-				response.KVs = append(response.KVs, KeyValue{Key: k, ValueRevision: v})
-				count++
-			}
-		}
-		sort.Slice(response.KVs, func(j, k int) bool {
-			return response.KVs[j].Key < response.KVs[k].Key
+		s.KeyValues.AscendRange(KeyValue{Key: options.Start}, KeyValue{Key: options.End}, func(item KeyValue) bool {
+			response.KVs = append(response.KVs, item)
+			return true
 		})
+		response.Count = int64(len(response.KVs))
 		if options.Limit != 0 && count > options.Limit {
 			response.KVs = response.KVs[:options.Limit]
 		}
-		response.Count = count
 	} else {
-		value, ok := s.KeyValues[options.Start]
+		item, ok := s.KeyValues.Get(KeyValue{Key: options.Start})
 		if ok {
-			response.KVs = append(response.KVs, KeyValue{
-				Key:           options.Start,
-				ValueRevision: value,
-			})
+			response.KVs = append(response.KVs, item)
 			response.Count = 1
 		}
 	}

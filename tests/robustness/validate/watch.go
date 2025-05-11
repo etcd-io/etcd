@@ -263,8 +263,9 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
-				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
-					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.KeyValues[event.Key]))
+				wantPrevKV, _ := state.KeyValues.Get(model.KeyValue{Key: event.Key})
+				if event.PrevValue != nil && *event.PrevValue != wantPrevKV.ValueRevision {
+					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", wantPrevKV))
 					err = errBrokePrevKV
 				}
 			}
@@ -284,7 +285,7 @@ func validateIsCreate(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 				}
 				// A create event will not have an entry in our history and a non-create
 				// event *should* have an entry in our history.
-				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
+				if _, prevKeyExists := state.KeyValues.Get(model.KeyValue{Key: event.Key}); event.IsCreate == prevKeyExists {
 					lg.Error("Incorrect event IsCreate field", zap.Int("client", report.ClientID), zap.Any("event", event))
 					err = errBrokeIsCreate
 				}
