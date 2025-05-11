@@ -109,21 +109,23 @@ func freshEtcdState() EtcdState {
 
 // Step handles a successful request, returning updated state and response it would generate.
 func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
-	newState := s.DeepCopy()
+	// TODO: Avoid copying when TXN only has read operations
+	if request.Type == Range {
+		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
+			resp := s.getRange(request.Range.RangeOptions)
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		}
+		if request.Range.Revision > s.Revision {
+			return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+		}
+		if request.Range.Revision < s.CompactRevision {
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
+		}
+		return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: s.Revision}
+	}
 
+	newState := s.DeepCopy()
 	switch request.Type {
-	case Range:
-		if request.Range.Revision == 0 || request.Range.Revision == newState.Revision {
-			resp := newState.getRange(request.Range.RangeOptions)
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: newState.Revision}}
-		}
-		if request.Range.Revision > newState.Revision {
-			return newState, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
-		}
-		if request.Range.Revision < newState.CompactRevision {
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
-		}
-		return newState, MaybeEtcdResponse{Persisted: true, PersistedRevision: newState.Revision}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
