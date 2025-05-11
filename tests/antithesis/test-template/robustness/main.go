@@ -59,8 +59,8 @@ const (
 	defaultLocalEtcdDataPath = "/tmp/etcddata%d"
 	localEtcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
 
-	defaultReportPath = "/var/report/history.html"
-	localReportPath   = "history.html"
+	defaultReportPath = "/var/report/"
+	localReportPath   = "report"
 )
 
 func main() {
@@ -86,6 +86,13 @@ func main() {
 		fmt.Sprintf(etcdDataPath, 2),
 	}
 
+	if err := os.RemoveAll(reportPath); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(reportPath, 0o700); err != nil {
+		panic(err)
+	}
+
 	ctx := context.Background()
 	baseTime := time.Now()
 	duration := time.Duration(robustnessrand.RandRange(5, 15) * int64(time.Second))
@@ -97,8 +104,13 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, r
 	if err != nil {
 		panic(err)
 	}
+	serverDataPaths := make(map[string]string)
+	for i := range len(persistedRequestdirs) {
+		serverDataPaths[fmt.Sprintf("etcd%d", i)] = persistedRequestdirs[i]
+	}
 	lg.Info("Start traffic generation", zap.Duration("duration", duration))
-	reports := runTraffic(ctx, lg, hosts, baseTime, duration)
+	r := report.TestReport{Logger: lg}
+	r.Client = runTraffic(ctx, lg, hosts, baseTime, duration)
 	lg.Info("Completed traffic generation")
 
 	etcdDataDirs, err := report.PersistedRequestsDirs(lg, persistedRequestdirs)
@@ -107,7 +119,7 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, r
 		panic(err)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
-	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, etcdDataDirs, 5*time.Minute)
+	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, etcdDataDirs, 5*time.Minute)
 	if err != nil {
 		lg.Info("Validation error", zap.Error(err))
 		assert.Unreachable("Validation error", map[string]any{"error": err})
@@ -118,9 +130,9 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, r
 	} else {
 		assert.Always(result.Linearization.Linearizable == porcupine.Ok, "Linearization validation passes", nil)
 	}
-	err = result.Linearization.Visualize(lg, reportPath)
-	if err != nil {
-		lg.Error("Failed to save visualization", zap.Error(err))
+	r.Visualize = result.Linearization.Visualize
+	if err := r.Report(reportPath); err != nil {
+		lg.Error("Failed to save validation report", zap.Error(err))
 	}
 	assert.Always(result.WatchError == nil, "Watch validation passes", map[string]any{"error": result.WatchError})
 	assert.Always(result.SerializableError == nil, "Serializable validation passes", map[string]any{"error": result.WatchError})

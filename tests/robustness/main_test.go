@@ -16,7 +16,11 @@ package robustness
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -84,13 +88,21 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	r := report.TestReport{Logger: lg, Cluster: c}
+	serverDataPaths := report.ServerDataPaths(c)
+	r := report.TestReport{Logger: lg, ServersDataPath: serverDataPaths}
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		r.Report(t, panicked)
+		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
+		shouldReport := t.Failed() || panicked || persistResults
+		path := testResultsDirectory(t)
+		if shouldReport {
+			if err := r.Report(path); err != nil {
+				t.Error(err)
+			}
+		}
 	}()
 	r.Client = runScenario(ctx, t, s, lg, c)
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
@@ -187,4 +199,23 @@ func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
+}
+
+func testResultsDirectory(t *testing.T) string {
+	resultsDirectory, ok := os.LookupEnv("RESULTS_DIR")
+	if !ok {
+		resultsDirectory = "/tmp/"
+	}
+	resultsDirectory, err := filepath.Abs(resultsDirectory)
+	if err != nil {
+		panic(err)
+	}
+	path, err := filepath.Abs(filepath.Join(
+		resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_"), fmt.Sprintf("%v", time.Now().UnixNano())))
+	require.NoError(t, err)
+	err = os.RemoveAll(path)
+	require.NoError(t, err)
+	err = os.MkdirAll(path, 0o700)
+	require.NoError(t, err)
+	return path
 }
