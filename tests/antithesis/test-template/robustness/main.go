@@ -87,7 +87,7 @@ func main() {
 
 	ctx := context.Background()
 	baseTime := time.Now()
-	duration := time.Duration(robustnessrand.RandRange(5, 60) * int64(time.Second))
+	duration := time.Duration(robustnessrand.RandRange(5, 15) * int64(time.Second))
 	testRobustness(ctx, hosts, persistedRequestdirs, reportPath, baseTime, duration)
 }
 
@@ -96,7 +96,7 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, r
 	if err != nil {
 		panic(err)
 	}
-	lg.Info("Start traffic generation")
+	lg.Info("Start traffic generation", zap.Duration("duration", duration))
 	reports := runTraffic(ctx, lg, hosts, baseTime, duration)
 	lg.Info("Completed traffic generation")
 
