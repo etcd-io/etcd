@@ -42,27 +42,23 @@ import (
 //     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() any {
-		data, err := json.Marshal(freshEtcdState())
+		return freshEtcdState()
+	},
+	Step: func(st any, in any, out any) (bool, any) {
+		return st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
+	},
+	Equal: func(st1, st2 any) bool {
+		return st1.(EtcdState).Equal(st2.(EtcdState))
+	},
+	DescribeOperation: func(in, out any) string {
+		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
+	},
+	DescribeState: func(st any) string {
+		data, err := json.Marshal(st)
 		if err != nil {
 			panic(err)
 		}
 		return string(data)
-	},
-	Step: func(st any, in any, out any) (bool, any) {
-		var s EtcdState
-		err := json.Unmarshal([]byte(st.(string)), &s)
-		if err != nil {
-			panic(err)
-		}
-		ok, s := s.apply(in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(s)
-		if err != nil {
-			panic(err)
-		}
-		return ok, string(data)
-	},
-	DescribeOperation: func(in, out any) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
 }
 
@@ -72,6 +68,22 @@ type EtcdState struct {
 	KeyValues       map[string]ValueRevision
 	KeyLeases       map[string]int64
 	Leases          map[int64]EtcdLease
+}
+
+func (s EtcdState) Equal(other EtcdState) bool {
+	if s.Revision != other.Revision {
+		return false
+	}
+	if s.CompactRevision != other.CompactRevision {
+		return false
+	}
+	if !reflect.DeepEqual(s.KeyValues, other.KeyValues) {
+		return false
+	}
+	if !reflect.DeepEqual(s.KeyLeases, other.KeyLeases) {
+		return false
+	}
+	return reflect.DeepEqual(s.Leases, other.Leases)
 }
 
 func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
