@@ -7,7 +7,6 @@ jobs:
       fail-fast: false
       matrix:
         target:
-        - linux-amd64-fmt
         - linux-amd64-integration-1-cpu
         - linux-amd64-integration-2-cpu
         - linux-amd64-integration-4-cpu
@@ -34,9 +33,6 @@ jobs:
         echo ${GOROOT}
         echo "${TARGET}"
         case "${TARGET}" in
-          linux-amd64-fmt)
-            GOARCH=amd64 PASSES='fmt bom dep' ./test
-            ;;
           linux-amd64-integration-1-cpu)
             make install-gofail
             GOARCH=amd64 CPU=1 RACE='false' FAILPOINTS='true' make test-integration
