@@ -395,7 +395,7 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		result := validateLinearizableOperationsAndVisualize(shuffles[i], duration)
 		if result.Linearizable != porcupine.Ok {
 			b.Fatalf("Not linearizable: %v", result.Linearizable)
 		}

@@ -29,10 +29,10 @@ import (
 
 var ErrNotEmptyDatabase = errors.New("non empty database at start, required by model used for linearizability validation")
 
-func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Result {
-	err := checkValidationAssumptions(reports)
+func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result Result, err error) {
+	err = checkValidationAssumptions(reports)
 	if err != nil {
-		return Result{Error: err}
+		return result, err
 	}
 	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
 	// We are passing in the original reports and linearizableOperations with modified return time.
@@ -42,25 +42,43 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
 
-	linearization := validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
-	if linearization.Linearizable != porcupine.Ok {
-		return Result{Error: fmt.Errorf("Failed linearization"), Linearization: linearization}
+	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
+	start := time.Now()
+	result.Linearization = validateLinearizableOperationsAndVisualize(linearizableOperations, timeout)
+	switch result.Linearization.Linearizable {
+	case porcupine.Illegal:
+		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
+	case porcupine.Unknown:
+		lg.Error("Linearization has timed out", zap.Duration("duration", time.Since(start)))
+	case porcupine.Ok:
+		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+	default:
+		panic(fmt.Sprintf("Unknown Linearization result %s", result.Linearization.Linearizable))
 	}
+
 	if persistedRequests != nil {
-		// TODO: Use requests from linearization for replay.
 		replay := model.NewReplay(persistedRequests)
 
-		err = validateWatch(lg, cfg, reports, replay)
-		if err != nil {
-			return Result{Error: fmt.Errorf("Failed validating watch history: %w", err), Linearization: linearization}
+		lg.Info("Validating watch")
+		start = time.Now()
+		result.WatchError = validateWatch(lg, cfg, reports, replay)
+		if result.WatchError == nil {
+			lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
+		} else {
+			lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.WatchError))
 		}
-		err = validateSerializableOperations(lg, serializableOperations, replay)
-		if err != nil {
-			return Result{Error: fmt.Errorf("Failed validating serializable operations: %w", err), Linearization: linearization}
+
+		lg.Info("Validating serializable operations")
+		start = time.Now()
+		result.SerializableError = validateSerializableOperations(lg, serializableOperations, replay)
+		if result.SerializableError == nil {
+			lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
+		} else {
+			lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.SerializableError))
 		}
 	}
 
-	return Result{Linearization: linearization}
+	return result, nil
 }
 
 type Config struct {

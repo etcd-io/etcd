@@ -32,8 +32,28 @@ var (
 )
 
 type Result struct {
-	Linearization LinearizationResult
-	Error         error
+	Linearization     LinearizationResult
+	WatchError        error
+	SerializableError error
+}
+
+func (r Result) Error() error {
+	switch r.Linearization.Linearizable {
+	case porcupine.Illegal:
+		return errors.New("linearization failed")
+	case porcupine.Unknown:
+		return errors.New("linearization timed out")
+	case porcupine.Ok:
+	default:
+		return fmt.Errorf("unknown linearization result %q", r.Linearization.Linearizable)
+	}
+	if r.WatchError != nil {
+		return fmt.Errorf("watch validation failed: %w", r.WatchError)
+	}
+	if r.SerializableError != nil {
+		return fmt.Errorf("serializable validation failed: %w", r.SerializableError)
+	}
+	return nil
 }
 
 type LinearizationResult struct {
@@ -52,24 +72,10 @@ func (r LinearizationResult) Visualize(lg *zap.Logger, path string) error {
 }
 
 func validateLinearizableOperationsAndVisualize(
-	lg *zap.Logger,
 	operations []porcupine.Operation,
 	timeout time.Duration,
 ) (results LinearizationResult) {
-	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
-	start := time.Now()
 	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
-
-	switch result {
-	case porcupine.Illegal:
-		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
-	case porcupine.Unknown:
-		lg.Error("Linearization has timed out", zap.Duration("duration", time.Since(start)))
-	case porcupine.Ok:
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
-	default:
-		panic(fmt.Sprintf("Unknown Linearization result %s", result))
-	}
 	return LinearizationResult{
 		Info:         info,
 		Model:        model.NonDeterministicModel,
@@ -78,7 +84,6 @@ func validateLinearizableOperationsAndVisualize(
 }
 
 func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
-	lg.Info("Validating serializable operations")
 	for _, read := range operations {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)
