@@ -555,11 +555,47 @@ gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test
 
 .PHONY: verify
-verify: verify-fmt verify-bom verify-dep verify-go-versions
+verify: verify-go-versions verify-gofmt verify-bom verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-receiver-name verify-markdown-you verify-markdown-marker
 
-.PHONY: verify-fmt
-verify-fmt:
-	PASSES="fmt" ./test
+.PHONY: verify-shellcheck
+verify-shellcheck:
+	PASSES="shellcheck" ./test
+
+.PHONY: verify-markdown-you
+verify-markdown-you:
+	PASSES="markdown_you" ./test
+
+.PHONY: verify-markdown-marker
+verify-markdown-marker:
+	PASSES="markdown_marker" ./test
+
+.PHONY: verify-goword
+verify-goword:
+	PASSES="goword" ./test
+
+.PHONY: verify-gofmt
+verify-gofmt:
+	PASSES="gofmt" ./test
+
+.PHONY: verify-govet
+verify-govet:
+	PASSES="govet" ./test
+
+.PHONY: verify-revive
+verify-revive:
+	PASSES="revive" ./test
+
+.PHONY: verify-license-header
+verify-license-header:
+	PASSES="license_header" ./test
+
+.PHONY: verify-receiver-name
+verify-receiver-name:
+	PASSES="receiver_name" ./test
+
+.PHONY: verify-commit-title
+verify-commit-title:
+	PASSES="commit_title" ./test
 
 .PHONY: verify-bom
 verify-bom:
