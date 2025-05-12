@@ -102,12 +102,15 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 		client.ValidateGotAtLeastOneProgressNotify(t, r.Client, s.Watch.RequestProgress || watchProgressNotifyEnabled)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	r.Visualize = result.Linearization.Visualize
-	if result.Error != nil {
-		t.Error(result.Error)
+	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
+	if err != nil {
+		t.Errorf("Validation error: %v", err)
 	}
-
+	r.Visualize = result.Linearization.Visualize
+	err = result.Error()
+	if err != nil {
+		t.Error(err)
+	}
 	panicked = false
 }
 

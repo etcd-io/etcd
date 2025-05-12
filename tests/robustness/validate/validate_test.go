@@ -46,7 +46,8 @@ func TestDataReports(t *testing.T) {
 
 			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
 			require.NoError(t, err)
-			result := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			result, err := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			require.NoError(t, err)
 
 			err = result.Linearization.Visualize(lg, filepath.Join(path, "history.html"))
 			require.NoError(t, err)
@@ -154,26 +155,32 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 						{
 							Request: model.WatchRequest{Key: "key"},
 							Responses: []model.WatchResponse{
-								{Events: []model.WatchEvent{watchEvent(2, true, model.PutOperation, "bad-key", "value")}},
+								{Events: []model.WatchEvent{watchEvent(2, true, model.PutOperation, "key", "value2")}},
 							},
 						},
 					},
 				},
 			},
 			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
-			expectError:       "Failed validating watch history",
+			expectError:       "watch validation failed",
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			result := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
+			result, err := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
+
 			if tc.expectError != "" {
-				require.ErrorContains(t, result.Error, tc.expectError)
+				if err != nil {
+					require.ErrorContains(t, err, tc.expectError)
+				} else {
+					require.ErrorContains(t, result.Error(), tc.expectError)
+				}
 			} else {
-				require.NoError(t, result.Error)
+				require.NoError(t, err)
+				require.NoError(t, result.Error())
 			}
-			err := result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
+			err = result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
 			require.NoError(t, err)
 		})
 	}

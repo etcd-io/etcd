@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anishathalye/porcupine"
 	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -106,13 +107,24 @@ func testRobustness(ctx context.Context, hosts, persistedRequestdirs []string, r
 		panic(err)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, etcdDataDirs, 5*time.Minute)
+	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, etcdDataDirs, 5*time.Minute)
+	if err != nil {
+		lg.Info("Validation error", zap.Error(err))
+		assert.Unreachable("Validation error", map[string]any{"error": err})
+		return
+	}
+	if result.Linearization.Linearizable == porcupine.Unknown {
+		assert.Unreachable("Linearization timeout", nil)
+	} else {
+		assert.Always(result.Linearization.Linearizable == porcupine.Ok, "Linearization validation passes", nil)
+	}
 	err = result.Linearization.Visualize(lg, reportPath)
 	if err != nil {
 		lg.Error("Failed to save visualization", zap.Error(err))
 	}
-	assert.Always(result.Error == nil, "Robustness validation passes", map[string]any{"error": result.Error})
-	lg.Info("Completed robustness validation", zap.Error(result.Error))
+	assert.Always(result.WatchError == nil, "Watch validation passes", map[string]any{"error": result.WatchError})
+	assert.Always(result.SerializableError == nil, "Serializable validation passes", map[string]any{"error": result.WatchError})
+	lg.Info("Completed robustness validation")
 }
 
 func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
