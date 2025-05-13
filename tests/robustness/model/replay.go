@@ -134,20 +134,20 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 }
 
 type WatchEvent struct {
-	PersistedEvent
-	PrevValue *ValueRevision
+	PersistedEvent `json:",omitempty"`
+	PrevValue      *ValueRevision `json:",omitempty"`
 }
 
 type PersistedEvent struct {
-	Event
-	Revision int64
-	IsCreate bool
+	Event    `json:",omitempty"`
+	Revision int64 `json:",omitempty"`
+	IsCreate bool  `json:",omitempty"`
 }
 
 type Event struct {
-	Type  OperationType
-	Key   string
-	Value ValueOrHash
+	Type  OperationType `json:",omitempty"`
+	Key   string        `json:",omitempty"`
+	Value ValueOrHash   `json:",omitempty"`
 }
 
 func (e Event) Match(request WatchRequest) bool {

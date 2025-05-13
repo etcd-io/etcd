@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"html"
 	"maps"
 	"reflect"
 	"sort"
@@ -54,20 +55,20 @@ var DeterministicModel = porcupine.Model{
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
 	DescribeState: func(st any) string {
-		data, err := json.Marshal(st)
+		data, err := json.MarshalIndent(st, "", "  ")
 		if err != nil {
 			panic(err)
 		}
-		return string(data)
+		return "<pre>" + html.EscapeString(string(data)) + "</pre>"
 	},
 }
 
 type EtcdState struct {
-	Revision        int64
-	CompactRevision int64
-	KeyValues       map[string]ValueRevision
-	KeyLeases       map[string]int64
-	Leases          map[int64]EtcdLease
+	Revision        int64                    `json:",omitempty"`
+	CompactRevision int64                    `json:",omitempty"`
+	KeyValues       map[string]ValueRevision `json:",omitempty"`
+	KeyLeases       map[string]int64         `json:",omitempty"`
+	Leases          map[int64]EtcdLease      `json:",omitempty"`
 }
 
 func (s EtcdState) Equal(other EtcdState) bool {
@@ -458,14 +459,14 @@ func (el EtcdLease) DeepCopy() EtcdLease {
 }
 
 type ValueRevision struct {
-	Value       ValueOrHash
-	ModRevision int64
-	Version     int64
+	Value       ValueOrHash `json:",omitempty"`
+	ModRevision int64       `json:",omitempty"`
+	Version     int64       `json:",omitempty"`
 }
 
 type ValueOrHash struct {
-	Value string
-	Hash  uint32
+	Value string `json:",omitempty"`
+	Hash  uint32 `json:",omitempty"`
 }
 
 func ToValueOrHash(value string) ValueOrHash {
