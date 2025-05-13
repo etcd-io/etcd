@@ -177,12 +177,13 @@ func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses
 		return
 	}
 	defer file.Close()
-	encoder := json.NewEncoder(file)
 	for _, resp := range responses {
-		err := encoder.Encode(resp)
+		data, err := json.MarshalIndent(resp, "", "  ")
 		if err != nil {
 			t.Errorf("Failed to encode operation: %v", err)
 		}
+		file.Write(data)
+		file.WriteString("\n")
 	}
 }
 
@@ -194,11 +195,12 @@ func persistKeyValueOperations(t *testing.T, lg *zap.Logger, path string, operat
 		return
 	}
 	defer file.Close()
-	encoder := json.NewEncoder(file)
 	for _, op := range operations {
-		err := encoder.Encode(op)
+		data, err := json.MarshalIndent(op, "", "  ")
 		if err != nil {
 			t.Errorf("Failed to encode KV operation: %v", err)
 		}
+		file.Write(data)
+		file.WriteString("\n")
 	}
 }
