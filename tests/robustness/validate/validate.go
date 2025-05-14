@@ -56,26 +56,33 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		panic(fmt.Sprintf("Unknown Linearization result %s", result.Linearization.Linearizable))
 	}
 
-	if persistedRequests != nil {
-		replay := model.NewReplay(persistedRequests)
+	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
+	if result.Linearization.Linearizable != porcupine.Ok {
+		lg.Info("Skipping other validations as linearization failed")
+		return result, nil
+	}
+	if persistedRequests == nil {
+		lg.Info("Skipping other validations as persisted requests were not passed")
+		return result, nil
+	}
+	replay := model.NewReplay(persistedRequests)
 
-		lg.Info("Validating watch")
-		start = time.Now()
-		result.WatchError = validateWatch(lg, cfg, reports, replay)
-		if result.WatchError == nil {
-			lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
-		} else {
-			lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.WatchError))
-		}
+	lg.Info("Validating watch")
+	start = time.Now()
+	result.WatchError = validateWatch(lg, cfg, reports, replay)
+	if result.WatchError == nil {
+		lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
+	} else {
+		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.WatchError))
+	}
 
-		lg.Info("Validating serializable operations")
-		start = time.Now()
-		result.SerializableError = validateSerializableOperations(lg, serializableOperations, replay)
-		if result.SerializableError == nil {
-			lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
-		} else {
-			lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.SerializableError))
-		}
+	lg.Info("Validating serializable operations")
+	start = time.Now()
+	result.SerializableError = validateSerializableOperations(lg, serializableOperations, replay)
+	if result.SerializableError == nil {
+		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
+	} else {
+		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.SerializableError))
 	}
 
 	return result, nil
