@@ -127,3 +127,49 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 		}
 	}
 }
+
+// TestRemoveMemberAndWALReplay ensures that etcd can properly handle
+// member removal followed by restart with WAL replay, ensuring no panics
+// occur when replaying already-applied removal operations.
+func TestRemoveMemberAndWALReplay(t *testing.T) {
+	BeforeTest(t)
+
+	// Create a cluster with 3 member and a low snapshot count
+	c := newCluster(t, &ClusterConfig{
+		Size:          3,
+		SnapshotCount: 10,
+		UseBridge:     true,
+	})
+
+	c.Launch(t)
+	defer c.Terminate(t)
+
+	// Add some k/v to trigger snapshot
+	for i := 0; i < 15; i++ {
+		cc := MustNewHTTPClient(t, []string{c.Members[0].URL()}, nil)
+		kapi := client.NewKeysAPI(cc)
+		ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
+		_, err := kapi.Create(ctx, fmt.Sprintf("k%d", i), fmt.Sprintf("v%d", i))
+		if err != nil {
+			t.Fatal("failed to put key-value")
+		}
+		cancel()
+	}
+
+	// Record the ID of the member we'll remove
+	memberToRemoveID := uint64(c.Members[2].s.ID())
+
+	// Remove one member from the cluster
+	c.RemoveMember(t, memberToRemoveID)
+
+	// Stop the remaining members
+	c.Members[0].Stop(t)
+	c.Members[1].Stop(t)
+
+	// Restart one member - this would previously panic when loading
+	// WAL entries that try to remove an already removed member
+	err := c.Members[0].Restart(t)
+	if err != nil {
+		t.Fatal("failed to restart member after removal")
+	}
+}
