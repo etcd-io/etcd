@@ -10,6 +10,8 @@ Run this command from the `antithesis/test-template` directory:
 make antithesis-build-client-docker-image
 ```
 
+This makes sure we use the same version of Go as the etcd project
+
 ### 2. (Optional) Check the Image Locally
 
 You can verify your new image is built:
