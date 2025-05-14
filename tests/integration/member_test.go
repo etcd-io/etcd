@@ -132,6 +132,46 @@ func TestRemoveMember(t *testing.T) {
 	checkMemberCount(t, c.Members[1], 2)
 }
 
+// TestRemoveMemberAndWALReplay ensures that etcd can properly handle
+// member removal followed by restart with WAL replay, ensuring no panics
+// occur when replaying already-applied removal operations.
+func TestRemoveMemberAndWALReplay(t *testing.T) {
+	integration.BeforeTest(t)
+
+	// Create a cluster with 3 member and a low snapshot count
+	c := integration.NewCluster(t, &integration.ClusterConfig{
+		Size:                       3,
+		SnapshotCount:              10,
+		UseBridge:                  true,
+		DisableStrictReconfigCheck: true,
+	})
+	defer c.Terminate(t)
+
+	// Add some k/v to trigger snapshot
+	for i := 0; i < 15; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		_, err := c.Members[0].Client.Put(ctx, fmt.Sprintf("k%d", i), fmt.Sprintf("v%d", i))
+		cancel()
+		require.NoErrorf(t, err, "failed to put key-value")
+	}
+
+	// Record the ID of the member we'll remove
+	memberToRemoveID := uint64(c.Members[2].Server.MemberID())
+
+	// Remove one member from the cluster
+	err := c.RemoveMember(t, c.Members[0].Client, memberToRemoveID)
+	require.NoErrorf(t, err, "failed to remove member")
+
+	// Stop the remaining members
+	c.Members[0].Stop(t)
+	c.Members[1].Stop(t)
+
+	// Restart one member - this would previously panic when loading
+	// WAL entries that try to remove an already removed member
+	err = c.Members[0].Restart(t)
+	require.NoErrorf(t, err, "failed to restart member after removal")
+}
+
 func checkMemberCount(t *testing.T, m *integration.Member, expectedMemberCount int) {
 	be := schema.NewMembershipBackend(m.Logger, m.Server.Backend())
 	membersFromBackend, _ := be.MustReadMembersFromBackend()
