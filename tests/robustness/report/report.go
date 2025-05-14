@@ -34,10 +34,14 @@ type TestReport struct {
 
 func (r *TestReport) Report(path string) error {
 	r.Logger.Info("Saving robustness test report", zap.String("path", path))
+	err := os.RemoveAll(path)
+	if err != nil {
+		r.Logger.Error("Failed to remove report dir", zap.Error(err))
+	}
 	for server, dataPath := range r.ServersDataPath {
 		serverReportPath := filepath.Join(path, fmt.Sprintf("server-%s", server))
-		r.Logger.Info("Saving member data dir", zap.String("member", server), zap.String("path", dataPath))
-		if err := os.Rename(dataPath, serverReportPath); err != nil {
+		r.Logger.Info("Saving member data dir", zap.String("member", server), zap.String("data-dir", dataPath), zap.String("path", serverReportPath))
+		if err := os.CopyFS(serverReportPath, os.DirFS(dataPath)); err != nil {
 			return err
 		}
 	}
