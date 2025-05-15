@@ -4,7 +4,9 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.0 (TBD)
+## v3.6.0 (2025-05-15)
+
+There isn't any production code change since v3.6.0-rc.5.
 
 ---
 
