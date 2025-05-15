@@ -106,7 +106,9 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	}()
 	r.Client = runScenario(ctx, t, s, lg, c)
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
-	require.NoError(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 
 	failpointImpactingWatch := s.Failpoint == failpoint.SleepBeforeSendWatchResponse
 	if !failpointImpactingWatch {
@@ -114,10 +116,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 		client.ValidateGotAtLeastOneProgressNotify(t, r.Client, s.Watch.RequestProgress || watchProgressNotifyEnabled)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	if err != nil {
-		t.Errorf("Validation error: %v", err)
-	}
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
 	r.Visualize = result.Linearization.Visualize
 	err = result.Error()
 	if err != nil {
