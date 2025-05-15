@@ -45,12 +45,18 @@ func TestDataReports(t *testing.T) {
 			require.NoError(t, err)
 
 			persistedRequests, err := report.LoadClusterPersistedRequests(lg, path)
-			require.NoError(t, err)
-			result, err := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
-			require.NoError(t, err)
+			if err != nil {
+				t.Error(err)
+			}
+			result := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			if err != nil {
+				t.Error(err)
+			}
 
 			err = result.Linearization.Visualize(lg, filepath.Join(path, "history.html"))
-			require.NoError(t, err)
+			if err != nil {
+				t.Error(err)
+			}
 		})
 	}
 }
@@ -168,19 +174,14 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			lg := zaptest.NewLogger(t)
-			result, err := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
+			result := ValidateAndReturnVisualize(lg, Config{}, tc.reports, tc.persistedRequests, 5*time.Second)
 
 			if tc.expectError != "" {
-				if err != nil {
-					require.ErrorContains(t, err, tc.expectError)
-				} else {
-					require.ErrorContains(t, result.Error(), tc.expectError)
-				}
+				require.ErrorContains(t, result.Error(), tc.expectError)
 			} else {
-				require.NoError(t, err)
 				require.NoError(t, result.Error())
 			}
-			err = result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
+			err := result.Linearization.Visualize(lg, filepath.Join(t.TempDir(), "history.html"))
 			require.NoError(t, err)
 		})
 	}

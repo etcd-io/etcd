@@ -113,18 +113,11 @@ func testRobustness(ctx context.Context, lg *zap.Logger, r *report.TestReport, h
 	r.Client = runTraffic(ctx, lg, hosts, baseTime, duration)
 	lg.Info("Completed traffic generation")
 
-	etcdDataDirs, err := report.PersistedRequestsDirs(lg, slices.Collect(maps.Values(r.ServersDataPath)))
-	if err != nil {
-		lg.Error("Failed to create PersistedRequestdirs to access etcd WAL files")
-		panic(err)
-	}
+	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(r.ServersDataPath)))
+	assert.Always(err == nil, "Loaded persisted requests", map[string]any{"error": err})
 	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
-	result, err := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, etcdDataDirs, 5*time.Minute)
-	if err != nil {
-		lg.Info("Validation error", zap.Error(err))
-		assert.Unreachable("Validation error", map[string]any{"error": err})
-		return
-	}
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
+	assert.Always(result.Assumptions == nil, "Validation assumptions fulfilled", map[string]any{"error": result.Assumptions})
 	if result.Linearization.Linearizable == porcupine.Unknown {
 		assert.Unreachable("Linearization timeout", nil)
 	} else {
@@ -132,7 +125,7 @@ func testRobustness(ctx context.Context, lg *zap.Logger, r *report.TestReport, h
 	}
 	r.Visualize = result.Linearization.Visualize
 	assert.Always(result.WatchError == nil, "Watch validation passes", map[string]any{"error": result.WatchError})
-	assert.Always(result.SerializableError == nil, "Serializable validation passes", map[string]any{"error": result.WatchError})
+	assert.Always(result.SerializableError == nil, "Serializable validation passes", map[string]any{"error": result.SerializableError})
 	lg.Info("Completed robustness validation")
 }
 

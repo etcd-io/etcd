@@ -32,12 +32,16 @@ var (
 )
 
 type Result struct {
+	Assumptions       error
 	Linearization     LinearizationResult
 	WatchError        error
 	SerializableError error
 }
 
 func (r Result) Error() error {
+	if r.Assumptions != nil {
+		return fmt.Errorf("validation assumptions failed: %w", r.Assumptions)
+	}
 	switch r.Linearization.Linearizable {
 	case porcupine.Illegal:
 		return errors.New("linearization failed")

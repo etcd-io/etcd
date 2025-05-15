@@ -29,16 +29,16 @@ import (
 
 var ErrNotEmptyDatabase = errors.New("non empty database at start, required by model used for linearizability validation")
 
-func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result Result, err error) {
-	err = checkValidationAssumptions(reports)
-	if err != nil {
-		return result, err
+func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result Result) {
+	result.Assumptions = checkValidationAssumptions(reports)
+	if result.Assumptions != nil {
+		return result
 	}
 	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
 	// We are passing in the original reports and linearizableOperations with modified return time.
 	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
 	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
-	if persistedRequests != nil {
+	if len(persistedRequests) != 0 {
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
 
@@ -59,11 +59,11 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
 	if result.Linearization.Linearizable != porcupine.Ok {
 		lg.Info("Skipping other validations as linearization failed")
-		return result, nil
+		return result
 	}
-	if persistedRequests == nil {
-		lg.Info("Skipping other validations as persisted requests were not passed")
-		return result, nil
+	if len(persistedRequests) == 0 {
+		lg.Info("Skipping other validations as persisted requests were empty")
+		return result
 	}
 	replay := model.NewReplay(persistedRequests)
 
@@ -85,7 +85,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.SerializableError))
 	}
 
-	return result, nil
+	return result
 }
 
 type Config struct {

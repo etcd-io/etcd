@@ -46,7 +46,7 @@ func LoadClusterPersistedRequests(lg *zap.Logger, path string) ([]model.EtcdRequ
 			dataDirs = append(dataDirs, filepath.Join(path, file.Name()))
 		}
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
 func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) ([]model.EtcdRequest, error) {
@@ -54,10 +54,10 @@ func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) (
 	for _, proc := range cluster.Procs {
 		dataDirs = append(dataDirs, memberDataDir(proc))
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
-func PersistedRequestsDirs(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
+func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
 	persistedRequests := []model.EtcdRequest{}
 	// Allow failure in minority of etcd cluster.
 	// 0 failures in 1 node cluster, 1 failure in 3 node cluster
@@ -73,7 +73,9 @@ func PersistedRequestsDirs(lg *zap.Logger, dataDirs []string) ([]model.EtcdReque
 		}
 		minLength := min(len(persistedRequests), len(memberRequests))
 		if diff := cmp.Diff(memberRequests[:minLength], persistedRequests[:minLength]); diff != "" {
-			return nil, fmt.Errorf("unexpected differences between wal entries, diff:\n%s", diff)
+			lg.Error("unexpected differences between wal entries")
+			fmt.Print(diff) // zap doesn't nicely writes multiline strings like diff
+			return nil, errors.New("unexpected differences between wal entries")
 		}
 		if len(memberRequests) > len(persistedRequests) {
 			persistedRequests = memberRequests
