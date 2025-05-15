@@ -34,7 +34,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/scenarios"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
@@ -158,13 +157,20 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, baseTime, ids)
-		maxRevision := operationsMaxRevision(operationReport)
+		maxRevision := report.OperationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
 		return nil
 	})
 	g.Go(func() error {
-		watchReport = client.CollectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.Watch, baseTime, ids)
+		var failed bool
+		var err error
+		endpoints := processEndpoints(clus)
+		watchReport, failed, err = client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, baseTime, ids)
+		require.NoError(t, err)
+		if failed {
+			t.Fail()
+		}
 		return nil
 	})
 	g.Wait()
@@ -178,19 +184,6 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 
 func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
 	return base - jitter + time.Duration(rand.Int63n(int64(jitter)*2))
-}
-
-func operationsMaxRevision(reports []report.ClientReport) int64 {
-	var maxRevision int64
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			resp := op.Output.(model.MaybeEtcdResponse)
-			if resp.Revision > maxRevision {
-				maxRevision = resp.Revision
-			}
-		}
-	}
-	return maxRevision
 }
 
 // forcestopCluster stops the etcd member with signal kill.
@@ -218,4 +211,12 @@ func testResultsDirectory(t *testing.T) string {
 	err = os.MkdirAll(path, 0o700)
 	require.NoError(t, err)
 	return path
+}
+
+func processEndpoints(clus *e2e.EtcdProcessCluster) []string {
+	endpoints := make([]string, len(clus.Procs))
+	for _, proc := range clus.Procs {
+		endpoints = append(endpoints, proc.EndpointsGRPC()[0])
+	}
+	return endpoints
 }
