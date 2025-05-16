@@ -14,7 +14,6 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/btree v1.1.3
 	github.com/google/go-cmp v0.7.0
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.0.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 	github.com/jonboulle/clockwork v0.5.0
