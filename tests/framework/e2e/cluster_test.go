@@ -24,7 +24,6 @@ import (
 
 func TestEtcdServerProcessConfig(t *testing.T) {
 	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
-	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -67,7 +66,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CorruptCheck",
 			config: NewConfig(WithInitialCorruptCheck(true)),
 			expectArgsContain: []string{
-				"--experimental-initial-corrupt-check=true",
+				"--feature-gates=InitialCorruptCheck=true",
 			},
 		},
 		{
@@ -76,14 +75,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			expectArgsContain: []string{
 				"--strict-reconfig-check=false",
 			},
-		},
-		{
-			name:   "CatchUpEntries",
-			config: NewConfig(WithSnapshotCatchUpEntries(100)),
-			expectArgsContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
-			},
-			mockBinaryVersion: &v3_5_14,
 		},
 		{
 			name:   "CatchUpEntriesNoVersion",
