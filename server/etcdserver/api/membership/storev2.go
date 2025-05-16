@@ -183,18 +183,3 @@ func MemberStoreKey(id types.ID) string {
 func MemberAttributesStorePath(id types.ID) string {
 	return path.Join(MemberStoreKey(id), attributesSuffix)
 }
-
-func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
-	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
-	if err != nil {
-		if isKeyNotFound(err) {
-			return nil
-		}
-		lg.Panic(
-			"failed to get cluster version from store",
-			zap.String("path", path.Join(storePrefix, "version")),
-			zap.Error(err),
-		)
-	}
-	return semver.Must(semver.NewVersion(*e.Node.Value))
-}

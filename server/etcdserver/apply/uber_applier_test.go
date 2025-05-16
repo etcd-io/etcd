@@ -45,6 +45,7 @@ func defaultUberApplier(t *testing.T) UberApplier {
 	})
 
 	cluster := membership.NewCluster(lg)
+	cluster.SetBackend(schema.NewMembershipBackend(lg, be))
 	cluster.AddMember(&membership.Member{ID: memberID}, true)
 	lessor := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
 	kv := mvcc.NewStore(lg, be, lessor, mvcc.StoreConfig{})
