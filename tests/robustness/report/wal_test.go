@@ -36,9 +36,9 @@ func TestPersistedRequests(t *testing.T) {
 		expectRequests []model.EtcdRequest
 	}{
 		{
-			name:           "Success when empty data dir",
-			dataDirs:       []string{},
-			expectRequests: []model.EtcdRequest{},
+			name:      "Error when empty data dir",
+			dataDirs:  []string{},
+			expectErr: "no data dirs",
 		},
 		{
 			name:     "Success when no entries",
@@ -178,7 +178,7 @@ func TestPersistedRequests(t *testing.T) {
 			},
 		},
 		{
-			name:     "Error when one member observed different last entry",
+			name:     "Success when one member observed different last entry",
 			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
 			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
 				switch dataDir {
@@ -204,7 +204,11 @@ func TestPersistedRequests(t *testing.T) {
 					panic("unexpected")
 				}
 			},
-			expectErr: "unexpected differences between wal entries",
+			expectRequests: []model.EtcdRequest{
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 3}},
+			},
 		},
 		{
 			name:     "Error when three members observed different last entry",
