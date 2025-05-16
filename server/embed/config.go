@@ -101,20 +101,10 @@ const (
 	// Compress   = false // compress the rotated log in gzip format
 	DefaultLogRotationConfig = `{"maxsize": 100, "maxage": 0, "maxbackups": 0, "localtime": false, "compress": false}`
 
-	// ExperimentalDistributedTracingAddress is the default collector address.
-	// TODO: delete in v3.7
-	// Deprecated: Use DefaultDistributedTracingAddress instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingAddress = "localhost:4317"
 	// DefaultDistributedTracingAddress is the default collector address.
 	DefaultDistributedTracingAddress = "localhost:4317"
-	// ExperimentalDistributedTracingServiceName is the default etcd service name.
-	// TODO: delete in v3.7
-	// Deprecated: Use DefaultDistributedTracingServiceName instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingServiceName = "etcd"
 	// DefaultDistributedTracingServiceName is the default etcd service name.
 	DefaultDistributedTracingServiceName = "etcd"
-
-	DefaultExperimentalTxnModeWriteWithSharedBuffer = true
 
 	// DefaultStrictReconfigCheck is the default value for "--strict-reconfig-check" flag.
 	// It's enabled by default.
@@ -143,28 +133,6 @@ var (
 
 	// indirection for testing
 	getCluster = srv.GetCluster
-
-	// in 3.6, we are migration all the --experimental flags to feature gate and flags without the prefix.
-	// This is the mapping from the non boolean `experimental-` to the new flags.
-	// TODO: delete in v3.7
-	experimentalFlagMigrationMap = map[string]string{
-		"experimental-compact-hash-check-time":              "compact-hash-check-time",
-		"experimental-corrupt-check-time":                   "corrupt-check-time",
-		"experimental-compaction-batch-limit":               "compaction-batch-limit",
-		"experimental-watch-progress-notify-interval":       "watch-progress-notify-interval",
-		"experimental-warning-apply-duration":               "warning-apply-duration",
-		"experimental-bootstrap-defrag-threshold-megabytes": "bootstrap-defrag-threshold-megabytes",
-		"experimental-memory-mlock":                         "memory-mlock",
-		"experimental-snapshot-catchup-entries":             "snapshot-catchup-entries",
-		"experimental-compaction-sleep-interval":            "compaction-sleep-interval",
-		"experimental-downgrade-check-time":                 "downgrade-check-time",
-		"experimental-peer-skip-client-san-verification":    "peer-skip-client-san-verification",
-		"experimental-enable-distributed-tracing":           "enable-distributed-tracing",
-		"experimental-distributed-tracing-address":          "distributed-tracing-address",
-		"experimental-distributed-tracing-service-name":     "distributed-tracing-service-name",
-		"experimental-distributed-tracing-instance-id":      "distributed-tracing-instance-id",
-		"experimental-distributed-tracing-sampling-rate":    "distributed-tracing-sampling-rate",
-	}
 )
 
 var (
@@ -199,17 +167,6 @@ type Config struct {
 	// TODO: remove it in 3.7.
 	// Deprecated: Will be decommissioned in v3.7.
 	SnapshotCount uint64 `json:"snapshot-count"`
-
-	// ExperimentalSnapshotCatchUpEntries is the number of entries for a slow follower
-	// to catch-up after compacting the raft storage entries.
-	// We expect the follower has a millisecond level latency with the leader.
-	// The max throughput is around 10K. Keep a 5K entries is enough for helping
-	// follower to catch up.
-	// TODO: remove in v3.7.
-	// Note we made a mistake in https://github.com/etcd-io/etcd/pull/15033. The json tag
-	// `*-catch-up-*` isn't consistent with the command line flag `*-catchup-*`.
-	// Deprecated: Use SnapshotCatchUpEntries instead. Will be removed in v3.7.
-	ExperimentalSnapshotCatchUpEntries uint64 `json:"experimental-snapshot-catch-up-entries"`
 
 	// SnapshotCatchUpEntries is the number of entires for a slow follower
 	// to catch-up after compacting the raft storage entries.
@@ -401,73 +358,24 @@ type Config struct {
 	// AuthTokenTTL in seconds of the simple token
 	AuthTokenTTL uint `json:"auth-token-ttl"`
 
-	// ExperimentalInitialCorruptCheck defines to check data corrution on boot.
-	// TODO: delete in v3.7
-	// Deprecated: Use InitialCorruptCheck Feature Gate instead. Will be decommissioned in v3.7.
-	ExperimentalInitialCorruptCheck bool `json:"experimental-initial-corrupt-check"`
-	// ExperimentalCorruptCheckTime is the duration of time between cluster corruption check passes.
-	// TODO: delete in v3.7
-	// Deprecated: Use CorruptCheckTime instead. Will be decommissioned in v3.7.
-	ExperimentalCorruptCheckTime time.Duration `json:"experimental-corrupt-check-time"`
 	// CorruptCheckTime is the duration of time between cluster corruption check passes.
 	CorruptCheckTime time.Duration `json:"corrupt-check-time"`
-	// ExperimentalCompactHashCheckEnabled enables leader to periodically check followers compaction hashes.
-	// TODO: delete in v3.7
-	// Deprecated: Use CompactHashCheck Feature Gate. Will be decommissioned in v3.7.
-	ExperimentalCompactHashCheckEnabled bool `json:"experimental-compact-hash-check-enabled"`
-	// ExperimentalCompactHashCheckTime is the duration of time between leader checks followers compaction hashes.
-	// TODO: delete in v3.7
-	// Deprecated: Use CompactHashCheckTime instead. Will be decommissioned in v3.7.
-	ExperimentalCompactHashCheckTime time.Duration `json:"experimental-compact-hash-check-time"`
+
 	// CompactHashCheckTime is the duration of time between leader checks followers compaction hashes.
 	CompactHashCheckTime time.Duration `json:"compact-hash-check-time"`
-
-	// ExperimentalEnableLeaseCheckpoint enables leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.
-	ExperimentalEnableLeaseCheckpoint bool `json:"experimental-enable-lease-checkpoint"`
-	// ExperimentalEnableLeaseCheckpointPersist enables persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled.
-	// Requires experimental-enable-lease-checkpoint to be enabled.
-	// TODO: Delete in v3.7
-	// Deprecated: To be decommissioned in v3.7.
-	ExperimentalEnableLeaseCheckpointPersist bool `json:"experimental-enable-lease-checkpoint-persist"`
-	// ExperimentalCompactionBatchLimit Sets the maximum revisions deleted in each compaction batch.
-	// TODO: Delete in v3.7
-	// Deprecated: Use CompactionBatchLimit instead. Will be decommissioned in v3.7.
-	ExperimentalCompactionBatchLimit int `json:"experimental-compaction-batch-limit"`
 	// CompactionBatchLimit Sets the maximum revisions deleted in each compaction batch.
 	CompactionBatchLimit int `json:"compaction-batch-limit"`
-	// ExperimentalCompactionSleepInterval is the sleep interval between every etcd compaction loop.
-	// TODO: Delete in v3.7
-	// Deprecated: Use CompactionSleepInterval instead. Will be decommissioned in v3.7.
-	ExperimentalCompactionSleepInterval time.Duration `json:"experimental-compaction-sleep-interval"`
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
-	// ExperimentalWatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	// TODO: Delete in v3.7
-	// Deprecated: Use WatchProgressNotifyInterval instead. Will be decommissioned in v3.7.
-	ExperimentalWatchProgressNotifyInterval time.Duration `json:"experimental-watch-progress-notify-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
 	WatchProgressNotifyInterval time.Duration `json:"watch-progress-notify-interval"`
-	// ExperimentalWarningApplyDuration is the time duration after which a warning is generated if applying request
-	// takes more time than this value.
-	// TODO: Delete in v3.7
-	// Deprecated: Use WarningApplyDuration instead. Will be decommissioned in v3.7.
-	ExperimentalWarningApplyDuration time.Duration `json:"experimental-warning-apply-duration"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
-	// ExperimentalBootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
-	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
-	// TODO: Delete in v3.7
-	// Deprecated: Use BootstrapDefragThresholdMegabytes instead. Will be decommissioned in v3.7.
-	ExperimentalBootstrapDefragThresholdMegabytes uint `json:"experimental-bootstrap-defrag-threshold-megabytes"`
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	BootstrapDefragThresholdMegabytes uint `json:"bootstrap-defrag-threshold-megabytes"`
 	// WarningUnaryRequestDuration is the time duration after which a warning is generated if applying
 	// unary request takes more time than this value.
 	WarningUnaryRequestDuration time.Duration `json:"warning-unary-request-duration"`
-	// ExperimentalWarningUnaryRequestDuration is the time duration after which a warning is generated if applying
-	// TODO: Delete in v3.7
-	// Deprecated: Use WarningUnaryRequestDuration. Will be decommissioned in v3.7.
-	ExperimentalWarningUnaryRequestDuration time.Duration `json:"experimental-warning-unary-request-duration"`
 	// MaxLearners sets a limit to the number of learner members that can exist in the cluster membership.
 	MaxLearners int `json:"max-learners"`
 
@@ -479,54 +387,22 @@ type Config struct {
 	ListenMetricsUrls     []url.URL
 	ListenMetricsUrlsJSON string `json:"listen-metrics-urls"`
 
-	// ExperimentalEnableDistributedTracing indicates if experimental tracing using OpenTelemetry is enabled.
-	// TODO: delete in v3.7
-	// Deprecated: Use EnableDistributedTracing instead. Will be decommissioned in v3.7.
-	ExperimentalEnableDistributedTracing bool `json:"experimental-enable-distributed-tracing"`
 	// EnableDistributedTracing indicates if tracing using OpenTelemetry is enabled.
 	EnableDistributedTracing bool `json:"enable-distributed-tracing"`
-	// ExperimentalDistributedTracingAddress is the address of the OpenTelemetry Collector.
-	// Can only be set if ExperimentalEnableDistributedTracing is true.
-	// TODO: delete in v3.7
-	// Deprecated: Use DistributedTracingAddress instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingAddress string `json:"experimental-distributed-tracing-address"`
 	// DistributedTracingAddress is the address of the OpenTelemetry Collector.
 	// Can only be set if EnableDistributedTracing is true.
 	DistributedTracingAddress string `json:"distributed-tracing-address"`
-	// ExperimentalDistributedTracingServiceName is the name of the service.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	// TODO: delete in v3.7
-	// Deprecated: Use DistributedTracingServiceName instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingServiceName string `json:"experimental-distributed-tracing-service-name"`
 	// DistributedTracingServiceName is the name of the service.
 	// Can only be used if EnableDistributedTracing is true.
 	DistributedTracingServiceName string `json:"distributed-tracing-service-name"`
-	// ExperimentalDistributedTracingServiceInstanceID is the ID key of the service.
-	// This ID must be unique, as helps to distinguish instances of the same service
-	// that exist at the same time.
-	// Can only be used if ExperimentalEnableDistributedTracing is true.
-	// TODO: delete in v3.7
-	// Deprecated: Use DistributedTracingServiceInstanceID instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingServiceInstanceID string `json:"experimental-distributed-tracing-instance-id"`
 	// DistributedTracingServiceInstanceID is the ID key of the service.
 	// This ID must be unique, as helps to distinguish instances of the same service
 	// that exist at the same time.
 	// Can only be used if EnableDistributedTracing is true.
 	DistributedTracingServiceInstanceID string `json:"distributed-tracing-instance-id"`
-	// ExperimentalDistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
-	// Defaults to 0.
-	// TODO: delete in v3.7
-	// Deprecated: Use DistributedTracingSamplingRatePerMillion instead. Will be decommissioned in v3.7.
-	ExperimentalDistributedTracingSamplingRatePerMillion int `json:"experimental-distributed-tracing-sampling-rate"`
 	// DistributedTracingSamplingRatePerMillion is the number of samples to collect per million spans.
 	// Defaults to 0.
 	DistributedTracingSamplingRatePerMillion int `json:"distributed-tracing-sampling-rate"`
-
-	// ExperimentalPeerSkipClientSanVerification determines whether to skip verification of SAN field
-	// in client certificate for peer connections.
-	// TODO: Delete in v3.7
-	// Deprecated: Use `peer-skip-client-san-verification` instead. Will be decommissioned in v3.7.
-	ExperimentalPeerSkipClientSanVerification bool `json:"experimental-peer-skip-client-san-verification"`
 
 	// Logger is logger options: currently only supports "zap".
 	// "capnslog" is removed in v3.5.
@@ -562,10 +438,6 @@ type Config struct {
 	// Setting this is unsafe and will cause data loss.
 	UnsafeNoFsync bool `json:"unsafe-no-fsync"`
 
-	// ExperimentalDowngradeCheckTime is the duration between two downgrade status checks (in seconds).
-	// TODO: Delete `ExperimentalDowngradeCheckTime` in v3.7.
-	// Deprecated: Use DowngradeCheckTime instead. Will be decommissioned in v3.7.
-	ExperimentalDowngradeCheckTime time.Duration `json:"experimental-downgrade-check-time"`
 	// DowngradeCheckTime is the duration between two downgrade status checks (in seconds).
 	DowngradeCheckTime time.Duration `json:"downgrade-check-time"`
 
@@ -576,21 +448,6 @@ type Config struct {
 	// Currently all etcd memory gets mlocked, but in future the flag can
 	// be refined to mlock in-use area of bbolt only.
 	MemoryMlock bool `json:"memory-mlock"`
-
-	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
-	// TODO: Delete in v3.7
-	// Deprecated: Use MemoryMlock instad. To be decommissioned in v3.7.
-	ExperimentalMemoryMlock bool `json:"experimental-memory-mlock"`
-
-	// ExperimentalTxnModeWriteWithSharedBuffer enables write transaction to use a shared buffer in its readonly check operations.
-	// TODO: Delete in v3.7
-	// Deprecated: Use TxnModeWriteWithSharedBuffer Feature Flag. Will be decommissioned in v3.7.
-	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
-
-	// ExperimentalStopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
-	// TODO: Delete in v3.7
-	// Deprecated: Use StopGRPCServiceOnDefrag Feature Flag. Will be decommissioned in v3.7.
-	ExperimentalStopGRPCServiceOnDefrag bool `json:"experimental-stop-grpc-service-on-defrag"`
 
 	// V2Deprecation describes phase of API & Storage V2 support.
 	// Do not set this field for embedded use cases, as it has no effect. However, setting it will not cause any harm.
@@ -652,9 +509,8 @@ func NewConfig() *Config {
 
 		Name: DefaultName,
 
-		SnapshotCount:                      etcdserver.DefaultSnapshotCount,
-		ExperimentalSnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
-		SnapshotCatchUpEntries:             etcdserver.DefaultSnapshotCatchUpEntries,
+		SnapshotCount:          etcdserver.DefaultSnapshotCount,
+		SnapshotCatchUpEntries: etcdserver.DefaultSnapshotCatchUpEntries,
 
 		MaxTxnOps:            DefaultMaxTxnOps,
 		MaxRequestBytes:      DefaultMaxRequestBytes,
@@ -706,23 +562,14 @@ func NewConfig() *Config {
 		LogRotationConfigJSON: DefaultLogRotationConfig,
 		EnableGRPCGateway:     true,
 
-		ExperimentalDowngradeCheckTime: DefaultDowngradeCheckTime,
-		DowngradeCheckTime:             DefaultDowngradeCheckTime,
-		MemoryMlock:                    false,
-		// TODO: delete in v3.7
-		ExperimentalMemoryMlock:             false,
-		ExperimentalStopGRPCServiceOnDefrag: false,
-		MaxLearners:                         membership.DefaultMaxLearners,
+		DowngradeCheckTime: DefaultDowngradeCheckTime,
+		MemoryMlock:        false,
+		MaxLearners:        membership.DefaultMaxLearners,
 
-		ExperimentalTxnModeWriteWithSharedBuffer:  DefaultExperimentalTxnModeWriteWithSharedBuffer,
-		ExperimentalDistributedTracingAddress:     DefaultDistributedTracingAddress,
-		DistributedTracingAddress:                 DefaultDistributedTracingAddress,
-		ExperimentalDistributedTracingServiceName: DefaultDistributedTracingServiceName,
-		DistributedTracingServiceName:             DefaultDistributedTracingServiceName,
+		DistributedTracingAddress:     DefaultDistributedTracingAddress,
+		DistributedTracingServiceName: DefaultDistributedTracingServiceName,
 
 		CompactHashCheckTime: DefaultCompactHashCheckTime,
-		// TODO: delete in v3.7
-		ExperimentalCompactHashCheckTime: DefaultCompactHashCheckTime,
 
 		V2Deprecation: config.V2DeprDefault,
 
@@ -860,7 +707,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-cn", "Comma-separated list of allowed CNs for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "peer-cert-allowed-hostname", "Comma-separated list of allowed SAN hostnames for inter-peer TLS authentication.")
 	fs.Var(flags.NewStringsValue(""), "cipher-suites", "Comma-separated list of supported TLS cipher suites between client/server and peers (empty will be auto-populated by Go).")
-	fs.BoolVar(&cfg.ExperimentalPeerSkipClientSanVerification, "experimental-peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.Deprecated in v3.6 and will be decommissioned in v3.7. Use peer-skip-client-san-verification instead")
 	fs.BoolVar(&cfg.PeerTLSInfo.SkipClientSANVerify, "peer-skip-client-san-verification", false, "Skip verification of SAN field in client certificate for peer connections.")
 	fs.StringVar(&cfg.TlsMinVersion, "tls-min-version", string(tlsutil.TLSVersion12), "Minimum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3.")
 	fs.StringVar(&cfg.TlsMaxVersion, "tls-max-version", string(tlsutil.TLSVersionDefault), "Maximum TLS version supported by etcd. Possible values: TLS1.2, TLS1.3 (empty defers to Go).")
@@ -889,20 +735,10 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// additional metrics
 	fs.StringVar(&cfg.Metrics, "metrics", cfg.Metrics, "Set level of detail for exported metrics, specify 'extensive' to include server side grpc histogram metrics")
 
-	// experimental distributed tracing
-	fs.BoolVar(&cfg.ExperimentalEnableDistributedTracing, "experimental-enable-distributed-tracing", false, "Enable experimental distributed tracing using OpenTelemetry Tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use --enable-distributed-tracing instead.")
 	fs.BoolVar(&cfg.EnableDistributedTracing, "enable-distributed-tracing", false, "Enable distributed tracing using OpenTelemetry Tracing.")
-
-	fs.StringVar(&cfg.ExperimentalDistributedTracingAddress, "experimental-distributed-tracing-address", cfg.ExperimentalDistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-address instead.")
 	fs.StringVar(&cfg.DistributedTracingAddress, "distributed-tracing-address", cfg.DistributedTracingAddress, "Address for distributed tracing used for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
-
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceName, "experimental-distributed-tracing-service-name", cfg.ExperimentalDistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-service-name instead.")
 	fs.StringVar(&cfg.DistributedTracingServiceName, "distributed-tracing-service-name", cfg.DistributedTracingServiceName, "Configures service name for distributed tracing to be used to define service name for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). 'etcd' is the default service name. Use the same service name for all instances of etcd.")
-
-	fs.StringVar(&cfg.ExperimentalDistributedTracingServiceInstanceID, "experimental-distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance. Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-instance-id instead.")
 	fs.StringVar(&cfg.DistributedTracingServiceInstanceID, "distributed-tracing-instance-id", "", "Configures service instance ID for distributed tracing to be used to define service instance ID key for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag). There is no default value set. This ID must be unique per etcd instance.")
-
-	fs.IntVar(&cfg.ExperimentalDistributedTracingSamplingRatePerMillion, "experimental-distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with experimental-enable-distributed-tracing flag). Deprecated in v3.6 and will be decommissioned in v3.7. Use --distributed-tracing-sampling-rate instead.")
 	fs.IntVar(&cfg.DistributedTracingSamplingRatePerMillion, "distributed-tracing-sampling-rate", 0, "Number of samples to collect per million spans for OpenTelemetry Tracing (if enabled with enable-distributed-tracing flag).")
 
 	// auth
@@ -912,48 +748,18 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 
 	// gateway
 	fs.BoolVar(&cfg.EnableGRPCGateway, "enable-grpc-gateway", cfg.EnableGRPCGateway, "Enable GRPC gateway.")
-
-	// experimental
-	fs.BoolVar(&cfg.ExperimentalInitialCorruptCheck, "experimental-initial-corrupt-check", cfg.ExperimentalInitialCorruptCheck, "Enable to check data corruption before serving any client/peer traffic.")
-	// TODO: delete in v3.7
-	fs.DurationVar(&cfg.ExperimentalCorruptCheckTime, "experimental-corrupt-check-time", cfg.ExperimentalCorruptCheckTime, "Duration of time between cluster corruption check passes. Deprecated in v3.6 and will be decommissioned in v3.7. Use --corrupt-check-time instead")
 	fs.DurationVar(&cfg.CorruptCheckTime, "corrupt-check-time", cfg.CorruptCheckTime, "Duration of time between cluster corruption check passes.")
-	// TODO: delete in v3.7
-	fs.BoolVar(&cfg.ExperimentalCompactHashCheckEnabled, "experimental-compact-hash-check-enabled", cfg.ExperimentalCompactHashCheckEnabled, "Enable leader to periodically check followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=CompactHashCheck=true' instead")
-	fs.DurationVar(&cfg.ExperimentalCompactHashCheckTime, "experimental-compact-hash-check-time", cfg.ExperimentalCompactHashCheckTime, "Duration of time between leader checks followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compact-hash-check-time instead.")
-
 	fs.DurationVar(&cfg.CompactHashCheckTime, "compact-hash-check-time", cfg.CompactHashCheckTime, "Duration of time between leader checks followers compaction hashes.")
 
-	fs.BoolVar(&cfg.ExperimentalEnableLeaseCheckpoint, "experimental-enable-lease-checkpoint", false, "Enable leader to send regular checkpoints to other members to prevent reset of remaining TTL on leader change.")
-	// TODO: delete in v3.7
-	fs.BoolVar(&cfg.ExperimentalEnableLeaseCheckpointPersist, "experimental-enable-lease-checkpoint-persist", false, "Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled.")
-	// TODO: delete in v3.7
-	fs.IntVar(&cfg.ExperimentalCompactionBatchLimit, "experimental-compaction-batch-limit", cfg.ExperimentalCompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-batch-limit instead.")
 	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
-	fs.DurationVar(&cfg.ExperimentalCompactionSleepInterval, "experimental-compaction-sleep-interval", cfg.ExperimentalCompactionSleepInterval, "Sets the sleep interval between each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use --compaction-sleep-interval instead.")
 	fs.DurationVar(&cfg.CompactionSleepInterval, "compaction-sleep-interval", cfg.CompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
-	// TODO: delete in v3.7
-	fs.DurationVar(&cfg.ExperimentalWatchProgressNotifyInterval, "experimental-watch-progress-notify-interval", cfg.ExperimentalWatchProgressNotifyInterval, "Duration of periodic watch progress notifications. Deprecated in v3.6 and will be decommissioned in v3.7. Use --watch-progress-notify-interval instead.")
 	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.DowngradeCheckTime, "downgrade-check-time", cfg.DowngradeCheckTime, "Duration of time between two downgrade status checks.")
-	// TODO: delete in v3.7
-	fs.DurationVar(&cfg.ExperimentalDowngradeCheckTime, "experimental-downgrade-check-time", cfg.ExperimentalDowngradeCheckTime, "Duration of time between two downgrade status checks. Deprecated in v3.6 and will be decommissioned in v3.7. Use --downgrade-check-time instead.")
-	// TODO: delete in v3.7
-	fs.DurationVar(&cfg.ExperimentalWarningApplyDuration, "experimental-warning-apply-duration", cfg.ExperimentalWarningApplyDuration, "Time duration after which a warning is generated if request takes more time. Deprecated in v3.6 and will be decommissioned in v3.7. Use --warning-watch-progress-duration instead.")
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
-	fs.DurationVar(&cfg.ExperimentalWarningUnaryRequestDuration, "experimental-warning-unary-request-duration", cfg.ExperimentalWarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time. It's deprecated, and will be decommissioned in v3.7. Use --warning-unary-request-duration instead.")
-	// TODO: delete in v3.7
-	fs.BoolVar(&cfg.ExperimentalMemoryMlock, "experimental-memory-mlock", cfg.ExperimentalMemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
 	fs.BoolVar(&cfg.MemoryMlock, "memory-mlock", cfg.MemoryMlock, "Enable to enforce etcd pages (in particular bbolt) to stay in RAM.")
-	fs.BoolVar(&cfg.ExperimentalTxnModeWriteWithSharedBuffer, "experimental-txn-mode-write-with-shared-buffer", true, "Enable the write transaction to use a shared buffer in its readonly check operations.")
-	fs.BoolVar(&cfg.ExperimentalStopGRPCServiceOnDefrag, "experimental-stop-grpc-service-on-defrag", cfg.ExperimentalStopGRPCServiceOnDefrag, "Enable etcd gRPC service to stop serving client requests on defragmentation.")
-	// TODO: delete in v3.7
-	fs.UintVar(&cfg.ExperimentalBootstrapDefragThresholdMegabytes, "experimental-bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. It's deprecated, and will be decommissioned in v3.7. Use --bootstrap-defrag-threshold-megabytes instead.")
 	fs.UintVar(&cfg.BootstrapDefragThresholdMegabytes, "bootstrap-defrag-threshold-megabytes", 0, "Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.")
-	// TODO: delete in v3.7
 	fs.IntVar(&cfg.MaxLearners, "max-learners", membership.DefaultMaxLearners, "Sets the maximum number of learners that can be available in the cluster membership.")
-	fs.Uint64Var(&cfg.ExperimentalSnapshotCatchUpEntries, "experimental-snapshot-catchup-entries", cfg.ExperimentalSnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries. Deprecated in v3.6 and will be decommissioned in v3.7. Use --snapshot-catchup-entries instead.")
 	fs.Uint64Var(&cfg.SnapshotCatchUpEntries, "snapshot-catchup-entries", cfg.SnapshotCatchUpEntries, "Number of entries for a slow follower to catch up after compacting the raft storage entries.")
 
 	// unsafe
@@ -1011,28 +817,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 		for k := range peerTransportSecurityMap {
 			cfg.FlagsExplicitlySet[fmt.Sprintf("peer-%s", k)] = true
 		}
-	}
-
-	// attempt to fix a bug introduced in https://github.com/etcd-io/etcd/pull/15033
-	// both `experimental-snapshot-catch-up-entries` and `experimental-snapshot-catchup-entries` refer to the same field,
-	// 	map the YAML field "experimental-snapshot-catch-up-entries" to the flag "experimental-snapshot-catchup-entries".
-	if val, ok := cfgMap["experimental-snapshot-catch-up-entries"]; ok {
-		cfgMap["experimental-snapshot-catchup-entries"] = val
-		cfg.ExperimentalSnapshotCatchUpEntries = uint64(val.(float64))
-		cfg.FlagsExplicitlySet["experimental-snapshot-catchup-entries"] = true
-	}
-
-	getBoolFlagVal := func(flagName string) *bool {
-		flagVal, ok := cfgMap[flagName]
-		if !ok {
-			return nil
-		}
-		boolVal := flagVal.(bool)
-		return &boolVal
-	}
-	err = SetFeatureGatesFromExperimentalFlags(cfg.ServerFeatureGate, getBoolFlagVal, cfg.configJSON.ServerFeatureGatesJSON)
-	if err != nil {
-		return err
 	}
 
 	if cfg.configJSON.ListenPeerURLs != "" {
@@ -1128,36 +912,6 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
-// SetFeatureGatesFromExperimentalFlags sets the feature gate values if the feature gate is not explicitly set
-// while their corresponding experimental flags are explicitly set, for all the features in ExperimentalFlagToFeatureMap.
-// TODO: remove after all experimental flags are deprecated.
-func SetFeatureGatesFromExperimentalFlags(fg featuregate.FeatureGate, getExperimentalFlagVal func(string) *bool, featureGatesVal string) error {
-	m := make(map[featuregate.Feature]bool)
-	// verify that the feature gate and its experimental flag are not both set at the same time.
-	for expFlagName, featureName := range features.ExperimentalFlagToFeatureMap {
-		flagVal := getExperimentalFlagVal(expFlagName)
-		if flagVal == nil {
-			continue
-		}
-		if strings.Contains(featureGatesVal, string(featureName)) {
-			return fmt.Errorf("cannot specify both flags: --%s=%v and --%s=%s=%v at the same time, please just use --%s=%s=%v",
-				expFlagName, *flagVal, ServerFeatureGateFlagName, featureName, fg.Enabled(featureName), ServerFeatureGateFlagName, featureName, fg.Enabled(featureName))
-		}
-		m[featureName] = *flagVal
-	}
-
-	// filter out unknown features for fg, because we could use SetFeatureGatesFromExperimentalFlags both for
-	// server and cluster level feature gates.
-	allFeatures := fg.(featuregate.MutableFeatureGate).GetAll()
-	mFiltered := make(map[string]bool)
-	for k, v := range m {
-		if _, ok := allFeatures[k]; ok {
-			mFiltered[string(k)] = v
-		}
-	}
-	return fg.(featuregate.MutableFeatureGate).SetFromMap(mFiltered)
-}
-
 func updateCipherSuites(tls *transport.TLSInfo, ss []string) error {
 	if len(tls.CipherSuites) > 0 && len(ss) > 0 {
 		return fmt.Errorf("TLSInfo.CipherSuites is already specified (given %v)", ss)
@@ -1185,14 +939,6 @@ func updateMinMaxVersions(info *transport.TLSInfo, min, max string) {
 
 // Validate ensures that '*embed.Config' fields are properly configured.
 func (cfg *Config) Validate() error {
-	// make sure there is no conflict in the flag settings in the ExperimentalNonBoolFlagMigrationMap
-	// TODO: delete in v3.7
-	for oldFlag, newFlag := range experimentalFlagMigrationMap {
-		if cfg.FlagsExplicitlySet[oldFlag] && cfg.FlagsExplicitlySet[newFlag] {
-			return fmt.Errorf("cannot set --%s and --%s at the same time, please use --%s only", oldFlag, newFlag, newFlag)
-		}
-	}
-
 	if err := cfg.setupLogging(); err != nil {
 		return err
 	}
@@ -1297,10 +1043,7 @@ func (cfg *Config) Validate() error {
 	if cfg.ServerFeatureGate.Enabled(features.LeaseCheckpointPersist) && !cfg.ServerFeatureGate.Enabled(features.LeaseCheckpoint) {
 		return fmt.Errorf("enabling feature gate LeaseCheckpointPersist requires enabling feature gate LeaseCheckpoint")
 	}
-	// TODO: delete in v3.7
-	if cfg.ExperimentalCompactHashCheckTime <= 0 {
-		return fmt.Errorf("--experimental-compact-hash-check-time must be >0 (set to %v)", cfg.ExperimentalCompactHashCheckTime)
-	}
+
 	if cfg.CompactHashCheckTime <= 0 {
 		return fmt.Errorf("--compact-hash-check-time must be >0 (set to %v)", cfg.CompactHashCheckTime)
 	}

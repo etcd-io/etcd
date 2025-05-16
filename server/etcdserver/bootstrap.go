@@ -261,8 +261,8 @@ func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
 			zap.String("current-db-size", humanize.Bytes(uint64(size))),
 			zap.Int64("current-db-size-in-use-bytes", sizeInUse),
 			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
-			zap.Uint("experimental-bootstrap-defrag-threshold-bytes", thresholdBytes),
-			zap.String("experimental-bootstrap-defrag-threshold", humanize.Bytes(uint64(thresholdBytes))),
+			zap.Uint("bootstrap-defrag-threshold-bytes", thresholdBytes),
+			zap.String("bootstrap-defrag-threshold", humanize.Bytes(uint64(thresholdBytes))),
 		)
 		return nil
 	}
