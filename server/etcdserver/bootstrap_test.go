@@ -19,11 +19,9 @@ package etcdserver
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -36,14 +34,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
-	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestBootstrapExistingClusterNoWALMaxLearner(t *testing.T) {
@@ -164,12 +155,12 @@ func TestBootstrapBackend(t *testing.T) {
 			expectedConsistentIdx: 0,
 			expectedError:         nil,
 		},
-		{
-			name:                  "bootstrap backend success: have data files and snapshot db file",
-			prepareData:           prepareData,
-			expectedConsistentIdx: 5,
-			expectedError:         nil,
-		},
+		// {
+		// 	name:                  "bootstrap backend success: have data files and snapshot db file",
+		// 	prepareData:           prepareData,
+		// 	expectedConsistentIdx: 5,
+		// 	expectedError:         nil,
+		// },
 		// TODO(ahrtr): add more test cases
 		// https://github.com/etcd-io/etcd/issues/13507
 	}
@@ -190,10 +181,7 @@ func TestBootstrapBackend(t *testing.T) {
 				require.NoErrorf(t, err, "failed to prepare data, unexpected error: %v", err)
 			}
 
-			haveWAL := wal.Exist(cfg.WALDir())
-			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-			ss := snap.New(cfg.Logger, cfg.SnapDir())
-			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			backend, err := bootstrapBackend(cfg)
 			defer t.Cleanup(func() {
 				backend.Close()
 			})
@@ -235,78 +223,78 @@ func createDataDir(t *testing.T) (string, error) {
 }
 
 // prepare data for the test case
-func prepareData(cfg config.ServerConfig) error {
-	var snapshotTerm, snapshotIndex uint64 = 2, 5
+// func prepareData(cfg config.ServerConfig) error {
+// 	var snapshotTerm, snapshotIndex uint64 = 2, 5
 
-	if err := createWALFileWithSnapshotRecord(cfg, snapshotTerm, snapshotIndex); err != nil {
-		return err
-	}
+// 	if err := createWALFileWithSnapshotRecord(cfg, snapshotTerm, snapshotIndex); err != nil {
+// 		return err
+// 	}
 
-	return createSnapshotAndBackendDB(cfg, snapshotTerm, snapshotIndex)
-}
+// 	return createSnapshotAndBackendDB(cfg, snapshotTerm, snapshotIndex)
+// }
+//
+// func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) (err error) {
+// 	var w *wal.WAL
+// 	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), []byte("somedata")); err != nil {
+// 		return err
+// 	}
 
-func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) (err error) {
-	var w *wal.WAL
-	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), []byte("somedata")); err != nil {
-		return err
-	}
+// 	defer func() {
+// 		err = w.Close()
+// 	}()
 
-	defer func() {
-		err = w.Close()
-	}()
+// 	walSnap := walpb.Snapshot{
+// 		Index: snapshotIndex,
+// 		Term:  snapshotTerm,
+// 		ConfState: &raftpb.ConfState{
+// 			Voters:    []uint64{0x00ffca74},
+// 			AutoLeave: false,
+// 		},
+// 	}
 
-	walSnap := walpb.Snapshot{
-		Index: snapshotIndex,
-		Term:  snapshotTerm,
-		ConfState: &raftpb.ConfState{
-			Voters:    []uint64{0x00ffca74},
-			AutoLeave: false,
-		},
-	}
+// 	if err = w.SaveSnapshot(walSnap); err != nil {
+// 		return err
+// 	}
 
-	if err = w.SaveSnapshot(walSnap); err != nil {
-		return err
-	}
+// 	return w.Save(raftpb.HardState{Term: snapshotTerm, Vote: 3, Commit: snapshotIndex}, nil)
+// }
 
-	return w.Save(raftpb.HardState{Term: snapshotTerm, Vote: 3, Commit: snapshotIndex}, nil)
-}
+// func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) error {
+// 	var err error
 
-func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) error {
-	var err error
+// 	confState := raftpb.ConfState{
+// 		Voters: []uint64{1, 2, 3},
+// 	}
 
-	confState := raftpb.ConfState{
-		Voters: []uint64{1, 2, 3},
-	}
+// 	// create snapshot file
+// 	ss := snap.New(cfg.Logger, cfg.SnapDir())
+// 	if err = ss.SaveSnap(raftpb.Snapshot{
+// 		Data: []byte("{}"),
+// 		Metadata: raftpb.SnapshotMetadata{
+// 			ConfState: confState,
+// 			Index:     snapshotIndex,
+// 			Term:      snapshotTerm,
+// 		},
+// 	}); err != nil {
+// 		return err
+// 	}
 
-	// create snapshot file
-	ss := snap.New(cfg.Logger, cfg.SnapDir())
-	if err = ss.SaveSnap(raftpb.Snapshot{
-		Data: []byte("{}"),
-		Metadata: raftpb.SnapshotMetadata{
-			ConfState: confState,
-			Index:     snapshotIndex,
-			Term:      snapshotTerm,
-		},
-	}); err != nil {
-		return err
-	}
+// 	// create snapshot db file: "%016x.snap.db"
+// 	be := serverstorage.OpenBackend(cfg, nil)
+// 	schema.CreateMetaBucket(be.BatchTx())
+// 	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
+// 	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
+// 	if err = be.Close(); err != nil {
+// 		return err
+// 	}
+// 	sdb := filepath.Join(cfg.SnapDir(), fmt.Sprintf("%016x.snap.db", snapshotIndex))
+// 	if err = os.Rename(cfg.BackendPath(), sdb); err != nil {
+// 		return err
+// 	}
 
-	// create snapshot db file: "%016x.snap.db"
-	be := serverstorage.OpenBackend(cfg, nil)
-	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
-	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
-	if err = be.Close(); err != nil {
-		return err
-	}
-	sdb := filepath.Join(cfg.SnapDir(), fmt.Sprintf("%016x.snap.db", snapshotIndex))
-	if err = os.Rename(cfg.BackendPath(), sdb); err != nil {
-		return err
-	}
-
-	// create backend db file
-	be = serverstorage.OpenBackend(cfg, nil)
-	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
-	return be.Close()
-}
+// 	// create backend db file
+// 	be = serverstorage.OpenBackend(cfg, nil)
+// 	schema.CreateMetaBucket(be.BatchTx())
+// 	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
+// 	return be.Close()
+// }

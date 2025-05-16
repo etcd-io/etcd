@@ -83,11 +83,7 @@ func TestGetIDs(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		var snap raftpb.Snapshot
-		if tt.confState != nil {
-			snap.Metadata.ConfState = *tt.confState
-		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, tt.confState, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
