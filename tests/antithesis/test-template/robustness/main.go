@@ -50,7 +50,7 @@ var profile = traffic.Profile{
 const (
 	defaultetcd0 = "etcd0:2379"
 	defaultetcd1 = "etcd1:2379"
-	defaultetcd2 = "etcd0:2379"
+	defaultetcd2 = "etcd2:2379"
 
 	localetcd0 = "127.0.0.1:12379"
 	localetcd1 = "127.0.0.1:22379"
