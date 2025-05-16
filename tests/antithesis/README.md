@@ -8,6 +8,7 @@ Run this command from the `antithesis/test-template` directory:
 
 ```bash
 make antithesis-build-client-docker-image
+make antithesis-build-etcd-image
 ```
 
 ### 2. (Optional) Check the Image Locally
