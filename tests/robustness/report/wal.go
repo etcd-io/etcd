@@ -58,12 +58,16 @@ func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) (
 }
 
 func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
+	return persistedRequests(lg, dataDirs, requestsPersistedInWAL)
+}
+
+func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedRequestReaderFunc) ([]model.EtcdRequest, error) {
 	persistedRequests := []model.EtcdRequest{}
 	// Allow failure in minority of etcd cluster.
 	// 0 failures in 1 node cluster, 1 failure in 3 node cluster
 	allowedFailures := len(dataDirs) / 2
 	for _, dir := range dataDirs {
-		memberRequests, err := requestsPersistedInWAL(lg, dir)
+		memberRequests, err := reader(lg, dir)
 		if err != nil {
 			if allowedFailures < 1 {
 				return nil, err
@@ -83,6 +87,8 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 	}
 	return persistedRequests, nil
 }
+
+type persistedRequestReaderFunc = func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error)
 
 func requestsPersistedInWAL(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
 	_, ents, err := ReadWAL(lg, dataDir)
