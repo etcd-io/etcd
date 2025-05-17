@@ -9,6 +9,8 @@ antithesis-build-client-docker-image:
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
+	git fetch origin release-3.5
+	git worktree remove -f /tmp/etcd3.5 || true
 	git worktree add /tmp/etcd3.5 origin/release-3.5
 	cd /tmp/etcd3.5 && make build
 	cd /tmp/etcd3.5 && cp ./Dockerfile-release.$(ARCH) ./bin/Dockerfile
