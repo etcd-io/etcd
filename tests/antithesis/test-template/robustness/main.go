@@ -157,9 +157,9 @@ func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime ti
 		return nil
 	})
 	g.Go(func() error {
-		var watchErr error
-		watchReport, _, watchErr = client.CollectClusterWatchEvents(ctx, lg, hosts, maxRevisionChan, watchConfig, baseTime, ids)
-		return watchErr
+		var err error
+		watchReport, err = client.CollectClusterWatchEvents(ctx, lg, hosts, maxRevisionChan, watchConfig, baseTime, ids)
+		return err
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err
