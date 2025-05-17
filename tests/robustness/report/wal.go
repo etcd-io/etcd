@@ -58,31 +58,80 @@ func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) (
 }
 
 func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
-	persistedRequests := []model.EtcdRequest{}
+	return persistedRequests(lg, dataDirs, requestsPersistedInWAL)
+}
+
+func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedRequestReaderFunc) ([]model.EtcdRequest, error) {
+	if len(dataDirs) == 0 {
+		return nil, errors.New("no data dirs")
+	}
 	// Allow failure in minority of etcd cluster.
-	// 0 failures in 1 node cluster, 1 failure in 3 node cluster
 	allowedFailures := len(dataDirs) / 2
-	for _, dir := range dataDirs {
-		memberRequests, err := requestsPersistedInWAL(lg, dir)
+	memberRequestHistories := make([][]model.EtcdRequest, len(dataDirs))
+	for i, dir := range dataDirs {
+		requests, err := reader(lg, dir)
 		if err != nil {
 			if allowedFailures < 1 {
 				return nil, err
 			}
 			allowedFailures--
-			continue
 		}
-		minLength := min(len(persistedRequests), len(memberRequests))
-		if diff := cmp.Diff(memberRequests[:minLength], persistedRequests[:minLength]); diff != "" {
-			lg.Error("unexpected differences between wal entries")
-			fmt.Print(diff) // zap doesn't nicely writes multiline strings like diff
-			return nil, errors.New("unexpected differences between wal entries")
-		}
-		if len(memberRequests) > len(persistedRequests) {
-			persistedRequests = memberRequests
+		memberRequestHistories[i] = requests
+	}
+	// Each history collects votes from each history that it matches.
+	votes := make([]int, len(memberRequestHistories))
+	reportedDifference := make([]int, len(memberRequestHistories))
+	for i := 0; i < len(memberRequestHistories); i++ {
+		for j := 0; j < len(memberRequestHistories); j++ {
+			if i == j {
+				// history votes for itself
+				votes[i]++
+				continue
+			}
+			if i > j {
+				// avoid comparing things twice
+				continue
+			}
+			first := memberRequestHistories[i]
+			second := memberRequestHistories[j]
+			minLength := min(len(first), len(second))
+			// empty history cannot vote
+			if minLength == 0 {
+				continue
+			}
+			if diff := cmp.Diff(first[:minLength], second[:minLength]); diff == "" {
+				votes[i]++
+				votes[j]++
+			} else {
+				// Avoid reporting same difference to different WAL
+				if reportedDifference[i] == 0 && reportedDifference[j] == 0 {
+					fmt.Printf("Difference between WAL in %q and %q:\n%s", dataDirs[i], dataDirs[j], diff) // zap doesn't nicely writes multiline strings like diff
+					reportedDifference[i]++
+					reportedDifference[j]++
+				}
+			}
 		}
 	}
-	return persistedRequests, nil
+	// Select longest history that has votes from quorum.
+	longestHistory := []model.EtcdRequest{}
+	quorum := len(dataDirs)/2 + 1
+	foundQuorum := false
+	for i := 0; i < len(memberRequestHistories); i++ {
+		if votes[i] < quorum {
+			continue
+		}
+		foundQuorum = true
+		if len(memberRequestHistories[i]) > len(longestHistory) {
+			longestHistory = memberRequestHistories[i]
+		}
+	}
+	if !foundQuorum {
+		return nil, errors.New("unexpected differences between wal entries")
+	}
+	return longestHistory, nil
 }
+
+type persistedRequestReaderFunc = func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error)
 
 func requestsPersistedInWAL(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
 	_, ents, err := ReadWAL(lg, dataDir)
