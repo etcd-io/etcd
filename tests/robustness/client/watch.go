@@ -65,30 +65,34 @@ type WatchConfig struct {
 func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
+	var closing bool
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 resetWatch:
 	for {
+		if closing {
+			if maxRevision == 0 {
+				return errors.New("Client didn't collect all events, max revision not set")
+			}
+			if lastRevision < maxRevision {
+				return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+			}
+			return nil
+		}
 		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
 		for {
 			select {
-			case <-ctx.Done():
-				if maxRevision == 0 {
-					return errors.New("Client didn't collect all events, max revision not set")
-				}
-				if lastRevision < maxRevision {
-					return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
-				}
-				return nil
 			case revision, ok := <-maxRevisionChan:
 				if ok {
 					maxRevision = revision
 					if lastRevision >= maxRevision {
+						closing = true
 						cancel()
 					}
 				} else {
 					// Only cancel if maxRevision was never set.
 					if maxRevision == 0 {
+						closing = true
 						cancel()
 					}
 				}
@@ -114,6 +118,7 @@ resetWatch:
 					lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 				}
 				if maxRevision != 0 && lastRevision >= maxRevision {
+					closing = true
 					cancel()
 				}
 			}
