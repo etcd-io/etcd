@@ -77,10 +77,7 @@ func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedReques
 			allowedFailures--
 			continue
 		}
-		// Empty history should not vote
-		if len(requests) != 0 {
-			memberRequestHistories = append(memberRequestHistories, requests)
-		}
+		memberRequestHistories = append(memberRequestHistories, requests)
 	}
 	// Return empty history if all histories were empty/failed to read.
 	if len(memberRequestHistories) == 0 {
@@ -119,13 +116,22 @@ func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedReques
 		if votes[i] < quorum {
 			continue
 		}
+		// There cannot be incompabible histories supported by quorum
+		minLength := min(len(memberRequestHistories[i]), len(longestHistory))
+		if diff := cmp.Diff(memberRequestHistories[i][:minLength], longestHistory[:minLength]); diff != "" {
+			lastDiff = diff
+			foundQuorum = false
+			break
+		}
 		foundQuorum = true
 		if len(memberRequestHistories[i]) > len(longestHistory) {
 			longestHistory = memberRequestHistories[i]
 		}
 	}
 	if !foundQuorum {
-		fmt.Printf("Difference between WAL:\n%s", lastDiff) // zap doesn't nicely writes multiline strings like diff
+		if lastDiff != "" {
+			fmt.Printf("Difference between WAL:\n%s", lastDiff) // zap doesn't nicely writes multiline strings like diff
+		}
 		return nil, errors.New("unexpected differences between wal entries")
 	}
 	return longestHistory, nil
