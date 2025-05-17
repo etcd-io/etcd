@@ -29,7 +29,7 @@ antithesis-run-container-tests:
 
 .PHONY: antithesis-run-local-tests
 antithesis-run-local-tests:
-	go run ./test-template/robustness/main.go --local
+	go run --race ./test-template/robustness/main.go --local
 
 .PHONY: antithesis-clean
 antithesis-clean:
