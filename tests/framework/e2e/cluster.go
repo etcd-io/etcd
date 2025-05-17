@@ -271,6 +271,10 @@ func WithClientAutoTLS(isClientAutoTLS bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Client.AutoTLS = isClientAutoTLS }
 }
 
+func WithClientHTTPSeparate(separate bool) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) { c.ClientHTTPSeparate = separate }
+}
+
 func WithClientRevokeCerts(isClientCRL bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.Client.RevokeCerts = isClientCRL }
 }
