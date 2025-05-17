@@ -1,10 +1,21 @@
 REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
+ARCH ?= $(shell go env GOARCH)
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image:
 	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) -f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
+
+.PHONY: antithesis-build-etcd-image
+antithesis-build-etcd-image:
+	git worktree add /tmp/etcd3.5 origin/release-3.5
+	cd /tmp/etcd3.5 && make build
+	cd /tmp/etcd3.5 && cp ./Dockerfile-release.$(ARCH) ./bin/Dockerfile
+	cd /tmp/etcd3.5 && docker build \
+		--tag etcd-server:latest \
+		./bin
+	git worktree remove -f /tmp/etcd3.5
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
