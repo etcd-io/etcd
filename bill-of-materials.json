@@ -171,7 +171,7 @@
 		]
 	},
 	{
-		"project": "github.com/golang/protobuf",
+		"project": "github.com/golang/protobuf/proto",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -216,7 +216,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
