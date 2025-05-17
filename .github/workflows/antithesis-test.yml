@@ -22,7 +22,7 @@ on:
       images:
         description: 'System images (separate with ;)'
         required: true
-        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:latest;gcr.io/etcd-development/etcd:v3.5.21;docker.io/library/ubuntu:latest
+        default: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:latest;us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-server:latest;docker.io/library/ubuntu:latest
         type: string
       duration:
         description: 'Duration (exploration hours)'
@@ -83,6 +83,7 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ github.sha }}
 
       - name: Build and push etcd image
+        working-directory: ./tests/antithesis
         run: |
           make antithesis-build-etcd-image
           export TAG="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:latest"
