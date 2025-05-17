@@ -67,20 +67,28 @@ func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedReques
 	}
 	// Allow failure in minority of etcd cluster.
 	allowedFailures := len(dataDirs) / 2
-	memberRequestHistories := make([][]model.EtcdRequest, len(dataDirs))
-	for i, dir := range dataDirs {
+	memberRequestHistories := make([][]model.EtcdRequest, 0, len(dataDirs))
+	for _, dir := range dataDirs {
 		requests, err := reader(lg, dir)
 		if err != nil {
 			if allowedFailures < 1 {
 				return nil, err
 			}
 			allowedFailures--
+			continue
 		}
-		memberRequestHistories[i] = requests
+		// Empty history should not vote
+		if len(requests) != 0 {
+			memberRequestHistories = append(memberRequestHistories, requests)
+		}
+	}
+	// Return empty history if all histories were empty/failed to read.
+	if len(memberRequestHistories) == 0 {
+		return []model.EtcdRequest{}, nil
 	}
 	// Each history collects votes from each history that it matches.
 	votes := make([]int, len(memberRequestHistories))
-	reportedDifference := make([]int, len(memberRequestHistories))
+	lastDiff := ""
 	for i := 0; i < len(memberRequestHistories); i++ {
 		for j := 0; j < len(memberRequestHistories); j++ {
 			if i == j {
@@ -95,20 +103,11 @@ func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedReques
 			first := memberRequestHistories[i]
 			second := memberRequestHistories[j]
 			minLength := min(len(first), len(second))
-			// empty history cannot vote
-			if minLength == 0 {
-				continue
-			}
 			if diff := cmp.Diff(first[:minLength], second[:minLength]); diff == "" {
 				votes[i]++
 				votes[j]++
 			} else {
-				// Avoid reporting same difference to different WAL
-				if reportedDifference[i] == 0 && reportedDifference[j] == 0 {
-					fmt.Printf("Difference between WAL in %q and %q:\n%s", dataDirs[i], dataDirs[j], diff) // zap doesn't nicely writes multiline strings like diff
-					reportedDifference[i]++
-					reportedDifference[j]++
-				}
+				lastDiff = diff
 			}
 		}
 	}
@@ -126,6 +125,7 @@ func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedReques
 		}
 	}
 	if !foundQuorum {
+		fmt.Printf("Difference between WAL:\n%s", lastDiff) // zap doesn't nicely writes multiline strings like diff
 		return nil, errors.New("unexpected differences between wal entries")
 	}
 	return longestHistory, nil

@@ -89,6 +89,14 @@ func TestPersistedRequests(t *testing.T) {
 			},
 		},
 		{
+			name:     "Success when three member have no entries",
+			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
+			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
+				return []model.EtcdRequest{}, nil
+			},
+			expectRequests: []model.EtcdRequest{},
+		},
+		{
 			name:     "Success when one member returned error in three node cluster",
 			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
 			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
