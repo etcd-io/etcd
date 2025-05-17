@@ -162,19 +162,17 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		return nil
 	})
 	g.Go(func() error {
-		var failed bool
 		var err error
 		endpoints := processEndpoints(clus)
-		watchReport, failed, err = client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, baseTime, ids)
-		require.NoError(t, err)
-		if failed {
-			t.Fail()
-		}
-		return nil
+		watchReport, err = client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, baseTime, ids)
+		return err
 	})
-	g.Wait()
+	err := g.Wait()
+	if err != nil {
+		t.Error(err)
+	}
 
-	err := client.CheckEndOfTestHashKV(ctx, clus)
+	err = client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {
 		t.Error(err)
 	}
@@ -213,7 +211,7 @@ func testResultsDirectory(t *testing.T) string {
 }
 
 func processEndpoints(clus *e2e.EtcdProcessCluster) []string {
-	endpoints := make([]string, len(clus.Procs))
+	endpoints := make([]string, 0, len(clus.Procs))
 	for _, proc := range clus.Procs {
 		endpoints = append(endpoints, proc.EndpointsGRPC()[0])
 	}

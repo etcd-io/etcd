@@ -16,50 +16,45 @@ package client
 
 import (
 	"context"
-	"sync"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, bool, error) {
-	mux := sync.Mutex{}
-	var wg sync.WaitGroup
-	neverFailed := true
+func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	var g errgroup.Group
 	reports := make([]report.ClientReport, len(endpoints))
 	memberMaxRevisionChans := make([]chan int64, len(endpoints))
 	for i, endpoint := range endpoints {
-		c, err := NewRecordingClient([]string{endpoint}, ids, baseTime)
-		if err != nil {
-			return nil, false, err
-		}
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
-		wg.Add(1)
-		go func(i int, c *RecordingClient) {
-			defer wg.Done()
+		g.Go(func() error {
+			c, err := NewRecordingClient([]string{endpoint}, ids, baseTime)
+			if err != nil {
+				return err
+			}
 			defer c.Close()
-			watchSuccessful := watchUntilRevision(ctx, lg, c, memberMaxRevisionChan, cfg)
-			mux.Lock()
-			neverFailed = neverFailed && watchSuccessful
+			err = watchUntilRevision(ctx, lg, c, memberMaxRevisionChan, cfg)
 			reports[i] = c.Report()
-			mux.Unlock()
-		}(i, c)
+			return err
+		})
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+
+	g.Go(func() error {
 		maxRevision := <-maxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
-	}()
-	wg.Wait()
-	return reports, neverFailed, nil
+		return nil
+	})
+	return reports, g.Wait()
 }
 
 type WatchConfig struct {
@@ -67,10 +62,9 @@ type WatchConfig struct {
 }
 
 // watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) bool {
+func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
-	success := true
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 resetWatch:
@@ -80,14 +74,12 @@ resetWatch:
 			select {
 			case <-ctx.Done():
 				if maxRevision == 0 {
-					lg.Error("Client didn't collect all events, max revision not set")
-					success = false
+					return errors.New("Client didn't collect all events, max revision not set")
 				}
 				if lastRevision < maxRevision {
-					lg.Error("Client didn't collect all events", zap.Int64("revision-got", lastRevision), zap.Int64("revision-expected", maxRevision))
-					success = false
+					return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
 				}
-				return success
+				return nil
 			case revision, ok := <-maxRevisionChan:
 				if ok {
 					maxRevision = revision
@@ -116,8 +108,7 @@ resetWatch:
 						}
 						continue resetWatch
 					}
-					lg.Error("Watch stream received error", zap.Error(resp.Err()))
-					success = false
+					return fmt.Errorf("watch stream received error: %w", resp.Err())
 				}
 				if len(resp.Events) > 0 {
 					lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
