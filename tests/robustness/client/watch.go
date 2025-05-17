@@ -70,7 +70,7 @@ type WatchConfig struct {
 func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) bool {
 	var maxRevision int64
 	var lastRevision int64 = 1
-	var success = true
+	success := true
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 resetWatch:

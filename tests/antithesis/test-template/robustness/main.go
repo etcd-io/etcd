@@ -150,7 +150,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime ti
 	g := errgroup.Group{}
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		reports := slices.Concat(reports, simulateTraffic(ctx, hosts, ids, baseTime, duration))
+		reports = slices.Concat(reports, simulateTraffic(ctx, hosts, ids, baseTime, duration))
 		maxRevision := report.OperationsMaxRevision(reports)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
