@@ -179,6 +179,10 @@ func (t *Transport) Send(msgs []raftpb.Message) {
 			continue
 		}
 		to := types.ID(m.To)
+		if to == t.ID {
+			t.Raft.Process(context.Background(), m)
+			continue
+		}
 
 		t.mu.RLock()
 		p, pok := t.peers[to]
