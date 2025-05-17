@@ -260,89 +260,41 @@ Logging:
   --warning-unary-request-duration '300ms'
     Set time duration after which a warning is logged if a unary request takes more than this duration.
 
-Experimental distributed tracing:
-  --experimental-enable-distributed-tracing 'false'
-    Enable experimental distributed tracing. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--enable-distributed-tracing' instead.
+Distributed tracing:
   --enable-distributed-tracing 'false'
     Enable distributed tracing.
-  --experimental-distributed-tracing-address 'localhost:4317'
-    Distributed tracing collector address. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--distributed-tracing-address' instead.
   --distributed-tracing-address 'localhost:4317'
     Distributed tracing collector address.
-  --experimental-distributed-tracing-service-name 'etcd'
-    Distributed tracing service name, must be same across all etcd instances. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--distributed-tracing-service-name' instead.
   --distributed-tracing-service-name 'etcd'
     Distributed tracing service name, must be same across all etcd instances.
-  --experimental-distributed-tracing-instance-id ''
-    Distributed tracing instance ID, must be unique per each etcd instance. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--distributed-tracing-instance-id' instead.
   --distributed-tracing-instance-id ''
     Distributed tracing instance ID, must be unique per each etcd instance.
-  --experimental-distributed-tracing-sampling-rate '0'
-    Number of samples to collect per million spans for distributed tracing. Disabled by default. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--distributed-tracing-sampling-rate' instead.
   --distributed-tracing-sampling-rate '0'
     Number of samples to collect per million spans for distributed tracing.
 
-Experimental feature:
-  --experimental-initial-corrupt-check 'false'
-    Enable to check data corruption before serving any client/peer traffic. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=InitialCorruptCheck=true' instead.
-  --experimental-corrupt-check-time '0s'
-    Duration of time between cluster corruption check passes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.
+Features:
   --corrupt-check-time '0s'
     Duration of time between cluster corruption check passes.
-  --experimental-compact-hash-check-enabled 'false'
-    Enable leader to periodically check followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=CompactHashCheck=true' instead.
-  --experimental-compact-hash-check-time '1m'
-    Duration of time between leader checks followers compaction hashes. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--compact-hash-check-time' instead.
   --compact-hash-check-time '1m'
     Duration of time between leader checks followers compaction hashes.
-  --experimental-enable-lease-checkpoint 'false'
-    ExperimentalEnableLeaseCheckpoint enables primary lessor to persist lease remainingTTL to prevent indefinite auto-renewal of long lived leases. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=LeaseCheckpoint=true' instead.
-  --experimental-compaction-batch-limit 1000
-    ExperimentalCompactionBatchLimit sets the maximum revisions deleted in each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.
   --compaction-batch-limit 1000
     CompactionBatchLimit sets the maximum revisions deleted in each compaction batch.
-  --experimental-peer-skip-client-san-verification 'false'
-    Skip verification of SAN field in client certificate for peer connections. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--peer-skip-client-san-verification' instead.
   --peer-skip-client-san-verification 'false'
     Skip verification of SAN field in client certificate for peer connections.
-  --experimental-watch-progress-notify-interval '10m'
-    Duration of periodical watch progress notification. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.
   --watch-progress-notify-interval '10m'
     Duration of periodical watch progress notification.
-  --experimental-warning-apply-duration '100ms'
-    Warning is generated if requests take more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.
   --warning-apply-duration '100ms'
     Warning is generated if requests take more than this duration.
-  --experimental-txn-mode-write-with-shared-buffer 'true'
-    Enable the write transaction to use a shared buffer in its readonly check operations. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.
-  --experimental-bootstrap-defrag-threshold-megabytes
-    Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.
   --bootstrap-defrag-threshold-megabytes
     Enable the defrag during etcd server bootstrap on condition that it will free at least the provided threshold of disk space. Needs to be set to non-zero value to take effect.
-  --experimental-warning-unary-request-duration '300ms'
-    Set time duration after which a warning is generated if a unary request takes more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-unary-request-duration' instead.
   --max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
-  --experimental-snapshot-catch-up-entries '5000'
-    Number of entries for a slow follower to catch up after compacting the raft storage entries.
-  --experimental-compaction-sleep-interval
-    Sets the sleep interval between each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-sleep-interval' instead.
   --compaction-sleep-interval
     Sets the sleep interval between each compaction batch.
-  --experimental-downgrade-check-time
-    Duration of time between two downgrade status checks. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--downgrade-check-time' instead.
   --downgrade-check-time
     Duration of time between two downgrade status checks.
-  --experimental-enable-lease-checkpoint-persist 'false'
-    Enable persisting remainingTTL to prevent indefinite auto-renewal of long lived leases. Always enabled in v3.6. Should be used to ensure smooth upgrade from v3.5 clusters with this feature enabled. Requires experimental-enable-lease-checkpoint to be enabled. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=LeaseCheckpointPersist=true' instead.
-  --experimental-memory-mlock
-    Enable to enforce etcd pages (in particular bbolt) to stay in RAM. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.
-  --experimental-snapshot-catchup-entries
-    Number of entries for a slow follower to catch up after compacting the raft storage entries. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.
   --snapshot-catchup-entries
     Number of entries for a slow follower to catch up after compacting the raft storage entries.
-  --experimental-stop-grpc-service-on-defrag
-    Enable etcd gRPC service to stop serving client requests on defragmentation. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=StopGRPCServiceOnDefrag=true' instead.
 
 Unsafe feature:
   --force-new-cluster 'false'

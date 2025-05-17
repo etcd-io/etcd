@@ -59,7 +59,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			name: "defrag failover happy case",
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
-				e2e.WithExperimentalStopGRPCServiceOnDefrag(true),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -73,7 +73,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			name: "defrag blocks one-third of requests with stopGRPCServiceOnDefrag set to false",
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
-				e2e.WithExperimentalStopGRPCServiceOnDefrag(false),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", false),
 				e2e.WithGoFailEnabled(true),
 			},
 			gRPCDialOptions: []grpc.DialOption{
@@ -87,7 +87,7 @@ func TestFailoverOnDefrag(t *testing.T) {
 			name: "defrag blocks one-third of requests with stopGRPCServiceOnDefrag set to true and client health check disabled",
 			clusterOptions: []e2e.EPClusterOption{
 				e2e.WithClusterSize(3),
-				e2e.WithExperimentalStopGRPCServiceOnDefrag(true),
+				e2e.WithServerFeatureGate("StopGRPCServiceOnDefrag", true),
 				e2e.WithGoFailEnabled(true),
 			},
 			expectedMinQPS:         20,
