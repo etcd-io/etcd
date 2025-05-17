@@ -29,6 +29,7 @@ import (
 	"github.com/anishathalye/porcupine"
 	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"go.etcd.io/etcd/tests/v3/robustness/client"
@@ -110,7 +111,12 @@ func main() {
 
 func testRobustness(ctx context.Context, lg *zap.Logger, r *report.TestReport, hosts []string, baseTime time.Time, duration time.Duration) {
 	lg.Info("Start traffic generation", zap.Duration("duration", duration))
-	r.Client = runTraffic(ctx, lg, hosts, baseTime, duration)
+	var err error
+	r.Client, err = runTraffic(ctx, lg, hosts, baseTime, duration)
+	if err != nil {
+		lg.Error("Failed to generate traffic")
+		panic(err)
+	}
 	lg.Info("Completed traffic generation")
 
 	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(r.ServersDataPath)))
@@ -129,21 +135,47 @@ func testRobustness(ctx context.Context, lg *zap.Logger, r *report.TestReport, h
 	lg.Info("Completed robustness validation")
 }
 
-func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) []report.ClientReport {
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
+func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) ([]report.ClientReport, error) {
 	ids := identity.NewIDProvider()
-	storage := identity.NewLeaseIDStorage()
-	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
-
 	r, err := traffic.CheckEmptyDatabaseAtStart(ctx, lg, hosts, ids, baseTime)
 	if err != nil {
 		lg.Fatal("Failed empty database at start check", zap.Error(err))
 	}
-
-	finish := closeAfter(ctx, duration)
 	reports := []report.ClientReport{r}
+	watchReport := []report.ClientReport{}
+	maxRevisionChan := make(chan int64, 1)
+	watchConfig := client.WatchConfig{
+		RequestProgress: true,
+	}
+	g := errgroup.Group{}
+	g.Go(func() error {
+		defer close(maxRevisionChan)
+		reports := slices.Concat(reports, simulateTraffic(ctx, hosts, ids, baseTime, duration))
+		maxRevision := report.OperationsMaxRevision(reports)
+		maxRevisionChan <- maxRevision
+		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
+		return nil
+	})
+	g.Go(func() error {
+		var watchErr error
+		watchReport, _, watchErr = client.CollectClusterWatchEvents(ctx, lg, hosts, maxRevisionChan, watchConfig, baseTime, ids)
+		return watchErr
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return slices.Concat(reports, watchReport), nil
+}
+
+func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	var mux sync.Mutex
 	var wg sync.WaitGroup
+	storage := identity.NewLeaseIDStorage()
+	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
+	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
+	finish := closeAfter(ctx, duration)
+	reports := []report.ClientReport{}
 	for i := 0; i < profile.ClientCount; i++ {
 		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
 		defer c.Close()

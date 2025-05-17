@@ -209,3 +209,16 @@ func persistKeyValueOperations(lg *zap.Logger, path string, operations []porcupi
 	}
 	return nil
 }
+
+func OperationsMaxRevision(reports []ClientReport) int64 {
+	var maxRevision int64
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			resp := op.Output.(model.MaybeEtcdResponse)
+			if resp.Revision > maxRevision {
+				maxRevision = resp.Revision
+			}
+		}
+	}
+	return maxRevision
+}
