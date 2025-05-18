@@ -171,6 +171,7 @@ func TestModelDescribe(t *testing.T) {
 		},
 	}
 	for _, tc := range tcs {
-		assert.Equal(t, tc.expectDescribe, NonDeterministicModel.DescribeOperation(tc.req, tc.resp))
+		m := NonDeterministicModelV2(nil)
+		assert.Equal(t, tc.expectDescribe, m.DescribeOperation(tc.req, tc.resp))
 	}
 }

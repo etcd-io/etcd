@@ -76,22 +76,23 @@ func (r LinearizationResult) Visualize(lg *zap.Logger, path string) error {
 }
 
 func validateLinearizableOperationsAndVisualize(
+	model porcupine.Model,
 	operations []porcupine.Operation,
 	timeout time.Duration,
 ) (results LinearizationResult) {
-	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+	result, info := porcupine.CheckOperationsVerbose(model, operations, timeout)
 	return LinearizationResult{
 		Info:         info,
-		Model:        model.NonDeterministicModel,
+		Model:        model,
 		Linearizable: result,
 	}
 }
 
-func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
+func validateSerializableOperations(lg *zap.Logger, keys []string, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
 	for _, read := range operations {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)
-		err := validateSerializableRead(lg, replay, request, response)
+		err := validateSerializableRead(lg, replay, keys, request, response)
 		if err != nil {
 			lastErr = err
 		}
@@ -99,7 +100,7 @@ func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Opera
 	return lastErr
 }
 
-func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) error {
+func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, keys []string, request model.EtcdRequest, response model.MaybeEtcdResponse) error {
 	if response.Persisted || response.Error != "" {
 		return nil
 	}
@@ -112,7 +113,7 @@ func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request 
 		return errFutureRevRespRequested
 	}
 
-	_, expectResp := state.Step(request)
+	_, expectResp := state.Step(request, keys)
 
 	if diff := cmp.Diff(response.EtcdResponse.Range, expectResp.Range); diff != "" {
 		lg.Error("Failed validating serializable operation", zap.Any("request", request), zap.String("diff", diff))

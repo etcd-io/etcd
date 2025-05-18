@@ -16,30 +16,39 @@ package model
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 )
 
 func NewReplay(persistedRequests []EtcdRequest) *EtcdReplay {
-	state := freshEtcdState()
+	keysMap := map[string]struct{}{}
+	for _, req := range persistedRequests {
+		RequestKeys(keysMap, req)
+	}
+	keys := []string{}
+	for key := range keysMap {
+		keys = append(keys, key)
+	}
+	state := freshEtcdState(len(keys))
 	// Padding for index 0 and 1, so index matches revision..
 	revisionToEtcdState := []EtcdState{state, state}
 	var events []PersistedEvent
 	for _, request := range persistedRequests {
-		newState, response := state.Step(request)
+		newState, response := state.Step(request, keys)
 		if state.Revision != newState.Revision {
 			revisionToEtcdState = append(revisionToEtcdState, newState)
 		}
-		events = append(events, toWatchEvents(&state, request, response)...)
+		events = append(events, toWatchEvents(&state, keys, request, response)...)
 		state = newState
 	}
 	return &EtcdReplay{
 		revisionToEtcdState: revisionToEtcdState,
 		Events:              events,
+		Keys:                keys,
 	}
 }
 
 type EtcdReplay struct {
+	Keys                []string
 	revisionToEtcdState []EtcdState
 	Events              []PersistedEvent
 }
@@ -61,9 +70,13 @@ func (r *EtcdReplay) EventsForWatch(watch WatchRequest) (events []PersistedEvent
 	return events
 }
 
-func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcdResponse) (events []PersistedEvent) {
+func toWatchEvents(prevState *EtcdState, keys []string, request EtcdRequest, response MaybeEtcdResponse) (events []PersistedEvent) {
 	if response.Error != "" {
 		return events
+	}
+	kvs := keyValues{
+		Keys:   keys,
+		Values: prevState.Values,
 	}
 
 	switch request.Type {
@@ -85,15 +98,10 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Delete.Key]; ok {
+				if _, ok := kvs.Get(op.Delete.Key); ok {
 					events = append(events, e)
 				}
 			case PutOperation:
-				_, leaseExists := prevState.Leases[op.Put.LeaseID]
-				if op.Put.LeaseID != 0 && !leaseExists {
-					break
-				}
-
 				e := PersistedEvent{
 					Event: Event{
 						Type:  op.Type,
@@ -102,32 +110,13 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Put.Key]; !ok {
+				if _, ok := kvs.Get(op.Put.Key); !ok {
 					e.IsCreate = true
 				}
 				events = append(events, e)
 			default:
 				panic(fmt.Sprintf("unsupported operation type: %v", op))
 			}
-		}
-	case LeaseRevoke:
-		deletedKeys := []string{}
-		for key := range prevState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			if _, ok := prevState.KeyValues[key]; ok {
-				deletedKeys = append(deletedKeys, key)
-			}
-		}
-
-		sort.Strings(deletedKeys)
-		for _, key := range deletedKeys {
-			e := PersistedEvent{
-				Event: Event{
-					Type: DeleteOperation,
-					Key:  key,
-				},
-				Revision: response.Revision,
-			}
-			events = append(events, e)
 		}
 	}
 	return events
