@@ -25,14 +25,14 @@ import (
 )
 
 func patchLinearizableOperations(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
-	putRevision := putRevision(reports)
+	putRevision := putRevision(reports, persistedRequests)
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
 	putReturnTime := uniquePutReturnTime(operations, reports, persistedRequests, clientPutCount)
 	return patchOperations(operations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
-func putRevision(reports []report.ClientReport) map[keyValue]int64 {
+func putRevision(reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
 	requestRevision := map[keyValue]int64{}
 	for _, client := range reports {
 		for _, watch := range client.Watch {
@@ -50,6 +50,11 @@ func putRevision(reports []report.ClientReport) map[keyValue]int64 {
 				}
 			}
 		}
+	}
+	replay := model.NewReplay(persistedRequests)
+	for _, event := range replay.Events {
+		kv := keyValue{Key: event.Key, Value: event.Value}
+		requestRevision[kv] = event.Revision
 	}
 	return requestRevision
 }
