@@ -28,47 +28,49 @@ import (
 // An unknown/error response doesn't inform whether the request was persisted or not, so the model
 // considers both cases. This is represented as multiple, equally possible deterministic states.
 // Failed requests fork the possible states, while successful requests merge and filter them.
-var NonDeterministicModel = porcupine.Model{
-	Init: func() any {
-		return nonDeterministicState{freshEtcdState()}
-	},
-	Step: func(st any, in any, out any) (bool, any) {
-		return st.(nonDeterministicState).apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
-	},
-	Equal: func(st1, st2 any) bool {
-		return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
-	},
-	DescribeOperation: func(in, out any) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
-	},
-	DescribeOperationMetadata: func(info any) string {
-		if info == nil {
-			return ""
-		}
-		return DescribeOperationMetadata(info.(MaybeEtcdResponse))
-	},
-	DescribeState: func(st any) string {
-		etcdStates := st.(nonDeterministicState)
-		desc := make([]string, 0, len(etcdStates))
-
-		slices.SortFunc(etcdStates, func(i, j EtcdState) int {
-			if c := cmp.Compare(i.Revision, j.Revision); c != 0 {
-				return c
+var NonDeterministicModel = func(keys []string) porcupine.Model {
+	return porcupine.Model{
+		Init: func() any {
+			return nonDeterministicState{freshEtcdState(keys)}
+		},
+		Step: func(st any, in any, out any) (bool, any) {
+			return st.(nonDeterministicState).apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
+		},
+		Equal: func(st1, st2 any) bool {
+			return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
+		},
+		DescribeOperation: func(in, out any) string {
+			return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
+		},
+		DescribeOperationMetadata: func(info any) string {
+			if info == nil {
+				return ""
 			}
-			return cmp.Compare(i.CompactRevision, j.CompactRevision)
-		})
+			return DescribeOperationMetadata(info.(MaybeEtcdResponse))
+		},
+		DescribeState: func(st any) string {
+			etcdStates := st.(nonDeterministicState)
+			desc := make([]string, 0, len(etcdStates))
 
-		for i, s := range etcdStates {
-			// Describe just 3 first states before truncating
-			if i >= 3 {
-				desc = append(desc, "...truncated...")
-				break
+			slices.SortFunc(etcdStates, func(i, j EtcdState) int {
+				if c := cmp.Compare(i.Revision, j.Revision); c != 0 {
+					return c
+				}
+				return cmp.Compare(i.CompactRevision, j.CompactRevision)
+			})
+
+			for i, s := range etcdStates {
+				// Describe just 3 first states before truncating
+				if i >= 3 {
+					desc = append(desc, "...truncated...")
+					break
+				}
+				desc = append(desc, describeEtcdState(s))
 			}
-			desc = append(desc, describeEtcdState(s))
-		}
 
-		return strings.Join(desc, "\n")
-	},
+			return strings.Join(desc, "\n")
+		},
+	}
 }
 
 type nonDeterministicState []EtcdState

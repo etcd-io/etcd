@@ -17,7 +17,9 @@ package validate
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -41,8 +43,9 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	if len(persistedRequests) != 0 {
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
-
-	result.Linearization = validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	fmt.Printf("Ops: %v\n", len(linearizableOperations))
+	keys := modelKeys(linearizableOperations)
+	result.Linearization = validateLinearizableOperationsAndVisualize(lg, keys, linearizableOperations, timeout)
 	result.Linearization.AddToVisualization(operationsForVisualization)
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
 	if result.Linearization.Error() != nil {
@@ -53,10 +56,26 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		lg.Info("Skipping other validations as persisted requests were empty")
 		return result
 	}
-	replay := model.NewReplay(persistedRequests)
+	replay := model.NewReplay(keys, persistedRequests)
 	result.Watch = validateWatch(lg, cfg, reports, replay)
 	result.Serializable = validateSerializableOperations(lg, serializableOperations, replay)
 	return result
+}
+
+func modelKeys(operations []porcupine.Operation) []string {
+	keysMap := map[string]bool{}
+	for _, op := range operations {
+		request := op.Input.(model.EtcdRequest)
+		if request.Type == model.Txn {
+			for _, op := range slices.Concat(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure) {
+				switch op.Type {
+				case model.PutOperation:
+					keysMap[op.Put.Key] = true
+				}
+			}
+		}
+	}
+	return slices.Collect(maps.Keys(keysMap))
 }
 
 type Config struct {
