@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"hash/fnv"
-	"maps"
 	"reflect"
 	"slices"
 
@@ -219,20 +218,6 @@ type EtcdOperationResult struct {
 type KeyValue struct {
 	Key string
 	ValueRevision
-}
-
-var leased = struct{}{}
-
-type EtcdLease struct {
-	LeaseID int64
-	Keys    map[string]struct{}
-}
-
-func (el EtcdLease) DeepCopy() EtcdLease {
-	return EtcdLease{
-		LeaseID: el.LeaseID,
-		Keys:    maps.Clone(el.Keys),
-	}
 }
 
 type ValueRevision struct {

@@ -85,7 +85,15 @@ func describeEtcdState(state EtcdState) string {
 
 	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">state, rev: %d, compactRev: %d</p>", state.Revision, state.CompactRevision))
 
-	if len(state.KeyValues) > 0 {
+	keys := []string{}
+	for i, v := range state.KeyValues {
+		if v == nil {
+			continue
+		}
+		keys = append(keys, state.Keys[i])
+	}
+
+	if len(keys) > 0 {
 		descHTML = append(descHTML, "keys: <ul style=\"margin: 0.25em 0;\">")
 
 		keys, values, leases := state.KeysValueLeases()
@@ -99,12 +107,13 @@ func describeEtcdState(state EtcdState) string {
 			if value.Value.Hash != 0 {
 				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
 			}
+			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d", value.ModRevision, value.Version))
 			lease := leases[i]
 			if lease != 0 {
-				descHTML = append(descHTML, fmt.Sprintf("lease: %d, ", lease))
+				descHTML = append(descHTML, fmt.Sprintf(", lease: %d", lease))
 			}
 
-			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d</li>", value.ModRevision, value.Version))
+			descHTML = append(descHTML, "</li>")
 		}
 
 		descHTML = append(descHTML, "</ul>")
