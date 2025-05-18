@@ -23,13 +23,21 @@ antithesis-build-etcd-image:
 antithesis-docker-compose-up:
 	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose up
 
-.PHONY: antithesis-run-container-tests
-antithesis-run-container-tests:
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose exec client /opt/antithesis/test/v1/robustness/singleton_driver_main
+.PHONY: antithesis-run-container-traffic
+antithesis-run-container-traffic:
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose exec client /opt/antithesis/test/v1/robustness/singleton_driver_traffic
 
-.PHONY: antithesis-run-local-tests
-antithesis-run-local-tests:
-	go run --race ./test-template/robustness/main.go --local
+.PHONY: antithesis-run-container-validation
+antithesis-run-container-validation:
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose exec client /opt/antithesis/test/v1/robustness/finally_validation
+
+.PHONY: antithesis-run-local-traffic
+antithesis-run-local-traffic:
+	go run --race ./test-template/robustness/traffic/main.go --local
+
+.PHONY: antithesis-run-local-validation
+antithesis-run-local-validation:
+	go run --race ./test-template/robustness/finally/main.go --local
 
 .PHONY: antithesis-clean
 antithesis-clean:

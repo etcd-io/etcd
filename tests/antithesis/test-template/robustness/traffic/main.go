@@ -19,25 +19,22 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"maps"
 	"os"
 	"slices"
 	"sync"
 	"time"
 
-	"github.com/anishathalye/porcupine"
 	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
+	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	robustnessrand "go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
-	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
 var profile = traffic.Profile{
@@ -48,45 +45,13 @@ var profile = traffic.Profile{
 	MaxNonUniqueRequestConcurrency: 3,
 }
 
-const (
-	defaultetcd0 = "etcd0:2379"
-	defaultetcd1 = "etcd1:2379"
-	defaultetcd2 = "etcd2:2379"
-
-	localetcd0 = "127.0.0.1:12379"
-	localetcd1 = "127.0.0.1:22379"
-	localetcd2 = "127.0.0.1:32379"
-	// mounted by the client in docker compose
-	defaultEtcdDataPath = "/var/etcddata%d"
-	// used by default when running the client locally
-	defaultLocalEtcdDataPath = "/tmp/etcddata%d"
-	localEtcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
-
-	defaultReportPath = "/var/report/"
-	localReportPath   = "report"
-)
-
 func main() {
 	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
 	flag.Parse()
 
-	etcdDataPath := defaultEtcdDataPath
-	hosts := []string{defaultetcd0, defaultetcd1, defaultetcd2}
-	reportPath := defaultReportPath
+	reportPath, hosts, etcdetcdDataPaths := common.DefaultPaths()
 	if *local {
-		hosts = []string{localetcd0, localetcd1, localetcd2}
-		etcdDataPath = defaultLocalEtcdDataPath
-		localpath := os.Getenv(localEtcdDataPathEnv)
-		if localpath != "" {
-			etcdDataPath = localpath
-		}
-		reportPath = localReportPath
-	}
-
-	persistedRequestdirs := []string{
-		fmt.Sprintf(etcdDataPath, 0),
-		fmt.Sprintf(etcdDataPath, 1),
-		fmt.Sprintf(etcdDataPath, 2),
+		reportPath, hosts, etcdetcdDataPaths = common.LocalPaths()
 	}
 
 	ctx := context.Background()
@@ -97,42 +62,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	r := report.TestReport{Logger: lg, ServersDataPath: map[string]string{}}
-	for i := range len(persistedRequestdirs) {
-		r.ServersDataPath[fmt.Sprintf("etcd%d", i)] = persistedRequestdirs[i]
-	}
+	r := report.TestReport{Logger: lg, ServersDataPath: etcdetcdDataPaths}
 	defer func() {
-		if err := r.Report(reportPath); err != nil {
-			lg.Error("Failed to save validation report", zap.Error(err))
+		if err = r.Report(reportPath); err != nil {
+			lg.Error("Failed to save traffic generation report", zap.Error(err))
 		}
 	}()
-	testRobustness(ctx, lg, &r, hosts, baseTime, duration)
-}
 
-func testRobustness(ctx context.Context, lg *zap.Logger, r *report.TestReport, hosts []string, baseTime time.Time, duration time.Duration) {
 	lg.Info("Start traffic generation", zap.Duration("duration", duration))
-	var err error
 	r.Client, err = runTraffic(ctx, lg, hosts, baseTime, duration)
 	if err != nil {
 		lg.Error("Failed to generate traffic")
 		panic(err)
 	}
 	lg.Info("Completed traffic generation")
-
-	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(r.ServersDataPath)))
-	assert.Always(err == nil, "Loaded persisted requests", map[string]any{"error": err})
-	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
-	assert.Always(result.Assumptions == nil, "Validation assumptions fulfilled", map[string]any{"error": result.Assumptions})
-	if result.Linearization.Linearizable == porcupine.Unknown {
-		assert.Unreachable("Linearization timeout", nil)
-	} else {
-		assert.Always(result.Linearization.Linearizable == porcupine.Ok, "Linearization validation passes", nil)
-	}
-	r.Visualize = result.Linearization.Visualize
-	assert.Always(result.WatchError == nil, "Watch validation passes", map[string]any{"error": result.WatchError})
-	assert.Always(result.SerializableError == nil, "Serializable validation passes", map[string]any{"error": result.SerializableError})
-	lg.Info("Completed robustness validation")
 }
 
 func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) ([]report.ClientReport, error) {
