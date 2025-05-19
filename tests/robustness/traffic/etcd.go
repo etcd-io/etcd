@@ -81,9 +81,10 @@ var (
 		leaseTTL:     DefaultLeaseTTL,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
-			{Choice: Get, Weight: 45},
-			{Choice: Put, Weight: 45},
+			{Choice: Get, Weight: 40},
+			{Choice: Put, Weight: 40},
 			{Choice: StaleGet, Weight: 10},
+			{Choice: StaleList, Weight: 10},
 		},
 	}
 )
