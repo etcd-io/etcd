@@ -241,7 +241,7 @@ func TestValidateSerializableOperations(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			replay := model.NewReplay(tc.persistedRequests)
-			err := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
+			err := validateSerializableOperations(zaptest.NewLogger(t), replay.Keys, tc.operations, replay)
 			var errStr string
 			if err != nil {
 				errStr = err.Error()
@@ -303,20 +303,23 @@ func BenchmarkValidateLinearizableOperations(b *testing.B) {
 	b.Run("Successes", func(b *testing.B) {
 		history := allPutSuccesses(1000)
 		shuffles := shuffleHistory(history, b.N)
+		m := model.NonDeterministicModelV2(model.OperationKeys(history))
 		b.ResetTimer()
-		validateShuffles(b, lg, shuffles, time.Second)
+		validateShuffles(b, lg, m, shuffles, time.Second)
 	})
 	b.Run("AllFailures", func(b *testing.B) {
 		history := allPutFailures(10)
 		shuffles := shuffleHistory(history, b.N)
+		m := model.NonDeterministicModelV2(model.OperationKeys(history))
 		b.ResetTimer()
-		validateShuffles(b, lg, shuffles, time.Second)
+		validateShuffles(b, lg, m, shuffles, time.Second)
 	})
 	b.Run("PutFailuresWithRead", func(b *testing.B) {
 		history := putFailuresWithRead(b, 8)
 		shuffles := shuffleHistory(history, b.N)
+		m := model.NonDeterministicModelV2(model.OperationKeys(history))
 		b.ResetTimer()
-		validateShuffles(b, lg, shuffles, time.Second)
+		validateShuffles(b, lg, m, shuffles, time.Second)
 	})
 }
 
@@ -355,7 +358,7 @@ func putFailuresWithRead(b *testing.B, concurrencyCount int) []porcupine.Operati
 		b.Fatal(err)
 	}
 	request := rangeRequest("key", "kez", 0, 0)
-	_, resp := state.Step(request)
+	_, resp := state.Step(request, replay.Keys)
 	ops = append(ops, porcupine.Operation{
 		ClientId: 0,
 		Input:    request,
@@ -393,9 +396,9 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 	return shuffles
 }
 
-func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
+func validateShuffles(b *testing.B, lg *zap.Logger, model porcupine.Model, shuffles [][]porcupine.Operation, duration time.Duration) {
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(shuffles[i], duration)
+		result := validateLinearizableOperationsAndVisualize(model, shuffles[i], duration)
 		if result.Linearizable != porcupine.Ok {
 			b.Fatalf("Not linearizable: %v", result.Linearizable)
 		}

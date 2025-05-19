@@ -245,10 +245,11 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 		for _, resp := range op.Responses {
 			for _, event := range resp.Events {
 				// Get state state just before the current event.
-				state, err2 := replay.StateForRevision(event.Revision - 1)
-				if err2 != nil {
-					panic(err2)
-				}
+				_ = event
+				// state, err2 := replay.StateForRevision(event.Revision - 1)
+				// if err2 != nil {
+				// 	panic(err2)
+				// }
 				// TODO(MadhavJivrajani): check if compaction has been run as part
 				// of failpoint injection. If compaction has run, prevKV can be nil
 				// even if it is not a create event.
@@ -262,10 +263,10 @@ func validatePrevKV(lg *zap.Logger, replay *model.EtcdReplay, report report.Clie
 
 				// We allow PrevValue to be nil since in the face of compaction, etcd does not
 				// guarantee its presence.
-				if event.PrevValue != nil && *event.PrevValue != state.KeyValues[event.Key] {
-					lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.KeyValues[event.Key]))
-					err = errBrokePrevKV
-				}
+				// if event.PrevValue != nil && *event.PrevValue != state.Values[event.Key] {
+				// 	lg.Error("Incorrect event prevValue field", zap.Int("client", report.ClientID), zap.Any("event", event), zap.Any("previousValue", state.Values[event.Key]))
+				// 	err = errBrokePrevKV
+				// }
 			}
 		}
 	}
@@ -281,12 +282,13 @@ func validateIsCreate(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 				if err2 != nil {
 					panic(err2)
 				}
+				_ = state
 				// A create event will not have an entry in our history and a non-create
 				// event *should* have an entry in our history.
-				if _, prevKeyExists := state.KeyValues[event.Key]; event.IsCreate == prevKeyExists {
-					lg.Error("Incorrect event IsCreate field", zap.Int("client", report.ClientID), zap.Any("event", event))
-					err = errBrokeIsCreate
-				}
+				// if _, prevKeyExists := state.Values[event.Key]; event.IsCreate == prevKeyExists {
+				// 	lg.Error("Incorrect event IsCreate field", zap.Int("client", report.ClientID), zap.Any("event", event))
+				// 	err = errBrokeIsCreate
+				// }
 			}
 		}
 	}

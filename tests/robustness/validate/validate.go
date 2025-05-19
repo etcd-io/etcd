@@ -41,10 +41,13 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	if len(persistedRequests) != 0 {
 		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
+	keys := model.OperationKeys(linearizableOperations)
+	// panic(fmt.Sprintf("%v", keys))
+	m := model.NonDeterministicModelV2(keys)
 
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
-	result.Linearization = validateLinearizableOperationsAndVisualize(linearizableOperations, timeout)
+	result.Linearization = validateLinearizableOperationsAndVisualize(m, linearizableOperations, timeout)
 	switch result.Linearization.Linearizable {
 	case porcupine.Illegal:
 		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
@@ -78,7 +81,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 
 	lg.Info("Validating serializable operations")
 	start = time.Now()
-	result.SerializableError = validateSerializableOperations(lg, serializableOperations, replay)
+	result.SerializableError = validateSerializableOperations(lg, keys, serializableOperations, replay)
 	if result.SerializableError == nil {
 		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
 	} else {

@@ -23,30 +23,126 @@ import (
 	"github.com/anishathalye/porcupine"
 )
 
-// NonDeterministicModel extends DeterministicModel to allow for clients with imperfect knowledge of request destiny.
-// Unknown/error response doesn't inform whether request was persisted or not, so model
-// considers both cases. This is represented as multiple equally possible deterministic states.
-// Failed requests fork the possible states, while successful requests merge and filter them.
-var NonDeterministicModel = porcupine.Model{
-	Init: func() any {
-		return nonDeterministicState{freshEtcdState()}
-	},
-	Step: func(st any, in any, out any) (bool, any) {
-		return st.(nonDeterministicState).apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
-	},
-	Equal: func(st1, st2 any) bool {
-		return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
-	},
-	DescribeOperation: func(in, out any) string {
-		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
-	},
-	DescribeState: func(st any) string {
-		data, err := json.MarshalIndent(st, "", "  ")
-		if err != nil {
-			panic(err)
+func OperationKeys(operations []porcupine.Operation) []string {
+	keysMap := map[string]struct{}{}
+	for _, op := range operations {
+		RequestKeys(keysMap, op.Input.(EtcdRequest))
+	}
+	keys := []string{}
+	for key := range keysMap {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func RequestKeys(keysMap map[string]struct{}, req EtcdRequest) {
+	switch req.Type {
+	case Txn:
+		for _, op := range req.Txn.OperationsOnSuccess {
+			switch op.Type {
+			case PutOperation:
+				keysMap[op.Put.Key] = struct{}{}
+			case DeleteOperation:
+				keysMap[op.Delete.Key] = struct{}{}
+			case RangeOperation:
+				if op.Range.End == "" {
+					keysMap[op.Range.Start] = struct{}{}
+				}
+			default:
+				panic(fmt.Sprintf("Unknown operation type: %v", op.Type))
+			}
 		}
-		return "<pre>" + html.EscapeString(string(data)) + "</pre>"
-	},
+		for _, op := range req.Txn.OperationsOnFailure {
+			switch op.Type {
+			case PutOperation:
+				keysMap[op.Put.Key] = struct{}{}
+			case DeleteOperation:
+				keysMap[op.Delete.Key] = struct{}{}
+			case RangeOperation:
+				if op.Range.End == "" {
+					keysMap[op.Range.Start] = struct{}{}
+				}
+			default:
+				panic(fmt.Sprintf("Unknown operation type: %v", op.Type))
+			}
+		}
+	case Range:
+		if req.Range.End == "" {
+			keysMap[req.Range.Start] = struct{}{}
+		}
+	}
+	return
+}
+
+func NonDeterministicModelV2(keys []string) porcupine.Model {
+	return porcupine.Model{
+		Init: func() any {
+			return nonDeterministicState{freshEtcdState(len(keys))}
+		},
+		Step: func(st any, in any, out any) (bool, any) {
+			return st.(nonDeterministicState).apply(in.(EtcdRequest), keys, out.(MaybeEtcdResponse))
+		},
+		Equal: func(st1, st2 any) bool {
+			return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
+		},
+		DescribeOperation: func(in, out any) string {
+			return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
+		},
+		DescribeState: func(st any) string {
+			data, err := json.MarshalIndent(st, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+			return "<pre>" + html.EscapeString(string(data)) + "</pre>"
+		},
+	}
+}
+
+type keyValues struct {
+	Keys   []string
+	Values []ValueRevision
+}
+
+func (kv keyValues) Range(start, end string) []KeyValue {
+	result := []KeyValue{}
+	for i, k := range kv.Keys {
+		if k >= start && k < end {
+			if kv.Values[i].ModRevision == 0 {
+				continue
+			}
+			result = append(result, KeyValue{Key: k, ValueRevision: kv.Values[i]})
+		}
+	}
+	return result
+}
+
+func (kv keyValues) Get(key string) (ValueRevision, bool) {
+	for i, k := range kv.Keys {
+		if k == key {
+			return kv.Values[i], kv.Values[i].ModRevision != 0
+		}
+	}
+	panic(fmt.Sprintf("Key not found: %q, keys: %v", key, kv.Keys))
+}
+
+func (kv keyValues) Set(key string, value ValueRevision) {
+	for i, k := range kv.Keys {
+		if k == key {
+			kv.Values[i] = value
+			return
+		}
+	}
+	panic(fmt.Sprintf("Key not found: %q, keys: %v", key, kv.Keys))
+}
+
+func (kv keyValues) Delete(key string) {
+	for i, k := range kv.Keys {
+		if k == key {
+			kv.Values[i] = ValueRevision{}
+			return
+		}
+	}
+	panic(fmt.Sprintf("Key not found: %q, keys: %v", key, kv.Keys))
 }
 
 type nonDeterministicState []EtcdState
@@ -73,27 +169,27 @@ func (states nonDeterministicState) Equal(other nonDeterministicState) bool {
 	return true
 }
 
-func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
+func (states nonDeterministicState) apply(request EtcdRequest, keys []string, response MaybeEtcdResponse) (bool, nonDeterministicState) {
 	var newStates nonDeterministicState
 	switch {
 	case response.Error != "":
-		newStates = states.applyFailedRequest(request)
+		newStates = states.applyFailedRequest(request, keys)
 	case response.Persisted && response.PersistedRevision == 0:
-		newStates = states.applyPersistedRequest(request)
+		newStates = states.applyPersistedRequest(request, keys)
 	case response.Persisted && response.PersistedRevision != 0:
-		newStates = states.applyPersistedRequestWithRevision(request, response.PersistedRevision)
+		newStates = states.applyPersistedRequestWithRevision(request, keys, response.PersistedRevision)
 	default:
-		newStates = states.applyRequestWithResponse(request, response.EtcdResponse)
+		newStates = states.applyRequestWithResponse(request, keys, response.EtcdResponse)
 	}
 	return len(newStates) > 0, newStates
 }
 
 // applyFailedRequest returns both the original states and states with applied request. It considers both cases, request was persisted and request was lost.
-func (states nonDeterministicState) applyFailedRequest(request EtcdRequest) nonDeterministicState {
+func (states nonDeterministicState) applyFailedRequest(request EtcdRequest, keys []string) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states)*2)
 	for _, s := range states {
 		newStates = append(newStates, s)
-		newState, _ := s.Step(request)
+		newState, _ := s.Step(request, keys)
 		if !reflect.DeepEqual(newState, s) {
 			newStates = append(newStates, newState)
 		}
@@ -102,20 +198,20 @@ func (states nonDeterministicState) applyFailedRequest(request EtcdRequest) nonD
 }
 
 // applyPersistedRequest applies request to all possible states.
-func (states nonDeterministicState) applyPersistedRequest(request EtcdRequest) nonDeterministicState {
+func (states nonDeterministicState) applyPersistedRequest(request EtcdRequest, keys []string) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		newState, _ := s.Step(request)
+		newState, _ := s.Step(request, keys)
 		newStates = append(newStates, newState)
 	}
 	return newStates
 }
 
 // applyPersistedRequestWithRevision applies request to all possible states, but leaves only states that would return proper revision.
-func (states nonDeterministicState) applyPersistedRequestWithRevision(request EtcdRequest, responseRevision int64) nonDeterministicState {
+func (states nonDeterministicState) applyPersistedRequestWithRevision(request EtcdRequest, keys []string, responseRevision int64) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		newState, modelResponse := s.Step(request)
+		newState, modelResponse := s.Step(request, keys)
 		if modelResponse.Revision == responseRevision {
 			newStates = append(newStates, newState)
 		}
@@ -124,10 +220,10 @@ func (states nonDeterministicState) applyPersistedRequestWithRevision(request Et
 }
 
 // applyRequestWithResponse applies request to all possible states, but leaves only state that would return proper response.
-func (states nonDeterministicState) applyRequestWithResponse(request EtcdRequest, response EtcdResponse) nonDeterministicState {
+func (states nonDeterministicState) applyRequestWithResponse(request EtcdRequest, keys []string, response EtcdResponse) nonDeterministicState {
 	newStates := make(nonDeterministicState, 0, len(states))
 	for _, s := range states {
-		newState, modelResponse := s.Step(request)
+		newState, modelResponse := s.Step(request, keys)
 		if Match(modelResponse, MaybeEtcdResponse{EtcdResponse: response}) {
 			newStates = append(newStates, newState)
 		}
