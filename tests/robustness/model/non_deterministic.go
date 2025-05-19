@@ -15,10 +15,9 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
-	"html"
 	"reflect"
+	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
@@ -41,11 +40,14 @@ var NonDeterministicModel = porcupine.Model{
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
 	},
 	DescribeState: func(st any) string {
-		data, err := json.MarshalIndent(st, "", "  ")
-		if err != nil {
-			panic(err)
+		etcdStates := st.(nonDeterministicState)
+		desc := make([]string, len(etcdStates))
+
+		for _, s := range etcdStates {
+			desc = append(desc, describeEtcdState(s))
 		}
-		return "<pre>" + html.EscapeString(string(data)) + "</pre>"
+
+		return strings.Join(desc, "\n")
 	},
 }
 

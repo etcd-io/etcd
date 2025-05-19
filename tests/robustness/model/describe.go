@@ -82,6 +82,37 @@ func describeEtcdRequest(request EtcdRequest) string {
 	}
 }
 
+func describeEtcdState(state EtcdState) string {
+	descHTML := make([]string, 0)
+
+	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">Revision: %d, CompactRevision: %d</p>", state.Revision, state.CompactRevision))
+
+	if len(state.KeyValues) > 0 {
+		descHTML = append(descHTML, "<ul style=\"margin: 0.25em 0;\">")
+
+		for k, v := range state.KeyValues {
+			keyValDesc := make([]string, 0)
+
+			keyValDesc = append(keyValDesc, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong>: ", k))
+
+			if v.Value.Value != "" {
+				keyValDesc = append(keyValDesc, fmt.Sprintf("Value: %q, ", v.Value.Value))
+			}
+			if v.Value.Hash != 0 {
+				keyValDesc = append(keyValDesc, fmt.Sprintf("Hash: %d, ", v.Value.Hash))
+			}
+
+			keyValDesc = append(keyValDesc, fmt.Sprintf("ModRevision: %d, Version: %d</li>", v.ModRevision, v.Version))
+
+			descHTML = append(descHTML, strings.Join(keyValDesc, ""))
+		}
+
+		descHTML = append(descHTML, "</ul>")
+	}
+
+	return strings.Join(descHTML, "")
+}
+
 func describeGuaranteedTxn(txn *TxnRequest) string {
 	if len(txn.Conditions) != 1 || len(txn.OperationsOnSuccess) != 1 || len(txn.OperationsOnFailure) > 1 {
 		return ""
