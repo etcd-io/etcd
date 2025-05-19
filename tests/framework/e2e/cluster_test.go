@@ -23,8 +23,8 @@ import (
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
-	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
-	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
+	v3_6_0 := semver.Version{Major: 3, Minor: 6, Patch: 0}
+	v3_7_0 := semver.Version{Major: 3, Minor: 7, Patch: 0}
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -81,9 +81,9 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CatchUpEntries",
 			config: NewConfig(WithSnapshotCatchUpEntries(100)),
 			expectArgsContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
+				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_5_14,
+			mockBinaryVersion: &v3_7_0,
 		},
 		{
 			name:   "CatchUpEntriesNoVersion",
@@ -95,10 +95,10 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 		{
 			name:   "CatchUpEntriesOldVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
-			expectArgsNotContain: []string{
+			expectArgsContain: []string{
 				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_5_12,
+			mockBinaryVersion: &v3_6_0,
 		},
 		{
 			name:   "ClientHTTPSeparate",
@@ -112,13 +112,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			config: NewConfig(WithForceNewCluster(true)),
 			expectArgsContain: []string{
 				"--force-new-cluster=true",
-			},
-		},
-		{
-			name:   "EnableV2",
-			config: NewConfig(WithEnableV2(true)),
-			expectArgsContain: []string{
-				"--enable-v2=true",
 			},
 		},
 		{

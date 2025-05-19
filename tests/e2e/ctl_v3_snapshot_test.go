@@ -286,8 +286,8 @@ func snapshotVersionTest(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatalf("snapshotVersionTest getSnapshotStatus error (%v)", err)
 	}
-	if st.Version != "3.6.0" {
-		cx.t.Fatalf("expected %q, got %q", "3.6.0", st.Version)
+	if st.Version != "3.7.0" {
+		cx.t.Fatalf("expected %q, got %q", "3.7.0", st.Version)
 	}
 }
 
