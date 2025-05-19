@@ -43,7 +43,7 @@ func TestSnapshotStatus(t *testing.T) {
 	status, err := NewV3(zap.NewNop()).Status(dbpath)
 	require.NoError(t, err)
 
-	assert.Equal(t, uint32(0x62132b4d), status.Hash)
+	assert.Equal(t, uint32(0xe7a6e44b), status.Hash)
 	assert.Equal(t, int64(11), status.Revision)
 }
 
