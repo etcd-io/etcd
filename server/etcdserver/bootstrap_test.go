@@ -133,7 +133,7 @@ func mockBootstrapRoundTrip(members []etcdserverpb.Member) roundTripFunc {
 		case strings.Contains(r.URL.String(), DowngradeEnabledPath):
 			return &http.Response{
 				StatusCode: http.StatusOK,
-				Body:       io.NopCloser(strings.NewReader(`true`)),
+				Body:       io.NopCloser(strings.NewReader(`false`)),
 			}, nil
 		}
 		return nil, nil

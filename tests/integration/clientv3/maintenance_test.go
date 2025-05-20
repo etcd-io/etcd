@@ -342,7 +342,7 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
-	if resp.Version != "3.6.0" {
+	if resp.Version != "3.7.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
 }

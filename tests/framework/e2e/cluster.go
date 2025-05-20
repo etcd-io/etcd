@@ -178,10 +178,9 @@ type EtcdProcessClusterConfig struct {
 	IsPeerAutoTLS      bool
 	CN                 bool
 
-	// Removed in v3.6
-
+	// Discovery is for v2discovery
+	// Note: remove this field when we remove the v2discovery
 	Discovery string // v2 discovery
-	EnableV2  bool
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -285,10 +284,6 @@ func WithQuotaBackendBytes(bytes int64) EPClusterOption {
 
 func WithStrictReconfigCheck(strict bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.StrictReconfigCheck = strict }
-}
-
-func WithEnableV2(enable bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.EnableV2 = enable }
 }
 
 func WithAuthTokenOpts(token string) EPClusterOption {
@@ -618,9 +613,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
 	}
-	if cfg.EnableV2 {
-		args = append(args, "--enable-v2=true")
-	}
+
 	var murl string
 	if cfg.MetricsURLScheme != "" {
 		murl = (&url.URL{
