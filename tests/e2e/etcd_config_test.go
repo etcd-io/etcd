@@ -735,3 +735,32 @@ func TestV2DeprecationEnforceDefaultValue(t *testing.T) {
 		})
 	}
 }
+
+func TestEtcdAdvertiseClientUnix(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	// Create a temporary directory for the data directory
+	dataDir := t.TempDir()
+	unixSocket := "unix:///tmp/etcd-client.sock"
+
+	// Start etcd with AdvertiseClientUrls set to a unix socket
+	proc, err := e2e.SpawnCmd(
+		[]string{
+			e2e.BinPath.Etcd,
+			"--data-dir", dataDir,
+			"--name", "etcd1",
+			"--listen-client-urls", unixSocket,
+			"--advertise-client-urls", unixSocket,
+		}, nil,
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = proc.Stop()
+		_ = proc.Close()
+	}()
+
+	// Wait for the process to be ready
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines))
+
+	// Additional validation can be added here if needed
+}
