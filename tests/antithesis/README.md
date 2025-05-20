@@ -75,13 +75,15 @@ And it will stay running indefinitely.
 ### 4. Running the tests
 
 ```bash
-make antithesis-run-container-tests
+make antithesis-run-container-traffic
+make antithesis-run-container-validation
 ```
 
 Alternatively, with the etcd cluster from step 3, to run the tests locally without rebuilding the client image:
 
 ```bash
-make antithesis-run-local-tests
+make antithesis-run-local-traffic
+make antithesis-run-local-validation
 ```
 
 ### 5. Prepare for next run
