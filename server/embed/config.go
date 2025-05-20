@@ -577,6 +577,11 @@ type Config struct {
 	// be refined to mlock in-use area of bbolt only.
 	MemoryMlock bool `json:"memory-mlock"`
 
+	// PipelineBufferSize is the size of the pipeline buffer for each peer.
+	// It helps hold temporary network latency and prevents message drops.
+	// Default value is 64 messages.
+	PipelineBufferSize int `json:"pipeline-buffer-size"`
+
 	// ExperimentalMemoryMlock enables mlocking of etcd owned memory pages.
 	// TODO: Delete in v3.7
 	// Deprecated: Use MemoryMlock instad. To be decommissioned in v3.7.
@@ -660,6 +665,8 @@ func NewConfig() *Config {
 		MaxRequestBytes:      DefaultMaxRequestBytes,
 		MaxConcurrentStreams: DefaultMaxConcurrentStreams,
 		WarningApplyDuration: DefaultWarningApplyDuration,
+
+		PipelineBufferSize: 64,
 
 		GRPCKeepAliveMinTime:  DefaultGRPCKeepAliveMinTime,
 		GRPCKeepAliveInterval: DefaultGRPCKeepAliveInterval,
@@ -962,6 +969,9 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 
 	// featuregate
 	cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).AddFlag(fs, ServerFeatureGateFlagName)
+
+	fs.IntVar(&cfg.PipelineBufferSize, "pipeline-buffer-size", 64,
+		"The size of the pipeline buffer for each peer. Default value is 64 messages.")
 }
 
 func ConfigFromFile(path string) (*Config, error) {
