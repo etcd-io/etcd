@@ -67,7 +67,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CorruptCheck",
 			config: NewConfig(WithInitialCorruptCheck(true)),
 			expectArgsContain: []string{
-				"--experimental-initial-corrupt-check=true",
+				"--feature-gates=InitialCorruptCheck=true",
 			},
 		},
 		{

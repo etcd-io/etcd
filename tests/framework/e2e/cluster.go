@@ -314,20 +314,20 @@ func WithCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CorruptCheckTime = time }
 }
 
-func WithExperimentalCorruptCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
-}
-
 func WithInitialClusterToken(token string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.InitialClusterToken = token }
 }
 
 func WithInitialCorruptCheck(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalInitialCorruptCheck = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("InitialCorruptCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckEnabled = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("CompactHashCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
@@ -350,18 +350,6 @@ func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WarningUnaryRequestDuration = time }
 }
 
-// WithExperimentalWarningUnaryRequestDuration sets a value for `-experimental-warning-unary-request-duration`.
-// TODO(ahrtr): remove this function when the corresponding experimental flag is decommissioned.
-func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWarningUnaryRequestDuration = time }
-}
-
-func WithExperimentalStopGRPCServiceOnDefrag(stopGRPCServiceOnDefrag bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) {
-		c.ServerConfig.ExperimentalStopGRPCServiceOnDefrag = stopGRPCServiceOnDefrag
-	}
-}
-
 func WithServerFeatureGate(featureName string, val bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) {
 		if err := c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("%s=%v", featureName, val)); err != nil {
@@ -374,20 +362,12 @@ func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionBatchLimit = limit }
 }
 
-func WithExperimentalCompactionBatchLimit(limit int) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
-}
-
 func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionSleepInterval = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionSleepInterval = time }
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WatchProgressNotifyInterval = interval }
-}
-
-func WithExperimentalWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWatchProgressNotifyInterval = interval }
 }
 
 func WithEnvVars(ev map[string]string) EPClusterOption {
@@ -633,7 +613,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if !IsSnapshotCatchupEntriesFlagAvailable(execPath) {
-			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
 			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
 		}
 	}

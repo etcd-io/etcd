@@ -188,12 +188,6 @@ type ServerConfig struct {
 	// be refined to mlock in-use area of bbolt only.
 	MemoryMlock bool `json:"memory-mlock"`
 
-	// ExperimentalTxnModeWriteWithSharedBuffer enable write transaction to use
-	// a shared buffer in its readonly check operations.
-	// TODO: Delete in v3.7
-	// Deprecated: Use TxnModeWriteWithSharedBuffer Feature Gate instead. Will be decommissioned in v3.7.
-	ExperimentalTxnModeWriteWithSharedBuffer bool `json:"experimental-txn-mode-write-with-shared-buffer"`
-
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
 	// consider running defrag during bootstrap. Needs to be set to non-zero value to take effect.
 	BootstrapDefragThresholdMegabytes uint `json:"bootstrap-defrag-threshold-megabytes"`
@@ -204,8 +198,8 @@ type ServerConfig struct {
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 
-	// ExperimentalLocalAddress is the local IP address to use when communicating with a peer.
-	ExperimentalLocalAddress string `json:"experimental-local-address"`
+	// LocalAddress is the local IP address to use when communicating with a peer.
+	LocalAddress string `json:"local-address"`
 
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
