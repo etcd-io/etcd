@@ -480,7 +480,6 @@ func TestParseFeatureGateFlags(t *testing.T) {
 			name: "default",
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: false,
-				features.DistributedTracing:      false,
 			},
 		},
 		{
@@ -495,11 +494,11 @@ func TestParseFeatureGateFlags(t *testing.T) {
 			name: "ok to set different experimental flag and feature gate flag",
 			args: []string{
 				"--experimental-stop-grpc-service-on-defrag=true",
-				"--feature-gates=DistributedTracing=true",
+				"--feature-gates=InitialCorruptCheck=true",
 			},
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      true,
+				features.InitialCorruptCheck:     true,
 			},
 		},
 		{
@@ -509,17 +508,17 @@ func TestParseFeatureGateFlags(t *testing.T) {
 			},
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      false,
+				features.InitialCorruptCheck:     false,
 			},
 		},
 		{
 			name: "can set feature gate from feature gate flag",
 			args: []string{
-				"--feature-gates=StopGRPCServiceOnDefrag=true,DistributedTracing=true",
+				"--feature-gates=StopGRPCServiceOnDefrag=true,InitialCorruptCheck=true",
 			},
 			expectedFeatures: map[featuregate.Feature]bool{
 				features.StopGRPCServiceOnDefrag: true,
-				features.DistributedTracing:      true,
+				features.InitialCorruptCheck:     true,
 			},
 		},
 	}

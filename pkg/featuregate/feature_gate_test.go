@@ -219,7 +219,7 @@ func TestFeatureGateFlag(t *testing.T) {
 				t.Errorf("%d: Parse() Expected nil, Got %v", i, err)
 			}
 			for k, v := range test.expect {
-				actual := f.enabled.Load().(map[Feature]bool)[k]
+				actual := f.Enabled(k)
 				assert.Equalf(t, actual, v, "%d: expected %s=%v, Got %v", i, k, v, actual)
 			}
 		})

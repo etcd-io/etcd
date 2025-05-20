@@ -31,6 +31,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
@@ -230,9 +232,22 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	time.Sleep(2 * time.Second)
 
 	_, err = io.Copy(io.Discard, rc2)
-	if err != nil && !IsClientTimeout(err) {
-		t.Errorf("expected client timeout, got %v", err)
+	if IsClientTimeout(err) {
+		return
 	}
+	// Assumes the client receives a single message header and then
+	// waits for the payload body. If the context is canceled before
+	// the payload arrives, the client will read io.EOF. However, the
+	// grpc-go client converts this into io.ErrUnexpectedEOF with an
+	// internal error code. Ideally, grpc-go might return context.Canceled
+	// instead, but it's unclear if that's feasible. Let's explicitly
+	// check for this error in the test code.
+	//
+	// REF: https://github.com/grpc/grpc-go/blob/6821606f351799b026fda1e6ba143315e6c1e620/rpc_util.go#L644
+	//
+	// Once https://github.com/grpc/grpc-go/issues/8281 is fixed, we should
+	// revert this change. See more discussion in https://github.com/etcd-io/etcd/pull/19833.
+	assert.ErrorIs(t, status.Error(codes.Internal, io.ErrUnexpectedEOF.Error()), err)
 }
 
 // TestMaintenanceSnapshotWithVersionErrorInflight ensures that ReaderCloser returned by SnapshotWithVersion function

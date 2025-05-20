@@ -35,11 +35,6 @@ const (
 	// of code conflicts because changes are more likely to be scattered
 	// across the file.
 
-	// DistributedTracing enables experimental distributed  tracing using OpenTelemetry Tracing.
-	// owner: @dashpole
-	// alpha: v3.5
-	// issue: https://github.com/etcd-io/etcd/issues/12460
-	DistributedTracing featuregate.Feature = "DistributedTracing"
 	// StopGRPCServiceOnDefrag enables etcd gRPC service to stop serving client requests on defragmentation.
 	// owner: @chaochn47
 	// alpha: v3.6
@@ -83,7 +78,6 @@ const (
 
 var (
 	DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
-		DistributedTracing:           {Default: false, PreRelease: featuregate.Alpha},
 		StopGRPCServiceOnDefrag:      {Default: false, PreRelease: featuregate.Alpha},
 		InitialCorruptCheck:          {Default: false, PreRelease: featuregate.Alpha},
 		CompactHashCheck:             {Default: false, PreRelease: featuregate.Alpha},

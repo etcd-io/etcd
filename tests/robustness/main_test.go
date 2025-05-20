@@ -16,7 +16,11 @@ package robustness
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,7 +34,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/scenarios"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
@@ -84,17 +87,27 @@ func TestRobustnessRegression(t *testing.T) {
 }
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
-	r := report.TestReport{Logger: lg, Cluster: c}
+	serverDataPaths := report.ServerDataPaths(c)
+	r := report.TestReport{Logger: lg, ServersDataPath: serverDataPaths}
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
 	panicked := true
 	defer func() {
-		r.Report(t, panicked)
+		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
+		shouldReport := t.Failed() || panicked || persistResults
+		path := testResultsDirectory(t)
+		if shouldReport {
+			if err := r.Report(path); err != nil {
+				t.Error(err)
+			}
+		}
 	}()
 	r.Client = runScenario(ctx, t, s, lg, c)
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
-	require.NoError(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 
 	failpointImpactingWatch := s.Failpoint == failpoint.SleepBeforeSendWatchResponse
 	if !failpointImpactingWatch {
@@ -102,8 +115,12 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 		client.ValidateGotAtLeastOneProgressNotify(t, r.Client, s.Watch.RequestProgress || watchProgressNotifyEnabled)
 	}
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
-	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute).Visualize
-
+	result := validate.ValidateAndReturnVisualize(lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
+	r.Visualize = result.Linearization.Visualize
+	err = result.Error()
+	if err != nil {
+		t.Error(err)
+	}
 	panicked = false
 }
 
@@ -139,18 +156,23 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, baseTime, ids)
-		maxRevision := operationsMaxRevision(operationReport)
+		maxRevision := report.OperationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
 		return nil
 	})
 	g.Go(func() error {
-		watchReport = client.CollectClusterWatchEvents(ctx, t, clus, maxRevisionChan, s.Watch, baseTime, ids)
-		return nil
+		var err error
+		endpoints := processEndpoints(clus)
+		watchReport, err = client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, baseTime, ids)
+		return err
 	})
-	g.Wait()
+	err := g.Wait()
+	if err != nil {
+		t.Error(err)
+	}
 
-	err := client.CheckEndOfTestHashKV(ctx, clus)
+	err = client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,23 +183,37 @@ func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
 	return base - jitter + time.Duration(rand.Int63n(int64(jitter)*2))
 }
 
-func operationsMaxRevision(reports []report.ClientReport) int64 {
-	var maxRevision int64
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			resp := op.Output.(model.MaybeEtcdResponse)
-			if resp.Revision > maxRevision {
-				maxRevision = resp.Revision
-			}
-		}
-	}
-	return maxRevision
-}
-
 // forcestopCluster stops the etcd member with signal kill.
 func forcestopCluster(clus *e2e.EtcdProcessCluster) error {
 	for _, member := range clus.Procs {
 		member.Kill()
 	}
 	return clus.ConcurrentStop()
+}
+
+func testResultsDirectory(t *testing.T) string {
+	resultsDirectory, ok := os.LookupEnv("RESULTS_DIR")
+	if !ok {
+		resultsDirectory = "/tmp/"
+	}
+	resultsDirectory, err := filepath.Abs(resultsDirectory)
+	if err != nil {
+		panic(err)
+	}
+	path, err := filepath.Abs(filepath.Join(
+		resultsDirectory, strings.ReplaceAll(t.Name(), "/", "_"), fmt.Sprintf("%v", time.Now().UnixNano())))
+	require.NoError(t, err)
+	err = os.RemoveAll(path)
+	require.NoError(t, err)
+	err = os.MkdirAll(path, 0o700)
+	require.NoError(t, err)
+	return path
+}
+
+func processEndpoints(clus *e2e.EtcdProcessCluster) []string {
+	endpoints := make([]string, 0, len(clus.Procs))
+	for _, proc := range clus.Procs {
+		endpoints = append(endpoints, proc.EndpointsGRPC()[0])
+	}
+	return endpoints
 }

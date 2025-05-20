@@ -7,7 +7,8 @@ This directory enables integration of Antithesis with etcd. There are 4 containe
 Run this command from the `antithesis/test-template` directory:
 
 ```bash
-docker build . -f Dockerfile.client -t etcd-client:latest
+make antithesis-build-client-docker-image
+make antithesis-build-etcd-image
 ```
 
 ### 2. (Optional) Check the Image Locally
@@ -29,7 +30,7 @@ etcd-client        latest    <IMAGE_ID>    <DATE>
 Run the following command from the root directory for Antithesis tests (`tests/antithesis`):
 
 ```bash
-docker-compose up
+make antithesis-docker-compose-up
 ```
 
 The client will continuously check the health of the etcd nodes and print logs similar to:
@@ -70,6 +71,29 @@ client  | Client [entrypoint]: cluster is healthy!
 ```
 
 And it will stay running indefinitely.
+
+### 4. Running the tests
+
+```bash
+make antithesis-run-container-traffic
+make antithesis-run-container-validation
+```
+
+Alternatively, with the etcd cluster from step 3, to run the tests locally without rebuilding the client image:
+
+```bash
+make antithesis-run-local-traffic
+make antithesis-run-local-validation
+```
+
+### 5. Prepare for next run
+
+Unfortunatelly robustness tests don't support running on non empty database.
+So for now you need to cleanup the storage before repeating the run or you will get "non empty database at start, required by model used for linearizability validation" error.
+
+```bash
+make antithesis-clean
+```
 
 ## Troubleshooting
 

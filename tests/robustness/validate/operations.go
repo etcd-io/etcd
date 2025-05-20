@@ -31,15 +31,43 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-type Results struct {
+type Result struct {
+	Assumptions       error
+	Linearization     LinearizationResult
+	WatchError        error
+	SerializableError error
+}
+
+func (r Result) Error() error {
+	if r.Assumptions != nil {
+		return fmt.Errorf("validation assumptions failed: %w", r.Assumptions)
+	}
+	switch r.Linearization.Linearizable {
+	case porcupine.Illegal:
+		return errors.New("linearization failed")
+	case porcupine.Unknown:
+		return errors.New("linearization timed out")
+	case porcupine.Ok:
+	default:
+		return fmt.Errorf("unknown linearization result %q", r.Linearization.Linearizable)
+	}
+	if r.WatchError != nil {
+		return fmt.Errorf("watch validation failed: %w", r.WatchError)
+	}
+	if r.SerializableError != nil {
+		return fmt.Errorf("serializable validation failed: %w", r.SerializableError)
+	}
+	return nil
+}
+
+type LinearizationResult struct {
 	Info         porcupine.LinearizationInfo
 	Model        porcupine.Model
 	Linearizable porcupine.CheckResult
-	Lg           *zap.Logger // TODO: Remove logger from struct and instead of making it an argument for Visualize
 }
 
-func (r Results) Visualize(path string) error {
-	r.Lg.Info("Saving visualization", zap.String("path", path))
+func (r LinearizationResult) Visualize(lg *zap.Logger, path string) error {
+	lg.Info("Saving visualization", zap.String("path", path))
 	err := porcupine.VisualizePath(r.Model, r.Info, path)
 	if err != nil {
 		return fmt.Errorf("failed to visualize, err: %w", err)
@@ -48,34 +76,18 @@ func (r Results) Visualize(path string) error {
 }
 
 func validateLinearizableOperationsAndVisualize(
-	lg *zap.Logger,
 	operations []porcupine.Operation,
 	timeout time.Duration,
-) (results Results) {
-	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
-	start := time.Now()
+) (results LinearizationResult) {
 	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
-
-	switch result {
-	case porcupine.Illegal:
-		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
-	case porcupine.Unknown:
-		lg.Error("Linearization has timed out", zap.Duration("duration", time.Since(start)))
-	case porcupine.Ok:
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
-	default:
-		panic(fmt.Sprintf("Unknown Linearization result %s", result))
-	}
-	return Results{
+	return LinearizationResult{
 		Info:         info,
 		Model:        model.NonDeterministicModel,
 		Linearizable: result,
-		Lg:           lg,
 	}
 }
 
 func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
-	lg.Info("Validating serializable operations")
 	for _, read := range operations {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)

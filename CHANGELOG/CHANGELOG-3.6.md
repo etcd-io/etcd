@@ -2,11 +2,30 @@
 
 Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.5.md).
 
-<hr>
+---
 
-## v3.6.0 (TBD)
+## v3.6.0 (2025-05-15)
 
-<hr>
+There isn't any production code change since v3.6.0-rc.5.
+
+---
+
+## v3.6.0-rc.5 (2025-05-08)
+
+### etcd server
+
+- Fix [the compaction pause duration metric is not emitted for every compaction batch](https://github.com/etcd-io/etcd/pull/19770)
+
+### Package `clientv3`
+
+- [Replace `resolver.State.Addresses` with `resolver.State.Endpoint.Addresses`](https://github.com/etcd-io/etcd/pull/19782).
+- [Deprecated the Metadata field in the Endpoint struct from the client/v3/naming/endpoints package](https://github.com/etcd-io/etcd/pull/19842).
+
+### Dependencies
+
+- Compile binaries using [go 1.23.9](https://github.com/etcd-io/etcd/pull/19867).
+
+---
 
 ## v3.6.0-rc.4 (2025-04-15)
 
@@ -18,7 +37,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Compile binaries using [go 1.23.8](https://github.com/etcd-io/etcd/pull/19724)
 
-<hr>
+---
 
 ## v3.6.0-rc.3 (2025-03-27)
 
@@ -37,7 +56,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Bump [github.com/golang-jwt/jwt/v5 from 5.2.1 to 5.2.2 to address CVE-2025-30204](https://github.com/etcd-io/etcd/pull/19647).
 - Bump [bump golang.org/x/net from v0.37.0 to v0.38.0 to address CVE-2025-22872](https://github.com/etcd-io/etcd/pull/19687).
 
-<hr>
+---
 
 ## v3.6.0-rc.2 (2025-03-05)
 
@@ -51,7 +70,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Bump [golang.org/x/net to v0.36.0 to address CVE-2025-22870](https://github.com/etcd-io/etcd/pull/19531).
 - Bump [github.com/grpc-ecosystem/grpc-gateway/v2 to v2.26.3 to fix the issue of etcdserver crashing on receiving REST watch stream requests](https://github.com/etcd-io/etcd/pull/19522).
 
-<hr>
+---
 
 ## v3.6.0-rc.1 (2025-02-25)
 
@@ -67,7 +86,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Bump [golang.org/x/crypto to v0.35.0 to address CVE-2025-22869](https://github.com/etcd-io/etcd/pull/19480).
 
-<hr>
+---
 
 ## v3.6.0-rc.0 (2025-02-13)
 
@@ -79,6 +98,19 @@ See [code changes](https://github.com/etcd-io/etcd/compare/v3.5.0...v3.6.0).
 - `etcd` doesn't support serving client requests on the peer listen endpoints (--listen-peer-urls). See [pull/13565](https://github.com/etcd-io/etcd/pull/13565).
 - `etcdctl` will sleep(2s) in case of range delete without `--range` flag. See [pull/13747](https://github.com/etcd-io/etcd/pull/13747)
 - Applications which depend on etcd v3.6 packages must be built with go version >= v1.18.
+
+#### Flags Removed
+
+- The following flags have been removed:
+
+  - `--enable-v2`
+  - `--experimental-enable-v2v3`
+  - `--proxy`
+  - `--proxy-failure-wait`
+  - `--proxy-refresh-interval`
+  - `--proxy-dial-timeout`
+  - `--proxy-write-timeout`
+  - `--proxy-read-timeout`
 
 ### Deprecations
 
@@ -174,4 +206,4 @@ See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per 
 - [Upgrade grpc-gateway from v1 to v2](https://github.com/etcd-io/etcd/pull/16595).
 - [Switch from grpc-ecosystem/go-grpc-prometheus to grpc-ecosystem/go-grpc-middleware/providers/prometheus](https://github.com/etcd-io/etcd/pull/19195).
 
-<hr>
+---

@@ -58,6 +58,7 @@ type GlobalFlags struct {
 
 	User     string
 	Password string
+	Token    string
 
 	Debug bool
 }
@@ -290,12 +291,21 @@ func authCfgFromCmd(cmd *cobra.Command) *clientv3.AuthConfig {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
+	tokenFlag, err := cmd.Flags().GetString("auth-jwt-token")
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
+	}
 
-	if userFlag == "" {
+	if userFlag == "" && tokenFlag == "" {
 		return nil
 	}
 
 	var cfg clientv3.AuthConfig
+
+	if tokenFlag != "" {
+		cfg.Token = tokenFlag
+		return &cfg
+	}
 
 	if passwordFlag == "" {
 		splitted := strings.SplitN(userFlag, ":", 2)

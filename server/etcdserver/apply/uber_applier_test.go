@@ -45,6 +45,7 @@ func defaultUberApplier(t *testing.T) UberApplier {
 	})
 
 	cluster := membership.NewCluster(lg)
+	cluster.SetBackend(schema.NewMembershipBackend(lg, be))
 	cluster.AddMember(&membership.Member{ID: memberID}, true)
 	lessor := lease.NewLessor(lg, be, cluster, lease.LessorConfig{})
 	kv := mvcc.NewStore(lg, be, lessor, mvcc.StoreConfig{})
@@ -60,21 +61,22 @@ func defaultUberApplier(t *testing.T) UberApplier {
 		bcrypt.DefaultCost,
 	)
 	consistentIndex := cindex.NewConsistentIndex(be)
-	return NewUberApplier(
-		lg,
-		be,
-		kv,
-		alarmStore,
-		authStore,
-		lessor,
-		cluster,
-		&fakeRaftStatusGetter{},
-		&fakeSnapshotServer{},
-		consistentIndex,
-		1*time.Hour,
-		false,
-		16*1024*1024, // 16MB
-	)
+	opts := ApplierOptions{
+		Logger:                       lg,
+		KV:                           kv,
+		AlarmStore:                   alarmStore,
+		AuthStore:                    authStore,
+		Lessor:                       lessor,
+		Cluster:                      cluster,
+		RaftStatus:                   &fakeRaftStatusGetter{},
+		SnapshotServer:               &fakeSnapshotServer{},
+		ConsistentIndex:              consistentIndex,
+		TxnModeWriteWithSharedBuffer: false,
+		Backend:                      be,
+		QuotaBackendBytesCfg:         16 * 1024 * 1024, // 16MB
+		WarningApplyDuration:         time.Hour,
+	}
+	return NewUberApplier(opts)
 }
 
 // TestUberApplier_Alarm_Corrupt tests the applier returns ErrCorrupt after alarm CORRUPT is activated
@@ -129,13 +131,13 @@ func TestUberApplier_Alarm_Corrupt(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_CORRUPT,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request)
+			result = ua.Apply(tc.request, membership.ApplyBoth)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -231,13 +233,13 @@ func TestUberApplier_Alarm_Quota(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			result = ua.Apply(tc.request)
+			result = ua.Apply(tc.request, membership.ApplyBoth)
 			require.NotNil(t, result)
 			require.Equalf(t, tc.expectError, result.Err, "Apply: got %v, expect: %v", result.Err, tc.expectError)
 		})
@@ -254,11 +256,11 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.Equalf(t, errors.ErrNoSpace, result.Err, "Apply: got %v, expect: %v", result.Err, errors.ErrNoSpace)
 
@@ -269,11 +271,11 @@ func TestUberApplier_Alarm_Deactivate(t *testing.T) {
 			MemberID: memberID,
 			Alarm:    pb.AlarmType_NOSPACE,
 		},
-	})
+	}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	require.NoError(t, result.Err)
 
-	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}})
+	result = ua.Apply(&pb.InternalRaftRequest{Put: &pb.PutRequest{Key: []byte(key)}}, membership.ApplyBoth)
 	require.NotNil(t, result)
 	assert.NoError(t, result.Err)
 }

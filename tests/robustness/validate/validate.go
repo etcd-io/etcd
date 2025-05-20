@@ -15,47 +15,77 @@
 package validate
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
-	"testing"
 	"time"
 
 	"github.com/anishathalye/porcupine"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func ValidateAndReturnVisualize(t *testing.T, lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) Results {
-	err := checkValidationAssumptions(reports, persistedRequests)
-	require.NoErrorf(t, err, "Broken validation assumptions")
+var ErrNotEmptyDatabase = errors.New("non empty database at start, required by model used for linearizability validation")
+
+func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result Result) {
+	result.Assumptions = checkValidationAssumptions(reports)
+	if result.Assumptions != nil {
+		return result
+	}
 	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
 	// We are passing in the original reports and linearizableOperations with modified return time.
 	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
 	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
-	patchedLinearizableOperations := patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
-
-	results := validateLinearizableOperationsAndVisualize(lg, patchedLinearizableOperations, timeout)
-	if results.Linearizable != porcupine.Ok {
-		t.Error("Failed linearization, skipping further validation")
-		return results
+	if len(persistedRequests) != 0 {
+		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
 	}
 
-	// TODO: Use requests from linearization for replay.
+	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
+	start := time.Now()
+	result.Linearization = validateLinearizableOperationsAndVisualize(linearizableOperations, timeout)
+	switch result.Linearization.Linearizable {
+	case porcupine.Illegal:
+		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
+	case porcupine.Unknown:
+		lg.Error("Linearization has timed out", zap.Duration("duration", time.Since(start)))
+	case porcupine.Ok:
+		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+	default:
+		panic(fmt.Sprintf("Unknown Linearization result %s", result.Linearization.Linearizable))
+	}
+
+	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
+	if result.Linearization.Linearizable != porcupine.Ok {
+		lg.Info("Skipping other validations as linearization failed")
+		return result
+	}
+	if len(persistedRequests) == 0 {
+		lg.Info("Skipping other validations as persisted requests were empty")
+		return result
+	}
 	replay := model.NewReplay(persistedRequests)
 
-	err = validateWatch(lg, cfg, reports, replay)
-	if err != nil {
-		t.Errorf("Failed validating watch history, err: %s", err)
+	lg.Info("Validating watch")
+	start = time.Now()
+	result.WatchError = validateWatch(lg, cfg, reports, replay)
+	if result.WatchError == nil {
+		lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
+	} else {
+		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.WatchError))
 	}
-	err = validateSerializableOperations(lg, serializableOperations, replay)
-	if err != nil {
-		t.Errorf("Failed validating serializable operations, err: %s", err)
+
+	lg.Info("Validating serializable operations")
+	start = time.Now()
+	result.SerializableError = validateSerializableOperations(lg, serializableOperations, replay)
+	if result.SerializableError == nil {
+		lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
+	} else {
+		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(result.SerializableError))
 	}
-	return results
+
+	return result
 }
 
 type Config struct {
@@ -85,16 +115,12 @@ func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable
 	return linearizable, serializable
 }
 
-func checkValidationAssumptions(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
+func checkValidationAssumptions(reports []report.ClientReport) error {
 	err := validateEmptyDatabaseAtStart(reports)
 	if err != nil {
 		return err
 	}
 
-	err = validatePersistedRequestMatchClientRequests(reports, persistedRequests)
-	if err != nil {
-		return err
-	}
 	err = validateNonConcurrentClientRequests(reports)
 	if err != nil {
 		return err
@@ -103,84 +129,19 @@ func checkValidationAssumptions(reports []report.ClientReport, persistedRequests
 }
 
 func validateEmptyDatabaseAtStart(reports []report.ClientReport) error {
+	if len(reports) == 0 {
+		return nil
+	}
 	for _, r := range reports {
 		for _, op := range r.KeyValue {
 			request := op.Input.(model.EtcdRequest)
 			response := op.Output.(model.MaybeEtcdResponse)
-			if response.Revision == 2 && !request.IsRead() {
+			if response.Revision == 1 && request.IsRead() {
 				return nil
 			}
 		}
 	}
-	return fmt.Errorf("non empty database at start or first write didn't succeed, required by model implementation")
-}
-
-func validatePersistedRequestMatchClientRequests(reports []report.ClientReport, persistedRequests []model.EtcdRequest) error {
-	persistedRequestSet := map[string]model.EtcdRequest{}
-	for _, request := range persistedRequests {
-		data, err := json.Marshal(request)
-		if err != nil {
-			return err
-		}
-		persistedRequestSet[string(data)] = request
-	}
-	clientRequests := map[string]porcupine.Operation{}
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			data, err := json.Marshal(request)
-			if err != nil {
-				return err
-			}
-			clientRequests[string(data)] = op
-		}
-	}
-
-	for requestDump, request := range persistedRequestSet {
-		_, found := clientRequests[requestDump]
-		// We cannot validate if persisted leaseGrant was sent by client as failed leaseGrant will not return LeaseID to clients.
-		if request.Type == model.LeaseGrant {
-			continue
-		}
-
-		if !found {
-			return fmt.Errorf("request %+v was not sent by client, required to validate", requestDump)
-		}
-	}
-
-	var firstOp, lastOp porcupine.Operation
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			response := op.Output.(model.MaybeEtcdResponse)
-			if response.Error != "" || request.IsRead() {
-				continue
-			}
-			if firstOp.Call == 0 || op.Call < firstOp.Call {
-				firstOp = op
-			}
-			if lastOp.Call == 0 || op.Call > lastOp.Call {
-				lastOp = op
-			}
-		}
-	}
-	firstOpData, err := json.Marshal(firstOp.Input.(model.EtcdRequest))
-	if err != nil {
-		return err
-	}
-	_, found := persistedRequestSet[string(firstOpData)]
-	if !found {
-		return fmt.Errorf("first succesful client write %s was not persisted, required to validate", firstOpData)
-	}
-	lastOpData, err := json.Marshal(lastOp.Input.(model.EtcdRequest))
-	if err != nil {
-		return err
-	}
-	_, found = persistedRequestSet[string(lastOpData)]
-	if !found {
-		return fmt.Errorf("last succesful client write %s was not persisted, required to validate", lastOpData)
-	}
-	return nil
+	return ErrNotEmptyDatabase
 }
 
 func validateNonConcurrentClientRequests(reports []report.ClientReport) error {

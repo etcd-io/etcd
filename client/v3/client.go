@@ -43,6 +43,7 @@ import (
 var (
 	ErrNoAvailableEndpoints = errors.New("etcdclient: no available endpoints")
 	ErrOldCluster           = errors.New("etcdclient: old cluster version")
+	ErrMutuallyExclusiveCfg = errors.New("Username/Password and Token configurations are mutually exclusive")
 )
 
 // Client provides and manages an etcd v3 client session.
@@ -69,7 +70,10 @@ type Client struct {
 	// Username is a user name for authentication.
 	Username string
 	// Password is a password for authentication.
-	Password        string
+	Password string
+	// Token is a JWT used for authentication instead of a password.
+	Token string
+
 	authTokenBundle credentials.PerRPCCredentialsBundle
 
 	callOpts []grpc.CallOption
@@ -288,6 +292,11 @@ func (c *Client) Dial(ep string) (*grpc.ClientConn, error) {
 func (c *Client) getToken(ctx context.Context) error {
 	var err error // return last error in a case of fail
 
+	if c.Token != "" {
+		c.authTokenBundle.UpdateAuthToken(c.Token)
+		return nil
+	}
+
 	if c.Username == "" || c.Password == "" {
 		return nil
 	}
@@ -376,6 +385,10 @@ func newClient(cfg *Config) (*Client, error) {
 		creds = credentials.NewTransportCredential(cfg.TLS)
 	}
 
+	if cfg.Token != "" && (cfg.Username != "" || cfg.Password != "") {
+		return nil, ErrMutuallyExclusiveCfg
+	}
+
 	// use a temporary skeleton client to bootstrap first connection
 	baseCtx := context.TODO()
 	if cfg.Context != nil {
@@ -414,6 +427,12 @@ func newClient(cfg *Config) (*Client, error) {
 		client.Password = cfg.Password
 		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
 	}
+
+	if cfg.Token != "" {
+		client.Token = cfg.Token
+		client.authTokenBundle = credentials.NewPerRPCCredentialBundle()
+	}
+
 	if cfg.MaxCallSendMsgSize > 0 || cfg.MaxCallRecvMsgSize > 0 {
 		if cfg.MaxCallRecvMsgSize > 0 && cfg.MaxCallSendMsgSize > cfg.MaxCallRecvMsgSize {
 			return nil, fmt.Errorf("gRPC message recv limit (%d bytes) must be greater than send limit (%d bytes)", cfg.MaxCallRecvMsgSize, cfg.MaxCallSendMsgSize)
