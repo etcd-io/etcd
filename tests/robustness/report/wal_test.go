@@ -186,6 +186,29 @@ func TestPersistedRequests(t *testing.T) {
 			},
 		},
 		{
+			name:     "Success if only one member observed history",
+			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
+			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
+				switch dataDir {
+				case "etcd0":
+					return []model.EtcdRequest{
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 3}},
+					}, nil
+				case "etcd1", "etcd2":
+					return []model.EtcdRequest{}, nil
+				default:
+					panic("unexpected")
+				}
+			},
+			expectRequests: []model.EtcdRequest{
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 3}},
+			},
+		},
+		{
 			name:     "Success when one member observed different last entry",
 			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
 			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
@@ -217,6 +240,34 @@ func TestPersistedRequests(t *testing.T) {
 				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
 				{Type: model.Compact, Compact: &model.CompactRequest{Revision: 3}},
 			},
+		},
+		{
+			name:     "Error when one member didn't observe whole history and others observed different last entry",
+			dataDirs: []string{"etcd0", "etcd1", "etcd2"},
+			readerFunc: func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
+				switch dataDir {
+				case "etcd0":
+					return []model.EtcdRequest{
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+					}, nil
+				case "etcd1":
+					return []model.EtcdRequest{
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 3}},
+					}, nil
+				case "etcd2":
+					return []model.EtcdRequest{
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 1}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 2}},
+						{Type: model.Compact, Compact: &model.CompactRequest{Revision: 4}},
+					}, nil
+				default:
+					panic("unexpected")
+				}
+			},
+			expectErr: "unexpected differences between wal entries",
 		},
 		{
 			name:     "Error when three members observed different last entry",
