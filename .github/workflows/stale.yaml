@@ -19,7 +19,7 @@ jobs:
           days-until-close: 21
           stale-issue-label: 'stale'
           stale-pr-label: 'stale'
-          exempt-labels: 'stage/tracked'
+          exempt-labels: 'stage/tracked,help wanted'
           exempt-projects: false
           exempt-milestones: false
           exempt-assignees: false
