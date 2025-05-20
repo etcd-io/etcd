@@ -761,6 +761,4 @@ func TestEtcdAdvertiseClientUnix(t *testing.T) {
 
 	// Wait for the process to be ready
 	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines))
-
-	// Additional validation can be added here if needed
 }
