@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
@@ -645,8 +646,11 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		}
 	}
 
-	defaultValues := values(*embed.NewConfig())
-	overrideValues := values(cfg.ServerConfig)
+	version, err := GetVersionFromBinary(execPath)
+	require.NoError(tb, err)
+
+	defaultValues := values(version, *embed.NewConfig())
+	overrideValues := values(version, cfg.ServerConfig)
 	for flag, value := range overrideValues {
 		if defaultValue := defaultValues[flag]; value == "" || value == defaultValue {
 			continue
@@ -727,16 +731,30 @@ func (epc *EtcdProcessCluster) MinServerVersion() (*semver.Version, error) {
 	return minVersion, nil
 }
 
-func values(cfg embed.Config) map[string]string {
+// canonicalFlagName takes any flag name and returns it's canonical name
+// handling the experimental flags in different versions
+func canonicalFlagName(version *semver.Version, name string) string {
+	v3_6 := semver.Version{Major: 3, Minor: 6}
+	if name == "compaction-batch-limit" {
+		if version.Compare(v3_6) < 0 {
+			name = "experimental-compaction-batch-limit"
+		}
+	}
+	return name
+}
+
+func values(version *semver.Version, cfg embed.Config) map[string]string {
 	fs := flag.NewFlagSet("etcd", flag.ContinueOnError)
+
 	cfg.AddFlags(fs)
 	values := map[string]string{}
 	fs.VisitAll(func(f *flag.Flag) {
+		name := canonicalFlagName(version, f.Name)
 		value := f.Value.String()
 		if value == "false" || value == "0" {
 			value = ""
 		}
-		values[f.Name] = value
+		values[name] = value
 	})
 	return values
 }
