@@ -188,24 +188,13 @@ func TestInPlaceRecovery(t *testing.T) {
 }
 
 func TestPeriodicCheckDetectsCorruption(t *testing.T) {
-	testPeriodicCheckDetectsCorruption(t, false)
-}
-
-func TestPeriodicCheckDetectsCorruptionWithExperimentalFlag(t *testing.T) {
-	testPeriodicCheckDetectsCorruption(t, true)
-}
-
-func testPeriodicCheckDetectsCorruption(t *testing.T, useExperimentalFlag bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	var corruptCheckTime e2e.EPClusterOption
-	if useExperimentalFlag {
-		corruptCheckTime = e2e.WithExperimentalCorruptCheckTime(time.Second)
-	} else {
-		corruptCheckTime = e2e.WithCorruptCheckTime(time.Second)
-	}
+
+	corruptCheckTime := e2e.WithCorruptCheckTime(time.Second)
+
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithKeepDataDir(true),
 		corruptCheckTime,
@@ -294,18 +283,14 @@ func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 }
 
 func TestCompactHashCheckDetectCorruptionInterrupt(t *testing.T) {
-	testCompactHashCheckDetectCorruptionInterrupt(t, false, false)
+	testCompactHashCheckDetectCorruptionInterrupt(t, false)
 }
 
 func TestCompactHashCheckDetectCorruptionInterruptWithFeatureGate(t *testing.T) {
-	testCompactHashCheckDetectCorruptionInterrupt(t, true, false)
+	testCompactHashCheckDetectCorruptionInterrupt(t, true)
 }
 
-func TestCompactHashCheckDetectCorruptionInterruptWithExperimentalFlag(t *testing.T) {
-	testCompactHashCheckDetectCorruptionInterrupt(t, true, true)
-}
-
-func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool, useExperimentalFlag bool) {
+func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate bool) {
 	checkTime := time.Second
 	e2e.BeforeTest(t)
 	ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
@@ -329,12 +314,8 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 	} else {
 		opts = append(opts, e2e.WithCompactHashCheckEnabled(true))
 	}
-	var compactionBatchLimit e2e.EPClusterOption
-	if useExperimentalFlag {
-		compactionBatchLimit = e2e.WithExperimentalCompactionBatchLimit(1)
-	} else {
-		compactionBatchLimit = e2e.WithCompactionBatchLimit(1)
-	}
+
+	compactionBatchLimit := e2e.WithCompactionBatchLimit(1)
 
 	cfg := e2e.NewConfig(opts...)
 	epc, err := e2e.InitEtcdProcessCluster(t, cfg)

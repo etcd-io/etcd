@@ -75,7 +75,7 @@ func (t triggerCompact) Trigger(ctx context.Context, _ *testing.T, member e2e.Et
 		}
 		rev = resp.Header.Revision
 
-		if !t.multiBatchCompaction || rev > int64(clus.Cfg.ServerConfig.ExperimentalCompactionBatchLimit) {
+		if !t.multiBatchCompaction || rev > int64(clus.Cfg.ServerConfig.CompactionBatchLimit) {
 			break
 		}
 		time.Sleep(50 * time.Millisecond)
@@ -97,9 +97,9 @@ func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.Etc
 		return false
 	}
 	// For multiBatchCompaction we need to guarantee that there are enough revisions between two compaction requests.
-	// With addition of compaction requests to traffic this might be hard if experimental-compaction-batch-limit is too high.
+	// With addition of compaction requests to traffic this might be hard if -compaction-batch-limit is too high.
 	if t.multiBatchCompaction {
-		return config.ServerConfig.ExperimentalCompactionBatchLimit <= 10
+		return config.ServerConfig.CompactionBatchLimit <= 10
 	}
 	return true
 }

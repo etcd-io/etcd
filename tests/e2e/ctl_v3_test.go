@@ -27,6 +27,7 @@ import (
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/pkg/v3/expect"
+	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -225,7 +226,7 @@ func testCtlWithOffline(t *testing.T, testFunc func(ctlCtx), testOfflineFunc fun
 	}
 	ret.cfg.ServerConfig.StrictReconfigCheck = !ret.disableStrictReconfigCheck
 	if ret.initialCorruptCheck {
-		ret.cfg.ServerConfig.ExperimentalInitialCorruptCheck = ret.initialCorruptCheck
+		ret.cfg.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("InitialCorruptCheck=%t", ret.initialCorruptCheck))
 	}
 	if testOfflineFunc != nil {
 		ret.cfg.KeepDataDir = true
