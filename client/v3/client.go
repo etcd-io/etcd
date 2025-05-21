@@ -406,7 +406,7 @@ func newClient(cfg *Config) (*Client, error) {
 	} else if cfg.LogConfig != nil {
 		lg, err = cfg.LogConfig.Build()
 	} else {
-		lg, err = logutil.CreateDefaultZapLogger(etcdClientDebugLevel())
+		lg, err = logutil.CreateDefaultZapLogger(ClientLogLevel())
 		if lg != nil {
 			lg = lg.Named("etcd-client")
 		}
