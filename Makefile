@@ -568,7 +568,7 @@ pull-docker-functional:
 	$(info ETCD_VERSION: $(ETCD_VERSION))
 	docker pull gcr.io/etcd-development/etcd-functional:go$(GO_VERSION)
 
-# Failpoints
+# Failpoints 
 GOFAIL_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
 .PHONY: install-gofail
 install-gofail:
