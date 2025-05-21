@@ -29,9 +29,7 @@ import (
 	"path/filepath"
 	"time"
 
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
-	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/soheilhy/cmux"
 	"github.com/spf13/cobra"
@@ -179,7 +177,6 @@ func newGRPCProxyStartCommand() *cobra.Command {
 	// experimental flags
 	cmd.Flags().BoolVar(&grpcProxyEnableOrdering, "experimental-serializable-ordering", false, "Ensure serializable reads have monotonically increasing store revisions across endpoints.")
 	cmd.Flags().StringVar(&grpcProxyLeasing, "experimental-leasing-prefix", "", "leasing metadata prefix for disconnected linearized reads.")
-	cmd.Flags().BoolVar(&grpcProxyEnableLogging, "experimental-enable-grpc-logging", false, "logging all grpc requests and responses")
 
 	cmd.Flags().BoolVar(&grpcProxyDebug, "debug", false, "Enable debug-level logging for grpc-proxy.")
 
@@ -504,8 +501,6 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	electionp := grpcproxy.NewElectionProxy(client)
 	lockp := grpcproxy.NewLockProxy(client)
 
-	alwaysLoggingDeciderServer := func(ctx context.Context, fullMethodName string, servingObject any) bool { return true }
-
 	serverMetrics := grpc_prometheus.NewServerMetrics()
 	prometheus.MustRegister(serverMetrics)
 
@@ -514,16 +509,6 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	}
 	grpcChainUnaryList := []grpc.UnaryServerInterceptor{
 		serverMetrics.UnaryServerInterceptor(),
-	}
-	if grpcProxyEnableLogging {
-		grpcChainStreamList = append(grpcChainStreamList,
-			grpc_ctxtags.StreamServerInterceptor(),
-			grpc_zap.PayloadStreamServerInterceptor(lg, alwaysLoggingDeciderServer),
-		)
-		grpcChainUnaryList = append(grpcChainUnaryList,
-			grpc_ctxtags.UnaryServerInterceptor(),
-			grpc_zap.PayloadUnaryServerInterceptor(lg, alwaysLoggingDeciderServer),
-		)
 	}
 
 	gopts := []grpc.ServerOption{
