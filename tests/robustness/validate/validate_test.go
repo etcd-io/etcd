@@ -49,6 +49,7 @@ func TestDataReports(t *testing.T) {
 				t.Error(err)
 			}
 			result := ValidateAndReturnVisualize(zaptest.NewLogger(t), Config{}, reports, persistedRequests, 5*time.Minute)
+			err = result.Error()
 			if err != nil {
 				t.Error(err)
 			}

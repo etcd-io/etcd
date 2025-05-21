@@ -90,7 +90,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 		},
 		{
-			name: "failed put remains if there is a matching persisted request, uniqueness allows for revision and return time to be based on watch",
+			name: "failed put remains if there is a matching persisted request, uniqueness allows for revision to be based on watch",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key", "value", 100, 200, nil, errors.New("failed"))
 			},
@@ -99,7 +99,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 			watchOperations: watchResponse(300, putEvent("key", "value", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 300, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
 			},
 		},
 		{
@@ -172,7 +172,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 		},
 		{
-			name: "failed put with lease remains if there is a matching event, uniqueness allows for revision and return time to be based on watch",
+			name: "failed put with lease remains if there is a matching event, uniqueness allows for revision to be based on watch",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPutWithLease("key", "value", 123, 1, 2, nil, errors.New("failed"))
 			},
@@ -181,7 +181,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 			watchOperations: watchResponse(3, putEvent("key", "value", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 3, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
 			},
 		},
 		{
