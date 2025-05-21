@@ -75,7 +75,6 @@ func main() {
 		lg.Error("Failed to generate traffic")
 		panic(err)
 	}
-	lg.Info("Completed traffic generation")
 }
 
 func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime time.Time, duration time.Duration) ([]report.ClientReport, error) {
@@ -84,17 +83,18 @@ func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime ti
 	if err != nil {
 		lg.Fatal("Failed empty database at start check", zap.Error(err))
 	}
-	reports := []report.ClientReport{r}
+	trafficReports := []report.ClientReport{r}
 	watchReport := []report.ClientReport{}
 	maxRevisionChan := make(chan int64, 1)
 	watchConfig := client.WatchConfig{
 		RequestProgress: true,
 	}
 	g := errgroup.Group{}
+	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		reports = slices.Concat(reports, simulateTraffic(ctx, hosts, ids, baseTime, duration))
-		maxRevision := report.OperationsMaxRevision(reports)
+		trafficReports = slices.Concat(trafficReports, simulateTraffic(ctx, hosts, ids, baseTime, duration))
+		maxRevision := report.OperationsMaxRevision(trafficReports)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
 		return nil
@@ -107,8 +107,17 @@ func runTraffic(ctx context.Context, lg *zap.Logger, hosts []string, baseTime ti
 	if err := g.Wait(); err != nil {
 		return nil, err
 	}
-
-	return slices.Concat(reports, watchReport), nil
+	endTime := time.Since(baseTime)
+	reports := slices.Concat(trafficReports, watchReport)
+	totalStats := traffic.CalculateStats(reports, startTime, endTime)
+	lg.Info("Completed traffic generation",
+		zap.Int("successes", totalStats.Successes),
+		zap.Int("failures", totalStats.Failures),
+		zap.Float64("successRate", totalStats.SuccessRate()),
+		zap.Duration("period", totalStats.Period),
+		zap.Float64("qps", totalStats.QPS()),
+	)
+	return reports, nil
 }
 
 func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider, baseTime time.Time, duration time.Duration) []report.ClientReport {
