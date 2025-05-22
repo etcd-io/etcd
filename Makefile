@@ -555,7 +555,7 @@ gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test
 
 .PHONY: verify
-verify: verify-go-versions verify-gofmt verify-bom verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-receiver-name verify-markdown-you verify-markdown-marker
+verify: verify-go-versions verify-gofmt verify-bom verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-mod-tidy verify-receiver-name verify-markdown-you verify-markdown-marker
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
@@ -588,6 +588,10 @@ verify-revive:
 .PHONY: verify-license-header
 verify-license-header:
 	PASSES="license_header" ./test
+
+.PHONY: verify-mod-tidy
+verify-mod-tidy:
+	PASSES="mod_tidy" ./test
 
 .PHONY: verify-receiver-name
 verify-receiver-name:
