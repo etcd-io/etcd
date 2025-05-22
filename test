@@ -698,30 +698,6 @@ function commit_title_pass {
 	done
 }
 
-# tools gosimple,unused,staticheck,unconvert,ineffasign,nakedret
-# are not module-aware. See https://github.com/golang/go/issues/24661
-# The module-aware versions need to be used when they become available
-function fmt_pass {
-	toggle_failpoints disable
-
-    # TODO: add "unparam"
-	for p in shellcheck \
-			markdown_you \
-			markdown_marker \
-			goword \
-			gofmt \
-			govet \
-			revive \
-			license_header \
-			receiver_name \
-			commit_title \
-			; do
-		echo "'$p' started at $(date)"
-		"${p}"_pass "$@"
-		echo "'$p' completed at $(date)"
-	done
-}
-
 function bom_pass {
 	if ! command -v license-bill-of-materials >/dev/null; then
 		echo "Skipping bom..."
