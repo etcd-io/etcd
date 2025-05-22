@@ -104,7 +104,6 @@ func TestApplyRepeat(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		uberApply:    uberApplierMock{},
 	}
@@ -790,7 +789,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
-		SyncTicker:   &time.Ticker{},
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
@@ -885,7 +883,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),
 		cluster:           cl,
-		SyncTicker:        &time.Ticker{},
 		consistIndex:      ci,
 		beHooks:           serverstorage.NewBackendHooks(lg, ci),
 		firstCommitInTerm: notify.NewNotifier(),
@@ -980,7 +977,6 @@ func TestAddMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
@@ -1037,7 +1033,6 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
@@ -1087,7 +1082,6 @@ func TestRemoveMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
@@ -1136,7 +1130,6 @@ func TestUpdateMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
@@ -1181,7 +1174,6 @@ func TestPublishV3(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
@@ -1215,17 +1207,16 @@ func TestPublishV3Stopped(t *testing.T) {
 		transport: newNopTransporter(),
 	})
 	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zaptest.NewLogger(t),
-		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *r,
-		cluster:    &membership.RaftCluster{},
-		w:          mockwait.NewNop(),
-		done:       make(chan struct{}),
-		stopping:   make(chan struct{}),
-		stop:       make(chan struct{}),
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
+		lgMu:     new(sync.RWMutex),
+		lg:       zaptest.NewLogger(t),
+		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:        *r,
+		cluster:  &membership.RaftCluster{},
+		w:        mockwait.NewNop(),
+		done:     make(chan struct{}),
+		stopping: make(chan struct{}),
+		stop:     make(chan struct{}),
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -1254,7 +1245,6 @@ func TestPublishV3Retry(t *testing.T) {
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
@@ -1304,7 +1294,6 @@ func TestUpdateVersionV3(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 
