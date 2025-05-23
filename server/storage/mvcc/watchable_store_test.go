@@ -31,6 +31,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	gofail "go.etcd.io/gofail/runtime"
 )
 
 func TestWatch(t *testing.T) {
@@ -227,10 +228,20 @@ etcd_debugging_mvcc_watcher_total %d
 		wg := sync.WaitGroup{}
 		wg.Add(2)
 
+		failpointName := "beforeWatchStreamCancelWhileUnlocked"
+		gofail.Enable(failpointName, `sleep("1s")`)
+		t.Cleanup(func() {
+			gofail.Disable(failpointName)
+		})
+
 		go func() {
 			w.Cancel(wt)
 			wg.Done()
 		}()
+
+		// Attempt to allow the cancellation goroutine to run and block on the
+		// failpoint sleep, before we then initiate the close.
+		time.Sleep(time.Millisecond * 100)
 
 		go func() {
 			w.Close()
