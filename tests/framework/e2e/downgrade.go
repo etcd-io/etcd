@@ -147,6 +147,11 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		newExecPath = BinPath.EtcdLastRelease
 	}
 
+	binaryVersion, err := GetVersionFromBinary(newExecPath)
+	if err != nil {
+		return fmt.Errorf("failed to get binary version from %s: %w", newExecPath, err)
+	}
+
 	g := new(errgroup.Group)
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
@@ -157,6 +162,11 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		if err := member.Stop(); err != nil {
 			return err
 		}
+
+		// When we downgrade or upgrade a member, we need to re-generate the flags, to convert some non-experimental
+		// flags to experimental flags, or vice verse.
+		member.Config().Args = convertFlags(member.Config().Args, binaryVersion)
+
 		member.Config().ExecPath = newExecPath
 		lg.Info("Restarting member", zap.String("member", member.Config().Name))
 		// We shouldn't block on waiting for the member to be ready,
