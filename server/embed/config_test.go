@@ -784,6 +784,7 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 		t.Errorf("Diff: %s", diff)
 	}
 }
+
 func TestCheckHostURLs(t *testing.T) {
 	tests := []struct {
 		name    string
