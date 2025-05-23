@@ -16,6 +16,8 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -24,18 +26,27 @@ import (
 
 type unixTransport struct{ *http.Transport }
 
-func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, error) {
-	cfg, err := info.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
-
+func NewTransport[TLS TLSConfigConstraint](info TLS, dialtimeoutd time.Duration) (*http.Transport, error) {
 	var ipAddr net.Addr
-	if info.LocalAddr != "" {
-		ipAddr, err = net.ResolveTCPAddr("tcp", info.LocalAddr+":0")
+	var cfg *tls.Config
+	switch tlsConfig := any(info).(type) {
+	case *TLSInfo:
+		var err error
+		cfg, err = tlsConfig.ClientConfig()
 		if err != nil {
 			return nil, err
 		}
+
+		if tlsConfig.LocalAddr != "" {
+			ipAddr, err = net.ResolveTCPAddr("tcp", tlsConfig.LocalAddr+":0")
+			if err != nil {
+				return nil, err
+			}
+		}
+	case *tls.Config:
+		cfg = tlsConfig
+	default:
+		return nil, fmt.Errorf("TLS configuration needs to be either of type *tls.Config or *TLSInfo.")
 	}
 
 	t := &http.Transport{

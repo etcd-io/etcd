@@ -70,7 +70,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, fmt.Errorf("cannot access member directory: %w", terr)
 	}
 	ss := bootstrapSnapshot(cfg)
-	prt, err := rafthttp.NewRoundTripper(cfg.PeerTLSInfo, cfg.PeerDialTimeout())
+	prt, err := rafthttp.NewRoundTripper(&cfg.PeerTLSInfo, cfg.PeerDialTimeout())
 	if err != nil {
 		return nil, err
 	}

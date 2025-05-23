@@ -16,16 +16,22 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 )
 
+// Interface for different TLS Configs
+type TLSConfigConstraint interface {
+	*tls.Config | *TLSInfo
+}
+
 // ValidateSecureEndpoints scans the given endpoints against tls info, returning only those
 // endpoints that could be validated as secure.
-func ValidateSecureEndpoints(tlsInfo TLSInfo, eps []string) ([]string, error) {
-	t, err := NewTransport(tlsInfo, 5*time.Second)
+func ValidateSecureEndpoints[TLS TLSConfigConstraint](info TLS, eps []string) ([]string, error) {
+	t, err := NewTransport(info, 5*time.Second)
 	if err != nil {
 		return nil, err
 	}
