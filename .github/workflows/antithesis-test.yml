@@ -34,6 +34,11 @@ on:
         required: true
         type: string
         default: "etcd nightly antithesis run"
+      etcd_ref:
+        description: 'etcd version to build etcd-server from'
+        required: false
+        type: string
+        default: 'release-3.5'
       email:
         description: 'Additional email notification recipient (separate with ;)'
         required: true
@@ -85,7 +90,7 @@ jobs:
       - name: Build and push etcd image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-etcd-image
+          make antithesis-build-etcd-image-${{ inputs.etcd_ref }}
           export TAG="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:latest"
           docker tag etcd-server:latest $TAG
           docker push $TAG
