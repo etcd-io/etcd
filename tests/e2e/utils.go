@@ -145,16 +145,6 @@ func getMemberIDByName(ctx context.Context, c *e2e.EtcdctlV3, name string) (id u
 	return 0, false, nil
 }
 
-func patchArgs(args []string, flag, newValue string) error {
-	for i, arg := range args {
-		if strings.Contains(arg, flag) {
-			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
-			return nil
-		}
-	}
-	return fmt.Errorf("--%s flag not found", flag)
-}
-
 func generateCertsForIPs(tempDir string, ips []net.IP) (caFile string, certFiles []string, keyFiles []string, err error) {
 	ca := &x509.Certificate{
 		SerialNumber: big.NewInt(1001),
