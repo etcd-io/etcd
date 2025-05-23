@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
 	"io"
 	"net/http"
 	"os"
@@ -104,24 +105,54 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		backend.Close()
 		return nil, err
 	}
+	sstats := stats.NewServerStats(cfg.Name, cluster.cl.String())
+	lstats := stats.NewLeaderStats(cfg.Logger, cluster.nodeID.String())
+
+	raftTransport := &rafthttp.Transport{
+		Logger:      cfg.Logger,
+		TLSInfo:     cfg.PeerTLSInfo,
+		DialTimeout: cfg.PeerDialTimeout(),
+		ID:          cluster.nodeID,
+		URLs:        cfg.PeerURLs,
+		ClusterID:   cluster.cl.ID(),
+		ServerStats: sstats,
+		LeaderStats: lstats,
+		ErrorC:      make(chan error, 1), // placeholder, can override later
+	}
+	if err = raftTransport.Start(); err != nil {
+		return nil, err
+	}
+	for _, m := range cluster.remotes {
+		if m.ID != cluster.nodeID {
+			raftTransport.AddRemote(m.ID, m.PeerURLs)
+		}
+	}
+	for _, m := range cluster.cl.Members() {
+		if m.ID != cluster.nodeID {
+			raftTransport.AddPeer(m.ID, m.PeerURLs)
+		}
+	}
 
 	cfg.Logger.Info("bootstrapping raft")
 	raft := bootstrapRaft(cfg, cluster, s.wal)
+
 	return &bootstrappedServer{
-		prt:     prt,
-		ss:      ss,
-		storage: s,
-		cluster: cluster,
-		raft:    raft,
+		prt:           prt,
+		ss:            ss,
+		storage:       s,
+		cluster:       cluster,
+		raft:          raft,
+		raftTransport: raftTransport,
 	}, nil
 }
 
 type bootstrappedServer struct {
-	storage *bootstrappedStorage
-	cluster *bootstrappedCluster
-	raft    *bootstrappedRaft
-	prt     http.RoundTripper
-	ss      *snap.Snapshotter
+	storage       *bootstrappedStorage
+	cluster       *bootstrappedCluster
+	raft          *bootstrappedRaft
+	prt           http.RoundTripper
+	ss            *snap.Snapshotter
+	raftTransport *rafthttp.Transport
 }
 
 func (s *bootstrappedServer) Close() {
