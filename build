@@ -105,8 +105,6 @@ tools_build() {
 	done
 }
 
-toggle_failpoints_default
-
 if [[ "${ETCD_SETUP_GOPATH:-}" == "1" ]]; then
 	etcd_setup_gopath
 fi

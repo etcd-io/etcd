@@ -426,6 +426,26 @@ EOF
 	VERSION="${VERSION}" "./scripts/test_images.sh"
 }
 
+function mod_tidy_pass {
+	if ! output=$(go mod tidy -diff); then
+		echo -e "go mod tidy checking failed for go.mod (!=0 return code):\\n${output}"
+		exit 255
+	fi
+	if [ -n "${output}" ]; then
+		echo -e "go mod tidy checking failed for go.mod (printed output):\\n${output}"
+		exit 255
+	fi
+
+	if ! output=$(cd ./tools/mod && go mod tidy -diff); then
+		echo -e "go mod tidy checking failed for tools/mod/go.mod (!=0 return code):\\n${output}"
+		exit 255
+	fi
+	if [ -n "${output}" ]; then
+		echo -e "go mod tidy checking failed for tools/mod/go.mod (printed output):\\n${output}"
+		exit 255
+	fi
+}
+
 function shellcheck_pass {
 	SHELLCHECK=shellcheck
 
