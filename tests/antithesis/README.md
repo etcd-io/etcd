@@ -11,6 +11,14 @@ make antithesis-build-client-docker-image
 make antithesis-build-etcd-image
 ```
 
+Both commands build etcd-server and etcd-client from the current branch. To build a different version of etcd you can use:
+
+```bash
+make antithesis-build-etcd-image REF=${YOUR_GIT_REF_OR_BRANCH} DOCKERFILE=${PATH_TO_etcd_DOCKERFILE}
+```
+
+By default, REF is set to `HEAD` and DOCKERFILE is `./Dockerfile`. The etcd Dockerfile location might not be at the same location or have the same name (for example, compare its location `release-3.4` between `release-3.5`). If the file location or name is different than the default in the target ref or branch, change it accordingly.
+
 ### 2. (Optional) Check the Image Locally
 
 You can verify your new image is built:
@@ -32,6 +40,8 @@ Run the following command from the root directory for Antithesis tests (`tests/a
 ```bash
 make antithesis-docker-compose-up
 ```
+
+The command uses the etcd client and server images built from step 1.
 
 The client will continuously check the health of the etcd nodes and print logs similar to:
 
