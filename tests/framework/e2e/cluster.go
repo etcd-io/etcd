@@ -573,7 +573,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--listen-peer-urls=" + peerListenURL.String(),
 		"--initial-advertise-peer-urls=" + peerAdvertiseURL.String(),
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
-		"--data-dir", dataDirPath,
+		"--data-dir=" + dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
 	var clientHTTPURL string
@@ -930,6 +930,16 @@ func (epc *EtcdProcessCluster) UpdateProcOptions(i int, tb testing.TB, opts ...E
 	}
 	epc.Procs[i] = proc
 	return nil
+}
+
+func PatchArgs(args []string, flag, newValue string) error {
+	for i, arg := range args {
+		if strings.Contains(arg, flag) {
+			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
+			return nil
+		}
+	}
+	return fmt.Errorf("--%s flag not found", flag)
 }
 
 func (epc *EtcdProcessCluster) Start(ctx context.Context) error {
