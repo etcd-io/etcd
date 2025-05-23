@@ -617,6 +617,16 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		}
 	}
 
+	var (
+		binaryVersion *semver.Version
+		err           error
+	)
+	if execPath != "" {
+		binaryVersion, err = GetVersionFromBinary(execPath)
+		if err != nil {
+			tb.Logf("Failed to get binary version from %s: %v", execPath, err)
+		}
+	}
 	defaultValues := values(*embed.NewConfig())
 	overrideValues := values(cfg.ServerConfig)
 	for flag, value := range overrideValues {
@@ -626,7 +636,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		if strings.HasSuffix(flag, "snapshot-catchup-entries") && !CouldSetSnapshotCatchupEntries(execPath) {
 			continue
 		}
-		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
+		args = append(args, convertFlag(flag, value, binaryVersion))
 	}
 	envVars := map[string]string{}
 	maps.Copy(envVars, cfg.EnvVars)
