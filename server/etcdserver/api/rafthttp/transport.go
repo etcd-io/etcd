@@ -16,6 +16,7 @@ package rafthttp
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"sync"
 	"time"
@@ -102,7 +103,8 @@ type Transport struct {
 	// a distinct rate limiter is created per every peer (default value: 10 events/sec)
 	DialRetryFrequency rate.Limit
 
-	TLSInfo transport.TLSInfo // TLS information used when creating connection
+	TLSInfo       transport.TLSInfo // TLS information used when creating connection
+	CustomTLSInfo *tls.Config       // TLS information used when creating connection (injected programatically)
 
 	ID          types.ID   // local member ID
 	URLs        types.URLs // local peer URLs
@@ -132,11 +134,11 @@ type Transport struct {
 
 func (t *Transport) Start() error {
 	var err error
-	t.streamRt, err = newStreamRoundTripper(t.TLSInfo, t.DialTimeout)
+	t.streamRt, err = newStreamRoundTripper(&t.TLSInfo, t.DialTimeout)
 	if err != nil {
 		return err
 	}
-	t.pipelineRt, err = NewRoundTripper(t.TLSInfo, t.DialTimeout)
+	t.pipelineRt, err = NewRoundTripper(&t.TLSInfo, t.DialTimeout)
 	if err != nil {
 		return err
 	}

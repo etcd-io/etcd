@@ -351,7 +351,7 @@ func TestNewTransportTLSInfo(t *testing.T) {
 
 	for i, tt := range tests {
 		tt.parseFunc = fakeCertificateParserFunc(nil)
-		trans, err := NewTransport(tt, time.Second)
+		trans, err := NewTransport(&tt, time.Second)
 		require.NoErrorf(t, err, "Received unexpected error from NewTransport")
 		require.NotNilf(t, trans.TLSClientConfig, "#%d: want non-nil TLSClientConfig", i)
 	}

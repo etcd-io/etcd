@@ -16,6 +16,7 @@ package embed
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -885,6 +886,49 @@ func generateHostCertificateFromCA(t *testing.T, caCert *x509.Certificate, caPri
 	return serverCert
 }
 
+func saveKey(cert tls.Certificate, keyPath string) error {
+	keyOut, err := os.OpenFile(keyPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
+	defer keyOut.Close()
+
+	var keyBytes []byte
+
+	switch key := cert.PrivateKey.(type) {
+	case *rsa.PrivateKey:
+		keyBytes = x509.MarshalPKCS1PrivateKey(key)
+		return pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: keyBytes})
+	case *ecdsa.PrivateKey:
+		keyBytes, err = x509.MarshalECPrivateKey(key)
+		if err != nil {
+			return err
+		}
+		return pem.Encode(keyOut, &pem.Block{Type: "EC PRIVATE KEY", Bytes: keyBytes})
+	default:
+		return fmt.Errorf("unsupported private key type: %T", cert.PrivateKey)
+	}
+}
+
+func saveCert(cert tls.Certificate, certPath string) error {
+	certOut, err := os.Create(certPath)
+	if err != nil {
+		return err
+	}
+	defer certOut.Close()
+
+	for _, derBytes := range cert.Certificate {
+		block := &pem.Block{
+			Type:  "CERTIFICATE",
+			Bytes: derBytes,
+		}
+		if err := pem.Encode(certOut, block); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func TestUpdateCipherSuiteWithTLSConfig(t *testing.T) {
 	t.Parallel()
 
@@ -921,6 +965,46 @@ func TestUpdateCipherSuiteWithTLSConfig(t *testing.T) {
 	}
 }
 
+func TestUpdateCipherSuitesWithTLSInfo(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	caSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	caCert, caPrivateKey := generateCACert(t, caSubject)
+
+	serverSubject := &CertificateSubject{
+		Organization:  []string{"Company, Testing"},
+		Country:       []string{"Test"},
+		Province:      []string{"Test Province"},
+		Locality:      []string{"Testing"},
+		StreetAddress: []string{"Test Street"},
+		PostalCode:    []string{"01234"},
+	}
+	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+
+	keyFilePath := tmpDir + "server-key.pem"
+	certFilePath := tmpDir + "server-cert.pem"
+
+	saveKey(serverCert, keyFilePath)
+	saveCert(serverCert, certFilePath)
+
+	cfg := NewConfig()
+	cfg.ClientTLSInfo.CertFile = certFilePath
+	cfg.ClientTLSInfo.KeyFile = keyFilePath
+
+	expectedCipherSuites := []uint16([]uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, tls.TLS_RSA_WITH_AES_128_CBC_SHA})
+	err := updateCipherSuites(&cfg.ClientTLSInfo, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
+	assert.NoError(t, err)
+	actualCipherSuites := cfg.ClientTLSInfo.CipherSuites
+	assert.Equal(t, expectedCipherSuites, actualCipherSuites)
+}
+
 func TestMinMaxVersion(t *testing.T) {
 	t.Parallel()
 
@@ -951,8 +1035,8 @@ func TestMinMaxVersion(t *testing.T) {
 	cfg := NewConfig()
 	cfg.CustomClientTLSConfig = tlsConfig
 
-	expMinVersion := uint16(0x303)
-	expMaxVersion := uint16(0x304)
+	expMinVersion := uint16(tls.VersionTLS12)
+	expMaxVersion := uint16(tls.VersionTLS13)
 	updateMinMaxVersions(tlsConfig, "TLS1.2", "TLS1.3")
 	assert.Equal(t, expMinVersion, tlsConfig.MinVersion)
 	assert.Equal(t, expMaxVersion, tlsConfig.MaxVersion)

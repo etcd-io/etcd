@@ -76,7 +76,7 @@ func TestValidateSecureEndpoints(t *testing.T) {
 	}
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			secureEps, err := ValidateSecureEndpoints(*tlsInfo, test.endPoints)
+			secureEps, err := ValidateSecureEndpoints(tlsInfo, test.endPoints)
 			if test.expectedErr != (err != nil) {
 				t.Errorf("Unexpected error, got: %v, want: %v", err, test.expectedErr)
 			}

@@ -1324,7 +1324,7 @@ func (m *Member) Terminate(t testutil.TB) {
 
 // Metric gets the metric value for a member
 func (m *Member) Metric(metricName string, expectLabels ...string) (string, error) {
-	cfgtls := transport.TLSInfo{}
+	cfgtls := &transport.TLSInfo{}
 	tr, err := transport.NewTimeoutTransport(cfgtls, time.Second, time.Second, time.Second)
 	if err != nil {
 		return "", err

@@ -534,7 +534,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	var err error
 	now := time.Now()
 	if secure {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(&tlsInfo, 3*time.Second)
 		require.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
@@ -566,7 +566,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 
 	now = time.Now()
 	if secure {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(&tlsInfo, 3*time.Second)
 		require.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
@@ -610,7 +610,7 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	var out net.Conn
 	var err error
 	if !tlsInfo.Empty() {
-		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
+		tp, terr := transport.NewTransport(&tlsInfo, 3*time.Second)
 		require.NoError(t, terr)
 		out, err = tp.DialContext(t.Context(), scheme, addr)
 	} else {

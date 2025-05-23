@@ -53,7 +53,7 @@ func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
 		donec <- struct{}{}
 	}()
 	go func() {
-		tr, err := NewTransport(cliTLS, 3*time.Second)
+		tr, err := NewTransport(&cliTLS, 3*time.Second)
 		tr.TLSClientConfig.MaxVersion = tls.VersionTLS12
 		if err != nil {
 			t.Errorf("unexpected NewTransport error: %v", err)

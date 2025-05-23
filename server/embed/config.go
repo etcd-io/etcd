@@ -465,11 +465,6 @@ type Config struct {
 	FlagsExplicitlySet map[string]bool
 }
 
-// Interface for different TLS Configs
-type tlsConfigConstraint interface {
-	*tls.Config | *transport.TLSInfo
-}
-
 // configYAML holds the config suitable for yaml parsing
 type configYAML struct {
 	Config
@@ -921,7 +916,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 	return cfg.Validate()
 }
 
-func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
+func updateCipherSuites[TLS transport.TLSConfigConstraint](info TLS, ss []string) error {
 	transportInfo, ok := any(info).(*transport.TLSInfo)
 	if ok {
 		if len(transportInfo.CipherSuites) > 0 && len(ss) > 0 {
@@ -940,7 +935,7 @@ func updateCipherSuites[TLS tlsConfigConstraint](info TLS, ss []string) error {
 	return fmt.Errorf("tlsConfig.CipherSuites should not be updated, the default is already secure")
 }
 
-func updateMinMaxVersions[TLS tlsConfigConstraint](info TLS, min, max string) {
+func updateMinMaxVersions[TLS transport.TLSConfigConstraint](info TLS, min, max string) {
 	// Validate() has been called to check the user input, so it should never fail.
 	transportInfo, ok := any(info).(*transport.TLSInfo)
 	if ok {

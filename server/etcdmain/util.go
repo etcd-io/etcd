@@ -45,7 +45,7 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 		return *srvs
 	}
 	// confirm TLS connections are good
-	tlsInfo := transport.TLSInfo{
+	tlsInfo := &transport.TLSInfo{
 		TrustedCAFile: ca,
 		ServerName:    dns,
 	}

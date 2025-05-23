@@ -146,7 +146,7 @@ func TestMetricsHealth(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	tr, err := transport.NewTransport(transport.TLSInfo{}, 5*time.Second)
+	tr, err := transport.NewTransport(&transport.TLSInfo{}, 5*time.Second)
 	require.NoError(t, err)
 	u := clus.Members[0].ClientURLs[0]
 	u.Path = "/health"

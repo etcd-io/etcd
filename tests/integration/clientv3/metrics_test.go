@@ -167,7 +167,7 @@ func getHTTPBodyAsLines(t *testing.T, url string) []string {
 }
 
 func getHTTPBodyAsBytes(t *testing.T, url string) []byte {
-	cfgtls := transport.TLSInfo{}
+	cfgtls := &transport.TLSInfo{}
 	tr, err := transport.NewTransport(cfgtls, time.Second)
 	if err != nil {
 		t.Fatalf("Error getting transport: %v", err)

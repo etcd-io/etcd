@@ -357,7 +357,7 @@ func (s *server) listenAndServe() {
 		var out net.Conn
 		if !s.tlsInfo.Empty() {
 			var tp *http.Transport
-			tp, err = transport.NewTransport(s.tlsInfo, s.dialTimeout)
+			tp, err = transport.NewTransport(&s.tlsInfo, s.dialTimeout)
 			if err != nil {
 				select {
 				case s.errc <- err:

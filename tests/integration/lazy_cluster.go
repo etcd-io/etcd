@@ -79,7 +79,7 @@ func (lc *lazyCluster) mustLazyInit() {
 	lc.once.Do(func() {
 		lc.tb.Logf("LazyIniting ...")
 		var err error
-		lc.transport, err = transport.NewTransport(transport.TLSInfo{}, time.Second)
+		lc.transport, err = transport.NewTransport(&transport.TLSInfo{}, time.Second)
 		if err != nil {
 			log.Fatal(err)
 		}

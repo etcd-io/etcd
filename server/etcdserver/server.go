@@ -420,17 +420,18 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 
 	// TODO: move transport initialization near the definition of remote
 	tr := &rafthttp.Transport{
-		Logger:      cfg.Logger,
-		TLSInfo:     cfg.PeerTLSInfo,
-		DialTimeout: cfg.PeerDialTimeout(),
-		ID:          b.cluster.nodeID,
-		URLs:        cfg.PeerURLs,
-		ClusterID:   b.cluster.cl.ID(),
-		Raft:        srv,
-		Snapshotter: b.ss,
-		ServerStats: sstats,
-		LeaderStats: lstats,
-		ErrorC:      srv.errorc,
+		Logger:        cfg.Logger,
+		TLSInfo:       cfg.PeerTLSInfo,
+		CustomTLSInfo: cfg.CustomPeerTLSInfo,
+		DialTimeout:   cfg.PeerDialTimeout(),
+		ID:            b.cluster.nodeID,
+		URLs:          cfg.PeerURLs,
+		ClusterID:     b.cluster.cl.ID(),
+		Raft:          srv,
+		Snapshotter:   b.ss,
+		ServerStats:   sstats,
+		LeaderStats:   lstats,
+		ErrorC:        srv.errorc,
 	}
 	if err = tr.Start(); err != nil {
 		return nil, err
