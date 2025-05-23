@@ -78,7 +78,7 @@ func TestMemberReplace(t *testing.T) {
 	removedMemberPeerURL := member.Config().PeerURL.String()
 	_, err = cc.MemberAdd(ctx, memberName, []string{removedMemberPeerURL})
 	require.NoError(t, err)
-	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
+	err = e2e.PatchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
 
 	// Sleep 100ms to bypass the known issue https://github.com/etcd-io/etcd/issues/16687.
@@ -146,7 +146,7 @@ func TestMemberReplaceWithLearner(t *testing.T) {
 	_, err = cc.MemberAddAsLearner(ctx, memberName, []string{removedMemberPeerURL})
 	require.NoError(t, err)
 
-	err = patchArgs(member.Config().Args, "initial-cluster-state", "existing")
+	err = e2e.PatchArgs(member.Config().Args, "initial-cluster-state", "existing")
 	require.NoError(t, err)
 
 	// Sleep 100ms to bypass the known issue https://github.com/etcd-io/etcd/issues/16687.

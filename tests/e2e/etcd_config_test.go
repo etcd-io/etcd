@@ -568,7 +568,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 func TestBootstrapDefragFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--bootstrap-defrag-threshold-megabytes", "1000"}, nil)
 	require.NoError(t, err)
 	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{"Skipping defragmentation"}))
 	require.NoError(t, proc.Stop())
@@ -585,7 +585,7 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--snapshot-catchup-entries", "1000"}, nil)
 	require.NoError(t, err)
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))

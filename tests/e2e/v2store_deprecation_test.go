@@ -30,7 +30,6 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
@@ -41,17 +40,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func writeCustomV2Data(tb testing.TB, epc *e2e.EtcdProcessCluster, count int) {
-	for i := 0; i < count; i++ {
-		if err := e2e.CURLPut(epc, e2e.CURLReq{
-			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
-			Expected: expect.ExpectedResponse{Value: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)},
-		}); err != nil {
-			tb.Fatalf("failed put with curl (%v)", err)
-		}
-	}
-}
-
 func TestV2DeprecationNotYet(t *testing.T) {
 	e2e.BeforeTest(t)
 	t.Log("Verify its infeasible to start etcd with --v2-deprecation=not-yet mode")
@@ -59,65 +47,6 @@ func TestV2DeprecationNotYet(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = proc.Expect(`invalid value "not-yet" for flag -v2-deprecation: invalid value "not-yet"`)
-	assert.NoError(t, err)
-}
-
-func TestV2DeprecationWriteOnlyWAL(t *testing.T) {
-	e2e.BeforeTest(t)
-	dataDirPath := t.TempDir()
-
-	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
-		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
-	}
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
-		e2e.WithVersion(e2e.LastVersion),
-		e2e.WithEnableV2(true),
-		e2e.WithDataDirPath(dataDirPath),
-	))
-	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-	require.NoError(t, err)
-	memberDataDir := epc.Procs[0].Config().DataDirPath
-
-	writeCustomV2Data(t, epc, 1)
-
-	require.NoError(t, epc.Stop())
-
-	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
-	require.NoError(t, err)
-
-	_, err = proc.Expect("detected disallowed v2 WAL for stage --v2-deprecation=write-only")
-	assert.NoError(t, err)
-}
-
-func TestV2DeprecationWriteOnlySnapshot(t *testing.T) {
-	e2e.BeforeTest(t)
-	dataDirPath := t.TempDir()
-
-	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
-		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
-	}
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig(
-		e2e.WithVersion(e2e.LastVersion),
-		e2e.WithEnableV2(true),
-		e2e.WithDataDirPath(dataDirPath),
-		e2e.WithSnapshotCount(10),
-	))
-	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
-	require.NoError(t, err)
-	memberDataDir := epc.Procs[0].Config().DataDirPath
-
-	// We need to exceed 'SnapshotCount' such that v2 snapshot is dumped.
-	writeCustomV2Data(t, epc, 10)
-
-	require.NoError(t, epc.Stop())
-
-	t.Log("Verify its infeasible to start etcd with --v2-deprecation=write-only mode")
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--v2-deprecation=write-only", "--data-dir=" + memberDataDir}, nil)
-	require.NoError(t, err)
-	defer proc.Close()
-
-	_, err = proc.Expect("detected disallowed custom content in v2store for stage --v2-deprecation=write-only")
 	assert.NoError(t, err)
 }
 

@@ -63,7 +63,7 @@ func TestSaveSnapshotVersion(t *testing.T) {
 	ver, dbPath := createSnapshotFile(t, cfg, kvs)
 	defer os.RemoveAll(dbPath)
 
-	require.Equalf(t, "3.6.0", ver, "expected snapshot version %s, got %s:", "3.6.0", ver)
+	require.Equalf(t, "3.7.0", ver, "expected snapshot version %s, got %s:", "3.7.0", ver)
 }
 
 type kv struct {

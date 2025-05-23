@@ -26,9 +26,9 @@ func WithSnapshotCount(input ...uint64) e2e.EPClusterOption {
 	}
 }
 
-func WithExperimentalCompactionBatchLimit(input ...int) e2e.EPClusterOption {
+func WithCompactionBatchLimit(input ...int) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
-		c.ServerConfig.ExperimentalCompactionBatchLimit = input[internalRand.Intn(len(input))]
+		c.ServerConfig.CompactionBatchLimit = input[internalRand.Intn(len(input))]
 	}
 }
 
@@ -50,9 +50,9 @@ func WithElectionMs(input ...uint) e2e.EPClusterOption {
 	}
 }
 
-func WithExperimentalWatchProgressNotifyInterval(input ...time.Duration) e2e.EPClusterOption {
+func WithWatchProgressNotifyInterval(input ...time.Duration) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
-		c.ServerConfig.ExperimentalWatchProgressNotifyInterval = input[internalRand.Intn(len(input))]
+		c.ServerConfig.WatchProgressNotifyInterval = input[internalRand.Intn(len(input))]
 	}
 }
 

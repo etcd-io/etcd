@@ -178,10 +178,9 @@ type EtcdProcessClusterConfig struct {
 	IsPeerAutoTLS      bool
 	CN                 bool
 
-	// Removed in v3.6
-
+	// Discovery is for v2discovery
+	// Note: remove this field when we remove the v2discovery
 	Discovery string // v2 discovery
-	EnableV2  bool
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -287,10 +286,6 @@ func WithStrictReconfigCheck(strict bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.StrictReconfigCheck = strict }
 }
 
-func WithEnableV2(enable bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.EnableV2 = enable }
-}
-
 func WithAuthTokenOpts(token string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.AuthToken = token }
 }
@@ -319,20 +314,20 @@ func WithCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CorruptCheckTime = time }
 }
 
-func WithExperimentalCorruptCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
-}
-
 func WithInitialClusterToken(token string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.InitialClusterToken = token }
 }
 
 func WithInitialCorruptCheck(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalInitialCorruptCheck = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("InitialCorruptCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckEnabled = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("CompactHashCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
@@ -355,18 +350,6 @@ func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WarningUnaryRequestDuration = time }
 }
 
-// WithExperimentalWarningUnaryRequestDuration sets a value for `-experimental-warning-unary-request-duration`.
-// TODO(ahrtr): remove this function when the corresponding experimental flag is decommissioned.
-func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWarningUnaryRequestDuration = time }
-}
-
-func WithExperimentalStopGRPCServiceOnDefrag(stopGRPCServiceOnDefrag bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) {
-		c.ServerConfig.ExperimentalStopGRPCServiceOnDefrag = stopGRPCServiceOnDefrag
-	}
-}
-
 func WithServerFeatureGate(featureName string, val bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) {
 		if err := c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("%s=%v", featureName, val)); err != nil {
@@ -379,20 +362,12 @@ func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionBatchLimit = limit }
 }
 
-func WithExperimentalCompactionBatchLimit(limit int) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
-}
-
 func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionSleepInterval = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionSleepInterval = time }
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WatchProgressNotifyInterval = interval }
-}
-
-func WithExperimentalWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWatchProgressNotifyInterval = interval }
 }
 
 func WithEnvVars(ev map[string]string) EPClusterOption {
@@ -598,7 +573,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--listen-peer-urls=" + peerListenURL.String(),
 		"--initial-advertise-peer-urls=" + peerAdvertiseURL.String(),
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
-		"--data-dir", dataDirPath,
+		"--data-dir=" + dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
 	var clientHTTPURL string
@@ -618,9 +593,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
 	}
-	if cfg.EnableV2 {
-		args = append(args, "--enable-v2=true")
-	}
+
 	var murl string
 	if cfg.MetricsURLScheme != "" {
 		murl = (&url.URL{
@@ -640,7 +613,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if !IsSnapshotCatchupEntriesFlagAvailable(execPath) {
-			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
 			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
 		}
 	}
@@ -958,6 +930,16 @@ func (epc *EtcdProcessCluster) UpdateProcOptions(i int, tb testing.TB, opts ...E
 	}
 	epc.Procs[i] = proc
 	return nil
+}
+
+func PatchArgs(args []string, flag, newValue string) error {
+	for i, arg := range args {
+		if strings.Contains(arg, flag) {
+			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
+			return nil
+		}
+	}
+	return fmt.Errorf("--%s flag not found", flag)
 }
 
 func (epc *EtcdProcessCluster) Start(ctx context.Context) error {

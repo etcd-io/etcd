@@ -971,7 +971,6 @@ func (m *Member) Launch() error {
 	if m.Server, err = etcdserver.NewServer(m.ServerConfig); err != nil {
 		return fmt.Errorf("failed to initialize the etcd server: %w", err)
 	}
-	m.Server.SyncTicker = time.NewTicker(500 * time.Millisecond)
 	m.Server.Start()
 
 	var peerTLScfg *tls.Config

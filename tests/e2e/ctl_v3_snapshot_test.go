@@ -286,8 +286,8 @@ func snapshotVersionTest(cx ctlCtx) {
 	if err != nil {
 		cx.t.Fatalf("snapshotVersionTest getSnapshotStatus error (%v)", err)
 	}
-	if st.Version != "3.6.0" {
-		cx.t.Fatalf("expected %q, got %q", "3.6.0", st.Version)
+	if st.Version != "3.7.0" {
+		cx.t.Fatalf("expected %q, got %q", "3.7.0", st.Version)
 	}
 }
 
@@ -365,11 +365,8 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 	t.Log("(Re)starting the etcd member using the restored snapshot...")
 	epc.Procs[0].Config().DataDirPath = newDataDir
 
-	for i := range epc.Procs[0].Config().Args {
-		if epc.Procs[0].Config().Args[i] == "--data-dir" {
-			epc.Procs[0].Config().Args[i+1] = newDataDir
-		}
-	}
+	err = e2e.PatchArgs(epc.Procs[0].Config().Args, "data-dir", newDataDir)
+	require.NoError(t, err)
 
 	// Verify that initial snapshot is created by the restore operation
 	verifySnapshotMembers(t, epc, membersBefore)

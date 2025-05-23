@@ -129,15 +129,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	require.NoErrorf(t, err, "Last operation failed, validation requires last operation to succeed")
 	reports = append(reports, cc.Report())
 
-	totalStats := calculateStats(reports, startTime, endTime)
-	beforeFailpointStats := calculateStats(reports, startTime, fr.Start)
-	duringFailpointStats := calculateStats(reports, fr.Start, fr.End)
-	afterFailpointStats := calculateStats(reports, fr.End, endTime)
+	totalStats := CalculateStats(reports, startTime, endTime)
+	beforeFailpointStats := CalculateStats(reports, startTime, fr.Start)
+	duringFailpointStats := CalculateStats(reports, fr.Start, fr.End)
+	afterFailpointStats := CalculateStats(reports, fr.End, endTime)
 
-	lg.Info("Reporting complete traffic", zap.Int("successes", totalStats.successes), zap.Int("failures", totalStats.failures), zap.Float64("successRate", totalStats.successRate()), zap.Duration("period", totalStats.period), zap.Float64("qps", totalStats.QPS()))
-	lg.Info("Reporting traffic before failure injection", zap.Int("successes", beforeFailpointStats.successes), zap.Int("failures", beforeFailpointStats.failures), zap.Float64("successRate", beforeFailpointStats.successRate()), zap.Duration("period", beforeFailpointStats.period), zap.Float64("qps", beforeFailpointStats.QPS()))
-	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.successes), zap.Int("failures", duringFailpointStats.failures), zap.Float64("successRate", duringFailpointStats.successRate()), zap.Duration("period", duringFailpointStats.period), zap.Float64("qps", duringFailpointStats.QPS()))
-	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.successes), zap.Int("failures", afterFailpointStats.failures), zap.Float64("successRate", afterFailpointStats.successRate()), zap.Duration("period", afterFailpointStats.period), zap.Float64("qps", afterFailpointStats.QPS()))
+	lg.Info("Reporting complete traffic", zap.Int("successes", totalStats.Successes), zap.Int("failures", totalStats.Failures), zap.Float64("successRate", totalStats.SuccessRate()), zap.Duration("period", totalStats.Period), zap.Float64("qps", totalStats.QPS()))
+	lg.Info("Reporting traffic before failure injection", zap.Int("successes", beforeFailpointStats.Successes), zap.Int("failures", beforeFailpointStats.Failures), zap.Float64("successRate", beforeFailpointStats.SuccessRate()), zap.Duration("period", beforeFailpointStats.Period), zap.Float64("qps", beforeFailpointStats.QPS()))
+	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.Successes), zap.Int("failures", duringFailpointStats.Failures), zap.Float64("successRate", duringFailpointStats.SuccessRate()), zap.Duration("period", duringFailpointStats.Period), zap.Float64("qps", duringFailpointStats.QPS()))
+	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.Successes), zap.Int("failures", afterFailpointStats.Failures), zap.Float64("successRate", afterFailpointStats.SuccessRate()), zap.Duration("period", afterFailpointStats.Period), zap.Float64("qps", afterFailpointStats.QPS()))
 
 	if beforeFailpointStats.QPS() < profile.MinimalQPS {
 		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
@@ -146,8 +146,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	return reports
 }
 
-func calculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
-	ts.period = end - start
+func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
+	ts.Period = end - start
 
 	for _, r := range reports {
 		for _, op := range r.KeyValue {
@@ -156,9 +156,9 @@ func calculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 			}
 			resp := op.Output.(model.MaybeEtcdResponse)
 			if resp.Error == "" {
-				ts.successes++
+				ts.Successes++
 			} else {
-				ts.failures++
+				ts.Failures++
 			}
 		}
 	}
@@ -166,16 +166,16 @@ func calculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 }
 
 type trafficStats struct {
-	successes, failures int
-	period              time.Duration
+	Successes, Failures int
+	Period              time.Duration
 }
 
-func (ts *trafficStats) successRate() float64 {
-	return float64(ts.successes) / float64(ts.successes+ts.failures)
+func (ts *trafficStats) SuccessRate() float64 {
+	return float64(ts.Successes) / float64(ts.Successes+ts.Failures)
 }
 
 func (ts *trafficStats) QPS() float64 {
-	return float64(ts.successes) / ts.period.Seconds()
+	return float64(ts.Successes) / ts.Period.Seconds()
 }
 
 type Profile struct {

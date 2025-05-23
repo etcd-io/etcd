@@ -278,11 +278,10 @@ func TestProcessDuplicatedAppRespMessage(t *testing.T) {
 	})
 
 	s := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zaptest.NewLogger(t),
-		r:          *r,
-		cluster:    cl,
-		SyncTicker: &time.Ticker{},
+		lgMu:    new(sync.RWMutex),
+		lg:      zaptest.NewLogger(t),
+		r:       *r,
+		cluster: cl,
 	}
 
 	s.start()

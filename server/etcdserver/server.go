@@ -266,7 +266,6 @@ type EtcdServer struct {
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
-	SyncTicker *time.Ticker
 	// compactor is used to auto-compact the KV.
 	compactor v3compactor.Compactor
 
@@ -333,7 +332,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cluster:               b.cluster.cl,
 		stats:                 sstats,
 		lstats:                lstats,
-		SyncTicker:            time.NewTicker(500 * time.Millisecond),
 		peerRt:                b.prt,
 		reqIDGen:              idutil.NewGenerator(uint16(b.cluster.nodeID), time.Now()),
 		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
@@ -830,8 +828,6 @@ func (s *EtcdServer) run() {
 
 		// wait for goroutines before closing raft so wal stays open
 		s.wg.Wait()
-
-		s.SyncTicker.Stop()
 
 		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
 		// by adding a peer after raft stops the transport
