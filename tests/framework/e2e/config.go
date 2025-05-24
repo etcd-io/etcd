@@ -92,7 +92,7 @@ func convertFlags(args []string, ver *semver.Version) []string {
 		}
 
 		name := strings.TrimPrefix(kv[0], "--")
-		name = strings.TrimPrefix(name, "experimental")
+		name = strings.TrimPrefix(name, "experimental-")
 
 		retArgs = append(retArgs, convertFlag(name, kv[1], ver))
 	}
