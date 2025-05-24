@@ -218,7 +218,7 @@ func testStreamRPCTracing(t *testing.T) {
 	select {
 	case watchResp := <-watchChan:
 		require.NoError(t, watchResp.Err())
-		require.Len(t, 1, len(watchResp.Events))
+		require.Len(t, watchResp.Events, 1)
 		t.Log("Received watch event successfully")
 	case <-time.After(5 * time.Second):
 		t.Fatal("Timed out waiting for watch event")
@@ -258,7 +258,11 @@ type traceServer struct {
 func (t *traceServer) Export(ctx context.Context, req *traceservice.ExportTraceServiceRequest) (*traceservice.ExportTraceServiceResponse, error) {
 	emptyValue := traceservice.ExportTraceServiceResponse{}
 	if t.filterFunc(req) {
-		t.traceFound <- struct{}{}
+		select {
+		case t.traceFound <- struct{}{}:
+		default:
+			// Channel already notified
+		}
 	}
 	return &emptyValue, nil
 }
