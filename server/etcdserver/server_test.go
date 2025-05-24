@@ -1510,6 +1510,7 @@ func newTestCluster(tb testing.TB) *membership.RaftCluster {
 func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
 	lg := zaptest.NewLogger(tb)
 	c := membership.NewCluster(lg)
+	c.SetStore(v2store.New())
 	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
 		c.AddMember(m, true)

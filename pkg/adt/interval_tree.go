@@ -434,38 +434,11 @@ func (ivt *intervalTree) createIntervalNode(ivl Interval, val any) *intervalNode
 	}
 }
 
-// TODO: make this consistent with textbook implementation
-//
-// "Introduction to Algorithms" (Cormen et al, 3rd ed.), chapter 13.3, p315
-//
-//	 RB-INSERT(T, z)
-//
-//	 y = T.nil
-//	 x = T.root
-//
-//	 while x ≠ T.nil
-//	 	y = x
-//	 	if z.key < x.key
-//	 		x = x.left
-//	 	else
-//	 		x = x.right
-//
-//	 z.p = y
-//
-//	 if y == T.nil
-//	 	T.root = z
-//	 else if z.key < y.key
-//	 	y.left = z
-//	 else
-//	 	y.right = z
-//
-//	 z.left = T.nil
-//	 z.right = T.nil
-//	 z.color = RED
-//
-//	 RB-INSERT-FIXUP(T, z)
-
 // Insert adds a node with the given interval into the tree.
+//
+// Cormen "Introduction to Algorithms", Chapter 14 Exercise 14.3.5.
+// The algorithm follows Cormen "Introduction to Algorithms", Chapter 14 Exercise 14.3.5.
+// for modifying an interval tree structure to support exact interval matching.
 func (ivt *intervalTree) Insert(ivl Interval, val any) {
 	y := ivt.sentinel
 	z := ivt.createIntervalNode(ivl, val)
@@ -714,7 +687,10 @@ func (ivt *intervalTree) Visit(ivl Interval, ivv IntervalVisitor) {
 	ivt.root.visit(&ivl, ivt.sentinel, func(n *intervalNode) bool { return ivv(&n.iv) })
 }
 
-// find the exact node for a given interval
+// find the exact node for a given interval. The implementation follows
+// Cormen "Introduction to Algorithms", Chapter 14 Exercise 14.3.5. for
+// exact interval matching. The search runs in O(log n) time on an n-node
+// interval tree.
 func (ivt *intervalTree) find(ivl Interval) *intervalNode {
 	x := ivt.root
 	// Search until hit sentinel or exact match.

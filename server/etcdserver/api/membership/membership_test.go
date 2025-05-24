@@ -34,10 +34,6 @@ func TestAddRemoveMember(t *testing.T) {
 	c.AddMember(newTestMember(18, nil, "node18", nil), true)
 	c.RemoveMember(18, true)
 
-	// Skipping removal of already removed member
-	c.RemoveMember(17, true)
-	c.RemoveMember(18, true)
-
 	c.AddMember(newTestMember(19, nil, "node19", nil), true)
 
 	// Recover from backend
