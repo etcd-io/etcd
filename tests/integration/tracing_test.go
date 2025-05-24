@@ -40,14 +40,46 @@ func TestTracing(t *testing.T) {
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
 
 	// Test Unary RPC tracing
-	t.Run("UnaryRPC", testUnaryRPCTracing)
+	t.Run("UnaryRPC", func(t *testing.T) {
+		testRPCTracing(t, "UnaryRPC", containsUnaryRPCSpan, func(cli *clientv3.Client) error {
+			// make a request with the instrumented client
+			resp, err := cli.Get(context.TODO(), "key")
+			require.NoError(t, err)
+			require.Empty(t, resp.Kvs)
+			return nil
+		})
+	})
 
 	// Test Stream RPC tracing
-	t.Run("StreamRPC", testStreamRPCTracing)
+	t.Run("StreamRPC", func(t *testing.T) {
+		testRPCTracing(t, "StreamRPC", containsStreamRPCSpan, func(cli *clientv3.Client) error {
+			// Create a context with a reasonable timeout
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			// Create a watch channel
+			watchChan := cli.Watch(ctx, "watch-key")
+
+			// Put a value to trigger the watch
+			_, err := cli.Put(context.TODO(), "watch-key", "watch-value")
+			require.NoError(t, err)
+
+			// Wait for watch event
+			select {
+			case watchResp := <-watchChan:
+				require.NoError(t, watchResp.Err())
+				require.Len(t, watchResp.Events, 1)
+				t.Log("Received watch event successfully")
+			case <-time.After(5 * time.Second):
+				t.Fatal("Timed out waiting for watch event")
+			}
+			return nil
+		})
+	})
 }
 
-// testUnaryRPCTracing tests that Unary RPC calls are properly traced
-func testUnaryRPCTracing(t *testing.T) {
+// testRPCTracing is a common test function for both Unary and Stream RPC tracing
+func testRPCTracing(t *testing.T, testName string, filterFunc func(*traceservice.ExportTraceServiceRequest) bool, clientAction func(*clientv3.Client) error) {
 	// set up trace collector
 	listener, err := net.Listen("tcp", "localhost:")
 	require.NoError(t, err)
@@ -58,7 +90,7 @@ func testUnaryRPCTracing(t *testing.T) {
 	srv := grpc.NewServer()
 	traceservice.RegisterTraceServiceServer(srv, &traceServer{
 		traceFound: traceFound,
-		filterFunc: containsUnaryRPCSpan,
+		filterFunc: filterFunc,
 	})
 
 	go srv.Serve(listener)
@@ -110,14 +142,14 @@ func testUnaryRPCTracing(t *testing.T) {
 	}
 	defer cli.Close()
 
-	// make a request with the instrumented client
-	resp, err := cli.Get(context.TODO(), "key")
+	// Execute the client action (either Unary or Stream RPC)
+	err = clientAction(cli)
 	require.NoError(t, err)
-	require.Empty(t, resp.Kvs)
 
 	// Wait for a span to be recorded from our request
 	select {
 	case <-traceFound:
+		t.Logf("%s trace found", testName)
 		return
 	case <-time.After(30 * time.Second):
 		t.Fatal("Timed out waiting for trace")
@@ -140,98 +172,6 @@ func containsUnaryRPCSpan(req *traceservice.ExportTraceServiceRequest) bool {
 		}
 	}
 	return false
-}
-
-// testStreamRPCTracing tests that Stream RPC calls are properly traced
-func testStreamRPCTracing(t *testing.T) {
-	// set up trace collector
-	listener, err := net.Listen("tcp", "localhost:")
-	require.NoError(t, err)
-
-	traceFound := make(chan struct{})
-	defer close(traceFound)
-
-	srv := grpc.NewServer()
-	traceservice.RegisterTraceServiceServer(srv, &traceServer{
-		traceFound: traceFound,
-		filterFunc: containsStreamRPCSpan,
-	})
-
-	go srv.Serve(listener)
-	defer srv.Stop()
-
-	cfg := integration.NewEmbedConfig(t, "default")
-
-	cfg.EnableDistributedTracing = true
-	cfg.DistributedTracingAddress = listener.Addr().String()
-	cfg.DistributedTracingServiceName = "integration-test-tracing"
-	cfg.DistributedTracingSamplingRatePerMillion = 100
-
-	// start an etcd instance with tracing enabled
-	etcdSrv, err := embed.StartEtcd(cfg)
-	require.NoError(t, err)
-	defer etcdSrv.Close()
-
-	select {
-	case <-etcdSrv.Server.ReadyNotify():
-	case <-time.After(5 * time.Second):
-		t.Fatalf("failed to start embed.Etcd for test")
-	}
-
-	// create a client that has tracing enabled
-	tracer := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
-	defer tracer.Shutdown(context.TODO())
-	tp := trace.TracerProvider(tracer)
-
-	tracingOpts := []otelgrpc.Option{
-		otelgrpc.WithTracerProvider(tp),
-		otelgrpc.WithPropagators(
-			propagation.NewCompositeTextMapPropagator(
-				propagation.TraceContext{},
-				propagation.Baggage{},
-			)),
-	}
-
-	dialOptions := []grpc.DialOption{
-		grpc.WithStatsHandler(otelgrpc.NewClientHandler(tracingOpts...)),
-	}
-	ccfg := clientv3.Config{DialOptions: dialOptions, Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
-	cli, err := integration.NewClient(t, ccfg)
-	if err != nil {
-		etcdSrv.Close()
-		t.Fatal(err)
-	}
-	defer cli.Close()
-
-	// Create a context with a reasonable timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	// Create a watch channel
-	watchChan := cli.Watch(ctx, "watch-key")
-
-	// Put a value to trigger the watch
-	_, err = cli.Put(context.TODO(), "watch-key", "watch-value")
-	require.NoError(t, err)
-
-	// Wait for watch event
-	select {
-	case watchResp := <-watchChan:
-		require.NoError(t, watchResp.Err())
-		require.Len(t, watchResp.Events, 1)
-		t.Log("Received watch event successfully")
-	case <-time.After(5 * time.Second):
-		t.Fatal("Timed out waiting for watch event")
-	}
-
-	// Wait for a span to be recorded from our streaming request
-	select {
-	case <-traceFound:
-		t.Log("Stream RPC trace found")
-		return
-	case <-time.After(30 * time.Second):
-		t.Fatal("Timed out waiting for stream RPC trace")
-	}
 }
 
 // containsStreamRPCSpan checks for Watch/Watch spans in trace data
