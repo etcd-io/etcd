@@ -47,7 +47,9 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 
 	id := ops.leaseID
 	if id == v3.NoLease {
-		resp, err := client.Grant(ops.ctx, int64(ops.ttl))
+		ctx, cancel := context.WithTimeout(ops.ctx, time.Duration(ops.ttl)*time.Second)
+		resp, err := client.Grant(ctx, int64(ops.ttl))
+		cancel()
 		if err != nil {
 			return nil, err
 		}
