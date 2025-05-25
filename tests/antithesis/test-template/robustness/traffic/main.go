@@ -128,6 +128,7 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
 	reports := []report.ClientReport{}
+	keyStore := traffic.NewKeyStore(profile.ClientCount, "key")
 	for i := 0; i < profile.ClientCount; i++ {
 		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
 		defer c.Close()
@@ -140,6 +141,7 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 				ids,
 				storage,
 				concurrencyLimiter,
+				keyStore,
 				finish,
 			)
 			mux.Lock()
