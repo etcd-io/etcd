@@ -74,7 +74,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 		} else {
 			ops = request.Txn.OperationsOnSuccess
 		}
-		for _, op := range ops {
+		for i, op := range ops {
 			switch op.Type {
 			case RangeOperation:
 			case DeleteOperation:
@@ -85,7 +85,7 @@ func toWatchEvents(prevState *EtcdState, request EtcdRequest, response MaybeEtcd
 					},
 					Revision: response.Revision,
 				}
-				if _, ok := prevState.KeyValues[op.Delete.Key]; ok {
+				if response.Txn.Results[i].Deleted != 0 {
 					events = append(events, e)
 				}
 			case PutOperation:
