@@ -42,8 +42,8 @@ antithesis-build-etcd-image-release-3.5: set-version-3.5 antithesis-build-etcd-i
 .PHONY: antithesis-build-etcd-image-release-3.6
 antithesis-build-etcd-image-release-3.6: set-version-3.6 antithesis-build-etcd-image
 
-.PHONY: antithesis-build-etcd-image-release-main
-antithesis-build-etcd-image-release-main: set-version-main antithesis-build-etcd-image
+.PHONY: antithesis-build-etcd-image-main
+antithesis-build-etcd-image-main: set-version-main antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-local
 antithesis-build-etcd-image-local: set-local antithesis-build-etcd
