@@ -38,19 +38,20 @@ var (
 	WatchTimeout                  = time.Second
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
+	DefaultClientCount            = 8
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		ClientCount:                    DefaultClientCount,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		ClientCount:                    DefaultClientCount,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 )

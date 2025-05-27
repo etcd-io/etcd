@@ -41,7 +41,7 @@ var profile = traffic.Profile{
 	MinimalQPS:                     100,
 	MaximalQPS:                     1000,
 	BurstableQPS:                   1000,
-	ClientCount:                    3,
+	ClientCount:                    traffic.DefaultClientCount,
 	MaxNonUniqueRequestConcurrency: 3,
 }
 
