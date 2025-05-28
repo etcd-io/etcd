@@ -92,7 +92,7 @@ require (
 	go.etcd.io/bbolt v1.4.0 // indirect
 	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.36.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
