@@ -45,7 +45,7 @@
 		]
 	},
 	{
-		"project": "github.com/cenkalti/backoff/v4",
+		"project": "github.com/cenkalti/backoff/v5",
 		"licenses": [
 			{
 				"type": "MIT License",
