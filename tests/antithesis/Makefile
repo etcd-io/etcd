@@ -2,36 +2,15 @@ REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 ARCH ?= $(shell go env GOARCH)
-REF = HEAD
-DOCKERFILE = ./Dockerfile
-REMOTE = origin
+REF = main
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image:
 	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) -f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
 
-.PHONY: antithesis-build-etcd-create-worktree
-antithesis-build-etcd-create-worktree:
-	git fetch $(REMOTE) $(REF)
-	git worktree remove -f /tmp/etcd$(REF) || true
-	git worktree add /tmp/etcd$(REF) $(REMOTE)/$(REF)
-	$(eval BUILDDIR=/tmp/etcd$(REF))
-
-.PHONY: antithesis-build-etcd
-antithesis-build-etcd:
-	cd $(BUILDDIR) && make build
-	cd $(BUILDDIR) && cp $(DOCKERFILE) ./bin/Dockerfile
-	cd $(BUILDDIR) && docker build \
-		--tag etcd-server:latest \
-		./bin
-	rm $(BUILDDIR)/bin/Dockerfile
-
-.PHONY: antithesis-build-etcd-remove-worktree
-antithesis-build-etcd-remove-worktree:
-	git worktree remove -f $(BUILDDIR)
-
 .PHONY: antithesis-build-etcd-image
-antithesis-build-etcd-image: antithesis-build-etcd-create-worktree antithesis-build-etcd  antithesis-build-etcd-remove-worktree
+antithesis-build-etcd-image:
+	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=${REF} $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: set-version-3.4 antithesis-build-etcd-image
@@ -44,9 +23,6 @@ antithesis-build-etcd-image-release-3.6: set-version-3.6 antithesis-build-etcd-i
 
 .PHONY: antithesis-build-etcd-image-main
 antithesis-build-etcd-image-main: set-version-main antithesis-build-etcd-image
-
-.PHONY: antithesis-build-etcd-image-local
-antithesis-build-etcd-image-local: set-local antithesis-build-etcd
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
@@ -76,23 +52,15 @@ antithesis-clean:
 .PHONY: set-version-3.4
 set-version-3.4:
 	$(eval REF=release-3.4)
-	$(eval DOCKERFILE=./Dockerfile-release)
 
 .PHONY: set-version-3.5
 set-version-3.5:
 	$(eval REF=release-3.5)
-	$(eval DOCKERFILE=./Dockerfile-release.amd64)
 
 .PHONY: set-version-3.6
 set-version-3.6:
 	$(eval REF=release-3.6)
-	$(eval DOCKERFILE=./Dockerfile)
 
 .PHONY: set-version-main
 set-version-main:
 	$(eval REF=main)
-	$(eval DOCKERFILE=./Dockerfile)
-
-.PHONY: set-local
-set-local:
-	$(eval BUILDDIR=$(REPOSITORY_ROOT))
