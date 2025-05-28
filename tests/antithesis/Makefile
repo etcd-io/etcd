@@ -13,16 +13,20 @@ antithesis-build-etcd-image:
 	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=${REF} $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
 
 .PHONY: antithesis-build-etcd-image-release-3.4
-antithesis-build-etcd-image-release-3.4: set-version-3.4 antithesis-build-etcd-image
+antithesis-build-etcd-image-release-3.4: REF=release-3.4
+antithesis-build-etcd-image-release-3.4: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-release-3.5
-antithesis-build-etcd-image-release-3.5: set-version-3.5 antithesis-build-etcd-image
+antithesis-build-etcd-image-release-3.5: REF=release-3.5
+antithesis-build-etcd-image-release-3.5: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-release-3.6
-antithesis-build-etcd-image-release-3.6: set-version-3.6 antithesis-build-etcd-image
+antithesis-build-etcd-image-release-3.6: REF=release-3.6
+antithesis-build-etcd-image-release-3.6: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-main
-antithesis-build-etcd-image-main: set-version-main antithesis-build-etcd-image
+antithesis-build-etcd-image-main: REF=main
+antithesis-build-etcd-image-main: antithesis-build-etcd-image
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
@@ -48,19 +52,3 @@ antithesis-run-local-validation:
 antithesis-clean:
 	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose down
 	rm -rf /tmp/etcddata0 /tmp/etcddata1 /tmp/etcddata2 /tmp/etcdreport
-
-.PHONY: set-version-3.4
-set-version-3.4:
-	$(eval REF=release-3.4)
-
-.PHONY: set-version-3.5
-set-version-3.5:
-	$(eval REF=release-3.5)
-
-.PHONY: set-version-3.6
-set-version-3.6:
-	$(eval REF=release-3.6)
-
-.PHONY: set-version-main
-set-version-main:
-	$(eval REF=main)
