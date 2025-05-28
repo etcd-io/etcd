@@ -1,5 +1,4 @@
 
-
 Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/etcd/blob/main/CHANGELOG/CHANGELOG-3.6.md).
 
 ---
@@ -13,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### etcd server
 
 - [Update go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc to v0.61.0 and replaced the deprecated `UnaryServerInterceptor` and `StreamServerInterceptor` with `NewServerHandler`](https://github.com/etcd-io/etcd/pull/20017)
+- [Add Support for Unix Socket endpoints](https://github.com/etcd-io/etcd/pull/19760)
 
 ### Package `pkg`
 

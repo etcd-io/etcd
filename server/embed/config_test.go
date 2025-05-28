@@ -784,3 +784,66 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 		t.Errorf("Diff: %s", diff)
 	}
 }
+
+func TestCheckHostURLs(t *testing.T) {
+	tests := []struct {
+		name    string
+		urls    []url.URL
+		wantErr bool
+	}{
+		{
+			name: "valid HTTP URLs",
+			urls: []url.URL{
+				{Scheme: "http", Host: "127.0.0.1:2379"},
+				{Scheme: "http", Host: "localhost:2379"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid HTTPS URLs",
+			urls: []url.URL{
+				{Scheme: "https", Host: "127.0.0.1:2379"},
+				{Scheme: "https", Host: "localhost:2379"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid Unix socket URLs",
+			urls: []url.URL{
+				{Scheme: "unix", Host: "", Path: "/tmp/etcd.sock"},
+				{Scheme: "unixs", Host: "", Path: "/tmp/etcd-secure.sock"},
+			},
+			wantErr: false,
+		},
+		{
+			name: "empty host in URL",
+			urls: []url.URL{
+				{Scheme: "http", Host: ""},
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid host format",
+			urls: []url.URL{
+				{Scheme: "http", Host: "invalid_host"},
+			},
+			wantErr: true,
+		},
+		{
+			name: "missing port in host",
+			urls: []url.URL{
+				{Scheme: "http", Host: "127.0.0.1"},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := checkHostURLs(tt.urls)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("checkHostURLs() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

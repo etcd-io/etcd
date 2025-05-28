@@ -963,7 +963,7 @@ func (cfg *Config) Validate() error {
 	}
 	if err := checkHostURLs(cfg.AdvertiseClientUrls); err != nil {
 		addrs := cfg.getAdvertiseClientURLs()
-		return fmt.Errorf(`--advertise-client-urls %q must be "host:port" (%w)`, strings.Join(addrs, ","), err)
+		return fmt.Errorf(`--advertise-client-urls %q must be in the format "host:port", "unix:/path/to/socket" or "unixs:/path/to/socket" (%w)`, strings.Join(addrs, ","), err)
 	}
 	// Check if conflicting flags are passed.
 	nSet := 0
@@ -1355,6 +1355,9 @@ func checkBindURLs(urls []url.URL) error {
 
 func checkHostURLs(urls []url.URL) error {
 	for _, url := range urls {
+		if url.Scheme == "unix" || url.Scheme == "unixs" {
+			continue
+		}
 		host, _, err := net.SplitHostPort(url.Host)
 		if err != nil {
 			return err
