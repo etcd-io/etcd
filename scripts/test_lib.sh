@@ -78,7 +78,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis ."
+  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis cache ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.

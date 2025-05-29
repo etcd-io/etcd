@@ -533,7 +533,12 @@ function dump_deps_of_module() {
   if ! module=$(run go mod edit -json | jq -r .Module.Path); then
     return 255
   fi
-  run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+  local require
+  require=$(run go mod edit -json | jq -r '.Require')
+  if [ "$require" == "null" ]; then
+    return 0
+  fi
+  echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
