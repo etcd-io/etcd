@@ -30,6 +30,7 @@ require (
 	github.com/prometheus/common v0.64.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.10.0
+	go.etcd.io/bbolt v1.4.0
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
@@ -89,7 +90,6 @@ require (
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	go.etcd.io/bbolt v1.4.0 // indirect
 	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.36.0 // indirect

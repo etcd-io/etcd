@@ -994,6 +994,38 @@ func (epc *EtcdProcessCluster) rollingStart(f func(ep EtcdProcess) error) error 
 	return nil
 }
 
+func (epc *EtcdProcessCluster) Kill() (err error) {
+	for _, p := range epc.Procs {
+		if p == nil {
+			continue
+		}
+		if curErr := p.Kill(); curErr != nil {
+			if err != nil {
+				err = fmt.Errorf("%w; %w", err, curErr)
+			} else {
+				err = curErr
+			}
+		}
+	}
+	return err
+}
+
+func (epc *EtcdProcessCluster) Wait(ctx context.Context) error {
+	closedC := make(chan error, len(epc.Procs))
+	for i := range epc.Procs {
+		go func(n int) {
+			epc.Procs[n].Wait(ctx)
+			closedC <- epc.Procs[n].Wait(ctx)
+		}(i)
+	}
+	for range epc.Procs {
+		if err := <-closedC; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (epc *EtcdProcessCluster) Stop() (err error) {
 	for _, p := range epc.Procs {
 		if p == nil {
