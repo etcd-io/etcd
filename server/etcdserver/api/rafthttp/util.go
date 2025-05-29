@@ -44,11 +44,11 @@ func NewListener(u url.URL, tlsinfo *transport.TLSInfo) (net.Listener, error) {
 
 // NewRoundTripper returns a roundTripper used to send requests
 // to rafthttp listener of remote peers.
-func NewRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http.RoundTripper, error) {
+func NewRoundTripper[TLS transport.TLSConfigConstraint](info TLS, dialTimeout time.Duration) (http.RoundTripper, error) {
 	// It uses timeout transport to pair with remote timeout listeners.
 	// It sets no read/write timeout, because message in requests may
 	// take long time to write out before reading out the response.
-	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, 0, 0)
+	return transport.NewTimeoutTransport(info, dialTimeout, 0, 0)
 }
 
 // newStreamRoundTripper returns a roundTripper used to send stream requests
@@ -56,8 +56,8 @@ func NewRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http
 // Read/write timeout is set for stream roundTripper to promptly
 // find out broken status, which minimizes the number of messages
 // sent on broken connection.
-func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration) (http.RoundTripper, error) {
-	return transport.NewTimeoutTransport(tlsInfo, dialTimeout, ConnReadTimeout, ConnWriteTimeout)
+func newStreamRoundTripper[TLS transport.TLSConfigConstraint](info TLS, dialTimeout time.Duration) (http.RoundTripper, error) {
+	return transport.NewTimeoutTransport(info, dialTimeout, ConnReadTimeout, ConnWriteTimeout)
 }
 
 // createPostRequest creates a HTTP POST request that sends raft message.

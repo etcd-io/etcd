@@ -16,6 +16,7 @@ package embed
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -118,6 +119,7 @@ func newServeCtx(lg *zap.Logger) *serveCtx {
 func (sctx *serveCtx) serve(
 	s *etcdserver.EtcdServer,
 	tlsinfo *transport.TLSInfo,
+	customtlsinfo *tls.Config,
 	handler http.Handler,
 	errHandler func(error),
 	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
@@ -176,7 +178,7 @@ func (sctx *serveCtx) serve(
 				Handler:  createAccessController(sctx.lg, s, httpmux),
 				ErrorLog: logger, // do not log user error
 			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, &s.Cfg); err != nil {
 				sctx.lg.Error("Configure http server failed", zap.Error(err))
 				return err
 			}
@@ -228,9 +230,15 @@ func (sctx *serveCtx) serve(
 		var gs *grpc.Server
 		var srv *http.Server
 
-		tlscfg, tlsErr := tlsinfo.ServerConfig()
-		if tlsErr != nil {
-			return tlsErr
+		var tlscfg *tls.Config
+		if customtlsinfo != nil && len(customtlsinfo.Certificates) > 0 {
+			tlscfg = customtlsinfo
+		} else {
+			var tlsErr error
+			tlscfg, tlsErr = tlsinfo.ServerConfig()
+			if tlsErr != nil {
+				return tlsErr
+			}
 		}
 
 		if grpcEnabled {
@@ -259,7 +267,7 @@ func (sctx *serveCtx) serve(
 				TLSConfig: tlscfg,
 				ErrorLog:  logger, // do not log user error
 			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
+			if err = configureHTTPServer(srv, &s.Cfg); err != nil {
 				sctx.lg.Error("Configure https server failed", zap.Error(err))
 				return err
 			}
@@ -270,9 +278,15 @@ func (sctx *serveCtx) serve(
 		} else {
 			server = m.Serve
 
-			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if tlsErr != nil {
-				return tlsErr
+			var tlsl net.Listener
+			if customtlsinfo != nil && len(customtlsinfo.Certificates) > 0 {
+				tlsl = tls.NewListener(m.Match(cmux.Any()), customtlsinfo)
+			} else {
+				var tlsErr error
+				tlsl, tlsErr = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+				if tlsErr != nil {
+					return tlsErr
+				}
 			}
 			sctx.startHandler(errHandler, func() error {
 				return srv.Serve(tlsl)
@@ -293,7 +307,7 @@ func (sctx *serveCtx) serve(
 	return err
 }
 
-func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
+func configureHTTPServer(srv *http.Server, cfg *config.ServerConfig) error {
 	// todo (ahrtr): should we support configuring other parameters in the future as well?
 	return http2.ConfigureServer(srv, &http2.Server{
 		MaxConcurrentStreams: cfg.MaxConcurrentStreams,

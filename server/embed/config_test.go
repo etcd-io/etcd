@@ -784,3 +784,127 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 		t.Errorf("Diff: %s", diff)
 	}
 }
+
+func TestUpdateCipherSuiteWithCustomTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	err := updateCipherSuites(tlsConfig, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
+	if assert.Error(t, err) {
+		assert.Equal(t, fmt.Errorf("tlsConfig.CipherSuites should not be updated, the default is already secure"), err)
+	}
+}
+
+func TestUpdateCipherSuitesWithCustomTLSConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
+
+	keyFilePath := fmt.Sprintf("%s/client-key.pem", tmpDir)
+	certFilePath := fmt.Sprintf("%s/client-cert.pem", tmpDir)
+
+	saveKey(clientCert, keyFilePath)
+	saveCert(clientCert, certFilePath)
+
+	cfg := NewConfig()
+	cfg.ClientTLSInfo.CertFile = certFilePath
+	cfg.ClientTLSInfo.KeyFile = keyFilePath
+
+	// Checking that CipherSuites got updated correctly
+	expectedCipherSuites := []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, tls.TLS_RSA_WITH_AES_128_CBC_SHA}
+	err := updateCipherSuites(&cfg.ClientTLSInfo, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
+	require.NoError(t, err)
+	actualCipherSuites := cfg.ClientTLSInfo.CipherSuites
+	assert.Equal(t, expectedCipherSuites, actualCipherSuites)
+
+	// Checking that an error is thrown when the ClientTLSInfo has already defined valid CipherSuites but we still try to update the CipherSuites
+	cfg.ClientTLSInfo.CipherSuites = []uint16{tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384}
+	err = updateCipherSuites(&cfg.ClientTLSInfo, []string{"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384", "TLS_RSA_WITH_AES_128_CBC_SHA"})
+	if assert.Error(t, err) {
+		assert.Equal(t, fmt.Errorf("TLSInfo.CipherSuites is already specified (given [TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384 TLS_RSA_WITH_AES_128_CBC_SHA])"), err)
+	}
+	cfg.ClientTLSInfo.CipherSuites = []uint16{}
+
+	// Checking that an error is thrown when we pass invalid ciphers
+	err = updateCipherSuites(&cfg.ClientTLSInfo, []string{"TLS_INVALID_CIPHER"})
+	if assert.Error(t, err) {
+		assert.Equal(t, fmt.Errorf("unexpected TLS cipher suite \"TLS_INVALID_CIPHER\""), err)
+	}
+}
+
+func TestMinMaxVersionUpdateWithCustomTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	// Check that the expected minimum TLS and maximum TLS version match
+	expMinVersion := uint16(tls.VersionTLS12)
+	expMaxVersion := uint16(tls.VersionTLS13)
+	updateMinMaxVersions(tlsConfig, "TLS1.2", "TLS1.3")
+	assert.Equal(t, expMinVersion, tlsConfig.MinVersion)
+	assert.Equal(t, expMaxVersion, tlsConfig.MaxVersion)
+}
+
+func TestMinMaxVersionUpdatePanicMinVersionWithCustomTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("Expected panic, but function did not panic")
+		}
+	}()
+
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	// Check that updateMinMaxVersions panics when given an invalid minimum version
+	updateMinMaxVersions(tlsConfig, "TLS-1.0", "TLS1.3")
+}
+
+func TestMinMaxVersionUpdatePanicMaxVersionWithCustomTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("Expected panic, but function did not panic")
+		}
+	}()
+
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{clientCert},
+	}
+
+	cfg := NewConfig()
+	cfg.CustomClientTLSConfig = tlsConfig
+
+	// Check that updateMinMaxVersions panics when given an invalid maximum version
+	updateMinMaxVersions(tlsConfig, "TLS1.2", "TLS-1.0")
+}
