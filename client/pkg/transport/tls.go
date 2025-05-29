@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-// Interface for different TLS Configs
+// TLSConfigConstraint represents an interface for passing different TLS configuration structs
 type TLSConfigConstraint interface {
 	*tls.Config | *TLSInfo
 }

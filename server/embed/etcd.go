@@ -129,6 +129,14 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		e = nil
 	}()
 
+	if !cfg.ClientTLSInfo.Empty() && cfg.CustomClientTLSConfig != nil {
+		cfg.logger.Fatal("you cannot specify ClientTLSInfo and CustomClientTLSConfig at the same time, choose either", zap.Error(err))
+	}
+
+	if !cfg.PeerTLSInfo.Empty() && cfg.CustomPeerTLSConfig != nil {
+		cfg.logger.Fatal("you cannot specify PeerTLSInfo and CustomPeerTLSConfig at the same time, choose either", zap.Error(err))
+	}
+
 	if !cfg.SocketOpts.Empty() {
 		cfg.logger.Info(
 			"configuring socket options",
@@ -181,10 +189,7 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 	backendFreelistType := parseBackendFreelistType(cfg.BackendFreelistType)
 
 	clientCertAuthEnabled := false
-	if cfg.CustomClientTLSConfig != nil && cfg.CustomClientTLSConfig.ClientAuth.String() != "NoClientCert" {
-		clientCertAuthEnabled = true
-	}
-	if cfg.ClientTLSInfo.ClientCertAuth {
+	if (cfg.CustomClientTLSConfig != nil && cfg.CustomClientTLSConfig.ClientAuth != tls.NoClientCert) || cfg.ClientTLSInfo.ClientCertAuth {
 		clientCertAuthEnabled = true
 	}
 
@@ -543,7 +548,14 @@ func (e *Etcd) Err() <-chan error {
 }
 
 func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
-	if cfg.CustomPeerTLSConfig == nil {
+	if cfg.CustomPeerTLSConfig != nil {
+		updateMinMaxVersions(cfg.CustomPeerTLSConfig, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+		cfg.logger.Info(
+			"starting with peer TLS",
+			zap.String("tls-info", fmt.Sprintf("%+v", cfg.CustomPeerTLSConfig)),
+			zap.Strings("cipher-suites", cfg.CipherSuites),
+		)
+	} else {
 		if err = updateCipherSuites(&cfg.PeerTLSInfo, cfg.CipherSuites); err != nil {
 			return nil, err
 		}
@@ -558,13 +570,6 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 				zap.Strings("cipher-suites", cfg.CipherSuites),
 			)
 		}
-	} else if len(cfg.CustomPeerTLSConfig.Certificates) != 0 {
-		updateMinMaxVersions(cfg.CustomPeerTLSConfig, cfg.TlsMinVersion, cfg.TlsMaxVersion)
-		cfg.logger.Info(
-			"starting with peer TLS",
-			zap.String("tls-info", fmt.Sprintf("%+v", cfg.CustomPeerTLSConfig)),
-			zap.Strings("cipher-suites", cfg.CipherSuites),
-		)
 	}
 
 	peers = make([]*peerListener, len(cfg.ListenPeerUrls))
@@ -586,17 +591,30 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		}
 	}()
 
-	if cfg.CustomPeerTLSConfig == nil {
-		for i, u := range cfg.ListenPeerUrls {
-			if u.Scheme == "http" {
-				if !cfg.PeerTLSInfo.Empty() {
-					cfg.logger.Warn("scheme is HTTP while key and cert files are present; ignoring key and cert files", zap.String("peer-url", u.String()))
-				}
-				if cfg.PeerTLSInfo.ClientCertAuth {
-					cfg.logger.Warn("scheme is HTTP while --peer-client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("peer-url", u.String()))
-				}
+	for i, u := range cfg.ListenPeerUrls {
+		if u.Scheme == "http" {
+			if !cfg.PeerTLSInfo.Empty() {
+				cfg.logger.Warn("scheme is HTTP while key and cert files are present; ignoring key and cert files", zap.String("peer-url", u.String()))
 			}
-			peers[i] = &peerListener{close: func(context.Context) error { return nil }}
+			if cfg.CustomPeerTLSConfig != nil {
+				cfg.logger.Warn("scheme is HTTP while TLS certificates are present; ignoring certificates", zap.String("peer-url", u.String()))
+			}
+			if cfg.PeerTLSInfo.ClientCertAuth {
+				cfg.logger.Warn("scheme is HTTP while --peer-client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("peer-url", u.String()))
+			}
+			if cfg.CustomPeerTLSConfig != nil && cfg.CustomPeerTLSConfig.ClientAuth != tls.NoClientCert {
+				cfg.logger.Warn("scheme is HTTP while CustomPeerTLSConfig has been provided; ignoring client cert auth for this URL", zap.String("peer-url", u.String()))
+			}
+		}
+		peers[i] = &peerListener{close: func(context.Context) error { return nil }}
+		if cfg.CustomPeerTLSConfig != nil {
+			var listener net.Listener
+			listener, err = net.Listen("tcp", u.Host)
+			if err != nil {
+				return nil, err
+			}
+			peers[i].Listener = tls.NewListener(listener, cfg.CustomPeerTLSConfig)
+		} else {
 			peers[i].Listener, err = transport.NewListenerWithOpts(u.Host, u.Scheme,
 				transport.WithTLSInfo(&cfg.PeerTLSInfo),
 				transport.WithSocketOpts(&cfg.SocketOpts),
@@ -605,31 +623,10 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 			if err != nil {
 				return nil, err
 			}
-			// once serve, overwrite with 'http.Server.Shutdown'
-			peers[i].close = func(context.Context) error {
-				return peers[i].Listener.Close()
-			}
 		}
-	} else if len(cfg.CustomPeerTLSConfig.Certificates) != 0 {
-		for i, u := range cfg.ListenPeerUrls {
-			if u.Scheme == "http" {
-				if len(cfg.CustomPeerTLSConfig.Certificates) != 0 {
-					cfg.logger.Warn("scheme is HTTP while key and cert files are present; ignoring key and cert files", zap.String("peer-url", u.String()))
-				}
-				if cfg.CustomPeerTLSConfig.ClientAuth.String() != "NoClientCert" {
-					cfg.logger.Warn("scheme is HTTP while --peer-client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("peer-url", u.String()))
-				}
-			}
-			peers[i] = &peerListener{close: func(context.Context) error { return nil }}
-			listener, err := net.Listen("tcp", u.Host)
-			if err != nil {
-				return nil, err
-			}
-			peers[i].Listener = tls.NewListener(listener, cfg.CustomPeerTLSConfig)
-			// once serve, overwrite with 'http.Server.Shutdown'
-			peers[i].close = func(context.Context) error {
-				return peers[i].Listener.Close()
-			}
+		// once serve, overwrite with 'http.Server.Shutdown'
+		peers[i].close = func(context.Context) error {
+			return peers[i].Listener.Close()
 		}
 	}
 
@@ -689,7 +686,9 @@ func (e *Etcd) servePeers() {
 }
 
 func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err error) {
-	if cfg.CustomClientTLSConfig == nil {
+	if cfg.CustomClientTLSConfig != nil {
+		updateMinMaxVersions(cfg.CustomClientTLSConfig, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+	} else {
 		if err = updateCipherSuites(&cfg.ClientTLSInfo, cfg.CipherSuites); err != nil {
 			return nil, err
 		}
@@ -697,46 +696,37 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 			cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
 		}
 		updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
-		if cfg.EnablePprof {
-			cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
-		}
+	}
+	if cfg.EnablePprof {
+		cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
+	}
 
-		sctxs = make(map[string]*serveCtx)
-		for _, u := range append(cfg.ListenClientUrls, cfg.ListenClientHttpUrls...) {
-			if u.Scheme == "http" || u.Scheme == "unix" {
-				if !cfg.ClientTLSInfo.Empty() {
-					cfg.logger.Warn("scheme is http or unix while key and cert files are present; ignoring key and cert files", zap.String("client-url", u.String()))
-				}
-				if cfg.ClientTLSInfo.ClientCertAuth {
-					cfg.logger.Warn("scheme is http or unix while --client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("client-url", u.String()))
-				}
+	for _, u := range append(cfg.ListenClientUrls, cfg.ListenClientHttpUrls...) {
+		if u.Scheme == "http" || u.Scheme == "unix" {
+			if !cfg.ClientTLSInfo.Empty() {
+				cfg.logger.Warn("scheme is http or unix while key and cert files are present; ignoring key and cert files", zap.String("client-url", u.String()))
 			}
-			if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
-				return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
+			if cfg.CustomClientTLSConfig != nil && len(cfg.CustomClientTLSConfig.Certificates) > 0 {
+				cfg.logger.Warn("scheme is http or unix while TLS certificates are present; ignoring certificates", zap.String("client-url", u.String()))
+			}
+			if cfg.ClientTLSInfo.ClientCertAuth {
+				cfg.logger.Warn("scheme is http or unix while --client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("client-url", u.String()))
+			}
+			if cfg.CustomClientTLSConfig != nil && cfg.CustomClientTLSConfig.ClientAuth != tls.NoClientCert {
+				cfg.logger.Warn("scheme is http or unix while ClientAuth is enabled; ignoring client cert auth for this URL", zap.String("client-url", u.String()))
 			}
 		}
-	} else if len(cfg.CustomClientTLSConfig.Certificates) != 0 {
-		updateMinMaxVersions(cfg.CustomClientTLSConfig, cfg.TlsMinVersion, cfg.TlsMaxVersion)
-		if cfg.EnablePprof {
-			cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
+		if (!cfg.ClientTLSInfo.Empty() || (cfg.CustomClientTLSConfig != nil && len(cfg.CustomClientTLSConfig.Certificates) > 0)) && (u.Scheme == "https" || u.Scheme == "unixs") {
+			continue
 		}
-
-		sctxs = make(map[string]*serveCtx)
-		for _, u := range append(cfg.ListenClientUrls, cfg.ListenClientHttpUrls...) {
-			if u.Scheme == "http" || u.Scheme == "unix" {
-				if len(cfg.CustomClientTLSConfig.Certificates) != 0 {
-					cfg.logger.Warn("scheme is http or unix while key and cert files are present; ignoring key and cert files", zap.String("client-url", u.String()))
-				}
-				if cfg.CustomClientTLSConfig.ClientAuth.String() != "NoClientCert" {
-					cfg.logger.Warn("scheme is http or unix while --client-cert-auth is enabled; ignoring client cert auth for this URL", zap.String("client-url", u.String()))
-				}
-			}
-			if (u.Scheme == "https" || u.Scheme == "unixs") && len(cfg.CustomClientTLSConfig.Certificates) == 0 {
-				return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
-			}
+		if cfg.CustomClientTLSConfig != nil && len(cfg.CustomClientTLSConfig.Certificates) == 0 && (u.Scheme == "https" || u.Scheme == "unixs") {
+			return nil, fmt.Errorf("TLS certificates (CustomClientTLSConfig.Certificates) must be provided for client url %s with HTTPS scheme", u.String())
+		} else if (u.Scheme == "https" || u.Scheme == "unixs") && cfg.ClientTLSInfo.Empty() {
+			return nil, fmt.Errorf("TLS key/cert (--cert-file, --key-file) must be provided for client url %s with HTTPS scheme", u.String())
 		}
 	}
 
+	sctxs = make(map[string]*serveCtx)
 	for _, u := range cfg.ListenClientUrls {
 		addr, secure, network := resolveURL(u)
 		sctx := sctxs[addr]
@@ -826,18 +816,20 @@ func resolveURL(u url.URL) (addr string, secure bool, network string) {
 }
 
 func (e *Etcd) serveClients() {
-	if e.cfg.CustomClientTLSConfig == nil {
-		if !e.cfg.ClientTLSInfo.Empty() {
-			e.cfg.logger.Info(
-				"starting with client TLS",
-				zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)),
-				zap.Strings("cipher-suites", e.cfg.CipherSuites),
-			)
+	if e.cfg.CustomClientTLSConfig != nil && len(e.cfg.CustomClientTLSConfig.Certificates) > 0 {
+		cipherSuiteNames := []string{}
+		for _, cs := range e.cfg.CustomClientTLSConfig.CipherSuites {
+			cipherSuiteNames = append(cipherSuiteNames, tls.CipherSuiteName(cs))
 		}
-	} else if len(e.cfg.CustomClientTLSConfig.Certificates) != 0 {
 		e.cfg.logger.Info(
 			"starting with client TLS",
 			zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.CustomClientTLSConfig)),
+			zap.Strings("cipher-suites", cipherSuiteNames),
+		)
+	} else if !e.cfg.ClientTLSInfo.Empty() {
+		e.cfg.logger.Info(
+			"starting with client TLS",
+			zap.String("tls-info", fmt.Sprintf("%+v", e.cfg.ClientTLSInfo)),
 			zap.Strings("cipher-suites", e.cfg.CipherSuites),
 		)
 	}

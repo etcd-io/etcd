@@ -46,7 +46,7 @@ func NewTransport[TLS TLSConfigConstraint](info TLS, dialtimeoutd time.Duration)
 	case *tls.Config:
 		cfg = tlsConfig
 	default:
-		return nil, fmt.Errorf("TLS configuration needs to be either of type *tls.Config or *TLSInfo.")
+		return nil, fmt.Errorf("TLS configuration needs to be either of type *tls.Config or *TLSInfo")
 	}
 
 	t := &http.Transport{

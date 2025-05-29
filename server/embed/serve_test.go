@@ -53,28 +53,11 @@ func TestStartEtcdWrongToken(t *testing.T) {
 func TestStartEtcdCustomTLSConfig(t *testing.T) {
 	tdir := t.TempDir()
 
-	caSubject := &CertificateSubject{
-		Organization:  []string{"Company, Testing"},
-		Country:       []string{"Test"},
-		Province:      []string{"Test Province"},
-		Locality:      []string{"Testing"},
-		StreetAddress: []string{"Test Street"},
-		PostalCode:    []string{"01234"},
-	}
-	caCert, caPrivateKey := generateCACert(t, caSubject)
-
-	serverSubject := &CertificateSubject{
-		Organization:  []string{"Company, Testing"},
-		Country:       []string{"Test"},
-		Province:      []string{"Test Province"},
-		Locality:      []string{"Testing"},
-		StreetAddress: []string{"Test Street"},
-		PostalCode:    []string{"01234"},
-	}
-	serverCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, serverSubject)
+	caCert, caPrivateKey := generateCACert(t, &defaultCACertificateSubject)
+	clientCert := generateHostCertificateFromCA(t, caCert, caPrivateKey, &defaultClientCertificateSubject)
 
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
+		Certificates: []tls.Certificate{clientCert},
 	}
 
 	cfg := NewConfig()

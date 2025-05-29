@@ -230,13 +230,14 @@ func (sctx *serveCtx) serve(
 		var gs *grpc.Server
 		var srv *http.Server
 
-		tlscfg, tlsErr := tlsinfo.ServerConfig()
-		if tlsErr != nil {
-			return tlsErr
-		}
-		if customtlsinfo != nil {
-			if len(customtlsinfo.Certificates) != 0 {
-				tlscfg = customtlsinfo
+		var tlscfg *tls.Config
+		if customtlsinfo != nil && len(customtlsinfo.Certificates) > 0 {
+			tlscfg = customtlsinfo
+		} else {
+			var tlsErr error
+			tlscfg, tlsErr = tlsinfo.ServerConfig()
+			if tlsErr != nil {
+				return tlsErr
 			}
 		}
 
@@ -277,13 +278,14 @@ func (sctx *serveCtx) serve(
 		} else {
 			server = m.Serve
 
-			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if tlsErr != nil {
-				return tlsErr
-			}
-			if customtlsinfo != nil {
-				if len(customtlsinfo.Certificates) != 0 {
-					tlsl = tls.NewListener(m.Match(cmux.Any()), customtlsinfo)
+			var tlsl net.Listener
+			if customtlsinfo != nil && len(customtlsinfo.Certificates) > 0 {
+				tlsl = tls.NewListener(m.Match(cmux.Any()), customtlsinfo)
+			} else {
+				var tlsErr error
+				tlsl, tlsErr = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+				if tlsErr != nil {
+					return tlsErr
 				}
 			}
 			sctx.startHandler(errHandler, func() error {
