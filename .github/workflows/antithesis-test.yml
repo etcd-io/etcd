@@ -90,7 +90,7 @@ jobs:
       - name: Build and push etcd image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-etcd-image-${{ inputs.etcd_ref }}
+          make antithesis-build-etcd-image REF=${{ inputs.etcd_ref }}
           export TAG="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:latest"
           docker tag etcd-server:latest $TAG
           docker push $TAG
