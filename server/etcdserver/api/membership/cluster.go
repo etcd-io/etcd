@@ -508,9 +508,17 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
 
-	m := *(c.members[id])
-	m.RaftAttributes.IsLearner = false
-	mustUpdateMemberInStore(c.lg, c.v2store, &m)
+	if _, ok := c.members[id]; ok {
+		m := *(c.members[id])
+		m.RaftAttributes.IsLearner = false
+		mustUpdateMemberInStore(c.lg, c.v2store, &m)
+	} else {
+		c.lg.Info("Skipped promoting non-existent member in v2store",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("promoted-member-id", id.String()),
+		)
+	}
 
 	if id == c.localID {
 		isLearner.Set(0)
@@ -540,9 +548,19 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	c.Lock()
 	defer c.Unlock()
 
-	m := *(c.members[id])
-	m.RaftAttributes = raftAttr
-	mustUpdateMemberInStore(c.lg, c.v2store, &m)
+	if _, ok := c.members[id]; ok {
+		m := *(c.members[id])
+		m.RaftAttributes = raftAttr
+		mustUpdateMemberInStore(c.lg, c.v2store, &m)
+	} else {
+		c.lg.Info("Skipped updating non-existent member in v2store",
+			zap.String("cluster-id", c.cid.String()),
+			zap.String("local-member-id", c.localID.String()),
+			zap.String("updated-remote-peer-id", id.String()),
+			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+		)
+	}
 
 	if shouldApplyV3 {
 		c.members[id].RaftAttributes = raftAttr

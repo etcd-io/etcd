@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -994,6 +995,118 @@ func TestIsReadyToPromoteMember(t *testing.T) {
 		if got := c.IsReadyToPromoteMember(tt.promoteID); got != tt.want {
 			t.Errorf("%d: isReadyToPromoteMember returned %t, want %t", i, got, tt.want)
 		}
+	}
+}
+
+func TestPromoteMember(t *testing.T) {
+	clientURLs := []string{"http://127.0.0.1:2379"}
+	testCases := []struct {
+		name        string
+		members     []*Member
+		promoteID   types.ID
+		wantMembers map[types.ID]*Member
+	}{
+		{
+			name: "promote a voting member",
+			members: []*Member{
+				newTestMember(1, nil, "1", clientURLs),
+				newTestMemberAsLearner(2, nil, "2", clientURLs),
+			},
+			promoteID: 1,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, nil, "1", clientURLs),
+				2: newTestMemberAsLearner(2, nil, "2", clientURLs),
+			},
+		},
+		{
+			name: "promote a learner",
+			members: []*Member{
+				newTestMember(1, nil, "1", clientURLs),
+				newTestMemberAsLearner(2, nil, "2", clientURLs),
+			},
+			promoteID: 2,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, nil, "1", clientURLs),
+				2: newTestMember(2, nil, "2", clientURLs),
+			},
+		},
+		{
+			name: "promote a non-exist member",
+			members: []*Member{
+				newTestMember(1, nil, "1", clientURLs),
+				newTestMemberAsLearner(2, nil, "2", clientURLs),
+			},
+			promoteID: 3,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, nil, "1", clientURLs),
+				2: newTestMemberAsLearner(2, nil, "2", clientURLs),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newTestCluster(t, tc.members)
+			st := v2store.New("/0", "/1")
+			c.Store(st)
+			c.SetStore(st)
+
+			c.PromoteMember(tc.promoteID, false)
+
+			mst, _ := membersFromStore(c.lg, st)
+			require.Equal(t, tc.wantMembers, mst)
+		})
+	}
+}
+
+func TestUpdateRaftAttributes(t *testing.T) {
+	clientURLs := []string{"http://127.0.0.1:2379"}
+	oldPeerURLs := []string{"http://127.0.0.1:2380"}
+	newPeerURLs := []string{"http://127.0.0.1:2382"}
+	testCases := []struct {
+		name           string
+		members        []*Member
+		updateMemberID types.ID
+		wantMembers    map[types.ID]*Member
+	}{
+		{
+			name: "update an existing member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 2,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMember(2, newPeerURLs, "2", clientURLs),
+			},
+		},
+		{
+			name: "update a non-exist member",
+			members: []*Member{
+				newTestMember(1, oldPeerURLs, "1", clientURLs),
+				newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+			updateMemberID: 3,
+			wantMembers: map[types.ID]*Member{
+				1: newTestMember(1, oldPeerURLs, "1", clientURLs),
+				2: newTestMember(2, oldPeerURLs, "2", clientURLs),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newTestCluster(t, tc.members)
+			st := v2store.New("/0", "/1")
+			c.Store(st)
+			c.SetStore(st)
+
+			c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, false)
+
+			mst, _ := membersFromStore(c.lg, st)
+			require.Equal(t, tc.wantMembers, mst)
+		})
 	}
 }
 
