@@ -31,7 +31,7 @@ func TestSessionOptions(t *testing.T) {
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
-	lease, err := cli.Grant(context.Background(), 100)
+	lease, err := cli.Grant(t.Context(), 100)
 	require.NoError(t, err)
 	s, err := concurrency.NewSession(cli, concurrency.WithLease(lease.ID))
 	require.NoError(t, err)
@@ -58,7 +58,7 @@ func TestSessionTTLOptions(t *testing.T) {
 
 	leaseID := s.Lease()
 	// TTL retrieved should be less than the set TTL, but not equal to default:60 or exprired:-1
-	resp, err := cli.Lease.TimeToLive(context.Background(), leaseID)
+	resp, err := cli.Lease.TimeToLive(t.Context(), leaseID)
 	if err != nil {
 		t.Log(err)
 	}
@@ -77,7 +77,7 @@ func TestSessionCtx(t *testing.T) {
 	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
-	lease, err := cli.Grant(context.Background(), 100)
+	lease, err := cli.Grant(t.Context(), 100)
 	require.NoError(t, err)
 	s, err := concurrency.NewSession(cli, concurrency.WithLease(lease.ID))
 	require.NoError(t, err)
