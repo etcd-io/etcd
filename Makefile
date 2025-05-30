@@ -156,7 +156,7 @@ test:
 
 test-smoke:
 	$(info log-file: test-$(TEST_SUFFIX).log)
-	PASSES="fmt bom dep build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
+	PASSES="dep build unit" ./test.sh 2<&1 | tee test-$(TEST_SUFFIX).log
 	! grep "FAIL:" test-$(TEST_SUFFIX).log
 
 test-full:
@@ -582,8 +582,54 @@ gofail-enable: install-gofail
 gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test.sh
 
+# Static analysis
+
 .PHONY: verify
-verify: verify-go-versions verify-dep
+verify: verify-gofmt verify-bom verify-dep verify-shellcheck verify-goword verify-govet verify-revive verify-license-header verify-receiver-name verify-mod-tidy verify-shellws verify-go-versions verify-markdown-marker
+
+.PHONY: verify-gofmt
+verify-gofmt:
+	PASSES="gofmt" ./test.sh
+
+.PHONY: verify-bom
+verify-bom:
+	PASSES="bom" ./test.sh
+
+.PHONY: verify-shellcheck
+verify-shellcheck:
+	PASSES="shellcheck" ./test.sh
+
+.PHONY: verify-goword
+verify-goword:
+	PASSES="goword" ./test.sh
+
+.PHONY: verify-govet
+verify-govet:
+	PASSES="govet" ./test.sh
+
+.PHONY: verify-revive
+verify-revive:
+	PASSES="revive" ./test.sh
+
+.PHONY: verify-license-header
+verify-license-header:
+	PASSES="license_header" ./test.sh
+
+.PHONY: verify-receiver-name
+verify-receiver-name:
+	PASSES="receiver_name" ./test.sh
+
+.PHONY: verify-mod-tidy
+verify-mod-tidy:
+	PASSES="mod_tidy" ./test.sh
+
+.PHONY: verify-shellws
+verify-shellws:
+	PASSES="shellws" ./test.sh
+
+.PHONY: verify-markdown-marker
+verify-markdown-marker:
+	PASSES="markdown_marker" ./test.sh
 
 .PHONY: verify-go-versions
 verify-go-versions:
