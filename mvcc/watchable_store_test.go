@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -78,6 +80,184 @@ func TestNewWatcherCancel(t *testing.T) {
 		// the key shoud have been deleted
 		t.Errorf("existence = true, want false")
 	}
+}
+
+func TestNewWatcherCountGauge(t *testing.T) {
+	expectWatchGauge := func(watchers int) {
+		expected := fmt.Sprintf(`# HELP etcd_debugging_mvcc_watcher_total Total number of watchers.
+# TYPE etcd_debugging_mvcc_watcher_total gauge
+etcd_debugging_mvcc_watcher_total %d
+`, watchers)
+		err := testutil.CollectAndCompare(watcherGauge, strings.NewReader(expected), "etcd_debugging_mvcc_watcher_total")
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
+	t.Run("regular watch", func(t *testing.T) {
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+		defer func() {
+			s.store.Close()
+			os.Remove(tmpPath)
+		}()
+
+		// watcherGauge is a package variable and its value may change depending on
+		// the execution of other tests
+		initialGaugeState := int(testutil.ToFloat64(watcherGauge))
+
+		testKey := []byte("foo")
+		testValue := []byte("bar")
+		s.Put(testKey, testValue, lease.NoLease)
+
+		// we expect the gauge state to still be in its initial state
+		expectWatchGauge(initialGaugeState)
+
+		w := s.NewWatchStream()
+		defer w.Close()
+
+		wt, _ := w.Watch(0, testKey, nil, 0)
+
+		// after creating watch, the gauge state should have increased
+		expectWatchGauge(initialGaugeState + 1)
+
+		if err := w.Cancel(wt); err != nil {
+			t.Error(err)
+		}
+
+		// after cancelling watch, the gauge state should have decreased
+		expectWatchGauge(initialGaugeState)
+
+		w.Cancel(wt)
+
+		// cancelling the watch twice shouldn't decrement the counter twice
+		expectWatchGauge(initialGaugeState)
+	})
+
+	t.Run("compacted watch", func(t *testing.T) {
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+		defer func() {
+			s.store.Close()
+			os.Remove(tmpPath)
+		}()
+
+		// watcherGauge is a package variable and its value may change depending on
+		// the execution of other tests
+		initialGaugeState := int(testutil.ToFloat64(watcherGauge))
+
+		testKey := []byte("foo")
+		testValue := []byte("bar")
+
+		s.Put(testKey, testValue, lease.NoLease)
+		rev := s.Put(testKey, testValue, lease.NoLease)
+
+		// compact up to the revision of the key we just put
+		_, err := s.Compact(traceutil.TODO(), rev)
+		if err != nil {
+			t.Error(err)
+		}
+
+		// we expect the gauge state to still be in its initial state
+		expectWatchGauge(initialGaugeState)
+
+		w := s.NewWatchStream()
+		defer w.Close()
+
+		wt, _ := w.Watch(0, testKey, nil, rev-1)
+
+		// wait for the watcher to be marked as compacted
+		select {
+		case resp := <-w.Chan():
+			if resp.CompactRevision == 0 {
+				t.Errorf("resp.Compacted = %v, want %v", resp.CompactRevision, rev)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("failed to receive response (timeout)")
+		}
+
+		// after creating watch, the gauge state should have increased
+		expectWatchGauge(initialGaugeState + 1)
+
+		if err := w.Cancel(wt); err != nil {
+			t.Error(err)
+		}
+
+		// after cancelling watch, the gauge state should have decreased
+		expectWatchGauge(initialGaugeState)
+
+		w.Cancel(wt)
+
+		// cancelling the watch twice shouldn't decrement the counter twice
+		expectWatchGauge(initialGaugeState)
+	})
+
+	t.Run("compacted watch, close/cancel race", func(t *testing.T) {
+		b, tmpPath := backend.NewDefaultTmpBackend()
+		s := newWatchableStore(zap.NewExample(), b, &lease.FakeLessor{}, nil, nil, StoreConfig{})
+		defer func() {
+			s.store.Close()
+			os.Remove(tmpPath)
+		}()
+
+		// watcherGauge is a package variable and its value may change depending on
+		// the execution of other tests
+		initialGaugeState := int(testutil.ToFloat64(watcherGauge))
+
+		testKey := []byte("foo")
+		testValue := []byte("bar")
+
+		s.Put(testKey, testValue, lease.NoLease)
+		rev := s.Put(testKey, testValue, lease.NoLease)
+
+		// compact up to the revision of the key we just put
+		_, err := s.Compact(traceutil.TODO(), rev)
+		if err != nil {
+			t.Error(err)
+		}
+
+		// we expect the gauge state to still be in its initial state
+		expectWatchGauge(initialGaugeState)
+
+		w := s.NewWatchStream()
+
+		wt, _ := w.Watch(0, testKey, nil, rev-1)
+
+		// wait for the watcher to be marked as compacted
+		select {
+		case resp := <-w.Chan():
+			if resp.CompactRevision == 0 {
+				t.Errorf("resp.Compacted = %v, want %v", resp.CompactRevision, rev)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("failed to receive response (timeout)")
+		}
+
+		// after creating watch, the gauge state should have increased
+		expectWatchGauge(initialGaugeState + 1)
+
+		// now race cancelling and closing the watcher and watch stream.
+		// in rare scenarios the watcher cancel function can be invoked
+		// multiple times, leading to a potentially negative gauge state,
+		// see: https://github.com/etcd-io/etcd/issues/19577
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+
+		go func() {
+			w.Cancel(wt)
+			wg.Done()
+		}()
+
+		go func() {
+			w.Close()
+			wg.Done()
+		}()
+
+		wg.Wait()
+
+		// the gauge should be decremented to its original state
+		expectWatchGauge(initialGaugeState)
+	})
 }
 
 // TestCancelUnsynced tests if running CancelFunc removes watchers from unsynced.
