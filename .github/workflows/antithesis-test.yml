@@ -113,3 +113,4 @@ jobs:
           test_name: ${{ inputs.test }}
           additional_parameters: |-
             custom.duration = ${{ inputs.duration }}
+            antithesis.source = ${{ inputs.etcd_ref }}
