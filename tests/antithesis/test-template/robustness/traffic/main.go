@@ -149,6 +149,16 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 			mux.Unlock()
 		}(c)
 	}
+	wg.Add(1)
+	compactClient := connect(hosts, ids, baseTime)
+	go func(c *client.RecordingClient) {
+		defer wg.Done()
+		defer c.Close()
+		traffic.EtcdAntithesis.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
+		mux.Lock()
+		reports = append(reports, c.Report())
+		mux.Unlock()
+	}(compactClient)
 	wg.Wait()
 	return reports
 }
