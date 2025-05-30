@@ -52,7 +52,7 @@ func TestMaintenanceHashKV(t *testing.T) {
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
-		_, err := clus.RandClient().Put(context.Background(), "foo", "bar")
+		_, err := clus.RandClient().Put(t.Context(), "foo", "bar")
 		require.NoError(t, err)
 	}
 
@@ -60,9 +60,9 @@ func TestMaintenanceHashKV(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		cli := clus.Client(i)
 		// ensure writes are replicated
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		require.NoError(t, err)
-		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL, 0)
+		hresp, err := cli.HashKV(t.Context(), clus.Members[i].GRPCURL, 0)
 		require.NoError(t, err)
 		if hv == 0 {
 			hv = hresp.Hash
@@ -85,7 +85,7 @@ func TestCompactionHash(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
+	testutil.TestCompactionHash(t.Context(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
 }
 
 type hashTestCase struct {
@@ -131,13 +131,13 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 	target := uint64(clus.Members[targetIdx].ID())
 
 	cli := clus.Client(targetIdx)
-	_, err := cli.MoveLeader(context.Background(), target)
+	_, err := cli.MoveLeader(t.Context(), target)
 	if !errors.Is(err, rpctypes.ErrNotLeader) {
 		t.Fatalf("error expected %v, got %v", rpctypes.ErrNotLeader, err)
 	}
 
 	cli = clus.Client(oldLeadIdx)
-	_, err = cli.MoveLeader(context.Background(), target)
+	_, err = cli.MoveLeader(t.Context(), target)
 	require.NoError(t, err)
 
 	leadIdx := clus.WaitLeader(t)
@@ -156,7 +156,7 @@ func TestMaintenanceSnapshotCancel(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Since http2 spec defines the receive windows's size and max size of
 	// frame in the stream, the underlayer - gRPC client can pre-read data
@@ -213,7 +213,7 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	// Since http2 spec defines the receive windows's size and max size of
@@ -293,7 +293,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	clus.Members[0].Restart(t)
 
 	// reading snapshot with canceled context should error out
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	rc1, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
 	defer rc1.Close()
@@ -311,7 +311,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	<-donec
 
 	// reading snapshot with deadline exceeded should error out
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	rc2, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
@@ -335,11 +335,11 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 
 	// Put some keys to ensure that wal snapshot is triggered
 	for i := 0; i < 10; i++ {
-		clus.RandClient().Put(context.Background(), fmt.Sprintf("%d", i), "1")
+		clus.RandClient().Put(t.Context(), fmt.Sprintf("%d", i), "1")
 	}
 
 	// reading snapshot with canceled context should error out
-	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
 	if resp.Version != "3.7.0" {
@@ -356,7 +356,7 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 	populateDataIntoCluster(t, clus, 3, 1024*1024)
 
 	// reading snapshot with canceled context should error out
-	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
 
@@ -416,7 +416,7 @@ func TestMaintenanceStatus(t *testing.T) {
 
 	prevID, leaderFound := uint64(0), false
 	for i := 0; i < 3; i++ {
-		resp, err := cli.Status(context.TODO(), eps[i])
+		resp, err := cli.Status(t.Context(), eps[i])
 		require.NoError(t, err)
 		t.Logf("Response from %v: %v", i, resp)
 		if resp.DbSizeQuota != storage.DefaultQuotaBytes {

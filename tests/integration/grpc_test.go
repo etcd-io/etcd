@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	tls "crypto/tls"
 	"fmt"
 	"strings"
@@ -105,7 +104,7 @@ func TestAuthority(t *testing.T) {
 
 				putRequestMethod := "/etcdserverpb.KV/Put"
 				for i := 0; i < 100; i++ {
-					_, err := kv.Put(context.TODO(), "foo", "bar")
+					_, err := kv.Put(t.Context(), "foo", "bar")
 					require.NoError(t, err)
 				}
 
