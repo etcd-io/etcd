@@ -153,6 +153,9 @@ func (ws *watchStream) Cancel(id WatchID) error {
 	if !ok {
 		return ErrWatcherNotExist
 	}
+
+	// gofail: var beforeWatchStreamCancelWhileUnlocked struct{}
+
 	cancel()
 
 	ws.mu.Lock()
