@@ -371,28 +371,6 @@ function cov_pass {
 
 ######### Code formatting checkers #############################################
 
-function fmt_pass {
-  toggle_failpoints disable
-
-  # TODO: add "unparam","staticcheck", "unconvert", "ineffasign","nakedret"
-  # after resolving ore-existing errors.
-  # markdown_you  -  too sensitive check was temporarilly disbled. 
-  for p in shellcheck \
-      goword \
-      gofmt \
-      govet \
-      revive \
-      license_header \
-      receiver_name \
-      mod_tidy \
-      dep \
-      shellcheck \
-      shellws \
-      ; do
-    run_pass "${p}" "${@}"
-  done
-}
-
 function shellcheck_pass {
   SHELLCHECK=shellcheck
   
