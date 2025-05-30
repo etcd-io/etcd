@@ -28,7 +28,6 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	framecfg "go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
@@ -74,7 +73,7 @@ func TestEtcdVersionFromWAL(t *testing.T) {
 	cli.Close()
 	srv.Close()
 
-	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", walpb.Snapshot{})
+	w, err := wal.Open(zap.NewNop(), cfg.Dir+"/member/wal", wal.Position{})
 	require.NoError(t, err)
 	defer w.Close()
 
