@@ -36,7 +36,7 @@ func TestEndpointManager(t *testing.T) {
 	if err != nil {
 		t.Fatal("failed to create EndpointManager", err)
 	}
-	ctx, watchCancel := context.WithCancel(context.Background())
+	ctx, watchCancel := context.WithCancel(t.Context())
 	defer watchCancel()
 	w, err := em.NewWatchChannel(ctx)
 	if err != nil {
@@ -44,7 +44,7 @@ func TestEndpointManager(t *testing.T) {
 	}
 
 	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata"}
-	err = em.AddEndpoint(context.TODO(), "foo/a1", e1)
+	err = em.AddEndpoint(t.Context(), "foo/a1", e1)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
 	}
@@ -63,7 +63,7 @@ func TestEndpointManager(t *testing.T) {
 
 	require.Truef(t, reflect.DeepEqual(us[0], wu), "up = %#v, want %#v", us[0], wu)
 
-	err = em.DeleteEndpoint(context.TODO(), "foo/a1")
+	err = em.DeleteEndpoint(t.Context(), "foo/a1")
 	require.NoErrorf(t, err, "failed to udpate %v", err)
 
 	us = <-w
@@ -94,13 +94,13 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 		t.Fatal("failed to create EndpointManager", err)
 	}
 
-	err = em.Update(context.TODO(), []*endpoints.UpdateWithOpts{
+	err = em.Update(t.Context(), []*endpoints.UpdateWithOpts{
 		endpoints.NewAddUpdateOpts("foo/host", endpoints.Endpoint{Addr: "127.0.0.1:2000"}),
 		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"}),
 	})
 	require.NoError(t, err)
 
-	ctx, watchCancel := context.WithCancel(context.Background())
+	ctx, watchCancel := context.WithCancel(t.Context())
 	defer watchCancel()
 	w, err := em.NewWatchChannel(ctx)
 	require.NoError(t, err)
@@ -108,7 +108,7 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 	updates := <-w
 	require.Lenf(t, updates, 2, "expected two updates, got %+v", updates)
 
-	_, err = c.Txn(context.TODO()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
+	_, err = c.Txn(t.Context()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
 	require.NoError(t, err)
 
 	updates = <-w
@@ -131,19 +131,19 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	// Add
 	k1 := "foo/a1"
 	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata1"}
-	err = em.AddEndpoint(context.TODO(), k1, e1)
+	err = em.AddEndpoint(t.Context(), k1, e1)
 	if err != nil {
 		t.Fatal("failed to add", k1, err)
 	}
 
 	k2 := "foo/a2"
 	e2 := endpoints.Endpoint{Addr: "127.0.0.2", Metadata: "metadata2"}
-	err = em.AddEndpoint(context.TODO(), k2, e2)
+	err = em.AddEndpoint(t.Context(), k2, e2)
 	if err != nil {
 		t.Fatal("failed to add", k2, err)
 	}
 
-	eps, err := em.List(context.TODO())
+	eps, err := em.List(t.Context())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
@@ -152,12 +152,12 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	require.Truef(t, reflect.DeepEqual(eps[k2], e2), "unexpected endpoints: %s", k2)
 
 	// Delete
-	err = em.DeleteEndpoint(context.TODO(), k1)
+	err = em.DeleteEndpoint(t.Context(), k1)
 	if err != nil {
 		t.Fatal("failed to delete", k2, err)
 	}
 
-	eps, err = em.List(context.TODO())
+	eps, err = em.List(t.Context())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
@@ -171,12 +171,12 @@ func TestEndpointManagerCRUD(t *testing.T) {
 		{Update: endpoints.Update{Op: endpoints.Add, Key: k3, Endpoint: e3}},
 		{Update: endpoints.Update{Op: endpoints.Delete, Key: k2}},
 	}
-	err = em.Update(context.TODO(), updates)
+	err = em.Update(t.Context(), updates)
 	if err != nil {
 		t.Fatal("failed to update", err)
 	}
 
-	eps, err = em.List(context.TODO())
+	eps, err = em.List(t.Context())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}

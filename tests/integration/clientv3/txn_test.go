@@ -36,7 +36,7 @@ func TestTxnError(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
 	if !errors.Is(err, rpctypes.ErrDuplicateKey) {
@@ -65,7 +65,7 @@ func TestTxnWriteFail(t *testing.T) {
 
 	txnc, getc := make(chan struct{}), make(chan struct{})
 	go func() {
-		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		defer cancel()
 		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
@@ -82,7 +82,7 @@ func TestTxnWriteFail(t *testing.T) {
 		case <-txnc:
 		}
 		// and ensure the put didn't take
-		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
+		gresp, gerr := clus.Client(1).Get(t.Context(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -123,7 +123,7 @@ func TestTxnReadRetry(t *testing.T) {
 
 		donec := make(chan struct{}, 1)
 		go func() {
-			_, err := kv.Txn(context.TODO()).Then(thenOps[i]...).Commit()
+			_, err := kv.Txn(t.Context()).Then(thenOps[i]...).Commit()
 			if err != nil {
 				t.Errorf("expected response, got error %v", err)
 			}
@@ -149,7 +149,7 @@ func TestTxnSuccess(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 	require.NoError(t, err)
@@ -168,11 +168,11 @@ func TestTxnCompareRange(t *testing.T) {
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
-	fooResp, err := kv.Put(context.TODO(), "foo/", "bar")
+	fooResp, err := kv.Put(t.Context(), "foo/", "bar")
 	require.NoError(t, err)
-	_, err = kv.Put(context.TODO(), "foo/a", "baz")
+	_, err = kv.Put(t.Context(), "foo/a", "baz")
 	require.NoError(t, err)
-	tresp, terr := kv.Txn(context.TODO()).If(
+	tresp, terr := kv.Txn(t.Context()).If(
 		clientv3.Compare(
 			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
 			WithPrefix(),
@@ -191,7 +191,7 @@ func TestTxnNested(t *testing.T) {
 
 	kv := clus.Client(0)
 
-	tresp, err := kv.Txn(context.TODO()).
+	tresp, err := kv.Txn(t.Context()).
 		If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 		Then(
 			clientv3.OpPut("foo", "bar"),
@@ -203,12 +203,12 @@ func TestTxnNested(t *testing.T) {
 	}
 
 	// check txn writes were applied
-	resp, err := kv.Get(context.TODO(), "foo")
+	resp, err := kv.Get(t.Context(), "foo")
 	require.NoError(t, err)
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {
 		t.Errorf("unexpected Get response %+v", resp)
 	}
-	resp, err = kv.Get(context.TODO(), "abc")
+	resp, err = kv.Get(t.Context(), "abc")
 	require.NoError(t, err)
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "123" {
 		t.Errorf("unexpected Get response %+v", resp)
