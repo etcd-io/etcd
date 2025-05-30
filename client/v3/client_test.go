@@ -347,7 +347,7 @@ func TestNewWithOnlyJWT(t *testing.T) {
 	}
 	defer c.Close()
 
-	meta, err := c.authTokenBundle.PerRPCCredentials().GetRequestMetadata(context.Background(), "")
+	meta, err := c.authTokenBundle.PerRPCCredentials().GetRequestMetadata(t.Context(), "")
 	if err != nil {
 		t.Errorf("Error building request metadata: %s", err)
 	}
