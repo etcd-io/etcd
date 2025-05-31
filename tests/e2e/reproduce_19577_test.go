@@ -22,7 +22,7 @@ func TestReproduce19577(t *testing.T) {
 		e2e.WithGoFailEnabled(true),
 	)
 	require.NoError(t, cerr)
-	t.Cleanup(func() { require.NoError(t, clus.Stop()) })
+	t.Cleanup(func() { require.NoError(t, clus.Close()) })
 
 	cli := newClient(t, clus.EndpointsGRPC(), e2e.ClientConfig{})
 
@@ -32,7 +32,7 @@ func TestReproduce19577(t *testing.T) {
 
 	key := "19577"
 
-	// create some revisions for the
+	// create some revisions for the watcher to watch
 	_, err := cli.Put(ctx, key, "value")
 	require.NoError(t, err)
 
@@ -57,7 +57,7 @@ func TestReproduce19577(t *testing.T) {
 
 	// ensure some delay between the cancel and the close, so that we know we initiate the cancel before
 	// the close on the server end.
-	time.Sleep(time.Second)
+	time.Sleep(time.Second * 1)
 
 	cli.Close()
 
