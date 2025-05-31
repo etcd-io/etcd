@@ -10,7 +10,7 @@ antithesis-build-client-docker-image:
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=${REF} $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
+	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest -t etcd-server:$(REF)
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4
@@ -27,6 +27,10 @@ antithesis-build-etcd-image-release-3.6: antithesis-build-etcd-image
 .PHONY: antithesis-build-etcd-image-main
 antithesis-build-etcd-image-main: REF=main
 antithesis-build-etcd-image-main: antithesis-build-etcd-image
+
+.PHONY: antithesis-build-config-image
+antithesis-build-config-image:
+	docker build -f ./Dockerfile.config . -t etcd-config:latest -t etcd-config:$(REF) --build-arg REF=$(REF)
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
