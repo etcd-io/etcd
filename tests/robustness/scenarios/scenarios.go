@@ -243,7 +243,7 @@ func Regression(t *testing.T) []TestScenario {
 			MinimalQPS:                     50,
 			MaximalQPS:                     100,
 			BurstableQPS:                   100,
-			ClientCount:                    8,
+			ClientCount:                    traffic.DefaultClientCount,
 			MaxNonUniqueRequestConcurrency: 3,
 		}.WithoutCompaction(),
 		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
