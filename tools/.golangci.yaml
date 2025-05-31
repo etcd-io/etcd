@@ -36,8 +36,7 @@ linters:
     - unparam
     - unused
     - usestdlibvars
-    # Disabled in the meanwhile, it raises several issues with new Go 1.24 functions
-    # - usetesting
+    - usetesting
     - whitespace
 linters-settings: # please keep this alphabetized
   goimports:
