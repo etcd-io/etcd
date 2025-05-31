@@ -60,7 +60,7 @@ jobs:
       - name: Build and push config image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-antithesis-config-image REF=${{ inputs.etcd_ref }}
+          make antithesis-build-config-image REF=${{ inputs.etcd_ref }}
           export TAG="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ inputs.etcd_ref }}_${{ github.sha }}"
           docker tag etcd-config:latest $TAG
           docker push $TAG
