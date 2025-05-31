@@ -26,7 +26,18 @@ RUN cp -r /etcd_instrumented/symbols/* /symbols
 EXPOSE 2379 2380
 
 # start etcd server
-WORKDIR /etcd_instrumented/customer/server
-RUN go mod tidy
-RUN CGO_ENABLED=1 go build -race
-CMD ["./server"]
+WORKDIR /etcd_instrumented/customer
+
+# Some previous versions hardcode CGO_ENABLED=0
+RUN find . -type f -exec sed -i 's/CGO_ENABLED=0/CGO_ENABLED=${CGO_ENABLED}/' {} +
+# Some previous versions explicitly need gobin, which could no longer be installed with go get
+RUN go install github.com/myitcv/gobin@v0.0.14
+# 3.4.0 has vendoring. need to do this after instrumentation or else build fails
+RUN if [ -d "vendor" ]; then go mod vendor; fi
+
+# The instrumentation adds code and packages. Need go mod tidy for all modules before building
+RUN for d in server etcdutl etcdctl; do (cd ${d} && go mod tidy || true); done
+# The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
+RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
+RUN CGO_ENABLED=1 make build
+CMD ["./bin/etcd"]
