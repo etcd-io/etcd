@@ -26,7 +26,11 @@ RUN cp -r /etcd_instrumented/symbols/* /symbols
 EXPOSE 2379 2380
 
 # start etcd server
-WORKDIR /etcd_instrumented/customer/server
-RUN go mod tidy
-RUN CGO_ENABLED=1 go build -race
-CMD ["./server"]
+WORKDIR /etcd_instrumented/customer
+# The instrumentation adds code and packages. Need go mod tidy for all modules before building
+RUN go mod tidy || true
+RUN for d in $(ls -d */); do (cd ${d} && go mod tidy || true); done
+# The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
+RUN [ -f "dummy.go" ] && sed -i 's/package main_test/package main/' dummy.go || true
+RUN CGO_ENABLED=1 make build
+CMD ["./bin/etcd"]
