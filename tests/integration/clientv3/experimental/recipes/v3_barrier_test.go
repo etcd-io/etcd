@@ -15,7 +15,6 @@
 package recipes_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -46,7 +45,7 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 	require.Errorf(t, b.Hold(), "able to double-hold barrier")
 
 	// put a random key to move the revision forward
-	if _, err := chooseClient().Put(context.Background(), "x", ""); err != nil {
+	if _, err := chooseClient().Put(t.Context(), "x", ""); err != nil {
 		t.Errorf("could not put x (%v)", err)
 	}
 
