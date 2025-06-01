@@ -240,6 +240,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		var resp *clientv3.GetResponse
 		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
 		if resp != nil {
+			c.keyStore.SyncKeys(resp)
 			rev = resp.Header.Revision
 		}
 	case StaleList:
