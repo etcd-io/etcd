@@ -39,10 +39,10 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 
 	cli := clus.RandClient()
 	kvc := integration.ToGRPC(cli).KV
-	_, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 
 	donec := make(chan struct{})
 	go func() {
@@ -51,7 +51,7 @@ func TestV3MaintenanceDefragmentInflightRange(t *testing.T) {
 	}()
 
 	mvc := integration.ToGRPC(cli).Maintenance
-	mvc.Defragment(context.Background(), &pb.DefragmentRequest{})
+	mvc.Defragment(t.Context(), &pb.DefragmentRequest{})
 	cancel()
 
 	<-donec
@@ -69,10 +69,10 @@ func TestV3KVInflightRangeRequests(t *testing.T) {
 	cli := clus.RandClient()
 	kvc := integration.ToGRPC(cli).KV
 
-	_, err := kvc.Put(context.Background(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+	_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 
 	reqN := 10 // use 500+ for fast machine
 	var wg sync.WaitGroup

@@ -91,7 +91,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 
 	var err error
 	for i := 0; i < 120; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		_, err = m.Client.Put(ctx, "/"+key, "bar")
 		require.NoErrorf(t, err, "#%d: create on %s error", i, m.URL())
@@ -102,7 +102,7 @@ func TestSnapshotAndRestartMember(t *testing.T) {
 
 	m.WaitOK(t)
 	for i := 0; i < 120; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 		key := fmt.Sprintf("foo%d", i)
 		resp, err := m.Client.Get(ctx, "/"+key)
 		require.NoErrorf(t, err, "#%d: get on %s error", i, m.URL())
@@ -145,7 +145,7 @@ func TestRemoveMemberAndWALReplay(t *testing.T) {
 
 	// Add some k/v to trigger snapshot
 	for i := 0; i < 15; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), integration.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), integration.RequestTimeout)
 		_, err := c.Members[0].Client.Put(ctx, fmt.Sprintf("k%d", i), fmt.Sprintf("v%d", i))
 		cancel()
 		require.NoErrorf(t, err, "failed to put key-value")
@@ -174,7 +174,7 @@ func checkMemberCount(t *testing.T, m *integration.Member, expectedMemberCount i
 	if len(membersFromBackend) != expectedMemberCount {
 		t.Errorf("Expect member count read from backend=%d, got %d", expectedMemberCount, len(membersFromBackend))
 	}
-	membersResp, err := m.Client.MemberList(context.Background())
+	membersResp, err := m.Client.MemberList(t.Context())
 	require.NoError(t, err)
 	if len(membersResp.Members) != expectedMemberCount {
 		t.Errorf("Expect len(MemberList)=%d, got %d", expectedMemberCount, len(membersResp.Members))

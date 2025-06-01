@@ -81,7 +81,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
+	ctx, cancel := context.WithTimeout(t.Context(), testDuration)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -104,7 +104,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	injectFailures(clus)
 	wg.Wait()
 	kv := clus.Client(0)
-	resp, err := kv.Get(context.Background(), "foo")
+	resp, err := kv.Get(t.Context(), "foo")
 	require.NoError(t, err)
 	t.Logf("Revision %d", resp.Header.Revision)
 }

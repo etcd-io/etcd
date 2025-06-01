@@ -38,7 +38,7 @@ func TestPeriodicCheck(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var totalRevisions int64 = 1210
 	var rev int64
@@ -74,7 +74,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -112,7 +112,7 @@ func TestCompactHashCheck(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var totalRevisions int64 = 1210
 	var rev int64
@@ -149,7 +149,7 @@ func TestCompactHashCheckDetectCorruption(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
@@ -186,7 +186,7 @@ func TestCompactHashCheckDetectMultipleCorruption(t *testing.T) {
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	for i := 0; i < 10; i++ {
 		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i))
