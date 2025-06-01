@@ -17,7 +17,6 @@
 package clientv3test
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -81,7 +80,7 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 	errc := make(chan error)
 	for i := 0; i < 10; i++ {
 		go func(i int) {
-			_, err := cli.Put(context.TODO(),
+			_, err := cli.Put(t.Context(),
 				fmt.Sprint("foo", i),
 				strings.Repeat("a", 1024*1024),
 			)
@@ -97,7 +96,7 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 	if fragment {
 		opts = append(opts, clientv3.WithFragment())
 	}
-	wch := cli.Watch(context.TODO(), "foo", opts...)
+	wch := cli.Watch(t.Context(), "foo", opts...)
 
 	// expect 10 MiB watch response
 	select {
