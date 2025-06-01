@@ -3,6 +3,7 @@ USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 ARCH ?= $(shell go env GOARCH)
 REF = main
+IMAGE_TAG = latest
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image:
@@ -10,7 +11,7 @@ antithesis-build-client-docker-image:
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest -t etcd-server:$(REF)
+	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4
@@ -30,7 +31,7 @@ antithesis-build-etcd-image-main: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-config-image
 antithesis-build-config-image:
-	docker build -f ./Dockerfile.config . -t etcd-config:latest -t etcd-config:$(REF) --build-arg REF=$(REF)
+	docker build -f ./Dockerfile.config . -t etcd-config:latest --build-arg IMAGE_TAG=$(IMAGE_TAG)
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
