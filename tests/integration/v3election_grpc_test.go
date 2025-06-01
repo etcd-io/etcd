@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -34,21 +33,21 @@ func TestV3ElectionCampaign(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err1)
-	lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err2)
 
 	lc := integration.ToGRPC(clus.Client(0)).Election
 	req1 := &epb.CampaignRequest{Name: []byte("foo"), Lease: lease1.ID, Value: []byte("abc")}
-	l1, lerr1 := lc.Campaign(context.TODO(), req1)
+	l1, lerr1 := lc.Campaign(t.Context(), req1)
 	require.NoError(t, lerr1)
 
 	campaignc := make(chan struct{})
 	go func() {
 		defer close(campaignc)
 		req2 := &epb.CampaignRequest{Name: []byte("foo"), Lease: lease2.ID, Value: []byte("def")}
-		l2, lerr2 := lc.Campaign(context.TODO(), req2)
+		l2, lerr2 := lc.Campaign(t.Context(), req2)
 		if lerr2 != nil {
 			t.Error(lerr2)
 		}
@@ -63,7 +62,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 		t.Fatalf("got leadership before resign")
 	}
 
-	_, uerr := lc.Resign(context.TODO(), &epb.ResignRequest{Leader: l1.Leader})
+	_, uerr := lc.Resign(t.Context(), &epb.ResignRequest{Leader: l1.Leader})
 	require.NoError(t, uerr)
 
 	select {
@@ -72,7 +71,7 @@ func TestV3ElectionCampaign(t *testing.T) {
 	case <-campaignc:
 	}
 
-	lval, lverr := lc.Leader(context.TODO(), &epb.LeaderRequest{Name: []byte("foo")})
+	lval, lverr := lc.Leader(t.Context(), &epb.LeaderRequest{Name: []byte("foo")})
 	require.NoError(t, lverr)
 
 	if string(lval.Kv.Value) != "def" {
@@ -93,7 +92,7 @@ func TestV3ElectionObserve(t *testing.T) {
 	observec := make(chan struct{}, 1)
 	go func() {
 		defer close(observec)
-		s, err := lc.Observe(context.Background(), &epb.LeaderRequest{Name: []byte("foo")})
+		s, err := lc.Observe(t.Context(), &epb.LeaderRequest{Name: []byte("foo")})
 		observec <- struct{}{}
 		if err != nil {
 			t.Error(err)
@@ -119,9 +118,9 @@ func TestV3ElectionObserve(t *testing.T) {
 		t.Fatalf("observe stream took too long to start")
 	}
 
-	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 	require.NoError(t, err1)
-	c1, cerr1 := lc.Campaign(context.TODO(), &epb.CampaignRequest{Name: []byte("foo"), Lease: lease1.ID, Value: []byte("0")})
+	c1, cerr1 := lc.Campaign(t.Context(), &epb.CampaignRequest{Name: []byte("foo"), Lease: lease1.ID, Value: []byte("0")})
 	require.NoError(t, cerr1)
 
 	// overlap other leader so it waits on resign
@@ -129,18 +128,18 @@ func TestV3ElectionObserve(t *testing.T) {
 	go func() {
 		defer close(leader2c)
 
-		lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+		lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 		if err2 != nil {
 			t.Error(err2)
 		}
-		c2, cerr2 := lc.Campaign(context.TODO(), &epb.CampaignRequest{Name: []byte("foo"), Lease: lease2.ID, Value: []byte("5")})
+		c2, cerr2 := lc.Campaign(t.Context(), &epb.CampaignRequest{Name: []byte("foo"), Lease: lease2.ID, Value: []byte("5")})
 		if cerr2 != nil {
 			t.Error(cerr2)
 		}
 		for i := 6; i < 10; i++ {
 			v := []byte(fmt.Sprintf("%d", i))
 			req := &epb.ProclaimRequest{Leader: c2.Leader, Value: v}
-			if _, err := lc.Proclaim(context.TODO(), req); err != nil {
+			if _, err := lc.Proclaim(t.Context(), req); err != nil {
 				t.Error(err)
 			}
 		}
@@ -149,11 +148,11 @@ func TestV3ElectionObserve(t *testing.T) {
 	for i := 1; i < 5; i++ {
 		v := []byte(fmt.Sprintf("%d", i))
 		req := &epb.ProclaimRequest{Leader: c1.Leader, Value: v}
-		_, err := lc.Proclaim(context.TODO(), req)
+		_, err := lc.Proclaim(t.Context(), req)
 		require.NoError(t, err)
 	}
 	// start second leader
-	lc.Resign(context.TODO(), &epb.ResignRequest{Leader: c1.Leader})
+	lc.Resign(t.Context(), &epb.ResignRequest{Leader: c1.Leader})
 
 	select {
 	case <-observec:

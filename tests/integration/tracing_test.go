@@ -43,7 +43,7 @@ func TestTracing(t *testing.T) {
 	t.Run("UnaryRPC", func(t *testing.T) {
 		testRPCTracing(t, "UnaryRPC", containsUnaryRPCSpan, func(cli *clientv3.Client) error {
 			// make a request with the instrumented client
-			resp, err := cli.Get(context.TODO(), "key")
+			resp, err := cli.Get(t.Context(), "key")
 			require.NoError(t, err)
 			require.Empty(t, resp.Kvs)
 			return nil
@@ -54,14 +54,14 @@ func TestTracing(t *testing.T) {
 	t.Run("StreamRPC", func(t *testing.T) {
 		testRPCTracing(t, "StreamRPC", containsStreamRPCSpan, func(cli *clientv3.Client) error {
 			// Create a context with a reasonable timeout
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 
 			// Create a watch channel
 			watchChan := cli.Watch(ctx, "watch-key")
 
 			// Put a value to trigger the watch
-			_, err := cli.Put(context.TODO(), "watch-key", "watch-value")
+			_, err := cli.Put(t.Context(), "watch-key", "watch-value")
 			require.NoError(t, err)
 
 			// Wait for watch event
@@ -118,7 +118,7 @@ func testRPCTracing(t *testing.T, testName string, filterFunc func(*traceservice
 
 	// create a client that has tracing enabled
 	tracer := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
-	defer tracer.Shutdown(context.TODO())
+	defer tracer.Shutdown(t.Context())
 	tp := trace.TracerProvider(tracer)
 
 	tracingOpts := []otelgrpc.Option{
