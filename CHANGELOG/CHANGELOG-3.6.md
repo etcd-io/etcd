@@ -11,6 +11,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - [Replaced the deprecated/removed `UnaryServerInterceptor` and `StreamServerInterceptor` in otelgrpc with `NewServerHandler`](https://github.com/etcd-io/etcd/pull/20043)
 - [Add protection on `PromoteMember` and `UpdateRaftAttributes` to prevent panicking](https://github.com/etcd-io/etcd/pull/20051)
 - [Fix the issue that `--force-new-cluster` can't remove all other members in a corner case](https://github.com/etcd-io/etcd/pull/20071)
+- Fix [mvcc: avoid double decrement of watcher gauge on close/cancel race](https://github.com/etcd-io/etcd/pull/20067)
 
 ---
 
