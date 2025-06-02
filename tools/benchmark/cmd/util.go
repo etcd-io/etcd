@@ -163,9 +163,9 @@ func newReport() report.Report {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p)
+		return report.NewReportSample(p, generateJsonReport)
 	}
-	return report.NewReport(p)
+	return report.NewReport(p, generateJsonReport)
 }
 
 func newWeightedReport() report.Report {
@@ -174,7 +174,7 @@ func newWeightedReport() report.Report {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p)
+		return report.NewReportSample(p, generateJsonReport)
 	}
-	return report.NewWeightedReport(report.NewReport(p), p)
+	return report.NewWeightedReport(report.NewReport(p, generateJsonReport), p, generateJsonReport)
 }

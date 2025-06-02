@@ -30,10 +30,10 @@ type weightedReport struct {
 
 // NewWeightedReport returns a report that includes
 // both weighted and unweighted statistics.
-func NewWeightedReport(r Report, precision string) Report {
+func NewWeightedReport(r Report, precision string, generatePerfJson bool) Report {
 	return &weightedReport{
 		baseReport: r,
-		report:     newReport(precision),
+		report:     newReport(precision, generatePerfJson),
 		results:    make(chan Result, 16),
 	}
 }

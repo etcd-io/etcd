@@ -17,9 +17,12 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"math"
+	"os"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strings"
@@ -41,11 +44,33 @@ type Result struct {
 func (res *Result) Duration() time.Duration { return res.End.Sub(res.Start) }
 
 type report struct {
-	results   chan Result
-	precision string
+	generateJsonReport bool
+	precision          string
+	results            chan Result
 
 	stats Stats
 	sps   *secondPoints
+}
+
+type Metrics struct {
+	Perc50 float64 `json:"Perc50"`
+	Perc90 float64 `json:"Perc90"`
+	Perc99 float64 `json:"Perc99"`
+}
+
+type Labels struct {
+	Metric string `json:"Metric"`
+}
+
+type DataItem struct {
+	Data   Metrics `json:"data"`
+	Labels Labels  `json:"labels"`
+	Unit   string  `json:"unit"`
+}
+
+type perfdashFormattedReport struct {
+	DataItems []DataItem `json:"dataItems"`
+	Version   string     `json:"version"`
 }
 
 // Stats exposes results raw data.
@@ -81,19 +106,22 @@ type Report interface {
 	Stats() <-chan Stats
 }
 
-func NewReport(precision string) Report { return newReport(precision) }
+func NewReport(precision string, generateJsonReport bool) Report {
+	return newReport(precision, generateJsonReport)
+}
 
-func newReport(precision string) *report {
+func newReport(precision string, generateJsonReport bool) *report {
 	r := &report{
-		results:   make(chan Result, 16),
-		precision: precision,
+		results:            make(chan Result, 16),
+		precision:          precision,
+		generateJsonReport: generateJsonReport,
 	}
 	r.stats.ErrorDist = make(map[string]int)
 	return r
 }
 
-func NewReportSample(precision string) Report {
-	r := NewReport(precision).(*report)
+func NewReportSample(precision string, generateJsonReport bool) Report {
+	r := NewReport(precision, generateJsonReport).(*report)
 	r.sps = newSecondPoints()
 	return r
 }
@@ -155,8 +183,8 @@ func (r *report) sec2str(sec float64) string { return fmt.Sprintf(r.precision+" 
 
 type reportRate struct{ *report }
 
-func NewReportRate(precision string) Report {
-	return &reportRate{NewReport(precision).(*report)}
+func NewReportRate(precision string, generateJsonReport bool) Report {
+	return &reportRate{NewReport(precision, generateJsonReport).(*report)}
 }
 
 func (r *reportRate) String() string {
@@ -226,7 +254,52 @@ func (r *report) sprintLatencies() string {
 			s += fmt.Sprintf("  %v%% in %s.\n", pctls[i], r.sec2str(data[i]))
 		}
 	}
+	if r.generateJsonReport {
+		r.generateJsonBenchmarkReport()
+	}
 	return s
+}
+
+func (r *report) generateJsonBenchmarkReport() {
+	pcls, data := Percentiles(r.stats.Lats)
+	pclsData := make(map[float64]float64)
+	for i := 0; i < len(pcls); i++ {
+		pclsData[pcls[i]] = data[i] * 1000 // Since the reported data is in seconds, convert to ms.
+	}
+	report := perfdashFormattedReport{
+		Version: "v1",
+		DataItems: []DataItem{
+			{
+				Data: Metrics{
+					Perc50: math.Round(pclsData[50]*10000) / 10000,
+					Perc90: math.Round(pclsData[90]*10000) / 10000,
+					Perc99: math.Round(pclsData[99]*10000) / 10000,
+				},
+				Unit: "ms",
+				Labels: Labels{
+					Metric: "APIResponsiveness",
+				},
+			},
+		},
+	}
+	reportB, _ := json.MarshalIndent(report, "", "  ")
+
+	artifactsDir := os.Getenv("ARTIFACTS")
+	if artifactsDir == "" {
+		artifactsDir = "./_artifacts"
+	}
+
+	fileName := fmt.Sprintf("etcd_perf_%s.json", time.Now().UTC().Format(time.RFC3339))
+	err := os.MkdirAll(artifactsDir, 755)
+	if err != nil {
+		fmt.Println("Error creating artifacts directory:", err)
+	}
+	destPath := filepath.Join(artifactsDir, fileName)
+	err = os.WriteFile(destPath, reportB, 0644)
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+	}
+	fmt.Println("Successfully created a JSON perf report at", destPath)
 }
 
 func (r *report) histogram() string {
