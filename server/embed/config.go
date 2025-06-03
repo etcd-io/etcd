@@ -121,7 +121,7 @@ const (
 
 var (
 	ErrConflictBootstrapFlags = fmt.Errorf("multiple discovery or bootstrap flags are set. " +
-		"Choose one of \"initial-cluster\", \"discovery\", \"discovery-endpoints\" or \"discovery-srv\"")
+		"Choose one of \"initial-cluster\", \"discovery-endpoints\" or \"discovery-srv\"")
 	ErrUnsetAdvertiseClientURLsFlag = fmt.Errorf("--advertise-client-urls is required when --listen-client-urls is set explicitly")
 	ErrLogRotationInvalidLogOutput  = fmt.Errorf("--log-outputs requires a single file path when --log-rotate-config-json is defined")
 
@@ -262,9 +262,7 @@ type Config struct {
 	ClusterState          string `json:"initial-cluster-state"`
 	DNSCluster            string `json:"discovery-srv"`
 	DNSClusterServiceName string `json:"discovery-srv-name"`
-	Dproxy                string `json:"discovery-proxy"`
 
-	Durl         string                      `json:"discovery"`
 	DiscoveryCfg v3discovery.DiscoveryConfig `json:"discovery-config"`
 
 	InitialCluster      string `json:"initial-cluster"`
@@ -656,8 +654,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 		"List of this member's client URLs to advertise to the public.",
 	)
 
-	fs.StringVar(&cfg.Durl, "discovery", cfg.Durl, "Discovery URL used to bootstrap the cluster for v2 discovery. Will be deprecated in v3.7, and be decommissioned in v3.8.")
-
 	fs.Var(
 		flags.NewUniqueStringsValue(""),
 		"discovery-endpoints",
@@ -676,7 +672,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	fs.StringVar(&cfg.DiscoveryCfg.Auth.Username, "discovery-user", "", "V3 discovery: username[:password] for authentication (prompt if password is not supplied).")
 	fs.StringVar(&cfg.DiscoveryCfg.Auth.Password, "discovery-password", "", "V3 discovery: password for authentication (if this option is used, --user option shouldn't include password).")
 
-	fs.StringVar(&cfg.Dproxy, "discovery-proxy", cfg.Dproxy, "HTTP proxy to use for traffic to discovery service. Will be deprecated in v3.7, and be decommissioned in v3.8.")
 	fs.StringVar(&cfg.DNSCluster, "discovery-srv", cfg.DNSCluster, "DNS domain used to bootstrap initial cluster.")
 	fs.StringVar(&cfg.DNSClusterServiceName, "discovery-srv-name", cfg.DNSClusterServiceName, "Service name to query when using DNS discovery.")
 	fs.StringVar(&cfg.InitialCluster, "initial-cluster", cfg.InitialCluster, "Initial cluster configuration for bootstrapping.")
@@ -884,7 +879,7 @@ func (cfg *configYAML) configFromFile(path string) error {
 	}
 
 	// If a discovery or discovery-endpoints flag is set, clear default initial cluster set by InitialClusterFromName
-	if (cfg.Durl != "" || cfg.DNSCluster != "" || len(cfg.DiscoveryCfg.Endpoints) > 0) && cfg.InitialCluster == defaultInitialCluster {
+	if (cfg.DNSCluster != "" || len(cfg.DiscoveryCfg.Endpoints) > 0) && cfg.InitialCluster == defaultInitialCluster {
 		cfg.InitialCluster = ""
 	}
 	if cfg.ClusterState == "" {
@@ -967,7 +962,7 @@ func (cfg *Config) Validate() error {
 	}
 	// Check if conflicting flags are passed.
 	nSet := 0
-	for _, v := range []bool{cfg.Durl != "", cfg.InitialCluster != "", cfg.DNSCluster != "", len(cfg.DiscoveryCfg.Endpoints) > 0} {
+	for _, v := range []bool{cfg.InitialCluster != "", cfg.DNSCluster != "", len(cfg.DiscoveryCfg.Endpoints) > 0} {
 		if v {
 			nSet++
 		}
@@ -979,22 +974,6 @@ func (cfg *Config) Validate() error {
 
 	if nSet > 1 {
 		return ErrConflictBootstrapFlags
-	}
-
-	// Check if both v2 discovery and v3 discovery flags are passed.
-	v2discoveryFlagsExist := cfg.Dproxy != ""
-	v3discoveryFlagsExist := len(cfg.DiscoveryCfg.Endpoints) > 0 ||
-		cfg.DiscoveryCfg.Token != "" ||
-		cfg.DiscoveryCfg.Secure.Cert != "" ||
-		cfg.DiscoveryCfg.Secure.Key != "" ||
-		cfg.DiscoveryCfg.Secure.Cacert != "" ||
-		cfg.DiscoveryCfg.Auth.Username != "" ||
-		cfg.DiscoveryCfg.Auth.Password != ""
-
-	if v2discoveryFlagsExist && v3discoveryFlagsExist {
-		return errors.New("both v2 discovery settings (discovery, discovery-proxy) " +
-			"and v3 discovery settings (discovery-token, discovery-endpoints, discovery-cert, " +
-			"discovery-key, discovery-cacert, discovery-user, discovery-password) are set")
 	}
 
 	// If one of `discovery-token` and `discovery-endpoints` is provided,
@@ -1092,13 +1071,6 @@ func (cfg *Config) Validate() error {
 func (cfg *Config) PeerURLsMapAndToken(which string) (urlsmap types.URLsMap, token string, err error) {
 	token = cfg.InitialClusterToken
 	switch {
-	case cfg.Durl != "":
-		urlsmap = types.URLsMap{}
-		// If using v2 discovery, generate a temporary cluster based on
-		// self's advertised peer URLs
-		urlsmap[cfg.Name] = cfg.AdvertisePeerUrls
-		token = cfg.Durl
-
 	case len(cfg.DiscoveryCfg.Endpoints) > 0:
 		urlsmap = types.URLsMap{}
 		// If using v3 discovery, generate a temporary cluster based on
