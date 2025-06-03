@@ -73,7 +73,7 @@ mv /tmp/etcd-download-test/etcd /usr/local/bin/
 etcd
 ```
 
-This will bring up etcd listening on port 2379 for client communication and on port 2380 for server-to-server communication.
+This will bring up etcd listening on port 2377 for client communication and on port 2380 for server-to-server communication.
 
 Next, let's set a single key, and then retrieve it:
 
