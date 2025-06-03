@@ -207,21 +207,21 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 	conflictArgs := [][]string{
 		{
-			"-initial-cluster=0=localhost:8000",
-			"-discovery=http://example.com/abc",
+			"--initial-cluster=0=localhost:8000",
+			"--discovery-endpoints=http://example.com/abc",
 		},
 		{
-			"-discovery-srv=example.com",
-			"-discovery=http://example.com/abc",
+			"--discovery-srv=example.com",
+			"--discovery-endpoints=http://example.com/abc",
 		},
 		{
-			"-initial-cluster=0=localhost:8000",
-			"-discovery-srv=example.com",
+			"--initial-cluster=0=localhost:8000",
+			"--discovery-srv=example.com",
 		},
 		{
-			"-initial-cluster=0=localhost:8000",
-			"-discovery=http://example.com/abc",
-			"-discovery-srv=example.com",
+			"--initial-cluster=0=localhost:8000",
+			"--discovery-endpoints=http://example.com/abc",
+			"--discovery-srv=example.com",
 		},
 	}
 
@@ -283,29 +283,28 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 	}{
 		{
 			[]string{
-				"-initial-cluster=infra1=http://127.0.0.1:2380",
-				"-listen-client-urls=http://127.0.0.1:2379",
+				"--initial-cluster=infra1=http://127.0.0.1:2380",
+				"--listen-client-urls=http://127.0.0.1:2379",
 			},
 			embed.ErrUnsetAdvertiseClientURLsFlag,
 		},
 		{
 			[]string{
-				"-discovery-srv=example.com",
-				"-listen-client-urls=http://127.0.0.1:2379",
+				"--discovery-srv=example.com",
+				"--listen-client-urls=http://127.0.0.1:2379",
 			},
 			embed.ErrUnsetAdvertiseClientURLsFlag,
 		},
 		{
 			[]string{
-				"-discovery=http://example.com/abc",
-				"-discovery-fallback=exit",
-				"-listen-client-urls=http://127.0.0.1:2379",
+				"--discovery-fallback=exit",
+				"--listen-client-urls=http://127.0.0.1:2379",
 			},
 			embed.ErrUnsetAdvertiseClientURLsFlag,
 		},
 		{
 			[]string{
-				"-listen-client-urls=http://127.0.0.1:2379",
+				"--listen-client-urls=http://127.0.0.1:2379",
 			},
 			embed.ErrUnsetAdvertiseClientURLsFlag,
 		},
