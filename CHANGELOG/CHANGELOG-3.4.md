@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.38 (TBC)
 
+### etcd server
+
+- Fix [mvcc: avoid double decrement of watcher gauge on close/cancel race](https://github.com/etcd-io/etcd/pull/20065)
+
 ### Dependencies
 
 - Compile binaries using [go 1.23.9](https://github.com/etcd-io/etcd/pull/19872).
