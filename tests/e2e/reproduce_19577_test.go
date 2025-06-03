@@ -1,3 +1,17 @@
+// Copyright 2025 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package e2e
 
 import (
@@ -15,7 +29,7 @@ import (
 func TestReproduce19577(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	clus, cerr := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(1),
@@ -59,7 +73,7 @@ func TestReproduce19577(t *testing.T) {
 	// the close on the server end.
 	time.Sleep(time.Second * 1)
 
-	cli.Close()
+	require.NoError(t, cli.Close())
 
 	// We must wait longer than the failpoint to ensure we observe the state of the metric after
 	// the cancel/close race has completed.
