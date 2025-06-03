@@ -35,7 +35,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/features"
 )
 
@@ -1068,5 +1070,53 @@ func TestMatchNewConfigAddFlags(t *testing.T) {
 		return a.String() == b.String()
 	})); diff != "" {
 		t.Errorf("Diff: %s", diff)
+	}
+}
+
+func TestDiscoveryCfg(t *testing.T) {
+	testCases := []struct {
+		name         string
+		discoveryCfg v3discovery.DiscoveryConfig
+		wantErr      bool
+	}{
+		{
+			name: "Valid discovery config",
+			discoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{
+					Endpoints: []string{"http://10.0.0.100:2379", "http://10.0.0.101:2379"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Partial empty discovery endpoints",
+			discoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{
+					Endpoints: []string{"http://10.0.0.100:2379", ""},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty discovery endpoint",
+			discoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{
+					Endpoints: []string{"", ""},
+				},
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := NewConfig()
+			cfg.InitialCluster = ""
+			cfg.DiscoveryCfg = tc.discoveryCfg
+			cfg.DiscoveryCfg.Token = "foo"
+			err := cfg.Validate()
+
+			require.Equal(t, tc.wantErr, err != nil)
+		})
 	}
 }
