@@ -505,7 +505,7 @@ function bom_pass {
   # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
   # results in certain dependencies being excluded from the BOM file, such as procfs. 
   # For more info, https://github.com/etcd-io/etcd/issues/19665
-  output=$(GOOS=linux GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  output=$(GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -670,6 +670,17 @@ function proto_annotations_pass {
 
 function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
+}
+
+function go_workspace_pass {
+  log_callout "Ensuring go workspace is in sync."
+
+  run go mod download
+  if [ -n "$(git status --porcelain go.work.sum)" ]; then
+    log_error "Go workspace not in sync."
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
+  fi
 }
 
 ########### MAIN ###############################################################
