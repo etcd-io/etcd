@@ -78,7 +78,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis cache ."
+  echo "api pkg client/pkg client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis cache ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -98,7 +98,6 @@ function modules() {
     "${ROOT_MODULE}/api/v3"
     "${ROOT_MODULE}/pkg/v3"
     "${ROOT_MODULE}/client/pkg/v3"
-    "${ROOT_MODULE}/client/v2"
     "${ROOT_MODULE}/client/v3"
     "${ROOT_MODULE}/server/v3"
     "${ROOT_MODULE}/etcdutl/v3"

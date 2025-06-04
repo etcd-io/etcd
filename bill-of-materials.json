@@ -486,15 +486,6 @@
 		]
 	},
 	{
-		"project": "go.etcd.io/etcd/client/v2",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
-			}
-		]
-	},
-	{
 		"project": "go.etcd.io/etcd/client/v3",
 		"licenses": [
 			{
@@ -779,15 +770,6 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.7469879518072289
-			}
-		]
-	},
-	{
-		"project": "sigs.k8s.io/json",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9617021276595744
 			}
 		]
 	},
