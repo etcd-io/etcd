@@ -42,9 +42,7 @@ const (
 type ServerConfig struct {
 	Name string
 
-	DiscoveryURL   string
-	DiscoveryProxy string
-	DiscoveryCfg   v3discovery.DiscoveryConfig
+	DiscoveryCfg v3discovery.DiscoveryConfig
 
 	ClientURLs types.URLs
 	PeerURLs   types.URLs
@@ -220,8 +218,8 @@ func (c *ServerConfig) VerifyBootstrap() error {
 	if CheckDuplicateURL(c.InitialPeerURLsMap) {
 		return fmt.Errorf("initial cluster %s has duplicate url", c.InitialPeerURLsMap)
 	}
-	if c.InitialPeerURLsMap.String() == "" && c.DiscoveryURL == "" {
-		return fmt.Errorf("initial cluster unset and no discovery URL found")
+	if c.InitialPeerURLsMap.String() == "" && !c.ShouldDiscover() {
+		return fmt.Errorf("initial cluster unset and no discovery endpoints found")
 	}
 	return nil
 }
@@ -237,7 +235,7 @@ func (c *ServerConfig) VerifyJoinExisting() error {
 	if CheckDuplicateURL(c.InitialPeerURLsMap) {
 		return fmt.Errorf("initial cluster %s has duplicate url", c.InitialPeerURLsMap)
 	}
-	if c.DiscoveryURL != "" {
+	if c.ShouldDiscover() {
 		return fmt.Errorf("discovery URL should not be set when joining existing initial cluster")
 	}
 	return nil
@@ -315,7 +313,7 @@ func (c *ServerConfig) WALDir() string {
 func (c *ServerConfig) SnapDir() string { return filepath.Join(c.MemberDir(), "snap") }
 
 func (c *ServerConfig) ShouldDiscover() bool {
-	return c.DiscoveryURL != "" || len(c.DiscoveryCfg.Endpoints) > 0
+	return len(c.DiscoveryCfg.Endpoints) > 0
 }
 
 // ReqTimeout returns timeout for request to finish.

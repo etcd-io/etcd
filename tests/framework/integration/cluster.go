@@ -139,8 +139,6 @@ type ClusterConfig struct {
 	PeerTLS   *transport.TLSInfo
 	ClientTLS *transport.TLSInfo
 
-	DiscoveryURL string
-
 	AuthToken string
 
 	QuotaBackendBytes    int64
@@ -196,11 +194,6 @@ func SchemeFromTLSInfo(tls *transport.TLSInfo) string {
 
 // fillClusterForMembers fills up Member.InitialPeerURLsMap from each member's [name, scheme and PeerListeners address]
 func (c *Cluster) fillClusterForMembers() error {
-	if c.Cfg.DiscoveryURL != "" {
-		// Cluster will be discovered
-		return nil
-	}
-
 	addrs := make([]string, 0)
 	for _, m := range c.Members {
 		scheme := SchemeFromTLSInfo(m.PeerTLSInfo)
@@ -296,7 +289,6 @@ func (c *Cluster) MustNewMember(t testutil.TB) *Member {
 			CorruptCheckTime:            c.Cfg.CorruptCheckTime,
 			Metrics:                     c.Cfg.Metrics,
 		})
-	m.DiscoveryURL = c.Cfg.DiscoveryURL
 	return m
 }
 

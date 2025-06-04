@@ -191,8 +191,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		MaxWALFiles:                       cfg.MaxWalFiles,
 		InitialPeerURLsMap:                urlsmap,
 		InitialClusterToken:               token,
-		DiscoveryURL:                      cfg.Durl,
-		DiscoveryProxy:                    cfg.Dproxy,
 		DiscoveryCfg:                      cfg.DiscoveryCfg,
 		NewCluster:                        cfg.IsNewCluster(),
 		PeerTLSInfo:                       cfg.PeerTLSInfo,
@@ -366,8 +364,6 @@ func print(lg *zap.Logger, ec Config, sc config.ServerConfig, memberInitialized 
 		zap.String("auto-compaction-mode", sc.AutoCompactionMode),
 		zap.Duration("auto-compaction-retention", sc.AutoCompactionRetention),
 		zap.String("auto-compaction-interval", sc.AutoCompactionRetention.String()),
-		zap.String("discovery-url", sc.DiscoveryURL),
-		zap.String("discovery-proxy", sc.DiscoveryProxy),
 
 		zap.String("discovery-token", sc.DiscoveryCfg.Token),
 		zap.String("discovery-endpoints", strings.Join(sc.DiscoveryCfg.Endpoints, ",")),

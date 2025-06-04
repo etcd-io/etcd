@@ -28,9 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/features"
 )
 
@@ -235,17 +237,21 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 
 func TestConfigFileConflictClusteringFlags(t *testing.T) {
 	tests := []struct {
-		InitialCluster string `json:"initial-cluster"`
-		DNSCluster     string `json:"discovery-srv"`
-		Durl           string `json:"discovery"`
+		InitialCluster string                      `json:"initial-cluster"`
+		DNSCluster     string                      `json:"discovery-srv"`
+		DiscoveryCfg   v3discovery.DiscoveryConfig `json:"discovery-config"`
 	}{
 		{
 			InitialCluster: "0=localhost:8000",
-			Durl:           "http://example.com/abc",
+			DiscoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{Endpoints: []string{"http://example.com/abc"}},
+			},
 		},
 		{
 			DNSCluster: "example.com",
-			Durl:       "http://example.com/abc",
+			DiscoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{Endpoints: []string{"http://example.com/abc"}},
+			},
 		},
 		{
 			InitialCluster: "0=localhost:8000",
@@ -253,8 +259,10 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 		},
 		{
 			InitialCluster: "0=localhost:8000",
-			Durl:           "http://example.com/abc",
-			DNSCluster:     "example.com",
+			DiscoveryCfg: v3discovery.DiscoveryConfig{
+				ConfigSpec: clientv3.ConfigSpec{Endpoints: []string{"http://example.com/abc"}},
+			},
+			DNSCluster: "example.com",
 		},
 	}
 

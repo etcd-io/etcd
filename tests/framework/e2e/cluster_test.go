@@ -121,13 +121,6 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
-			name:   "Discovery",
-			config: NewConfig(WithDiscovery("123")),
-			expectArgsContain: []string{
-				"--discovery=123",
-			},
-		},
-		{
 			name:   "ClientTLS",
 			config: NewConfig(WithClientConnType(ClientTLS)),
 			expectArgsContain: []string{

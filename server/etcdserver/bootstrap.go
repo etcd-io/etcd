@@ -37,7 +37,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
@@ -332,14 +331,8 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 		return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 	}
 	if cfg.ShouldDiscover() {
-		var str string
-		if cfg.DiscoveryURL != "" {
-			cfg.Logger.Warn("V2 discovery is deprecated!")
-			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
-		} else {
-			cfg.Logger.Info("Bootstrapping cluster using v3 discovery.")
-			str, err = v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
-		}
+		cfg.Logger.Info("Bootstrapping cluster using v3 discovery.")
+		str, err := v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
 		if err != nil {
 			return nil, &servererrors.DiscoveryError{Op: "join", Err: err}
 		}

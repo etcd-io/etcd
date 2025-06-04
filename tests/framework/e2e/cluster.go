@@ -177,10 +177,6 @@ type EtcdProcessClusterConfig struct {
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
 	CN                 bool
-
-	// Discovery is for v2discovery
-	// Note: remove this field when we remove the v2discovery
-	Discovery string // v2 discovery
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -292,10 +288,6 @@ func WithAuthTokenOpts(token string) EPClusterOption {
 
 func WithRollingStart(rolling bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.RollingStart = rolling }
-}
-
-func WithDiscovery(discovery string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.Discovery = discovery }
 }
 
 func WithDiscoveryEndpoints(endpoints []string) EPClusterOption {
@@ -507,7 +499,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 }
 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
-	if cfg.Discovery == "" && len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
+	if len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
 		serverCfg.InitialCluster = strings.Join(initialCluster, ",")
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster="+serverCfg.InitialCluster)
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state="+initialClusterState)
@@ -604,10 +596,6 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 
 	args = append(args, cfg.TLSArgs()...)
-
-	if cfg.Discovery != "" {
-		args = append(args, "--discovery="+cfg.Discovery)
-	}
 
 	execPath := cfg.binaryPath(i)
 
