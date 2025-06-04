@@ -7,7 +7,6 @@ toolchain go1.24.3
 replace (
 	go.etcd.io/etcd/api/v3 => ./api
 	go.etcd.io/etcd/client/pkg/v3 => ./client/pkg
-	go.etcd.io/etcd/client/v2 => ./client/internal/v2
 	go.etcd.io/etcd/client/v3 => ./client/v3
 	go.etcd.io/etcd/etcdctl/v3 => ./etcdctl
 	go.etcd.io/etcd/etcdutl/v3 => ./etcdutl
@@ -26,7 +25,6 @@ require (
 	go.etcd.io/bbolt v1.4.0
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
-	go.etcd.io/etcd/client/v2 v2.306.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/etcdctl/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/etcdutl/v3 v3.6.0-alpha.0
@@ -101,6 +99,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )

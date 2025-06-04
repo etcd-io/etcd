@@ -7,7 +7,6 @@ toolchain go1.24.3
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
 	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
-	go.etcd.io/etcd/client/v2 => ./../client/internal/v2
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/etcdctl/v3 => ../etcdctl
 	go.etcd.io/etcd/etcdutl/v3 => ../etcdutl
