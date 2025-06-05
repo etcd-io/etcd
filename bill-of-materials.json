@@ -216,7 +216,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
