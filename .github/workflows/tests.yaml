@@ -65,8 +65,8 @@ jobs:
             PASSES='build grpcproxy' CPU='4' RACE='true' ./test
             ;;
           linux-amd64-e2e)
-            make install-gofail
-            GOARCH=amd64 FAILPOINTS='true' CPU='4' make test-e2e-release
+            make gofail-enable
+            TIMEOUT=60m VERBOSE=1 GOOS=linux GOARCH=amd64 CPU=4 EXPECT_DEBUG=true make test-e2e-release
             ;;
           linux-386-unit)
             GOARCH=386 make test-unit
