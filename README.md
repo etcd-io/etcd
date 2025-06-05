@@ -5,7 +5,7 @@
 [![Tests](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml)
 [![codeql-analysis](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml)
 [![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
-[![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
+[![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godocs.io/go.etcd.io/etcd/v3)
 [![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
 [![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/etcd-io/etcd/badge)](https://scorecard.dev/viewer/?uri=github.com/etcd-io/etcd)
@@ -41,6 +41,18 @@ See [etcdctl][etcdctl] for a simple command line client.
 [locksmith]: https://github.com/coreos/locksmith
 [vulcand]: https://github.com/vulcand/vulcand
 [etcdctl]: https://github.com/etcd-io/etcd/tree/main/etcdctl
+
+## Documentation
+
+The most common API documentation you'll need can be found here:
+
+* [go.etcd.io/etcd/api/v3](https://godocs.io/go.etcd.io/etcd/api/v3)
+* [go.etcd.io/etcd/client/pkg/v3](https://godocs.io/go.etcd.io/etcd/client/pkg/v3)
+* [go.etcd.io/etcd/client/v3](https://godocs.io/go.etcd.io/etcd/client/v3)
+* [go.etcd.io/etcd/etcdctl/v3](https://godocs.io/go.etcd.io/etcd/etcdctl/v3)
+* [go.etcd.io/etcd/pkg/v3](https://godocs.io/go.etcd.io/etcd/pkg/v3)
+* [go.etcd.io/etcd/raft/v3](https://godocs.io/go.etcd.io/etcd/raft/v3)
+* [go.etcd.io/etcd/server/v3](https://godocs.io/go.etcd.io/etcd/server/v3)
 
 ## Maintainers
 
