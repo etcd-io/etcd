@@ -62,7 +62,7 @@ func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports 
 	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(serversDataPath)))
 	assert.Always(err == nil, "Loaded persisted requests", map[string]any{"error": err})
 
-	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdAntithesis.ExpectUniqueRevision()}
+	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdPutDeleteLease.ExpectUniqueRevision()}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, persistedRequests, 5*time.Minute)
 	assert.Always(result.Assumptions == nil, "Validation assumptions fulfilled", map[string]any{"error": result.Assumptions})
 	if result.Linearization.Linearizable == porcupine.Unknown {

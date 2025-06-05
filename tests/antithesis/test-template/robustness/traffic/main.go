@@ -137,7 +137,7 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.EtcdAntithesis.RunTrafficLoop(ctx, c, limiter,
+			traffic.EtcdPutDeleteLease.RunTrafficLoop(ctx, c, limiter,
 				ids,
 				storage,
 				concurrencyLimiter,
@@ -154,7 +154,7 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 	go func(c *client.RecordingClient) {
 		defer wg.Done()
 		defer c.Close()
-		traffic.EtcdAntithesis.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
+		traffic.EtcdPutDeleteLease.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
 		mux.Lock()
 		reports = append(reports, c.Report())
 		mux.Unlock()
