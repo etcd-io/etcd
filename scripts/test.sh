@@ -534,6 +534,7 @@ function dump_deps_of_module() {
     return 255
   fi
   run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+  run go mod edit -json | jq -r 'try(.Replace[] | .Old | select(.Version != null) | .Path+","+.Version+", (replace),'"${module}"'")'
 }
 
 # Checks whether dependencies are consistent across modules
