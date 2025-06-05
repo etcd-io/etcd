@@ -14,6 +14,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - Fix [mvcc: avoid double decrement of watcher gauge on close/cancel race](https://github.com/etcd-io/etcd/pull/20067)
 - [Add validation to ensure there is no empty v3discovery endpoint](https://github.com/etcd-io/etcd/pull/20113)
 
+### etcdctl
+
+- Fix [command `etcdctl endpoint health` doesn't work when options are set via environment variables](https://github.com/etcd-io/etcd/pull/20121)
+
 ---
 
 ## v3.6.0 (2025-05-15)
