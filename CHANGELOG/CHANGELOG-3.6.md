@@ -18,6 +18,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - Fix [command `etcdctl endpoint health` doesn't work when options are set via environment variables](https://github.com/etcd-io/etcd/pull/20121)
 
+### Dependencies
+
+- Compile binaries using [go 1.23.10](https://github.com/etcd-io/etcd/pull/20128).
+
 ---
 
 ## v3.6.0 (2025-05-15)
