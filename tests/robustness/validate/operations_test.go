@@ -241,13 +241,9 @@ func TestValidateSerializableOperations(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			replay := model.NewReplay(tc.persistedRequests)
-			err := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
-			var errStr string
-			if err != nil {
-				errStr = err.Error()
-			}
-			if errStr != tc.expectError {
-				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", err, tc.expectError)
+			result := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
+			if result.Message != tc.expectError {
+				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", result.Message, tc.expectError)
 			}
 		})
 	}
@@ -395,9 +391,9 @@ func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupi
 
 func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
 	for i := 0; i < len(shuffles); i++ {
-		result := validateLinearizableOperationsAndVisualize(shuffles[i], duration)
-		if result.Linearizable != porcupine.Ok {
-			b.Fatalf("Not linearizable: %v", result.Linearizable)
+		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		if err := result.Error(); err != nil {
+			b.Fatalf("Not linearizable: %v", err)
 		}
 	}
 }

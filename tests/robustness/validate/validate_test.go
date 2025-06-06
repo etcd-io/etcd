@@ -169,7 +169,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 				},
 			},
 			persistedRequests: []model.EtcdRequest{putRequest("key", "value")},
-			expectError:       "watch validation failed",
+			expectError:       "watch: broke Reliable",
 		},
 	}
 	for _, tc := range tcs {
@@ -1978,13 +1978,9 @@ func TestValidateWatch(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			replay := model.NewReplay(tc.persistedRequests)
-			err := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay)
-			var errStr string
-			if err != nil {
-				errStr = err.Error()
-			}
-			if errStr != tc.expectError {
-				t.Errorf("validateWatch(...), got: %q, want: %q", err, tc.expectError)
+			result := validateWatch(zaptest.NewLogger(t), tc.config, tc.reports, replay)
+			if result.Message != tc.expectError {
+				t.Errorf("validateWatch(...), got: %q, want: %q", result.Message, tc.expectError)
 			}
 		})
 	}
