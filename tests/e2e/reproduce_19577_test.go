@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -65,7 +66,7 @@ func TestReproduce19577(t *testing.T) {
 	httpEndpoint := clus.EndpointsHTTP()[0]
 
 	watcherCount := getEtcdDebuggingWatchCountGauge(t, httpEndpoint)
-	require.Equal(t, 2.0, watcherCount)
+	require.InDelta(t, 2.0, watcherCount, 0.000001)
 
 	cancel()
 
@@ -80,7 +81,7 @@ func TestReproduce19577(t *testing.T) {
 	time.Sleep(time.Second * 4)
 
 	watcherCount = getEtcdDebuggingWatchCountGauge(t, httpEndpoint)
-	require.Equal(t, 0.0, watcherCount)
+	require.InDelta(t, 0.0, watcherCount, 0.000001)
 }
 
 func getEtcdDebuggingWatchCountGauge(t *testing.T, httpEndpoint string) (watchCount float64) {
