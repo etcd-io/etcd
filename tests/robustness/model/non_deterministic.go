@@ -15,8 +15,10 @@
 package model
 
 import (
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/anishathalye/porcupine"
@@ -41,9 +43,21 @@ var NonDeterministicModel = porcupine.Model{
 	},
 	DescribeState: func(st any) string {
 		etcdStates := st.(nonDeterministicState)
-		desc := make([]string, len(etcdStates))
+		desc := make([]string, 0, len(etcdStates))
 
-		for _, s := range etcdStates {
+		slices.SortFunc(etcdStates, func(i, j EtcdState) int {
+			if c := cmp.Compare(i.Revision, j.Revision); c != 0 {
+				return c
+			}
+			return cmp.Compare(i.CompactRevision, j.CompactRevision)
+		})
+
+		for i, s := range etcdStates {
+			// Describe just 3 first states before truncating
+			if i >= 3 {
+				desc = append(desc, "...truncated...")
+				break
+			}
 			desc = append(desc, describeEtcdState(s))
 		}
 
