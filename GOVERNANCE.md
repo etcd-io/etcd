@@ -16,11 +16,28 @@ please see [contributor guide] guide.
 Etcd project roles along with their requirements and responsibilities are defined
 in [community membership].
 
-## Decision making process
+## Decision-making process
 
-Decisions are built on consensus between [maintainers] publicly. Proposals and ideas
-can either be submitted for agreement via a GitHub issue or PR, or by sending an email
-to `etcd-maintainers@googlegroups.com`.
+Any significant changes affecting the etcd community, including but not limited to
+leadership transitions, governance updates, or project-wide process changes, must
+first be discussed transparently within the current [OWNERS]. These discussions
+should take place through established communication channels such as:
+
+- The bi-weekly sig-etcd meetings
+- The `etcd-maintainers@googlegroups.com` mailing list
+- Private Slack group threads involving sig-etcd leads and maintainers
+
+After reaching rough consensus within this group, the proposed changes should be shared
+with the wider community for feedback and finalization. This can be done by posting to
+the community mailing lists below, or by opening a relevant GitHub issue or pull request in
+the appropriate repository.
+
+- `etcd-dev@googlegroups.com`
+- `dev@kubernetes.io`
+
+Technical decisions are made based on public consensus among [OWNERS]. Proposals and
+ideas can either be submitted for agreement via a GitHub issue or PR, or by sending
+an email to `etcd-maintainers@googlegroups.com`.
 
 ## Conflict resolution
 
@@ -39,4 +56,4 @@ Changes in project governance could be initiated by opening a GitHub PR.
 [community membership]: /Documentation/contributor-guide/community-membership.md
 [Code of Conduct]: /code-of-conduct.md
 [contributor guide]: /CONTRIBUTING.md
-[maintainers]: /OWNERS
+[OWNERS]: /OWNERS
