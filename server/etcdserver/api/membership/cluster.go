@@ -46,8 +46,7 @@ type RaftCluster struct {
 	localID types.ID
 	cid     types.ID
 
-	v2store v2store.Store
-	be      MembershipBackend
+	be MembershipBackend
 
 	sync.Mutex // guards the fields below
 	version    *semver.Version
@@ -116,7 +115,6 @@ func NewCluster(lg *zap.Logger, opts ...ClusterOption) *RaftCluster {
 		removed:       make(map[types.ID]bool),
 		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
 		maxLearners:   clOpts.maxLearners,
-		v2store:       v2store.New(),
 	}
 }
 
@@ -246,8 +244,6 @@ func (c *RaftCluster) SetID(localID, cid types.ID) {
 	c.buildMembershipMetric()
 }
 
-func (c *RaftCluster) SetStore(st v2store.Store) { c.v2store = st }
-
 func (c *RaftCluster) SetBackend(be MembershipBackend) {
 	c.be = be
 	c.be.MustCreateBackendBuckets()
@@ -312,8 +308,6 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldAp
 
 	if shouldApplyV3 {
 		membersMap, removedMap = c.be.MustReadMembersFromBackend()
-	} else {
-		membersMap, removedMap = membersFromStore(c.lg, c.v2store)
 	}
 
 	id := types.ID(cc.NodeID)
@@ -400,7 +394,6 @@ func (c *RaftCluster) ValidateConfigurationChange(cc raftpb.ConfChange, shouldAp
 func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
-	mustSaveMemberToStore(c.lg, c.v2store, m)
 
 	if m.ID == c.localID {
 		setIsLearnerMetric(m)
@@ -436,7 +429,6 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	c.Lock()
 	defer c.Unlock()
-	mustDeleteMemberFromStore(c.lg, c.v2store, id)
 	if shouldApplyV3 {
 		c.be.MustDeleteMemberFromBackend(id)
 
@@ -478,7 +470,6 @@ func (c *RaftCluster) UpdateAttributes(id types.ID, attr Attributes, shouldApply
 
 	if m, ok := c.members[id]; ok {
 		m.Attributes = attr
-		mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
 		if shouldApplyV3 {
 			c.be.MustSaveMemberToBackend(m)
 		}
@@ -511,7 +502,6 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	if _, ok := c.members[id]; ok {
 		m := *(c.members[id])
 		m.RaftAttributes.IsLearner = false
-		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	} else {
 		c.lg.Info("Skipped promoting non-existent member in v2store",
 			zap.String("cluster-id", c.cid.String()),
@@ -551,7 +541,6 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	if _, ok := c.members[id]; ok {
 		m := *(c.members[id])
 		m.RaftAttributes = raftAttr
-		mustUpdateMemberInStore(c.lg, c.v2store, &m)
 	} else {
 		c.lg.Info("Skipped updating non-existent member in v2store",
 			zap.String("cluster-id", c.cid.String()),
@@ -618,7 +607,6 @@ func (c *RaftCluster) SetVersion(ver *semver.Version, onSet func(*zap.Logger, *s
 	c.version = ver
 	sv := semver.Must(semver.NewVersion(version.Version))
 	serverversion.MustDetectDowngrade(c.lg, sv, c.version)
-	mustSaveClusterVersionToStore(c.lg, c.v2store, ver)
 
 	if shouldApplyV3 {
 		c.be.MustSaveClusterVersionToBackend(ver)

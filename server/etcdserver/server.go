@@ -248,7 +248,6 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
 	uberApply apply.UberApplier
@@ -324,7 +323,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberID:              b.cluster.nodeID,
@@ -1096,17 +1094,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 
 		lg.Info("restored auth store")
 	}
-
-	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
-		lg.Panic("failed to restore v2 store", zap.Error(err))
-	}
-
-	if err := serverstorage.AssertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
-		lg.Panic("illegal v2store content", zap.Error(err))
-	}
-
-	lg.Info("restored v2 store")
 
 	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
 
