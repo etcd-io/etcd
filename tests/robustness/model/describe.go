@@ -16,6 +16,9 @@ package model
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"sort"
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -85,28 +88,41 @@ func describeEtcdRequest(request EtcdRequest) string {
 func describeEtcdState(state EtcdState) string {
 	descHTML := make([]string, 0)
 
-	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">Revision: %d, CompactRevision: %d</p>", state.Revision, state.CompactRevision))
+	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">state, rev: %d, compactRev: %d</p>", state.Revision, state.CompactRevision))
 
 	if len(state.KeyValues) > 0 {
-		descHTML = append(descHTML, "<ul style=\"margin: 0.25em 0;\">")
+		descHTML = append(descHTML, "keys: <ul style=\"margin: 0.25em 0;\">")
 
-		for k, v := range state.KeyValues {
-			keyValDesc := make([]string, 0)
+		keys := slices.Collect(maps.Keys(state.KeyValues))
+		sort.Strings(keys)
+		for _, key := range keys {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong> - ", key))
 
-			keyValDesc = append(keyValDesc, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong>: ", k))
-
-			if v.Value.Value != "" {
-				keyValDesc = append(keyValDesc, fmt.Sprintf("Value: %q, ", v.Value.Value))
+			value := state.KeyValues[key]
+			if value.Value.Value != "" {
+				descHTML = append(descHTML, fmt.Sprintf("val: %q, ", value.Value.Value))
 			}
-			if v.Value.Hash != 0 {
-				keyValDesc = append(keyValDesc, fmt.Sprintf("Hash: %d, ", v.Value.Hash))
+			if value.Value.Hash != 0 {
+				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
+			}
+			lease := state.KeyLeases[key]
+			if lease != 0 {
+				descHTML = append(descHTML, fmt.Sprintf("lease: %d, ", lease))
 			}
 
-			keyValDesc = append(keyValDesc, fmt.Sprintf("ModRevision: %d, Version: %d</li>", v.ModRevision, v.Version))
-
-			descHTML = append(descHTML, strings.Join(keyValDesc, ""))
+			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d</li>", value.ModRevision, value.Version))
 		}
 
+		descHTML = append(descHTML, "</ul>")
+	}
+
+	if len(state.Leases) > 0 {
+		descHTML = append(descHTML, "leases: <ul style=\"margin: 0.25em 0;\">")
+		leases := slices.Collect(maps.Keys(state.Leases))
+		slices.Sort(leases)
+		for _, lease := range leases {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", lease))
+		}
 		descHTML = append(descHTML, "</ul>")
 	}
 
