@@ -31,19 +31,19 @@ antithesis-build-etcd-image-main: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-config-image
 antithesis-build-config-image:
-	docker build -f ./Dockerfile.config . -t etcd-config:latest --build-arg IMAGE_TAG=$(IMAGE_TAG)
+	docker build -f config/Dockerfile.config . -t etcd-config:latest --build-arg IMAGE_TAG=$(IMAGE_TAG)
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up:
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose up
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f config/docker-compose.yml up
 
 .PHONY: antithesis-run-container-traffic
 antithesis-run-container-traffic:
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose exec client /opt/antithesis/test/v1/robustness/singleton_driver_traffic
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f config/docker-compose.yml exec client /opt/antithesis/test/v1/robustness/singleton_driver_traffic
 
 .PHONY: antithesis-run-container-validation
 antithesis-run-container-validation:
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose exec client /opt/antithesis/test/v1/robustness/finally_validation
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f config/docker-compose.yml exec client /opt/antithesis/test/v1/robustness/finally_validation
 
 .PHONY: antithesis-run-local-traffic
 antithesis-run-local-traffic:
@@ -55,5 +55,5 @@ antithesis-run-local-validation:
 
 .PHONY: antithesis-clean
 antithesis-clean:
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker-compose down
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f config/docker-compose.yml down
 	rm -rf /tmp/etcddata0 /tmp/etcddata1 /tmp/etcddata2 /tmp/etcdreport
