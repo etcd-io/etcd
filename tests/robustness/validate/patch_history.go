@@ -164,6 +164,7 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, persistedRequests 
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
 		case model.Compact:
+		case model.Defragment:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}

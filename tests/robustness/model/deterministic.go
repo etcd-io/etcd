@@ -29,6 +29,11 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
+// RevisionForNonLinearizableResponse is a fake revision value used to
+// separate responses for requests that are not linearizable,
+// thus we need to ignore it in model when checking linearization.
+const RevisionForNonLinearizableResponse = -1
+
 // DeterministicModel assumes a deterministic execution of etcd requests. All
 // requests that client called were executed and persisted by etcd. This
 // assumption is good for simulating etcd behavior (aka writing a fake), but not
@@ -230,15 +235,13 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		}
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: newState.Revision}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
 	case Compact:
 		if request.Compact.Revision <= newState.CompactRevision {
 			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
 		}
 		newState.CompactRevision = request.Compact.Revision
-		// Set fake revision as compaction returns non-linearizable revision.
-		// TODO: Model non-linearizable response revision in model.
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: -1}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
