@@ -131,7 +131,6 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 	keyStore := traffic.NewKeyStore(10, "key")
 	for i := 0; i < profile.ClientCount; i++ {
 		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
-		defer c.Close()
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
@@ -159,8 +158,42 @@ func simulateTraffic(ctx context.Context, hosts []string, ids identity.Provider,
 		reports = append(reports, c.Report())
 		mux.Unlock()
 	}(compactClient)
+	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
+	for _, h := range hosts {
+		c := connect([]string{h}, ids, baseTime)
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			runDefragLoop(ctx, c, defragPeriod, finish)
+			mux.Lock()
+			reports = append(reports, c.Report())
+			mux.Unlock()
+		}(c)
+	}
 	wg.Wait()
 	return reports
+}
+
+func runDefragLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
+	jittered := time.Duration(robustnessrand.RandRange(int64(period-period/2), int64(period+period/2)))
+	ticker := time.NewTicker(jittered)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-finish:
+			return
+		case <-ticker.C:
+		}
+		dctx, cancel := context.WithTimeout(ctx, traffic.RequestTimeout)
+		_, err := c.Defragment(dctx)
+		cancel()
+		if err != nil {
+			continue
+		}
+	}
 }
 
 func connect(endpoints []string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {
