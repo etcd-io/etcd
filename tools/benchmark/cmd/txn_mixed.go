@@ -95,8 +95,8 @@ func mixedTxnFunc(cmd *cobra.Command, _ []string) {
 	bar = pb.New(mixedTxnTotal)
 	bar.Start()
 
-	reportRead := newReport()
-	reportWrite := newReport()
+	reportRead := newReport(cmd.Name() + "-read")
+	reportWrite := newReport(cmd.Name() + "-write")
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {

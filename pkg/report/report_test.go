@@ -37,7 +37,7 @@ func TestPercentiles(t *testing.T) {
 }
 
 func TestReport(t *testing.T) {
-	r := NewReportSample("%f")
+	r := NewReportSample("%f", "", false)
 	go func() {
 		start := time.Now()
 		for i := 0; i < 5; i++ {
@@ -77,7 +77,7 @@ func TestReport(t *testing.T) {
 }
 
 func TestWeightedReport(t *testing.T) {
-	r := NewWeightedReport(NewReport("%f"), "%f")
+	r := NewWeightedReport(NewReport("%f", "", false), "%f", "", false)
 	go func() {
 		start := time.Now()
 		for i := 0; i < 5; i++ {

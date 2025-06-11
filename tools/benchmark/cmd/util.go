@@ -157,24 +157,24 @@ func mustRandBytes(n int) []byte {
 	return rb
 }
 
-func newReport() report.Report {
+func newReport(reportName string) report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, generateJsonReport)
+		return report.NewReportSample(p, reportName, generatePerfReport)
 	}
-	return report.NewReport(p, generateJsonReport)
+	return report.NewReport(p, reportName, generatePerfReport)
 }
 
-func newWeightedReport() report.Report {
+func newWeightedReport(reportName string) report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, generateJsonReport)
+		return report.NewReportSample(p, reportName, generatePerfReport)
 	}
-	return report.NewWeightedReport(report.NewReport(p, generateJsonReport), p, generateJsonReport)
+	return report.NewWeightedReport(report.NewReport(p, reportName, generatePerfReport), p, reportName, generatePerfReport)
 }
