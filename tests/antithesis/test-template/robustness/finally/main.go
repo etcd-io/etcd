@@ -28,7 +28,6 @@ import (
 
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
-	"go.etcd.io/etcd/tests/v3/robustness/traffic"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
 
@@ -61,7 +60,7 @@ func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports 
 	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(serversDataPath)))
 	assertResult(validate.ResultFromError(err), "Loaded persisted requests")
 
-	validateConfig := validate.Config{ExpectRevisionUnique: traffic.EtcdPutDeleteLease.ExpectUniqueRevision()}
+	validateConfig := validate.Config{ExpectRevisionUnique: false}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, persistedRequests, 5*time.Minute)
 	assertResult(result.Assumptions, "Validation assumptions fulfilled")
 	if result.Linearization.Timeout {
