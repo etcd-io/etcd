@@ -125,6 +125,9 @@ func (l *tlsListener) acceptLoop() {
 	for {
 		conn, err := l.Listener.Accept()
 		if err != nil {
+			if ne, ok := err.(net.Error); ok && ne.Temporary() {
+				continue
+			}
 			l.err = err
 			return
 		}
