@@ -47,6 +47,34 @@ var (
 			pad := strings.Repeat(" ", 2)
 			return pad + strings.Replace(s, "\n", "\n"+pad, -1)
 		},
+		"groupCommands": func(groups map[string][]*cobra.Command) string {
+			var result strings.Builder
+
+			groupOrder := []struct {
+				Name    string
+				Display string
+			}{
+				{"Key-value commands", "Key-value commands"},
+				{"Cluster maintenance commands", "Cluster maintenance commands"},
+				{"Concurrency commands", "Concurrency commands"},
+				{"Authentication commands", "Authentication commands"},
+				{"Utility commands", "Utility commands"},
+			}
+
+			for _, group := range groupOrder {
+				if commands, exists := groups[group.Name]; exists && len(commands) > 0 {
+					result.WriteString(fmt.Sprintf("%s:\n", group.Display))
+					for _, cmd := range commands {
+						if cmd.Runnable() || cmd.HasSubCommands() {
+							result.WriteString(fmt.Sprintf("  %-16s %s\n", cmd.Name(), cmd.Short))
+						}
+					}
+					result.WriteString("\n")
+				}
+			}
+
+			return strings.TrimSuffix(result.String(), "\n")
+		},
 	}
 )
 
@@ -80,13 +108,7 @@ Examples:
 {{end}}\
 {{if .Cmd.HasSubCommands}}\
 
-COMMANDS:
-{{range .SubCommands}}\
-{{ $cmdname := cmdName . $cmd }}\
-{{ if .Runnable }}\
-{{printf "%s\t%s" $cmdname .Short | indent}}
-{{end}}\
-{{end}}\
+{{ groupCommands .GroupedCommands }}\
 {{end}}\
 {{ if .Cmd.Long }}\
 
@@ -151,21 +173,81 @@ func getSubCommands(cmd *cobra.Command) []*cobra.Command {
 	return subCommands
 }
 
+func groupCommandsByCategory(commands []*cobra.Command) map[string][]*cobra.Command {
+	groups := map[string][]*cobra.Command{
+		"Key-value commands":          {},
+		"Cluster maintenance commands": {},
+		"Concurrency commands":        {},
+		"Authentication commands":     {},
+		"Utility commands":           {},
+	}
+	
+	commandGroups := map[string]string{
+		"put":         "Key-value commands",
+		"get":         "Key-value commands",
+		"del":         "Key-value commands",
+		"txn":         "Key-value commands",
+		"compaction":  "Key-value commands",
+		"watch":       "Key-value commands",
+		"lease":       "Key-value commands",
+
+		"member":      "Cluster maintenance commands",
+		"endpoint":    "Cluster maintenance commands",
+		"alarm":       "Cluster maintenance commands",
+		"defrag":      "Cluster maintenance commands",
+		"snapshot":    "Cluster maintenance commands",
+		"move-leader": "Cluster maintenance commands",
+		"downgrade":   "Cluster maintenance commands",
+
+		"lock":        "Concurrency commands",
+		"elect":       "Concurrency commands",
+
+		"auth":        "Authentication commands",
+		"role":        "Authentication commands",
+		"user":        "Authentication commands",
+
+		"make-mirror": "Utility commands",
+		"version":     "Utility commands",
+		"check":       "Utility commands",
+		"completion":  "Utility commands",
+		"help":        "Utility commands",
+	}
+
+	for _, cmd := range commands {
+		if cmd.Parent() == nil || cmd.Parent().Parent() != nil {
+			continue
+		}
+		
+		if !cmd.Runnable() && !cmd.HasSubCommands() {
+			continue
+		}
+		
+		if group, exists := commandGroups[cmd.Name()]; exists {
+			groups[group] = append(groups[group], cmd)
+		}
+	}
+
+	return groups
+}
+
 func UsageFunc(cmd *cobra.Command, version, APIVersion string) error {
 	subCommands := getSubCommands(cmd)
+	groupedCommands := groupCommandsByCategory(subCommands)
 	tabOut := getTabOutWithWriter(os.Stdout)
 	commandUsageTemplate.Execute(tabOut, struct {
-		Cmd         *cobra.Command
-		LocalFlags  string
-		GlobalFlags string
-		SubCommands []*cobra.Command
-		Version     string
-		APIVersion  string
+		Cmd             *cobra.Command
+		LocalFlags      string
+		GlobalFlags     string
+		SubCommands     []*cobra.Command
+		GroupedCommands map[string][]*cobra.Command
+		Version         string
+		APIVersion      string
 	}{
 		cmd,
 		etcdFlagUsages(cmd.LocalFlags()),
 		etcdFlagUsages(cmd.InheritedFlags()),
 		subCommands,
+		groupedCommands,
 		version,
 		APIVersion,
 	})
