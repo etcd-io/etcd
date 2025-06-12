@@ -72,14 +72,19 @@ func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable
 				serializable = append(serializable, op)
 			}
 			// Remove failed read requests as they are not relevant for linearization.
-			if response.Error == "" || !request.IsRead() {
-				// For linearization, we set the return time of failed requests to MaxInt64.
-				// Failed requests can still be persisted, however we don't know when request has taken effect.
-				if response.Error != "" {
-					op.Return = math.MaxInt64
-				}
-				linearizable = append(linearizable, op)
+			if request.IsRead() && response.Error != "" {
+				continue
 			}
+			// Defragment is not linearizable
+			if request.Type == model.Defragment {
+				continue
+			}
+			// For linearization, we set the return time of failed requests to MaxInt64.
+			// Failed requests can still be persisted, however we don't know when request has taken effect.
+			if response.Error != "" {
+				op.Return = math.MaxInt64
+			}
+			linearizable = append(linearizable, op)
 		}
 	}
 	return linearizable, serializable
