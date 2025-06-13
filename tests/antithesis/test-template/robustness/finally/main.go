@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"maps"
+	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -50,17 +51,22 @@ func main() {
 	}
 	reports, err := report.LoadClientReports(reportPath)
 	assert.Always(err == nil, "Loaded client reports", map[string]any{"error": err})
-	result := validateReports(lg, dirs, reports)
+	tf, err := report.LoadTrafficDetail(reportPath)
+	if err != nil && !os.IsNotExist(err) {
+		panic(err)
+	}
+
+	result := validateReports(lg, dirs, reports, tf)
 	if err := result.Linearization.Visualize(lg, filepath.Join(reportPath, reportFileName)); err != nil {
 		panic(err)
 	}
 }
 
-func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports []report.ClientReport) validate.RobustnessResult {
+func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports []report.ClientReport, tf report.TrafficDetail) validate.RobustnessResult {
 	persistedRequests, err := report.PersistedRequests(lg, slices.Collect(maps.Values(serversDataPath)))
 	assertResult(validate.ResultFromError(err), "Loaded persisted requests")
 
-	validateConfig := validate.Config{ExpectRevisionUnique: false}
+	validateConfig := validate.Config{ExpectRevisionUnique: tf.ExpectUniqueRevision}
 	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, persistedRequests, 5*time.Minute)
 	assertResult(result.Assumptions, "Validation assumptions fulfilled")
 	if result.Linearization.Timeout {
