@@ -582,6 +582,13 @@ gofail-enable: install-gofail
 gofail-disable: install-gofail
 	PASSES="toggle_failpoints" ./test.sh
 
+.PHONY: run-govulncheck
+run-govulncheck:
+ifeq (, $(shell which govulncheck))
+	$(shell go install golang.org/x/vuln/cmd/govulncheck@latest)
+endif
+	PASSES="govuln" ./test.sh
+
 # Static analysis
 
 .PHONY: verify
