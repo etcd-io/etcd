@@ -36,6 +36,8 @@ type keyStore struct {
 	latestRevision int64
 }
 
+type KeyStore = keyStore
+
 func NewKeyStore(size int, keyPrefix string) *keyStore {
 	k := &keyStore{
 		keys:      make([]string, size),
