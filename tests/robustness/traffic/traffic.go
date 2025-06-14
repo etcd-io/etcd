@@ -43,14 +43,14 @@ var (
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		MemberClientCount:              8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		MemberClientCount:              8,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 )
@@ -75,7 +75,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lg.Info("Start traffic")
 	startTime := time.Since(baseTime)
-	for i := 0; i < profile.ClientCount; i++ {
+	for i := 0; i < profile.MemberClientCount; i++ {
 		wg.Add(1)
 		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
 		require.NoError(t, nerr)
@@ -186,7 +186,8 @@ type Profile struct {
 	MaximalQPS                     float64
 	BurstableQPS                   int
 	MaxNonUniqueRequestConcurrency int
-	ClientCount                    int
+	MemberClientCount              int
+	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
 }
