@@ -76,7 +76,7 @@ func main() {
 	choice := rand.IntN(len(traffics))
 	tf := traffics[choice]
 	lg.Info("Traffic", zap.String("Type", trafficNames[choice]))
-	r := report.TestReport{Logger: lg, ServersDataPath: etcdetcdDataPaths}
+	r := report.TestReport{Logger: lg, ServersDataPath: etcdetcdDataPaths, Traffic: &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()}}
 	defer func() {
 		if err = r.Report(reportPath); err != nil {
 			lg.Error("Failed to save traffic generation report", zap.Error(err))

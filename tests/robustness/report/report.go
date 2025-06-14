@@ -15,8 +15,10 @@
 package report
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
 	"go.uber.org/zap"
@@ -30,6 +32,7 @@ type TestReport struct {
 	ServersDataPath map[string]string
 	Client          []ClientReport
 	Visualize       func(lg *zap.Logger, path string) error
+	Traffic         *TrafficDetail
 }
 
 func (r *TestReport) Report(path string) error {
@@ -47,6 +50,11 @@ func (r *TestReport) Report(path string) error {
 	}
 	if r.Client != nil {
 		if err := persistClientReports(r.Logger, path, r.Client); err != nil {
+			return err
+		}
+	}
+	if r.Traffic != nil {
+		if err := persistTrafficDetail(r.Logger, path, *r.Traffic); err != nil {
 			return err
 		}
 	}
@@ -73,4 +81,29 @@ func memberDataDir(member e2e.EtcdProcess) string {
 		return filepath.Join(lazyFS.LazyFSDir, "data")
 	}
 	return member.Config().DataDirPath
+}
+
+type TrafficDetail struct {
+	ExpectUniqueRevision bool `json:"expectuniquerevision,omitempty"`
+}
+
+const trafficDetailFileName = "traffic.json"
+
+func persistTrafficDetail(lg *zap.Logger, p string, td TrafficDetail) error {
+	lg.Info("Saving traffic configuration details", zap.String("path", path.Join(p, trafficDetailFileName)))
+	b, err := json.Marshal(td)
+	if err != nil {
+		return nil
+	}
+	return os.WriteFile(filepath.Join(p, trafficDetailFileName), b, 0o644)
+}
+
+func LoadTrafficDetail(p string) (TrafficDetail, error) {
+	var detail TrafficDetail
+	b, err := os.ReadFile(filepath.Join(p, trafficDetailFileName))
+	if err != nil {
+		return TrafficDetail{}, err
+	}
+	err = json.Unmarshal(b, &detail)
+	return detail, err
 }

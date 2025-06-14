@@ -88,7 +88,11 @@ func TestRobustnessRegression(t *testing.T) {
 
 func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenarios.TestScenario, c *e2e.EtcdProcessCluster) {
 	serverDataPaths := report.ServerDataPaths(c)
-	r := report.TestReport{Logger: lg, ServersDataPath: serverDataPaths}
+	r := report.TestReport{
+		Logger:          lg,
+		ServersDataPath: serverDataPaths,
+		Traffic:         &report.TrafficDetail{ExpectUniqueRevision: s.Traffic.ExpectUniqueRevision()},
+	}
 	// t.Failed() returns false during panicking. We need to forcibly
 	// save data on panicking.
 	// Refer to: https://github.com/golang/go/issues/49929
