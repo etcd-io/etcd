@@ -27,6 +27,7 @@ import (
 	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"go.uber.org/zap"
 
+	"go.etcd.io/etcd/tests/v3/antithesis/test-template/config"
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
@@ -36,13 +37,19 @@ const (
 	reportFileName = "history.html"
 )
 
+var (
+	NodeCount = "3"
+)
+
 func main() {
 	local := flag.Bool("local", false, "run finally locally and connect to etcd instances via localhost")
 	flag.Parse()
 
-	reportPath, _, dirs := common.DefaultPaths()
+	cfg := config.MakeConfig(NodeCount)
+
+	_, reportPath, dirs := common.DefaultPaths(cfg)
 	if *local {
-		reportPath, _, dirs = common.LocalPaths()
+		_, reportPath, dirs = common.LocalPaths(cfg)
 	}
 
 	lg, err := zap.NewProduction()

@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math/rand/v2"
 	"os"
 	"slices"
@@ -30,6 +31,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
+	"go.etcd.io/etcd/tests/v3/antithesis/test-template/config"
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -54,15 +56,18 @@ var (
 		traffic.EtcdPutDeleteLease,
 		traffic.Kubernetes,
 	}
+	NodeCount = "3"
 )
 
 func main() {
 	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
 	flag.Parse()
 
-	reportPath, hosts, etcdetcdDataPaths := common.DefaultPaths()
+	cfg := config.MakeConfig(NodeCount)
+
+	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
 	if *local {
-		reportPath, hosts, etcdetcdDataPaths = common.LocalPaths()
+		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
 	}
 
 	ctx := context.Background()
@@ -105,6 +110,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	}
 	g := errgroup.Group{}
 	startTime := time.Since(baseTime)
+	fmt.Printf("%v\n", hosts)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		trafficReports = slices.Concat(trafficReports, simulateTraffic(ctx, tf, hosts, ids, baseTime, duration))
