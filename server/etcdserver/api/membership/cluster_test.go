@@ -279,18 +279,9 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChangeV3(t *testing.T) {
-	testClusterValidateConfigurationChange(t, true)
-}
-
-func TestClusterValidateConfigurationChangeV2(t *testing.T) {
-	testClusterValidateConfigurationChange(t, false)
-}
-
-func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldApplyV3) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
 	be := newMembershipBackend()
 	cl.SetBackend(be)
-	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
 		if i == 1 {
@@ -467,7 +458,7 @@ func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldAp
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc, shouldApplyV3)
+		err := cl.ValidateConfigurationChange(tt.cc, true)
 		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -489,7 +480,6 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
 	if cs.ID() == previd {
@@ -532,7 +522,6 @@ func TestNodeToMemberBad(t *testing.T) {
 func TestClusterAddMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMember(1, nil, "node1", nil), true)
 
 	wactions := []testutil.Action{
@@ -555,7 +544,6 @@ func TestClusterAddMember(t *testing.T) {
 func TestClusterAddMemberAsLearner(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
 
 	wactions := []testutil.Action{
@@ -598,7 +586,6 @@ func TestClusterMembers(t *testing.T) {
 func TestClusterRemoveMember(t *testing.T) {
 	st := mockstore.NewRecorder()
 	c := newTestCluster(t, nil)
-	c.SetStore(st)
 	c.RemoveMember(1, true)
 
 	wactions := []testutil.Action{
@@ -667,7 +654,6 @@ func newTestCluster(tb testing.TB, membs []*Member) *RaftCluster {
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 		be:      newMembershipBackend(),
-		v2store: v2store.New(),
 	}
 	for _, m := range membs {
 		c.members[m.ID] = m
@@ -1049,7 +1035,6 @@ func TestPromoteMember(t *testing.T) {
 			c := newTestCluster(t, tc.members)
 			st := v2store.New("/0", "/1")
 			c.Store(st)
-			c.SetStore(st)
 
 			c.PromoteMember(tc.promoteID, false)
 
@@ -1100,7 +1085,6 @@ func TestUpdateRaftAttributes(t *testing.T) {
 			c := newTestCluster(t, tc.members)
 			st := v2store.New("/0", "/1")
 			c.Store(st)
-			c.SetStore(st)
 
 			c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, false)
 
