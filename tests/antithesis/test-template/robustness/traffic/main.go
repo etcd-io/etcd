@@ -43,7 +43,8 @@ var (
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
-		ClientCount:                    3,
+		MemberClientCount:              3,
+		ClusterClientCount:             3,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	trafficNames = []string{
@@ -137,56 +138,117 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, ids identity.Provider, baseTime time.Time, duration time.Duration) []report.ClientReport {
 	var mux sync.Mutex
 	var wg sync.WaitGroup
-	storage := identity.NewLeaseIDStorage()
-	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
-	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
-	finish := closeAfter(ctx, duration)
 	reports := []report.ClientReport{}
-	keyStore := traffic.NewKeyStore(10, "key")
-	for i := 0; i < profile.ClientCount; i++ {
-		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
+	sim := &simulator{
+		hosts:              hosts,
+		tf:                 tf,
+		reporting:          reporter{&wg, &mux, &reports},
+		ids:                ids,
+		baseTime:           baseTime,
+		finish:             closeAfter(ctx, duration),
+		storage:            identity.NewLeaseIDStorage(),
+		limiter:            rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS),
+		concurrencyLimiter: traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency),
+		keyStore:           traffic.NewKeyStore(10, "key"),
+	}
 
-			tf.RunTrafficLoop(ctx, c, limiter,
-				ids,
-				storage,
-				concurrencyLimiter,
-				keyStore,
-				finish,
-			)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
-		}(c)
-	}
-	wg.Add(1)
-	compactClient := connect(hosts, ids, baseTime)
-	go func(c *client.RecordingClient) {
-		defer wg.Done()
-		defer c.Close()
-		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
-		mux.Lock()
-		reports = append(reports, c.Report())
-		mux.Unlock()
-	}(compactClient)
-	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
-	for _, h := range hosts {
-		c := connect([]string{h}, ids, baseTime)
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			runDefragLoop(ctx, c, defragPeriod, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
-		}(c)
-	}
+	sim.runSingleMemberTraffic(ctx)
+	sim.runAllMemberTraffic(ctx)
+	sim.runCompaction(ctx)
+	sim.runDefragment(ctx)
 	wg.Wait()
 	return reports
+}
+
+type simulator struct {
+	hosts              []string
+	tf                 traffic.Traffic
+	reporting          reporter
+	ids                identity.Provider
+	baseTime           time.Time
+	finish             <-chan struct{}
+	storage            identity.LeaseIDStorage
+	limiter            *rate.Limiter
+	concurrencyLimiter traffic.ConcurrencyLimiter
+	keyStore           *traffic.KeyStore
+}
+
+func (s *simulator) runSingleMemberTraffic(ctx context.Context) {
+	for i := range profile.MemberClientCount {
+		c := connect([]string{s.hosts[i%len(s.hosts)]}, s.ids, s.baseTime)
+		go s.reporting.makeReportOf(trafficLoad(ctx, s.tf, s.limiter, s.ids, s.storage, s.concurrencyLimiter, s.keyStore, s.finish)).usingClient(c)
+	}
+}
+
+func (s *simulator) runAllMemberTraffic(ctx context.Context) {
+	for range profile.ClusterClientCount {
+		c := connect(s.hosts, s.ids, s.baseTime)
+		go s.reporting.makeReportOf(trafficLoad(ctx, s.tf, s.limiter, s.ids, s.storage, s.concurrencyLimiter, s.keyStore, s.finish)).usingClient(c)
+	}
+}
+
+func (s *simulator) runCompaction(ctx context.Context) {
+	compactClient := connect(s.hosts, s.ids, s.baseTime)
+	go s.reporting.makeReportOf(compaction(ctx, s.tf, traffic.DefaultCompactionPeriod, s.finish)).usingClient(compactClient)
+}
+
+func (s *simulator) runDefragment(ctx context.Context) {
+	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(s.hosts))
+	for _, h := range s.hosts {
+		c := connect([]string{h}, s.ids, s.baseTime)
+		go s.reporting.makeReportOf(defragment(ctx, defragPeriod, s.finish)).usingClient(c)
+	}
+}
+
+type reporter struct {
+	wg  *sync.WaitGroup
+	mux *sync.Mutex
+	r   *[]report.ClientReport
+}
+
+func (rp *reporter) makeReportOf(the action) *recorder {
+	return &recorder{rp, the}
+}
+
+type recorder struct {
+	*reporter
+	an action
+}
+
+func (rc *recorder) usingClient(c *client.RecordingClient) {
+	defer rc.wg.Done()
+	defer c.Close()
+	rc.wg.Add(1)
+	rc.an(c)
+	rc.mux.Lock()
+	*rc.r = append(*rc.r, c.Report())
+	rc.mux.Unlock()
+}
+
+type action func(*client.RecordingClient)
+
+func trafficLoad(ctx context.Context, tf traffic.Traffic, limiter *rate.Limiter,
+	ids identity.Provider,
+	storage identity.LeaseIDStorage,
+	concurrencyLimiter traffic.ConcurrencyLimiter,
+	keyStore *traffic.KeyStore,
+	finish <-chan struct{},
+) func(*client.RecordingClient) {
+	return func(c *client.RecordingClient) {
+		tf.RunTrafficLoop(ctx, c, limiter, ids, storage, concurrencyLimiter, keyStore, finish)
+	}
+}
+
+func compaction(ctx context.Context, tf traffic.Traffic, period time.Duration, finish <-chan struct{}) func(*client.RecordingClient) {
+	return func(c *client.RecordingClient) {
+		tf.RunCompactLoop(ctx, c, period, finish)
+	}
+}
+
+func defragment(ctx context.Context, period time.Duration, finish <-chan struct{}) func(*client.RecordingClient) {
+	return func(c *client.RecordingClient) {
+		runDefragLoop(ctx, c, period, finish)
+	}
 }
 
 func runDefragLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
