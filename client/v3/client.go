@@ -413,7 +413,7 @@ func newClient(cfg *Config) (*Client, error) {
 	} else if cfg.LogConfig != nil {
 		client.lg, err = cfg.LogConfig.Build()
 	} else {
-		client.lg, err = logutil.CreateDefaultZapLogger(etcdClientDebugLevel())
+		client.lg, err = logutil.CreateDefaultZapLogger(ClientLogLevel())
 		if client.lg != nil {
 			client.lg = client.lg.Named("etcd-client")
 		}
