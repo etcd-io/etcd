@@ -55,17 +55,15 @@ var (
 	}
 )
 
-func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan report.FailpointInjection, baseTime time.Time, ids identity.Provider) []report.ClientReport {
-	mux := sync.Mutex{}
+func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, profile Profile, traffic Traffic, failpointInjected <-chan report.FailpointInjection, clientSet *client.ClientSet) []report.ClientReport {
 	endpoints := clus.EndpointsGRPC()
 
 	lm := identity.NewLeaseIDStorage()
 	// Use the highest MaximalQPS of all traffic profiles as burst otherwise actual traffic may be accidentally limited
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 
-	r, err := CheckEmptyDatabaseAtStart(ctx, lg, endpoints, ids, baseTime)
+	err := CheckEmptyDatabaseAtStart(ctx, lg, endpoints, clientSet)
 	require.NoError(t, err)
-	reports := []report.ClientReport{r}
 
 	wg := sync.WaitGroup{}
 	nonUniqueWriteLimiter := NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
@@ -74,24 +72,22 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	keyStore := NewKeyStore(10, "key")
 
 	lg.Info("Start traffic")
-	startTime := time.Since(baseTime)
-	for i := 0; i < profile.ClientCount; i++ {
+	startTime := time.Since(clientSet.BaseTime())
+	for i := range profile.ClientCount {
 		wg.Add(1)
-		c, nerr := client.NewRecordingClient([]string{endpoints[i%len(endpoints)]}, ids, baseTime)
+
+		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
 		require.NoError(t, nerr)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, c, limiter, ids, lm, nonUniqueWriteLimiter, keyStore, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
+			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
 		}(c)
 	}
 	if !profile.ForbidCompaction {
 		wg.Add(1)
-		c, nerr := client.NewRecordingClient(endpoints, ids, baseTime)
+		c, nerr := clientSet.NewClient(endpoints)
 		if nerr != nil {
 			t.Fatal(nerr)
 		}
@@ -105,9 +101,6 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			}
 
 			traffic.RunCompactLoop(ctx, c, compactionPeriod, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
 		}(c)
 	}
 	var fr *report.FailpointInjection
@@ -121,16 +114,16 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	close(finish)
 	wg.Wait()
 	lg.Info("Finished traffic")
-	endTime := time.Since(baseTime)
+	endTime := time.Since(clientSet.BaseTime())
 
 	time.Sleep(time.Second)
 	// Ensure that last operation succeeds
-	cc, err := client.NewRecordingClient(endpoints, ids, baseTime)
+	cc, err := clientSet.NewClient(endpoints)
 	require.NoError(t, err)
 	defer cc.Close()
 	_, err = cc.Put(ctx, "tombstone", "true")
 	require.NoErrorf(t, err, "Last operation failed, validation requires last operation to succeed")
-	reports = append(reports, cc.Report())
+	reports := clientSet.Reports()
 
 	totalStats := CalculateStats(reports, startTime, endTime)
 	beforeFailpointStats := CalculateStats(reports, startTime, fr.Start)
@@ -207,10 +200,10 @@ type Traffic interface {
 	ExpectUniqueRevision() bool
 }
 
-func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, ids identity.Provider, baseTime time.Time) (report.ClientReport, error) {
-	c, err := client.NewRecordingClient(endpoints, ids, baseTime)
+func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {
+	c, err := cs.NewClient(endpoints)
 	if err != nil {
-		return report.ClientReport{}, err
+		return err
 	}
 	defer c.Close()
 	for {
@@ -222,9 +215,9 @@ func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []
 			continue
 		}
 		if resp.Header.Revision != 1 {
-			return report.ClientReport{}, validate.ErrNotEmptyDatabase
+			return validate.ErrNotEmptyDatabase
 		}
 		break
 	}
-	return c.Report(), nil
+	return nil
 }
