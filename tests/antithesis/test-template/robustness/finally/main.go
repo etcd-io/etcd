@@ -35,13 +35,17 @@ const (
 	reportFileName = "history.html"
 )
 
+var NodeCount = "3"
+
 func main() {
 	local := flag.Bool("local", false, "run finally locally and connect to etcd instances via localhost")
 	flag.Parse()
 
-	reportPath, _, dirs := common.DefaultPaths()
+	cfg := common.MakeConfig(NodeCount)
+
+	_, reportPath, dirs := common.DefaultPaths(cfg)
 	if *local {
-		reportPath, _, dirs = common.LocalPaths()
+		_, reportPath, dirs = common.LocalPaths(cfg)
 	}
 
 	lg, err := zap.NewProduction()
