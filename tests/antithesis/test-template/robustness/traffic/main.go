@@ -135,21 +135,19 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 }
 
 func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, ids identity.Provider, baseTime time.Time, duration time.Duration) []report.ClientReport {
-	var mux sync.Mutex
 	var wg sync.WaitGroup
+	clientSet := client.NewSet(ids, baseTime)
+	defer clientSet.Close()
 	storage := identity.NewLeaseIDStorage()
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
-	reports := []report.ClientReport{}
 	keyStore := traffic.NewKeyStore(10, "key")
-	for i := 0; i < profile.ClientCount; i++ {
-		c := connect([]string{hosts[i%len(hosts)]}, ids, baseTime)
+	for i := range profile.ClientCount {
+		c := connect(clientSet, []string{hosts[i%len(hosts)]})
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
-			defer c.Close()
-
 			tf.RunTrafficLoop(ctx, c, limiter,
 				ids,
 				storage,
@@ -157,36 +155,25 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, id
 				keyStore,
 				finish,
 			)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
 		}(c)
 	}
 	wg.Add(1)
-	compactClient := connect(hosts, ids, baseTime)
+	compactClient := connect(clientSet, hosts)
 	go func(c *client.RecordingClient) {
 		defer wg.Done()
-		defer c.Close()
 		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
-		mux.Lock()
-		reports = append(reports, c.Report())
-		mux.Unlock()
 	}(compactClient)
 	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
 	for _, h := range hosts {
-		c := connect([]string{h}, ids, baseTime)
+		c := connect(clientSet, []string{h})
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
-			defer c.Close()
 			runDefragLoop(ctx, c, defragPeriod, finish)
-			mux.Lock()
-			reports = append(reports, c.Report())
-			mux.Unlock()
 		}(c)
 	}
 	wg.Wait()
-	return reports
+	return clientSet.Reports()
 }
 
 func runDefragLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
@@ -210,8 +197,8 @@ func runDefragLoop(ctx context.Context, c *client.RecordingClient, period time.D
 	}
 }
 
-func connect(endpoints []string, ids identity.Provider, baseTime time.Time) *client.RecordingClient {
-	cli, err := client.NewRecordingClient(endpoints, ids, baseTime)
+func connect(cs *client.ClientSet, endpoints []string) *client.RecordingClient {
+	cli, err := cs.NewClient(endpoints)
 	if err != nil {
 		// Antithesis Assertion: client should always be able to connect to an etcd host
 		assert.Unreachable("Client failed to connect to an etcd host", map[string]any{"endpoints": endpoints, "error": err})
