@@ -19,6 +19,8 @@ package common
 import (
 	"fmt"
 	"os"
+
+	"go.etcd.io/etcd/tests/v3/antithesis/test-template/config"
 )
 
 const (
@@ -38,23 +40,23 @@ const (
 	localReportPath          = "report"
 )
 
-func DefaultPaths() (string, []string, map[string]string) {
-	hosts := []string{defaultetcd0, defaultetcd1, defaultetcd2}
-	reportPath := defaultReportPath
-	dataPaths := etcdDataPaths(defaultetcdDataPath, len(hosts))
-	return reportPath, hosts, dataPaths
+func DefaultPaths(cfg *config.Config) (hosts []string, reportPath string, dataPaths map[string]string) {
+	hosts = []string{defaultetcd0, defaultetcd1, defaultetcd2}[:cfg.NodeCount]
+	reportPath = defaultReportPath
+	dataPaths = etcdDataPaths(defaultetcdDataPath, cfg.NodeCount)
+	return hosts, reportPath, dataPaths
 }
 
-func LocalPaths() (string, []string, map[string]string) {
-	hosts := []string{localetcd0, localetcd1, localetcd2}
-	reportPath := localReportPath
+func LocalPaths(cfg *config.Config) (hosts []string, reportPath string, dataPaths map[string]string) {
+	hosts = []string{localetcd0, localetcd1, localetcd2}[:cfg.NodeCount]
+	reportPath = localReportPath
 	etcdDataPath := defaultetcdLocalDataPath
 	envPath := os.Getenv(localetcdDataPathEnv)
 	if envPath != "" {
 		etcdDataPath = envPath + "%d"
 	}
-	dataPaths := etcdDataPaths(etcdDataPath, len(hosts))
-	return reportPath, hosts, dataPaths
+	dataPaths = etcdDataPaths(etcdDataPath, cfg.NodeCount)
+	return hosts, reportPath, dataPaths
 }
 
 func etcdDataPaths(dir string, amount int) map[string]string {
