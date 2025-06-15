@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -370,4 +371,50 @@ func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}
 	return watch
+}
+
+type ClientSet struct {
+	idProvider identity.Provider
+	baseTime   time.Time
+
+	open    bool
+	clients []*RecordingClient
+	reports []report.ClientReport
+}
+
+func NewSet(ids identity.Provider, baseTime time.Time) *ClientSet {
+	return &ClientSet{
+		idProvider: ids,
+		baseTime:   baseTime,
+
+		open:    true,
+		clients: []*RecordingClient{},
+	}
+}
+
+func (cs *ClientSet) NewClient(endpoints []string) (*RecordingClient, error) {
+	if !cs.open {
+		return nil, errors.New("The ClientSet is already closed")
+	}
+	cli, err := NewRecordingClient(endpoints, cs.idProvider, cs.baseTime)
+	if err != nil {
+		return nil, err
+	}
+	cs.clients = append(cs.clients, cli)
+	return cli, nil
+}
+
+func (cs *ClientSet) Reports() []report.ClientReport {
+	cs.reports = make([]report.ClientReport, 0, len(cs.clients))
+	for _, c := range cs.clients {
+		cs.reports = append(cs.reports, c.Report())
+	}
+	return cs.reports
+}
+
+func (cs *ClientSet) Close() {
+	cs.open = false
+	for _, c := range cs.clients {
+		c.Close()
+	}
 }
