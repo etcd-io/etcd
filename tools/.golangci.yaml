@@ -31,12 +31,12 @@ linters:
     - staticcheck
     - stylecheck
     - testifylint
+    - thelper
     - unconvert # Remove unnecessary type conversions
     - unparam
     - unused
     - usestdlibvars
-    # Disabled in the meanwhile, it raises several issues with new Go 1.24 functions
-    # - usetesting
+    - usetesting
     - whitespace
 linters-settings: # please keep this alphabetized
   goimports:
@@ -102,5 +102,18 @@ linters-settings: # please keep this alphabetized
       # to always require f-functions for stretchr/testify, but not for golang standard lib.
       # Also refer to https://github.com/etcd-io/etcd/pull/18741#issuecomment-2422395914
       require-f-funcs: true
+  thelper:
+    test:
+      first: false
+      begin: false
+    benchmark:
+      first: false
+      begin: false
+    tb:
+      first: false
+      begin: false
+    fuzz:
+      first: false
+      begin: false
   usetesting:
     os-mkdir-temp: false

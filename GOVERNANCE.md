@@ -36,7 +36,12 @@ weeks inactive voting period and as long as two maintainers are on board.
 
 Changes in project governance could be initiated by opening a GitHub PR.
 
+## SIG-etcd Governance
+
+[SIG-etcd Governance] is documented in the Kubernetes/community repository.
+
 [community membership]: /Documentation/contributor-guide/community-membership.md
 [Code of Conduct]: /code-of-conduct.md
 [contributor guide]: /CONTRIBUTING.md
 [maintainers]: /OWNERS
+[SIG-etcd Governance]: https://github.com/kubernetes/community/blob/master/sig-etcd/charter.md#deviations-from-sig-governance

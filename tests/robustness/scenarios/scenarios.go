@@ -97,8 +97,8 @@ func Exploratory(_ *testing.T) []TestScenario {
 		options.WithSubsetOptions(randomizableOptions...),
 		e2e.WithGoFailEnabled(true),
 		// Set low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
-		options.WithExperimentalCompactionBatchLimit(10, 100, 1000),
-		e2e.WithExperimentalWatchProcessNotifyInterval(100 * time.Millisecond),
+		options.WithCompactionBatchLimit(10, 100, 1000),
+		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
 
 	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
@@ -219,7 +219,7 @@ func Regression(t *testing.T) []TestScenario {
 		Traffic:   traffic.Kubernetes,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
-			e2e.WithExperimentalCompactionBatchLimit(300),
+			e2e.WithCompactionBatchLimit(300),
 			e2e.WithSnapshotCount(1000),
 			e2e.WithGoFailEnabled(true),
 		),
@@ -250,7 +250,7 @@ func Regression(t *testing.T) []TestScenario {
 		Traffic:   traffic.KubernetesCreateDelete,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
-			e2e.WithExperimentalCompactionBatchLimit(50),
+			e2e.WithCompactionBatchLimit(50),
 			e2e.WithSnapshotCount(1000),
 			e2e.WithGoFailEnabled(true),
 		),

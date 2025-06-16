@@ -56,6 +56,10 @@ func WithAuth(userName, password string) config.ClientOption {
 	return integration.WithAuth(userName, password)
 }
 
+func WithAuthToken(token string) config.ClientOption {
+	return integration.WithAuthToken(token)
+}
+
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return integration.WithEndpoints(endpoints)
 }

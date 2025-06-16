@@ -23,8 +23,8 @@ import (
 )
 
 func TestEtcdServerProcessConfig(t *testing.T) {
-	v3_5_12 := semver.Version{Major: 3, Minor: 5, Patch: 12}
-	v3_5_14 := semver.Version{Major: 3, Minor: 5, Patch: 14}
+	v3_6_0 := semver.Version{Major: 3, Minor: 6, Patch: 0}
+	v3_7_0 := semver.Version{Major: 3, Minor: 7, Patch: 0}
 	tcs := []struct {
 		name                 string
 		config               *EtcdProcessClusterConfig
@@ -43,8 +43,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 				"--listen-peer-urls=http://localhost:1",
 				"--initial-advertise-peer-urls=http://localhost:1",
 				"--initial-cluster-token=new",
-				"--data-dir",
-				"/tmp/a/member-0",
+				"--data-dir=/tmp/a/member-0",
 				"--snapshot-count=10000",
 				"--initial-cluster-token=new",
 			},
@@ -67,7 +66,7 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CorruptCheck",
 			config: NewConfig(WithInitialCorruptCheck(true)),
 			expectArgsContain: []string{
-				"--experimental-initial-corrupt-check=true",
+				"--feature-gates=InitialCorruptCheck=true",
 			},
 		},
 		{
@@ -81,9 +80,9 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			name:   "CatchUpEntries",
 			config: NewConfig(WithSnapshotCatchUpEntries(100)),
 			expectArgsContain: []string{
-				"--experimental-snapshot-catchup-entries=100",
+				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_5_14,
+			mockBinaryVersion: &v3_7_0,
 		},
 		{
 			name:   "CatchUpEntriesNoVersion",
@@ -95,10 +94,10 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 		{
 			name:   "CatchUpEntriesOldVersion",
 			config: NewConfig(WithSnapshotCatchUpEntries(100), WithVersion(LastVersion)),
-			expectArgsNotContain: []string{
+			expectArgsContain: []string{
 				"--snapshot-catchup-entries=100",
 			},
-			mockBinaryVersion: &v3_5_12,
+			mockBinaryVersion: &v3_6_0,
 		},
 		{
 			name:   "ClientHTTPSeparate",
@@ -115,24 +114,10 @@ func TestEtcdServerProcessConfig(t *testing.T) {
 			},
 		},
 		{
-			name:   "EnableV2",
-			config: NewConfig(WithEnableV2(true)),
-			expectArgsContain: []string{
-				"--enable-v2=true",
-			},
-		},
-		{
 			name:   "MetricsURL",
 			config: NewConfig(WithMetricsURLScheme("http")),
 			expectArgsContain: []string{
 				"--listen-metrics-urls=http://localhost:2",
-			},
-		},
-		{
-			name:   "Discovery",
-			config: NewConfig(WithDiscovery("123")),
-			expectArgsContain: []string{
-				"--discovery=123",
 			},
 		},
 		{

@@ -16,7 +16,6 @@ package validate
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -31,51 +30,46 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-type Results struct {
-	Info         porcupine.LinearizationInfo
-	Model        porcupine.Model
-	Linearizable porcupine.CheckResult
-	Lg           *zap.Logger // TODO: Remove logger from struct and instead of making it an argument for Visualize
-}
-
-func (r Results) Visualize(path string) error {
-	r.Lg.Info("Saving visualization", zap.String("path", path))
-	err := porcupine.VisualizePath(r.Model, r.Info, path)
-	if err != nil {
-		return fmt.Errorf("failed to visualize, err: %w", err)
-	}
-	return nil
-}
-
-func validateLinearizableOperationsAndVisualize(
-	lg *zap.Logger,
-	operations []porcupine.Operation,
-	timeout time.Duration,
-) (results Results) {
+func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
 	start := time.Now()
-	result, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
-
-	switch result {
-	case porcupine.Illegal:
-		lg.Error("Linearization failed", zap.Duration("duration", time.Since(start)))
-	case porcupine.Unknown:
-		lg.Error("Linearization has timed out", zap.Duration("duration", time.Since(start)))
+	check, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
+	result := LinearizationResult{
+		Info:  info,
+		Model: model.NonDeterministicModel,
+	}
+	switch check {
 	case porcupine.Ok:
+		result.Status = Success
 		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+	case porcupine.Unknown:
+		result.Status = Failure
+		result.Message = "timed out"
+		result.Timeout = true
+		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+	case porcupine.Illegal:
+		result.Status = Failure
+		result.Message = "illegal"
+		lg.Error("Linearization illegal", zap.Duration("duration", time.Since(start)))
 	default:
-		panic(fmt.Sprintf("Unknown Linearization result %s", result))
+		result.Status = Failure
+		result.Message = "unknown"
 	}
-	return Results{
-		Info:         info,
-		Model:        model.NonDeterministicModel,
-		Linearizable: result,
-		Lg:           lg,
-	}
+	return result
 }
 
-func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
+func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) Result {
 	lg.Info("Validating serializable operations")
+	start := time.Now()
+	err := validateSerializableOperationsError(lg, operations, replay)
+	if err != nil {
+		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	}
+	lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
+	return ResultFromError(err)
+}
+
+func validateSerializableOperationsError(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
 	for _, read := range operations {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)

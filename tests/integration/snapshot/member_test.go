@@ -56,7 +56,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	urls := newEmbedURLs(t, 2)
 	newCURLs, newPURLs := urls[:1], urls[1:]
-	_, err = cli.MemberAdd(context.Background(), []string{newPURLs[0].String()})
+	_, err = cli.MemberAdd(t.Context(), []string{newPURLs[0].String()})
 	require.NoError(t, err)
 
 	// wait for membership reconfiguration apply
@@ -89,7 +89,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	require.NoError(t, err)
 	defer cli2.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 	mresp, err := cli2.MemberList(ctx)
 	cancel()
 	require.NoError(t, err)
@@ -97,7 +97,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	// make sure restored cluster has kept all data on recovery
 	var gresp *clientv3.GetResponse
-	ctx, cancel = context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	ctx, cancel = context.WithTimeout(t.Context(), testutil.RequestTimeout)
 	gresp, err = cli2.Get(ctx, "foo", clientv3.WithPrefix())
 	cancel()
 	require.NoError(t, err)

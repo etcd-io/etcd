@@ -580,7 +580,7 @@ func (w *watchGRPCStream) run() {
 		case pbresp := <-w.respc:
 			if cur == nil || pbresp.Created || pbresp.Canceled {
 				cur = pbresp
-			} else if cur != nil && cur.WatchId == pbresp.WatchId {
+			} else if cur.WatchId == pbresp.WatchId {
 				// merge new events
 				cur.Events = append(cur.Events, pbresp.Events...)
 				// update "Fragment" field; last response with "Fragment" == false

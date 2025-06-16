@@ -126,8 +126,8 @@ func TestModelDescribe(t *testing.T) {
 		},
 		{
 			req:            defragmentRequest(),
-			resp:           defragmentResponse(10),
-			expectDescribe: `defragment() -> ok, rev: 10`,
+			resp:           defragmentResponse(),
+			expectDescribe: `defragment() -> ok`,
 		},
 		{
 			req:            listRequest("key11", 0),

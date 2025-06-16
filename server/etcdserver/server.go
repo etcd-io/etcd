@@ -62,7 +62,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/etcdserver/txn"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -267,7 +266,6 @@ type EtcdServer struct {
 	stats  *stats.ServerStats
 	lstats *stats.LeaderStats
 
-	SyncTicker *time.Ticker
 	// compactor is used to auto-compact the KV.
 	compactor v3compactor.Compactor
 
@@ -334,7 +332,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		cluster:               b.cluster.cl,
 		stats:                 sstats,
 		lstats:                lstats,
-		SyncTicker:            time.NewTicker(500 * time.Millisecond),
 		peerRt:                b.prt,
 		reqIDGen:              idutil.NewGenerator(uint16(b.cluster.nodeID), time.Now()),
 		AccessController:      &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
@@ -832,8 +829,6 @@ func (s *EtcdServer) run() {
 		// wait for goroutines before closing raft so wal stays open
 		s.wg.Wait()
 
-		s.SyncTicker.Stop()
-
 		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
 		// by adding a peer after raft stops the transport
 		s.r.stop()
@@ -1149,8 +1144,22 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 }
 
 func (s *EtcdServer) NewUberApplier() apply.UberApplier {
-	return apply.NewUberApplier(s.lg, s.be, s.KV(), s.alarmStore, s.authStore, s.lessor, s.cluster, s, s, s.consistIndex,
-		s.Cfg.WarningApplyDuration, s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer), s.Cfg.QuotaBackendBytes)
+	opts := apply.ApplierOptions{
+		Logger:                       s.lg,
+		KV:                           s.KV(),
+		AlarmStore:                   s.alarmStore,
+		AuthStore:                    s.authStore,
+		Lessor:                       s.lessor,
+		Cluster:                      s.cluster,
+		RaftStatus:                   s,
+		SnapshotServer:               s,
+		ConsistentIndex:              s.consistIndex,
+		TxnModeWriteWithSharedBuffer: s.Cfg.ServerFeatureGate.Enabled(features.TxnModeWriteWithSharedBuffer),
+		Backend:                      s.be,
+		QuotaBackendBytesCfg:         s.Cfg.QuotaBackendBytes,
+		WarningApplyDuration:         s.Cfg.WarningApplyDuration,
+	}
+	return apply.NewUberApplier(opts)
 }
 
 func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
@@ -1971,7 +1980,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		if !needResult && raftReq.Txn != nil {
 			removeNeedlessRangeReqs(raftReq.Txn)
 		}
-		ar = s.applyInternalRaftRequest(&raftReq, shouldApplyV3)
+		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
 	}
 
 	// do not re-toApply applied entries.
@@ -2007,42 +2016,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 	})
 }
 
-func (s *EtcdServer) applyInternalRaftRequest(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply.Result {
-	if r.ClusterVersionSet == nil && r.ClusterMemberAttrSet == nil && r.DowngradeInfoSet == nil && r.DowngradeVersionTest == nil {
-		if !shouldApplyV3 {
-			return nil
-		}
-		return s.uberApply.Apply(r)
-	}
-	membershipApplier := apply.NewApplierMembership(s.lg, s.cluster, s)
-	op := "unknown"
-	defer func(start time.Time) {
-		txn.ApplySecObserve("v3", op, true, time.Since(start))
-		txn.WarnOfExpensiveRequest(s.lg, s.Cfg.WarningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, nil, nil)
-	}(time.Now())
-	switch {
-	case r.ClusterVersionSet != nil:
-		op = "ClusterVersionSet" // Implemented in 3.5.x
-		membershipApplier.ClusterVersionSet(r.ClusterVersionSet, shouldApplyV3)
-		return &apply.Result{}
-	case r.ClusterMemberAttrSet != nil:
-		op = "ClusterMemberAttrSet" // Implemented in 3.5.x
-		membershipApplier.ClusterMemberAttrSet(r.ClusterMemberAttrSet, shouldApplyV3)
-	case r.DowngradeInfoSet != nil:
-		op = "DowngradeInfoSet" // Implemented in 3.5.x
-		membershipApplier.DowngradeInfoSet(r.DowngradeInfoSet, shouldApplyV3)
-	case r.DowngradeVersionTest != nil:
-		op = "DowngradeVersionTest" // Implemented in 3.6 for test only
-		// do nothing, we are just to ensure etcdserver don't panic in case
-		// users(test cases) intentionally inject DowngradeVersionTestRequest
-		// into the WAL files.
-	default:
-		s.lg.Panic("not implemented apply", zap.Stringer("raft-request", r))
-		return nil
-	}
-	return &apply.Result{}
-}
-
 func noSideEffect(r *pb.InternalRaftRequest) bool {
 	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
 }
@@ -2069,7 +2042,7 @@ func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
 	lg := s.Logger()
-	if err := s.cluster.ValidateConfigurationChange(cc); err != nil {
+	if err := s.cluster.ValidateConfigurationChange(cc, shouldApplyV3); err != nil {
 		lg.Error("Validation on configuration change failed", zap.Bool("shouldApplyV3", bool(shouldApplyV3)), zap.Error(err))
 		cc.NodeID = raft.None
 		s.r.ApplyConfChange(cc)

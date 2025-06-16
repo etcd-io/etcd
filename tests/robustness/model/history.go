@@ -259,11 +259,7 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 		h.appendFailed(request, start, end, err)
 		return
 	}
-	var revision int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-	}
-	h.appendSuccessful(request, start, end, defragmentResponse(revision))
+	h.appendSuccessful(request, start, end, defragmentResponse())
 }
 
 func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, resp *clientv3.CompactResponse, err error) {
@@ -278,9 +274,7 @@ func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, r
 		h.appendFailed(request, start, end, err)
 		return
 	}
-	// Set fake revision as compaction returns non-linearizable revision.
-	// TODO: Model non-linearizable response revision in model.
-	h.appendSuccessful(request, start, end, compactResponse(-1))
+	h.appendSuccessful(request, start, end, compactResponse())
 }
 
 func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Duration, err error) {
@@ -469,16 +463,16 @@ func defragmentRequest() EtcdRequest {
 	return EtcdRequest{Type: Defragment, Defragment: &DefragmentRequest{}}
 }
 
-func defragmentResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
+func defragmentResponse() MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
 }
 
 func compactRequest(rev int64) EtcdRequest {
 	return EtcdRequest{Type: Compact, Compact: &CompactRequest{Revision: rev}}
 }
 
-func compactResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: revision}}
+func compactResponse() MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
 }
 
 type History struct {

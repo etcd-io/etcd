@@ -59,7 +59,7 @@ func TestPatchHistory(t *testing.T) {
 				putRequest("key", "value"),
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -86,11 +86,11 @@ func TestPatchHistory(t *testing.T) {
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 399, Output: model.MaybeEtcdResponse{Persisted: true}},
-				{Return: 400, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 400, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
-			name: "failed put remains if there is a matching persisted request, uniqueness allows for revision and return time to be based on watch",
+			name: "failed put remains if there is a matching persisted request, uniqueness allows for revision to be based on watch",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPut("key", "value", 100, 200, nil, errors.New("failed"))
 			},
@@ -99,7 +99,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 			watchOperations: watchResponse(300, putEvent("key", "value", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 300, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
 			},
 		},
 		{
@@ -115,7 +115,7 @@ func TestPatchHistory(t *testing.T) {
 			watchOperations: watchResponse(3, putEvent("key", "value", 2), putEvent("key", "value", 3)),
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
-				{Return: 4, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 4, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -128,7 +128,7 @@ func TestPatchHistory(t *testing.T) {
 				putRequest("key2", "value"),
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -141,7 +141,7 @@ func TestPatchHistory(t *testing.T) {
 				putRequest("key", "value2"),
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -168,11 +168,11 @@ func TestPatchHistory(t *testing.T) {
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 399, Output: model.MaybeEtcdResponse{Persisted: true}},
-				{Return: 400, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 400, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
-			name: "failed put with lease remains if there is a matching event, uniqueness allows for revision and return time to be based on watch",
+			name: "failed put with lease remains if there is a matching event, uniqueness allows for revision to be based on watch",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendPutWithLease("key", "value", 123, 1, 2, nil, errors.New("failed"))
 			},
@@ -181,7 +181,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 			watchOperations: watchResponse(3, putEvent("key", "value", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 3, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
 			},
 		},
 		{
@@ -197,7 +197,7 @@ func TestPatchHistory(t *testing.T) {
 			watchOperations: watchResponse(3, putEvent("key", "value", 2), putEvent("key", "value", 3)),
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
-				{Return: 4, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 4, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -220,7 +220,7 @@ func TestPatchHistory(t *testing.T) {
 				h.AppendDelete("key", 100, 200, &clientv3.DeleteResponse{}, nil)
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -235,7 +235,7 @@ func TestPatchHistory(t *testing.T) {
 			watchOperations: watchResponse(3, deleteEvent("key", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
-				{Return: 400, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 400, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -279,7 +279,7 @@ func TestPatchHistory(t *testing.T) {
 				h.AppendTxn(nil, []clientv3.Op{clientv3.OpPut("key", "value")}, []clientv3.Op{clientv3.OpDelete("key")}, 100, 200, &clientv3.TxnResponse{Succeeded: true}, nil)
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse()},
+				{Return: 200, Output: putResponse(0)},
 			},
 		},
 		{
@@ -331,7 +331,7 @@ func TestPatchHistory(t *testing.T) {
 			},
 			expectedRemainingOperations: []porcupine.Operation{
 				{Return: 599, Output: model.MaybeEtcdResponse{Persisted: true}},
-				{Return: 600, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 600, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -347,9 +347,9 @@ func TestPatchHistory(t *testing.T) {
 				putRequest("key2", "value2"),
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
-				{Return: 600, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 600, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -365,10 +365,10 @@ func TestPatchHistory(t *testing.T) {
 				putRequest("key2", "value2"),
 			},
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 200, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 200, Output: putResponse(0, model.EtcdOperationResult{})},
 				// TODO: We can infer that failed operation finished before last operation matching following.
 				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true}},
-				{Return: 600, Output: putResponse(model.EtcdOperationResult{})},
+				{Return: 600, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
@@ -412,8 +412,9 @@ func TestPatchHistory(t *testing.T) {
 					Watch:    tc.watchOperations,
 				},
 			}
-			operations := patchLinearizableOperations(relevantOperations(patchFailedRequestWithInfiniteReturnTime(reports)), reports, tc.persistedRequest)
-			if diff := cmp.Diff(tc.expectedRemainingOperations, operations,
+			operations, _ := prepareAndCategorizeOperations(reports)
+			patched := patchLinearizableOperations(operations, reports, tc.persistedRequest)
+			if diff := cmp.Diff(tc.expectedRemainingOperations, patched,
 				cmpopts.EquateEmpty(),
 				cmpopts.IgnoreFields(porcupine.Operation{}, "Input", "Call", "ClientId"),
 			); diff != "" {
@@ -423,8 +424,8 @@ func TestPatchHistory(t *testing.T) {
 	}
 }
 
-func putResponse(result ...model.EtcdOperationResult) model.MaybeEtcdResponse {
-	return model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Txn: &model.TxnResponse{Results: result}}}
+func putResponse(rev int64, result ...model.EtcdOperationResult) model.MaybeEtcdResponse {
+	return model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Revision: rev, Txn: &model.TxnResponse{Results: result}}}
 }
 
 func watchResponse(responseTime int64, events ...model.WatchEvent) []model.WatchOperation {

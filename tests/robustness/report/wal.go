@@ -46,7 +46,7 @@ func LoadClusterPersistedRequests(lg *zap.Logger, path string) ([]model.EtcdRequ
 			dataDirs = append(dataDirs, filepath.Join(path, file.Name()))
 		}
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
 func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) ([]model.EtcdRequest, error) {
@@ -54,16 +54,22 @@ func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) (
 	for _, proc := range cluster.Procs {
 		dataDirs = append(dataDirs, memberDataDir(proc))
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
-func PersistedRequestsDirs(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
-	persistedRequests := []model.EtcdRequest{}
+func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
+	return persistedRequests(lg, dataDirs, requestsPersistedInWAL)
+}
+
+func persistedRequests(lg *zap.Logger, dataDirs []string, reader persistedRequestReaderFunc) ([]model.EtcdRequest, error) {
+	if len(dataDirs) == 0 {
+		return nil, errors.New("no data dirs")
+	}
 	// Allow failure in minority of etcd cluster.
-	// 0 failures in 1 node cluster, 1 failure in 3 node cluster
 	allowedFailures := len(dataDirs) / 2
+	memberRequestHistories := make([][]model.EtcdRequest, 0, len(dataDirs))
 	for _, dir := range dataDirs {
-		memberRequests, err := requestsPersistedInWAL(lg, dir)
+		requests, err := reader(lg, dir)
 		if err != nil {
 			if allowedFailures < 1 {
 				return nil, err
@@ -71,16 +77,67 @@ func PersistedRequestsDirs(lg *zap.Logger, dataDirs []string) ([]model.EtcdReque
 			allowedFailures--
 			continue
 		}
-		minLength := min(len(persistedRequests), len(memberRequests))
-		if diff := cmp.Diff(memberRequests[:minLength], persistedRequests[:minLength]); diff != "" {
-			return nil, fmt.Errorf("unexpected differences between wal entries, diff:\n%s", diff)
-		}
-		if len(memberRequests) > len(persistedRequests) {
-			persistedRequests = memberRequests
+		memberRequestHistories = append(memberRequestHistories, requests)
+	}
+	// Return empty history if all histories were empty/failed to read.
+	if len(memberRequestHistories) == 0 {
+		return []model.EtcdRequest{}, nil
+	}
+	// Each history collects votes from each history that it matches.
+	votes := make([]int, len(memberRequestHistories))
+	lastDiff := ""
+	for i := 0; i < len(memberRequestHistories); i++ {
+		for j := 0; j < len(memberRequestHistories); j++ {
+			if i == j {
+				// history votes for itself
+				votes[i]++
+				continue
+			}
+			if i > j {
+				// avoid comparing things twice
+				continue
+			}
+			first := memberRequestHistories[i]
+			second := memberRequestHistories[j]
+			minLength := min(len(first), len(second))
+			if diff := cmp.Diff(first[:minLength], second[:minLength]); diff == "" {
+				votes[i]++
+				votes[j]++
+			} else {
+				lastDiff = diff
+			}
 		}
 	}
-	return persistedRequests, nil
+	// Select longest history that has votes from quorum.
+	longestHistory := []model.EtcdRequest{}
+	quorum := len(dataDirs)/2 + 1
+	foundQuorum := false
+	for i := 0; i < len(memberRequestHistories); i++ {
+		if votes[i] < quorum {
+			continue
+		}
+		// There cannot be incompabible histories supported by quorum
+		minLength := min(len(memberRequestHistories[i]), len(longestHistory))
+		if diff := cmp.Diff(memberRequestHistories[i][:minLength], longestHistory[:minLength]); diff != "" {
+			lastDiff = diff
+			foundQuorum = false
+			break
+		}
+		foundQuorum = true
+		if len(memberRequestHistories[i]) > len(longestHistory) {
+			longestHistory = memberRequestHistories[i]
+		}
+	}
+	if !foundQuorum {
+		if lastDiff != "" {
+			fmt.Printf("Difference between WAL:\n%s", lastDiff) // zap doesn't nicely writes multiline strings like diff
+		}
+		return nil, errors.New("unexpected differences between wal entries")
+	}
+	return longestHistory, nil
 }
+
+type persistedRequestReaderFunc = func(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error)
 
 func requestsPersistedInWAL(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
 	_, ents, err := ReadWAL(lg, dataDir)
@@ -114,9 +171,12 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 		_, state, ents, err = w.ReadAll()
 		w.Close()
 		if err != nil {
-			if errors.Is(err, wal.ErrSnapshotNotFound) || errors.Is(err, wal.ErrSliceOutOfRange) {
+			if errors.Is(err, wal.ErrSnapshotNotFound) {
 				lg.Info("Error occurred when reading WAL entries", zap.Error(err))
 				return state, ents, nil
+			}
+			if errors.Is(err, wal.ErrSliceOutOfRange) {
+				return state, nil, fmt.Errorf("failed to read WAL, err: %w", err)
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {

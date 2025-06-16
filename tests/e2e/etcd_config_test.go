@@ -568,7 +568,7 @@ func TestGrpcproxyAndListenCipherSuite(t *testing.T) {
 func TestBootstrapDefragFlag(t *testing.T) {
 	e2e.SkipInShortMode(t)
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-bootstrap-defrag-threshold-megabytes", "1000"}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--bootstrap-defrag-threshold-megabytes", "1000"}, nil)
 	require.NoError(t, err)
 	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, []string{"Skipping defragmentation"}))
 	require.NoError(t, proc.Stop())
@@ -585,7 +585,7 @@ func TestSnapshotCatchupEntriesFlag(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
-	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--experimental-snapshot-catchup-entries", "1000"}, nil)
+	proc, err := e2e.SpawnCmd([]string{e2e.BinPath.Etcd, "--snapshot-catchup-entries", "1000"}, nil)
 	require.NoError(t, err)
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"\"snapshot-catchup-entries\":1000"}))
 	require.NoError(t, e2e.WaitReadyExpectProc(ctx, proc, []string{"serving client traffic"}))
@@ -734,4 +734,56 @@ func TestV2DeprecationEnforceDefaultValue(t *testing.T) {
 			proc.Close()
 		})
 	}
+}
+
+func TestEtcdAdvertiseClientUnix(t *testing.T) {
+	e2e.SkipInShortMode(t)
+
+	// Create a temporary directory for the data directory
+	dataDir := t.TempDir()
+	socketDir := t.TempDir()
+	unixSocket := fmt.Sprintf("unix://%s/etcd-client.sock", socketDir)
+
+	// Start etcd with AdvertiseClientUrls set to a unix socket
+	proc, err := e2e.SpawnCmd(
+		[]string{
+			e2e.BinPath.Etcd,
+			"--data-dir", dataDir,
+			"--name", "etcd1",
+			"--listen-client-urls", unixSocket,
+			"--advertise-client-urls", unixSocket,
+		}, nil,
+	)
+	require.NoError(t, err)
+	defer func() {
+		_ = proc.Stop()
+		_ = proc.Close()
+	}()
+
+	// Wait for the process to be ready
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), proc, e2e.EtcdServerReadyLines))
+
+	// Write a key/value pair using etcdctl with unix socket
+	putArgs := []string{
+		e2e.BinPath.Etcdctl,
+		"--endpoints", unixSocket,
+		"put", "foo", "bar",
+	}
+	putProc, err := e2e.SpawnCmd(putArgs, nil)
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), putProc, []string{"OK"}))
+	require.NoError(t, putProc.Stop())
+	_ = putProc.Close()
+
+	// Read the key back using etcdctl with unix socket
+	getArgs := []string{
+		e2e.BinPath.Etcdctl,
+		"--endpoints", unixSocket,
+		"get", "foo",
+	}
+	getProc, err := e2e.SpawnCmd(getArgs, nil)
+	require.NoError(t, err)
+	require.NoError(t, e2e.WaitReadyExpectProc(t.Context(), getProc, []string{"foo", "bar"}))
+	require.NoError(t, getProc.Stop())
+	_ = getProc.Close()
 }

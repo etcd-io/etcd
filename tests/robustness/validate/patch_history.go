@@ -28,7 +28,7 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 	putRevision := putRevision(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
-	putReturnTime := uniquePutReturnTime(operations, reports, persistedRequests, clientPutCount)
+	putReturnTime := uniquePutReturnTime(operations, persistedRequests, clientPutCount)
 	return patchOperations(operations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
@@ -140,7 +140,7 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[k
 	return false
 }
 
-func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest, clientPutCount map[keyValue]int64) map[keyValue]int64 {
+func uniquePutReturnTime(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest, clientPutCount map[keyValue]int64) map[keyValue]int64 {
 	earliestReturnTime := map[keyValue]int64{}
 	var lastReturnTime int64
 	for _, op := range allOperations {
@@ -164,34 +164,12 @@ func uniquePutReturnTime(allOperations []porcupine.Operation, reports []report.C
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
 		case model.Compact:
+		case model.Defragment:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}
 		if op.Return > lastReturnTime {
 			lastReturnTime = op.Return
-		}
-	}
-
-	for _, client := range reports {
-		for _, watch := range client.Watch {
-			for _, resp := range watch.Responses {
-				for _, event := range resp.Events {
-					switch event.Type {
-					case model.RangeOperation:
-					case model.PutOperation:
-						kv := keyValue{Key: event.Key, Value: event.Value}
-						if count := clientPutCount[kv]; count > 1 {
-							continue
-						}
-						if t, ok := earliestReturnTime[kv]; !ok || t > resp.Time.Nanoseconds() {
-							earliestReturnTime[kv] = resp.Time.Nanoseconds()
-						}
-					case model.DeleteOperation:
-					default:
-						panic(fmt.Sprintf("unknown event type %q", event.Type))
-					}
-				}
-			}
 		}
 	}
 

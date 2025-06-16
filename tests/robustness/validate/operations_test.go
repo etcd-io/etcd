@@ -17,9 +17,12 @@ package validate
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"testing"
+	"time"
 
 	"github.com/anishathalye/porcupine"
+	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -238,13 +241,9 @@ func TestValidateSerializableOperations(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			replay := model.NewReplay(tc.persistedRequests)
-			err := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
-			var errStr string
-			if err != nil {
-				errStr = err.Error()
-			}
-			if errStr != tc.expectError {
-				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", err, tc.expectError)
+			result := validateSerializableOperations(zaptest.NewLogger(t), tc.operations, replay)
+			if result.Message != tc.expectError {
+				t.Errorf("validateSerializableOperations(...), got: %q, want: %q", result.Message, tc.expectError)
 			}
 		})
 	}
@@ -292,5 +291,109 @@ func keyValueRevision(key, value string, rev int64) model.KeyValue {
 			ModRevision: rev,
 			Version:     1,
 		},
+	}
+}
+
+func BenchmarkValidateLinearizableOperations(b *testing.B) {
+	lg := zap.NewNop()
+	b.Run("Successes", func(b *testing.B) {
+		history := allPutSuccesses(1000)
+		shuffles := shuffleHistory(history, b.N)
+		b.ResetTimer()
+		validateShuffles(b, lg, shuffles, time.Second)
+	})
+	b.Run("AllFailures", func(b *testing.B) {
+		history := allPutFailures(10)
+		shuffles := shuffleHistory(history, b.N)
+		b.ResetTimer()
+		validateShuffles(b, lg, shuffles, time.Second)
+	})
+	b.Run("PutFailuresWithRead", func(b *testing.B) {
+		history := putFailuresWithRead(b, 8)
+		shuffles := shuffleHistory(history, b.N)
+		b.ResetTimer()
+		validateShuffles(b, lg, shuffles, time.Second)
+	})
+}
+
+func allPutSuccesses(concurrencyCount int) []porcupine.Operation {
+	ops := []porcupine.Operation{}
+	for i := 0; i < concurrencyCount; i++ {
+		ops = append(ops, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest("key", "value"),
+			Output:   putResponse(int64(i)+2, model.EtcdOperationResult{}),
+			Call:     int64(i),
+			Return:   int64(i) + int64(concurrencyCount),
+		})
+	}
+	return ops
+}
+
+func putFailuresWithRead(b *testing.B, concurrencyCount int) []porcupine.Operation {
+	ops := []porcupine.Operation{}
+	for i := 0; i < concurrencyCount; i++ {
+		ops = append(ops, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest(fmt.Sprintf("key%d", i), "value"),
+			Output:   errorResponse(fmt.Errorf("timeout")),
+			Call:     int64(i),
+			Return:   int64(i) + int64(concurrencyCount),
+		})
+	}
+	requests := []model.EtcdRequest{}
+	for _, op := range ops {
+		requests = append(requests, op.Input.(model.EtcdRequest))
+	}
+	replay := model.NewReplay(requests)
+	state, err := replay.StateForRevision(int64(concurrencyCount) + 1)
+	if err != nil {
+		b.Fatal(err)
+	}
+	request := rangeRequest("key", "kez", 0, 0)
+	_, resp := state.Step(request)
+	ops = append(ops, porcupine.Operation{
+		ClientId: 0,
+		Input:    request,
+		Output:   resp,
+		Call:     int64(concurrencyCount) + 1,
+		Return:   int64(concurrencyCount) + 2,
+	})
+	return ops
+}
+
+func allPutFailures(concurrencyCount int) []porcupine.Operation {
+	ops := []porcupine.Operation{}
+	for i := 0; i < concurrencyCount; i++ {
+		ops = append(ops, porcupine.Operation{
+			ClientId: i,
+			Input:    putRequest("key", "value"),
+			Output:   errorResponse(fmt.Errorf("timeout")),
+			Call:     int64(i),
+			Return:   int64(i) + int64(concurrencyCount),
+		})
+	}
+	return ops
+}
+
+func shuffleHistory(history []porcupine.Operation, shuffleCount int) [][]porcupine.Operation {
+	shuffles := make([][]porcupine.Operation, shuffleCount)
+	for i := 0; i < shuffleCount; i++ {
+		historyCopy := make([]porcupine.Operation, len(history))
+		copy(historyCopy, history)
+		rand.Shuffle(len(historyCopy), func(i, j int) {
+			historyCopy[i], historyCopy[j] = historyCopy[j], historyCopy[i]
+		})
+		shuffles[i] = historyCopy
+	}
+	return shuffles
+}
+
+func validateShuffles(b *testing.B, lg *zap.Logger, shuffles [][]porcupine.Operation, duration time.Duration) {
+	for i := 0; i < len(shuffles); i++ {
+		result := validateLinearizableOperationsAndVisualize(lg, shuffles[i], duration)
+		if err := result.Error(); err != nil {
+			b.Fatalf("Not linearizable: %v", err)
+		}
 	}
 }

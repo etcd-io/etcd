@@ -109,13 +109,13 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, finish <-chan struct{}) {
+func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
 	client := etcdTrafficClient{
 		etcdTraffic:  t,
-		keyPrefix:    "key",
+		keyStore:     keyStore,
 		client:       c,
 		limiter:      limiter,
 		idProvider:   ids,
@@ -139,7 +139,7 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClie
 			}
 			requestType = random.PickRandom(choices)
 		} else {
-			requestType = Get
+			requestType = List
 		}
 		rev, err := client.Request(ctx, requestType, lastRev)
 		if shouldReturn {
@@ -196,7 +196,7 @@ func filterOutNonUniqueEtcdWrites(choices []random.ChoiceWeight[etcdRequestType]
 
 type etcdTrafficClient struct {
 	etcdTraffic
-	keyPrefix    string
+	keyStore     *keyStore
 	client       *client.RecordingClient
 	limiter      *rate.Limiter
 	idProvider   identity.Provider
@@ -211,57 +211,58 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	switch request {
 	case StaleGet:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Get(opCtx, c.randomKey(), clientv3.WithRev(lastRev))
+		resp, err = c.client.Get(opCtx, c.keyStore.GetKey(), clientv3.WithRev(lastRev))
 		if err == nil {
 			rev = resp.Header.Revision
 		}
 	case Get:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Get(opCtx, c.randomKey(), clientv3.WithRev(0))
+		resp, err = c.client.Get(opCtx, c.keyStore.GetKey(), clientv3.WithRev(0))
 		if err == nil {
 			rev = resp.Header.Revision
 		}
 	case List:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), 0, limit)
+		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), 0, limit)
 		if resp != nil {
+			c.keyStore.SyncKeys(resp)
 			rev = resp.Header.Revision
 		}
 	case StaleList:
 		var resp *clientv3.GetResponse
-		resp, err = c.client.Range(ctx, c.keyPrefix, clientv3.GetPrefixRangeEnd(c.keyPrefix), lastRev, limit)
+		resp, err = c.client.Range(ctx, c.keyStore.GetPrefix(), clientv3.GetPrefixRangeEnd(c.keyStore.GetPrefix()), lastRev, limit)
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case Put:
 		var resp *clientv3.PutResponse
-		resp, err = c.client.Put(opCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()))
+		resp, err = c.client.Put(opCtx, c.keyStore.GetKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()))
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case LargePut:
 		var resp *clientv3.PutResponse
-		resp, err = c.client.Put(opCtx, c.randomKey(), random.RandString(c.largePutSize))
+		resp, err = c.client.Put(opCtx, c.keyStore.GetKey(), random.RandString(c.largePutSize))
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case Delete:
 		var resp *clientv3.DeleteResponse
-		resp, err = c.client.Delete(opCtx, c.randomKey())
+		resp, err = c.client.Delete(opCtx, c.keyStore.GetKeyForDelete())
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case MultiOpTxn:
 		var resp *clientv3.TxnResponse
 		resp, err = c.client.Txn(opCtx).Then(
-			c.pickMultiTxnOps()...,
+			c.pickMultiTxnOps(c.keyStore)...,
 		).Commit()
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
 	case CompareAndSet:
 		var kv *mvccpb.KeyValue
-		key := c.randomKey()
+		key := c.keyStore.GetKey()
 		var resp *clientv3.GetResponse
 		resp, err = c.client.Get(opCtx, key, clientv3.WithRev(0))
 		if err == nil {
@@ -303,7 +304,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 		if leaseID != 0 {
 			putCtx, putCancel := context.WithTimeout(ctx, RequestTimeout)
 			var resp *clientv3.PutResponse
-			resp, err = c.client.PutWithLease(putCtx, c.randomKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()), leaseID)
+			resp, err = c.client.PutWithLease(putCtx, c.keyStore.GetKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()), leaseID)
 			putCancel()
 			if resp != nil {
 				rev = resp.Header.Revision
@@ -334,8 +335,7 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	return rev, err
 }
 
-func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
-	keys := rand.Perm(c.keyCount)
+func (c etcdTrafficClient) pickMultiTxnOps(keyStore *keyStore) (ops []clientv3.Op) {
 	opTypes := make([]model.OperationType, 4)
 
 	atLeastOnePut := false
@@ -350,8 +350,10 @@ func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
 		opTypes[0] = model.PutOperation
 	}
 
+	keys := keyStore.GetKeysForMultiTxnOps(opTypes)
+
 	for i, opType := range opTypes {
-		key := c.key(keys[i])
+		key := keys[i]
 		switch opType {
 		case model.RangeOperation:
 			ops = append(ops, clientv3.OpGet(key))
@@ -365,14 +367,6 @@ func (c etcdTrafficClient) pickMultiTxnOps() (ops []clientv3.Op) {
 		}
 	}
 	return ops
-}
-
-func (c etcdTrafficClient) randomKey() string {
-	return c.key(rand.Int())
-}
-
-func (c etcdTrafficClient) key(i int) string {
-	return fmt.Sprintf("%s%d", c.keyPrefix, i%c.keyCount)
 }
 
 func (t etcdTraffic) pickOperationType() model.OperationType {

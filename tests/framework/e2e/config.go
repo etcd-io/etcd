@@ -14,6 +14,15 @@
 
 package e2e
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/coreos/go-semver/semver"
+
+	"go.etcd.io/etcd/api/v3/version"
+)
+
 type ClusterVersion string
 
 const (
@@ -32,4 +41,61 @@ func (cv ClusterVersion) String() string {
 
 type ClusterContext struct {
 	Version ClusterVersion
+}
+
+var experimentalFlags = map[string]struct{}{
+	"compact-hash-check-time":              {},
+	"corrupt-check-time":                   {},
+	"compaction-batch-limit":               {},
+	"watch-progress-notify-interval":       {},
+	"warning-apply-duration":               {},
+	"bootstrap-defrag-threshold-megabytes": {},
+	"memory-mlock":                         {},
+	"snapshot-catchup-entries":             {},
+	"compaction-sleep-interval":            {},
+	"downgrade-check-time":                 {},
+	"peer-skip-client-san-verification":    {},
+	"enable-distributed-tracing":           {},
+	"distributed-tracing-address":          {},
+	"distributed-tracing-service-name":     {},
+	"distributed-tracing-instance-id":      {},
+	"distributed-tracing-sampling-rate":    {},
+}
+
+// convertFlag converts between experimental and non-experimental flags.
+// All experimental flags have been removed in version 3.7, but versions prior
+// to 3.6 only support experimental flags. The robustness tests use the same
+// code from the main branch to test all previously supported releases, so we
+// need to convert flags accordingly based on the binary version.
+func convertFlag(name, value string, ver *semver.Version) string {
+	// For versions >= 3.6, use the normal (non-experimental) flag.
+	if ver == nil || !ver.LessThan(version.V3_6) {
+		return fmt.Sprintf("--%s=%s", name, value)
+	}
+
+	// For versions < 3.6, use the experimental flag if it exists in `experimentalFlags`
+	if _, ok := experimentalFlags[name]; ok {
+		return fmt.Sprintf("--experimental-%s=%s", name, value)
+	}
+
+	return fmt.Sprintf("--%s=%s", name, value)
+}
+
+func convertFlags(args []string, ver *semver.Version) []string {
+	var retArgs []string
+
+	for _, arg := range args {
+		kv := strings.Split(arg, "=")
+		if len(kv) != 2 {
+			retArgs = append(retArgs, arg)
+			continue
+		}
+
+		name := strings.TrimPrefix(kv[0], "--")
+		name = strings.TrimPrefix(name, "experimental-")
+
+		retArgs = append(retArgs, convertFlag(name, kv[1], ver))
+	}
+
+	return retArgs
 }

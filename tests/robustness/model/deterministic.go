@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"html"
 	"maps"
 	"reflect"
 	"sort"
@@ -27,6 +28,11 @@ import (
 
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
+
+// RevisionForNonLinearizableResponse is a fake revision value used to
+// separate responses for requests that are not linearizable,
+// thus we need to ignore it in model when checking linearization.
+const RevisionForNonLinearizableResponse = -1
 
 // DeterministicModel assumes a deterministic execution of etcd requests. All
 // requests that client called were executed and persisted by etcd. This
@@ -42,36 +48,48 @@ import (
 //     whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() any {
-		data, err := json.Marshal(freshEtcdState())
-		if err != nil {
-			panic(err)
-		}
-		return string(data)
+		return freshEtcdState()
 	},
 	Step: func(st any, in any, out any) (bool, any) {
-		var s EtcdState
-		err := json.Unmarshal([]byte(st.(string)), &s)
-		if err != nil {
-			panic(err)
-		}
-		ok, s := s.apply(in.(EtcdRequest), out.(EtcdResponse))
-		data, err := json.Marshal(s)
-		if err != nil {
-			panic(err)
-		}
-		return ok, string(data)
+		return st.(EtcdState).apply(in.(EtcdRequest), out.(EtcdResponse))
+	},
+	Equal: func(st1, st2 any) bool {
+		return st1.(EtcdState).Equal(st2.(EtcdState))
 	},
 	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), MaybeEtcdResponse{EtcdResponse: out.(EtcdResponse)}))
 	},
+	DescribeState: func(st any) string {
+		data, err := json.MarshalIndent(st, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		return "<pre>" + html.EscapeString(string(data)) + "</pre>"
+	},
 }
 
 type EtcdState struct {
-	Revision        int64
-	CompactRevision int64
-	KeyValues       map[string]ValueRevision
-	KeyLeases       map[string]int64
-	Leases          map[int64]EtcdLease
+	Revision        int64                    `json:",omitempty"`
+	CompactRevision int64                    `json:",omitempty"`
+	KeyValues       map[string]ValueRevision `json:",omitempty"`
+	KeyLeases       map[string]int64         `json:",omitempty"`
+	Leases          map[int64]EtcdLease      `json:",omitempty"`
+}
+
+func (s EtcdState) Equal(other EtcdState) bool {
+	if s.Revision != other.Revision {
+		return false
+	}
+	if s.CompactRevision != other.CompactRevision {
+		return false
+	}
+	if !reflect.DeepEqual(s.KeyValues, other.KeyValues) {
+		return false
+	}
+	if !reflect.DeepEqual(s.KeyLeases, other.KeyLeases) {
+		return false
+	}
+	return reflect.DeepEqual(s.Leases, other.Leases)
 }
 
 func (s EtcdState) apply(request EtcdRequest, response EtcdResponse) (bool, EtcdState) {
@@ -109,21 +127,23 @@ func freshEtcdState() EtcdState {
 
 // Step handles a successful request, returning updated state and response it would generate.
 func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
-	newState := s.DeepCopy()
+	// TODO: Avoid copying when TXN only has read operations
+	if request.Type == Range {
+		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
+			resp := s.getRange(request.Range.RangeOptions)
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+		}
+		if request.Range.Revision > s.Revision {
+			return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+		}
+		if request.Range.Revision < s.CompactRevision {
+			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
+		}
+		return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: s.Revision}
+	}
 
+	newState := s.DeepCopy()
 	switch request.Type {
-	case Range:
-		if request.Range.Revision == 0 || request.Range.Revision == newState.Revision {
-			resp := newState.getRange(request.Range.RangeOptions)
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: newState.Revision}}
-		}
-		if request.Range.Revision > newState.Revision {
-			return newState, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
-		}
-		if request.Range.Revision < newState.CompactRevision {
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
-		}
-		return newState, MaybeEtcdResponse{Persisted: true, PersistedRevision: newState.Revision}
 	case Txn:
 		failure := false
 		for _, cond := range request.Txn.Conditions {
@@ -185,6 +205,10 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		}
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: newState.Revision}}
 	case LeaseGrant:
+		// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
+		if request.LeaseGrant.LeaseID == 0 {
+			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+		}
 		lease := EtcdLease{
 			LeaseID: request.LeaseGrant.LeaseID,
 			Keys:    map[string]struct{}{},
@@ -211,15 +235,13 @@ func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
 		}
 		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
 	case Defragment:
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: newState.Revision}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
 	case Compact:
 		if request.Compact.Revision <= newState.CompactRevision {
 			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
 		}
 		newState.CompactRevision = request.Compact.Revision
-		// Set fake revision as compaction returns non-linearizable revision.
-		// TODO: Model non-linearizable response revision in model.
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: -1}}
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
@@ -444,14 +466,14 @@ func (el EtcdLease) DeepCopy() EtcdLease {
 }
 
 type ValueRevision struct {
-	Value       ValueOrHash
-	ModRevision int64
-	Version     int64
+	Value       ValueOrHash `json:",omitempty"`
+	ModRevision int64       `json:",omitempty"`
+	Version     int64       `json:",omitempty"`
 }
 
 type ValueOrHash struct {
-	Value string
-	Hash  uint32
+	Value string `json:",omitempty"`
+	Hash  uint32 `json:",omitempty"`
 }
 
 func ToValueOrHash(value string) ValueOrHash {

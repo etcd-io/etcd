@@ -16,6 +16,9 @@ package model
 
 import (
 	"fmt"
+	"maps"
+	"slices"
+	"sort"
 	"strings"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -39,12 +42,9 @@ func describeEtcdResponse(request EtcdRequest, response MaybeEtcdResponse) strin
 		return fmt.Sprintf("%s, rev: %d", describeRangeResponse(request.Range.RangeOptions, *response.Range), response.Revision)
 	case Txn:
 		return fmt.Sprintf("%s, rev: %d", describeTxnResponse(request.Txn, response.Txn), response.Revision)
-	case LeaseGrant, LeaseRevoke, Defragment:
-		if response.Revision == 0 {
-			return "ok"
-		}
+	case LeaseGrant, LeaseRevoke:
 		return fmt.Sprintf("ok, rev: %d", response.Revision)
-	case Compact:
+	case Compact, Defragment:
 		return "ok"
 	default:
 		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
@@ -80,6 +80,50 @@ func describeEtcdRequest(request EtcdRequest) string {
 	default:
 		return fmt.Sprintf("<! unknown request type: %q !>", request.Type)
 	}
+}
+
+func describeEtcdState(state EtcdState) string {
+	descHTML := make([]string, 0)
+
+	descHTML = append(descHTML, fmt.Sprintf("<p style=\"margin: 0.25em 0;\">state, rev: %d, compactRev: %d</p>", state.Revision, state.CompactRevision))
+
+	if len(state.KeyValues) > 0 {
+		descHTML = append(descHTML, "keys: <ul style=\"margin: 0.25em 0;\">")
+
+		keys := slices.Collect(maps.Keys(state.KeyValues))
+		sort.Strings(keys)
+		for _, key := range keys {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%s</strong> - ", key))
+
+			value := state.KeyValues[key]
+			if value.Value.Value != "" {
+				descHTML = append(descHTML, fmt.Sprintf("val: %q, ", value.Value.Value))
+			}
+			if value.Value.Hash != 0 {
+				descHTML = append(descHTML, fmt.Sprintf("hash: %d, ", value.Value.Hash))
+			}
+			lease := state.KeyLeases[key]
+			if lease != 0 {
+				descHTML = append(descHTML, fmt.Sprintf("lease: %d, ", lease))
+			}
+
+			descHTML = append(descHTML, fmt.Sprintf("mod: %d, ver: %d</li>", value.ModRevision, value.Version))
+		}
+
+		descHTML = append(descHTML, "</ul>")
+	}
+
+	if len(state.Leases) > 0 {
+		descHTML = append(descHTML, "leases: <ul style=\"margin: 0.25em 0;\">")
+		leases := slices.Collect(maps.Keys(state.Leases))
+		slices.Sort(leases)
+		for _, lease := range leases {
+			descHTML = append(descHTML, fmt.Sprintf("<li style=\"margin: 0.25em 0;\"><strong>%d</strong></li>", lease))
+		}
+		descHTML = append(descHTML, "</ul>")
+	}
+
+	return strings.Join(descHTML, "")
 }
 
 func describeGuaranteedTxn(txn *TxnRequest) string {

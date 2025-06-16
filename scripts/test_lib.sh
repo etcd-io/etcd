@@ -78,7 +78,7 @@ function run_for_module {
 }
 
 function module_dirs() {
-  echo "api pkg client/pkg client/internal/v2 client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis ."
+  echo "api pkg client/pkg client/v3 server etcdutl etcdctl tests tools/mod tools/rw-heatmaps tools/testgrid-analysis cache ."
 }
 
 # maybe_run [cmd...] runs given command depending on the DRY_RUN flag.
@@ -98,7 +98,6 @@ function modules() {
     "${ROOT_MODULE}/api/v3"
     "${ROOT_MODULE}/pkg/v3"
     "${ROOT_MODULE}/client/pkg/v3"
-    "${ROOT_MODULE}/client/v2"
     "${ROOT_MODULE}/client/v3"
     "${ROOT_MODULE}/server/v3"
     "${ROOT_MODULE}/etcdutl/v3"
@@ -320,7 +319,7 @@ function tool_pkg_dir {
 # tool_get_bin [tool]
 function run_go_tool {
   local cmdbin
-  if ! cmdbin=$(GOARCH="" tool_get_bin "${1}"); then
+  if ! cmdbin=$(GOARCH="" GOOS="" tool_get_bin "${1}"); then
     log_warning "Failed to install tool '${1}'"
     return 2
   fi

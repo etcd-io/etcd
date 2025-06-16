@@ -199,7 +199,7 @@ func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 
 			epc, _ := mustCreateNewClusterByPromotingMembers(t, e2e.LastVersion, clusterSize,
 				e2e.WithSnapshotCount(uint64(tc.snapshot)))
@@ -220,7 +220,7 @@ func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
 
 			t.Logf("Checking all members are ready to serve client requests")
 			for i := 0; i < clusterSize; i++ {
-				err = epc.Procs[i].Etcdctl().Put(context.Background(), "foo", "bar", config.PutOptions{})
+				err = epc.Procs[i].Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
 				require.NoError(t, err)
 			}
 		})
@@ -230,7 +230,7 @@ func TestClusterUpgradeAfterPromotingMembers(t *testing.T) {
 func mustCreateNewClusterByPromotingMembers(t *testing.T, clusterVersion e2e.ClusterVersion, clusterSize int, opts ...e2e.EPClusterOption) (*e2e.EtcdProcessCluster, []*etcdserverpb.Member) {
 	require.GreaterOrEqualf(t, clusterSize, 1, "clusterSize must be at least 1")
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Logf("Creating new etcd cluster - version: %s, clusterSize: %v", clusterVersion, clusterSize)
 	opts = append(opts, e2e.WithVersion(clusterVersion), e2e.WithClusterSize(1))
@@ -284,7 +284,7 @@ func mustCreateNewClusterByPromotingMembers(t *testing.T, clusterVersion e2e.Clu
 }
 
 func ensureAllMembersAreVotingMembers(t *testing.T, epc *e2e.EtcdProcessCluster) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	resp, err := epc.Etcdctl().MemberList(ctx, false)

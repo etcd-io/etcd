@@ -22,10 +22,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"testing"
 
 	"github.com/anishathalye/porcupine"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -47,25 +45,32 @@ func (r ClientReport) WatchEventCount() int {
 	return count
 }
 
-func persistClientReports(t *testing.T, lg *zap.Logger, path string, reports []ClientReport) {
+func persistClientReports(lg *zap.Logger, path string, reports []ClientReport) error {
 	sort.Slice(reports, func(i, j int) bool {
 		return reports[i].ClientID < reports[j].ClientID
 	})
 	for _, r := range reports {
 		clientDir := filepath.Join(path, fmt.Sprintf("client-%d", r.ClientID))
-		err := os.MkdirAll(clientDir, 0o700)
-		require.NoError(t, err)
+		if err := os.MkdirAll(clientDir, 0o700); err != nil {
+			return err
+		}
+
 		if len(r.Watch) != 0 {
-			persistWatchOperations(t, lg, filepath.Join(clientDir, "watch.json"), r.Watch)
+			if err := persistWatchOperations(lg, filepath.Join(clientDir, "watch.json"), r.Watch); err != nil {
+				return err
+			}
 		} else {
 			lg.Info("no watch operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 		if len(r.KeyValue) != 0 {
-			persistKeyValueOperations(t, lg, filepath.Join(clientDir, "operations.json"), r.KeyValue)
+			if err := persistKeyValueOperations(lg, filepath.Join(clientDir, "operations.json"), r.KeyValue); err != nil {
+				return err
+			}
 		} else {
 			lg.Info("no KV operations for client, skip persisting", zap.Int("client-id", r.ClientID))
 		}
 	}
+	return nil
 }
 
 func LoadClientReports(path string) ([]ClientReport, error) {
@@ -169,36 +174,51 @@ func loadKeyValueOperations(path string) (operations []porcupine.Operation, err 
 	return operations, nil
 }
 
-func persistWatchOperations(t *testing.T, lg *zap.Logger, path string, responses []model.WatchOperation) {
+func persistWatchOperations(lg *zap.Logger, path string, responses []model.WatchOperation) error {
 	lg.Info("Saving watch operations", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o755)
 	if err != nil {
-		t.Errorf("Failed to save watch operations: %v", err)
-		return
+		return fmt.Errorf("failed to save watch operations: %w", err)
 	}
 	defer file.Close()
-	encoder := json.NewEncoder(file)
 	for _, resp := range responses {
-		err := encoder.Encode(resp)
+		data, err := json.MarshalIndent(resp, "", "  ")
 		if err != nil {
-			t.Errorf("Failed to encode operation: %v", err)
+			return fmt.Errorf("failed to encode operation: %w", err)
 		}
+		file.Write(data)
+		file.WriteString("\n")
 	}
+	return nil
 }
 
-func persistKeyValueOperations(t *testing.T, lg *zap.Logger, path string, operations []porcupine.Operation) {
+func persistKeyValueOperations(lg *zap.Logger, path string, operations []porcupine.Operation) error {
 	lg.Info("Saving operation history", zap.String("path", path))
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o755)
 	if err != nil {
-		t.Errorf("Failed to save KV operation history: %v", err)
-		return
+		return fmt.Errorf("Failed to save KV operation history: %w", err)
 	}
 	defer file.Close()
-	encoder := json.NewEncoder(file)
 	for _, op := range operations {
-		err := encoder.Encode(op)
+		data, err := json.MarshalIndent(op, "", "  ")
 		if err != nil {
-			t.Errorf("Failed to encode KV operation: %v", err)
+			return fmt.Errorf("Failed to encode KV operation: %w", err)
+		}
+		file.Write(data)
+		file.WriteString("\n")
+	}
+	return nil
+}
+
+func OperationsMaxRevision(reports []ClientReport) int64 {
+	var maxRevision int64
+	for _, r := range reports {
+		for _, op := range r.KeyValue {
+			resp := op.Output.(model.MaybeEtcdResponse)
+			if resp.Revision > maxRevision {
+				maxRevision = resp.Revision
+			}
 		}
 	}
+	return maxRevision
 }

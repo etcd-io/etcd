@@ -177,11 +177,6 @@ type EtcdProcessClusterConfig struct {
 	IsPeerTLS          bool
 	IsPeerAutoTLS      bool
 	CN                 bool
-
-	// Removed in v3.6
-
-	Discovery string // v2 discovery
-	EnableV2  bool
 }
 
 func DefaultConfig() *EtcdProcessClusterConfig {
@@ -287,20 +282,12 @@ func WithStrictReconfigCheck(strict bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.StrictReconfigCheck = strict }
 }
 
-func WithEnableV2(enable bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.EnableV2 = enable }
-}
-
 func WithAuthTokenOpts(token string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.AuthToken = token }
 }
 
 func WithRollingStart(rolling bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.RollingStart = rolling }
-}
-
-func WithDiscovery(discovery string) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.Discovery = discovery }
 }
 
 func WithDiscoveryEndpoints(endpoints []string) EPClusterOption {
@@ -319,20 +306,20 @@ func WithCorruptCheckTime(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CorruptCheckTime = time }
 }
 
-func WithExperimentalCorruptCheckTime(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCorruptCheckTime = time }
-}
-
 func WithInitialClusterToken(token string) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.InitialClusterToken = token }
 }
 
 func WithInitialCorruptCheck(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalInitialCorruptCheck = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("InitialCorruptCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckEnabled(enabled bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactHashCheckEnabled = enabled }
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("CompactHashCheck=%t", enabled))
+	}
 }
 
 func WithCompactHashCheckTime(time time.Duration) EPClusterOption {
@@ -355,18 +342,6 @@ func WithWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WarningUnaryRequestDuration = time }
 }
 
-// WithExperimentalWarningUnaryRequestDuration sets a value for `-experimental-warning-unary-request-duration`.
-// TODO(ahrtr): remove this function when the corresponding experimental flag is decommissioned.
-func WithExperimentalWarningUnaryRequestDuration(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWarningUnaryRequestDuration = time }
-}
-
-func WithExperimentalStopGRPCServiceOnDefrag(stopGRPCServiceOnDefrag bool) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) {
-		c.ServerConfig.ExperimentalStopGRPCServiceOnDefrag = stopGRPCServiceOnDefrag
-	}
-}
-
 func WithServerFeatureGate(featureName string, val bool) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) {
 		if err := c.ServerConfig.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(fmt.Sprintf("%s=%v", featureName, val)); err != nil {
@@ -379,20 +354,12 @@ func WithCompactionBatchLimit(limit int) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionBatchLimit = limit }
 }
 
-func WithExperimentalCompactionBatchLimit(limit int) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionBatchLimit = limit }
-}
-
 func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalCompactionSleepInterval = time }
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.CompactionSleepInterval = time }
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WatchProgressNotifyInterval = interval }
-}
-
-func WithExperimentalWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.ExperimentalWatchProgressNotifyInterval = interval }
 }
 
 func WithEnvVars(ev map[string]string) EPClusterOption {
@@ -425,23 +392,23 @@ func WithExtensiveMetrics() EPClusterOption {
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
-func NewEtcdProcessCluster(ctx context.Context, t testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
+func NewEtcdProcessCluster(ctx context.Context, tb testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
 	cfg := NewConfig(opts...)
-	epc, err := InitEtcdProcessCluster(t, cfg)
+	epc, err := InitEtcdProcessCluster(tb, cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	return StartEtcdProcessCluster(ctx, t, epc, cfg)
+	return StartEtcdProcessCluster(ctx, tb, epc, cfg)
 }
 
 // InitEtcdProcessCluster initializes a new cluster based on the given config.
 // It doesn't start the cluster.
-func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
-	SkipInShortMode(t)
+func InitEtcdProcessCluster(tb testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+	SkipInShortMode(tb)
 
 	if cfg.Logger == nil {
-		cfg.Logger = zaptest.NewLogger(t)
+		cfg.Logger = zaptest.NewLogger(tb)
 	}
 	if cfg.BasePort == 0 {
 		cfg.BasePort = EtcdProcessBasePort
@@ -460,17 +427,17 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 		}
 	}
 
-	etcdCfgs := cfg.EtcdAllServerProcessConfigs(t)
+	etcdCfgs := cfg.EtcdAllServerProcessConfigs(tb)
 	epc := &EtcdProcessCluster{
 		Cfg:     cfg,
-		lg:      zaptest.NewLogger(t),
+		lg:      zaptest.NewLogger(tb),
 		Procs:   make([]EtcdProcess, cfg.ClusterSize),
 		nextSeq: cfg.ClusterSize,
 	}
 
 	// launch etcd processes
 	for i := range etcdCfgs {
-		proc, err := NewEtcdProcess(t, etcdCfgs[i])
+		proc, err := NewEtcdProcess(tb, etcdCfgs[i])
 		if err != nil {
 			epc.Close()
 			return nil, fmt.Errorf("cannot configure: %w", err)
@@ -482,7 +449,7 @@ func InitEtcdProcessCluster(t testing.TB, cfg *EtcdProcessClusterConfig) (*EtcdP
 }
 
 // StartEtcdProcessCluster launches a new cluster from etcd processes.
-func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
+func StartEtcdProcessCluster(ctx context.Context, tb testing.TB, epc *EtcdProcessCluster, cfg *EtcdProcessClusterConfig) (*EtcdProcessCluster, error) {
 	if cfg.RollingStart {
 		if err := epc.RollingStart(ctx); err != nil {
 			return nil, fmt.Errorf("cannot rolling-start: %w", err)
@@ -496,11 +463,11 @@ func StartEtcdProcessCluster(ctx context.Context, t testing.TB, epc *EtcdProcess
 	for _, proc := range epc.Procs {
 		if cfg.GoFailEnabled && !proc.Failpoints().Enabled() {
 			epc.Close()
-			t.Skip("please run 'make gofail-enable && make build' before running the test")
+			tb.Skip("please run 'make gofail-enable && make build' before running the test")
 		}
 	}
 	if cfg.InitialLeaderIndex >= 0 {
-		if err := epc.MoveLeader(ctx, t, cfg.InitialLeaderIndex); err != nil {
+		if err := epc.MoveLeader(ctx, tb, cfg.InitialLeaderIndex); err != nil {
 			return nil, fmt.Errorf("failed to move leader: %w", err)
 		}
 	}
@@ -532,7 +499,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdAllServerProcessConfigs(tb testing.TB) 
 }
 
 func (cfg *EtcdProcessClusterConfig) SetInitialOrDiscovery(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
-	if cfg.Discovery == "" && len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
+	if len(cfg.ServerConfig.DiscoveryCfg.Endpoints) == 0 {
 		serverCfg.InitialCluster = strings.Join(initialCluster, ",")
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster="+serverCfg.InitialCluster)
 		serverCfg.Args = append(serverCfg.Args, "--initial-cluster-state="+initialClusterState)
@@ -598,7 +565,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		"--listen-peer-urls=" + peerListenURL.String(),
 		"--initial-advertise-peer-urls=" + peerAdvertiseURL.String(),
 		"--initial-cluster-token=" + cfg.ServerConfig.InitialClusterToken,
-		"--data-dir", dataDirPath,
+		"--data-dir=" + dataDirPath,
 		"--snapshot-count=" + fmt.Sprintf("%d", cfg.ServerConfig.SnapshotCount),
 	}
 	var clientHTTPURL string
@@ -618,9 +585,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
 	}
-	if cfg.EnableV2 {
-		args = append(args, "--enable-v2=true")
-	}
+
 	var murl string
 	if cfg.MetricsURLScheme != "" {
 		murl = (&url.URL{
@@ -632,19 +597,24 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 
 	args = append(args, cfg.TLSArgs()...)
 
-	if cfg.Discovery != "" {
-		args = append(args, "--discovery="+cfg.Discovery)
-	}
-
 	execPath := cfg.binaryPath(i)
 
 	if cfg.ServerConfig.SnapshotCatchUpEntries != etcdserver.DefaultSnapshotCatchUpEntries {
 		if !IsSnapshotCatchupEntriesFlagAvailable(execPath) {
-			cfg.ServerConfig.ExperimentalSnapshotCatchUpEntries = cfg.ServerConfig.SnapshotCatchUpEntries
 			cfg.ServerConfig.SnapshotCatchUpEntries = etcdserver.DefaultSnapshotCatchUpEntries
 		}
 	}
 
+	var (
+		binaryVersion *semver.Version
+		err           error
+	)
+	if execPath != "" {
+		binaryVersion, err = GetVersionFromBinary(execPath)
+		if err != nil {
+			tb.Logf("Failed to get binary version from %s: %v", execPath, err)
+		}
+	}
 	defaultValues := values(*embed.NewConfig())
 	overrideValues := values(cfg.ServerConfig)
 	for flag, value := range overrideValues {
@@ -654,7 +624,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		if strings.HasSuffix(flag, "snapshot-catchup-entries") && !CouldSetSnapshotCatchupEntries(execPath) {
 			continue
 		}
-		args = append(args, fmt.Sprintf("--%s=%s", flag, value))
+		args = append(args, convertFlag(flag, value, binaryVersion))
 	}
 	envVars := map[string]string{}
 	maps.Copy(envVars, cfg.EnvVars)
@@ -960,6 +930,16 @@ func (epc *EtcdProcessCluster) UpdateProcOptions(i int, tb testing.TB, opts ...E
 	return nil
 }
 
+func PatchArgs(args []string, flag, newValue string) error {
+	for i, arg := range args {
+		if strings.Contains(arg, flag) {
+			args[i] = fmt.Sprintf("--%s=%s", flag, newValue)
+			return nil
+		}
+	}
+	return fmt.Errorf("--%s flag not found", flag)
+}
+
 func (epc *EtcdProcessCluster) Start(ctx context.Context) error {
 	return epc.start(func(ep EtcdProcess) error { return ep.Start(ctx) })
 }
@@ -996,6 +976,38 @@ func (epc *EtcdProcessCluster) rollingStart(f func(ep EtcdProcess) error) error 
 	for range epc.Procs {
 		if err := <-readyC; err != nil {
 			epc.Close()
+			return err
+		}
+	}
+	return nil
+}
+
+func (epc *EtcdProcessCluster) Kill() (err error) {
+	for _, p := range epc.Procs {
+		if p == nil {
+			continue
+		}
+		if curErr := p.Kill(); curErr != nil {
+			if err != nil {
+				err = fmt.Errorf("%w; %w", err, curErr)
+			} else {
+				err = curErr
+			}
+		}
+	}
+	return err
+}
+
+func (epc *EtcdProcessCluster) Wait(ctx context.Context) error {
+	closedC := make(chan error, len(epc.Procs))
+	for i := range epc.Procs {
+		go func(n int) {
+			epc.Procs[n].Wait(ctx)
+			closedC <- epc.Procs[n].Wait(ctx)
+		}(i)
+	}
+	for range epc.Procs {
+		if err := <-closedC; err != nil {
 			return err
 		}
 	}
@@ -1078,29 +1090,29 @@ func findMemberIDByEndpoint(members []*etcdserverpb.Member, endpoint string) (ui
 
 // WaitLeader returns index of the member in c.Members() that is leader
 // or fails the test (if not established in 30s).
-func (epc *EtcdProcessCluster) WaitLeader(t testing.TB) int {
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+func (epc *EtcdProcessCluster) WaitLeader(tb testing.TB) int {
+	ctx, cancel := context.WithTimeout(tb.Context(), 30*time.Second)
 	defer cancel()
-	return epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	return epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 }
 
 // WaitMembersForLeader waits until given members agree on the same leader,
 // and returns its 'index' in the 'membs' list
-func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testing.TB, membs []EtcdProcess) int {
+func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, tb testing.TB, membs []EtcdProcess) int {
 	cc := epc.Etcdctl()
 
 	// ensure leader is up via linearizable get
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
+			tb.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
 		_, err := cc.Get(ctx, "0", config.GetOptions{Timeout: 10*config.TickDuration + time.Second})
 		if err == nil || strings.Contains(err.Error(), "Key not found") {
 			break
 		}
-		t.Logf("WaitMembersForLeader Get err: %v", err)
+		tb.Logf("WaitMembersForLeader Get err: %v", err)
 	}
 
 	leaders := make(map[uint64]struct{})
@@ -1108,7 +1120,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatal("WaitMembersForLeader timeout")
+			tb.Fatal("WaitMembersForLeader timeout")
 		default:
 		}
 		for i := range membs {
@@ -1118,7 +1130,7 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 					// if member[i] has stopped
 					continue
 				}
-				t.Fatal(err)
+				tb.Fatal(err)
 			}
 			members[resp[0].Header.MemberId] = i
 			leaders[resp[0].Leader] = struct{}{}
@@ -1133,24 +1145,24 @@ func (epc *EtcdProcessCluster) WaitMembersForLeader(ctx context.Context, t testi
 	}
 	for l := range leaders {
 		if index, ok := members[l]; ok {
-			t.Logf("members agree on a leader, members:%v , leader:%v", members, l)
+			tb.Logf("members agree on a leader, members:%v , leader:%v", members, l)
 			return index
 		}
-		t.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
+		tb.Fatalf("members agree on a leader which is not one of members, members:%v , leader:%v", members, l)
 	}
-	t.Fatal("impossible path of execution")
+	tb.Fatal("impossible path of execution")
 	return -1
 }
 
 // MoveLeader moves the leader to the ith process.
-func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i int) error {
+func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, tb testing.TB, i int) error {
 	if i < 0 || i >= len(epc.Procs) {
 		return fmt.Errorf("invalid index: %d, must between 0 and %d", i, len(epc.Procs)-1)
 	}
-	t.Logf("moving leader to Procs[%d]", i)
-	oldLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	tb.Logf("moving leader to Procs[%d]", i)
+	oldLeader := epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 	if oldLeader == i {
-		t.Logf("Procs[%d] is already the leader", i)
+		tb.Logf("Procs[%d] is already the leader", i)
 		return nil
 	}
 	resp, err := epc.Procs[i].Etcdctl().Status(ctx)
@@ -1162,10 +1174,10 @@ func (epc *EtcdProcessCluster) MoveLeader(ctx context.Context, t testing.TB, i i
 	if err != nil {
 		return err
 	}
-	newLeader := epc.WaitMembersForLeader(ctx, t, epc.Procs)
+	newLeader := epc.WaitMembersForLeader(ctx, tb, epc.Procs)
 	if newLeader != i {
-		t.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
+		tb.Fatalf("expect new leader to be Procs[%d] but got Procs[%d]", i, newLeader)
 	}
-	t.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
+	tb.Logf("moved leader from Procs[%d] to Procs[%d]", oldLeader, i)
 	return nil
 }

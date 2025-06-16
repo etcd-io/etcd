@@ -47,7 +47,7 @@ func TestResumeElection(t *testing.T) {
 	e := concurrency.NewElection(s, prefix)
 
 	// entire test should never take more than 10 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
 
 	// become leader

@@ -64,25 +64,7 @@
       "maximum": 1
     },
   
-    // MD013/line-length : Line length : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md013.md
-    "MD013": {
-      // Number of characters
-      "line_length": 80,
-      // Number of characters for headings
-      "heading_line_length": 80,
-      // Number of characters for code blocks
-      "code_block_line_length": 80,
-      // Include code blocks
-      "code_blocks": true,
-      // Include tables
-      "tables": true,
-      // Include headings
-      "headings": true,
-      // Strict length checking
-      "strict": false,
-      // Stern length checking
-      "stern": false
-    },
+    "MD013": false,
   
     // MD014/commands-show-output : Dollar signs used before commands without showing output : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md014.md
     "MD014": true,
@@ -202,23 +184,13 @@
     },
   
     // MD041/first-line-heading/first-line-h1 : First line in a file should be a top-level heading : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md041.md
-    "MD041": {
-      // Heading level
-      "level": 1,
-      // RegExp for matching title in front matter
-      "front_matter_title": "^\\s*title\\s*[:=]"
-    },
+    "MD041": false,
   
     // MD042/no-empty-links : No empty links : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md042.md
     "MD042": true,
   
     // MD043/required-headings : Required heading structure : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md043.md
-    "MD043": {
-      // List of headings
-      "headings": [],
-      // Match case of headings
-      "match_case": false
-    },
+    "MD043": false,
   
     // MD044/proper-names : Proper names should have the correct capitalization : https://github.com/DavidAnson/markdownlint/blob/v0.37.4/doc/md044.md
     "MD044": {

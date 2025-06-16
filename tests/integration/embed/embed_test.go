@@ -20,7 +20,6 @@
 package embed_test
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -57,7 +56,6 @@ func TestEmbedEtcd(t *testing.T) {
 		wpeers   int
 		wclients int
 	}{
-		{werr: "multiple discovery"},
 		{werr: "advertise-client-urls is required"},
 		{werr: "should be at least"},
 		{werr: "is too long"},
@@ -77,18 +75,17 @@ func TestEmbedEtcd(t *testing.T) {
 		tests[i].cfg.LogOutputs = []string{"/dev/null"}
 	}
 
-	tests[0].cfg.Durl = "abc"
-	setupEmbedCfg(&tests[1].cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
-	tests[1].cfg.AdvertiseClientUrls = nil
-	tests[2].cfg.TickMs = tests[2].cfg.ElectionMs - 1
-	tests[3].cfg.ElectionMs = 999999
-	setupEmbedCfg(&tests[4].cfg, []url.URL{urls[2]}, []url.URL{urls[3]})
-	setupEmbedCfg(&tests[5].cfg, []url.URL{urls[4]}, []url.URL{urls[5], urls[6]})
-	setupEmbedCfg(&tests[6].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
+	setupEmbedCfg(&tests[0].cfg, []url.URL{urls[0]}, []url.URL{urls[1]})
+	tests[0].cfg.AdvertiseClientUrls = nil
+	tests[1].cfg.TickMs = tests[2].cfg.ElectionMs - 1
+	tests[2].cfg.ElectionMs = 999999
+	setupEmbedCfg(&tests[3].cfg, []url.URL{urls[2]}, []url.URL{urls[3]})
+	setupEmbedCfg(&tests[4].cfg, []url.URL{urls[4]}, []url.URL{urls[5], urls[6]})
+	setupEmbedCfg(&tests[5].cfg, []url.URL{urls[7], urls[8]}, []url.URL{urls[9]})
 
 	dnsURL, _ := url.Parse("http://whatever.test:12345")
-	tests[7].cfg.ListenClientUrls = []url.URL{*dnsURL}
-	tests[8].cfg.ListenPeerUrls = []url.URL{*dnsURL}
+	tests[6].cfg.ListenClientUrls = []url.URL{*dnsURL}
+	tests[7].cfg.ListenPeerUrls = []url.URL{*dnsURL}
 
 	dir := filepath.Join(t.TempDir(), "embed-etcd")
 
@@ -162,7 +159,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 	defer cli.Close()
 
 	// open watch connection
-	cli.Watch(context.Background(), "foo")
+	cli.Watch(t.Context(), "foo")
 
 	donec := make(chan struct{})
 	go func() {

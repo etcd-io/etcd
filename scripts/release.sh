@@ -184,7 +184,7 @@ main() {
     fi
 
     # Tag release.
-    if [ "$(git tag --list | grep -c "${RELEASE_VERSION}")" -gt 0 ]; then
+    if git tag --list | grep --quiet "^${RELEASE_VERSION}$"; then
       log_callout "Skipping tag step. git tag ${RELEASE_VERSION} already exists."
     else
       log_callout "Tagging release..."

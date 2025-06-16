@@ -502,7 +502,10 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
+  # results in certain dependencies being excluded from the BOM file, such as procfs. 
+  # For more info, https://github.com/etcd-io/etcd/issues/19665
+  output=$(GOOS=linux GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -530,7 +533,12 @@ function dump_deps_of_module() {
   if ! module=$(run go mod edit -json | jq -r .Module.Path); then
     return 255
   fi
-  run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+  local require
+  require=$(run go mod edit -json | jq -r '.Require')
+  if [ "$require" == "null" ]; then
+    return 0
+  fi
+  echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
@@ -584,7 +592,7 @@ function release_pass {
   UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
     | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
     | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
-  log_callout "Found latest release: ${UPGRADE_VER}."
+  log_callout "Found previous minor version (v${binary_major}.${previous_minor}) latest release: ${UPGRADE_VER}."
 
   if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
@@ -615,9 +623,37 @@ function release_pass {
       ;;
   esac
 
-  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1
+  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1 --no-same-owner
   mkdir -p ./bin
   mv /tmp/etcd ./bin/etcd-last-release
+}
+
+function release_tests_pass {
+  if [ -z "${VERSION:-}" ]; then
+    VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
+     awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  fi
+
+  if [ -n "${CI:-}" ]; then
+    git config user.email "prow@etcd.io"
+    git config user.name "Prow"
+
+    gpg --batch --gen-key <<EOF
+%no-protection
+Key-Type: 1
+Key-Length: 2048
+Subkey-Type: 1
+Subkey-Length: 2048
+Name-Real: Prow
+Name-Email: prow@etcd.io
+Expire-Date: 0
+EOF
+
+    git remote add origin https://github.com/etcd-io/etcd.git
+  fi
+
+  DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
+  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
 function mod_tidy_for_module {

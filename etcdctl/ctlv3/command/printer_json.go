@@ -17,6 +17,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -26,7 +27,8 @@ import (
 )
 
 type jsonPrinter struct {
-	isHex bool
+	writer io.Writer
+	isHex  bool
 	printer
 }
 
@@ -63,6 +65,7 @@ func (m *HexMember) MarshalJSON() ([]byte, error) {
 
 func newJSONPrinter(isHex bool) printer {
 	return &jsonPrinter{
+		writer:  os.Stdout,
 		isHex:   isHex,
 		printer: &printerRPC{newPrinterUnsupported("json"), printJSON},
 	}
@@ -74,23 +77,27 @@ func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
 	if p.isHex {
-		printMemberListWithHexJSON(r)
+		printMemberListWithHexJSON(p.writer, r)
 	} else {
 		printJSON(r)
 	}
 }
 func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse) { p.printJSON(r) }
 
-func printJSON(v any) {
+func printJSONTo(w io.Writer, v any) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	fmt.Println(string(b))
+	fmt.Fprintln(w, string(b))
 }
 
-func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
+func printJSON(v any) {
+	printJSONTo(os.Stdout, v)
+}
+
+func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
 	var buffer strings.Builder
 	var b []byte
 	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
@@ -129,7 +136,7 @@ func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
 		}
 	}
 	buffer.WriteString("}")
-	fmt.Println(buffer.String())
+	fmt.Fprintln(w, buffer.String())
 }
 
 func (p *jsonPrinter) printJSON(v any) {

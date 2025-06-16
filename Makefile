@@ -56,6 +56,11 @@ test-grpcproxy-e2e: build
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+# When we release the first 3.7.0-alpha.0, we can remove `VERSION="3.7.99"` below.
+.PHONY: test-release
+test-release:
+	PASSES="release_tests" VERSION="3.7.99" ./scripts/test.sh $(GO_TEST_FLAGS)
+
 .PHONY: test-robustness
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
@@ -65,8 +70,11 @@ test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: upload-coverage-report
-upload-coverage-report: test-coverage
-	COVERDIR=covdir ./scripts/codecov_upload.sh
+upload-coverage-report:
+	return_code=0; \
+	$(MAKE) test-coverage || return_code=$$?; \
+	COVERDIR=covdir ./scripts/codecov_upload.sh; \
+	exit $$return_code
 
 .PHONY: fuzz
 fuzz: 
