@@ -2,76 +2,73 @@ package cache
 
 import (
 	"context"
-	"sync/atomic"
 	"time"
 
 	rpctypes "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-type eventSource struct {
-	cli       *clientv3.Client
-	ctx       context.Context
-	cancel    context.CancelFunc
-	ch        <-chan clientv3.WatchResponse
-	currentRV atomic.Int64
-}
-
-func newEventSource(cli *clientv3.Client, startRev int64, parent context.Context) *eventSource {
-	ctx, cancel := context.WithCancel(parent)
-	es := &eventSource{cli: cli, ctx: ctx, cancel: cancel}
-	es.start(startRev)
-	return es
-}
-
-func (es *eventSource) start(rev int64) {
-	opts := []clientv3.OpOption{clientv3.WithPrefix()}
-	if rev > 0 {
-		opts = append(opts, clientv3.WithRev(rev))
-	}
-	es.ch = es.cli.Watch(es.ctx, "", opts...)
-}
-
-func (es *eventSource) run(bcast func(*clientv3.Event)) {
-	backoff := time.Second
-	for {
-		select {
-		case <-es.ctx.Done():
-			return
-		case wr, ok := <-es.ch:
-			if !ok {
-				es.restart(es.currentRV.Load()+1, &backoff)
-				continue
+// serveWatchEvents runs one upstream watch, feeds ring & demux, and restarts on lag.
+func serveWatchEvents(
+	ctx context.Context,
+	client *clientv3.Client,
+	prefix string,
+	eventSink func(*clientv3.Event),
+	dx *demux,
+	ring History,
+	setCompaction func(int64),
+	backoffStart time.Duration,
+	backoffMax time.Duration,
+) {
+	go func() {
+		backoff := backoffStart
+		for {
+			// resume from the oldest revision we still keep
+			oldest := ring.OldestRevision()
+			opts := []clientv3.OpOption{
+				clientv3.WithPrefix(),
+				clientv3.WithProgressNotify(),
 			}
-			if err := wr.Err(); err != nil {
-				if err == rpctypes.ErrCompacted {
-					// fast‑forward to compaction point contained in Error struct
-					es.restart(wr.CompactRevision+1, &backoff)
-				} else {
-					es.restart(es.currentRV.Load()+1, &backoff)
+			if oldest > 0 {
+				opts = append(opts, clientv3.WithRev(oldest+1))
+			}
+
+			watchCh := client.Watch(ctx, prefix, opts...)
+
+			for wr := range watchCh {
+				// update compaction info on every frame
+				if cr := wr.CompactRevision; cr > 0 {
+					setCompaction(cr)
+					if cr >= ring.LatestRevision() {
+						ring.RebaseHistory(cr)
+						dx.purgeAll()
+					}
 				}
-				continue
+
+				if err := wr.Err(); err != nil {
+					if err == rpctypes.ErrCompacted {
+						ring.RebaseHistory(ring.LatestRevision())
+						dx.purgeAll()
+						setCompaction(wr.CompactRevision)
+					}
+					break // will fall through to retry logic
+				}
+
+				for _, evt := range wr.Events {
+					ring.Append(evt)
+					eventSink(evt)
+				}
 			}
-			backoff = time.Second // reset on success
-			if hdr := wr.Header; hdr.Revision > 0 {
-				es.currentRV.Store(hdr.Revision)
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(backoff):
 			}
-			for _, ev := range wr.Events {
-				es.currentRV.Store(ev.Kv.ModRevision)
-				bcast(ev)
+
+			if backoff < backoffMax {
+				backoff *= 2
 			}
 		}
-	}
+	}()
 }
-
-func (es *eventSource) restart(rev int64, backoff *time.Duration) {
-	time.Sleep(*backoff)
-	if *backoff < 30*time.Second {
-		*backoff *= 2
-	}
-	es.start(rev)
-}
-
-func (es *eventSource) rv() int64 { return es.currentRV.Load() }
-
-func (es *eventSource) stop() { es.cancel() }

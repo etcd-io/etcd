@@ -16,132 +16,232 @@ package cache
 
 import (
 	"context"
-	"errors"
-	"sync"
+	"sort"
+	"strings"
 	"sync/atomic"
-	"time"
 
+	rpctypes "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-var (
-	ErrDisabled  = errors.New("cache disabled")
-	ErrCompacted = errors.New("revision compacted")
-)
+var ErrCompacted = rpctypes.ErrCompacted
 
+type Stream struct{ Ch <-chan *clientv3.Event }
+
+// Cache buffers a single etcd Watch for a given key‐prefix and fan‑outs local watchers.
+// It is created internally by ShardedCache; callers typically use ShardedCache instead.
 type Cache struct {
-	cfg Config
-
-	cli *clientv3.Client
-	es  *eventSource
-	dx  *demux
-
-	stop context.CancelFunc
-	wg   sync.WaitGroup
-
-	gapSem chan struct{}
-	closed atomic.Bool
+	prefix             string // keys this shard is responsible for, may be "" (root)
+	cfg                Config
+	etcd               *clientv3.Client
+	hist               History
+	mux                *demux
+	ctx                context.Context
+	cancel             context.CancelFunc
+	latestCompactedRev int64         // updated atomically
+	ready              chan struct{} // closed when initialLoad finishes
 }
 
-func New(cli *clientv3.Client, opts ...Option) (*Cache, error) {
+// NewWithPrefix builds a cache shard that watches only the requested prefix.
+// For the root cache pass "".
+func NewWithPrefix(cli *clientv3.Client, prefix string, opts ...Option) (*Cache, error) {
 	cfg := defaultConfig()
-	for _, o := range opts {
-		o(&cfg)
-	}
-	if cfg.Disable {
-		return &Cache{cfg: cfg}, nil
+	for _, opt := range opts {
+		opt(&cfg)
 	}
 
-	// discover current revision
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	resp, err := cli.Get(ctx, "\x00", clientv3.WithLimit(1))
-	cancel()
-	if err != nil {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// choose history implementation
+	ringBuffer := newRingBuffer(cfg.BufferEntries)
+
+	cache := &Cache{
+		prefix: prefix,
+		cfg:    cfg,
+		etcd:   cli,
+		hist:   ringBuffer,
+		mux:    newDemux(),
+		ctx:    ctx,
+		cancel: cancel,
+		ready:  make(chan struct{}),
+	}
+
+	// initial chatch up
+	if err := cache.initialLoad(); err != nil {
+		cancel()
 		return nil, err
 	}
+	close(cache.ready)
 
-	parentCtx, stop := context.WithCancel(context.Background())
+	// upstream watch goroutine
+	serveWatchEvents(
+		ctx,
+		cli,
+		prefix,
+		cache.mux.broadcast,
+		cache.mux,
+		cache.hist,
+		func(rev int64) { atomic.StoreInt64(&cache.latestCompactedRev, rev) },
+		cfg.InitialBackoff,
+		cfg.MaxBackoff,
+	)
 
-	es := newEventSource(cli, resp.Header.Revision, parentCtx)
-
-	c := &Cache{
-		cfg:    cfg,
-		cli:    cli,
-		es:     es,
-		dx:     newDemux(),
-		stop:   stop,
-		gapSem: make(chan struct{}, cfg.MaxGapWatch),
-	}
-
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		es.run(func(ev *clientv3.Event) { c.dx.broadcast(ev, cfg.DropThreshold) })
-	}()
-	return c, nil
+	return cache, nil
 }
 
-func (c *Cache) Watch(ctx context.Context, prefix string, rev int64) (*Stream, error) {
-	if c.cfg.Disable {
-		return nil, ErrDisabled
+// initialLoad ranges over the prefix and seeds the ring.
+func (c *Cache) initialLoad() error {
+	opts := []clientv3.OpOption{clientv3.WithPrefix()}
+	resp, err := c.etcd.Get(c.ctx, c.prefix, opts...)
+	if err != nil {
+		return err
 	}
-	pred := newPrefixPred(prefix)
-	attach := c.es.rv()
-	out := make(chan *clientv3.Event, c.cfg.ChannelSize)
-
-	// repeat gap replay until attach point stabilizes
-	for {
-		if rev > 0 && rev < attach {
-			if err := c.replayGap(ctx, prefix, rev, attach, pred, out); err != nil {
-				return nil, err
-			}
+	for _, kv := range resp.Kvs {
+		event := &clientv3.Event{
+			Type: clientv3.EventTypePut,
+			Kv:   kv,
 		}
-		newRv := c.es.rv()
-		if newRv == attach {
-			break
-		}
-		rev = attach
-		attach = newRv
+		c.hist.Append(event)
 	}
-
-	w := &watcher{ch: out, pred: pred, lastSent: attach}
-	c.dx.add(w)
-
-	go func() {
-		<-ctx.Done()
-		c.dx.remove(w)
-	}()
-	return &Stream{C: out}, nil
-}
-
-func (c *Cache) replayGap(ctx context.Context, prefix string, from, to int64,
-	pred func([]byte) bool, out chan<- *clientv3.Event) error {
-
-	select {
-	case c.gapSem <- struct{}{}:
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-	gapCtx, cancel := context.WithTimeout(ctx, c.cfg.GapWatchTimeout)
-	err := gapReplay(gapCtx, c.cli, prefix, from, to, pred, out)
-	cancel()
-	<-c.gapSem
-	return translateCompacted(err)
-}
-
-func (c *Cache) Close() error {
-	if c.closed.Swap(true) {
-		return nil
-	}
-	c.stop()
-	c.es.stop()
-	c.cli.Close()
-	c.wg.Wait()
 	return nil
 }
 
-func (c *Cache) CurrentRevision() int64 { return c.es.rv() }
+func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	select {
+	case <-c.ready:
+	case <-ctx.Done():
+		emptyWatchChan := make(chan clientv3.WatchResponse)
+		close(emptyWatchChan)
+		return emptyWatchChan
+	}
 
-type Stream struct {
-	C <-chan *clientv3.Event
+	op := clientv3.OpGet(key, opts...)
+	requestedRev := op.Rev()
+
+	responseChan := make(chan clientv3.WatchResponse, 1)
+
+	// compaction / gap checks
+	if compactedRev := atomic.LoadInt64(&c.latestCompactedRev); requestedRev > 0 && requestedRev <= compactedRev {
+		responseChan <- clientv3.WatchResponse{CompactRevision: compactedRev}
+		close(responseChan)
+		return responseChan
+	}
+	if requestedRev > 0 && requestedRev < c.hist.OldestRevision() {
+		responseChan <- clientv3.WatchResponse{CompactRevision: c.hist.OldestRevision()}
+		close(responseChan)
+		return responseChan
+	}
+
+	stream, err := c.newWatchStream(ctx, key, requestedRev)
+	if err != nil {
+		responseChan <- clientv3.WatchResponse{Canceled: true}
+		close(responseChan)
+		return responseChan
+	}
+
+	go func() {
+		defer close(responseChan)
+		for {
+			select {
+			case ev, ok := <-stream.Ch:
+				if !ok {
+					return
+				}
+				responseChan <- clientv3.WatchResponse{Events: []*clientv3.Event{ev}}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return responseChan
 }
+
+func (c *Cache) newWatchStream(ctx context.Context, key string, startRev int64) (*Stream, error) {
+	pred := func(k []byte) bool { return strings.HasPrefix(string(k), key) }
+
+	replay := c.hist.GetSince(startRev, pred)
+	ch := make(chan *clientv3.Event, c.cfg.ChannelSize)
+	for _, ev := range replay {
+		select {
+		case ch <- ev:
+		case <-ctx.Done():
+			close(ch)
+			return nil, ctx.Err()
+		}
+	}
+
+	w := &watcher{
+		eventChan:     ch,
+		predicate:     pred,
+		lastRev:       c.hist.LatestRevision(),
+		dropThreshold: c.cfg.DropThreshold,
+	}
+	c.mux.add(w)
+
+	go func() {
+		<-ctx.Done()
+		c.mux.remove(w)
+	}()
+	return &Stream{Ch: ch}, nil
+}
+
+// Close shuts down the shard.
+func (c *Cache) Close() { c.cancel() }
+
+// ----------------------- SHARDED CACHE --------------------------------------
+
+// ShardedCache isolates per-prefix caches, preventing one prefix from evicting others.
+type ShardedCache struct {
+	shards   map[string]*Cache // by prefix
+	prefixes []string          // deterministic order, longest first
+}
+
+// NewShardedCache makes a shard per prefix; "" is the catch-all root shard.
+func NewShardedCache(cli *clientv3.Client, prefixes []string, opts ...Option) (*ShardedCache, error) {
+	if len(prefixes) == 0 {
+		prefixes = []string{""}
+	}
+	// sort by descending length so "/foo/bar" wins over "/foo"
+	sort.Slice(prefixes, func(i, j int) bool { return len(prefixes[i]) > len(prefixes[j]) })
+
+	shards := make(map[string]*Cache, len(prefixes))
+	for _, p := range prefixes {
+		shard, err := NewWithPrefix(cli, p, opts...)
+		if err != nil {
+			// close any earlier shards
+			for _, s := range shards {
+				s.Close()
+			}
+			return nil, err
+		}
+		shards[p] = shard
+	}
+	return &ShardedCache{shards: shards, prefixes: prefixes}, nil
+}
+
+// pickShard returns the cache whose prefix is the longest match for key.
+func (s *ShardedCache) pickShard(key string) *Cache {
+	for _, p := range s.prefixes {
+		if strings.HasPrefix(key, p) {
+			return s.shards[p]
+		}
+	}
+	return s.shards[""]
+}
+
+// Watch selects a shard based on key and delegates.
+func (sc *ShardedCache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	shard := sc.pickShard(key)
+	return shard.Watch(ctx, key, opts...)
+}
+
+// Close stops all shards.
+func (sc *ShardedCache) Close() {
+	for _, shard := range sc.shards {
+		shard.Close()
+	}
+}
+
+// --- helpers exposed for tests ------------------------------------------------
+
+func (c *Cache) OldestRev() int64 { return c.hist.OldestRevision() }
