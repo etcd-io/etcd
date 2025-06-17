@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestReproduce19406 reproduces the issue: https://github.com/etcd-io/etcd/issues/19406
