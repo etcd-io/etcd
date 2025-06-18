@@ -1,6 +1,15 @@
 ---
 run:
   timeout: 30m
+formatters:
+  enable:
+    - gci
+  settings: # please keep this alphabetized
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(go.etcd.io)
 issues:
   max-same-issues: 0
   # Excluding configuration per-path, per-linter, per-text and per-source

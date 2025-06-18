@@ -31,10 +31,11 @@ import (
 	_ "github.com/google/yamlfmt/cmd/yamlfmt"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"
-	_ "go.etcd.io/gofail"
-	_ "go.etcd.io/protodoc"
-	_ "go.etcd.io/raft/v3"
 	_ "gotest.tools/gotestsum"
 	_ "gotest.tools/v3"
 	_ "honnef.co/go/tools/cmd/staticcheck"
+
+	_ "go.etcd.io/gofail"
+	_ "go.etcd.io/protodoc"
+	_ "go.etcd.io/raft/v3"
 )

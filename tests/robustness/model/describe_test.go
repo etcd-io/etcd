@@ -18,9 +18,9 @@ import (
 	"errors"
 	"testing"
 
-	"go.etcd.io/etcd/api/v3/mvccpb"
-
 	"github.com/stretchr/testify/assert"
+
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 func TestModelDescribe(t *testing.T) {
