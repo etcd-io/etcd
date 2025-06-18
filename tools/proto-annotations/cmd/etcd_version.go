@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 
@@ -72,10 +73,8 @@ func allEtcdVersionAnnotations() (annotations []etcdVersionAnnotation, err error
 	var fileAnnotations []etcdVersionAnnotation
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		pkg := string(file.Package())
-		for _, externalPkg := range externalPackages {
-			if pkg == externalPkg {
-				return true
-			}
+		if slices.Contains(externalPackages, pkg) {
+			return true
 		}
 		fileAnnotations, err = fileEtcdVersionAnnotations(file)
 		if err != nil {
