@@ -2,6 +2,17 @@
 
 `etcd/tools/rw-heatmaps` is the mixed read/write performance evaluation tool for etcd clusters.
 
+## Prerequisites
+Ensure the etcd binary has been build.
+
+```sh
+make build
+```
+This tool will utilize benchmark tools to perfrom/generate the performance evalation.
+
+```sh
+make tools
+```
 ## Installation
 
 Install the tool by running the following command from the etcd source directory.
