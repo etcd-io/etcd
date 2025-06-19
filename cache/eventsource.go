@@ -14,7 +14,7 @@ func serveWatchEvents(
 	client *clientv3.Client,
 	prefix string,
 	eventSink func(*clientv3.Event),
-	dx *demux,
+	demux *demux,
 	ring History,
 	setCompaction func(int64),
 	backoffStart time.Duration,
@@ -41,14 +41,14 @@ func serveWatchEvents(
 					setCompaction(cr)
 					if cr >= ring.LatestRevision() {
 						ring.RebaseHistory(cr)
-						dx.purgeAll()
+						demux.purgeAll()
 					}
 				}
 
 				if err := wr.Err(); err != nil {
 					if err == rpctypes.ErrCompacted {
 						ring.RebaseHistory(ring.LatestRevision())
-						dx.purgeAll()
+						demux.purgeAll()
 						setCompaction(wr.CompactRevision)
 					}
 					break // will fall through to retry logic

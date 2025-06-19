@@ -2,74 +2,74 @@ package cache
 
 import (
 	"sync"
+	"sync/atomic"
+	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-type watcher struct {
-	eventChan     chan *clientv3.Event
-	predicate     func([]byte) bool
-	lastRev       int64
-	missCount     int
-	dropThreshold int
-}
-
 type demux struct {
-	mu       sync.RWMutex
-	watchers map[*watcher]struct{}
+	mu              sync.RWMutex
+	activeWatchers  map[*watcher]struct{}
+	laggingWatchers map[*watcher]int64
+	history         History
+	resyncInterval  time.Duration
 }
 
-func newDemux() *demux {
-	return &demux{watchers: make(map[*watcher]struct{})}
-}
-
-func (d *demux) add(watcher *watcher) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.watchers[watcher] = struct{}{}
-}
-
-func (d *demux) remove(watcher *watcher) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	if _, ok := d.watchers[watcher]; ok {
-		delete(d.watchers, watcher)
-		drain(watcher.eventChan)
-		close(watcher.eventChan)
+func newDemux(history History, resyncInterval time.Duration) *demux {
+	d := &demux{
+		activeWatchers:  make(map[*watcher]struct{}),
+		laggingWatchers: make(map[*watcher]int64),
+		history:         history,
+		resyncInterval:  resyncInterval,
 	}
+
+	go d.resyncLoop() // background catch-up
+	return d
+}
+
+func (d *demux) add(w *watcher) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.activeWatchers[w] = struct{}{}
+}
+
+func (d *demux) remove(w *watcher) {
+	d.mu.Lock()
+	delete(d.activeWatchers, w)
+	delete(d.laggingWatchers, w)
+
+	if atomic.CompareAndSwapInt32(&w.stopped, 0, 1) {
+		close(w.eventChan)
+	}
+	d.mu.Unlock()
 }
 
 func (d *demux) broadcast(event *clientv3.Event) {
-	// take a snapshot of watchers to avoid holding write lock for long.
 	d.mu.RLock()
-	defer d.mu.RUnlock()
-	watchers := make([]*watcher, 0, len(d.watchers))
-	for w := range d.watchers {
-		watchers = append(watchers, w)
+	activeWatchersList := make([]*watcher, 0, len(d.activeWatchers))
+	for w := range d.activeWatchers {
+		activeWatchersList = append(activeWatchersList, w)
 	}
+	d.mu.RUnlock()
 
-	var dropList []*watcher
-	for _, w := range watchers {
-		if w.predicate != nil && !w.predicate(event.Kv.Key) {
-			continue
+	for _, w := range activeWatchersList {
+		if atomic.LoadInt32(&w.stopped) == 1 {
+			continue // already gone
 		}
-		if event.Kv.ModRevision <= w.lastRev {
-			continue
-		}
-		select {
-		case w.eventChan <- event:
-			w.lastRev = event.Kv.ModRevision
-			w.missCount = 0
-		default:
-			w.missCount++
-			if w.missCount >= w.dropThreshold {
-				dropList = append(dropList, w)
-			}
+		if ok := w.enqueueEvent(event); !ok {
+			d.moveToUnsync(w)
 		}
 	}
-	// Remove slow watchers outside of main loop to avoid concurrent map write.
-	for _, w := range dropList {
-		d.remove(w)
+}
+
+// moveToUnsync transfers a watcher from activeWatchers to laggingWatchers.
+func (d *demux) moveToUnsync(w *watcher) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if _, ok := d.activeWatchers[w]; ok {
+		delete(d.activeWatchers, w)
+		d.laggingWatchers[w] = w.lastRev + 1 // first missed revision
 	}
 }
 
@@ -78,16 +78,60 @@ func (d *demux) broadcast(event *clientv3.Event) {
 func (d *demux) purgeAll() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	for w := range d.watchers {
-		drain(w.eventChan)
-		close(w.eventChan)
+	for w := range d.activeWatchers {
+		if atomic.CompareAndSwapInt32(&w.stopped, 0, 1) {
+			close(w.eventChan)
+		}
 	}
-	d.watchers = make(map[*watcher]struct{})
+	for w := range d.laggingWatchers {
+		if atomic.CompareAndSwapInt32(&w.stopped, 0, 1) {
+			close(w.eventChan)
+		}
+	}
+	d.activeWatchers, d.laggingWatchers = make(map[*watcher]struct{}), make(map[*watcher]int64)
 }
 
-// drain empties ch so the very next receive gets ok == false.
-func drain(ch chan *clientv3.Event) {
-	for len(ch) > 0 {
-		<-ch
+func (d *demux) resyncLoop() {
+	ticker := time.NewTicker(d.resyncInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// copy unsync map so we can work without locks.
+		d.mu.RLock()
+		laggingWatchersList := make(map[*watcher]int64, len(d.laggingWatchers))
+		for w, next := range d.laggingWatchers {
+			laggingWatchersList[w] = next
+		}
+		d.mu.RUnlock()
+
+		// Try to replay history for each lagging watcher.
+		for w, next := range laggingWatchersList {
+			missed, _ := d.history.GetSince(next, w.predicate)
+			if len(missed) == 0 {
+				continue
+			}
+
+			i := 0
+			for i < len(missed) {
+				if w.enqueueEvent(missed[i]) {
+					i++
+				} else {
+					break // still full: keep watcher unsynced
+				}
+			}
+
+			if i == len(missed) {
+				// fully delivered -> move back to activeWatchers
+				d.mu.Lock()
+				delete(d.laggingWatchers, w)
+				d.activeWatchers[w] = struct{}{}
+				d.mu.Unlock()
+			} else {
+				// partial delivery –> remember where to resume
+				d.mu.Lock()
+				d.laggingWatchers[w] = w.lastRev + 1
+				d.mu.Unlock()
+			}
+		}
 	}
 }

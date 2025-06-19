@@ -62,7 +62,7 @@ func waitEvent(t *testing.T, ch clientv3.WatchChan, why string) clientv3.Event {
 // two watchers see their own prefixes
 func TestDemuxIsolation(t *testing.T) {
 	_, cli := startEtcd(t)
-	c, _ := cachepkg.NewWithPrefix(cli, "", cachepkg.WithBufferEntries(32))
+	c, _ := cachepkg.NewWithPrefix(context.Background(), cli, "", cachepkg.WithHistoryWindowSize(32))
 	defer c.Close()
 
 	ctx := context.Background()
@@ -86,7 +86,7 @@ func TestDemuxIsolation(t *testing.T) {
 // revision older than cache window returns compact frame then closes
 func TestTooOldRevisionCompact(t *testing.T) {
 	_, cli := startEtcd(t)
-	c, _ := cachepkg.NewWithPrefix(cli, "", cachepkg.WithBufferEntries(2))
+	c, _ := cachepkg.NewWithPrefix(context.Background(), cli, "", cachepkg.WithHistoryWindowSize(2))
 	defer c.Close()
 	ctx := context.Background()
 	var revs []int64
@@ -126,7 +126,7 @@ func TestTooOldRevisionCompact(t *testing.T) {
 // watch remains usable after server-side Compact()
 func TestWatchSurvivesServerCompaction(t *testing.T) {
 	_, cli := startEtcd(t)
-	c, _ := cachepkg.NewWithPrefix(cli, "")
+	c, _ := cachepkg.NewWithPrefix(context.Background(), cli, "")
 	defer c.Close()
 	ctx := context.Background()
 	wch := c.Watch(ctx, "", clientv3.WithPrefix())

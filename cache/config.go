@@ -3,33 +3,35 @@ package cache
 import "time"
 
 type Config struct {
-	ChannelSize    int
-	BufferEntries  int
-	DropThreshold  int
-	InitialBackoff time.Duration
-	MaxBackoff     time.Duration
+	PerWatcherBufferSize int
+	HistoryWindowSize    int
+	ResyncInterval       time.Duration
+	InitialBackoff       time.Duration
+	MaxBackoff           time.Duration
 }
 
 func defaultConfig() Config {
 	return Config{
-		ChannelSize:    256,
-		BufferEntries:  2048,
-		DropThreshold:  5,
-		InitialBackoff: 50 * time.Millisecond,
-		MaxBackoff:     2 * time.Second,
+		PerWatcherBufferSize: 10,
+		HistoryWindowSize:    2048,
+		ResyncInterval:       50 * time.Millisecond,
+		InitialBackoff:       50 * time.Millisecond,
+		MaxBackoff:           2 * time.Second,
 	}
 }
 
 type Option func(*Config)
 
-func WithChannelSize(n int) Option {
-	return func(c *Config) { c.ChannelSize = n }
+func WithPerWatcherBufferSize(n int) Option {
+	return func(c *Config) { c.PerWatcherBufferSize = n }
 }
-func WithBufferEntries(n int) Option {
-	return func(c *Config) { c.BufferEntries = n }
+
+func WithHistoryWindowSize(n int) Option {
+	return func(c *Config) { c.HistoryWindowSize = n }
 }
-func WithDropThreshold(n int) Option {
-	return func(c *Config) { c.DropThreshold = n }
+
+func WithResyncInterval(d time.Duration) Option {
+	return func(c *Config) { c.ResyncInterval = d }
 }
 
 func WithInitialBackoff(d time.Duration) Option {

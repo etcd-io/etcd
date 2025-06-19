@@ -1,86 +1,83 @@
 package cache
 
-import clientv3 "go.etcd.io/etcd/client/v3"
+import (
+	"sync"
 
-type entry struct {
-	rev   int64
-	event *clientv3.Event
-}
+	clientv3 "go.etcd.io/etcd/client/v3"
+)
+
+type entry *clientv3.Event
 
 type ringBuffer struct {
-	buf               []entry
-	head, size        int
+	mu                sync.RWMutex
+	buffer            []entry
+	head, tail        int
 	oldestRev, latest int64
 }
 
 func newRingBuffer(capacity int) *ringBuffer {
-	if capacity <= 0 {
-		capacity = 1024
-	}
-	return &ringBuffer{buf: make([]entry, capacity)}
+	// assume capacity > 0 – validated by Cache
+	return &ringBuffer{buffer: make([]entry, capacity)}
 }
 
-// cloneEvent deep‑copies event so once it leaves the ring it's immutable.
-func cloneEvent(event *clientv3.Event) *clientv3.Event {
-	dup := *event
-	if event.Kv != nil {
-		kv := *event.Kv
-		kv.Key = append([]byte(nil), event.Kv.Key...)
-		kv.Value = append([]byte(nil), event.Kv.Value...)
-		dup.Kv = &kv
-	}
-	return &dup
-}
+func (r *ringBuffer) Append(ev *clientv3.Event) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-// Append appends event, overwriting oldest if full.
-func (r *ringBuffer) Append(event *clientv3.Event) {
-	rev := event.Kv.ModRevision
-	r.buf[r.head] = entry{rev: rev, event: cloneEvent(event)}
-	r.head = (r.head + 1) % len(r.buf)
+	rev := ev.Kv.ModRevision
+	r.buffer[r.head] = ev
+	r.head = (r.head + 1) % len(r.buffer)
 
-	if r.size < len(r.buf) {
-		r.size++
-	} else {
-		// we overwrote the oldest, advance oldestRev
-		r.oldestRev = r.buf[r.head].rev
+	if r.head == r.tail { // buffer full -> overwrite oldest
+		r.tail = (r.tail + 1) % len(r.buffer)
 	}
-	if r.oldestRev == 0 {
-		r.oldestRev = rev
-	}
+	r.oldestRev = r.buffer[r.tail].Kv.ModRevision
 	r.latest = rev
 }
 
-// GetSince returns events with ModRevision >= rev filtered by pred (nil = all).
-func (r *ringBuffer) GetSince(rev int64, pred KeyPredicate) []*clientv3.Event {
-	if r.size == 0 || rev > r.latest {
-		return nil
-	}
+func (r *ringBuffer) GetSince(rev int64, pred KeyPredicate) ([]*clientv3.Event, int64) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-	out := make([]*clientv3.Event, 0, r.size)
-	startIdx := (r.head - r.size + len(r.buf)) % len(r.buf)
-	for i := 0; i < r.size; i++ {
-		ent := r.buf[(startIdx+i)%len(r.buf)]
-		if ent.rev >= rev && (pred == nil || pred(ent.event.Kv.Key)) {
-			out = append(out, cloneEvent(ent.event))
+	if r.tail == r.head || rev > r.latest {
+		return nil, r.latest
+	}
+	out := make([]*clientv3.Event, 0, len(r.buffer))
+	for i := r.tail; i != r.head; i = (i + 1) % len(r.buffer) {
+		e := r.buffer[i]
+		if e != nil && e.Kv.ModRevision >= rev && (pred == nil || pred(e.Kv.Key)) {
+			out = append(out, e)
 		}
 	}
-	return out
+	return out, r.latest
 }
 
-func (r *ringBuffer) OldestRevision() int64 { return r.oldestRev }
-func (r *ringBuffer) LatestRevision() int64 { return r.latest }
+func (r *ringBuffer) OldestRevision() int64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.oldestRev
+}
 
-func (r *ringBuffer) RebaseHistory(newCompactedRev int64) {
-	r.head, r.size = 0, 0
-	r.oldestRev, r.latest = newCompactedRev, newCompactedRev
-	for i := range r.buf {
-		r.buf[i] = entry{}
+func (r *ringBuffer) LatestRevision() int64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.latest
+}
+
+func (r *ringBuffer) RebaseHistory(compacted int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.head, r.tail = 0, 0
+	r.oldestRev, r.latest = compacted, compacted
+	for i := range r.buffer {
+		r.buffer[i] = nil
 	}
 }
 
-// FeedFrom copies every entry from src into the ring in order.
 func (r *ringBuffer) FeedFrom(src History) {
-	for _, ev := range src.GetSince(src.OldestRevision(), nil) {
+	events, _ := src.GetSince(src.OldestRevision(), nil)
+	for _, ev := range events {
 		r.Append(ev)
 	}
 }
