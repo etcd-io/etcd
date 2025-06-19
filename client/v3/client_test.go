@@ -257,12 +257,12 @@ func TestCloseCtxClient(t *testing.T) {
 func TestWithLogger(t *testing.T) {
 	ctx := t.Context()
 	c := NewCtxClient(ctx)
-	if c.lg == nil {
+	if c.lg.Load() == nil {
 		t.Errorf("unexpected nil in *zap.Logger")
 	}
 
 	c.WithLogger(nil)
-	if c.lg != nil {
+	if c.GetLogger() != nil {
 		t.Errorf("WithLogger should modify *zap.Logger")
 	}
 }
@@ -272,7 +272,7 @@ func TestZapWithLogger(t *testing.T) {
 	lg := zap.NewNop()
 	c := NewCtxClient(ctx, WithZapLogger(lg))
 
-	if c.lg != lg {
+	if c.GetLogger() != lg {
 		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
 }
