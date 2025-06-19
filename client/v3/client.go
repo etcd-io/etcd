@@ -205,7 +205,7 @@ func (c *Client) Sync(ctx context.Context) error {
 		return len(eps) > 0, nil
 	})
 	c.SetEndpoints(eps...)
-	c.lg.Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
+	c.GetLogger().Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
 	return nil
 }
 
@@ -223,7 +223,7 @@ func (c *Client) autoSync() {
 			err := c.Sync(ctx)
 			cancel()
 			if err != nil && !errors.Is(err, c.ctx.Err()) {
-				c.lg.Info("Auto sync endpoints failed.", zap.Error(err))
+				c.GetLogger().Info("Auto sync endpoints failed.", zap.Error(err))
 			}
 		}
 	}
@@ -508,10 +508,10 @@ func (c *Client) roundRobinQuorumBackoff(waitBetween time.Duration, jitterFracti
 		n := uint(len(c.Endpoints()))
 		quorum := (n/2 + 1)
 		if attempt%quorum == 0 {
-			c.lg.Debug("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
+			c.GetLogger().Debug("backoff", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum), zap.Duration("waitBetween", waitBetween), zap.Float64("jitterFraction", jitterFraction))
 			return jitterUp(waitBetween, jitterFraction)
 		}
-		c.lg.Debug("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
+		c.GetLogger().Debug("backoff skipped", zap.Uint("attempt", attempt), zap.Uint("quorum", quorum))
 		return 0
 	}
 }
