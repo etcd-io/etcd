@@ -54,15 +54,18 @@ var (
 		traffic.EtcdPutDeleteLease,
 		traffic.Kubernetes,
 	}
+	NodeCount = "3"
 )
 
 func main() {
 	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
 	flag.Parse()
 
-	reportPath, hosts, etcdetcdDataPaths := common.DefaultPaths()
+	cfg := common.MakeConfig(NodeCount)
+
+	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
 	if *local {
-		reportPath, hosts, etcdetcdDataPaths = common.LocalPaths()
+		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
 	}
 
 	ctx := context.Background()

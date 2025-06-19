@@ -24,14 +24,19 @@ import (
 	"github.com/antithesishq/antithesis-sdk-go/lifecycle"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 )
 
 // Sleep duration
 const SLEEP = 10
 
+var NodeCount = "3"
+
 // CheckHealth checks health of all etcd nodes
 func CheckHealth() bool {
-	nodeOptions := []string{"etcd0", "etcd1", "etcd2"}
+	cfg := common.MakeConfig(NodeCount)
+
+	nodeOptions := []string{"etcd0", "etcd1", "etcd2"}[:cfg.NodeCount]
 
 	// iterate over each node and check health
 	for _, node := range nodeOptions {
