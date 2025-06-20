@@ -31,7 +31,12 @@ type Set interface {
 	Sub(Set) Set
 }
 
-func NewUnsafeSet(values ...string) *unsafeSet {
+type UnsafeSet interface {
+	Set
+	ContainsAll(values []string) bool
+}
+
+func NewUnsafeSet(values ...string) UnsafeSet {
 	set := &unsafeSet{make(map[string]struct{})}
 	for _, v := range values {
 		set.Add(v)
@@ -39,10 +44,12 @@ func NewUnsafeSet(values ...string) *unsafeSet {
 	return set
 }
 
-func NewThreadsafeSet(values ...string) *tsafeSet {
+func NewThreadsafeSet(values ...string) Set {
 	us := NewUnsafeSet(values...)
 	return &tsafeSet{us, sync.RWMutex{}}
 }
+
+var _ UnsafeSet = (*unsafeSet)(nil)
 
 type unsafeSet struct {
 	d map[string]struct{}
@@ -122,8 +129,10 @@ func (us *unsafeSet) Sub(other Set) Set {
 	return result
 }
 
+var _ Set = (*tsafeSet)(nil)
+
 type tsafeSet struct {
-	us *unsafeSet
+	us Set
 	m  sync.RWMutex
 }
 
