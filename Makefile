@@ -175,6 +175,14 @@ test-integration:
 test-e2e:
 	PASSES="build e2e" ./test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-grpcproxy-integration
+test-grpcproxy-integration:
+	PASSES='build grpcproxy_integration' RACE='true' ./test.sh $(GO_TEST_FLAGS)
+
+.PHONY: test-grpcproxy-e2e
+test-grpcproxy-e2e:
+	PASSES='build grpcproxy_e2e' RACE='true' ./test.sh $(GO_TEST_FLAGS)
+
 .PHONY: test-e2e-release
 test-e2e-release:
 	PASSES="build release e2e" ./test.sh $(GO_TEST_FLAGS)
