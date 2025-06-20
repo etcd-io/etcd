@@ -55,6 +55,8 @@ var (
 
 	targetLeader     bool
 	autoSyncInterval time.Duration
+
+	generatePerfReport bool
 )
 
 func init() {
@@ -74,4 +76,6 @@ func init() {
 
 	RootCmd.PersistentFlags().BoolVar(&targetLeader, "target-leader", false, "connect only to the leader node")
 	RootCmd.PersistentFlags().DurationVar(&autoSyncInterval, "auto-sync-interval", time.Duration(0), "AutoSyncInterval is the interval to update endpoints with its latest members")
+
+	RootCmd.PersistentFlags().BoolVar(&generatePerfReport, "report-perfdash", false, "Generate benchmark report in perfdash format")
 }
