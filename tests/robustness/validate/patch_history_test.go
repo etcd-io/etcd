@@ -412,7 +412,7 @@ func TestPatchHistory(t *testing.T) {
 					Watch:    tc.watchOperations,
 				},
 			}
-			operations, _ := prepareAndCategorizeOperations(reports)
+			operations, _, _ := prepareAndCategorizeOperations(reports)
 			patched := patchLinearizableOperations(operations, reports, tc.persistedRequest)
 			if diff := cmp.Diff(tc.expectedRemainingOperations, patched,
 				cmpopts.EquateEmpty(),

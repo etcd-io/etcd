@@ -34,7 +34,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	if result.Assumptions.Error() != nil {
 		return result
 	}
-	linearizableOperations, serializableOperations := prepareAndCategorizeOperations(reports)
+	linearizableOperations, serializableOperations, operationsForVisualization := prepareAndCategorizeOperations(reports)
 	// We are passing in the original reports and linearizableOperations with modified return time.
 	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
 	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
@@ -43,6 +43,7 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	}
 
 	result.Linearization = validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	result.Linearization.AddToVisualization(operationsForVisualization)
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
 	if result.Linearization.Error() != nil {
 		lg.Info("Skipping other validations as linearization failed")
@@ -62,21 +63,17 @@ type Config struct {
 	ExpectRevisionUnique bool
 }
 
-func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable []porcupine.Operation, serializable []porcupine.Operation) {
+func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable, serializable, forVisualization []porcupine.Operation) {
 	for _, report := range reports {
 		for _, op := range report.KeyValue {
 			request := op.Input.(model.EtcdRequest)
 			response := op.Output.(model.MaybeEtcdResponse)
-			// serializable operations include only Range requests on non-zero revision
-			if request.Type == model.Range && request.Range.Revision != 0 {
+			if isSerializable(request, response) {
 				serializable = append(serializable, op)
 			}
-			// Remove failed read requests as they are not relevant for linearization.
-			if request.IsRead() && response.Error != "" {
-				continue
-			}
-			// Defragment is not linearizable
-			if request.Type == model.Defragment {
+			// Operation that will not be linearized need to be added separetly to visualization.
+			if !isLinearizable(request, response) {
+				forVisualization = append(forVisualization, op)
 				continue
 			}
 			// For linearization, we set the return time of failed requests to MaxInt64.
@@ -87,7 +84,31 @@ func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable
 			linearizable = append(linearizable, op)
 		}
 	}
-	return linearizable, serializable
+	return linearizable, serializable, forVisualization
+}
+
+func isLinearizable(request model.EtcdRequest, response model.MaybeEtcdResponse) bool {
+	// Cannot test response for request without side effect.
+	if request.IsRead() && response.Error != "" {
+		return false
+	}
+	// Defragment is not linearizable
+	if request.Type == model.Defragment {
+		return false
+	}
+	return true
+}
+
+func isSerializable(request model.EtcdRequest, response model.MaybeEtcdResponse) bool {
+	// Cannot test response for request without side effect.
+	if request.IsRead() && response.Error != "" {
+		return false
+	}
+	// Test range requests about stale revision
+	if request.Type == model.Range && request.Range.Revision != 0 {
+		return true
+	}
+	return false
 }
 
 func checkValidationAssumptions(reports []report.ClientReport) error {
