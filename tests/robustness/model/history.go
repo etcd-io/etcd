@@ -171,6 +171,12 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, cl
 	h.appendSuccessful(request, start, end, txnResponse(results, resp.Succeeded, revision))
 }
 
+func (h *AppendableHistory) appendClientError(request EtcdRequest, start, end time.Duration, err error) {
+	h.appendSuccessful(request, start, end, MaybeEtcdResponse{
+		EtcdResponse: EtcdResponse{ClientError: err.Error()},
+	})
+}
+
 func (h *AppendableHistory) appendSuccessful(request EtcdRequest, start, end time.Duration, response MaybeEtcdResponse) {
 	op := porcupine.Operation{
 		ClientId: h.streamID,
@@ -266,9 +272,11 @@ func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, r
 	request := compactRequest(rev)
 	if err != nil {
 		if strings.Contains(err.Error(), mvcc.ErrCompacted.Error()) {
-			h.appendSuccessful(request, start, end, MaybeEtcdResponse{
-				EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()},
-			})
+			h.appendClientError(request, start, end, mvcc.ErrCompacted)
+			return
+		}
+		if strings.Contains(err.Error(), mvcc.ErrFutureRev.Error()) {
+			h.appendClientError(request, start, end, mvcc.ErrFutureRev)
 			return
 		}
 		h.appendFailed(request, start, end, err)
