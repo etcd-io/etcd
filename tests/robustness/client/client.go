@@ -16,6 +16,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -370,4 +371,74 @@ func toWatchEvent(event clientv3.Event) (watch model.WatchEvent) {
 		panic(fmt.Sprintf("Unexpected event type: %s", event.Type))
 	}
 	return watch
+}
+
+type ClientSet struct {
+	mux        sync.Mutex
+	idProvider identity.Provider
+	baseTime   time.Time
+
+	closed  bool
+	clients []*RecordingClient
+	reports []report.ClientReport
+}
+
+func NewSet(ids identity.Provider, baseTime time.Time) *ClientSet {
+	return &ClientSet{
+		idProvider: ids,
+		baseTime:   baseTime,
+
+		clients: []*RecordingClient{},
+	}
+}
+
+func (cs *ClientSet) NewClient(endpoints []string) (*RecordingClient, error) {
+	if cs.closed {
+		return nil, errors.New("the clientset is already closed")
+	}
+	cli, err := NewRecordingClient(endpoints, cs.idProvider, cs.baseTime)
+	if err != nil {
+		return nil, err
+	}
+	cs.mux.Lock()
+	cs.clients = append(cs.clients, cli)
+	cs.mux.Unlock()
+	return cli, nil
+}
+
+func (cs *ClientSet) Reports() []report.ClientReport {
+	if !cs.closed {
+		cs.Close()
+	}
+	if cs.reports == nil {
+		reports := cs.generateReports()
+		cs.reports = reports
+	}
+	return cs.reports
+}
+
+func (cs *ClientSet) Close() {
+	if cs.closed {
+		return
+	}
+	for _, c := range cs.clients {
+		c.Close()
+	}
+	cs.closed = true
+}
+
+func (cs *ClientSet) generateReports() []report.ClientReport {
+	reports := make([]report.ClientReport, 0, len(cs.clients))
+	for _, c := range cs.clients {
+		reports = append(reports, c.Report())
+	}
+	return reports
+}
+
+func (cs *ClientSet) IdentityProvider() identity.Provider {
+	return cs.idProvider
+}
+
+func (cs *ClientSet) BaseTime() time.Time {
+	return cs.baseTime
 }

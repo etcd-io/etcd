@@ -19,16 +19,14 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, clientSet *ClientSet) error {
 	var g errgroup.Group
 	reports := make([]report.ClientReport, len(endpoints))
 	memberMaxRevisionChans := make([]chan int64, len(endpoints))
@@ -36,7 +34,7 @@ func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		g.Go(func() error {
-			c, err := NewRecordingClient([]string{endpoint}, ids, baseTime)
+			c, err := clientSet.NewClient([]string{endpoint})
 			if err != nil {
 				return err
 			}
@@ -54,7 +52,7 @@ func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []
 		}
 		return nil
 	})
-	return reports, g.Wait()
+	return g.Wait()
 }
 
 type WatchConfig struct {
