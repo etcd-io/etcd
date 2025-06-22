@@ -99,6 +99,12 @@ On the day of the release:
 
    It generates all release binaries under the directory `/tmp/etcd-release-${VERSION}/etcd/release/` and images. Binaries are pushed to the Google Cloud bucket
    under project `etcd-development`, and images are pushed to `quay.io` and `gcr.io`.
+   - It is advisable to do a dry run before the actual release. This will create a `/tmp` directory. Do **NOT** forget to remove this directory before the actual release.
+
+      ```bash
+      DRY_RUN=true BRANCH=${BRANCH} ./scripts/release.sh ${VERSION}
+      ```
+
 4. Publish the release page on GitHub
    - Open the **draft** release URL shown by the release script
    - Click the pen button at the top right to edit the release
