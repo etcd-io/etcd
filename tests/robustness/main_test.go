@@ -20,6 +20,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -132,7 +133,7 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	g := errgroup.Group{}
-	var operationReport, watchReport, failpointClientReport []report.ClientReport
+	var failpointClientReport []report.ClientReport
 	failpointInjected := make(chan report.FailpointInjection, 1)
 
 	// using baseTime time-measuring operation to get monotonic clock reading
@@ -156,19 +157,22 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		}
 		return nil
 	})
+	trafficSet := client.NewSet(ids, baseTime)
+	defer trafficSet.Close()
 	maxRevisionChan := make(chan int64, 1)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		operationReport = traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, baseTime, ids)
+		operationReport := traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, trafficSet)
 		maxRevision := report.OperationsMaxRevision(operationReport)
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
 		return nil
 	})
+	watchSet := client.NewSet(ids, baseTime)
+	defer watchSet.Close()
 	g.Go(func() error {
-		var err error
 		endpoints := processEndpoints(clus)
-		watchReport, err = client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, baseTime, ids)
+		err := client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, watchSet)
 		return err
 	})
 	err := g.Wait()
@@ -180,7 +184,7 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	if err != nil {
 		t.Error(err)
 	}
-	return append(operationReport, append(failpointClientReport, watchReport...)...)
+	return slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
 }
 
 func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
