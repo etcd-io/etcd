@@ -198,19 +198,7 @@ See [PR management](https://github.com/etcd-io/etcd/blob/main/Documentation/cont
 
 ## etcd Emeritus Maintainers
 
-These emeritus maintainers dedicated a part of their career to etcd and reviewed code, triaged bugs and pushed the project forward over a substantial period of time. Their contribution is greatly appreciated.
-
-* Fanmin Shi
-* Anthony Romano
-* Brandon Philips
-* Joe Betz
-* Gyuho Lee
-* Jingyi Hu
-* Xiang Li
-* Ben Darnell
-* Sam Batschelet
-* Piotr Tabor
-* Hitoshi Mitake
+etcd [emeritus maintainers](OWNERS) dedicated a part of their career to etcd and reviewed code, triaged bugs and pushed the project forward over a substantial period of time. Their contribution is greatly appreciated.
 
 ### License
 

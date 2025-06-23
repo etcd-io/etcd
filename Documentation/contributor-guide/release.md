@@ -17,7 +17,6 @@ for ensuring the stability of the release branch.
 - Marek Siarkowicz [@serathius](https://github.com/serathius)
 - Sahdev Zala [@spzala](https://github.com/spzala)
 - Siyuan Zhang [@siyuanfoundation](https://github.com/siyuanfoundation)
-- Wenjia Zhang [@wenjiaswe](https://github.com/wenjiaswe)
 
 All release version numbers follow the format of [semantic versioning 2.0.0](http://semver.org/).
 
