@@ -69,7 +69,7 @@ func createBytesSlice(bytesN, sliceN int) [][]byte {
 	return rs
 }
 
-func mvccPutFunc(_ *cobra.Command, _ []string) {
+func mvccPutFunc(cmd *cobra.Command, _ []string) {
 	if cpuProfPath != "" {
 		f, err := os.Create(cpuProfPath)
 		if err != nil {
@@ -105,7 +105,7 @@ func mvccPutFunc(_ *cobra.Command, _ []string) {
 	vals := createBytesSlice(valueSize, mvccTotalRequests*nrTxnOps)
 
 	weight := float64(nrTxnOps)
-	r := newWeightedReport()
+	r := newWeightedReport(cmd.Name())
 	rrc := r.Results()
 
 	rc := r.Run()

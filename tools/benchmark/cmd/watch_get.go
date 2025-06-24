@@ -49,7 +49,7 @@ func init() {
 	watchGetCmd.Flags().IntVar(&watchEvents, "events", 8, "Number of events per watcher")
 }
 
-func watchGetFunc(_ *cobra.Command, _ []string) {
+func watchGetFunc(cmd *cobra.Command, _ []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 	getClient := mustCreateClients(1, 1)
 
@@ -75,7 +75,7 @@ func watchGetFunc(_ *cobra.Command, _ []string) {
 	bar.Start()
 
 	// report from trying to do serialized gets with concurrent watchers
-	r := newReport()
+	r := newReport(cmd.Name())
 	ctx, cancel := context.WithCancel(context.TODO())
 	f := func() {
 		defer close(r.Results())

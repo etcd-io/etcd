@@ -182,7 +182,7 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	bar := pb.New(cfg.duration)
 	bar.Start()
 
-	r := report.NewReport("%4.4f")
+	r := report.NewReport("%4.4f", "", false)
 	var wg sync.WaitGroup
 
 	wg.Add(len(clients))
@@ -353,7 +353,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	ksize, vsize := 512, 512
 	k, v := make([]byte, ksize), string(make([]byte, vsize))
 
-	r := report.NewReport("%4.4f")
+	r := report.NewReport("%4.4f", "", false)
 	var wg sync.WaitGroup
 	wg.Add(len(clients))
 
