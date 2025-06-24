@@ -34,6 +34,11 @@ on:
         required: true
         type: string
         default: ""
+      cfg_node_count:
+        description: 'Number of nodes in the etcd cluster'
+        required: false
+        type: int
+        default: 3
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -46,6 +51,8 @@ jobs:
   build-and-push-and-test:
     runs-on: ubuntu-latest
     environment: Antithesis
+    env:
+      CFG_NODE_COUNT: ${{ inputs.cfg_node_count }}
     steps:
       - name: Checkout the code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -66,13 +73,12 @@ jobs:
           docker push $IMAGE
 
       - name: Build and push client image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
-        with:
-          context: .
-          file: ./tests/antithesis/test-template/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ inputs.etcd_ref }}_${{ github.sha }}
+        working-directory: ./tests/antithesis/test-template
+        run: |
+          make antithesis-build-client-docker-image
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ inputs.etcd_ref }}_${{ github.sha }}"
+          docker tag etcd-client:latest $IMAGE
+          docker push $IMAGE
 
       - name: Build and push etcd image
         working-directory: ./tests/antithesis
