@@ -43,14 +43,16 @@ var (
 		MinimalQPS:                     100,
 		MaximalQPS:                     200,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		MemberClientCount:              6,
+		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
-		ClientCount:                    8,
+		MemberClientCount:              6,
+		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 )
@@ -73,10 +75,22 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
-	for i := range profile.ClientCount {
+	for i := range profile.MemberClientCount {
 		wg.Add(1)
 
 		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+		require.NoError(t, nerr)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+
+			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		wg.Add(1)
+
+		c, nerr := clientSet.NewClient(endpoints)
 		require.NoError(t, nerr)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
@@ -179,7 +193,8 @@ type Profile struct {
 	MaximalQPS                     float64
 	BurstableQPS                   int
 	MaxNonUniqueRequestConcurrency int
-	ClientCount                    int
+	MemberClientCount              int
+	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
 }

@@ -43,7 +43,8 @@ var (
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
 		BurstableQPS:                   1000,
-		ClientCount:                    3,
+		MemberClientCount:              3,
+		ClusterClientCount:             1,
 		MaxNonUniqueRequestConcurrency: 3,
 	}
 	trafficNames = []string{
@@ -145,8 +146,23 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
 	keyStore := traffic.NewKeyStore(10, "key")
-	for i := range profile.ClientCount {
+	for i := range profile.MemberClientCount {
 		c := connect(clientSet, []string{hosts[i%len(hosts)]})
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunTrafficLoop(ctx, c, limiter,
+				clientSet.IdentityProvider(),
+				storage,
+				concurrencyLimiter,
+				keyStore,
+				finish,
+			)
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		c := connect(clientSet, hosts)
 		wg.Add(1)
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
