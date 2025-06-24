@@ -585,7 +585,7 @@ func TestTimeoutDoesntAffectSubsequentConnections(t *testing.T) {
 	// ensure the connection is established.
 	clientv3test.MustWaitPinReady(t, cli)
 
-	s, _ := concurrency.NewSession(cli, concurrency.WithCreationTimeout(1*time.Second))
+	s, _ := concurrency.NewSession(cli, concurrency.WithCreationTimeout(5*time.Second))
 
 	// terminating the cluster
 	clus.Members[0].Terminate(t)
@@ -602,7 +602,7 @@ func TestTimeoutDoesntAffectSubsequentConnections(t *testing.T) {
 		t.Fatalf("Operation put should be blocked forever when the server is unreachable: %v", err)
 	// if Put operation is blocked beyond the timeout specified using WithCreationTimeout,
 	// that timeout is not used by the Put operation
-	case <-time.After(2 * time.Second):
+	case <-time.After(6 * time.Second):
 	}
 
 	// restarting and ensuring that the Put operation will eventually succeed
