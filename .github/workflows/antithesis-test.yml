@@ -34,6 +34,11 @@ on:
         required: true
         type: string
         default: ""
+      cfg_node_count:
+        description: 'Number of nodes in the etcd cluster'
+        required: false
+        type: int
+        default: 3
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -46,6 +51,8 @@ jobs:
   build-and-push-and-test:
     runs-on: ubuntu-latest
     environment: Antithesis
+    env:
+      CFG_NODE_COUNT: ${{ inputs.cfg_node_count }}
     steps:
       - name: Checkout the code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
