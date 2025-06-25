@@ -15,6 +15,7 @@
 package etcdserver
 
 import (
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	goruntime "runtime"
 	"time"
 
@@ -182,6 +183,10 @@ func init() {
 	prometheus.MustRegister(learnerPromoteFailed)
 	prometheus.MustRegister(fdUsed)
 	prometheus.MustRegister(fdLimit)
+
+	// deregister the builtin golang-runtime collector, register the newer golang-runtime collector
+	prometheus.DefaultRegisterer.Unregister(prometheus.NewGoCollector())
+	prometheus.MustRegister(collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)))
 
 	currentVersion.With(prometheus.Labels{
 		"server_version": version.Version,
