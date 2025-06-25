@@ -15,12 +15,14 @@
 package mvcc
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -607,6 +609,16 @@ func (w *watcher) send(wr WatchResponse) bool {
 		}
 		wr.Events = ne
 	}
+
+	verify.Verify(func() {
+		if w.startRev > 0 {
+			for _, ev := range wr.Events {
+				if ev.Kv.ModRevision < w.startRev {
+					panic(fmt.Sprintf("Event.ModRevision(%d) is less than the w.startRev(%d) for watchID: %d", ev.Kv.ModRevision, w.startRev, w.id))
+				}
+			}
+		}
+	})
 
 	// if all events are filtered out, we should send nothing.
 	if !progressEvent && len(wr.Events) == 0 {
