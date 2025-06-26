@@ -87,11 +87,24 @@ type LinearizationResult struct {
 	Timeout bool
 }
 
-func (r LinearizationResult) Visualize(lg *zap.Logger, path string) error {
+func (r *LinearizationResult) Visualize(lg *zap.Logger, path string) error {
 	lg.Info("Saving visualization", zap.String("path", path))
 	err := porcupine.VisualizePath(r.Model, r.Info, path)
 	if err != nil {
 		return fmt.Errorf("failed to visualize, err: %w", err)
 	}
 	return nil
+}
+
+func (r *LinearizationResult) AddToVisualization(serializable []porcupine.Operation) {
+	annotations := []porcupine.Annotation{}
+	for _, op := range serializable {
+		annotations = append(annotations, porcupine.Annotation{
+			ClientId:    op.ClientId,
+			Start:       op.Call,
+			End:         op.Return,
+			Description: r.Model.DescribeOperation(op.Input, op.Output),
+		})
+	}
+	r.Info.AddAnnotations(annotations)
 }
