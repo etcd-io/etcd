@@ -179,6 +179,10 @@ test-e2e:
 test-e2e-release:
 	PASSES="build release e2e" ./test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-release
+test-release:
+	PASSES="release_tests" ./test.sh $(GO_TEST_FLAGS)
+
 ensure-docker-test-image-exists:
 	make pull-docker-test || ( echo "WARNING: Container Image not found in registry, building locally"; make build-docker-test )
 
