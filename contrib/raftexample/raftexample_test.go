@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -30,7 +31,7 @@ import (
 	"go.etcd.io/raft/v3/raftpb"
 )
 
-func getSnapshotFn() (func() ([]byte, error), <-chan struct{}) {
+func getSnapshotFn() (func() ([]byte, error), chan struct{}) {
 	snapshotTriggeredC := make(chan struct{})
 	return func() ([]byte, error) {
 		snapshotTriggeredC <- struct{}{}
@@ -40,11 +41,12 @@ func getSnapshotFn() (func() ([]byte, error), <-chan struct{}) {
 
 type cluster struct {
 	peers              []string
-	commitC            []<-chan *commit
-	errorC             []<-chan error
+	commitC            []chan *commit
+	errorC             []chan error
 	proposeC           []chan string
 	confChangeC        []chan raftpb.ConfChange
-	snapshotTriggeredC []<-chan struct{}
+	snapshotTriggeredC []chan struct{}
+	snapshotterReadyC  []chan *snap.Snapshotter
 }
 
 // newCluster creates a cluster of n nodes
@@ -56,11 +58,12 @@ func newCluster(n int) *cluster {
 
 	clus := &cluster{
 		peers:              peers,
-		commitC:            make([]<-chan *commit, len(peers)),
-		errorC:             make([]<-chan error, len(peers)),
+		commitC:            make([]chan *commit, len(peers)),
+		errorC:             make([]chan error, len(peers)),
 		proposeC:           make([]chan string, len(peers)),
 		confChangeC:        make([]chan raftpb.ConfChange, len(peers)),
-		snapshotTriggeredC: make([]<-chan struct{}, len(peers)),
+		snapshotTriggeredC: make([]chan struct{}, len(peers)),
+		snapshotterReadyC:  make([]chan *snap.Snapshotter, len(peers)),
 	}
 
 	for i := range clus.peers {
@@ -70,7 +73,10 @@ func newCluster(n int) *cluster {
 		clus.confChangeC[i] = make(chan raftpb.ConfChange, 1)
 		fn, snapshotTriggeredC := getSnapshotFn()
 		clus.snapshotTriggeredC[i] = snapshotTriggeredC
-		clus.commitC[i], clus.errorC[i], _ = newRaftNode(i+1, clus.peers, false, fn, clus.proposeC[i], clus.confChangeC[i])
+		clus.commitC[i] = make(chan *commit)
+		clus.errorC[i] = make(chan error)
+		clus.snapshotterReadyC[i] = make(chan *snap.Snapshotter, 1)
+		newRaftNode(i+1, clus.peers, false, fn, clus.proposeC[i], clus.confChangeC[i], clus.commitC[i], clus.errorC[i], clus.snapshotterReadyC[i])
 	}
 
 	return clus
@@ -181,9 +187,16 @@ func TestPutAndGetKeyValue(t *testing.T) {
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
 
+	commitC := make(chan *commit)
+
+	errorC := make(chan error)
+
+	snapshotterReady := make(chan *snap.Snapshotter, 1)
+	defer close(snapshotterReady)
+
 	var kvs *kvstore
 	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-	commitC, errorC, snapshotterReady := newRaftNode(1, clusters, false, getSnapshot, proposeC, confChangeC)
+	newRaftNode(1, clusters, false, getSnapshot, proposeC, confChangeC, commitC, errorC, snapshotterReady)
 
 	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
 
@@ -246,7 +259,14 @@ func TestAddNewNode(t *testing.T) {
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
 
-	newRaftNode(4, append(clus.peers, newNodeURL), true, nil, proposeC, confChangeC)
+	commitC := make(chan *commit)
+
+	errorC := make(chan error)
+
+	snapshotterReady := make(chan *snap.Snapshotter, 1)
+	defer close(snapshotterReady)
+
+	newRaftNode(4, append(clus.peers, newNodeURL), true, nil, proposeC, confChangeC, commitC, errorC, snapshotterReady)
 
 	go func() {
 		proposeC <- "foo"
