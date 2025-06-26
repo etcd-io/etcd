@@ -5,7 +5,7 @@ FROM golang:$GO_VERSION
 
 # cloning etcd
 ARG REF=main
-RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
+COPY . /etcd
 WORKDIR /etcd
 
 # setup go mod

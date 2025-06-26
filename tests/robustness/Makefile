@@ -13,16 +13,16 @@ test-robustness-reports:
 TOPLEVEL_MAKE := $(MAKE) --directory=$(REPOSITORY_ROOT)
 
 .PHONY: test-robustness-main
-test-robustness-main: /tmp/etcd-main-failpoints/bin /tmp/etcd-release-3.6-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin --bin-last-release=/tmp/etcd-release-3.6-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
+test-robustness-main: /tmp/etcd-main-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-main-failpoints/bin" $(TOPLEVEL_MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.6
-test-robustness-release-3.6: /tmp/etcd-release-3.6-failpoints/bin /tmp/etcd-release-3.5-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.6-failpoints/bin --bin-last-release=/tmp/etcd-release-3.5-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
+test-robustness-release-3.6: /tmp/etcd-release-3.6-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.6-failpoints/bin" $(TOPLEVEL_MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.5
-test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin /tmp/etcd-release-3.4-failpoints/bin
-	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin --bin-last-release=/tmp/etcd-release-3.4-failpoints/bin/etcd" $(TOPLEVEL_MAKE) test-robustness
+test-robustness-release-3.5: /tmp/etcd-release-3.5-failpoints/bin
+	GO_TEST_FLAGS="$${GO_TEST_FLAGS} --bin-dir=/tmp/etcd-release-3.5-failpoints/bin" $(TOPLEVEL_MAKE) test-robustness
 
 .PHONY: test-robustness-release-3.4
 test-robustness-release-3.4: /tmp/etcd-release-3.4-failpoints/bin

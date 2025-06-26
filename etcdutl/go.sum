@@ -1,3 +1,5 @@
+github.com/antithesishq/antithesis-sdk-go v0.4.3 h1:a2hGdDogClzHzFu20r1z0tzD6zwSWUipiaerAjZVP90=
+github.com/antithesishq/antithesis-sdk-go v0.4.3/go.mod h1:IUpT2DPAKh6i/YhSbt6Gl3v2yvUZjmKncl7U91fup7E=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/cenkalti/backoff/v5 v5.0.2 h1:rIfFVxEf1QsI7E1ZHfp/B4DF/6QBAUhmgkxc0H7Zss8=

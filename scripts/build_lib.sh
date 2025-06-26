@@ -13,7 +13,7 @@ GOARCH=${GOARCH:-$(go env GOARCH)}
 
 GO_BUILD_FLAGS=${GO_BUILD_FLAGS:-}
 
-CGO_ENABLED="${CGO_ENABLED:-0}"
+CGO_ENABLED="${CGO_ENABLED:-1}"
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206

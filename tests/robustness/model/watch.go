@@ -25,6 +25,7 @@ type WatchResponse struct {
 	Events           []WatchEvent  `json:",omitempty"`
 	IsProgressNotify bool          `json:",omitempty"`
 	Revision         int64         `json:",omitempty"`
+	MemberID         uint64        `json:",omitempty"`
 	Time             time.Duration `json:",omitempty"`
 	Error            string        `json:",omitempty"`
 }
