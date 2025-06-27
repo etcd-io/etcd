@@ -143,7 +143,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 
 			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
 			if merr != nil {
-				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", merr))
+				confStateJSON = fmt.Appendf(nil, "confstate err: %v", merr)
 			}
 			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
 				walsnap.Term, walsnap.Index, nodes, confStateJSON)
