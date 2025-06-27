@@ -120,127 +120,152 @@ func freshEtcdState() EtcdState {
 
 // Step handles a successful request, returning updated state and response it would generate.
 func (s EtcdState) Step(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
-	// TODO: Avoid copying when TXN only has read operations
-	if request.Type == Range {
-		if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
-			resp := s.getRange(request.Range.RangeOptions)
-			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
-		}
-		if request.Range.Revision > s.Revision {
-			return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
-		}
-		if request.Range.Revision < s.CompactRevision {
-			return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
-		}
-		return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: s.Revision}
-	}
-
-	newState := s.DeepCopy()
 	switch request.Type {
+	case Range:
+		return s.stepRange(request)
 	case Txn:
-		failure := false
-		for _, cond := range request.Txn.Conditions {
-			val := newState.KeyValues[cond.Key]
-			if cond.ExpectedVersion > 0 {
-				if val.Version != cond.ExpectedVersion {
-					failure = true
-					break
-				}
-			} else if val.ModRevision != cond.ExpectedRevision {
-				failure = true
-				break
-			}
-		}
-		operations := request.Txn.OperationsOnSuccess
-		if failure {
-			operations = request.Txn.OperationsOnFailure
-		}
-		opResp := make([]EtcdOperationResult, len(operations))
-		increaseRevision := false
-		for i, op := range operations {
-			switch op.Type {
-			case RangeOperation:
-				opResp[i] = EtcdOperationResult{
-					RangeResponse: newState.getRange(op.Range),
-				}
-			case PutOperation:
-				_, leaseExists := newState.Leases[op.Put.LeaseID]
-				if op.Put.LeaseID != 0 && !leaseExists {
-					break
-				}
-				ver := int64(1)
-				if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
-					ver = val.Version + 1
-				}
-				newState.KeyValues[op.Put.Key] = ValueRevision{
-					Value:       op.Put.Value,
-					ModRevision: newState.Revision + 1,
-					Version:     ver,
-				}
-				increaseRevision = true
-				newState = detachFromOldLease(newState, op.Put.Key)
-				if leaseExists {
-					newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
-				}
-			case DeleteOperation:
-				if _, ok := newState.KeyValues[op.Delete.Key]; ok {
-					delete(newState.KeyValues, op.Delete.Key)
-					increaseRevision = true
-					newState = detachFromOldLease(newState, op.Delete.Key)
-					opResp[i].Deleted = 1
-				}
-			default:
-				panic("unsupported operation")
-			}
-		}
-		if increaseRevision {
-			newState.Revision++
-		}
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: newState.Revision}}
+		return s.stepTxn(request)
 	case LeaseGrant:
-		// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
-		if request.LeaseGrant.LeaseID == 0 {
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
-		}
-		lease := EtcdLease{
-			LeaseID: request.LeaseGrant.LeaseID,
-			Keys:    map[string]struct{}{},
-		}
-		newState.Leases[request.LeaseGrant.LeaseID] = lease
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+		return s.stepLeaseGrant(request)
 	case LeaseRevoke:
-		// Delete the keys attached to the lease
-		keyDeleted := false
-		for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
-			// same as delete.
-			if _, ok := newState.KeyValues[key]; ok {
-				if !keyDeleted {
-					keyDeleted = true
-				}
-				delete(newState.KeyValues, key)
-				delete(newState.KeyLeases, key)
-			}
-		}
-		// delete the lease
-		delete(newState.Leases, request.LeaseRevoke.LeaseID)
-		if keyDeleted {
-			newState.Revision++
-		}
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
+		return s.stepLeaseRevoke(request)
 	case Defragment:
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
+		return s.stepDefragment()
 	case Compact:
-		if request.Compact.Revision <= newState.CompactRevision {
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
-		}
-		if request.Compact.Revision > newState.Revision {
-			return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrFutureRev.Error()}}
-		}
-		newState.CompactRevision = request.Compact.Revision
-		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
+		return s.stepCompact(request)
 	default:
 		panic(fmt.Sprintf("Unknown request type: %v", request.Type))
 	}
+}
+
+func (s EtcdState) stepRange(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	if request.Range.Revision == 0 || request.Range.Revision == s.Revision {
+		resp := s.getRange(request.Range.RangeOptions)
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &resp, Revision: s.Revision}}
+	}
+	if request.Range.Revision > s.Revision {
+		return s, MaybeEtcdResponse{Error: ErrEtcdFutureRev.Error()}
+	}
+	if request.Range.Revision < s.CompactRevision {
+		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
+	}
+	return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: s.Revision}
+}
+
+func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	// TODO: Avoid copying when TXN only has read operations
+	newState := s.DeepCopy()
+	failure := false
+	for _, cond := range request.Txn.Conditions {
+		val := newState.KeyValues[cond.Key]
+		if cond.ExpectedVersion > 0 {
+			if val.Version != cond.ExpectedVersion {
+				failure = true
+				break
+			}
+		} else if val.ModRevision != cond.ExpectedRevision {
+			failure = true
+			break
+		}
+	}
+	operations := request.Txn.OperationsOnSuccess
+	if failure {
+		operations = request.Txn.OperationsOnFailure
+	}
+	opResp := make([]EtcdOperationResult, len(operations))
+	increaseRevision := false
+	for i, op := range operations {
+		switch op.Type {
+		case RangeOperation:
+			opResp[i] = EtcdOperationResult{
+				RangeResponse: newState.getRange(op.Range),
+			}
+		case PutOperation:
+			_, leaseExists := newState.Leases[op.Put.LeaseID]
+			if op.Put.LeaseID != 0 && !leaseExists {
+				break
+			}
+			ver := int64(1)
+			if val, exists := newState.KeyValues[op.Put.Key]; exists && val.Version > 0 {
+				ver = val.Version + 1
+			}
+			newState.KeyValues[op.Put.Key] = ValueRevision{
+				Value:       op.Put.Value,
+				ModRevision: newState.Revision + 1,
+				Version:     ver,
+			}
+			increaseRevision = true
+			newState = detachFromOldLease(newState, op.Put.Key)
+			if leaseExists {
+				newState = attachToNewLease(newState, op.Put.LeaseID, op.Put.Key)
+			}
+		case DeleteOperation:
+			if _, ok := newState.KeyValues[op.Delete.Key]; ok {
+				delete(newState.KeyValues, op.Delete.Key)
+				increaseRevision = true
+				newState = detachFromOldLease(newState, op.Delete.Key)
+				opResp[i].Deleted = 1
+			}
+		default:
+			panic("unsupported operation")
+		}
+	}
+	if increaseRevision {
+		newState.Revision++
+	}
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Failure: failure, Results: opResp}, Revision: newState.Revision}}
+}
+
+func (s EtcdState) stepLeaseGrant(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	newState := s.DeepCopy()
+	// Empty LeaseID means the request failed and client didn't get response. Ignore it as client cannot use lease without knowing its id.
+	if request.LeaseGrant.LeaseID == 0 {
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+	}
+	lease := EtcdLease{
+		LeaseID: request.LeaseGrant.LeaseID,
+		Keys:    map[string]struct{}{},
+	}
+	newState.Leases[request.LeaseGrant.LeaseID] = lease
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseGrant: &LeaseGrantReponse{}}}
+}
+
+func (s EtcdState) stepLeaseRevoke(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	newState := s.DeepCopy()
+	// Delete the keys attached to the lease
+	keyDeleted := false
+	for key := range newState.Leases[request.LeaseRevoke.LeaseID].Keys {
+		// same as delete.
+		if _, ok := newState.KeyValues[key]; ok {
+			if !keyDeleted {
+				keyDeleted = true
+			}
+			delete(newState.KeyValues, key)
+			delete(newState.KeyLeases, key)
+		}
+	}
+	// delete the lease
+	delete(newState.Leases, request.LeaseRevoke.LeaseID)
+	if keyDeleted {
+		newState.Revision++
+	}
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Revision: newState.Revision, LeaseRevoke: &LeaseRevokeResponse{}}}
+}
+
+func (s EtcdState) stepDefragment() (EtcdState, MaybeEtcdResponse) {
+	return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
+}
+
+func (s EtcdState) stepCompact(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
+	newState := s.DeepCopy()
+	if request.Compact.Revision <= newState.CompactRevision {
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
+	}
+	if request.Compact.Revision > newState.Revision {
+		return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrFutureRev.Error()}}
+	}
+	newState.CompactRevision = request.Compact.Revision
+	return newState, MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
 }
 
 func (s EtcdState) getRange(options RangeOptions) RangeResponse {
