@@ -153,7 +153,11 @@ main() {
       TARGET_VERSION="v${VERSION}" update_versions_cmd
 
       log_callout "Updating version from ${source_version} to ${VERSION} in api/version/version.go"
-      sed -i "s/${source_version}/${VERSION}/g" api/version/version.go
+      if [[ "$OSTYPE" == "darwin"* ]]; then
+         sed -i '' "s/${source_version}/${VERSION}/g" api/version/version.go
+      else
+         sed -i "s/${source_version}/${VERSION}/g" api/version/version.go
+      fi
     fi
 
 
