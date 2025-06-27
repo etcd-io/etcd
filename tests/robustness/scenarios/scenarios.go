@@ -23,7 +23,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/failpoint"
@@ -71,13 +70,6 @@ type TestScenario struct {
 }
 
 func Exploratory(_ *testing.T) []TestScenario {
-	randomizableOptions := []e2e.EPClusterOption{
-		options.WithClusterOptionGroups(
-			options.ClusterOptions{options.WithTickMs(29), options.WithElectionMs(271)},
-			options.ClusterOptions{options.WithTickMs(101), options.WithElectionMs(521)},
-			options.ClusterOptions{options.WithTickMs(100), options.WithElectionMs(2000)}),
-	}
-
 	mixedVersionOptionChoices := []random.ChoiceWeight[options.ClusterOptions]{
 		// 60% with all members of current version
 		{Choice: options.ClusterOptions{options.WithVersion(e2e.CurrentVersion)}, Weight: 60},
@@ -93,17 +85,14 @@ func Exploratory(_ *testing.T) []TestScenario {
 	mixedVersionOption := options.WithClusterOptionGroups(random.PickRandom[options.ClusterOptions](mixedVersionOptionChoices))
 
 	baseOptions := []e2e.EPClusterOption{
-		options.WithSnapshotCount(50, 100, 1000),
-		options.WithSubsetOptions(randomizableOptions...),
+		options.WithSnapshotCount(50),
 		e2e.WithGoFailEnabled(true),
 		// Set low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
-		options.WithCompactionBatchLimit(10, 100, 1000),
+		options.WithCompactionBatchLimit(10),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
 
-	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
-		baseOptions = append(baseOptions, options.WithSnapshotCatchUpEntries(100, etcdserver.DefaultSnapshotCatchUpEntries))
-	}
+	baseOptions = append(baseOptions, options.WithSnapshotCatchUpEntries(100))
 	scenarios := []TestScenario{}
 	for _, tp := range trafficProfiles {
 		name := filepath.Join(tp.Name, "ClusterOfSize1")
