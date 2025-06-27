@@ -56,7 +56,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
@@ -83,8 +82,6 @@ func TestApplyRepeat(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -101,7 +98,6 @@ func TestApplyRepeat(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -166,7 +162,6 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
@@ -212,7 +207,6 @@ func TestV2SetClusterVersion(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
@@ -322,9 +316,6 @@ func TestApplyConfStateWithRestart(t *testing.T) {
 		t.Errorf("actions don't match\n got  %+v\n want %+v", got, want)
 	}
 
-	t.Log("Simulating etcd restart by clearing v2 store")
-	srv.cluster.SetStore(v2store.New())
-
 	t.Log("Reapplying same entries after restart")
 	srv.apply(entries, &confState, nil)
 	if got, _ := n.Wait(2 * len(want)); !reflect.DeepEqual(got[len(want):], want) {
@@ -346,7 +337,6 @@ func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
-	srv.cluster.SetStore(v2store.New())
 	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
 	srv.r.transport = newNopTransporter()
 	srv.w = mockwait.NewNop()
@@ -360,7 +350,6 @@ func TestApplyConfChangeError(t *testing.T) {
 
 	cl := membership.NewCluster(lg)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
-	cl.SetStore(v2store.New())
 
 	for i := 1; i <= 4; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -454,7 +443,6 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 
 	cl := membership.NewCluster(lg)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
-	cl.SetStore(v2store.New())
 
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
@@ -504,7 +492,6 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	defer betesting.Close(t, be)
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
@@ -592,7 +579,6 @@ func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *raftNo
 func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := membership.NewCluster(lg)
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -661,7 +647,6 @@ func TestSnapshotDisk(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -712,7 +697,6 @@ func TestSnapshotMemory(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -750,7 +734,6 @@ func TestSnapshotOrdering(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -786,7 +769,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		lg:           lg,
 		Cfg:          cfg,
 		r:            *r,
-		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
 		consistIndex: ci,
@@ -848,9 +830,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
@@ -880,7 +860,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 		},
 		r:                 *r,
-		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),
 		cluster:           cl,
 		consistIndex:      ci,
@@ -957,8 +936,6 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -974,7 +951,6 @@ func TestAddMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1003,8 +979,6 @@ func TestAddMember(t *testing.T) {
 func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1030,7 +1004,6 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		lg:           lg,
 		memberID:     1,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1061,8 +1034,6 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1079,7 +1050,6 @@ func TestRemoveMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1112,8 +1082,6 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
@@ -1127,7 +1095,6 @@ func TestUpdateMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1510,7 +1477,6 @@ func newTestCluster(tb testing.TB) *membership.RaftCluster {
 func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
 	lg := zaptest.NewLogger(tb)
 	c := membership.NewCluster(lg)
-	c.SetStore(v2store.New())
 	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
 		c.AddMember(m, true)
