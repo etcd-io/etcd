@@ -16,6 +16,7 @@ package main
 
 import (
 	"flag"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"strings"
 
 	"go.etcd.io/raft/v3/raftpb"
@@ -32,11 +33,18 @@ func main() {
 	defer close(proposeC)
 	confChangeC := make(chan raftpb.ConfChange)
 	defer close(confChangeC)
+	commitC := make(chan *commit)
+	defer close(commitC)
+	errorC := make(chan error)
+	defer close(errorC)
+	snapshotterReady := make(chan *snap.Snapshotter, 1)
+	defer close(snapshotterReady)
 
 	// raft provides a commit stream for the proposals from the http api
+
 	var kvs *kvstore
 	getSnapshot := func() ([]byte, error) { return kvs.getSnapshot() }
-	commitC, errorC, snapshotterReady := newRaftNode(*id, strings.Split(*cluster, ","), *join, getSnapshot, proposeC, confChangeC)
+	newRaftNode(*id, strings.Split(*cluster, ","), *join, getSnapshot, proposeC, confChangeC, commitC, errorC, snapshotterReady)
 
 	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
 
