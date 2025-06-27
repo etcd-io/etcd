@@ -122,12 +122,13 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 
 func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
 	wa := &watcher{
-		key:    key,
-		end:    end,
-		minRev: startRev,
-		id:     id,
-		ch:     ch,
-		fcs:    fcs,
+		key:      key,
+		end:      end,
+		startRev: startRev,
+		minRev:   startRev,
+		id:       id,
+		ch:       ch,
+		fcs:      fcs,
 	}
 
 	s.mu.Lock()
@@ -532,9 +533,13 @@ func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseW
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	rev := s.rev()
 	// Any watcher unsynced?
 	for _, w := range watchers {
 		if _, ok := s.synced.watchers[w]; !ok {
+			return false
+		}
+		if rev < w.startRev {
 			return false
 		}
 	}
@@ -545,7 +550,7 @@ func (s *watchableStore) progressIfSync(watchers map[WatchID]*watcher, responseW
 	// notification will be broadcasted client-side if required
 	// (see dispatchEvent in client/v3/watch.go)
 	for _, w := range watchers {
-		w.send(WatchResponse{WatchID: responseWatchID, Revision: s.rev()})
+		w.send(WatchResponse{WatchID: responseWatchID, Revision: rev})
 		return true
 	}
 	return true
@@ -572,6 +577,7 @@ type watcher struct {
 	// except when the watcher were to be moved from "synced" watcher group
 	restore bool
 
+	startRev int64
 	// minRev is the minimum revision update the watcher will accept
 	minRev int64
 	id     WatchID
