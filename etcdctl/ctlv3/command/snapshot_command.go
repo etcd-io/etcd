@@ -52,6 +52,7 @@ func NewSnapshotCommand() *cobra.Command {
 		Use:     "snapshot <subcommand>",
 		Short:   "Manages etcd node snapshots",
 		Example: snapshotExample,
+		GroupID: groupClusterMaintenanceID,
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
 	return cmd

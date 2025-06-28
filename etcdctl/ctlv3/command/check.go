@@ -107,8 +107,9 @@ var checkDatascaleCfgMap = map[string]checkDatascaleCfg{
 // NewCheckCommand returns the cobra command for "check".
 func NewCheckCommand() *cobra.Command {
 	cc := &cobra.Command{
-		Use:   "check <subcommand>",
-		Short: "commands for checking properties of the etcd cluster",
+		Use:     "check <subcommand>",
+		Short:   "commands for checking properties of the etcd cluster",
+		GroupID: groupUtilityID,
 	}
 
 	cc.AddCommand(NewCheckPerfCommand())

@@ -59,7 +59,8 @@ put key2 "some extra key"
 ---
 
 Refer to https://github.com/etcd-io/etcd/blob/main/etcdctl/README.md#txn-options.`,
-		Run: txnCommandFunc,
+		Run:     txnCommandFunc,
+		GroupID: groupKVID,
 	}
 	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "Input transaction in interactive mode")
 	return cmd
