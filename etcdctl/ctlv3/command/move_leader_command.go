@@ -27,9 +27,10 @@ import (
 // NewMoveLeaderCommand returns the cobra command for "move-leader".
 func NewMoveLeaderCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "move-leader <transferee-member-id>",
-		Short: "Transfers leadership to another etcd cluster member.",
-		Run:   transferLeadershipCommandFunc,
+		Use:     "move-leader <transferee-member-id>",
+		Short:   "Transfers leadership to another etcd cluster member.",
+		Run:     transferLeadershipCommandFunc,
+		GroupID: groupClusterMaintenanceID,
 	}
 	return cmd
 }

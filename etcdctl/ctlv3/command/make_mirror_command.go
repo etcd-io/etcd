@@ -53,9 +53,10 @@ var (
 // NewMakeMirrorCommand returns the cobra command for "makeMirror".
 func NewMakeMirrorCommand() *cobra.Command {
 	c := &cobra.Command{
-		Use:   "make-mirror [options] <destination>",
-		Short: "Makes a mirror at the destination etcd cluster",
-		Run:   makeMirrorCommandFunc,
+		Use:     "make-mirror [options] <destination>",
+		Short:   "Makes a mirror at the destination etcd cluster",
+		Run:     makeMirrorCommandFunc,
+		GroupID: groupUtilityID,
 	}
 
 	c.Flags().StringVar(&mmprefix, "prefix", "", "Key-value prefix to mirror")
