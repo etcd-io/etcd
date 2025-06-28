@@ -109,12 +109,14 @@ func Exploratory(_ *testing.T) []TestScenario {
 		name := filepath.Join(tp.Name, "ClusterOfSize1")
 		clusterOfSize1Options := baseOptions
 		clusterOfSize1Options = append(clusterOfSize1Options, e2e.WithClusterSize(1))
-		scenarios = append(scenarios, TestScenario{
-			Name:    name,
-			Traffic: tp.Traffic,
-			Profile: tp.Profile,
-			Cluster: *e2e.NewConfig(clusterOfSize1Options...),
-		})
+		scenarios = append(scenarios,
+			TestScenario{
+				Name:    name,
+				Traffic: tp.Traffic,
+				Profile: tp.Profile,
+				Cluster: *e2e.NewConfig(clusterOfSize1Options...),
+			},
+		)
 	}
 
 	for _, tp := range trafficProfiles {
