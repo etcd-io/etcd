@@ -22,6 +22,7 @@ import (
 	"strconv"
 	"strings"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -29,6 +30,37 @@ type jsonPrinter struct {
 	writer io.Writer
 	isHex  bool
 	printer
+}
+
+type (
+	HexResponseHeader pb.ResponseHeader
+	HexMember         pb.Member
+)
+
+func (h *HexResponseHeader) MarshalJSON() ([]byte, error) {
+	type Alias pb.ResponseHeader
+
+	return json.Marshal(&struct {
+		ClusterID string `json:"cluster_id"`
+		MemberID  string `json:"member_id"`
+		Alias
+	}{
+		ClusterID: fmt.Sprintf("%x", h.ClusterId),
+		MemberID:  fmt.Sprintf("%x", h.MemberId),
+		Alias:     (Alias)(*h),
+	})
+}
+
+func (m *HexMember) MarshalJSON() ([]byte, error) {
+	type Alias pb.Member
+
+	return json.Marshal(&struct {
+		ID string `json:"ID"`
+		Alias
+	}{
+		ID:    fmt.Sprintf("%x", m.ID),
+		Alias: (Alias)(*m),
+	})
 }
 
 func newJSONPrinter(isHex bool) printer {
@@ -50,6 +82,7 @@ func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
 		printJSON(r)
 	}
 }
+func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse) { p.printJSON(r) }
 
 func printJSONTo(w io.Writer, v any) {
 	b, err := json.Marshal(v)
@@ -104,4 +137,41 @@ func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
 	}
 	buffer.WriteString("}")
 	fmt.Fprintln(w, buffer.String())
+}
+
+func (p *jsonPrinter) printJSON(v any) {
+	var data any
+	if !p.isHex {
+		printJSONTo(p.writer, v)
+		return
+	}
+
+	switch r := v.(type) {
+	case clientv3.MemberAddResponse:
+		type Alias clientv3.MemberAddResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Member  *HexMember         `json:"member"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Member:  (*HexMember)(r.Member),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	default:
+		data = v
+	}
+
+	printJSONTo(p.writer, data)
+}
+
+func toHexMembers(members []*pb.Member) []*HexMember {
+	hexMembers := make([]*HexMember, len(members))
+	for i, member := range members {
+		hexMembers[i] = (*HexMember)(member)
+	}
+	return hexMembers
 }
