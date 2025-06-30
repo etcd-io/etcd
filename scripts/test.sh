@@ -526,6 +526,27 @@ function bom_pass {
   rm bom-now.json.tmp
 }
 
+function modern_sbom_pass {
+  log_callout "validating modern SBOM generation..."
+
+  # create a temporary directory for SBOM validation
+  local temp_sbom_dir
+  temp_sbom_dir=$(mktemp -d)
+
+  # generate modern SBOM files for validation
+  if ./scripts/generate-modern-sbom.sh "dev" "${temp_sbom_dir}"; then
+    log_success "modern SBOM generation validation PASSED"
+    # cleanup
+    rm -rf "${temp_sbom_dir}"
+    return 0
+  else
+    log_error "modern SBOM generation validation FAILED"
+    # cleanup
+    rm -rf "${temp_sbom_dir}"
+    return 255
+  fi
+}
+
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_deps_of_module() {
