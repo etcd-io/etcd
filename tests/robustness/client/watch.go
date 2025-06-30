@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"testing"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -121,23 +120,5 @@ resetWatch:
 				}
 			}
 		}
-	}
-}
-
-func ValidateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
-	gotProgressNotify := false
-external:
-	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
-				if resp.IsProgressNotify {
-					gotProgressNotify = true
-					break external
-				}
-			}
-		}
-	}
-	if gotProgressNotify != expectProgressNotify {
-		t.Errorf("Progress notify does not match, expect: %v, got: %v", expectProgressNotify, gotProgressNotify)
 	}
 }
