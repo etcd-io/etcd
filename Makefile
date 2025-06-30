@@ -96,7 +96,7 @@ fuzz:
 
 # Static analysis
 .PHONY: verify
-verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
+verify: verify-bom verify-modern-sbom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-markdown-marker verify-go-versions verify-gomodguard \
 	verify-go-workspace verify-grpc-experimental
@@ -108,6 +108,10 @@ fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
 .PHONY: verify-bom
 verify-bom:
 	PASSES="bom" ./scripts/test.sh
+
+.PHONY: verify-modern-sbom
+verify-modern-sbom:
+	PASSES="modern_sbom" ./scripts/test.sh
 
 .PHONY: fix-bom
 fix-bom:
