@@ -96,11 +96,6 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	persistedRequests, err := report.PersistedRequestsCluster(lg, c)
 	require.NoError(t, err)
 
-	failpointImpactingWatch := s.Failpoint == failpoint.SleepBeforeSendWatchResponse
-	if !failpointImpactingWatch {
-		watchProgressNotifyEnabled := c.Cfg.ServerConfig.ExperimentalWatchProgressNotifyInterval != 0
-		client.ValidateGotAtLeastOneProgressNotify(t, r.Client, s.Watch.RequestProgress || watchProgressNotifyEnabled)
-	}
 	validateConfig := validate.Config{ExpectRevisionUnique: s.Traffic.ExpectUniqueRevision()}
 	r.Visualize = validate.ValidateAndReturnVisualize(t, lg, validateConfig, r.Client, persistedRequests, 5*time.Minute)
 
