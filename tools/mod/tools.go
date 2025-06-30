@@ -22,6 +22,7 @@ package tools
 
 import (
 	_ "github.com/alexfalkowski/gocovmerge"
+	_ "github.com/anchore/syft/cmd/syft"
 	_ "github.com/appscodelabs/license-bill-of-materials"
 	_ "github.com/cloudflare/cfssl/cmd/cfssl"
 	_ "github.com/cloudflare/cfssl/cmd/cfssljson"
