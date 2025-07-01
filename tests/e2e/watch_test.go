@@ -33,6 +33,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -560,5 +561,65 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		// we care only about the first response, but have an
 		// escape hatch in case the watch response is delayed.
 		t.Fatal("timed out getting watch response")
+	}
+}
+
+// TestIssue20221WatchProgressNotification is to ensure that server should not
+// send progress notification to the client when current store revision is behind
+// the requested revision.
+func TestIssue20221WatchProgressNotification(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	ctx := t.Context()
+	clus, cerr := e2e.NewEtcdProcessCluster(ctx, t,
+		e2e.WithClusterSize(3),
+		e2e.WithSnapshotCount(1000),
+		e2e.WithWatchProcessNotifyInterval(200*time.Millisecond),
+	)
+	require.NoError(t, cerr)
+
+	t.Cleanup(func() { clus.Stop() })
+
+	cli1 := newClient(t, clus.EndpointsGRPC(), e2e.ClientConfig{})
+	defer cli1.Close()
+
+	n := 10
+	valueSize := 16
+	keyPrefix := "/hello/"
+	for i := 1; i <= n; i++ {
+		_, err := cli1.Put(ctx,
+			fmt.Sprintf("%s%d", keyPrefix, i),
+			stringutil.RandString(uint(valueSize)))
+		require.NoError(t, err)
+	}
+
+	cli2 := newClient(t, clus.EndpointsGRPC(), e2e.ClientConfig{})
+	defer cli2.Close()
+
+	eventCh := cli2.Watch(ctx, keyPrefix,
+		clientv3.WithRev(1000),
+		clientv3.WithPrefix(),
+		clientv3.WithProgressNotify())
+
+	select {
+	case e := <-eventCh:
+		t.Errorf("Unexpected event: %v", e)
+	case <-time.After(5 * time.Second):
+	}
+
+	t.Logf("Restarting all etcd processes...")
+	for _, ep := range clus.Procs {
+		require.NoError(t, ep.Restart(ctx))
+	}
+
+	_, err := cli1.Put(ctx,
+		fmt.Sprintf("%s%d", keyPrefix, 100),
+		stringutil.RandString(uint(valueSize)))
+	require.NoError(t, err)
+
+	select {
+	case e := <-eventCh:
+		t.Errorf("Unexpected event: %v", e)
+	case <-time.After(5 * time.Second):
 	}
 }
