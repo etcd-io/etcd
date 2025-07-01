@@ -91,7 +91,6 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 	errorC chan error,
 	snapshotterReady chan *snap.Snapshotter,
 ) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
-
 	rc := &raftNode{
 		proposeC:    proposeC,
 		confChangeC: confChangeC,

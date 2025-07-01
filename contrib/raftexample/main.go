@@ -16,8 +16,9 @@ package main
 
 import (
 	"flag"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"strings"
+
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 
 	"go.etcd.io/raft/v3/raftpb"
 )

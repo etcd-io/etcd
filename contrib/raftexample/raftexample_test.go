@@ -17,7 +17,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +24,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 
 	"github.com/stretchr/testify/require"
 
