@@ -8,7 +8,7 @@ require (
 	github.com/coreos/go-semver v0.3.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.4
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822
 	google.golang.org/grpc v1.73.0
