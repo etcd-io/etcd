@@ -90,7 +90,7 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 	commitC chan *commit,
 	errorC chan error,
 	snapshotterReady chan *snap.Snapshotter,
-) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
+) {
 	rc := &raftNode{
 		proposeC:    proposeC,
 		confChangeC: confChangeC,
@@ -113,7 +113,6 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
-	return commitC, errorC, rc.snapshotterReady
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
