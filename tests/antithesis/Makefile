@@ -36,21 +36,24 @@ antithesis-build-etcd-image-main: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-config-image
 antithesis-build-config-image: validate-node-count
-	docker build -f ./Dockerfile.config . -t etcd-config:latest \
+	docker build -f config/Dockerfile config -t etcd-config:latest \
 		--build-arg IMAGE_TAG=$(IMAGE_TAG) \
 		--build-arg NODE_COUNT=$(CFG_NODE_COUNT)
 
 .PHONY: antithesis-docker-compose-up
 antithesis-docker-compose-up: validate-node-count
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f docker-compose-$(CFG_NODE_COUNT)-node.yml up
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
+		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml up
 
 .PHONY: antithesis-run-container-traffic
 antithesis-run-container-traffic: validate-node-count
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f docker-compose-$(CFG_NODE_COUNT)-node.yml exec client /opt/antithesis/test/v1/robustness/singleton_driver_traffic
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
+		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml exec client /opt/antithesis/test/v1/robustness/singleton_driver_traffic
 
 .PHONY: antithesis-run-container-validation
 antithesis-run-container-validation: validate-node-count
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f docker-compose-$(CFG_NODE_COUNT)-node.yml exec client /opt/antithesis/test/v1/robustness/finally_validation
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
+		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml exec client /opt/antithesis/test/v1/robustness/finally_validation
 
 .PHONY: antithesis-run-local-traffic
 antithesis-run-local-traffic:
@@ -62,7 +65,8 @@ antithesis-run-local-validation:
 
 .PHONY: antithesis-clean
 antithesis-clean: validate-node-count
-	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && docker compose -f docker-compose-$(CFG_NODE_COUNT)-node.yml down --remove-orphans
+	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
+		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml down --remove-orphans
 	rm -rf /tmp/etcddata0 /tmp/etcddata1 /tmp/etcddata2 /tmp/etcdreport
 
 .PHONY: validate-node-count
