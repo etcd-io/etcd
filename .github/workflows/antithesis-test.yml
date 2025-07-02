@@ -18,7 +18,7 @@ on:
         description: 'Duration (exploration hours)'
         required: true
         type: int
-        default: 12
+        default: 0.1
       description:
         description: 'Description (avoid quotes, please!)'
         required: true
@@ -28,12 +28,12 @@ on:
         description: 'etcd version to build etcd-server from'
         required: false
         type: string
-        default: 'release-3.5'
+        default: 'release-3.6'
       email:
         description: 'Additional email notification recipient (separate with ;)'
         required: true
         type: string
-        default: ""
+        default: "siarkowicz@google.com"
       cfg_node_count:
         description: 'Number of nodes in the etcd cluster'
         required: false

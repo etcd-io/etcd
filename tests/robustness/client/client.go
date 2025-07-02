@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/antithesishq/antithesis-sdk-go/assert"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -316,14 +317,31 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 
 	go func() {
 		defer close(respCh)
+		lastRev := request.Revision
+		fmt.Printf("Client %d open watch %d\n", c.ID, request.Revision)
 		for r := range c.client.Watch(ctx, request.Key, ops...) {
-			c.watchOperations[index].Responses = append(c.watchOperations[index].Responses, ToWatchResponse(r, c.baseTime))
+			t := time.Since(c.baseTime)
+			if r.IsProgressNotify() {
+				fmt.Printf("Client %d member %d progress %d created %v\n", c.ID, r.Header.MemberId, r.Header.Revision, r.Created)
+				assert.Always(r.Header.Revision >= lastRev, "Client progress notification never decreases revision", map[string]any{"client": c.ID, "member": r.Header.MemberId, "lastRev": lastRev, "progressNotification": r.Header.Revision, "time": t})
+				lastRev = r.Header.Revision
+			} else if len(r.Events) > 0 {
+				fmt.Printf("Client %d member %d events %d-%d\n", c.ID, r.Header.MemberId, r.Events[0].Kv.ModRevision, r.Events[len(r.Events)-1].Kv.ModRevision)
+				for _, event := range r.Events {
+					assert.Always(event.Kv.ModRevision >= lastRev, "Client events revision never decreases revision", map[string]any{"client": c.ID, "member": r.Header.MemberId, "lastRev": lastRev, "eventRevision": event.Kv.ModRevision, "time": t})
+					lastRev = event.Kv.ModRevision
+				}
+			} else {
+				fmt.Printf("Client %d member %d data %+v\n", c.ID, r.Header.MemberId, r)
+			}
+			c.watchOperations[index].Responses = append(c.watchOperations[index].Responses, ToWatchResponse(r, t))
 			select {
 			case respCh <- r:
 			case <-ctx.Done():
 				return
 			}
 		}
+		fmt.Printf("Client %d close watch\n", c.ID)
 	}()
 	return respCh
 }
@@ -332,15 +350,16 @@ func (c *RecordingClient) RequestProgress(ctx context.Context) error {
 	return c.client.RequestProgress(ctx)
 }
 
-func ToWatchResponse(r clientv3.WatchResponse, baseTime time.Time) model.WatchResponse {
+func ToWatchResponse(r clientv3.WatchResponse, time time.Duration) model.WatchResponse {
 	// using time.Since time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
-	resp := model.WatchResponse{Time: time.Since(baseTime)}
+	resp := model.WatchResponse{Time: time}
 	for _, event := range r.Events {
 		resp.Events = append(resp.Events, toWatchEvent(*event))
 	}
 	resp.IsProgressNotify = r.IsProgressNotify()
 	resp.Revision = r.Header.Revision
+	resp.MemberID = r.Header.MemberId
 	err := r.Err()
 	if err != nil {
 		resp.Error = r.Err().Error()
