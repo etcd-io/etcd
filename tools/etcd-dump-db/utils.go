@@ -15,14 +15,8 @@
 package main
 
 import (
-	"os"
 	"unsafe"
 )
-
-func existFileOrDir(name string) bool {
-	_, err := os.Stat(name)
-	return err == nil
-}
 
 func unsafeAdd(base unsafe.Pointer, offset uintptr) unsafe.Pointer {
 	return unsafe.Pointer(uintptr(base) + offset)
