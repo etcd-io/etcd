@@ -36,8 +36,8 @@ github.com/alecthomas/go-check-sumtype v0.3.1 h1:u9aUvbGINJxLVXiFvHUlPEaD7VDULsr
 github.com/alecthomas/go-check-sumtype v0.3.1/go.mod h1:A8TSiN3UPRw3laIgWEUOHHLPa6/r9MtoigdlP5h3K/E=
 github.com/alecthomas/repr v0.4.0 h1:GhI2A8MACjfegCPVq9f1FLvIBS+DrQ2KQBFZP1iFzXc=
 github.com/alecthomas/repr v0.4.0/go.mod h1:Fr0507jx4eOXV7AlPV6AVZLYrLIuIeSOWtW57eE/O/4=
-github.com/alexfalkowski/gocovmerge v1.9.0 h1:ozu15S3V+muHM72WOi+/lXgJZ/zSzjB6CRfBV7HnJDc=
-github.com/alexfalkowski/gocovmerge v1.9.0/go.mod h1:gkfERgPiozeXq7FlJBQDmTeXo8FnrNxZwabB4uSGZ3M=
+github.com/alexfalkowski/gocovmerge v1.11.0 h1:mHYRBKEBHxjTWveV6RCAnCAhF6l1evO9JYboZRvZmuU=
+github.com/alexfalkowski/gocovmerge v1.11.0/go.mod h1:gkfERgPiozeXq7FlJBQDmTeXo8FnrNxZwabB4uSGZ3M=
 github.com/alexkohler/nakedret/v2 v2.0.5 h1:fP5qLgtwbx9EJE8dGEERT02YwS8En4r9nnZ71RK+EVU=
 github.com/alexkohler/nakedret/v2 v2.0.5/go.mod h1:bF5i0zF2Wo2o4X4USt9ntUWve6JbFv02Ff4vlkmS/VU=
 github.com/alexkohler/prealloc v1.0.0 h1:Hbq0/3fJPQhNkN0dR95AVrr6R7tou91y0uHG5pOcUuw=
@@ -126,8 +126,8 @@ github.com/ghostiam/protogetter v0.3.9 h1:j+zlLLWzqLay22Cz/aYwTHKQ88GE2DQ6GkWSYF
 github.com/ghostiam/protogetter v0.3.9/go.mod h1:WZ0nw9pfzsgxuRsPOFQomgDVSWtDLJRfQJEhsGbmQMA=
 github.com/go-critic/go-critic v0.12.0 h1:iLosHZuye812wnkEz1Xu3aBwn5ocCPfc9yqmFG9pa6w=
 github.com/go-critic/go-critic v0.12.0/go.mod h1:DpE0P6OVc6JzVYzmM5gq5jMU31zLr4am5mB/VfFK64w=
-github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
-github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
+github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
+github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-quicktest/qt v1.101.0 h1:O1K29Txy5P2OK0dGo59b7b0LR6wKfIhttaAhHUyn7eI=
 github.com/go-quicktest/qt v1.101.0/go.mod h1:14Bz/f7NwaXPtdYEgzsx46kqSxVwTbzVZsDC26tQJow=
 github.com/go-sql-driver/mysql v1.8.1 h1:LedoTUt/eveggdHS9qUFC1EFSa8bU2+1pZjSRpvNJ1Y=
@@ -203,8 +203,8 @@ github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad h1:a6HEuzUHeKH6hwfN/Z
 github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad/go.mod h1:vavhavw2zAxS5dIdcRluK6cSGGPlZynqzFM8NdvU144=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
-github.com/google/yamlfmt v0.17.1 h1:NgKi21+MUVntxhPhIsstylN6QNCCfDv3wKNKwlm/3Hs=
-github.com/google/yamlfmt v0.17.1/go.mod h1:gs0UEklJOYkUJ+OOCG0hg9n+DzucKDPlJElTUasVNK8=
+github.com/google/yamlfmt v0.17.2 h1:TkXxhmj7dnpmOnlWGOXog92Gs6MWcTZqnf3kuyp8yFQ=
+github.com/google/yamlfmt v0.17.2/go.mod h1:gs0UEklJOYkUJ+OOCG0hg9n+DzucKDPlJElTUasVNK8=
 github.com/gordonklaus/ineffassign v0.1.0 h1:y2Gd/9I7MdY1oEIt+n+rowjBNDcLQq3RsH5hwJd0f9s=
 github.com/gordonklaus/ineffassign v0.1.0/go.mod h1:Qcp2HIAYhR7mNUVSIxZww3Guk4it82ghYcEXIAk+QT0=
 github.com/gostaticanalysis/analysisutil v0.7.1 h1:ZMCjoue3DtDWQ5WyU16YbjbQEQ3VuzwxALrpYd+HeKk=
@@ -220,8 +220,8 @@ github.com/gostaticanalysis/nilerr v0.1.1/go.mod h1:wZYb6YI5YAxxq0i1+VJbY0s2YONW
 github.com/gostaticanalysis/testutil v0.3.1-0.20210208050101-bfb5c8eec0e4/go.mod h1:D+FIZ+7OahH3ePw/izIEeH5I06eKs1IKI4Xr64/Am3M=
 github.com/gostaticanalysis/testutil v0.5.0 h1:Dq4wT1DdTwTGCQQv3rl3IvD5Ld0E6HiY+3Zh0sUGqw8=
 github.com/gostaticanalysis/testutil v0.5.0/go.mod h1:OLQSbuM6zw2EvCcXTz1lVq5unyoNft372msDY0nY5Hs=
-github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0 h1:+epNPbD5EqgpEMm5wrl4Hqts3jZt8+kYaqUisuuIGTk=
-github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.0/go.mod h1:Zanoh4+gvIgluNqcfMVTJueD4wSS5hT7zTt4Mrutd90=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1 h1:X5VWvz21y3gzm9Nw/kaUeku/1+uBhcekkmy4IkffJww=
+github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1/go.mod h1:Zanoh4+gvIgluNqcfMVTJueD4wSS5hT7zTt4Mrutd90=
 github.com/hashicorp/go-immutable-radix/v2 v2.1.0 h1:CUW5RYIcysz+D3B+l1mDeXrQ7fUvGGCwJfdASSzbrfo=
 github.com/hashicorp/go-immutable-radix/v2 v2.1.0/go.mod h1:hgdqLXA4f6NIjRVisM1TJ9aOJVNRqKZj+xDGF6m7PBw=
 github.com/hashicorp/go-uuid v1.0.3 h1:2gKiV6YVmrJ1i2CKKa9obLvRieoRGviZFL26PcT/Co8=
