@@ -22,7 +22,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
-	go.etcd.io/bbolt v1.4.1
+	go.etcd.io/bbolt v1.4.2
 	go.etcd.io/etcd/api/v3 v3.6.1
 	go.etcd.io/etcd/client/pkg/v3 v3.6.1
 	go.etcd.io/etcd/client/v3 v3.6.1
