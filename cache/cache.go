@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2025 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,3 +13,239 @@
 // limitations under the License.
 
 package cache
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"sync"
+	"time"
+
+	rpctypes "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	clientv3 "go.etcd.io/etcd/client/v3"
+)
+
+// TODO: add gap-free replay for arbitrary startRevs and drop this guard.
+var ErrUnsupportedWatch = errors.New("cache: unsupported watch parameters")
+
+// Cache buffers a single etcd Watch for a given key‐prefix and fan‑outs local watchers.
+type Cache struct {
+	prefix    string // prefix is the key-prefix this shard is responsible for ("" = root).
+	cfg       Config // immutable runtime configuration
+	watcher   clientv3.Watcher
+	demux     *demux // demux fans incoming events out to active watchers and manages resync.
+	ready     chan struct{}
+	stop      context.CancelFunc
+	waitGroup sync.WaitGroup
+}
+
+// watchCtx collects all the knobs that both serveWatchEvents and watchRetryLoop need.
+type watchCtx struct {
+	cache           *Cache
+	backoffStart    time.Duration
+	backoffMax      time.Duration
+	onFirstResponse func() // callback to fire once on first upstream response
+}
+
+// New builds a cache shard that watches only the requested prefix.
+// For the root cache pass "".
+func New(watcher clientv3.Watcher, prefix string, opts ...Option) (*Cache, error) {
+	cfg := defaultConfig()
+	for _, opt := range opts {
+		opt(&cfg)
+	}
+
+	if cfg.HistoryWindowSize <= 0 {
+		return nil, fmt.Errorf("invalid HistoryWindowSize %d (must be > 0)", cfg.HistoryWindowSize)
+	}
+
+	internalCtx, cancel := context.WithCancel(context.Background())
+
+	cache := &Cache{
+		prefix:  prefix,
+		cfg:     cfg,
+		watcher: watcher,
+		ready:   make(chan struct{}),
+		stop:    cancel,
+	}
+
+	cache.demux = newDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
+
+	cache.waitGroup.Add(1)
+	go func() {
+		defer cache.waitGroup.Done()
+		readyOnce := sync.Once{}
+
+		watchCtx := &watchCtx{
+			cache:           cache,
+			backoffStart:    cfg.InitialBackoff,
+			backoffMax:      cfg.MaxBackoff,
+			onFirstResponse: func() { readyOnce.Do(func() { close(cache.ready) }) },
+		}
+		serveWatchEvents(internalCtx, watchCtx)
+	}()
+
+	return cache, nil
+}
+
+// Watch registers a cache-backed watcher for a given key or prefix.
+// It returns a WatchChan that streams WatchResponses containing events.
+func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	select {
+	case <-c.ready:
+	case <-ctx.Done():
+		emptyWatchChan := make(chan clientv3.WatchResponse)
+		close(emptyWatchChan)
+		return emptyWatchChan
+	}
+
+	op := clientv3.OpGet(key, opts...)
+	requestedRev := op.Rev()
+
+	// build the internal Watch event stream (for historic reply + live)
+	stream, w, err := c.newWatchEventStream(ctx, key, requestedRev, opts)
+	if err != nil {
+		// terminal error → one-shot reply, needs a single buffer slot
+		responseChan := make(chan clientv3.WatchResponse, 1)
+		if errors.Is(err, rpctypes.ErrCompacted) {
+			var compactRev int64
+			if oldestEvent := c.demux.PeekOldest(); oldestEvent != nil {
+				compactRev = oldestEvent.Kv.ModRevision
+			}
+			responseChan <- clientv3.WatchResponse{CompactRevision: compactRev}
+		} else {
+			responseChan <- clientv3.WatchResponse{Canceled: true}
+		}
+		close(responseChan)
+		return responseChan
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	go func() { <-w.Done(); cancel() }()
+
+	responseChan := make(chan clientv3.WatchResponse)
+	go func() {
+		defer cancel()
+		defer close(responseChan)
+
+		for event := range stream {
+			select {
+			case <-ctx.Done():
+				return
+			case responseChan <- clientv3.WatchResponse{Events: []*clientv3.Event{event}}:
+			}
+		}
+	}()
+	return responseChan
+}
+
+// Ready reports whether the cache has finished its initial load.
+func (c *Cache) Ready() bool {
+	select {
+	case <-c.ready:
+		return true
+	default:
+		return false
+	}
+}
+
+// WaitReady blocks until the cache is ready or the ctx is cancelled.
+func (c *Cache) WaitReady(ctx context.Context) error {
+	select {
+	case <-c.ready:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// Close cancels the private context and blocks until all goroutines return.
+func (c *Cache) Close() {
+	c.stop()
+	c.waitGroup.Wait()
+}
+
+// newWatchEventStream builds a single internal Watch event stream for
+// both historical replay (>= startRev) and live updates filtered by key.
+func (c *Cache) newWatchEventStream(
+	ctx context.Context,
+	key string,
+	startRev int64,
+	opts []clientv3.OpOption,
+) (<-chan *clientv3.Event, *watcher, error) {
+	// TODO: Support watch on subprefix and single key & arbitrary startRev support once we guarantee gap-free replay.
+	if key != c.prefix || !clientv3.IsOptsWithPrefix(opts) || startRev != 0 {
+		return nil, nil, ErrUnsupportedWatch
+	}
+
+	pred := func(k []byte) bool { return strings.HasPrefix(string(k), key) }
+
+	w := newWatcher(c.cfg.PerWatcherBufferSize, pred)
+	c.demux.Register(w, startRev)
+
+	go func() {
+		<-ctx.Done()
+		c.demux.Unregister(w)
+	}()
+
+	return w.eventQueue, w, nil
+}
+
+func serveWatchEvents(ctx context.Context, watchCtx *watchCtx) {
+	backoff := watchCtx.backoffStart
+	for {
+		opts := []clientv3.OpOption{
+			clientv3.WithPrefix(),
+			clientv3.WithProgressNotify(),
+			clientv3.WithCreatedNotify(),
+		}
+		if oldestEvent := watchCtx.cache.demux.PeekOldest(); oldestEvent != nil {
+			opts = append(opts,
+				clientv3.WithRev(oldestEvent.Kv.ModRevision+1))
+		}
+		watchCh := watchCtx.cache.watcher.Watch(ctx, watchCtx.cache.prefix, opts...)
+
+		if err := readWatchChannel(watchCh, watchCtx.cache, watchCtx.cache.demux, watchCtx.onFirstResponse); err == nil {
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		if backoff < watchCtx.backoffMax {
+			backoff *= 2
+		}
+	}
+}
+
+// readWatchChannel reads an etcd Watch stream into History and enqueueCh, returning nil on cancel or first error.
+func readWatchChannel(
+	watchChan clientv3.WatchChan,
+	cache *Cache,
+	demux *demux,
+	onFirstResponse func(),
+) error {
+	for resp := range watchChan {
+		onFirstResponse()
+
+		if err := resp.Err(); err != nil {
+			if errors.Is(err, rpctypes.ErrCompacted) {
+				select {
+				case <-cache.ready:
+					// TODO: Reinitialize cache.ready safely; current direct channel assignment can race with concurrent watchers
+					cache.ready = make(chan struct{})
+				default:
+				}
+				demux.Purge()
+			}
+			return err
+		}
+		for _, event := range resp.Events {
+			demux.Broadcast(event)
+		}
+	}
+	return nil
+}
