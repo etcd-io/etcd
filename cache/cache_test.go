@@ -75,6 +75,23 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 			ModRevision: 4,
 		},
 	}
+	event4Put := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/a"),
+			Value:          []byte("3"),
+			CreateRevision: 5,
+			ModRevision:    5,
+			Version:        1,
+		},
+	}
+	event5Delete := &clientv3.Event{
+		Type: clientv3.EventTypeDelete,
+		Kv: &mvccpb.KeyValue{
+			Key:         []byte("/b"),
+			ModRevision: 5,
+		},
+	}
 	tcs := []struct {
 		name       string
 		key        string
@@ -85,7 +102,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 			name:       "Watch all events",
 			key:        "/",
 			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
-			wantEvents: []*clientv3.Event{event1Put, event2Put, event3Delete},
+			wantEvents: []*clientv3.Event{event1Put, event2Put, event3Delete, event4Put, event5Delete},
 		},
 	}
 	t.Log("Open test watchers")
@@ -101,6 +118,9 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 		t.Fatalf("Put: %v", err)
 	}
 	if _, err := kv.Delete(ctx, string(event3Delete.Kv.Key)); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(event4Put.Kv.Key), string(event4Put.Kv.Value)), clientv3.OpDelete(string(event5Delete.Kv.Key))).Commit(); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
 	t.Log("Validate")
