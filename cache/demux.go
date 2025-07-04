@@ -31,20 +31,23 @@ type demux struct {
 	resyncInterval  time.Duration
 }
 
-func newDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
-	d := &demux{
-		activeWatchers:  make(map[*watcher]int64),
-		laggingWatchers: make(map[*watcher]int64),
-		history:         newRingBuffer(historyWindowSize),
-		resyncInterval:  resyncInterval,
-	}
-
+func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
+	d := newDemux(historyWindowSize, resyncInterval)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		d.resyncLoop(ctx)
 	}()
 	return d
+}
+
+func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
+	return &demux{
+		activeWatchers:  make(map[*watcher]int64),
+		laggingWatchers: make(map[*watcher]int64),
+		history:         newRingBuffer(historyWindowSize),
+		resyncInterval:  resyncInterval,
+	}
 }
 
 // resyncLoop periodically tries to catch lagging watchers up by replaying events from History.
@@ -95,20 +98,35 @@ func (d *demux) Unregister(w *watcher) {
 	w.Stop()
 }
 
-func (d *demux) Broadcast(event *clientv3.Event) {
+func (d *demux) Broadcast(events []*clientv3.Event) {
+	if len(events) == 0 {
+		return
+	}
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.history.Append(event)
+	d.history.Append(events)
+
+	lastRev := events[len(events)-1].Kv.ModRevision
 	for w, nextRev := range d.activeWatchers {
-		if event.Kv.ModRevision < nextRev {
+		start := len(events)
+		for i, ev := range events {
+			if ev.Kv.ModRevision >= nextRev {
+				start = i
+				break
+			}
+		}
+
+		if start == len(events) {
 			continue
 		}
-		if !w.enqueueEvent(event) { // buffer overflow
+
+		if !w.enqueueEvent(events[start:]) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {
-			d.activeWatchers[w] = event.Kv.ModRevision + 1
+			d.activeWatchers[w] = lastRev + 1
 		}
 	}
 }
@@ -140,16 +158,18 @@ func (d *demux) resyncLaggingWatchers() {
 			continue
 		}
 		// TODO: re-enable key‐predicate in Filter when non‐zero startRev or performance tuning is needed
-		missedEvents := d.history.Filter(nextRev)
+		missed := d.history.Filter(nextRev)
 
-		for _, event := range missedEvents {
-			if !w.enqueueEvent(event) { // buffer overflow: watcher still lagging
+		enqueueFailed := false
+		for _, eventBatch := range missed {
+			if !w.enqueueEvent(eventBatch) { // buffer overflow: watcher still lagging
+				enqueueFailed = true
 				break
 			}
-			nextRev = event.Kv.ModRevision + 1
+			nextRev = eventBatch[0].Kv.ModRevision + 1
 		}
 
-		if len(missedEvents) > 0 && nextRev > missedEvents[len(missedEvents)-1].Kv.ModRevision {
+		if !enqueueFailed {
 			delete(d.laggingWatchers, w)
 			d.activeWatchers[w] = nextRev
 		} else {
