@@ -26,11 +26,7 @@ type ringBuffer struct {
 	head, tail, size int
 }
 
-// EntryPredicate lets callers decide which entries to keep (e.g. “after revision X”)
-type (
-	EntryPredicate func(*clientv3.Event) bool
-	KeyPredicate   = func([]byte) bool
-)
+type KeyPredicate = func([]byte) bool
 
 func newRingBuffer(capacity int) *ringBuffer {
 	// assume capacity > 0 – validated by Cache
@@ -50,9 +46,9 @@ func (r *ringBuffer) Append(event *clientv3.Event) {
 	r.head = (r.head + 1) % len(r.buffer)
 }
 
-// Filter returns the events that satisfy every predicate
+// Filter returns all events in the buffer whose ModRevision is >= minRev.
 // TODO: use binary search on the ring buffer to locate the first entry >= nextRev instead of a full scan
-func (r *ringBuffer) Filter(entryPred EntryPredicate) (events []*clientv3.Event) {
+func (r *ringBuffer) Filter(minRev int64) (events []*clientv3.Event) {
 	events = make([]*clientv3.Event, 0, r.size)
 
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
@@ -60,7 +56,7 @@ func (r *ringBuffer) Filter(entryPred EntryPredicate) (events []*clientv3.Event)
 		if entry == nil {
 			panic(fmt.Sprintf("ringBuffer.Filter: unexpected nil entry at index %d", i))
 		}
-		if entryPred == nil || entryPred(entry) {
+		if entry.Kv.ModRevision >= minRev {
 			events = append(events, entry)
 		}
 	}

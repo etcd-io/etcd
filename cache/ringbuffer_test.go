@@ -91,7 +91,7 @@ func TestFilter(t *testing.T) {
 		name             string
 		capacity         int
 		revs             []int64
-		predicate        EntryPredicate
+		minRev           int64
 		wantFilteredRevs []int64
 		wantLatestRev    int64
 	}{
@@ -99,7 +99,7 @@ func TestFilter(t *testing.T) {
 			name:             "no_filter",
 			capacity:         5,
 			revs:             []int64{1, 2, 3},
-			predicate:        AfterRev(0),
+			minRev:           0,
 			wantFilteredRevs: []int64{1, 2, 3},
 			wantLatestRev:    3,
 		},
@@ -107,7 +107,7 @@ func TestFilter(t *testing.T) {
 			name:             "partial_match",
 			capacity:         5,
 			revs:             []int64{10, 11, 12, 13},
-			predicate:        AfterRev(12),
+			minRev:           12,
 			wantFilteredRevs: []int64{12, 13},
 			wantLatestRev:    13,
 		},
@@ -115,7 +115,7 @@ func TestFilter(t *testing.T) {
 			name:             "filter_when_full",
 			capacity:         3,
 			revs:             []int64{20, 21, 22, 23, 24},
-			predicate:        AfterRev(23),
+			minRev:           23,
 			wantFilteredRevs: []int64{23, 24},
 			wantLatestRev:    24,
 		},
@@ -123,23 +123,15 @@ func TestFilter(t *testing.T) {
 			name:             "none_match",
 			capacity:         4,
 			revs:             []int64{30, 31},
-			predicate:        AfterRev(100),
+			minRev:           100,
 			wantFilteredRevs: []int64{},
 			wantLatestRev:    31,
 		},
 		{
-			name:             "nil_predicate",
-			capacity:         4,
-			revs:             []int64{1, 2, 3},
-			predicate:        nil,
-			wantFilteredRevs: []int64{1, 2, 3},
-			wantLatestRev:    3,
-		},
-		{
-			name:             "empty_buffer_nil_predicate",
+			name:             "empty_buffer",
 			capacity:         3,
 			revs:             nil,
-			predicate:        nil,
+			minRev:           0,
 			wantFilteredRevs: []int64{},
 			wantLatestRev:    0,
 		},
@@ -154,7 +146,7 @@ func TestFilter(t *testing.T) {
 				rb.Append(event(r, "k"))
 			}
 
-			gotEvents := rb.Filter(tt.predicate)
+			gotEvents := rb.Filter(tt.minRev)
 			gotRevs := make([]int64, len(gotEvents))
 			for i, ev := range gotEvents {
 				gotRevs[i] = ev.Kv.ModRevision
@@ -204,7 +196,7 @@ func TestRebaseHistory(t *testing.T) {
 				t.Fatalf("PeekLatest()=%d, want=%d", latestRev, 0)
 			}
 
-			events := rb.Filter(nil)
+			events := rb.Filter(0)
 			if len(events) != 0 {
 				t.Fatalf("Filter() len(events)=%d, want=%d", len(events), 0)
 			}
