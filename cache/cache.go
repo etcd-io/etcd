@@ -109,10 +109,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		// terminal error → one-shot reply, needs a single buffer slot
 		responseChan := make(chan clientv3.WatchResponse, 1)
 		if errors.Is(err, rpctypes.ErrCompacted) {
-			var compactRev int64
-			if oldestEvent := c.demux.PeekOldest(); oldestEvent != nil {
-				compactRev = oldestEvent.Kv.ModRevision
-			}
+			compactRev := c.demux.PeekOldest()
 			responseChan <- clientv3.WatchResponse{CompactRevision: compactRev}
 		} else {
 			responseChan <- clientv3.WatchResponse{Canceled: true}
@@ -200,9 +197,9 @@ func serveWatchEvents(ctx context.Context, watchCtx *watchCtx) {
 			clientv3.WithProgressNotify(),
 			clientv3.WithCreatedNotify(),
 		}
-		if oldestEvent := watchCtx.cache.demux.PeekOldest(); oldestEvent != nil {
+		if oldestRev := watchCtx.cache.demux.PeekOldest(); oldestRev != 0 {
 			opts = append(opts,
-				clientv3.WithRev(oldestEvent.Kv.ModRevision+1))
+				clientv3.WithRev(oldestRev+1))
 		}
 		watchCh := watchCtx.cache.watcher.Watch(ctx, watchCtx.cache.prefix, opts...)
 
