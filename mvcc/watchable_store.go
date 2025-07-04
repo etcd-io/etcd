@@ -37,6 +37,9 @@ var (
 
 	// maxWatchersPerSync is the number of watchers to sync in a single batch
 	maxWatchersPerSync = 512
+
+	// maxResyncPeriod is the period of executing resync.
+	watchResyncPeriod = 100 * time.Millisecond
 )
 
 type watchable interface {
@@ -228,7 +231,7 @@ func (s *watchableStore) syncWatchersLoop() {
 		}
 		syncDuration := time.Since(st)
 
-		waitDuration := 100 * time.Millisecond
+		waitDuration := watchResyncPeriod
 		// more work pending?
 		if unsyncedWatchers != 0 && lastUnsyncedWatchers > unsyncedWatchers {
 			// be fair to other store operations by yielding time taken
@@ -377,7 +380,7 @@ func (s *watchableStore) syncWatchers() int {
 			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
 			continue
 		}
-		w.minRev = curRev + 1
+		w.minRev = max(curRev+1, w.minRev)
 
 		eb, ok := wb[w]
 		if !ok {
