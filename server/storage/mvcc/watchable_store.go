@@ -39,6 +39,9 @@ var (
 
 	// maxWatchersPerSync is the number of watchers to sync in a single batch
 	maxWatchersPerSync = 512
+
+	// maxResyncPeriod is the period of executing resync.
+	watchResyncPeriod = 100 * time.Millisecond
 )
 
 func ChanBufLen() int { return chanBufLen }
@@ -221,8 +224,7 @@ func (s *watchableStore) Restore(b backend.Backend) error {
 func (s *watchableStore) syncWatchersLoop() {
 	defer s.wg.Done()
 
-	waitDuration := 100 * time.Millisecond
-	delayTicker := time.NewTicker(waitDuration)
+	delayTicker := time.NewTicker(watchResyncPeriod)
 	defer delayTicker.Stop()
 	var evs []mvccpb.Event
 
@@ -238,7 +240,7 @@ func (s *watchableStore) syncWatchersLoop() {
 		}
 		syncDuration := time.Since(st)
 
-		delayTicker.Reset(waitDuration)
+		delayTicker.Reset(watchResyncPeriod)
 		// more work pending?
 		if unsyncedWatchers != 0 && lastUnsyncedWatchers > unsyncedWatchers {
 			// be fair to other store operations by yielding time taken
@@ -370,7 +372,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 			// Next retry of syncWatchers would try to resend the compacted watch response to w.ch
 			continue
 		}
-		w.minRev = curRev + 1
+		w.minRev = max(curRev+1, w.minRev)
 
 		eb, ok := wb[w]
 		if !ok {
