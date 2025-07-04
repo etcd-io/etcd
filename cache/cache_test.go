@@ -75,6 +75,23 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 			ModRevision: 4,
 		},
 	}
+	event4Put := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/a"),
+			Value:          []byte("3"),
+			CreateRevision: 5,
+			ModRevision:    5,
+			Version:        1,
+		},
+	}
+	event5Delete := &clientv3.Event{
+		Type: clientv3.EventTypeDelete,
+		Kv: &mvccpb.KeyValue{
+			Key:         []byte("/b"),
+			ModRevision: 5,
+		},
+	}
 	tcs := []struct {
 		name       string
 		key        string
@@ -85,7 +102,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 			name:       "Watch all events",
 			key:        "/",
 			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
-			wantEvents: []*clientv3.Event{event1Put, event2Put, event3Delete},
+			wantEvents: []*clientv3.Event{event1Put, event2Put, event3Delete, event4Put, event5Delete},
 		},
 	}
 	t.Log("Open test watchers")
@@ -102,6 +119,9 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 	}
 	if _, err := kv.Delete(ctx, string(event3Delete.Kv.Key)); err != nil {
 		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(event4Put.Kv.Key), string(event4Put.Kv.Value)), clientv3.OpDelete(string(event5Delete.Kv.Key))).Commit(); err != nil {
+		t.Fatalf("Txn: %v", err)
 	}
 	t.Log("Validate")
 	for i, tc := range tcs {
@@ -235,6 +255,67 @@ func TestRejectsUnsupportedWatch(t *testing.T) {
 				t.Errorf("expected canceled response, got %#v (closed=%v)", resp, !ok)
 			}
 		})
+	}
+}
+
+func TestGroupEventsByRevision(t *testing.T) {
+	client := startEtcd(t)
+
+	cache, err := New(client, "/", WithHistoryWindowSize(8))
+	if err != nil {
+		t.Fatalf("New(...): %v", err)
+	}
+	t.Cleanup(cache.Close)
+
+	if err := cache.WaitReady(t.Context()); err != nil {
+		t.Fatalf("cache not ready: %v", err)
+	}
+
+	ctx := t.Context()
+	kv := client.KV
+
+	if _, err := kv.Put(ctx, "/a", "1"); err != nil {
+		t.Fatalf("Put /a: %v", err)
+	}
+	if _, err := kv.Txn(ctx).
+		Then(
+			clientv3.OpPut("/a", "2"),
+			clientv3.OpPut("/b", "3"),
+		).Commit(); err != nil {
+		t.Fatalf("Txn: %v", err)
+	}
+	if _, err := kv.Delete(ctx, "/a"); err != nil {
+		t.Fatalf("Delete /a: %v", err)
+	}
+	if _, err := kv.Txn(ctx).
+		Then(
+			clientv3.OpPut("/a", "3"),
+			clientv3.OpDelete("/b"),
+			clientv3.OpPut("/c", "6"),
+		).Commit(); err != nil {
+		t.Fatalf("Txn: %v", err)
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	cache.demux.mu.RLock()
+	batches := cache.demux.history.Filter(0)
+	cache.demux.mu.RUnlock()
+
+	var gotLens []int
+	for _, b := range batches {
+		rev := b[0].Kv.ModRevision
+		for _, ev := range b {
+			if ev.Kv.ModRevision != rev {
+				t.Fatalf("batch contains mixed revisions: %v vs %v", rev, ev.Kv.ModRevision)
+			}
+		}
+		gotLens = append(gotLens, len(b))
+	}
+
+	wantLens := []int{1, 2, 1, 3}
+	if diff := cmp.Diff(wantLens, gotLens); diff != "" {
+		t.Errorf("unexpected batch sizes (-want +got):\n%s", diff)
 	}
 }
 

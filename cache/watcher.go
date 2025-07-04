@@ -22,7 +22,7 @@ import (
 
 // watcher holds one client’s buffered stream of events.
 type watcher struct {
-	eventQueue chan *clientv3.Event
+	eventQueue chan []*clientv3.Event
 	keyPred    KeyPredicate
 	stopped    int32
 	done       chan struct{} // closed together with Stop()
@@ -30,20 +30,29 @@ type watcher struct {
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 	return &watcher{
-		eventQueue: make(chan *clientv3.Event, bufSize),
+		eventQueue: make(chan []*clientv3.Event, bufSize),
 		keyPred:    pred,
 		done:       make(chan struct{}),
 	}
 }
 
-// true  -> event delivered (or filtered/duplicate)
+// true  -> events delivered (or filtered/duplicate)
 // false -> buffer full (caller should mark watcher “lagging”)
-func (w *watcher) enqueueEvent(event *clientv3.Event) bool {
-	if w.keyPred != nil && !w.keyPred(event.Kv.Key) {
-		return true
+func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
+	if w.keyPred != nil {
+		filtered := make([]*clientv3.Event, 0, len(eventBatch))
+		for _, event := range eventBatch {
+			if w.keyPred(event.Kv.Key) {
+				filtered = append(filtered, event)
+			}
+		}
+		if len(filtered) == 0 {
+			return true
+		}
+		eventBatch = filtered
 	}
 	select {
-	case w.eventQueue <- event:
+	case w.eventQueue <- eventBatch:
 		return true
 	default:
 		return false

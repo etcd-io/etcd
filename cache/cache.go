@@ -126,11 +126,11 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		defer cancel()
 		defer close(responseChan)
 
-		for event := range stream {
+		for events := range stream {
 			select {
 			case <-ctx.Done():
 				return
-			case responseChan <- clientv3.WatchResponse{Events: []*clientv3.Event{event}}:
+			case responseChan <- clientv3.WatchResponse{Events: events}:
 			}
 		}
 	}()
@@ -170,7 +170,7 @@ func (c *Cache) newWatchEventStream(
 	key string,
 	startRev int64,
 	opts []clientv3.OpOption,
-) (<-chan *clientv3.Event, *watcher, error) {
+) (<-chan []*clientv3.Event, *watcher, error) {
 	// TODO: Support watch on subprefix and single key & arbitrary startRev support once we guarantee gap-free replay.
 	if key != c.prefix || !clientv3.IsOptsWithPrefix(opts) || startRev != 0 {
 		return nil, nil, ErrUnsupportedWatch
@@ -240,8 +240,23 @@ func readWatchChannel(
 			}
 			return err
 		}
+
+		var (
+			eventBatch []*clientv3.Event
+			batchRev   int64
+		)
 		for _, event := range resp.Events {
-			demux.Broadcast(event)
+			if event.Kv.ModRevision != batchRev {
+				if len(eventBatch) > 0 {
+					demux.Broadcast(eventBatch)
+				}
+				eventBatch = eventBatch[:0]
+				batchRev = event.Kv.ModRevision
+			}
+			eventBatch = append(eventBatch, event)
+		}
+		if len(eventBatch) > 0 {
+			demux.Broadcast(eventBatch)
 		}
 	}
 	return nil
