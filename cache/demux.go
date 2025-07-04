@@ -67,21 +67,17 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	latestEvent := d.history.PeekLatest()
+	latestRev := d.history.PeekLatest()
 
 	// Special case: 0 means “newest”.
 	if startingRev == 0 {
-		if latestEvent == nil {
+		if latestRev == 0 {
 			d.activeWatchers[w] = 0
 			return
 		}
-		startingRev = latestEvent.Kv.ModRevision + 1
+		startingRev = latestRev + 1
 	}
 
-	var latestRev int64
-	if latestEvent != nil {
-		latestRev = latestEvent.Kv.ModRevision
-	}
 	if startingRev <= latestRev {
 		d.laggingWatchers[w] = startingRev
 	} else {
@@ -136,12 +132,8 @@ func (d *demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	oldestRev := d.history.PeekOldest()
 	for w, nextRev := range d.laggingWatchers {
-		var oldestRev int64
-		if oldestEvent := d.history.PeekOldest(); oldestEvent != nil {
-			oldestRev = oldestEvent.Kv.ModRevision
-		}
-
 		if oldestRev != 0 && nextRev < oldestRev {
 			w.Stop()
 			delete(d.laggingWatchers, w)
@@ -166,7 +158,7 @@ func (d *demux) resyncLaggingWatchers() {
 	}
 }
 
-func (d *demux) PeekOldest() *clientv3.Event {
+func (d *demux) PeekOldest() int64 {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	return d.history.PeekOldest()

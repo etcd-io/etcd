@@ -70,17 +70,11 @@ func TestPeekLatestAndOldest(t *testing.T) {
 				rb.Append(event(r, "k"))
 			}
 
-			latestEvent := rb.PeekLatest()
-			oldestEvent := rb.PeekOldest()
+			latestRev := rb.PeekLatest()
+			oldestRev := rb.PeekOldest()
 
-			gotLatestRev := int64(0)
-			if latestEvent != nil {
-				gotLatestRev = latestEvent.Kv.ModRevision
-			}
-			gotOldestRev := int64(0)
-			if oldestEvent != nil {
-				gotOldestRev = oldestEvent.Kv.ModRevision
-			}
+			gotLatestRev := latestRev
+			gotOldestRev := oldestRev
 
 			if tt.wantLatestRev != gotLatestRev {
 				t.Fatalf("PeekLatest()=%d, want=%d", gotLatestRev, tt.wantLatestRev)
@@ -199,14 +193,9 @@ func TestRebaseHistory(t *testing.T) {
 
 			rb.RebaseHistory()
 
-			oldestRev := int64(0)
-			if ev := rb.PeekOldest(); ev != nil {
-				oldestRev = ev.Kv.ModRevision
-			}
-			latestRev := int64(0)
-			if ev := rb.PeekLatest(); ev != nil {
-				latestRev = ev.Kv.ModRevision
-			}
+			oldestRev := rb.PeekOldest()
+
+			latestRev := rb.PeekLatest()
 
 			if oldestRev != 0 {
 				t.Fatalf("PeekOldest()=%d, want=%d", oldestRev, 0)

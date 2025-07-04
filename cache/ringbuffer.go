@@ -68,20 +68,20 @@ func (r *ringBuffer) Filter(entryPred EntryPredicate) (events []*clientv3.Event)
 }
 
 // PeekLatest returns the most recently-appended event (or nil if empty).
-func (r *ringBuffer) PeekLatest() *clientv3.Event {
+func (r *ringBuffer) PeekLatest() int64 {
 	if r.size == 0 {
-		return nil
+		return 0
 	}
 	idx := (r.head - 1 + len(r.buffer)) % len(r.buffer)
-	return r.buffer[idx]
+	return r.buffer[idx].Kv.ModRevision
 }
 
 // PeekOldest returns the oldest event currently stored (or nil if empty).
-func (r *ringBuffer) PeekOldest() *clientv3.Event {
+func (r *ringBuffer) PeekOldest() int64 {
 	if r.size == 0 {
-		return nil
+		return 0
 	}
-	return r.buffer[r.tail]
+	return r.buffer[r.tail].Kv.ModRevision
 }
 
 func (r *ringBuffer) RebaseHistory() {
