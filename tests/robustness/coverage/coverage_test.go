@@ -21,7 +21,9 @@ import (
 	"strings"
 	"testing"
 
-	"go.opentelemetry.io/collector/pdata/ptrace"
+	traceservice "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func TestInterfaceUse(t *testing.T) {
@@ -50,10 +52,10 @@ func testInterfaceUse(t *testing.T, filename string) {
 		t.Fatalf("unmarshal testdata %s: %v", filename, err)
 	}
 	traces := dump.Result
-	t.Log("Traces found:", traces.ResourceSpans().Len())
+	t.Log("Traces found:", len(traces.GetResourceSpans()))
 
 	callsByOperationName := make(map[string]int)
-	for _, trace := range traces.ResourceSpans().All() {
+	for _, trace := range traces.GetResourceSpans() {
 		serviceName := getServiceName(trace)
 		if serviceName != "etcd" {
 			continue
@@ -79,31 +81,30 @@ func testInterfaceUse(t *testing.T, filename string) {
 }
 
 type Traces struct {
-	ptrace.Traces
+	traceservice.ExportTraceServiceRequest
 }
 
 func (t *Traces) UnmarshalJSON(b []byte) error {
-	traces, err := new(ptrace.JSONUnmarshaler).UnmarshalTraces(b)
-	if err != nil {
-		return err
-	}
-	t.Traces = traces
-	return nil
+	return protojson.Unmarshal(b, &t.ExportTraceServiceRequest)
 }
 
 type Dump struct {
 	Result *Traces `json:"result"`
 }
 
-func getServiceName(trace ptrace.ResourceSpans) string {
-	serviceName, _ := trace.Resource().Attributes().Get("service.name")
-	return serviceName.AsString()
+func getServiceName(trace *tracev1.ResourceSpans) string {
+	for _, kv := range trace.GetResource().GetAttributes() {
+		if kv.GetKey() == "service.name" {
+			return kv.GetValue().GetStringValue()
+		}
+	}
+	return ""
 }
 
-func getOperationName(trace ptrace.ResourceSpans) string {
-	for _, scopeSpan := range trace.ScopeSpans().All() {
-		for _, span := range scopeSpan.Spans().All() {
-			name := span.Name()
+func getOperationName(trace *tracev1.ResourceSpans) string {
+	for _, scopeSpan := range trace.GetScopeSpans() {
+		for _, span := range scopeSpan.GetSpans() {
+			name := span.GetName()
 			if strings.HasPrefix(name, "etcdserverpb") {
 				return name
 			}
