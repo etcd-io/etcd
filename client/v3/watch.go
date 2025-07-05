@@ -848,11 +848,20 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 				}
 			} else {
 				// current progress of watch; <= store revision
-				nextRev = wr.Header.Revision + 1
+				storeRev := wr.Header.Revision + 1
+				if wr.Err() == nil && storeRev < ws.initReq.rev {
+					panic(fmt.Sprintf("received watch response header with revision %d less than expected next revision %d: %v", storeRev, nextRev, wr))
+				}
+				nextRev = storeRev
 			}
 
 			if len(wr.Events) > 0 {
-				nextRev = wr.Events[len(wr.Events)-1].Kv.ModRevision + 1
+				firstRev := wr.Events[0].Kv.ModRevision
+				lastRev := wr.Events[len(wr.Events)-1].Kv.ModRevision + 1
+				if wr.Err() == nil && (lastRev < ws.initReq.rev || firstRev < ws.initReq.rev) {
+					panic(fmt.Sprintf("received watch events [%d, %d) less than expected next revision %d", firstRev, lastRev, ws.initReq.rev))
+				}
+				nextRev = lastRev
 			}
 
 			ws.initReq.rev = nextRev
