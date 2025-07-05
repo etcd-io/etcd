@@ -435,29 +435,7 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 	go func() {
 		currentRev := int64(1)
 		defer func() { revc <- currentRev }()
-		// restore the tree index from streaming the unordered index.
-		kiCache := make(map[string]*keyIndex, restoreChunkKeys)
 		for rkv := range rkvc {
-			ki, ok := kiCache[rkv.kstr]
-			// purge kiCache if many keys but still missing in the cache
-			if !ok && len(kiCache) >= restoreChunkKeys {
-				i := 10
-				for k := range kiCache {
-					delete(kiCache, k)
-					if i--; i == 0 {
-						break
-					}
-				}
-			}
-			// cache miss, fetch from tree index if there
-			if !ok {
-				ki = &keyIndex{key: rkv.kv.Key}
-				if idxKey := idx.KeyIndex(ki); idxKey != nil {
-					kiCache[rkv.kstr], ki = idxKey, idxKey
-					ok = true
-				}
-			}
-
 			rev := BytesToRev(rkv.key)
 			verify.Verify(func() {
 				if rev.Main < currentRev {
@@ -465,23 +443,13 @@ func restoreIntoIndex(lg *zap.Logger, idx index) (chan<- revKeyValue, <-chan int
 				}
 			})
 			currentRev = rev.Main
-
-			if ok {
-				if isTombstone(rkv.key) {
-					if err := ki.tombstone(lg, rev.Main, rev.Sub); err != nil {
-						lg.Warn("tombstone encountered error", zap.Error(err))
-					}
-					continue
+			if isTombstone(rkv.key) {
+				err := idx.Tombstone(rkv.key, rev)
+				if err != nil {
+					panic("a")
 				}
-				ki.put(lg, rev.Main, rev.Sub)
 			} else {
-				if isTombstone(rkv.key) {
-					ki.restoreTombstone(lg, rev.Main, rev.Sub)
-				} else {
-					ki.restore(lg, Revision{Main: rkv.kv.CreateRevision}, rev, rkv.kv.Version)
-				}
-				idx.Insert(ki)
-				kiCache[rkv.kstr] = ki
+				idx.Put(rkv.key, rev)
 			}
 		}
 	}()
