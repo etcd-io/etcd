@@ -40,6 +40,10 @@ var (
 	MemberReplace          Failpoint = memberReplace{}
 	MemberDowngrade        Failpoint = memberDowngrade{}
 	MemberDowngradeUpgrade Failpoint = memberDowngradeUpgrade{}
+	GrowMember             Failpoint = &growMember{
+		currentSize: 1,
+		targetSize:  3,
+	}
 )
 
 type memberReplace struct{}
@@ -303,4 +307,29 @@ func patchArgs(args []string, flag, newValue string) error {
 		}
 	}
 	return fmt.Errorf("--%s flag not found", flag)
+}
+
+type growMember struct {
+	currentSize int
+	targetSize  int
+}
+
+func (f *growMember) Inject(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2e.EtcdProcessCluster, baseTime time.Time, ids identity.Provider) ([]report.ClientReport, error) {
+	for len(clus.Procs) < f.targetSize {
+		_, err := clus.StartNewProc(ctx, nil, t, false)
+		if err != nil {
+			return nil, err
+		}
+		f.currentSize++
+		time.Sleep(etcdserver.HealthInterval)
+	}
+	return nil, nil
+}
+
+func (f *growMember) Name() string {
+	return "GrowCluster"
+}
+
+func (f *growMember) Available(config e2e.EtcdProcessClusterConfig, member e2e.EtcdProcess, profile traffic.Profile) bool {
+	return f.currentSize < f.targetSize
 }
