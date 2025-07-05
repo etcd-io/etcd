@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -75,14 +73,8 @@ func (p *jsonPrinter) EndpointHealth(r []epHealth) { printJSON(r) }
 func (p *jsonPrinter) EndpointStatus(r []epStatus) { printJSON(r) }
 func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 
-func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
-	if p.isHex {
-		printMemberListWithHexJSON(p.writer, r)
-	} else {
-		printJSON(r)
-	}
-}
-func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse) { p.printJSON(r) }
+func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse)   { p.printJSON(r) }
+func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) { p.printJSON(r) }
 
 func printJSONTo(w io.Writer, v any) {
 	b, err := json.Marshal(v)
@@ -95,48 +87,6 @@ func printJSONTo(w io.Writer, v any) {
 
 func printJSON(v any) {
 	printJSONTo(os.Stdout, v)
-}
-
-func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
-	var buffer strings.Builder
-	var b []byte
-	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"member_id\":\"")
-	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
-	buffer.Write(b)
-	buffer.WriteString("\",\"raft_term\":")
-	b = strconv.AppendUint(nil, r.Header.RaftTerm, 10)
-	buffer.Write(b)
-	buffer.WriteByte('}')
-	for i := 0; i < len(r.Members); i++ {
-		if i == 0 {
-			buffer.WriteString(",\"members\":[{\"ID\":\"")
-		} else {
-			buffer.WriteString(",{\"ID\":\"")
-		}
-		b = strconv.AppendUint(nil, r.Members[i].ID, 16)
-		buffer.Write(b)
-		buffer.WriteString("\",\"name\":\"" + r.Members[i].Name + "\"," + "\"peerURLs\":")
-		b, err := json.Marshal(r.Members[i].PeerURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteString(",\"clientURLs\":")
-		b, err = json.Marshal(r.Members[i].ClientURLs)
-		if err != nil {
-			return
-		}
-		buffer.Write(b)
-		buffer.WriteByte('}')
-		if i == len(r.Members)-1 {
-			buffer.WriteString("]")
-		}
-	}
-	buffer.WriteString("}")
-	fmt.Fprintln(w, buffer.String())
 }
 
 func (p *jsonPrinter) printJSON(v any) {
@@ -158,6 +108,18 @@ func (p *jsonPrinter) printJSON(v any) {
 		}{
 			Header:  (*HexResponseHeader)(r.Header),
 			Member:  (*HexMember)(r.Member),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case clientv3.MemberListResponse:
+		type Alias clientv3.MemberListResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
 			Members: toHexMembers(r.Members),
 			Alias:   (*Alias)(&r),
 		}
