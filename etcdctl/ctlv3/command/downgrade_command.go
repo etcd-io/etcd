@@ -26,8 +26,9 @@ import (
 // NewDowngradeCommand returns the cobra command for "downgrade".
 func NewDowngradeCommand() *cobra.Command {
 	dc := &cobra.Command{
-		Use:   "downgrade <TARGET_VERSION>",
-		Short: "Downgrade related commands",
+		Use:     "downgrade <TARGET_VERSION>",
+		Short:   "Downgrade related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	dc.AddCommand(NewDowngradeValidateCommand())

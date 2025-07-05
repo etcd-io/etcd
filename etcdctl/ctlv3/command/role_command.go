@@ -32,8 +32,9 @@ var (
 // NewRoleCommand returns the cobra command for "role".
 func NewRoleCommand() *cobra.Command {
 	ac := &cobra.Command{
-		Use:   "role <subcommand>",
-		Short: "Role related commands",
+		Use:     "role <subcommand>",
+		Short:   "Role related commands",
+		GroupID: groupAuthenticationID,
 	}
 
 	ac.AddCommand(newRoleAddCommand())
