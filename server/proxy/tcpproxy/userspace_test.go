@@ -16,7 +16,7 @@ package tcpproxy
 
 import (
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +57,7 @@ func TestUserspaceProxy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, gerr := io.ReadAll(res.Body)
+	got, gerr := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if gerr != nil {
 		t.Fatal(gerr)
@@ -118,7 +118,7 @@ func TestUserspaceProxyPriority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, gerr := io.ReadAll(res.Body)
+	got, gerr := ioutil.ReadAll(res.Body)
 	res.Body.Close()
 	if gerr != nil {
 		t.Fatal(gerr)

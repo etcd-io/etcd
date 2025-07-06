@@ -17,22 +17,22 @@ package grpcproxy
 import (
 	"context"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 )
 
 type lockProxy struct {
-	lockClient v3lockpb.LockClient
+	client *clientv3.Client
 }
 
 func NewLockProxy(client *clientv3.Client) v3lockpb.LockServer {
-	return &lockProxy{lockClient: v3lockpb.NewLockClient(client.ActiveConnection())}
+	return &lockProxy{client: client}
 }
 
 func (lp *lockProxy) Lock(ctx context.Context, req *v3lockpb.LockRequest) (*v3lockpb.LockResponse, error) {
-	return lp.lockClient.Lock(ctx, req)
+	return v3lockpb.NewLockClient(lp.client.ActiveConnection()).Lock(ctx, req)
 }
 
 func (lp *lockProxy) Unlock(ctx context.Context, req *v3lockpb.UnlockRequest) (*v3lockpb.UnlockResponse, error) {
-	return lp.lockClient.Unlock(ctx, req)
+	return v3lockpb.NewLockClient(lp.client.ActiveConnection()).Unlock(ctx, req)
 }

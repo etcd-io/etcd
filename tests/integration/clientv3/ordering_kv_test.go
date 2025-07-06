@@ -15,48 +15,53 @@
 package clientv3test
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {
-	errOrderViolation := errors.New("DetectedOrderViolation")
+	var errOrderViolation = errors.New("DetectedOrderViolation")
 
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
 		Endpoints: []string{
-			clus.Members[0].GRPCURL,
-			clus.Members[1].GRPCURL,
-			clus.Members[2].GRPCURL,
+			clus.Members[0].GRPCURL(),
+			clus.Members[1].GRPCURL(),
+			clus.Members[2].GRPCURL(),
 		},
 	}
-	cli, err := integration2.NewClient(t, cfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() { assert.NoError(t, cli.Close()) }()
-	ctx := t.Context()
+	ctx := context.TODO()
 
-	_, err = clus.Client(0).Put(ctx, "foo", "bar")
-	require.NoError(t, err)
+	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
 	// ensure that the second member has the current revision for the key foo
-	_, err = clus.Client(1).Get(ctx, "foo")
-	require.NoError(t, err)
+	if _, err = clus.Client(1).Get(ctx, "foo"); err != nil {
+		t.Fatal(err)
+	}
 
 	// stop third member in order to force the member to have an outdated revision
 	clus.Members[2].Stop(t)
 	time.Sleep(1 * time.Second) // give enough time for operation
 	_, err = cli.Put(ctx, "foo", "buzz")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// perform get request against the first member, in order to
 	// set up kvOrdering to expect "foo" revisions greater than that of
@@ -66,56 +71,63 @@ func TestDetectKvOrderViolation(t *testing.T) {
 			return errOrderViolation
 		})
 	v, err := orderingKv.Get(ctx, "foo")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("Read from the first member: v:%v err:%v", v, err)
 	assert.Equal(t, []byte("buzz"), v.Kvs[0].Value)
 
 	// ensure that only the third member is queried during requests
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
-	require.NoError(t, clus.Members[2].Restart(t))
+	assert.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
-	cli.SetEndpoints(clus.Members[2].GRPCURL)
+	cli.SetEndpoints(clus.Members[2].GRPCURL())
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 
 	t.Logf("Quering m2 after restart")
 	v, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	t.Logf("Quering m2 returned: v:%v err:%v ", v, err)
-	if !errors.Is(err, errOrderViolation) {
+	t.Logf("Quering m2 returned: v:%v erro:%v ", v, err)
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got err:%v v:%v", errOrderViolation, err, v)
 	}
 }
 
 func TestDetectTxnOrderViolation(t *testing.T) {
-	errOrderViolation := errors.New("DetectedOrderViolation")
+	var errOrderViolation = errors.New("DetectedOrderViolation")
 
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
 		Endpoints: []string{
-			clus.Members[0].GRPCURL,
-			clus.Members[1].GRPCURL,
-			clus.Members[2].GRPCURL,
+			clus.Members[0].GRPCURL(),
+			clus.Members[1].GRPCURL(),
+			clus.Members[2].GRPCURL(),
 		},
 	}
-	cli, err := integration2.NewClient(t, cfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() { assert.NoError(t, cli.Close()) }()
-	ctx := t.Context()
+	ctx := context.TODO()
 
-	_, err = clus.Client(0).Put(ctx, "foo", "bar")
-	require.NoError(t, err)
+	if _, err = clus.Client(0).Put(ctx, "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
 	// ensure that the second member has the current revision for the key foo
-	_, err = clus.Client(1).Get(ctx, "foo")
-	require.NoError(t, err)
+	if _, err = clus.Client(1).Get(ctx, "foo"); err != nil {
+		t.Fatal(err)
+	}
 
 	// stop third member in order to force the member to have an outdated revision
 	clus.Members[2].Stop(t)
 	time.Sleep(1 * time.Second) // give enough time for operation
-	_, err = clus.Client(1).Put(ctx, "foo", "buzz")
-	require.NoError(t, err)
+	if _, err = clus.Client(1).Put(ctx, "foo", "buzz"); err != nil {
+		t.Fatal(err)
+	}
 
 	// perform get request against the first member, in order to
 	// set up kvOrdering to expect "foo" revisions greater than that of
@@ -130,17 +142,19 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	).Then(
 		clientv3.OpGet("foo"),
 	).Commit()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// ensure that only the third member is queried during requests
 	clus.Members[0].Stop(t)
 	clus.Members[1].Stop(t)
-	require.NoError(t, clus.Members[2].Restart(t))
+	assert.NoError(t, clus.Members[2].Restart(t))
 	// force OrderingKv to query the third member
-	cli.SetEndpoints(clus.Members[2].GRPCURL)
+	cli.SetEndpoints(clus.Members[2].GRPCURL())
 	time.Sleep(2 * time.Second) // FIXME: Figure out how pause SetEndpoints sufficiently that this is not needed
 	_, err = orderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if !errors.Is(err, errOrderViolation) {
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 	orderingTxn = orderingKv.Txn(ctx)
@@ -149,7 +163,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 	).Then(
 		clientv3.OpGet("foo", clientv3.WithSerializable()),
 	).Commit()
-	if !errors.Is(err, errOrderViolation) {
+	if err != errOrderViolation {
 		t.Fatalf("expected %v, got %v", errOrderViolation, err)
 	}
 }

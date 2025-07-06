@@ -30,19 +30,10 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		return nil, err
 	}
 
-	var ipAddr net.Addr
-	if info.LocalAddr != "" {
-		ipAddr, err = net.ResolveTCPAddr("tcp", info.LocalAddr+":0")
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	t := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
-			Timeout:   dialtimeoutd,
-			LocalAddr: ipAddr,
+			Timeout: dialtimeoutd,
 			// value taken from http.DefaultTransport
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
@@ -66,7 +57,7 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		TLSClientConfig:     cfg,
 		// Cost of reopening connection on sockets is low, and they are mostly used in testing.
 		// Long living unix-transport connections were leading to 'leak' test flakes.
-		// Alternatively the returned Transport (t) should override CloseIdleConnections to
+		// Alternativly the returned Transport (t) should override CloseIdleConnections to
 		// forward it to 'tu' as well.
 		IdleConnTimeout: time.Microsecond,
 	}

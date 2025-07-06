@@ -17,28 +17,35 @@ package etcdserver
 import (
 	"io"
 
-	humanize "github.com/dustin/go-humanize"
-	"go.uber.org/zap"
-
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/raft/v3/raftpb"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
+
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 )
 
 // createMergedSnapshotMessage creates a snapshot message that contains: raft status (term, conf),
 // a snapshot of v2 store inside raft.Snapshot as []byte, a snapshot of v3 KV in the top level message
 // as ReadCloser.
+// 该方法中会将 v2 版本存储和 v3 版本存储封装 成 snap.Message实例，
 func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi uint64, confState raftpb.ConfState) snap.Message {
 	lg := s.Logger()
 	// get a snapshot of v2 store as []byte
-	d := GetMembershipInfoInV2Format(lg, s.cluster)
+	clone := s.v2store.Clone() // 复制一份v2存储的数据， 并转换成JSON格式
+	d, err := clone.SaveNoCopy()
+	if err != nil {
+		lg.Panic("failed to save v2 store data", zap.Error(err))
+	}
 
 	// commit kv to write metadata(for example: consistent index).
-	s.KV().Commit()
-	dbsnap := s.be.Snapshot()
+	s.KV().Commit() //提交v3存储中当前的读写事务
+
+	dbsnap := s.be.Snapshot() //获取 v3 存储快照，其实就是对 BoltDB 数据库进行快照
 	// get a snapshot of v3 KV as readCloser
 	rc := newSnapshotReaderCloser(lg, dbsnap)
 
+	//将 v2 存储的快熙、数据和相关元数据写入 raftpb. Snapshot 实例中
 	// put the []byte snapshot of store into raft snapshot and return the merged snapshot with
 	// KV readCloser snapshot.
 	snapshot := raftpb.Snapshot{
@@ -49,10 +56,9 @@ func (s *EtcdServer) createMergedSnapshotMessage(m raftpb.Message, snapt, snapi 
 		},
 		Data: d,
 	}
-	m.Snapshot = &snapshot
+	m.Snapshot = snapshot //将 raftpb.Snapshot 实例封装到 MsgSnap 消息中
 
-	verifySnapshotIndex(snapshot, s.consistIndex.ConsistentIndex())
-
+	//将消息 MsgSnap 消息和 v3存储中的数据封装成 snap.Message 实例返回
 	return *snap.NewMessage(m, rc, dbsnap.Size())
 }
 

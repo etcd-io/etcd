@@ -1,0 +1,634 @@
+syntax = "proto3";
+package rpcpb;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+
+message Request {
+  Operation Operation = 1;
+  // Member contains the same Member object from tester configuration.
+  Member Member = 2;
+  // Tester contains tester configuration.
+  Tester Tester = 3;
+}
+
+// SnapshotInfo contains SAVE_SNAPSHOT request results.
+message SnapshotInfo {
+  string MemberName = 1;
+  repeated string MemberClientURLs = 2;
+  string SnapshotPath = 3;
+  string SnapshotFileSize = 4;
+  string SnapshotTotalSize = 5;
+  int64 SnapshotTotalKey = 6;
+  int64 SnapshotHash = 7;
+  int64 SnapshotRevision = 8;
+  string Took = 9;
+}
+
+message Response {
+  bool Success = 1;
+  string Status = 2;
+
+  // Member contains the same Member object from tester request.
+  Member Member = 3;
+
+  // SnapshotInfo contains SAVE_SNAPSHOT request results.
+  SnapshotInfo SnapshotInfo = 4;
+}
+
+service Transport {
+  rpc Transport(stream Request) returns (stream Response) {}
+}
+
+message Member {
+  // EtcdExec is the executable etcd binary path in agent server.
+  string EtcdExec = 1 [(gogoproto.moretags) = "yaml:\"etcd-exec\""];
+
+  // AgentAddr is the agent HTTP server address.
+  string AgentAddr = 11 [(gogoproto.moretags) = "yaml:\"agent-addr\""];
+  // FailpointHTTPAddr is the agent's failpoints HTTP server address.
+  string FailpointHTTPAddr = 12 [(gogoproto.moretags) = "yaml:\"failpoint-http-addr\""];
+
+  // BaseDir is the base directory where all logs and etcd data are stored.
+  string BaseDir = 101 [(gogoproto.moretags) = "yaml:\"base-dir\""];
+
+  // EtcdClientProxy is true when client traffic needs to be proxied.
+  // If true, listen client URL port must be different than advertise client URL port.
+  bool EtcdClientProxy = 201 [(gogoproto.moretags) = "yaml:\"etcd-client-proxy\""];
+  // EtcdPeerProxy is true when peer traffic needs to be proxied.
+  // If true, listen peer URL port must be different than advertise peer URL port.
+  bool EtcdPeerProxy = 202 [(gogoproto.moretags) = "yaml:\"etcd-peer-proxy\""];
+
+  // EtcdClientEndpoint is the etcd client endpoint.
+  string EtcdClientEndpoint = 301 [(gogoproto.moretags) = "yaml:\"etcd-client-endpoint\""];
+  // Etcd defines etcd binary configuration flags.
+  Etcd Etcd = 302 [(gogoproto.moretags) = "yaml:\"etcd\""];
+  // EtcdOnSnapshotRestore defines one-time use configuration during etcd
+  // snapshot recovery process.
+  Etcd EtcdOnSnapshotRestore = 303;
+
+  // ClientCertData contains cert file contents from this member's etcd server.
+  string ClientCertData = 401 [(gogoproto.moretags) = "yaml:\"client-cert-data\""];
+  string ClientCertPath = 402 [(gogoproto.moretags) = "yaml:\"client-cert-path\""];
+  // ClientKeyData contains key file contents from this member's etcd server.
+  string ClientKeyData = 403 [(gogoproto.moretags) = "yaml:\"client-key-data\""];
+  string ClientKeyPath = 404 [(gogoproto.moretags) = "yaml:\"client-key-path\""];
+  // ClientTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string ClientTrustedCAData = 405 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-data\""];
+  string ClientTrustedCAPath = 406 [(gogoproto.moretags) = "yaml:\"client-trusted-ca-path\""];
+
+  // PeerCertData contains cert file contents from this member's etcd server.
+  string PeerCertData = 501 [(gogoproto.moretags) = "yaml:\"peer-cert-data\""];
+  string PeerCertPath = 502 [(gogoproto.moretags) = "yaml:\"peer-cert-path\""];
+  // PeerKeyData contains key file contents from this member's etcd server.
+  string PeerKeyData = 503 [(gogoproto.moretags) = "yaml:\"peer-key-data\""];
+  string PeerKeyPath = 504 [(gogoproto.moretags) = "yaml:\"peer-key-path\""];
+  // PeerTrustedCAData contains trusted CA file contents from this member's etcd server.
+  string PeerTrustedCAData = 505 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-data\""];
+  string PeerTrustedCAPath = 506 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-path\""];
+
+  // SnapshotPath is the snapshot file path to store or restore from.
+  string SnapshotPath = 601 [(gogoproto.moretags) = "yaml:\"snapshot-path\""];
+  // SnapshotInfo contains last SAVE_SNAPSHOT request results.
+  SnapshotInfo SnapshotInfo = 602;
+
+  // Failpoints is the GOFAIL_FAILPOINTS environment variable value to use when starting etcd.
+  string Failpoints = 701  [(gogoproto.moretags) = "yaml:\"failpoints\""];
+}
+
+message Tester {
+  string DataDir = 1 [(gogoproto.moretags) = "yaml:\"data-dir\""];
+  string Network = 2 [(gogoproto.moretags) = "yaml:\"network\""];
+  string Addr = 3 [(gogoproto.moretags) = "yaml:\"addr\""];
+
+  // DelayLatencyMsRv is the delay latency in milliseconds,
+  // to inject to simulated slow network.
+  uint32 DelayLatencyMs = 11 [(gogoproto.moretags) = "yaml:\"delay-latency-ms\""];
+  // DelayLatencyMsRv is the delay latency random variable in milliseconds.
+  uint32 DelayLatencyMsRv = 12 [(gogoproto.moretags) = "yaml:\"delay-latency-ms-rv\""];
+  // UpdatedDelayLatencyMs is the update delay latency in milliseconds,
+  // to inject to simulated slow network. It's the final latency to apply,
+  // in case the latency numbers are randomly generated from given delay latency field.
+  uint32 UpdatedDelayLatencyMs = 13 [(gogoproto.moretags) = "yaml:\"updated-delay-latency-ms\""];
+
+  // RoundLimit is the limit of rounds to run failure set (-1 to run without limits).
+  int32 RoundLimit = 21 [(gogoproto.moretags) = "yaml:\"round-limit\""];
+  // ExitOnCaseFail is true, then exit tester on first failure.
+  bool ExitOnCaseFail = 22 [(gogoproto.moretags) = "yaml:\"exit-on-failure\""];
+  // EnablePprof is true to enable profiler.
+  bool EnablePprof = 23 [(gogoproto.moretags) = "yaml:\"enable-pprof\""];
+
+  // CaseDelayMs is the delay duration after failure is injected.
+  // Useful when triggering snapshot or no-op failure cases.
+  uint32 CaseDelayMs = 31 [(gogoproto.moretags) = "yaml:\"case-delay-ms\""];
+  // CaseShuffle is true to randomize failure injecting order.
+  bool CaseShuffle = 32 [(gogoproto.moretags) = "yaml:\"case-shuffle\""];
+  // Cases is the selected test cases to schedule.
+  // If empty, run all failure cases.
+  repeated string Cases = 33 [(gogoproto.moretags) = "yaml:\"cases\""];
+  // FailpointCommands is the list of "gofail" commands
+  // (e.g. panic("etcd-tester"),1*sleep(1000).
+  repeated string FailpointCommands = 34 [(gogoproto.moretags) = "yaml:\"failpoint-commands\""];
+
+  // RunnerExecPath is a path of etcd-runner binary.
+  string RunnerExecPath = 41 [(gogoproto.moretags) = "yaml:\"runner-exec-path\""];
+  // ExternalExecPath is a path of script for enabling/disabling an external fault injector.
+  string ExternalExecPath = 42 [(gogoproto.moretags) = "yaml:\"external-exec-path\""];
+
+  // Stressers is the list of stresser types:
+  // KV, LEASE, ELECTION_RUNNER, WATCH_RUNNER, LOCK_RACER_RUNNER, LEASE_RUNNER.
+  repeated Stresser Stressers = 101 [(gogoproto.moretags) = "yaml:\"stressers\""];
+  // Checkers is the list of consistency checker types:
+  // KV_HASH, LEASE_EXPIRE, NO_CHECK, RUNNER.
+  // Leave empty to skip consistency checks.
+  repeated string Checkers = 102 [(gogoproto.moretags) = "yaml:\"checkers\""];
+
+  // StressKeySize is the size of each small key written into etcd.
+  int32 StressKeySize = 201 [(gogoproto.moretags) = "yaml:\"stress-key-size\""];
+  // StressKeySizeLarge is the size of each large key written into etcd.
+  int32 StressKeySizeLarge = 202 [(gogoproto.moretags) = "yaml:\"stress-key-size-large\""];
+  // StressKeySuffixRange is the count of key range written into etcd.
+  // Stress keys are created with "fmt.Sprintf("foo%016x", rand.Intn(keySuffixRange)".
+  int32 StressKeySuffixRange = 203 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range\""];
+  // StressKeySuffixRangeTxn is the count of key range written into etcd txn (max 100).
+  // Stress keys are created with "fmt.Sprintf("/k%03d", i)".
+  int32 StressKeySuffixRangeTxn = 204 [(gogoproto.moretags) = "yaml:\"stress-key-suffix-range-txn\""];
+  // StressKeyTxnOps is the number of operations per a transaction (max 64).
+  int32 StressKeyTxnOps = 205 [(gogoproto.moretags) = "yaml:\"stress-key-txn-ops\""];
+
+  // StressClients is the number of concurrent stressing clients
+  // with "one" shared TCP connection.
+  int32 StressClients = 301 [(gogoproto.moretags) = "yaml:\"stress-clients\""];
+  // StressQPS is the maximum number of stresser requests per second.
+  int32 StressQPS = 302 [(gogoproto.moretags) = "yaml:\"stress-qps\""];
+}
+
+enum StresserType {
+  KV_WRITE_SMALL = 0;
+  KV_WRITE_LARGE = 1;
+  KV_READ_ONE_KEY = 2;
+  KV_READ_RANGE = 3;
+  KV_DELETE_ONE_KEY = 4;
+  KV_DELETE_RANGE = 5;
+  KV_TXN_WRITE_DELETE = 6;
+
+  LEASE = 10;
+
+  ELECTION_RUNNER = 20;
+  WATCH_RUNNER = 31;
+  LOCK_RACER_RUNNER = 41;
+  LEASE_RUNNER = 51;
+}
+
+message Stresser {
+  string Type = 1 [(gogoproto.moretags) = "yaml:\"type\""];
+  double Weight = 2 [(gogoproto.moretags) = "yaml:\"weight\""];
+}
+
+enum Checker {
+  KV_HASH = 0;
+  LEASE_EXPIRE = 1;
+  RUNNER = 2;
+  NO_CHECK = 3;
+  SHORT_TTL_LEASE_EXPIRE = 4;
+}
+
+message Etcd {
+  string Name = 1 [(gogoproto.moretags) = "yaml:\"name\""];
+  string DataDir = 2 [(gogoproto.moretags) = "yaml:\"data-dir\""];
+  string WALDir = 3 [(gogoproto.moretags) = "yaml:\"wal-dir\""];
+
+  // HeartbeatIntervalMs is the time (in milliseconds) of a heartbeat interval.
+  // Default value is 100, which is 100ms.
+  int64 HeartbeatIntervalMs = 11 [(gogoproto.moretags) = "yaml:\"heartbeat-interval\""];
+  // ElectionTimeoutMs is the time (in milliseconds) for an election to timeout.
+  // Default value is 1000, which is 1s.
+  int64 ElectionTimeoutMs = 12 [(gogoproto.moretags) = "yaml:\"election-timeout\""];
+
+  repeated string ListenClientURLs = 21 [(gogoproto.moretags) = "yaml:\"listen-client-urls\""];
+  repeated string AdvertiseClientURLs = 22 [(gogoproto.moretags) = "yaml:\"advertise-client-urls\""];
+  bool ClientAutoTLS = 23 [(gogoproto.moretags) = "yaml:\"auto-tls\""];
+  bool ClientCertAuth = 24 [(gogoproto.moretags) = "yaml:\"client-cert-auth\""];
+  string ClientCertFile = 25 [(gogoproto.moretags) = "yaml:\"cert-file\""];
+  string ClientKeyFile = 26 [(gogoproto.moretags) = "yaml:\"key-file\""];
+  string ClientTrustedCAFile = 27 [(gogoproto.moretags) = "yaml:\"trusted-ca-file\""];
+
+  repeated string ListenPeerURLs = 31 [(gogoproto.moretags) = "yaml:\"listen-peer-urls\""];
+  repeated string AdvertisePeerURLs = 32 [(gogoproto.moretags) = "yaml:\"initial-advertise-peer-urls\""];
+  bool PeerAutoTLS = 33 [(gogoproto.moretags) = "yaml:\"peer-auto-tls\""];
+  bool PeerClientCertAuth = 34 [(gogoproto.moretags) = "yaml:\"peer-client-cert-auth\""];
+  string PeerCertFile = 35 [(gogoproto.moretags) = "yaml:\"peer-cert-file\""];
+  string PeerKeyFile = 36 [(gogoproto.moretags) = "yaml:\"peer-key-file\""];
+  string PeerTrustedCAFile = 37 [(gogoproto.moretags) = "yaml:\"peer-trusted-ca-file\""];
+
+  string InitialCluster = 41 [(gogoproto.moretags) = "yaml:\"initial-cluster\""];
+  string InitialClusterState = 42 [(gogoproto.moretags) = "yaml:\"initial-cluster-state\""];
+  string InitialClusterToken = 43 [(gogoproto.moretags) = "yaml:\"initial-cluster-token\""];
+
+  int64 SnapshotCount = 51 [(gogoproto.moretags) = "yaml:\"snapshot-count\""];
+  int64 QuotaBackendBytes = 52 [(gogoproto.moretags) = "yaml:\"quota-backend-bytes\""];
+
+  bool PreVote = 63 [(gogoproto.moretags) = "yaml:\"pre-vote\""];
+  bool InitialCorruptCheck = 64 [(gogoproto.moretags) = "yaml:\"initial-corrupt-check\""];
+
+  string Logger = 71 [(gogoproto.moretags) = "yaml:\"logger\""];
+  // LogOutputs is the log file to store current etcd server logs.
+  repeated string LogOutputs = 72 [(gogoproto.moretags) = "yaml:\"log-outputs\""];
+  string LogLevel = 73 [(gogoproto.moretags) = "yaml:\"log-level\""];
+}
+
+enum Operation {
+  // NOT_STARTED is the agent status before etcd first start.
+  NOT_STARTED = 0;
+
+  // INITIAL_START_ETCD is only called to start etcd, the very first time.
+  INITIAL_START_ETCD = 10;
+  // RESTART_ETCD is sent to restart killed etcd.
+  RESTART_ETCD = 11;
+
+  // SIGTERM_ETCD pauses etcd process while keeping data directories
+  // and previous etcd configurations.
+  SIGTERM_ETCD = 20;
+  // SIGQUIT_ETCD_AND_REMOVE_DATA kills etcd process and removes all data
+  // directories to simulate destroying the whole machine.
+  SIGQUIT_ETCD_AND_REMOVE_DATA = 21;
+
+  // SAVE_SNAPSHOT is sent to trigger local member to download its snapshot
+  // onto its local disk with the specified path from tester.
+  SAVE_SNAPSHOT = 30;
+  // RESTORE_RESTART_FROM_SNAPSHOT is sent to trigger local member to
+  // restore a cluster from existing snapshot from disk, and restart
+  // an etcd instance from recovered data.
+  RESTORE_RESTART_FROM_SNAPSHOT = 31;
+  // RESTART_FROM_SNAPSHOT is sent to trigger local member to restart
+  // and join an existing cluster that has been recovered from a snapshot.
+  // Local member joins this cluster with fresh data.
+  RESTART_FROM_SNAPSHOT = 32;
+
+  // SIGQUIT_ETCD_AND_ARCHIVE_DATA is sent when consistency check failed,
+  // thus need to archive etcd data directories.
+  SIGQUIT_ETCD_AND_ARCHIVE_DATA = 40;
+  // SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT destroys etcd process,
+  // etcd data, and agent server.
+  SIGQUIT_ETCD_AND_REMOVE_DATA_AND_STOP_AGENT = 41;
+
+  // BLACKHOLE_PEER_PORT_TX_RX drops all outgoing/incoming packets from/to
+  // the peer port on target member's peer port.
+  BLACKHOLE_PEER_PORT_TX_RX = 100;
+  // UNBLACKHOLE_PEER_PORT_TX_RX removes outgoing/incoming packet dropping.
+  UNBLACKHOLE_PEER_PORT_TX_RX = 101;
+
+  // DELAY_PEER_PORT_TX_RX delays all outgoing/incoming packets from/to
+  // the peer port on target member's peer port.
+  DELAY_PEER_PORT_TX_RX = 200;
+  // UNDELAY_PEER_PORT_TX_RX removes all outgoing/incoming delays.
+  UNDELAY_PEER_PORT_TX_RX = 201;
+}
+
+// Case defines various system faults or test case in distributed systems,
+// in order to verify correct behavior of etcd servers and clients.
+enum Case {
+  // SIGTERM_ONE_FOLLOWER stops a randomly chosen follower (non-leader)
+  // but does not delete its data directories on disk for next restart.
+  // It waits "delay-ms" before recovering this failure.
+  // The expected behavior is that the follower comes back online
+  // and rejoins the cluster, and then each member continues to process
+  // client requests ('Put' request that requires Raft consensus).
+  SIGTERM_ONE_FOLLOWER = 0;
+
+  // SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly chosen
+  // follower but does not delete its data directories on disk for next
+  // restart. And waits until most up-to-date node (leader) applies the
+  // snapshot count of entries since the stop operation.
+  // The expected behavior is that the follower comes back online and
+  // rejoins the cluster, and then active leader sends snapshot
+  // to the follower to force it to follow the leader's log.
+  // As always, after recovery, each member must be able to process
+  // client requests.
+  SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 1;
+
+  // SIGTERM_LEADER stops the active leader node but does not delete its
+  // data directories on disk for next restart. Then it waits "delay-ms"
+  // before recovering this failure, in order to trigger election timeouts.
+  // The expected behavior is that a new leader gets elected, and the
+  // old leader comes back online and rejoins the cluster as a follower.
+  // As always, after recovery, each member must be able to process
+  // client requests.
+  SIGTERM_LEADER = 2;
+
+  // SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader node
+  // but does not delete its data directories on disk for next restart.
+  // And waits until most up-to-date node ("new" leader) applies the
+  // snapshot count of entries since the stop operation.
+  // The expected behavior is that cluster elects a new leader, and the
+  // old leader comes back online and rejoins the cluster as a follower.
+  // And it receives the snapshot from the new leader to overwrite its
+  // store. As always, after recovery, each member must be able to
+  // process client requests.
+  SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT = 3;
+
+  // SIGTERM_QUORUM stops majority number of nodes to make the whole cluster
+  // inoperable but does not delete data directories on stopped nodes
+  // for next restart. And it waits "delay-ms" before recovering failure.
+  // The expected behavior is that nodes come back online, thus cluster
+  // comes back operative as well. As always, after recovery, each member
+  // must be able to process client requests.
+  SIGTERM_QUORUM = 4;
+
+  // SIGTERM_ALL stops the whole cluster but does not delete data directories
+  // on disk for next restart. And it waits "delay-ms" before  recovering
+  // this failure.
+  // The expected behavior is that nodes come back online, thus cluster
+  // comes back operative as well. As always, after recovery, each member
+  // must be able to process client requests.
+  SIGTERM_ALL = 5;
+
+  // SIGQUIT_AND_REMOVE_ONE_FOLLOWER stops a randomly chosen follower
+  // (non-leader), deletes its data directories on disk, and removes
+  // this member from cluster (membership reconfiguration). On recovery,
+  // tester adds a new member, and this member joins the existing cluster
+  // with fresh data. It waits "delay-ms" before recovering this
+  // failure. This simulates destroying one follower machine, where operator
+  // needs to add a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and then each member continues to process client requests.
+  SIGQUIT_AND_REMOVE_ONE_FOLLOWER = 10;
+
+  // SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT stops a randomly
+  // chosen follower, deletes its data directories on disk, and removes
+  // this member from cluster (membership reconfiguration). On recovery,
+  // tester adds a new member, and this member joins the existing cluster
+  // restart. On member remove, cluster waits until most up-to-date node
+  // (leader) applies the snapshot count of entries since the stop operation.
+  // This simulates destroying a leader machine, where operator needs to add
+  // a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and receives a snapshot from the active leader. As always, after
+  // recovery, each member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 11;
+
+  // SIGQUIT_AND_REMOVE_LEADER stops the active leader node, deletes its
+  // data directories on disk, and removes this member from cluster.
+  // On recovery, tester adds a new member, and this member joins the
+  // existing cluster with fresh data. It waits "delay-ms" before
+  // recovering this failure. This simulates destroying a leader machine,
+  // where operator needs to add a new member from a fresh machine.
+  // The expected behavior is that a new member joins the existing cluster,
+  // and then each member continues to process client requests.
+  SIGQUIT_AND_REMOVE_LEADER = 12;
+
+  // SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT stops the active leader,
+  // deletes its data directories on disk, and removes this member from
+  // cluster (membership reconfiguration). On recovery, tester adds a new
+  // member, and this member joins the existing cluster restart. On member
+  // remove, cluster waits until most up-to-date node (new leader) applies
+  // the snapshot count of entries since the stop operation. This simulates
+  // destroying a leader machine, where operator needs to add a new member
+  // from a fresh machine.
+  // The expected behavior is that on member remove, cluster elects a new
+  // leader, and a new member joins the existing cluster and receives a
+  // snapshot from the newly elected leader. As always, after recovery, each
+  // member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT = 13;
+
+  // SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH first
+  // stops majority number of nodes, deletes data directories on those quorum
+  // nodes, to make the whole cluster inoperable. Now that quorum and their
+  // data are totally destroyed, cluster cannot even remove unavailable nodes
+  // (e.g. 2 out of 3 are lost, so no leader can be elected).
+  // Let's assume 3-node cluster of node A, B, and C. One day, node A and B
+  // are destroyed and all their data are gone. The only viable solution is
+  // to recover from C's latest snapshot.
+  //
+  // To simulate:
+  //  1. Assume node C is the current leader with most up-to-date data.
+  //  2. Download snapshot from node C, before destroying node A and B.
+  //  3. Destroy node A and B, and make the whole cluster inoperable.
+  //  4. Now node C cannot operate either.
+  //  5. SIGTERM node C and remove its data directories.
+  //  6. Restore a new seed member from node C's latest snapshot file.
+  //  7. Add another member to establish 2-node cluster.
+  //  8. Add another member to establish 3-node cluster.
+  //  9. Add more if any.
+  //
+  // The expected behavior is that etcd successfully recovers from such
+  // disastrous situation as only 1-node survives out of 3-node cluster,
+  // new members joins the existing cluster, and previous data from snapshot
+  // are still preserved after recovery process. As always, after recovery,
+  // each member must be able to process client requests.
+  SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH = 14;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER drops all outgoing/incoming
+  // packets from/to the peer port on a randomly chosen follower
+  // (non-leader), and waits for "delay-ms" until recovery.
+  // The expected behavior is that once dropping operation is undone,
+  // each member must be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER = 100;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT drops
+  // all outgoing/incoming packets from/to the peer port on a randomly
+  // chosen follower (non-leader), and waits for most up-to-date node
+  // (leader) applies the snapshot count of entries since the blackhole
+  // operation.
+  // The expected behavior is that once packet drop operation is undone,
+  // the slow follower tries to catch up, possibly receiving the snapshot
+  // from the active leader. As always, after recovery, each member must
+  // be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 101;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_LEADER drops all outgoing/incoming packets
+  // from/to the peer port on the active leader (isolated), and waits for
+  // "delay-ms" until recovery, in order to trigger election timeout.
+  // The expected behavior is that after election timeout, a new leader gets
+  // elected, and once dropping operation is undone, the old leader comes
+  // back and rejoins the cluster as a follower. As always, after recovery,
+  // each member must be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_LEADER = 102;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT drops all
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // and waits for most up-to-date node (leader) applies the snapshot
+  // count of entries since the blackhole operation.
+  // The expected behavior is that cluster elects a new leader, and once
+  // dropping operation is undone, the old leader comes back and rejoins
+  // the cluster as a follower. The slow follower tries to catch up, likely
+  // receiving the snapshot from the new active leader. As always, after
+  // recovery, each member must be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 103;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_QUORUM drops all outgoing/incoming packets
+  // from/to the peer ports on majority nodes of cluster, thus losing its
+  // leader and cluster being inoperable. And it waits for "delay-ms"
+  // until recovery.
+  // The expected behavior is that once packet drop operation is undone,
+  // nodes come back online, thus cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_QUORUM = 104;
+
+  // BLACKHOLE_PEER_PORT_TX_RX_ALL drops all outgoing/incoming packets
+  // from/to the peer ports on all nodes, thus making cluster totally
+  // inoperable. It waits for "delay-ms" until recovery.
+  // The expected behavior is that once packet drop operation is undone,
+  // nodes come back online, thus cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
+  BLACKHOLE_PEER_PORT_TX_RX_ALL = 105;
+
+  // DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming packets
+  // from/to the peer port on a randomly chosen follower (non-leader).
+  // It waits for "delay-ms" until recovery.
+  // The expected behavior is that once packet delay operation is undone,
+  // the follower comes back and tries to catch up with latest changes from
+  // cluster. And as always, after recovery, each member must be able to
+  // process client requests.
+  DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 200;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER delays outgoing/incoming
+  // packets from/to the peer port on a randomly chosen follower
+  // (non-leader) with a randomized time duration (thus isolated). It
+  // waits for "delay-ms" until recovery.
+  // The expected behavior is that once packet delay operation is undone,
+  // each member must be able to process client requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER = 201;
+
+  // DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on a randomly chosen
+  // follower (non-leader), and waits for most up-to-date node (leader)
+  // applies the snapshot count of entries since the delay operation.
+  // The expected behavior is that the delayed follower gets isolated
+  // and behind the current active leader, and once delay operation is undone,
+  // the slow follower comes back and catches up possibly receiving snapshot
+  // from the active leader. As always, after recovery, each member must be
+  // able to process client requests.
+  DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 202;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on a randomly chosen
+  // follower (non-leader) with a randomized time duration, and waits for
+  // most up-to-date node (leader) applies the snapshot count of entries
+  // since the delay operation.
+  // The expected behavior is that the delayed follower gets isolated
+  // and behind the current active leader, and once delay operation is undone,
+  // the slow follower comes back and catches up, possibly receiving a
+  // snapshot from the active leader. As always, after recovery, each member
+  // must be able to process client requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT = 203;
+
+  // DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets from/to
+  // the peer port on the active leader. And waits for "delay-ms" until
+  // recovery.
+  // The expected behavior is that cluster may elect a new leader, and
+  // once packet delay operation is undone, the (old) leader comes back
+  // and tries to catch up with latest changes from cluster. As always,
+  // after recovery, each member must be able to process client requests.
+  DELAY_PEER_PORT_TX_RX_LEADER = 204;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_LEADER delays outgoing/incoming packets
+  // from/to the peer port on the active leader with a randomized time
+  // duration. And waits for "delay-ms" until recovery.
+  // The expected behavior is that cluster may elect a new leader, and
+  // once packet delay operation is undone, the (old) leader comes back
+  // and tries to catch up with latest changes from cluster. As always,
+  // after recovery, each member must be able to process client requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_LEADER = 205;
+
+  // DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // and waits for most up-to-date node (current or new leader) applies the
+  // snapshot count of entries since the delay operation.
+  // The expected behavior is that cluster may elect a new leader, and
+  // the old leader gets isolated and behind the current active leader,
+  // and once delay operation is undone, the slow follower comes back
+  // and catches up, likely receiving a snapshot from the active leader.
+  // As always, after recovery, each member must be able to process client
+  // requests.
+  DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 206;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT delays
+  // outgoing/incoming packets from/to the peer port on the active leader,
+  // with a randomized time duration. And it waits for most up-to-date node
+  // (current or new leader) applies the snapshot count of entries since the
+  // delay operation.
+  // The expected behavior is that cluster may elect a new leader, and
+  // the old leader gets isolated and behind the current active leader,
+  // and once delay operation is undone, the slow follower comes back
+  // and catches up, likely receiving a snapshot from the active leader.
+  // As always, after recovery, each member must be able to process client
+  // requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT = 207;
+
+  // DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets from/to
+  // the peer ports on majority nodes of cluster. And it waits for
+  // "delay-ms" until recovery, likely to trigger election timeouts.
+  // The expected behavior is that cluster may elect a new leader, while
+  // quorum of nodes struggle with slow networks, and once delay operation
+  // is undone, nodes come back and cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
+  DELAY_PEER_PORT_TX_RX_QUORUM = 208;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM delays outgoing/incoming packets
+  // from/to the peer ports on majority nodes of cluster, with randomized
+  // time durations. And it waits for "delay-ms" until recovery, likely
+  // to trigger election timeouts.
+  // The expected behavior is that cluster may elect a new leader, while
+  // quorum of nodes struggle with slow networks, and once delay operation
+  // is undone, nodes come back and cluster comes back operative. As always,
+  // after recovery, each member must be able to process client requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM = 209;
+
+  // DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets from/to the
+  // peer ports on all nodes. And it waits for "delay-ms" until recovery,
+  // likely to trigger election timeouts.
+  // The expected behavior is that cluster may become totally inoperable,
+  // struggling with slow networks across the whole cluster. Once delay
+  // operation is undone, nodes come back and cluster comes back operative.
+  // As always, after recovery, each member must be able to process client
+  // requests.
+  DELAY_PEER_PORT_TX_RX_ALL = 210;
+
+  // RANDOM_DELAY_PEER_PORT_TX_RX_ALL delays outgoing/incoming packets
+  // from/to the peer ports on all nodes, with randomized time durations.
+  // And it waits for "delay-ms" until recovery, likely to trigger
+  // election timeouts.
+  // The expected behavior is that cluster may become totally inoperable,
+  // struggling with slow networks across the whole cluster. Once delay
+  // operation is undone, nodes come back and cluster comes back operative.
+  // As always, after recovery, each member must be able to process client
+  // requests.
+  RANDOM_DELAY_PEER_PORT_TX_RX_ALL = 211;
+
+  // NO_FAIL_WITH_STRESS stops injecting failures while testing the
+  // consistency and correctness under pressure loads, for the duration of
+  // "delay-ms". Goal is to ensure cluster be still making progress
+  // on recovery, and verify system does not deadlock following a sequence
+  // of failure injections.
+  // The expected behavior is that cluster remains fully operative in healthy
+  // condition. As always, after recovery, each member must be able to process
+  // client requests.
+  NO_FAIL_WITH_STRESS = 300;
+
+  // NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS neither injects failures nor
+  // sends stressig client requests to the cluster, for the duration of
+  // "delay-ms". Goal is to ensure cluster be still making progress
+  // on recovery, and verify system does not deadlock following a sequence
+  // of failure injections.
+  // The expected behavior is that cluster remains fully operative in healthy
+  // condition, and clients requests during liveness period succeed without
+  // errors.
+  // Note: this is how Google Chubby does failure injection testing
+  // https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf.
+  NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS = 301;
+
+  // FAILPOINTS injects failpoints to etcd server runtime, triggering panics
+  // in critical code paths.
+  FAILPOINTS = 400;
+
+  // FAILPOINTS_WITH_DISK_IO_LATENCY injects high disk I/O latency failure in raftAfterSave code paths.
+  FAILPOINTS_WITH_DISK_IO_LATENCY = 401;
+
+  // EXTERNAL runs external failure injection scripts.
+  EXTERNAL = 500;
+}

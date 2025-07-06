@@ -17,37 +17,37 @@ package connectivity_test
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 // TestBalancerUnderServerShutdownWatch expects that watch client
 // switch its endpoints when the member of the pinned endpoint fails.
 func TestBalancerUnderServerShutdownWatch(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size:      3,
-		UseBridge: true,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
+		UseBridge:          true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	lead := clus.WaitLeader(t)
 
 	// pin eps[lead]
-	watchCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[lead]}})
-	require.NoError(t, err)
+	watchCli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[lead]}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer watchCli.Close()
 
 	// wait for eps[lead] to be pinned
@@ -58,10 +58,10 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	watchCli.SetEndpoints(eps...)
 
 	key, val := "foo", "bar"
-	wch := watchCli.Watch(t.Context(), key, clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(context.Background(), key, clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -90,17 +90,19 @@ func TestBalancerUnderServerShutdownWatch(t *testing.T) {
 	clus.Members[lead].Terminate(t)
 
 	// writes to eps[lead+1]
-	putCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[(lead+1)%3]}})
-	require.NoError(t, err)
+	putCli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[(lead+1)%3]}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer putCli.Close()
 	for {
-		ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		_, err = putCli.Put(ctx, key, val)
 		cancel()
 		if err == nil {
 			break
 		}
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || errors.Is(err, rpctypes.ErrTimeout) || errors.Is(err, rpctypes.ErrTimeoutDueToLeaderFail) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout || err == rpctypes.ErrTimeoutDueToLeaderFail {
 			continue
 		}
 		t.Fatal(err)
@@ -141,18 +143,21 @@ func TestBalancerUnderServerShutdownTxn(t *testing.T) {
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent put/delete/txn requests succeed with new endpoints.
 func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Client, context.Context) error) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	// pin eps[0]
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[0]}})
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[0]}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -170,10 +175,12 @@ func testBalancerUnderServerShutdownMutable(t *testing.T, op func(*clientv3.Clie
 	// TODO: remove this (expose client connection state?)
 	time.Sleep(time.Second)
 
-	cctx, ccancel := context.WithTimeout(t.Context(), time.Second)
+	cctx, ccancel := context.WithTimeout(context.Background(), time.Second)
 	err = op(cli, cctx)
 	ccancel()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestBalancerUnderServerShutdownGetLinearizable(t *testing.T) {
@@ -194,17 +201,18 @@ func TestBalancerUnderServerShutdownGetSerializable(t *testing.T) {
 // the pinned endpoint is shut down, the balancer switches its endpoints
 // and all subsequent range requests succeed with new endpoints.
 func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	// pin eps[0]
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[0]}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[0]}})
 	if err != nil {
 		t.Errorf("failed to create client: %v", err)
 	}
@@ -222,7 +230,7 @@ func testBalancerUnderServerShutdownImmutable(t *testing.T, op func(*clientv3.Cl
 
 	// switched to others when eps[0] was explicitly shut down
 	// and following request should succeed
-	cctx, ccancel := context.WithTimeout(t.Context(), timeout)
+	cctx, ccancel := context.WithTimeout(context.Background(), timeout)
 	err = op(cli, cctx)
 	ccancel()
 	if err != nil {
@@ -266,21 +274,22 @@ type pinTestOpt struct {
 // testBalancerUnderServerStopInflightRangeOnRestart expects
 // inflight range request reconnects on server restart.
 func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizable bool, opt pinTestOpt) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cfg := &integration2.ClusterConfig{
-		Size:      2,
-		UseBridge: true,
+	cfg := &integration.ClusterConfig{
+		Size:               2,
+		SkipCreatingClient: true,
+		UseBridge:          true,
 	}
 	if linearizable {
 		cfg.Size = 3
 	}
 
-	clus := integration2.NewCluster(t, cfg)
+	clus := integration.NewClusterV3(t, cfg)
 	defer clus.Terminate(t)
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
 	if linearizable {
-		eps = append(eps, clus.Members[2].GRPCURL)
+		eps = append(eps, clus.Members[2].GRPCURL())
 	}
 
 	lead := clus.WaitLeader(t)
@@ -291,7 +300,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	}
 
 	// pin eps[target]
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
 	if err != nil {
 		t.Errorf("failed to create client: %v", err)
 	}
@@ -329,7 +338,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	donec, readyc := make(chan struct{}), make(chan struct{}, 1)
 	go func() {
 		defer close(donec)
-		ctx, cancel := context.WithTimeout(t.Context(), clientTimeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), clientTimeout)
 		readyc <- struct{}{}
 
 		// TODO: The new grpc load balancer will not pin to an endpoint
@@ -352,7 +361,7 @@ func testBalancerUnderServerStopInflightRangeOnRestart(t *testing.T, linearizabl
 	clus.Members[target].Restart(t)
 
 	select {
-	case <-time.After(clientTimeout + integration2.RequestWaitTimeout):
+	case <-time.After(clientTimeout + integration.RequestWaitTimeout):
 		t.Fatalf("timed out waiting for Get [linearizable: %v, opt: %+v]", linearizable, opt)
 	case <-donec:
 	}

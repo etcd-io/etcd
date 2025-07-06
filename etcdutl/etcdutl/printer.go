@@ -18,18 +18,19 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
-
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+
+	"github.com/dustin/go-humanize"
 )
 
-var OutputFormat string
+var (
+	OutputFormat string
+)
 
 type printer interface {
 	DBStatus(snapshot.Status)
-	DBHashKV(HashKV)
 }
 
 func NewPrinter(printerType string) printer {
@@ -50,39 +51,27 @@ func NewPrinter(printerType string) printer {
 
 type printerRPC struct {
 	printer
-	p func(any)
+	p func(interface{})
 }
 
 type printerUnsupported struct{ printerRPC }
 
 func newPrinterUnsupported(n string) printer {
-	f := func(any) {
+	f := func(interface{}) {
 		cobrautl.ExitWithError(cobrautl.ExitBadFeature, errors.New(n+" not supported as output format"))
 	}
 	return &printerUnsupported{printerRPC{nil, f}}
 }
 
 func (p *printerUnsupported) DBStatus(snapshot.Status) { p.p(nil) }
-func (p *printerUnsupported) DBHashKV(HashKV)          { p.p(nil) }
 
 func makeDBStatusTable(ds snapshot.Status) (hdr []string, rows [][]string) {
-	hdr = []string{"hash", "revision", "total keys", "total size", "version"}
+	hdr = []string{"hash", "revision", "total keys", "total size"}
 	rows = append(rows, []string{
 		fmt.Sprintf("%x", ds.Hash),
 		fmt.Sprint(ds.Revision),
 		fmt.Sprint(ds.TotalKey),
 		humanize.Bytes(uint64(ds.TotalSize)),
-		ds.Version,
-	})
-	return hdr, rows
-}
-
-func makeDBHashKVTable(ds HashKV) (hdr []string, rows [][]string) {
-	hdr = []string{"hash", "hash revision", "compact revision"}
-	rows = append(rows, []string{
-		fmt.Sprint(ds.Hash),
-		fmt.Sprint(ds.HashRevision),
-		fmt.Sprint(ds.CompactRevision),
 	})
 	return hdr, rows
 }

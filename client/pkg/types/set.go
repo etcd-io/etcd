@@ -90,7 +90,7 @@ func (us *unsafeSet) Length() int {
 
 // Values returns the values of the Set in an unspecified order.
 func (us *unsafeSet) Values() (values []string) {
-	values = make([]string, 0, len(us.d))
+	values = make([]string, 0)
 	for val := range us.d {
 		values = append(values, val)
 	}

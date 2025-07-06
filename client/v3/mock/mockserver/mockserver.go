@@ -17,14 +17,15 @@ package mockserver
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"sync"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/resolver"
-
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
 // MockServer provides a mocked out grpc server of the etcdserver interface.
@@ -32,7 +33,7 @@ type MockServer struct {
 	ln         net.Listener
 	Network    string
 	Address    string
-	GRPCServer *grpc.Server
+	GrpcServer *grpc.Server
 }
 
 func (ms *MockServer) ResolverAddress() resolver.Address {
@@ -63,7 +64,7 @@ func StartMockServers(count int) (ms *MockServers, err error) {
 func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err error) {
 	switch network {
 	case "tcp":
-		return startMockServersTCP(count)
+		return startMockServersTcp(count)
 	case "unix":
 		return startMockServersUnix(count)
 	default:
@@ -71,7 +72,7 @@ func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err 
 	}
 }
 
-func startMockServersTCP(count int) (ms *MockServers, err error) {
+func startMockServersTcp(count int) (ms *MockServers, err error) {
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
 		addrs = append(addrs, "localhost:0")
@@ -83,14 +84,14 @@ func startMockServersUnix(count int) (ms *MockServers, err error) {
 	dir := os.TempDir()
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		f, err := os.CreateTemp(dir, "etcd-unix-so-")
+		f, err := ioutil.TempFile(dir, "etcd-unix-so-")
 		if err != nil {
-			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %w", err)
+			return nil, fmt.Errorf("failed to allocate temp file for unix socket: %v", err)
 		}
 		fn := f.Name()
 		err = os.Remove(fn)
 		if err != nil {
-			return nil, fmt.Errorf("failed to remove temp file before creating unix socket: %w", err)
+			return nil, fmt.Errorf("failed to remove temp file before creating unix socket: %v", err)
 		}
 		addrs = append(addrs, fn)
 	}
@@ -110,7 +111,7 @@ func startMockServers(network string, addrs []string) (ms *MockServers, err erro
 	for idx, addr := range addrs {
 		ln, err := net.Listen(network, addr)
 		if err != nil {
-			return nil, fmt.Errorf("failed to listen %w", err)
+			return nil, fmt.Errorf("failed to listen %v", err)
 		}
 		ms.Servers[idx] = &MockServer{ln: ln, Network: network, Address: ln.Addr().String()}
 		ms.StartAt(idx)
@@ -126,19 +127,18 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	if ms.Servers[idx].ln == nil {
 		ms.Servers[idx].ln, err = net.Listen(ms.Servers[idx].Network, ms.Servers[idx].Address)
 		if err != nil {
-			return fmt.Errorf("failed to listen %w", err)
+			return fmt.Errorf("failed to listen %v", err)
 		}
 	}
 
 	svr := grpc.NewServer()
 	pb.RegisterKVServer(svr, &mockKVServer{})
-	pb.RegisterLeaseServer(svr, &mockLeaseServer{})
-	ms.Servers[idx].GRPCServer = svr
+	ms.Servers[idx].GrpcServer = svr
 
 	ms.wg.Add(1)
 	go func(svr *grpc.Server, l net.Listener) {
 		svr.Serve(l)
-	}(ms.Servers[idx].GRPCServer, ms.Servers[idx].ln)
+	}(ms.Servers[idx].GrpcServer, ms.Servers[idx].ln)
 	return nil
 }
 
@@ -151,8 +151,8 @@ func (ms *MockServers) StopAt(idx int) {
 		return
 	}
 
-	ms.Servers[idx].GRPCServer.Stop()
-	ms.Servers[idx].GRPCServer = nil
+	ms.Servers[idx].GrpcServer.Stop()
+	ms.Servers[idx].GrpcServer = nil
 	ms.Servers[idx].ln = nil
 	ms.wg.Done()
 }
@@ -185,30 +185,4 @@ func (m *mockKVServer) Txn(context.Context, *pb.TxnRequest) (*pb.TxnResponse, er
 
 func (m *mockKVServer) Compact(context.Context, *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	return &pb.CompactionResponse{}, nil
-}
-
-func (m *mockKVServer) Lease(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return &pb.LeaseGrantResponse{}, nil
-}
-
-type mockLeaseServer struct{}
-
-func (s mockLeaseServer) LeaseGrant(context.Context, *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return &pb.LeaseGrantResponse{}, nil
-}
-
-func (s *mockLeaseServer) LeaseRevoke(context.Context, *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
-	return &pb.LeaseRevokeResponse{}, nil
-}
-
-func (s *mockLeaseServer) LeaseKeepAlive(pb.Lease_LeaseKeepAliveServer) error {
-	return nil
-}
-
-func (s *mockLeaseServer) LeaseTimeToLive(context.Context, *pb.LeaseTimeToLiveRequest) (*pb.LeaseTimeToLiveResponse, error) {
-	return &pb.LeaseTimeToLiveResponse{}, nil
-}
-
-func (s *mockLeaseServer) LeaseLeases(context.Context, *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
-	return &pb.LeaseLeasesResponse{}, nil
 }

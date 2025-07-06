@@ -18,7 +18,7 @@ import (
 	"flag"
 	"strings"
 
-	"go.etcd.io/raft/v3/raftpb"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 func main() {
@@ -41,5 +41,5 @@ func main() {
 	kvs = newKVStore(<-snapshotterReady, proposeC, commitC, errorC)
 
 	// the key-value http handler will propose updates to raft
-	serveHTTPKVAPI(kvs, *kvport, confChangeC, errorC)
+	serveHttpKVAPI(kvs, *kvport, confChangeC, errorC)
 }

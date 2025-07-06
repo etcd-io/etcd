@@ -15,10 +15,10 @@ For building `client` and `storage`, just execute `go build` in each directory.
 
 ## How to try
 
-At first, you need to start an etcd cluster, which works as lock service in the figures. On top of the etcd source directory, execute commands like below:
+At first you need to start an etcd cluster, which works as lock service in the figures. On top of the etcd source directory, execute commands like below:
 ```
-$ make      # build etcd
-$ bin/etcd  # start etcd
+$ ./build      # build etcd
+$ goreman start
 ```
 
 Then run `storage` command in `storage` directory:
@@ -28,44 +28,32 @@ $ ./storage
 
 Now client processes ("Client 1" and "Client 2" in the figures) can be started. At first, execute below command for starting a client process which corresponds to "Client 1":
 ```
-$ ./client 1
+$ GODEBUG=gcstoptheworld=2 ./client 1
 ```
 It will show an output like this:
 ```
 client 1 starts
-created etcd client and session
-acquired lock, version: 694d82254d5fa305
-please manually revoke the lease using 'etcdctl lease revoke 694d82254d5fa305' or wait for it to expire, then start executing client 2 and hit any key...
+creted etcd client
+acquired lock, version: 1029195466614598192
+took 6.771998255s for allocation, took 36.217205ms for GC
+emulated stop the world GC, make sure the /lock/* key disappeared and hit any key after executing client 2:
 ```
-
-Verify the lease was created using:
-```
-$ bin/etcdctl lease list
-found 1 leases
-694d82254d5fa305
-```
-
-Then proceed to manually revoke the lease using:
-```
-$ bin/etcdctl lease revoke 694d82254d5fa305
-lease 694d82254d5fa305 revoked
-```
-
-Now another client process can be started like this:
+The process causes stop the world GC pause for making lease expiration intentionally and waits a keyboard input. Now another client process can be started like this:
 ```
 $ ./client 2
 client 2 starts
-created etcd client and session
-acquired lock, version: 694d82254e18770a
+creted etcd client
+acquired lock, version: 4703569812595502727
 this is client 2, continuing
 ```
-If things go well the second client process invoked as `./client 2` finishes soon. It successfully writes a key to `storage` process. 
-
-After checking this, please hit any key for `./client 1` and resume the process. It will show an output like below:
+If things go well the second client process invoked as `./client 2` finishes soon. It successfully writes a key to `storage` process. After checking this, please hit any key for `./client 1` and resume the process. It will show an output like below:
 ```
 resuming client 1
-expected fail to write to storage with old lease version: error: given version (694d82254d5fa305) is different from the existing version (694d82254e18770a)
+failed to write to storage: error: given version (4703569812595502721) differ from the existing version (4703569812595502727)
 ```
+
+### Notes on the parameters related to stop the world GC pause
+`client` program includes two constant values: `nrGarbageObjects` and `sessionTTL`. These parameters are configured for causing lease expiration with stop the world GC pause of go runtime. They heavily rely on resources of a machine for executing the example. If lease expiration doesn't happen on your machine, update these parameters and try again.
 
 [fencing]: https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html
 [fencing-tokens]: https://martin.kleppmann.com/2016/02/fencing-tokens.png

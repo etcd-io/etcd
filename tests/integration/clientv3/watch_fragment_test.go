@@ -13,20 +13,20 @@
 // limitations under the License.
 
 //go:build !cluster_proxy
+// +build !cluster_proxy
 
 package clientv3test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 // TestWatchFragmentDisable ensures that large watch
@@ -64,23 +64,23 @@ func TestWatchFragmentEnableWithGRPCLimit(t *testing.T) {
 // testWatchFragment triggers watch response that spans over multiple
 // revisions exceeding server request limits when combined.
 func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cfg := &integration2.ClusterConfig{
+	cfg := &integration.ClusterConfig{
 		Size:            1,
 		MaxRequestBytes: 1.5 * 1024 * 1024,
 	}
 	if exceedRecvLimit {
 		cfg.ClientMaxCallRecvMsgSize = 1.5 * 1024 * 1024
 	}
-	clus := integration2.NewCluster(t, cfg)
+	clus := integration.NewClusterV3(t, cfg)
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
 	errc := make(chan error)
 	for i := 0; i < 10; i++ {
 		go func(i int) {
-			_, err := cli.Put(t.Context(),
+			_, err := cli.Put(context.TODO(),
 				fmt.Sprint("foo", i),
 				strings.Repeat("a", 1024*1024),
 			)
@@ -88,30 +88,39 @@ func testWatchFragment(t *testing.T, fragment, exceedRecvLimit bool) {
 		}(i)
 	}
 	for i := 0; i < 10; i++ {
-		err := <-errc
-		require.NoErrorf(t, err, "failed to put")
+		if err := <-errc; err != nil {
+			t.Fatalf("failed to put: %v", err)
+		}
 	}
 
 	opts := []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(1)}
 	if fragment {
 		opts = append(opts, clientv3.WithFragment())
 	}
-	wch := cli.Watch(t.Context(), "foo", opts...)
+	wch := cli.Watch(context.TODO(), "foo", opts...)
 
 	// expect 10 MiB watch response
 	select {
 	case ws := <-wch:
 		// without fragment, should exceed gRPC client receive limit
 		if !fragment && exceedRecvLimit {
-			require.Emptyf(t, ws.Events, "expected 0 events with watch fragmentation")
+			if len(ws.Events) != 0 {
+				t.Fatalf("expected 0 events with watch fragmentation, got %d", len(ws.Events))
+			}
 			exp := "code = ResourceExhausted desc = grpc: received message larger than max ("
-			require.Containsf(t, ws.Err().Error(), exp, "expected 'ResourceExhausted' error")
+			if !strings.Contains(ws.Err().Error(), exp) {
+				t.Fatalf("expected 'ResourceExhausted' error, got %v", ws.Err())
+			}
 			return
 		}
 
 		// still expect merged watch events
-		require.Lenf(t, ws.Events, 10, "expected 10 events with watch fragmentation")
-		require.NoErrorf(t, ws.Err(), "unexpected error")
+		if len(ws.Events) != 10 {
+			t.Fatalf("expected 10 events with watch fragmentation, got %d", len(ws.Events))
+		}
+		if ws.Err() != nil {
+			t.Fatalf("unexpected error %v", ws.Err())
+		}
 
 	case <-time.After(testutil.RequestTimeout):
 		t.Fatalf("took too long to receive events")

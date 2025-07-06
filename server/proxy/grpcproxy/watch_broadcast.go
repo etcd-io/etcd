@@ -19,10 +19,10 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
+
+	"go.uber.org/zap"
 )
 
 // watchBroadcast broadcasts a server watcher to many client watchers.
@@ -126,7 +126,6 @@ func (wb *watchBroadcast) add(w *watcher) bool {
 
 	return true
 }
-
 func (wb *watchBroadcast) delete(w *watcher) {
 	wb.mu.Lock()
 	defer wb.mu.Unlock()

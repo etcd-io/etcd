@@ -18,12 +18,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/mvcc"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
+
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -34,7 +35,7 @@ var (
 )
 
 func initMVCC() {
-	bcfg := backend.DefaultBackendConfig(zap.NewNop())
+	bcfg := backend.DefaultBackendConfig()
 	bcfg.Path, bcfg.BatchInterval, bcfg.BatchLimit = "mvcc-bench", time.Duration(batchInterval)*time.Millisecond, batchLimit
 	be := backend.New(bcfg)
 	s = mvcc.NewStore(zap.NewExample(), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -58,6 +59,6 @@ func init() {
 	mvccCmd.PersistentFlags().IntVar(&batchLimit, "batch-limit", 10000, "A limit of batched transaction")
 }
 
-func mvccPreRun(_ *cobra.Command, _ []string) {
+func mvccPreRun(cmd *cobra.Command, args []string) {
 	initMVCC()
 }

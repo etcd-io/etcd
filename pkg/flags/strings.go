@@ -49,5 +49,5 @@ func NewStringsValue(s string) (ss *StringsValue) {
 
 // StringsFromFlag returns a string slice from the flag.
 func StringsFromFlag(fs *flag.FlagSet, flagName string) []string {
-	return *fs.Lookup(flagName).Value.(*StringsValue)
+	return []string(*fs.Lookup(flagName).Value.(*StringsValue))
 }

@@ -13,12 +13,13 @@
 // limitations under the License.
 
 //go:build darwin
+// +build darwin
 
 package main
 
 import (
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -38,13 +39,13 @@ func install(ver, dir string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	d, err := io.ReadAll(resp.Body)
+	d, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
 	zipPath := filepath.Join(dir, "etcd.zip")
-	if err = os.WriteFile(zipPath, d, fileutil.PrivateFileMode); err != nil {
+	if err = ioutil.WriteFile(zipPath, d, fileutil.PrivateFileMode); err != nil {
 		return "", err
 	}
 

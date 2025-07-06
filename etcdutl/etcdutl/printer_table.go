@@ -17,32 +17,20 @@ package etcdutl
 import (
 	"os"
 
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/tw"
-
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 type tablePrinter struct{ printer }
 
 func (tp *tablePrinter) DBStatus(r snapshot.Status) {
 	hdr, rows := makeDBStatusTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
-	table.Render()
-}
-
-func (tp *tablePrinter) DBHashKV(r HashKV) {
-	hdr, rows := makeDBHashKVTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
-	for _, row := range rows {
-		table.Append(row)
-	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }

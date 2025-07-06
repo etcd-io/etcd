@@ -17,62 +17,88 @@ package command
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	snapshot "go.etcd.io/etcd/client/v3/snapshot"
-	"go.etcd.io/etcd/etcdctl/v3/util"
+	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.uber.org/zap"
 )
 
-var snapshotExample = util.Normalize(`
-	# Save snapshot to a given file
-	etcdctl snapshot save /backup/etcd-snapshot.db
+const (
+	defaultName                     = "default"
+	defaultInitialAdvertisePeerURLs = "http://localhost:2380"
+)
 
-	# Get snapshot from given address and save it to file
-	etcdctl snapshot save --endpoints=127.0.0.1:3000 /backup/etcd-snapshot.db 
-	
-	# Get snapshot from given address with certificates
-	etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/etcd.crt --key=/etc/etcd/etcd.key snapshot save /backup/etcd-snapshot.db
-
-	# Get snapshot wih certain user and password
-	etcdctl --user=root --password=password123 snapshot save /backup/etcd-snapshot.db
-
-	# Get snapshot from given address with timeout
-	etcdctl --endpoints=https://127.0.0.1:2379 --dial-timeout=20s snapshot save /backup/etcd-snapshot.db
-
-	# Save snapshot with desirable time format
-	etcdctl snapshot save /mnt/backup/etcd/backup_$(date +%Y%m%d_%H%M%S).db`)
+var (
+	restoreCluster      string
+	restoreClusterToken string
+	restoreDataDir      string
+	restoreWalDir       string
+	restorePeerURLs     string
+	restoreName         string
+	skipHashCheck       bool
+)
 
 // NewSnapshotCommand returns the cobra command for "snapshot".
 func NewSnapshotCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "snapshot <subcommand>",
-		Short:   "Manages etcd node snapshots",
-		Example: snapshotExample,
+		Use:   "snapshot <subcommand>",
+		Short: "Manages etcd node snapshots",
 	}
 	cmd.AddCommand(NewSnapshotSaveCommand())
+	cmd.AddCommand(NewSnapshotRestoreCommand())
+	cmd.AddCommand(newSnapshotStatusCommand())
 	return cmd
 }
 
 func NewSnapshotSaveCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:     "save <filename>",
-		Short:   "Stores an etcd node backend snapshot to a given file",
-		Run:     snapshotSaveCommandFunc,
-		Example: snapshotExample,
+		Use:   "save <filename>",
+		Short: "Stores an etcd node backend snapshot to a given file",
+		Run:   snapshotSaveCommandFunc,
 	}
+}
+
+func newSnapshotStatusCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "status <filename>",
+		Short: "[deprecated] Gets backend snapshot status of a given file",
+		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
+The items in the lists are hash, revision, total keys, total size.
+
+Moved to 'etcdctl snapshot status ...'
+`,
+		Run: snapshotStatusCommandFunc,
+	}
+}
+
+func NewSnapshotRestoreCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "restore <filename> [options]",
+		Short: "Restores an etcd member snapshot to an etcd directory",
+		Run:   snapshotRestoreCommandFunc,
+		Long:  "Moved to `etcdctl snapshot restore ...`\n",
+	}
+	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory")
+	cmd.Flags().StringVar(&restoreWalDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
+	cmd.Flags().StringVar(&restoreCluster, "initial-cluster", initialClusterFromName(defaultName), "Initial cluster configuration for restore bootstrap")
+	cmd.Flags().StringVar(&restoreClusterToken, "initial-cluster-token", "etcd-cluster", "Initial cluster token for the etcd cluster during restore bootstrap")
+	cmd.Flags().StringVar(&restorePeerURLs, "initial-advertise-peer-urls", defaultInitialAdvertisePeerURLs, "List of this member's peer URLs to advertise to the rest of the cluster")
+	cmd.Flags().StringVar(&restoreName, "name", defaultName, "Human-readable name for this member")
+	cmd.Flags().BoolVar(&skipHashCheck, "skip-hash-check", false, "Ignore snapshot integrity hash value (required if copied from data directory)")
+
+	return cmd
 }
 
 func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		err := fmt.Errorf("snapshot save expects one argument <filename>")
+		err := fmt.Errorf("snapshot save expects one argument")
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, err := zap.NewProduction()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -86,12 +112,27 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	path := args[0]
-	version, err := snapshot.SaveWithVersion(ctx, lg, *cfg, path)
-	if err != nil {
+	if err := snapshot.Save(ctx, lg, *cfg, path); err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
 	}
 	fmt.Printf("Snapshot saved at %s\n", path)
-	if version != "" {
-		fmt.Printf("Server version %s\n", version)
+}
+
+func snapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
+	fmt.Fprintf(os.Stderr, "Deprecated: Use `etcdutl snapshot status` instead.\n\n")
+	etcdutl.SnapshotStatusCommandFunc(cmd, args)
+}
+
+func snapshotRestoreCommandFunc(cmd *cobra.Command, args []string) {
+	fmt.Fprintf(os.Stderr, "Deprecated: Use `etcdutl snapshot restore` instead.\n\n")
+	etcdutl.SnapshotRestoreCommandFunc(restoreCluster, restoreClusterToken, restoreDataDir, restoreWalDir,
+		restorePeerURLs, restoreName, skipHashCheck, args)
+}
+
+func initialClusterFromName(name string) string {
+	n := name
+	if name == "" {
+		n = defaultName
 	}
+	return fmt.Sprintf("%s=http://localhost:2380", n)
 }

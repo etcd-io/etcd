@@ -18,9 +18,7 @@ package report
 
 import (
 	"fmt"
-	"maps"
 	"math"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -41,10 +39,8 @@ type Result struct {
 func (res *Result) Duration() time.Duration { return res.End.Sub(res.Start) }
 
 type report struct {
-	generatePerfReport bool
-	reportName         string
-	precision          string
-	results            chan Result
+	results   chan Result
+	precision string
 
 	stats Stats
 	sps   *secondPoints
@@ -67,7 +63,7 @@ type Stats struct {
 func (s *Stats) copy() Stats {
 	ss := *s
 	ss.ErrorDist = copyMap(ss.ErrorDist)
-	ss.Lats = slices.Clone(ss.Lats)
+	ss.Lats = copyFloats(ss.Lats)
 	return ss
 }
 
@@ -83,23 +79,19 @@ type Report interface {
 	Stats() <-chan Stats
 }
 
-func NewReport(precision, reportName string, generatePerfReport bool) Report {
-	return newReport(precision, reportName, generatePerfReport)
-}
+func NewReport(precision string) Report { return newReport(precision) }
 
-func newReport(precision, reportName string, generatePerfReport bool) *report {
+func newReport(precision string) *report {
 	r := &report{
-		results:            make(chan Result, 16),
-		precision:          precision,
-		generatePerfReport: generatePerfReport,
-		reportName:         reportName,
+		results:   make(chan Result, 16),
+		precision: precision,
 	}
 	r.stats.ErrorDist = make(map[string]int)
 	return r
 }
 
-func NewReportSample(precision, reportName string, generatePerfReport bool) Report {
-	r := NewReport(precision, reportName, generatePerfReport).(*report)
+func NewReportSample(precision string) Report {
+	r := NewReport(precision).(*report)
 	r.sps = newSecondPoints()
 	return r
 }
@@ -111,9 +103,6 @@ func (r *report) Run() <-chan string {
 	go func() {
 		defer close(donec)
 		r.processResults()
-		if r.generatePerfReport {
-			r.writePerfDashReport(r.reportName)
-		}
 		donec <- r.String()
 	}()
 	return donec
@@ -135,13 +124,21 @@ func (r *report) Stats() <-chan Stats {
 
 func copyMap(m map[string]int) (c map[string]int) {
 	c = make(map[string]int, len(m))
-	maps.Copy(c, m)
+	for k, v := range m {
+		c[k] = v
+	}
+	return c
+}
+
+func copyFloats(s []float64) (c []float64) {
+	c = make([]float64, len(s))
+	copy(c, s)
 	return c
 }
 
 func (r *report) String() (s string) {
 	if len(r.stats.Lats) > 0 {
-		s += "\nSummary:\n"
+		s += fmt.Sprintf("\nSummary:\n")
 		s += fmt.Sprintf("  Total:\t%s.\n", r.sec2str(r.stats.Total.Seconds()))
 		s += fmt.Sprintf("  Slowest:\t%s.\n", r.sec2str(r.stats.Slowest))
 		s += fmt.Sprintf("  Fastest:\t%s.\n", r.sec2str(r.stats.Fastest))
@@ -164,8 +161,8 @@ func (r *report) sec2str(sec float64) string { return fmt.Sprintf(r.precision+" 
 
 type reportRate struct{ *report }
 
-func NewReportRate(precision, reportName string, generatePerfReport bool) Report {
-	return &reportRate{NewReport(precision, reportName, generatePerfReport).(*report)}
+func NewReportRate(precision string) Report {
+	return &reportRate{NewReport(precision).(*report)}
 }
 
 func (r *reportRate) String() string {
@@ -229,7 +226,7 @@ func percentiles(nums []float64) (data []float64) {
 
 func (r *report) sprintLatencies() string {
 	data := percentiles(r.stats.Lats)
-	s := "\nLatency distribution:\n"
+	s := fmt.Sprintf("\nLatency distribution:\n")
 	for i := 0; i < len(pctls); i++ {
 		if data[i] > 0 {
 			s += fmt.Sprintf("  %v%% in %s.\n", pctls[i], r.sec2str(data[i]))
@@ -260,7 +257,7 @@ func (r *report) histogram() string {
 			bi++
 		}
 	}
-	s := "\nResponse time histogram:\n"
+	s := fmt.Sprintf("\nResponse time histogram:\n")
 	for i := 0; i < len(buckets); i++ {
 		// Normalize bar lengths.
 		var barLen int
@@ -273,7 +270,7 @@ func (r *report) histogram() string {
 }
 
 func (r *report) errors() string {
-	s := "\nError distribution:\n"
+	s := fmt.Sprintf("\nError distribution:\n")
 	for err, num := range r.stats.ErrorDist {
 		s += fmt.Sprintf("  [%d]\t%s\n", num, err)
 	}

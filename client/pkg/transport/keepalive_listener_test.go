@@ -19,8 +19,6 @@ import (
 	"net"
 	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestNewKeepAliveListener tests NewKeepAliveListener returns a listener
@@ -28,35 +26,50 @@ import (
 // TODO: verify the keepalive option is set correctly
 func TestNewKeepAliveListener(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoErrorf(t, err, "unexpected listen error")
+	if err != nil {
+		t.Fatalf("unexpected listen error: %v", err)
+	}
 
 	ln, err = NewKeepAliveListener(ln, "http", nil)
-	require.NoErrorf(t, err, "unexpected NewKeepAliveListener error")
+	if err != nil {
+		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
+	}
 
 	go http.Get("http://" + ln.Addr().String())
 	conn, err := ln.Accept()
-	require.NoErrorf(t, err, "unexpected Accept error")
-	_, ok := conn.(*keepAliveConn)
-	require.Truef(t, ok, "Unexpected conn type: %T, wanted *keepAliveConn", conn)
+	if err != nil {
+		t.Fatalf("unexpected Accept error: %v", err)
+	}
 	conn.Close()
 	ln.Close()
 
 	ln, err = net.Listen("tcp", "127.0.0.1:0")
-	require.NoErrorf(t, err, "unexpected Listen error")
+	if err != nil {
+		t.Fatalf("unexpected Listen error: %v", err)
+	}
 
 	// tls
-	tlsinfo, err := createSelfCert(t)
-	require.NoErrorf(t, err, "unable to create tmpfile")
+	tlsinfo, del, err := createSelfCert()
+	if err != nil {
+		t.Fatalf("unable to create tmpfile: %v", err)
+	}
+	defer del()
 	tlsInfo := TLSInfo{CertFile: tlsinfo.CertFile, KeyFile: tlsinfo.KeyFile}
-	tlsInfo.parseFunc = fakeCertificateParserFunc(nil)
+	tlsInfo.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, nil)
 	tlscfg, err := tlsInfo.ServerConfig()
-	require.NoErrorf(t, err, "unexpected serverConfig error")
+	if err != nil {
+		t.Fatalf("unexpected serverConfig error: %v", err)
+	}
 	tlsln, err := NewKeepAliveListener(ln, "https", tlscfg)
-	require.NoErrorf(t, err, "unexpected NewKeepAliveListener error")
+	if err != nil {
+		t.Fatalf("unexpected NewKeepAliveListener error: %v", err)
+	}
 
 	go http.Get("https://" + tlsln.Addr().String())
 	conn, err = tlsln.Accept()
-	require.NoErrorf(t, err, "unexpected Accept error")
+	if err != nil {
+		t.Fatalf("unexpected Accept error: %v", err)
+	}
 	if _, ok := conn.(*tls.Conn); !ok {
 		t.Errorf("failed to accept *tls.Conn")
 	}
@@ -66,7 +79,9 @@ func TestNewKeepAliveListener(t *testing.T) {
 
 func TestNewKeepAliveListenerTLSEmptyConfig(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	require.NoErrorf(t, err, "unexpected listen error")
+	if err != nil {
+		t.Fatalf("unexpected listen error: %v", err)
+	}
 
 	_, err = NewKeepAliveListener(ln, "https", nil)
 	if err == nil {

@@ -17,208 +17,104 @@
 package expect
 
 import (
-	"context"
 	"os"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestExpectFunc(t *testing.T) {
-	ep, err := NewExpect("echo", "hello world")
-	require.NoError(t, err)
+	ep, err := NewExpect("/bin/echo", "hello world")
+	if err != nil {
+		t.Fatal(err)
+	}
 	wstr := "hello world\r\n"
-	l, eerr := ep.ExpectFunc(t.Context(), func(a string) bool { return len(a) > 10 })
-	require.NoError(t, eerr)
-	require.Equalf(t, l, wstr, `got "%v", expected "%v"`, l, wstr)
-	require.NoError(t, ep.Close())
-}
-
-func TestExpectFuncTimeout(t *testing.T) {
-	ep, err := NewExpect("tail", "-f", "/dev/null")
-	require.NoError(t, err)
-	go func() {
-		// It's enough to have "talkative" process to stuck in the infinite loop of reading
-		for {
-			if serr := ep.Send("new line\n"); serr != nil {
-				return
-			}
-		}
-	}()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
-	defer cancel()
-
-	_, err = ep.ExpectFunc(ctx, func(a string) bool { return false })
-
-	require.ErrorIs(t, err, context.DeadlineExceeded)
-
-	require.NoError(t, ep.Stop())
-	require.ErrorContains(t, ep.Close(), "unexpected exit code [143]")
-	require.Equal(t, 143, ep.exitCode)
-}
-
-func TestExpectFuncExitFailure(t *testing.T) {
-	// tail -x should not exist and return a non-zero exit code
-	ep, err := NewExpect("tail", "-x")
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
-	defer cancel()
-
-	_, err = ep.ExpectFunc(ctx, func(s string) bool {
-		return strings.Contains(s, "something entirely unexpected")
-	})
-	require.ErrorContains(t, err, "unexpected exit code [1]")
-	require.Equal(t, 1, ep.exitCode)
-}
-
-func TestExpectFuncExitFailureStop(t *testing.T) {
-	// tail -x should not exist and return a non-zero exit code
-	ep, err := NewExpect("tail", "-x")
-	require.NoError(t, err)
-
-	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
-	defer cancel()
-
-	_, err = ep.ExpectFunc(ctx, func(s string) bool {
-		return strings.Contains(s, "something entirely unexpected")
-	})
-	require.ErrorContains(t, err, "unexpected exit code [1]")
-	exitCode, err := ep.ExitCode()
-	require.Equal(t, 1, exitCode)
-	require.NoError(t, err)
-	require.NoError(t, ep.Stop())
-	require.ErrorContains(t, ep.Close(), "unexpected exit code [1]")
-	exitCode, err = ep.ExitCode()
-	require.Equal(t, 1, exitCode)
-	require.NoError(t, err)
+	l, eerr := ep.ExpectFunc(func(a string) bool { return len(a) > 10 })
+	if eerr != nil {
+		t.Fatal(eerr)
+	}
+	if l != wstr {
+		t.Fatalf(`got "%v", expected "%v"`, l, wstr)
+	}
+	if cerr := ep.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
 }
 
 func TestEcho(t *testing.T) {
-	ep, err := NewExpect("echo", "hello world")
-	require.NoError(t, err)
-	ctx := t.Context()
-	l, eerr := ep.ExpectWithContext(ctx, ExpectedResponse{Value: "world"})
-	require.NoError(t, eerr)
+	ep, err := NewExpect("/bin/echo", "hello world")
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, eerr := ep.Expect("world")
+	if eerr != nil {
+		t.Fatal(eerr)
+	}
 	wstr := "hello world"
-	require.Equalf(t, l[:len(wstr)], wstr, `got "%v", expected "%v"`, l, wstr)
-	require.NoError(t, ep.Close())
-	_, eerr = ep.ExpectWithContext(ctx, ExpectedResponse{Value: "..."})
-	require.Errorf(t, eerr, "expected error on closed expect process")
+	if l[:len(wstr)] != wstr {
+		t.Fatalf(`got "%v", expected "%v"`, l, wstr)
+	}
+	if cerr := ep.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
+	if _, eerr = ep.Expect("..."); eerr == nil {
+		t.Fatalf("expected error on closed expect process")
+	}
 }
 
 func TestLineCount(t *testing.T) {
-	ep, err := NewExpect("printf", "1\n2\n3")
-	require.NoError(t, err)
+	ep, err := NewExpect("/usr/bin/printf", "1\n2\n3")
+	if err != nil {
+		t.Fatal(err)
+	}
 	wstr := "3"
-	l, eerr := ep.ExpectWithContext(t.Context(), ExpectedResponse{Value: wstr})
-	require.NoError(t, eerr)
-	require.Equalf(t, l, wstr, `got "%v", expected "%v"`, l, wstr)
-	require.Equalf(t, 3, ep.LineCount(), "got %d, expected 3", ep.LineCount())
-	require.NoError(t, ep.Close())
+	l, eerr := ep.Expect(wstr)
+	if eerr != nil {
+		t.Fatal(eerr)
+	}
+	if l != wstr {
+		t.Fatalf(`got "%v", expected "%v"`, l, wstr)
+	}
+	if ep.LineCount() != 3 {
+		t.Fatalf("got %d, expected 3", ep.LineCount())
+	}
+	if cerr := ep.Close(); cerr != nil {
+		t.Fatal(cerr)
+	}
 }
 
 func TestSend(t *testing.T) {
-	ep, err := NewExpect("tr", "a", "b")
-	require.NoError(t, err)
-	err = ep.Send("a\r")
-	require.NoError(t, err)
-	_, err = ep.ExpectWithContext(t.Context(), ExpectedResponse{Value: "b"})
-	require.NoError(t, err)
-	require.NoError(t, ep.Stop())
+	ep, err := NewExpect("/usr/bin/tr", "a", "b")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.Send("a\r"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ep.Expect("b"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ep.Stop(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSignal(t *testing.T) {
-	ep, err := NewExpect("sleep", "100")
-	require.NoError(t, err)
+	ep, err := NewExpect("/bin/sleep", "100")
+	if err != nil {
+		t.Fatal(err)
+	}
 	ep.Signal(os.Interrupt)
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		err = ep.Close()
-		assert.ErrorContains(t, err, "unexpected exit code [130]")
-		assert.ErrorContains(t, err, "sleep 100")
+		werr := "signal: interrupt"
+		if cerr := ep.Close(); cerr == nil || cerr.Error() != werr {
+			t.Errorf("got error %v, wanted error %s", cerr, werr)
+		}
 	}()
 	select {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("signal test timed out")
 	case <-donec:
-	}
-}
-
-func TestExitCodeAfterKill(t *testing.T) {
-	ep, err := NewExpect("sleep", "100")
-	require.NoError(t, err)
-
-	ep.Signal(os.Kill)
-	ep.Wait()
-	code, err := ep.ExitCode()
-	assert.Equal(t, 137, code)
-	assert.NoError(t, err)
-}
-
-func TestExpectForFailFastCommand(t *testing.T) {
-	ep, err := NewExpect("sh", "-c", `echo "curl: (59) failed setting cipher list"; exit 59`)
-	require.NoError(t, err)
-
-	_, err = ep.Expect("failed setting cipher list")
-	require.NoError(t, err)
-}
-
-func TestResponseMatchRegularExpr(t *testing.T) {
-	testCases := []struct {
-		name         string
-		mockOutput   string
-		expectedResp ExpectedResponse
-		expectMatch  bool
-	}{
-		{
-			name:         "exact match",
-			mockOutput:   "hello world",
-			expectedResp: ExpectedResponse{Value: "hello world"},
-			expectMatch:  true,
-		},
-		{
-			name:         "not exact match",
-			mockOutput:   "hello world",
-			expectedResp: ExpectedResponse{Value: "hello wld"},
-			expectMatch:  false,
-		},
-		{
-			name:         "match regular expression",
-			mockOutput:   "hello world",
-			expectedResp: ExpectedResponse{Value: `.*llo\sworld`, IsRegularExpr: true},
-			expectMatch:  true,
-		},
-		{
-			name:         "not match regular expression",
-			mockOutput:   "hello world",
-			expectedResp: ExpectedResponse{Value: `.*llo wrld`, IsRegularExpr: true},
-			expectMatch:  false,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			ep, err := NewExpect("echo", "-n", tc.mockOutput)
-			require.NoError(t, err)
-
-			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-			defer cancel()
-			l, err := ep.ExpectWithContext(ctx, tc.expectedResp)
-
-			if tc.expectMatch {
-				require.Equal(t, tc.mockOutput, l)
-			} else {
-				require.Error(t, err)
-			}
-
-			require.NoError(t, ep.Close())
-		})
 	}
 }

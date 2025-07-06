@@ -16,7 +16,6 @@ package proxy
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	mrand "math/rand"
@@ -28,17 +27,26 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/client/pkg/v3/transport"
+
 	humanize "github.com/dustin/go-humanize"
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 var (
 	defaultDialTimeout   = 3 * time.Second
 	defaultBufferSize    = 48 * 1024
 	defaultRetryInterval = 10 * time.Millisecond
+	defaultLogger        *zap.Logger
 )
+
+func init() {
+	var err error
+	defaultLogger, err = zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+}
 
 // Server defines proxy server layer that simulates common network faults:
 // latency spikes and packet drop or corruption. The proxy overhead is very
@@ -231,6 +239,9 @@ func NewServer(cfg ServerConfig) Server {
 	}
 	if s.retryInterval == 0 {
 		s.retryInterval = defaultRetryInterval
+	}
+	if s.lg == nil {
+		s.lg = defaultLogger
 	}
 
 	close(s.pauseAcceptc)
@@ -428,7 +439,7 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 	for {
 		nr1, err := src.Read(buf)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return
 			}
 			// connection already closed
@@ -546,7 +557,7 @@ func (s *server) ioCopy(dst io.Writer, src io.Reader, ptype proxyType) {
 		var nw int
 		nw, err = dst.Write(data)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if err == io.EOF {
 				return
 			}
 			select {
@@ -807,6 +818,7 @@ func computeLatency(lat, rv time.Duration) time.Duration {
 		rv = lat / 10
 	}
 	now := time.Now()
+	mrand.Seed(int64(now.Nanosecond()))
 	sign := 1
 	if now.Second()%2 == 0 {
 		sign = -1

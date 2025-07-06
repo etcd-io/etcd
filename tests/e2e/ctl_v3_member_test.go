@@ -16,134 +16,71 @@ package e2e
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
-	"sync"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3MemberList(t *testing.T)        { testCtl(t, memberListTest) }
 func TestCtlV3MemberListWithHex(t *testing.T) { testCtl(t, memberListWithHexTest) }
-func TestCtlV3MemberListSerializable(t *testing.T) {
-	cfg := e2e.NewConfig(
-		e2e.WithClusterSize(1),
-	)
-	testCtl(t, memberListSerializableTest, withCfg(*cfg))
+func TestCtlV3MemberListNoTLS(t *testing.T)   { testCtl(t, memberListTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3MemberListClientTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigClientTLS()))
 }
-
-func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
-func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
-
-func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
+func TestCtlV3MemberListClientAutoTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigClientAutoTLS()))
+}
+func TestCtlV3MemberListPeerTLS(t *testing.T) {
+	testCtl(t, memberListTest, withCfg(*newConfigPeerTLS()))
+}
+func TestCtlV3MemberRemove(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig())
+}
+func TestCtlV3MemberRemoveNoTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigNoTLS()))
+}
+func TestCtlV3MemberRemoveClientTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigClientTLS()))
+}
+func TestCtlV3MemberRemoveClientAutoTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(
+		// default clusterSize is 1
+		etcdProcessClusterConfig{
+			clusterSize:     3,
+			isClientAutoTLS: true,
+			clientTLS:       clientTLS,
+			initialToken:    "new",
+		}))
+}
+func TestCtlV3MemberRemovePeerTLS(t *testing.T) {
+	testCtl(t, memberRemoveTest, withQuorum(), withNoStrictReconfig(), withCfg(*newConfigPeerTLS()))
+}
+func TestCtlV3MemberAdd(t *testing.T)      { testCtl(t, memberAddTest) }
+func TestCtlV3MemberAddNoTLS(t *testing.T) { testCtl(t, memberAddTest, withCfg(*newConfigNoTLS())) }
+func TestCtlV3MemberAddClientTLS(t *testing.T) {
+	testCtl(t, memberAddTest, withCfg(*newConfigClientTLS()))
+}
+func TestCtlV3MemberAddClientAutoTLS(t *testing.T) {
+	testCtl(t, memberAddTest, withCfg(*newConfigClientAutoTLS()))
+}
+func TestCtlV3MemberAddPeerTLS(t *testing.T)    { testCtl(t, memberAddTest, withCfg(*newConfigPeerTLS())) }
+func TestCtlV3MemberAddForLearner(t *testing.T) { testCtl(t, memberAddForLearnerTest) }
+func TestCtlV3MemberUpdate(t *testing.T)        { testCtl(t, memberUpdateTest) }
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
+	testCtl(t, memberUpdateTest, withCfg(*newConfigNoTLS()))
 }
-
 func TestCtlV3MemberUpdateClientTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientTLS()))
+	testCtl(t, memberUpdateTest, withCfg(*newConfigClientTLS()))
 }
-
 func TestCtlV3MemberUpdateClientAutoTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigClientAutoTLS()))
+	testCtl(t, memberUpdateTest, withCfg(*newConfigClientAutoTLS()))
 }
-
 func TestCtlV3MemberUpdatePeerTLS(t *testing.T) {
-	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigPeerTLS()))
-}
-
-// TestCtlV3ConsistentMemberList requires the gofailpoint to be enabled.
-// If you execute this case locally, please do not forget to execute
-// `make gofail-enable`.
-func TestCtlV3ConsistentMemberList(t *testing.T) {
-	e2e.BeforeTest(t)
-
-	ctx := t.Context()
-
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t,
-		e2e.WithClusterSize(1),
-		e2e.WithEnvVars(map[string]string{"GOFAIL_FAILPOINTS": `beforeApplyOneConfChange=sleep("2s")`}),
-	)
-	require.NoErrorf(t, err, "failed to start etcd cluster")
-	defer func() {
-		derr := epc.Close()
-		require.NoErrorf(t, derr, "failed to close etcd cluster")
-	}()
-
-	t.Log("Adding and then removing a learner")
-	resp, err := epc.Etcdctl().MemberAddAsLearner(ctx, "newLearner", []string{fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)})
-	require.NoError(t, err)
-	_, err = epc.Etcdctl().MemberRemove(ctx, resp.Member.ID)
-	require.NoError(t, err)
-	t.Logf("Added and then removed a learner with ID: %x", resp.Member.ID)
-
-	t.Log("Restarting the etcd process to ensure all data is persisted")
-	err = epc.Procs[0].Restart(ctx)
-	require.NoError(t, err)
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	stopc := make(chan struct{}, 2)
-
-	t.Log("Starting a goroutine to repeatedly restart etcdserver")
-	go func() {
-		defer func() {
-			stopc <- struct{}{}
-			wg.Done()
-		}()
-		for i := 0; i < 3; i++ {
-			select {
-			case <-stopc:
-				return
-			default:
-			}
-
-			merr := epc.Procs[0].Restart(ctx)
-			assert.NoError(t, merr)
-			epc.WaitLeader(t)
-
-			time.Sleep(100 * time.Millisecond)
-		}
-	}()
-
-	t.Log("Starting a goroutine to repeated check the member list")
-	count := 0
-	go func() {
-		defer func() {
-			stopc <- struct{}{}
-			wg.Done()
-		}()
-
-		for {
-			select {
-			case <-stopc:
-				return
-			default:
-			}
-
-			mresp, merr := epc.Etcdctl().MemberList(ctx, true)
-			if merr != nil {
-				continue
-			}
-
-			count++
-			assert.Len(t, mresp.Members, 1)
-		}
-	}()
-
-	wg.Wait()
-	assert.Positive(t, count)
-	t.Logf("Checked the member list %d times", count)
+	testCtl(t, memberUpdateTest, withCfg(*newConfigPeerTLS()))
 }
 
 func memberListTest(cx ctlCtx) {
@@ -152,36 +89,19 @@ func memberListTest(cx ctlCtx) {
 	}
 }
 
-func memberListSerializableTest(cx ctlCtx) {
-	resp, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
-	require.Len(cx.t, resp.Members, 1)
-
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	err = ctlV3MemberAdd(cx, peerURL, false)
-	require.NoError(cx.t, err)
-
-	resp, err = getMemberList(cx, true)
-	require.NoError(cx.t, err)
-	require.Len(cx.t, resp.Members, 2)
-}
-
 func ctlV3MemberList(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "list")
-	lines := make([]expect.ExpectedResponse, cx.cfg.ClusterSize)
+	lines := make([]string, cx.cfg.clusterSize)
 	for i := range lines {
-		lines[i] = expect.ExpectedResponse{Value: "started"}
+		lines[i] = "started"
 	}
-	return e2e.SpawnWithExpects(cmdArgs, cx.envMap, lines...)
+	return spawnWithExpects(cmdArgs, cx.envMap, lines...)
 }
 
-func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListResponse, error) {
+func getMemberList(cx ctlCtx) (etcdserverpb.MemberListResponse, error) {
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "member", "list")
-	if serializable {
-		cmdArgs = append(cmdArgs, "--consistency", "s")
-	}
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		return etcdserverpb.MemberListResponse{}, err
 	}
@@ -196,21 +116,21 @@ func getMemberList(cx ctlCtx, serializable bool) (etcdserverpb.MemberListRespons
 
 	resp := etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&resp); errors.Is(err, io.EOF) {
+	if err := dec.Decode(&resp); err == io.EOF {
 		return etcdserverpb.MemberListResponse{}, err
 	}
 	return resp, nil
 }
 
 func memberListWithHexTest(cx ctlCtx) {
-	resp, err := getMemberList(cx, false)
+	resp, err := getMemberList(cx)
 	if err != nil {
 		cx.t.Fatalf("getMemberList error (%v)", err)
 	}
 
 	cmdArgs := append(cx.PrefixArgs(), "--write-out", "json", "--hex", "member", "list")
 
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	if err != nil {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
@@ -224,7 +144,7 @@ func memberListWithHexTest(cx ctlCtx) {
 	}
 	hexResp := etcdserverpb.MemberListResponse{}
 	dec := json.NewDecoder(strings.NewReader(txt))
-	if err := dec.Decode(&hexResp); errors.Is(err, io.EOF) {
+	if err := dec.Decode(&hexResp); err == io.EOF {
 		cx.t.Fatalf("memberListWithHexTest error (%v)", err)
 	}
 	num := len(resp.Members)
@@ -235,71 +155,65 @@ func memberListWithHexTest(cx ctlCtx) {
 	if num == 0 {
 		cx.t.Fatal("member number is 0")
 	}
-
-	if resp.Header.RaftTerm != hexResp.Header.RaftTerm {
-		cx.t.Fatalf("Unexpected raft_term, expected %d, got %d", resp.Header.RaftTerm, hexResp.Header.RaftTerm)
-	}
-
 	for i := 0; i < num; i++ {
 		if resp.Members[i].Name != hexResp.Members[i].Name {
-			cx.t.Fatalf("Unexpected member name,expected %v, got %v", resp.Members[i].Name, hexResp.Members[i].Name)
+			cx.t.Fatalf("member name,expected %v,got %v", resp.Members[i].Name, hexResp.Members[i].Name)
 		}
 		if !reflect.DeepEqual(resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs) {
-			cx.t.Fatalf("Unexpected member peerURLs, expected %v, got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
+			cx.t.Fatalf("member peerURLs,expected %v,got %v", resp.Members[i].PeerURLs, hexResp.Members[i].PeerURLs)
 		}
 		if !reflect.DeepEqual(resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs) {
-			cx.t.Fatalf("Unexpected member clientURLs, expected %v, got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
+			cx.t.Fatalf("member clientURLS,expected %v,got %v", resp.Members[i].ClientURLs, hexResp.Members[i].ClientURLs)
 		}
 	}
+}
+
+func memberRemoveTest(cx ctlCtx) {
+	ep, memIDToRemove, clusterID := cx.memberToRemove()
+	if err := ctlV3MemberRemove(cx, ep, memIDToRemove, clusterID); err != nil {
+		cx.t.Fatal(err)
+	}
+}
+
+func ctlV3MemberRemove(cx ctlCtx, ep, memberID, clusterID string) error {
+	cmdArgs := append(cx.prefixArgs([]string{ep}), "member", "remove", memberID)
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, fmt.Sprintf("%s removed from cluster %s", memberID, clusterID))
 }
 
 func memberAddTest(cx ctlCtx) {
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	require.NoError(cx.t, ctlV3MemberAdd(cx, peerURL, false))
+	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11), false); err != nil {
+		cx.t.Fatal(err)
+	}
 }
 
-func memberAddAsLearnerTest(cx ctlCtx) {
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
-	require.NoError(cx.t, ctlV3MemberAdd(cx, peerURL, true))
+func memberAddForLearnerTest(cx ctlCtx) {
+	if err := ctlV3MemberAdd(cx, fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11), true); err != nil {
+		cx.t.Fatal(err)
+	}
 }
 
 func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "add", "newmember", fmt.Sprintf("--peer-urls=%s", peerURL))
-	asLearner := " "
 	if isLearner {
 		cmdArgs = append(cmdArgs, "--learner")
-		asLearner = " as learner "
 	}
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: fmt.Sprintf(" added%sto cluster ", asLearner)})
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, " added to cluster ")
 }
 
 func memberUpdateTest(cx ctlCtx) {
-	mr, err := getMemberList(cx, false)
-	require.NoError(cx.t, err)
+	mr, err := getMemberList(cx)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
 
-	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
+	peerURL := fmt.Sprintf("http://localhost:%d", etcdProcessBasePort+11)
 	memberID := fmt.Sprintf("%x", mr.Members[0].ID)
-	require.NoError(cx.t, ctlV3MemberUpdate(cx, memberID, peerURL))
+	if err = ctlV3MemberUpdate(cx, memberID, peerURL); err != nil {
+		cx.t.Fatal(err)
+	}
 }
 
 func ctlV3MemberUpdate(cx ctlCtx, memberID, peerURL string) error {
 	cmdArgs := append(cx.PrefixArgs(), "member", "update", memberID, fmt.Sprintf("--peer-urls=%s", peerURL))
-	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: " updated in cluster "})
-}
-
-func TestRemoveNonExistingMember(t *testing.T) {
-	e2e.BeforeTest(t)
-	ctx := t.Context()
-
-	cfg := e2e.ConfigStandalone(*e2e.NewConfig())
-	epc, err := e2e.NewEtcdProcessCluster(ctx, t, e2e.WithConfig(cfg))
-	require.NoError(t, err)
-	defer epc.Close()
-	c := epc.Etcdctl()
-
-	_, err = c.MemberRemove(ctx, 1)
-	require.Error(t, err)
-
-	// Ensure that membership is properly bootstrapped.
-	assert.NoError(t, epc.Restart(ctx))
+	return spawnWithExpectWithEnv(cmdArgs, cx.envMap, " updated in cluster ")
 }

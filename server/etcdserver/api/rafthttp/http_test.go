@@ -26,13 +26,13 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"go.uber.org/zap"
 )
 
 func TestServeRaftPrefix(t *testing.T) {
@@ -153,7 +153,7 @@ func TestServeRaftPrefix(t *testing.T) {
 		req.Header.Set("X-Etcd-Cluster-ID", tt.clusterID)
 		req.Header.Set("X-Server-Version", version.Version)
 		rw := httptest.NewRecorder()
-		h := newPipelineHandler(&Transport{Logger: zaptest.NewLogger(t)}, tt.p, types.ID(0))
+		h := newPipelineHandler(&Transport{Logger: zap.NewExample()}, tt.p, types.ID(0))
 
 		// goroutine because the handler panics to disconnect on raft error
 		donec := make(chan struct{})
@@ -187,7 +187,7 @@ func TestServeRaftStreamPrefix(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		req, err := http.NewRequest(http.MethodGet, "http://localhost:2380"+tt.path, nil)
+		req, err := http.NewRequest("GET", "http://localhost:2380"+tt.path, nil)
 		if err != nil {
 			t.Fatalf("#%d: could not create request: %#v", i, err)
 		}

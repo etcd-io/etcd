@@ -21,26 +21,23 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestSTMConflict tests that conflicts are retried.
 func TestSTMConflict(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
 	keys := make([]string, 5)
 	for i := 0; i < len(keys); i++ {
 		keys[i] = fmt.Sprintf("foo-%d", i)
-		if _, err := etcdc.Put(t.Context(), keys[i], "100"); err != nil {
+		if _, err := etcdc.Put(context.TODO(), keys[i], "100"); err != nil {
 			t.Fatalf("could not make key (%v)", err)
 		}
 	}
@@ -49,7 +46,7 @@ func TestSTMConflict(t *testing.T) {
 	for i := range keys {
 		curEtcdc := clus.RandClient()
 		srcKey := keys[i]
-		applyf := func(stm concurrency.STM) {
+		applyf := func(stm concurrency.STM) error {
 			src := stm.Get(srcKey)
 			// must be different key to avoid double-adding
 			dstKey := srcKey
@@ -61,21 +58,16 @@ func TestSTMConflict(t *testing.T) {
 			dstV, _ := strconv.ParseInt(dst, 10, 64)
 			if srcV == 0 {
 				// can't rand.Intn on 0, so skip this transaction
-				return
+				return nil
 			}
 			xfer := int64(rand.Intn(int(srcV)) / 2)
 			stm.Put(srcKey, fmt.Sprintf("%d", srcV-xfer))
 			stm.Put(dstKey, fmt.Sprintf("%d", dstV+xfer))
+			return nil
 		}
 		go func() {
 			iso := concurrency.WithIsolation(concurrency.RepeatableReads)
-			_, err := concurrency.NewSTM(curEtcdc,
-				func(stm concurrency.STM) error {
-					applyf(stm)
-					return nil
-				},
-				iso,
-			)
+			_, err := concurrency.NewSTM(curEtcdc, applyf, iso)
 			errc <- err
 		}()
 	}
@@ -90,7 +82,7 @@ func TestSTMConflict(t *testing.T) {
 	// ensure sum matches initial sum
 	sum := 0
 	for _, oldkey := range keys {
-		rk, err := etcdc.Get(t.Context(), oldkey)
+		rk, err := etcdc.Get(context.TODO(), oldkey)
 		if err != nil {
 			t.Fatalf("couldn't fetch key %s (%v)", oldkey, err)
 		}
@@ -104,9 +96,9 @@ func TestSTMConflict(t *testing.T) {
 
 // TestSTMPutNewKey confirms a STM put on a new key is visible after commit.
 func TestSTMPutNewKey(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -120,7 +112,7 @@ func TestSTMPutNewKey(t *testing.T) {
 		t.Fatalf("error on stm txn (%v)", err)
 	}
 
-	resp, err := etcdc.Get(t.Context(), "foo")
+	resp, err := etcdc.Get(context.TODO(), "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
@@ -131,13 +123,13 @@ func TestSTMPutNewKey(t *testing.T) {
 
 // TestSTMAbort tests that an aborted txn does not modify any keys.
 func TestSTMAbort(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.TODO())
 	applyf := func(stm concurrency.STM) error {
 		stm.Put("foo", "baz")
 		cancel()
@@ -151,7 +143,7 @@ func TestSTMAbort(t *testing.T) {
 		t.Fatalf("no error on stm txn")
 	}
 
-	resp, err := etcdc.Get(t.Context(), "foo")
+	resp, err := etcdc.Get(context.TODO(), "foo")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
@@ -162,9 +154,9 @@ func TestSTMAbort(t *testing.T) {
 
 // TestSTMSerialize tests that serialization is honored when serializable.
 func TestSTMSerialize(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
@@ -181,11 +173,11 @@ func TestSTMSerialize(t *testing.T) {
 		defer close(updatec)
 		for i := 0; i < 5; i++ {
 			s := fmt.Sprintf("%d", i)
-			var ops []v3.Op
+			ops := []v3.Op{}
 			for _, k := range keys {
 				ops = append(ops, v3.OpPut(k, s))
 			}
-			if _, err := etcdc.Txn(t.Context()).Then(ops...).Commit(); err != nil {
+			if _, err := etcdc.Txn(context.TODO()).Then(ops...).Commit(); err != nil {
 				t.Errorf("couldn't put keys (%v)", err)
 			}
 			updatec <- struct{}{}
@@ -197,7 +189,7 @@ func TestSTMSerialize(t *testing.T) {
 	for range updatec {
 		curEtcdc := clus.RandClient()
 		applyf := func(stm concurrency.STM) error {
-			var vs []string
+			vs := []string{}
 			for i := range keys {
 				vs = append(vs, stm.Get(keys[i]))
 			}
@@ -225,19 +217,21 @@ func TestSTMSerialize(t *testing.T) {
 // TestSTMApplyOnConcurrentDeletion ensures that concurrent key deletion
 // fails the first GET revision comparison within STM; trigger retry.
 func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	etcdc := clus.RandClient()
-	_, err := etcdc.Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
+	if _, err := etcdc.Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
 	donec, readyc := make(chan struct{}), make(chan struct{})
 	go func() {
 		<-readyc
-		_, derr := etcdc.Delete(t.Context(), "foo")
-		assert.NoError(t, derr)
+		if _, err := etcdc.Delete(context.TODO(), "foo"); err != nil {
+			t.Error(err)
+		}
 		close(donec)
 	}()
 
@@ -255,14 +249,14 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 	}
 
 	iso := concurrency.WithIsolation(concurrency.RepeatableReads)
-	_, err = concurrency.NewSTM(etcdc, applyf, iso)
-	require.NoErrorf(t, err, "error on stm txn")
-
+	if _, err := concurrency.NewSTM(etcdc, applyf, iso); err != nil {
+		t.Fatalf("error on stm txn (%v)", err)
+	}
 	if try != 2 {
 		t.Fatalf("STM apply expected to run twice, got %d", try)
 	}
 
-	resp, err := etcdc.Get(t.Context(), "foo2")
+	resp, err := etcdc.Get(context.TODO(), "foo2")
 	if err != nil {
 		t.Fatalf("error fetching key (%v)", err)
 	}
@@ -272,15 +266,15 @@ func TestSTMApplyOnConcurrentDeletion(t *testing.T) {
 }
 
 func TestSTMSerializableSnapshotPut(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
 	// key with lower create/mod revision than keys being updated
-	_, err := cli.Put(t.Context(), "a", "0")
-	require.NoError(t, err)
+	_, err := cli.Put(context.TODO(), "a", "0")
+	testutil.AssertNil(t, err)
 
 	tries := 0
 	applyf := func(stm concurrency.STM) error {
@@ -295,12 +289,12 @@ func TestSTMSerializableSnapshotPut(t *testing.T) {
 
 	iso := concurrency.WithIsolation(concurrency.SerializableSnapshot)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	require.NoError(t, err)
+	testutil.AssertNil(t, err)
 	_, err = concurrency.NewSTM(cli, applyf, iso)
-	require.NoError(t, err)
+	testutil.AssertNil(t, err)
 
-	resp, err := cli.Get(t.Context(), "b")
-	require.NoError(t, err)
+	resp, err := cli.Get(context.TODO(), "b")
+	testutil.AssertNil(t, err)
 	if resp.Kvs[0].Version != 2 {
 		t.Fatalf("bad version. got %+v, expected version 2", resp)
 	}

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //go:build windows
+// +build windows
 
 package fileutil
 
@@ -23,7 +24,7 @@ import (
 
 const (
 	// PrivateDirMode grants owner to make/remove files inside the directory.
-	PrivateDirMode = 0o777
+	PrivateDirMode = 0777
 )
 
 // OpenDir opens a directory in windows with write access for syncing.

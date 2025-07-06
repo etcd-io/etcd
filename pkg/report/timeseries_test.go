@@ -17,8 +17,6 @@ package report
 import (
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestGetTimeseries(t *testing.T) {
@@ -27,12 +25,20 @@ func TestGetTimeseries(t *testing.T) {
 	sp.Add(now, time.Second)
 	sp.Add(now.Add(5*time.Second), time.Second)
 	n := sp.getTimeSeries().Len()
-	require.GreaterOrEqualf(t, n, 3, "expected at 6 points of time series, got %s", sp.getTimeSeries())
+	if n < 3 {
+		t.Fatalf("expected at 6 points of time series, got %s", sp.getTimeSeries())
+	}
 
 	// add a point with duplicate timestamp
 	sp.Add(now, 3*time.Second)
 	ts := sp.getTimeSeries()
-	require.Equalf(t, time.Second, ts[0].MinLatency, "ts[0] min latency expected %v, got %s", time.Second, ts[0].MinLatency)
-	require.Equalf(t, 2*time.Second, ts[0].AvgLatency, "ts[0] average latency expected %v, got %s", 2*time.Second, ts[0].AvgLatency)
-	require.Equalf(t, 3*time.Second, ts[0].MaxLatency, "ts[0] max latency expected %v, got %s", 3*time.Second, ts[0].MaxLatency)
+	if ts[0].MinLatency != time.Second {
+		t.Fatalf("ts[0] min latency expected %v, got %s", time.Second, ts[0].MinLatency)
+	}
+	if ts[0].AvgLatency != 2*time.Second {
+		t.Fatalf("ts[0] average latency expected %v, got %s", 2*time.Second, ts[0].AvgLatency)
+	}
+	if ts[0].MaxLatency != 3*time.Second {
+		t.Fatalf("ts[0] max latency expected %v, got %s", 3*time.Second, ts[0].MaxLatency)
+	}
 }

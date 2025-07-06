@@ -15,61 +15,66 @@
 package clientv3test
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/namespace"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestNamespacePutGet(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
 	nsKV := namespace.NewKV(c.KV, "foo/")
 
-	_, err := nsKV.Put(t.Context(), "abc", "bar")
-	require.NoError(t, err)
-	resp, err := nsKV.Get(t.Context(), "abc")
-	require.NoError(t, err)
+	if _, err := nsKV.Put(context.TODO(), "abc", "bar"); err != nil {
+		t.Fatal(err)
+	}
+	resp, err := nsKV.Get(context.TODO(), "abc")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(resp.Kvs[0].Key) != "abc" {
 		t.Errorf("expected key=%q, got key=%q", "abc", resp.Kvs[0].Key)
 	}
 
-	resp, err = c.Get(t.Context(), "foo/abc")
-	require.NoError(t, err)
+	resp, err = c.Get(context.TODO(), "foo/abc")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if string(resp.Kvs[0].Value) != "bar" {
 		t.Errorf("expected value=%q, got value=%q", "bar", resp.Kvs[0].Value)
 	}
 }
 
 func TestNamespaceWatch(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
 	nsKV := namespace.NewKV(c.KV, "foo/")
 	nsWatcher := namespace.NewWatcher(c.Watcher, "foo/")
 
-	_, err := nsKV.Put(t.Context(), "abc", "bar")
-	require.NoError(t, err)
+	if _, err := nsKV.Put(context.TODO(), "abc", "bar"); err != nil {
+		t.Fatal(err)
+	}
 
-	nsWch := nsWatcher.Watch(t.Context(), "abc", clientv3.WithRev(1))
+	nsWch := nsWatcher.Watch(context.TODO(), "abc", clientv3.WithRev(1))
 	wkv := &mvccpb.KeyValue{Key: []byte("abc"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}
 	if wr := <-nsWch; len(wr.Events) != 1 || !reflect.DeepEqual(wr.Events[0].Kv, wkv) {
 		t.Errorf("expected namespaced event %+v, got %+v", wkv, wr.Events[0].Kv)
 	}
 
-	wch := c.Watch(t.Context(), "foo/abc", clientv3.WithRev(1))
+	wch := c.Watch(context.TODO(), "foo/abc", clientv3.WithRev(1))
 	wkv = &mvccpb.KeyValue{Key: []byte("foo/abc"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}
 	if wr := <-wch; len(wr.Events) != 1 || !reflect.DeepEqual(wr.Events[0].Kv, wkv) {
 		t.Errorf("expected unnamespaced event %+v, got %+v", wkv, wr)

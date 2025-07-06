@@ -18,23 +18,23 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 
-	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/server/v3/embed"
+
+	"go.uber.org/zap"
 )
 
 var lg *zap.Logger
 
 func init() {
 	var err error
-	lg, err = logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	lg, err = zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
@@ -50,11 +50,7 @@ func main() {
 		panic("specify either 'addr' or 'download-ver'")
 	}
 	if *debug {
-		var err error
-		lg, err = logutil.CreateDefaultZapLogger(zap.DebugLevel)
-		if err != nil {
-			panic(err)
-		}
+		lg = zap.NewExample()
 	}
 
 	ep := *addr
@@ -63,7 +59,7 @@ func main() {
 			ver := *downloadVer
 
 			// download release binary to temporary directory
-			d, err := os.MkdirTemp(os.TempDir(), ver)
+			d, err := ioutil.TempDir(os.TempDir(), ver)
 			if err != nil {
 				panic(err)
 			}

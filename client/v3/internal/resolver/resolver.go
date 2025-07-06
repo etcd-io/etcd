@@ -15,6 +15,8 @@
 package resolver
 
 import (
+	"fmt"
+
 	"google.golang.org/grpc/resolver"
 	"google.golang.org/grpc/resolver/manual"
 	"google.golang.org/grpc/serviceconfig"
@@ -30,7 +32,7 @@ const (
 // using SetEndpoints.
 type EtcdManualResolver struct {
 	*manual.Resolver
-	endpoints     []string
+	endpoints     []string // "127.0.0.1:2379"
 	serviceConfig *serviceconfig.ParseResult
 }
 
@@ -41,15 +43,19 @@ func New(endpoints ...string) *EtcdManualResolver {
 
 // Build returns itself for Resolver, because it's both a builder and a resolver.
 func (r *EtcdManualResolver) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+	// 解析获取到服务配置
 	r.serviceConfig = cc.ParseServiceConfig(`{"loadBalancingPolicy": "round_robin"}`)
 	if r.serviceConfig.Err != nil {
 		return nil, r.serviceConfig.Err
 	}
+	// 构造解析器，这块实际返回的还是 EtcdManualResolver
+	//
 	res, err := r.Resolver.Build(target, cc, opts)
 	if err != nil {
 		return nil, err
 	}
 	// Populates endpoints stored in r into ClientConn (cc).
+	// 更新grpc的状态和配置
 	r.updateState()
 	return res, nil
 }
@@ -60,28 +66,23 @@ func (r *EtcdManualResolver) SetEndpoints(endpoints []string) {
 }
 
 func (r EtcdManualResolver) updateState() {
-	if getCC(r) != nil {
-		eps := make([]resolver.Endpoint, len(r.endpoints))
+	if r.CC != nil {
+		addresses := make([]resolver.Address, len(r.endpoints))
 		for i, ep := range r.endpoints {
 			addr, serverName := endpoint.Interpret(ep)
-			eps[i] = resolver.Endpoint{Addresses: []resolver.Address{
-				{Addr: addr, ServerName: serverName},
-			}}
+			fmt.Printf("addr=%s, serverName=%s \n", addr, serverName)
+			addresses[i] = resolver.Address{Addr: addr, ServerName: serverName}
 		}
+
+		fmt.Printf("r.serviceConfig=%+v \n", r.serviceConfig)
+
+		// 对于一个Resolver，需要将解析出的地址，传入resolver.State中
+		// 状态里包含地址和服务配置
 		state := resolver.State{
-			Endpoints:     eps,
+			Addresses:     addresses,
 			ServiceConfig: r.serviceConfig,
 		}
+		// 去更新grpc的状态
 		r.UpdateState(state)
 	}
-}
-
-func getCC(r EtcdManualResolver) (cc resolver.ClientConn) {
-	defer func() {
-		if rec := recover(); rec != nil {
-			cc = nil
-		}
-	}()
-
-	return r.CC()
 }

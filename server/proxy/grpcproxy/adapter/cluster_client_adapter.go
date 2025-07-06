@@ -17,9 +17,9 @@ package adapter
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+
+	"google.golang.org/grpc"
 )
 
 type cls2clc struct{ cls pb.ClusterServer }

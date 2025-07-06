@@ -1,17 +1,3 @@
-// Copyright 2021 The etcd Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package endpoints
 
 // TODO: The API is not yet implemented.
@@ -22,12 +8,12 @@ import (
 	"errors"
 	"strings"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/endpoints/internal"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/endpoints/internal"
 )
 
 type endpointManager struct {
@@ -92,8 +78,7 @@ func (m *endpointManager) DeleteEndpoint(ctx context.Context, key string, opts .
 }
 
 func (m *endpointManager) NewWatchChannel(ctx context.Context) (WatchChannel, error) {
-	key := m.target + "/"
-	resp, err := m.client.Get(ctx, key, clientv3.WithPrefix(), clientv3.WithSerializable())
+	resp, err := m.client.Get(ctx, m.target, clientv3.WithPrefix(), clientv3.WithSerializable())
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +112,7 @@ func (m *endpointManager) watch(ctx context.Context, rev int64, upch chan []*Upd
 
 	lg := m.client.GetLogger()
 	opts := []clientv3.OpOption{clientv3.WithRev(rev), clientv3.WithPrefix()}
-	key := m.target + "/"
-	wch := m.client.Watch(ctx, key, opts...)
+	wch := m.client.Watch(ctx, m.target, opts...)
 	for {
 		select {
 		case <-ctx.Done():
@@ -173,8 +157,7 @@ func (m *endpointManager) watch(ctx context.Context, rev int64, upch chan []*Upd
 }
 
 func (m *endpointManager) List(ctx context.Context) (Key2EndpointMap, error) {
-	key := m.target + "/"
-	resp, err := m.client.Get(ctx, key, clientv3.WithPrefix(), clientv3.WithSerializable())
+	resp, err := m.client.Get(ctx, m.target, clientv3.WithPrefix(), clientv3.WithSerializable())
 	if err != nil {
 		return nil, err
 	}

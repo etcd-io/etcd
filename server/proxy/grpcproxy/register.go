@@ -18,12 +18,12 @@ import (
 	"encoding/json"
 	"os"
 
-	"go.uber.org/zap"
-	"golang.org/x/time/rate"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
+
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 // allow maximum 1 retry per second
@@ -69,12 +69,10 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 
 	em, err := endpoints.NewManager(c, prefix)
 	if err != nil {
-		ss.Close()
 		return nil, err
 	}
 	endpoint := endpoints.Endpoint{Addr: addr, Metadata: getMeta()}
 	if err = em.AddEndpoint(c.Ctx(), prefix+"/"+addr, endpoint, clientv3.WithLease(ss.Lease())); err != nil {
-		ss.Close()
 		return nil, err
 	}
 

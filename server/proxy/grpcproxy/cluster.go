@@ -21,12 +21,12 @@ import (
 	"os"
 	"sync"
 
-	"go.uber.org/zap"
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"golang.org/x/time/rate"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/client/v3/naming/endpoints"
+	"go.uber.org/zap"
 )
 
 // allow maximum 1 retry per second
@@ -34,7 +34,7 @@ const resolveRetryRate = 1
 
 type clusterProxy struct {
 	lg   *zap.Logger
-	clus pb.ClusterClient
+	clus clientv3.Cluster
 	ctx  context.Context
 
 	// advertise client URL
@@ -67,7 +67,7 @@ func NewClusterProxy(lg *zap.Logger, c *clientv3.Client, advaddr string, prefix 
 
 	cp := &clusterProxy{
 		lg:   lg,
-		clus: pb.NewClusterClient(c.ActiveConnection()),
+		clus: c.Cluster,
 		ctx:  c.Ctx(),
 
 		advaddr: advaddr,
@@ -107,18 +107,14 @@ func (cp *clusterProxy) monitor(wa endpoints.WatchChannel) {
 		case <-cp.ctx.Done():
 			cp.lg.Info("watching endpoints interrupted", zap.Error(cp.ctx.Err()))
 			return
-		case updates, ok := <-wa:
-			if !ok {
-				cp.lg.Info("endpoints watch channel closed")
-				return
-			}
+		case updates := <-wa:
 			cp.umu.Lock()
 			for _, up := range updates {
 				switch up.Op {
 				case endpoints.Add:
-					cp.umap[up.Key] = up.Endpoint
+					cp.umap[up.Endpoint.Addr] = up.Endpoint
 				case endpoints.Delete:
-					delete(cp.umap, up.Key)
+					delete(cp.umap, up.Endpoint.Addr)
 				}
 			}
 			cp.umu.Unlock()
@@ -127,27 +123,58 @@ func (cp *clusterProxy) monitor(wa endpoints.WatchChannel) {
 }
 
 func (cp *clusterProxy) MemberAdd(ctx context.Context, r *pb.MemberAddRequest) (*pb.MemberAddResponse, error) {
-	return cp.clus.MemberAdd(ctx, r)
+	if r.IsLearner {
+		return cp.memberAddAsLearner(ctx, r.PeerURLs)
+	}
+	return cp.memberAdd(ctx, r.PeerURLs)
+}
+
+func (cp *clusterProxy) memberAdd(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAdd(ctx, peerURLs)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberAddResponse)(*mresp)
+	return &resp, err
+}
+
+func (cp *clusterProxy) memberAddAsLearner(ctx context.Context, peerURLs []string) (*pb.MemberAddResponse, error) {
+	mresp, err := cp.clus.MemberAddAsLearner(ctx, peerURLs)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberAddResponse)(*mresp)
+	return &resp, err
 }
 
 func (cp *clusterProxy) MemberRemove(ctx context.Context, r *pb.MemberRemoveRequest) (*pb.MemberRemoveResponse, error) {
-	return cp.clus.MemberRemove(ctx, r)
+	mresp, err := cp.clus.MemberRemove(ctx, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberRemoveResponse)(*mresp)
+	return &resp, err
 }
 
 func (cp *clusterProxy) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequest) (*pb.MemberUpdateResponse, error) {
-	return cp.clus.MemberUpdate(ctx, r)
+	mresp, err := cp.clus.MemberUpdate(ctx, r.ID, r.PeerURLs)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberUpdateResponse)(*mresp)
+	return &resp, err
 }
 
 func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
 	cp.umu.RLock()
 	defer cp.umu.RUnlock()
 	mbs := make([]*pb.Member, 0, len(cp.umap))
-	for _, upt := range cp.umap {
+	for addr, upt := range cp.umap {
 		m, err := decodeMeta(fmt.Sprint(upt.Metadata))
 		if err != nil {
 			return nil, err
 		}
-		mbs = append(mbs, &pb.Member{Name: m.Name, ClientURLs: []string{upt.Addr}})
+		mbs = append(mbs, &pb.Member{Name: m.Name, ClientURLs: []string{addr}})
 	}
 	return mbs, nil
 }
@@ -172,7 +199,12 @@ func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest)
 		hostname, _ := os.Hostname()
 		return &pb.MemberListResponse{Members: []*pb.Member{{Name: hostname, ClientURLs: []string{cp.advaddr}}}}, nil
 	}
-	return cp.clus.MemberList(ctx, r)
+	mresp, err := cp.clus.MemberList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	resp := (pb.MemberListResponse)(*mresp)
+	return &resp, err
 }
 
 func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest) (*pb.MemberPromoteResponse, error) {

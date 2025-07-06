@@ -21,18 +21,18 @@ import (
 	"sync"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
-func mockElectionCampaign() {
+func mockElection_Campaign() {
 	fmt.Println("completed first election with e2")
 	fmt.Println("completed second election with e1")
 }
 
 func ExampleElection_Campaign() {
 	forUnitTestsRunInMockedContext(
-		mockElectionCampaign,
+		mockElection_Campaign,
 		func() {
 			cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
 			if err != nil {

@@ -59,7 +59,7 @@ func (ss *SelectiveStringValue) Valids() []string {
 // valids[0] will be default value. Caller must be sure
 // len(valids) != 0 or it will panic.
 func NewSelectiveStringValue(valids ...string) *SelectiveStringValue {
-	vm := make(map[string]struct{}, len(valids))
+	vm := make(map[string]struct{})
 	for _, v := range valids {
 		vm[v] = struct{}{}
 	}
@@ -77,10 +77,11 @@ type SelectiveStringsValue struct {
 func (ss *SelectiveStringsValue) Set(s string) error {
 	vs := strings.Split(s, ",")
 	for i := range vs {
-		if _, ok := ss.valids[vs[i]]; !ok {
+		if _, ok := ss.valids[vs[i]]; ok {
+			ss.vs = append(ss.vs, vs[i])
+		} else {
 			return fmt.Errorf("invalid value %q", vs[i])
 		}
-		ss.vs = append(ss.vs, vs[i])
 	}
 	sort.Strings(ss.vs)
 	return nil
@@ -105,7 +106,7 @@ func (ss *SelectiveStringsValue) Valids() []string {
 // for which any one of the given strings is a valid value,
 // and any other value is an error.
 func NewSelectiveStringsValue(valids ...string) *SelectiveStringsValue {
-	vm := make(map[string]struct{}, len(valids))
+	vm := make(map[string]struct{})
 	for _, v := range valids {
 		vm[v] = struct{}{}
 	}

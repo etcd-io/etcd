@@ -22,7 +22,7 @@ type ttlKeyHeap struct {
 	keyMap map[*node]int
 }
 
-func newTTLKeyHeap() *ttlKeyHeap {
+func newTtlKeyHeap() *ttlKeyHeap {
 	h := &ttlKeyHeap{keyMap: make(map[*node]int)}
 	heap.Init(h)
 	return h
@@ -45,13 +45,13 @@ func (h ttlKeyHeap) Swap(i, j int) {
 	h.keyMap[h.array[j]] = j
 }
 
-func (h *ttlKeyHeap) Push(x any) {
+func (h *ttlKeyHeap) Push(x interface{}) {
 	n, _ := x.(*node)
 	h.keyMap[n] = len(h.array)
 	h.array = append(h.array, n)
 }
 
-func (h *ttlKeyHeap) Pop() any {
+func (h *ttlKeyHeap) Pop() interface{} {
 	old := h.array
 	n := len(old)
 	x := old[n-1]
@@ -77,7 +77,7 @@ func (h *ttlKeyHeap) pop() *node {
 	return n
 }
 
-func (h *ttlKeyHeap) push(x any) {
+func (h *ttlKeyHeap) push(x interface{}) {
 	heap.Push(h, x)
 }
 

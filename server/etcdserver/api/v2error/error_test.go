@@ -33,8 +33,8 @@ func TestErrorWriteTo(t *testing.T) {
 		}
 
 		gbody := strings.TrimSuffix(rr.Body.String(), "\n")
-		if err.toJSONString() != gbody {
-			t.Errorf("HTTP body %q, want %q", gbody, err.toJSONString())
+		if err.toJsonString() != gbody {
+			t.Errorf("HTTP body %q, want %q", gbody, err.toJsonString())
 		}
 
 		wheader := http.Header(map[string][]string{
@@ -46,4 +46,5 @@ func TestErrorWriteTo(t *testing.T) {
 			t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
 		}
 	}
+
 }

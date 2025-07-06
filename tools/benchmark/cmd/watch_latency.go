@@ -18,14 +18,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/cheggaaa/pb/v3"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/report"
+
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/pkg/v3/report"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // watchLatencyCmd represents the watch latency command
@@ -39,114 +40,72 @@ var watchLatencyCmd = &cobra.Command{
 }
 
 var (
-	watchLPutTotal          int
-	watchLPutRate           int
-	watchLKeySize           int
-	watchLValueSize         int
-	watchLStreams           int
-	watchLWatchersPerStream int
-	watchLPrevKV            bool
+	watchLTotal     int
+	watchLPutRate   int
+	watchLKeySize   int
+	watchLValueSize int
 )
 
 func init() {
 	RootCmd.AddCommand(watchLatencyCmd)
-	watchLatencyCmd.Flags().IntVar(&watchLStreams, "streams", 10, "Total watch streams")
-	watchLatencyCmd.Flags().IntVar(&watchLWatchersPerStream, "watchers-per-stream", 10, "Total watchers per stream")
-	watchLatencyCmd.Flags().BoolVar(&watchLPrevKV, "prevkv", false, "PrevKV enabled on watch requests")
-
-	watchLatencyCmd.Flags().IntVar(&watchLPutTotal, "put-total", 1000, "Total number of put requests")
+	watchLatencyCmd.Flags().IntVar(&watchLTotal, "total", 10000, "Total number of put requests")
 	watchLatencyCmd.Flags().IntVar(&watchLPutRate, "put-rate", 100, "Number of keys to put per second")
 	watchLatencyCmd.Flags().IntVar(&watchLKeySize, "key-size", 32, "Key size of watch response")
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
 }
 
-func watchLatencyFunc(cmd *cobra.Command, _ []string) {
+func watchLatencyFunc(cmd *cobra.Command, args []string) {
 	key := string(mustRandBytes(watchLKeySize))
 	value := string(mustRandBytes(watchLValueSize))
-	wchs := setupWatchChannels(key)
+
+	clients := mustCreateClients(totalClients, totalConns)
 	putClient := mustCreateConn()
 
-	bar = pb.New(watchLPutTotal * len(wchs))
+	wchs := make([]clientv3.WatchChan, len(clients))
+	for i := range wchs {
+		wchs[i] = clients[i].Watch(context.TODO(), key)
+	}
+
+	bar = pb.New(watchLTotal)
+	bar.Format("Bom !")
 	bar.Start()
 
 	limiter := rate.NewLimiter(rate.Limit(watchLPutRate), watchLPutRate)
+	r := newReport()
+	rc := r.Run()
 
-	putTimes := make([]time.Time, watchLPutTotal)
-	eventTimes := make([][]time.Time, len(wchs))
-
-	for i, wch := range wchs {
-		wch := wch
-		i := i
-		eventTimes[i] = make([]time.Time, watchLPutTotal)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			eventCount := 0
-			for eventCount < watchLPutTotal {
-				resp := <-wch
-				for range resp.Events {
-					eventTimes[i][eventCount] = time.Now()
-					eventCount++
-					bar.Increment()
-				}
-			}
-		}()
-	}
-
-	putReport := newReport(cmd.Name() + "-put")
-	putReportResults := putReport.Run()
-	watchReport := newReport(cmd.Name() + "-watch")
-	watchReportResults := watchReport.Run()
-	for i := 0; i < watchLPutTotal; i++ {
+	for i := 0; i < watchLTotal; i++ {
 		// limit key put as per reqRate
 		if err := limiter.Wait(context.TODO()); err != nil {
 			break
 		}
-		start := time.Now()
+
+		var st time.Time
+		var wg sync.WaitGroup
+		wg.Add(len(clients))
+		barrierc := make(chan struct{})
+		for _, wch := range wchs {
+			ch := wch
+			go func() {
+				<-barrierc
+				<-ch
+				r.Results() <- report.Result{Start: st, End: time.Now()}
+				wg.Done()
+			}()
+		}
+
 		if _, err := putClient.Put(context.TODO(), key, value); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to Put for watch latency benchmark: %v\n", err)
 			os.Exit(1)
 		}
-		end := time.Now()
-		putReport.Results() <- report.Result{Start: start, End: end}
-		putTimes[i] = end
+
+		st = time.Now()
+		close(barrierc)
+		wg.Wait()
+		bar.Increment()
 	}
-	wg.Wait()
-	close(putReport.Results())
+
+	close(r.Results())
 	bar.Finish()
-	fmt.Printf("\nPut summary:\n%s", <-putReportResults)
-
-	for i := 0; i < len(wchs); i++ {
-		for j := 0; j < watchLPutTotal; j++ {
-			start := putTimes[j]
-			end := eventTimes[i][j]
-			if end.Before(start) {
-				start = end
-			}
-			watchReport.Results() <- report.Result{Start: start, End: end}
-		}
-	}
-
-	close(watchReport.Results())
-	fmt.Printf("\nWatch events summary:\n%s", <-watchReportResults)
-}
-
-func setupWatchChannels(key string) []clientv3.WatchChan {
-	clients := mustCreateClients(totalClients, totalConns)
-
-	streams := make([]clientv3.Watcher, watchLStreams)
-	for i := range streams {
-		streams[i] = clientv3.NewWatcher(clients[i%len(clients)])
-	}
-	opts := []clientv3.OpOption{}
-	if watchLPrevKV {
-		opts = append(opts, clientv3.WithPrevKV())
-	}
-	wchs := make([]clientv3.WatchChan, len(streams)*watchLWatchersPerStream)
-	for i := 0; i < len(streams); i++ {
-		for j := 0; j < watchLWatchersPerStream; j++ {
-			wchs[i*watchLWatchersPerStream+j] = streams[i].Watch(context.TODO(), key, opts...)
-		}
-	}
-	return wchs
+	fmt.Printf("%s", <-rc)
 }

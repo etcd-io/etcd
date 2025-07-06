@@ -17,17 +17,15 @@ package snapshot
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"time"
 
 	"github.com/dustin/go-humanize"
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
+	"go.uber.org/zap"
 )
 
 // hasChecksum returns "true" if the file size "n"
@@ -38,86 +36,67 @@ func hasChecksum(n int64) bool {
 	return (n % 512) == sha256.Size
 }
 
-// SaveWithVersion fetches snapshot from remote etcd server, saves data
-// to target path and returns server version. If the context "ctx" is canceled or timed out,
+// Save fetches snapshot from remote etcd server and saves data
+// to target path. If the context "ctx" is canceled or timed out,
 // snapshot save stream will error out (e.g. context.Canceled,
 // context.DeadlineExceeded). Make sure to specify only one endpoint
 // in client configuration. Snapshot API must be requested to a
 // selected node, and saved snapshot is the point-in-time state of
 // the selected node.
-// Etcd <v3.6 will return "" as version.
-func SaveWithVersion(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) (string, error) {
+func Save(ctx context.Context, lg *zap.Logger, cfg clientv3.Config, dbPath string) error {
+	if lg == nil {
+		lg = zap.NewExample()
+	}
 	cfg.Logger = lg.Named("client")
 	if len(cfg.Endpoints) != 1 {
-		return "", fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
+		return fmt.Errorf("snapshot must be requested to one selected node, not multiple %v", cfg.Endpoints)
 	}
 	cli, err := clientv3.New(cfg)
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer func() {
-		err = cli.Close()
-		if err != nil {
-			lg.Error("Failed to close client", zap.Error(err))
-		}
-	}()
+	defer cli.Close()
 
 	partpath := dbPath + ".part"
-	defer func() {
-		err = os.RemoveAll(partpath)
-		if err != nil {
-			lg.Error("Failed to cleanup .part file", zap.Error(err))
-		}
-	}()
+	defer os.RemoveAll(partpath)
 
-	f, err := os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
+	var f *os.File
+	f, err = os.OpenFile(partpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileutil.PrivateFileMode)
 	if err != nil {
-		return "", fmt.Errorf("could not open %s (%w)", partpath, err)
+		return fmt.Errorf("could not open %s (%v)", partpath, err)
 	}
-	defer func() {
-		err = f.Close()
-		if err != nil && !errors.Is(err, os.ErrClosed) {
-			lg.Error("Could not close file descriptor", zap.Error(err))
-		}
-	}()
 	lg.Info("created temporary db file", zap.String("path", partpath))
 
-	start := time.Now()
-	resp, err := cli.SnapshotWithVersion(ctx)
+	now := time.Now()
+	var rd io.ReadCloser
+	rd, err = cli.Snapshot(ctx)
 	if err != nil {
-		return "", err
+		return err
 	}
-	defer func() {
-		err = resp.Snapshot.Close()
-		if err != nil {
-			lg.Error("Could not close snapshot stream", zap.Error(err))
-		}
-	}()
 	lg.Info("fetching snapshot", zap.String("endpoint", cfg.Endpoints[0]))
 	var size int64
-	size, err = io.Copy(f, resp.Snapshot)
+	size, err = io.Copy(f, rd)
 	if err != nil {
-		return resp.Version, fmt.Errorf("could not write snapshot: %w", err)
+		return err
 	}
 	if !hasChecksum(size) {
-		return resp.Version, fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
+		return fmt.Errorf("sha256 checksum not found [bytes: %d]", size)
 	}
 	if err = fileutil.Fsync(f); err != nil {
-		return resp.Version, fmt.Errorf("could not fsync snapshot: %w", err)
+		return err
 	}
 	if err = f.Close(); err != nil {
-		return resp.Version, fmt.Errorf("could not close file descriptor: %w", err)
+		return err
 	}
 	lg.Info("fetched snapshot",
 		zap.String("endpoint", cfg.Endpoints[0]),
 		zap.String("size", humanize.Bytes(uint64(size))),
-		zap.Duration("took", time.Since(start)),
-		zap.String("etcd-version", resp.Version),
+		zap.String("took", humanize.Time(now)),
 	)
 
 	if err = os.Rename(partpath, dbPath); err != nil {
-		return resp.Version, fmt.Errorf("could not rename %s to %s (%w)", partpath, dbPath, err)
+		return fmt.Errorf("could not rename %s to %s (%v)", partpath, dbPath, err)
 	}
 	lg.Info("saved", zap.String("path", dbPath))
-	return resp.Version, nil
+	return nil
 }

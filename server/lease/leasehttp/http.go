@@ -19,7 +19,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -47,13 +47,13 @@ type leaseHandler struct {
 }
 
 func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != "POST" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	defer r.Body.Close()
-	b, err := io.ReadAll(r.Body)
+	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "error reading body", http.StatusBadRequest)
 		return
@@ -75,7 +75,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		ttl, rerr := h.l.Renew(lease.LeaseID(lreq.ID))
 		if rerr != nil {
-			if errors.Is(rerr, lease.ErrLeaseNotFound) {
+			if rerr == lease.ErrLeaseNotFound {
 				http.Error(w, rerr.Error(), http.StatusNotFound)
 				return
 			}
@@ -103,9 +103,6 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ErrLeaseHTTPTimeout.Error(), http.StatusRequestTimeout)
 			return
 		}
-
-		// gofail: var beforeLookupWhenForwardLeaseTimeToLive struct{}
-
 		l := h.l.Lookup(lease.LeaseID(lreq.LeaseTimeToLiveRequest.ID))
 		if l == nil {
 			http.Error(w, lease.ErrLeaseNotFound.Error(), http.StatusNotFound)
@@ -127,14 +124,6 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				kbs[i] = []byte(ks[i])
 			}
 			resp.LeaseTimeToLiveResponse.Keys = kbs
-		}
-
-		// The leasor could be demoted if leader changed during lookup.
-		// We should return error to force retry instead of returning
-		// incorrect remaining TTL.
-		if l.Demoted() {
-			http.Error(w, lease.ErrNotPrimary.Error(), http.StatusInternalServerError)
-			return
 		}
 
 		v, err = resp.Marshal()
@@ -161,13 +150,8 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 		return -1, err
 	}
 
-	cc := &http.Client{
-		Transport: rt,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(lreq))
+	cc := &http.Client{Transport: rt}
+	req, err := http.NewRequest("POST", url, bytes.NewReader(lreq))
 	if err != nil {
 		return -1, err
 	}
@@ -192,12 +176,12 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return -1, fmt.Errorf("lease: unknown error(%s)", b)
+		return -1, fmt.Errorf("lease: unknown error(%s)", string(b))
 	}
 
 	lresp := &pb.LeaseKeepAliveResponse{}
 	if err := lresp.Unmarshal(b); err != nil {
-		return -1, fmt.Errorf(`lease: %w. data = "%s"`, err, b)
+		return -1, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
 	}
 	if lresp.ID != int64(id) {
 		return -1, fmt.Errorf("lease: renew id mismatch")
@@ -218,7 +202,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 		return nil, err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(lreq))
+	req, err := http.NewRequest("POST", url, bytes.NewReader(lreq))
 	if err != nil {
 		return nil, err
 	}
@@ -226,12 +210,7 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 
 	req = req.WithContext(ctx)
 
-	cc := &http.Client{
-		Transport: rt,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	cc := &http.Client{Transport: rt}
 	var b []byte
 	// buffer errc channel so that errc don't block inside the go routinue
 	resp, err := cc.Do(req)
@@ -254,16 +233,16 @@ func TimeToLiveHTTP(ctx context.Context, id lease.LeaseID, keys bool, url string
 
 	lresp := &leasepb.LeaseInternalResponse{}
 	if err := lresp.Unmarshal(b); err != nil {
-		return nil, fmt.Errorf(`lease: %w. data = "%s"`, err, string(b))
+		return nil, fmt.Errorf(`lease: %v. data = "%s"`, err, string(b))
 	}
 	if lresp.LeaseTimeToLiveResponse.ID != int64(id) {
-		return nil, fmt.Errorf("lease: TTL id mismatch")
+		return nil, fmt.Errorf("lease: renew id mismatch")
 	}
 	return lresp, nil
 }
 
 func readResponse(resp *http.Response) (b []byte, err error) {
-	b, err = io.ReadAll(resp.Body)
+	b, err = ioutil.ReadAll(resp.Body)
 	httputil.GracefulClose(resp)
 	return
 }

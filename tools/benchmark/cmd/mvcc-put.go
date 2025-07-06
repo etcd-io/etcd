@@ -21,11 +21,11 @@ import (
 	"runtime/pprof"
 	"time"
 
-	"github.com/spf13/cobra"
-
 	"go.etcd.io/etcd/pkg/v3/report"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/lease"
+
+	"github.com/spf13/cobra"
 )
 
 // mvccPutCmd represents a storage put performance benchmarking tool
@@ -56,6 +56,7 @@ func init() {
 	// TODO: after the PR https://github.com/spf13/cobra/pull/220 is merged, the below pprof related flags should be moved to RootCmd
 	mvccPutCmd.Flags().StringVar(&cpuProfPath, "cpuprofile", "", "the path of file for storing cpu profile result")
 	mvccPutCmd.Flags().StringVar(&memProfPath, "memprofile", "", "the path of file for storing heap profile result")
+
 }
 
 func createBytesSlice(bytesN, sliceN int) [][]byte {
@@ -69,14 +70,14 @@ func createBytesSlice(bytesN, sliceN int) [][]byte {
 	return rs
 }
 
-func mvccPutFunc(cmd *cobra.Command, _ []string) {
+func mvccPutFunc(cmd *cobra.Command, args []string) {
 	if cpuProfPath != "" {
 		f, err := os.Create(cpuProfPath)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to create a file for storing cpu profile result: ", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+
 		err = pprof.StartCPUProfile(f)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to start cpu profile: ", err)
@@ -91,7 +92,7 @@ func mvccPutFunc(cmd *cobra.Command, _ []string) {
 			fmt.Fprintln(os.Stderr, "Failed to create a file for storing heap profile result: ", err)
 			os.Exit(1)
 		}
-		defer f.Close()
+
 		defer func() {
 			err := pprof.WriteHeapProfile(f)
 			if err != nil {
@@ -105,7 +106,7 @@ func mvccPutFunc(cmd *cobra.Command, _ []string) {
 	vals := createBytesSlice(valueSize, mvccTotalRequests*nrTxnOps)
 
 	weight := float64(nrTxnOps)
-	r := newWeightedReport(cmd.Name())
+	r := newWeightedReport()
 	rrc := r.Results()
 
 	rc := r.Run()

@@ -20,13 +20,14 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/server/v3/storage/backend"
-	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/datadir"
+	"go.etcd.io/etcd/server/v3/mvcc/backend"
 )
 
-var defragDataDir string
+var (
+	defragDataDir string
+)
 
 // NewDefragCommand returns the cobra command for "Defrag".
 func NewDefragCommand() *cobra.Command {
@@ -37,7 +38,6 @@ func NewDefragCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&defragDataDir, "data-dir", "", "Required. Defragments a data directory not in use by etcd.")
 	cmd.MarkFlagRequired("data-dir")
-	cmd.MarkFlagDirname("data-dir")
 	return cmd
 }
 
@@ -45,7 +45,7 @@ func defragCommandFunc(cmd *cobra.Command, args []string) {
 	err := DefragData(defragDataDir)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError,
-			fmt.Errorf("Failed to defragment etcd data[%s] (%w)", defragDataDir, err))
+			fmt.Errorf("Failed to defragment etcd data[%s] (%v)", defragDataDir, err))
 	}
 }
 
@@ -56,7 +56,7 @@ func DefragData(dataDir string) error {
 	dbDir := datadir.ToBackendFileName(dataDir)
 	go func() {
 		defer close(bch)
-		cfg := backend.DefaultBackendConfig(lg)
+		cfg := backend.DefaultBackendConfig()
 		cfg.Logger = lg
 		cfg.Path = dbDir
 		be = backend.New(cfg)
@@ -65,7 +65,7 @@ func DefragData(dataDir string) error {
 	case <-bch:
 	case <-time.After(time.Second):
 		fmt.Fprintf(os.Stderr, "waiting for etcd to close and release its lock on %q. "+
-			"To defrag a running etcd instance, use `etcdctl defrag` instead.\n", dbDir)
+			"To defrag a running etcd instance, omit --data-dir.\n", dbDir)
 		<-bch
 	}
 	return be.Defrag()

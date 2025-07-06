@@ -17,6 +17,7 @@
 package cobrautl
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -43,10 +44,6 @@ var (
 			}
 			return strings.Join(parts, " ")
 		},
-		"indent": func(s string) string {
-			pad := strings.Repeat(" ", 2)
-			return pad + strings.Replace(s, "\n", "\n"+pad, -1)
-		},
 	}
 )
 
@@ -55,43 +52,39 @@ func init() {
 {{ $cmd := .Cmd }}\
 {{ $cmdname := cmdName .Cmd .Cmd.Root }}\
 NAME:
-{{if not .Cmd.HasParent}}\
-{{printf "%s - %s" .Cmd.Name .Cmd.Short | indent}}
+{{ if not .Cmd.HasParent }}\
+{{printf "\t%s - %s" .Cmd.Name .Cmd.Short}}
 {{else}}\
-{{printf "%s - %s" $cmdname .Cmd.Short | indent}}
+{{printf "\t%s - %s" $cmdname .Cmd.Short}}
 {{end}}\
 
 USAGE:
-{{printf "%s" .Cmd.UseLine | indent}}
+{{printf "\t%s" .Cmd.UseLine}}
 {{ if not .Cmd.HasParent }}\
 
 VERSION:
-{{printf "%s" .Version | indent}}
+{{printf "\t%s" .Version}}
 {{end}}\
 {{if .Cmd.HasSubCommands}}\
 
 API VERSION:
-{{.APIVersion | indent}}
-{{end}}\
-{{if .Cmd.HasExample}}\
-
-Examples:
-{{.Cmd.Example}}
+{{printf "\t%s" .APIVersion}}
 {{end}}\
 {{if .Cmd.HasSubCommands}}\
+
 
 COMMANDS:
 {{range .SubCommands}}\
 {{ $cmdname := cmdName . $cmd }}\
 {{ if .Runnable }}\
-{{printf "%s\t%s" $cmdname .Short | indent}}
+{{printf "\t%s\t%s" $cmdname .Short}}
 {{end}}\
 {{end}}\
 {{end}}\
 {{ if .Cmd.Long }}\
 
 DESCRIPTION:
-{{range $line := descToLines .Cmd.Long}}{{printf "%s" $line | indent}}
+{{range $line := descToLines .Cmd.Long}}{{printf "\t%s" $line}}
 {{end}}\
 {{end}}\
 {{if .Cmd.HasLocalFlags}}\
@@ -106,11 +99,11 @@ GLOBAL OPTIONS:
 {{end}}
 `[1:]
 
-	commandUsageTemplate = template.Must(template.New("command_usage").Funcs(templFuncs).Parse(strings.ReplaceAll(commandUsage, "\\\n", "")))
+	commandUsageTemplate = template.Must(template.New("command_usage").Funcs(templFuncs).Parse(strings.Replace(commandUsage, "\\\n", "", -1)))
 }
 
 func etcdFlagUsages(flagSet *pflag.FlagSet) string {
-	x := new(strings.Builder)
+	x := new(bytes.Buffer)
 
 	flagSet.VisitAll(func(flag *pflag.Flag) {
 		if len(flag.Deprecated) > 0 {
@@ -151,8 +144,6 @@ func getSubCommands(cmd *cobra.Command) []*cobra.Command {
 	return subCommands
 }
 
-// UsageFunc is the usage function for the cobra command.
-// Deprecated: Please use go.etcd.io/etcd/etcdctl/v3/util instead.
 func UsageFunc(cmd *cobra.Command, version, APIVersion string) error {
 	subCommands := getSubCommands(cmd)
 	tabOut := getTabOutWithWriter(os.Stdout)

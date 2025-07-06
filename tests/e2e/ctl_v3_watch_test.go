@@ -14,11 +14,7 @@
 
 package e2e
 
-import (
-	"strings"
-
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
-)
+import "strings"
 
 type kvExec struct {
 	key, val   string
@@ -39,7 +35,7 @@ func setupWatchArgs(cx ctlCtx, args []string) []string {
 func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}
@@ -70,7 +66,7 @@ func ctlV3Watch(cx ctlCtx, args []string, kvs ...kvExec) error {
 func ctlV3WatchFailPerm(cx ctlCtx, args []string) error {
 	cmdArgs := setupWatchArgs(cx, args)
 
-	proc, err := e2e.SpawnCmd(cmdArgs, nil)
+	proc, err := spawnCmd(cmdArgs, nil)
 	if err != nil {
 		return err
 	}

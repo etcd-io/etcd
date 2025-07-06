@@ -1,0 +1,187 @@
+syntax = "proto2";
+package raftpb;
+
+import "gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.goproto_enum_prefix_all) = false;
+option (gogoproto.goproto_unkeyed_all) = false;
+option (gogoproto.goproto_unrecognized_all) = false;
+option (gogoproto.goproto_sizecache_all) = false;
+
+enum EntryType {
+	EntryNormal       = 0;
+	EntryConfChange   = 1; // corresponds to pb.ConfChange
+	EntryConfChangeV2 = 2; // corresponds to pb.ConfChangeV2
+}
+
+message Entry {
+	optional uint64     Term  = 2 [(gogoproto.nullable) = false]; // 该Entry所在的任期号。must be 64-bit aligned for atomic operations
+	optional uint64     Index = 3 [(gogoproto.nullable) = false]; // 该Entry对应的索引号。must be 64-bit aligned for atomic operations
+	optional EntryType  Type  = 1 [(gogoproto.nullable) = false]; // 该 Entry记录的类型 。 该字段有两个可选项:一个是 EntryNormal，表示普通的数据操作;另一个是 EntryConfChange，表示集群的变更 操作。
+	optional bytes      Data  = 4; // 具体操作使用的数据
+}
+
+message SnapshotMetadata {
+	optional ConfState conf_state = 1 [(gogoproto.nullable) = false];
+	optional uint64    index      = 2 [(gogoproto.nullable) = false];
+	optional uint64    term       = 3 [(gogoproto.nullable) = false];
+}
+
+message Snapshot {
+	optional bytes            data     = 1;
+	optional SnapshotMetadata metadata = 2 [(gogoproto.nullable) = false];
+}
+
+// For description of different message types, see:
+// https://pkg.go.dev/go.etcd.io/etcd/raft/v3#hdr-MessageType
+enum MessageType {
+	MsgHup             = 0;
+	MsgBeat            = 1;
+	MsgProp            = 2;
+	MsgApp             = 3;
+	MsgAppResp         = 4;
+	MsgVote            = 5;
+	MsgVoteResp        = 6;
+	MsgSnap            = 7;
+	MsgHeartbeat       = 8;
+	MsgHeartbeatResp   = 9;
+	MsgUnreachable     = 10;
+	MsgSnapStatus      = 11;
+	MsgCheckQuorum     = 12;
+	MsgTransferLeader  = 13;
+	MsgTimeoutNow      = 14;
+	MsgReadIndex       = 15;
+	MsgReadIndexResp   = 16;
+	MsgPreVote         = 17;
+	MsgPreVoteResp     = 18;
+}
+
+message Message {
+	optional MessageType type        = 1  [(gogoproto.nullable) = false]; // 该字段定义了消息的类型， etcd-raft的实现中就是通过 该字段区分不同的消息井进行分类处理的， MessageType 中共定义了 19 种消息类型， 后面会详细分析每种消息类型的含义及相应的处理方式
+	optional uint64      to          = 2  [(gogoproto.nullable) = false]; // 消息的目标节点 ID。
+	optional uint64      from        = 3  [(gogoproto.nullable) = false]; // 发送消息的节点ID。在集群中，每个节点都拥有一个唯一 ID 作为标识 。
+	optional uint64      term        = 4  [(gogoproto.nullable) = false]; // 发送消息的节点的Term值。 如果Term值为0，则为本地消息， 在 etcd-raft模块的实现中 ，对本地消息进行特殊处理。 例如，后面见到的 MsgHup 类 型消息就是本地消息的一种
+	// logTerm is generally used for appending Raft logs to followers. For example,
+	// (type=MsgApp,index=100,logTerm=5) means leader appends entries starting at
+	// index=101, and the term of entry at index 100 is 5.
+	// (type=MsgAppResp,reject=true,index=100,logTerm=5) means follower rejects some
+	// entries from its leader as it already has an entry with term 5 at index 100.
+	optional uint64      logTerm     = 5  [(gogoproto.nullable) = false]; // 该消息携带的 第一条 Entry 记 录 的 Term 值 。
+	optional uint64      index       = 6  [(gogoproto.nullable) = false]; // 记录了一个索引值，该索引值的具体含义与消息的类型相关。 例如， MsgApp 消息的 Index 宇段保存了其携带的 Entry 记录(即 Entries 字段)中前一条记录的 Index 值，而 MsgAppResp 消息的 Index 字段则是 Follower节点提示 Leader 节点下次从哪个位置开始发送 Entry 记录 。
+	repeated Entry       entries     = 7  [(gogoproto.nullable) = false]; // 如果是MsgApp类型的消息，则该字段中保存了Leader节点 复制到 Follower节点的 Entrγ记录。在其他类型消息中，该字段的含义后面会详细介 绍。
+	optional uint64      commit      = 8  [(gogoproto.nullable) = false]; // 消息发送节点的提交位置( commitlndex)。
+	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false]; // 在传输快照时，该字段保存了快照数据
+	optional bool        reject      = 10 [(gogoproto.nullable) = false]; // 主要 用于响应类型的消息，表示是否拒绝收到的消息 。 例如， Follower节点收到 Leader 节点发来的 MsgApp 消息 ，如 果 Follower 节点发现 MsgApp 消息携带的 Entry记录并不能直接追加到本地的 raftLog 中， 则会将响应消息的 Reject 宇段设置为 true，并且会在 RejectHint 字段 中记录合适的 Entry 索引值，供 Leader 节 点参考。
+	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false]; // 在Follower节点拒绝Leader节点的消息之后，会在该字段 记录 一个 Entry 索引值供 Leader 节点。
+	optional bytes       context     = 12; // 消息携带的一些上下文信息。例如，该消息是否与 Leader 节点转移相关。
+}
+
+message HardState {
+	optional uint64 term   = 1 [(gogoproto.nullable) = false];
+	optional uint64 vote   = 2 [(gogoproto.nullable) = false];
+	optional uint64 commit = 3 [(gogoproto.nullable) = false];
+}
+
+// ConfChangeTransition specifies the behavior of a configuration change with
+// respect to joint consensus.
+enum ConfChangeTransition {
+	// Automatically use the simple protocol if possible, otherwise fall back
+	// to ConfChangeJointImplicit. Most applications will want to use this.
+	ConfChangeTransitionAuto          = 0;
+	// Use joint consensus unconditionally, and transition out of them
+	// automatically (by proposing a zero configuration change).
+	//
+	// This option is suitable for applications that want to minimize the time
+	// spent in the joint configuration and do not store the joint configuration
+	// in the state machine (outside of InitialState).
+	ConfChangeTransitionJointImplicit = 1;
+	// Use joint consensus and remain in the joint configuration until the
+	// application proposes a no-op configuration change. This is suitable for
+	// applications that want to explicitly control the transitions, for example
+	// to use a custom payload (via the Context field).
+	ConfChangeTransitionJointExplicit = 2;
+}
+
+message ConfState {
+	// The voters in the incoming config. (If the configuration is not joint,
+	// then the outgoing config is empty).
+	repeated uint64 voters = 1;
+	// The learners in the incoming config.
+	repeated uint64 learners          = 2;
+	// The voters in the outgoing config.
+	repeated uint64 voters_outgoing   = 3;
+	// The nodes that will become learners when the outgoing config is removed.
+	// These nodes are necessarily currently in nodes_joint (or they would have
+	// been added to the incoming config right away).
+	repeated uint64 learners_next     = 4;
+	// If set, the config is joint and Raft will automatically transition into
+	// the final config (i.e. remove the outgoing config) when this is safe.
+	optional bool   auto_leave        = 5 [(gogoproto.nullable) = false];
+}
+
+enum ConfChangeType {
+	ConfChangeAddNode        = 0;
+	ConfChangeRemoveNode     = 1;
+	ConfChangeUpdateNode     = 2;
+	ConfChangeAddLearnerNode = 3;
+}
+
+message ConfChange {
+	optional ConfChangeType  type    = 2 [(gogoproto.nullable) = false];
+	optional uint64          node_id = 3 [(gogoproto.nullable) = false, (gogoproto.customname) = "NodeID" ];
+	optional bytes           context = 4;
+
+	// NB: this is used only by etcd to thread through a unique identifier.
+	// Ideally it should really use the Context instead. No counterpart to
+	// this field exists in ConfChangeV2.
+	optional uint64          id      = 1 [(gogoproto.nullable) = false, (gogoproto.customname) = "ID" ];
+}
+
+// ConfChangeSingle is an individual configuration change operation. Multiple
+// such operations can be carried out atomically via a ConfChangeV2.
+message ConfChangeSingle {
+	optional ConfChangeType  type    = 1 [(gogoproto.nullable) = false];
+	optional uint64          node_id = 2 [(gogoproto.nullable) = false, (gogoproto.customname) = "NodeID"];
+}
+
+// ConfChangeV2 messages initiate configuration changes. They support both the
+// simple "one at a time" membership change protocol and full Joint Consensus
+// allowing for arbitrary changes in membership.
+//
+// The supplied context is treated as an opaque payload and can be used to
+// attach an action on the state machine to the application of the config change
+// proposal. Note that contrary to Joint Consensus as outlined in the Raft
+// paper[1], configuration changes become active when they are *applied* to the
+// state machine (not when they are appended to the log).
+//
+// The simple protocol can be used whenever only a single change is made.
+//
+// Non-simple changes require the use of Joint Consensus, for which two
+// configuration changes are run. The first configuration change specifies the
+// desired changes and transitions the Raft group into the joint configuration,
+// in which quorum requires a majority of both the pre-changes and post-changes
+// configuration. Joint Consensus avoids entering fragile intermediate
+// configurations that could compromise survivability. For example, without the
+// use of Joint Consensus and running across three availability zones with a
+// replication factor of three, it is not possible to replace a voter without
+// entering an intermediate configuration that does not survive the outage of
+// one availability zone.
+//
+// The provided ConfChangeTransition specifies how (and whether) Joint Consensus
+// is used, and assigns the task of leaving the joint configuration either to
+// Raft or the application. Leaving the joint configuration is accomplished by
+// proposing a ConfChangeV2 with only and optionally the Context field
+// populated.
+//
+// For details on Raft membership changes, see:
+//
+// [1]: https://github.com/ongardie/dissertation/blob/master/online-trim.pdf
+message ConfChangeV2 {
+	optional ConfChangeTransition transition = 1 [(gogoproto.nullable) = false];
+	repeated ConfChangeSingle     changes =    2 [(gogoproto.nullable) = false];
+	optional bytes                context =    3;
+}

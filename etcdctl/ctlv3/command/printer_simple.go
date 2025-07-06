@@ -24,8 +24,6 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
-const rootRole = "root"
-
 type simplePrinter struct {
 	isHex     bool
 	valueOnly bool
@@ -126,11 +124,7 @@ func (s *simplePrinter) Alarm(resp v3.AlarmResponse) {
 }
 
 func (s *simplePrinter) MemberAdd(r v3.MemberAddResponse) {
-	asLearner := " "
-	if r.Member.IsLearner {
-		asLearner = " as learner "
-	}
-	fmt.Printf("Member %16x added%sto cluster %16x\n", r.Member.ID, asLearner, r.Header.ClusterId)
+	fmt.Printf("Member %16x added to cluster %16x\n", r.Member.ID, r.Header.ClusterId)
 }
 
 func (s *simplePrinter) MemberRemove(id uint64, r v3.MemberRemoveResponse) {
@@ -180,32 +174,12 @@ func (s *simplePrinter) MoveLeader(leader, target uint64, r v3.MoveLeaderRespons
 	fmt.Printf("Leadership transferred from %s to %s\n", types.ID(leader), types.ID(target))
 }
 
-func (s *simplePrinter) DowngradeValidate(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade validate success, cluster version %s\n", r.Version)
-}
-
-func (s *simplePrinter) DowngradeEnable(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade enable success, cluster version %s\n", r.Version)
-}
-
-func (s *simplePrinter) DowngradeCancel(r v3.DowngradeResponse) {
-	fmt.Printf("Downgrade cancel success, cluster version %s\n", r.Version)
-}
-
 func (s *simplePrinter) RoleAdd(role string, r v3.AuthRoleAddResponse) {
 	fmt.Printf("Role %s created\n", role)
 }
 
 func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	fmt.Printf("Role %s\n", role)
-	if rootRole == role && r.Perm == nil {
-		fmt.Println("KV Read:")
-		fmt.Println("\t[, <open ended>")
-		fmt.Println("KV Write:")
-		fmt.Println("\t[, <open ended>")
-		return
-	}
-
 	fmt.Println("KV Read:")
 
 	printRange := func(perm *v3.Permission) {
@@ -216,16 +190,16 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 		} else {
 			fmt.Printf("\t[%s, <open ended>", sKey)
 		}
-		if v3.GetPrefixRangeEnd(sKey) == sRangeEnd && len(sKey) > 0 {
+		if v3.GetPrefixRangeEnd(sKey) == sRangeEnd {
 			fmt.Printf(" (prefix %s)", sKey)
 		}
-		fmt.Print("\n")
+		fmt.Printf("\n")
 	}
 
 	for _, perm := range r.Perm {
 		if perm.PermType == v3.PermRead || perm.PermType == v3.PermReadWrite {
 			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", perm.Key)
+				fmt.Printf("\t%s\n", string(perm.Key))
 			} else {
 				printRange((*v3.Permission)(perm))
 			}
@@ -235,7 +209,7 @@ func (s *simplePrinter) RoleGet(role string, r v3.AuthRoleGetResponse) {
 	for _, perm := range r.Perm {
 		if perm.PermType == v3.PermWrite || perm.PermType == v3.PermReadWrite {
 			if len(perm.RangeEnd) == 0 {
-				fmt.Printf("\t%s\n", perm.Key)
+				fmt.Printf("\t%s\n", string(perm.Key))
 			} else {
 				printRange((*v3.Permission)(perm))
 			}
@@ -275,11 +249,11 @@ func (s *simplePrinter) UserAdd(name string, r v3.AuthUserAddResponse) {
 
 func (s *simplePrinter) UserGet(name string, r v3.AuthUserGetResponse) {
 	fmt.Printf("User: %s\n", name)
-	fmt.Print("Roles:")
+	fmt.Printf("Roles:")
 	for _, role := range r.Roles {
 		fmt.Printf(" %s", role)
 	}
-	fmt.Print("\n")
+	fmt.Printf("\n")
 }
 
 func (s *simplePrinter) UserChangePassword(v3.AuthUserChangePasswordResponse) {

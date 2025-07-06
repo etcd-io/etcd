@@ -86,4 +86,5 @@ func TestWatcher(t *testing.T) {
 	if e != re {
 		t.Fatal("recv != send")
 	}
+
 }

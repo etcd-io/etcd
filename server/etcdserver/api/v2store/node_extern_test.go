@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
 func TestNodeExternClone(t *testing.T) {
@@ -56,15 +56,15 @@ func TestNodeExternClone(t *testing.T) {
 
 	gNode := eNode.Clone()
 	// Check the clone is as expected
-	assert.Equal(t, key, gNode.Key)
-	assert.Equal(t, ttl, gNode.TTL)
-	assert.Equal(t, ci, gNode.CreatedIndex)
-	assert.Equal(t, mi, gNode.ModifiedIndex)
+	testutil.AssertEqual(t, gNode.Key, key)
+	testutil.AssertEqual(t, gNode.TTL, ttl)
+	testutil.AssertEqual(t, gNode.CreatedIndex, ci)
+	testutil.AssertEqual(t, gNode.ModifiedIndex, mi)
 	// values should be the same
-	assert.Equal(t, val, *gNode.Value)
-	assert.Equal(t, exp, *gNode.Expiration)
-	assert.Len(t, gNode.Nodes, len(childs))
-	assert.Equal(t, child, *gNode.Nodes[0])
+	testutil.AssertEqual(t, *gNode.Value, val)
+	testutil.AssertEqual(t, *gNode.Expiration, exp)
+	testutil.AssertEqual(t, len(gNode.Nodes), len(childs))
+	testutil.AssertEqual(t, *gNode.Nodes[0], child)
 	// but pointers should differ
 	if gNode.Value == eNode.Value {
 		t.Fatalf("expected value pointers to differ, but got same!")
@@ -76,12 +76,12 @@ func TestNodeExternClone(t *testing.T) {
 		t.Fatalf("expected nodes pointers to differ, but got same!")
 	}
 	// Original should be the same
-	assert.Equal(t, key, eNode.Key)
-	assert.Equal(t, ttl, eNode.TTL)
-	assert.Equal(t, ci, eNode.CreatedIndex)
-	assert.Equal(t, mi, eNode.ModifiedIndex)
-	assert.Equal(t, valp, eNode.Value)
-	assert.Equal(t, expp, eNode.Expiration)
+	testutil.AssertEqual(t, eNode.Key, key)
+	testutil.AssertEqual(t, eNode.TTL, ttl)
+	testutil.AssertEqual(t, eNode.CreatedIndex, ci)
+	testutil.AssertEqual(t, eNode.ModifiedIndex, mi)
+	testutil.AssertEqual(t, eNode.Value, valp)
+	testutil.AssertEqual(t, eNode.Expiration, expp)
 	if !sameSlice(eNode.Nodes, childs) {
 		t.Fatalf("expected nodes pointer to same, but got different!")
 	}
@@ -89,15 +89,15 @@ func TestNodeExternClone(t *testing.T) {
 	gNode.Key = "/baz"
 	gNode.TTL = 0
 	gNode.Nodes[0].Key = "uno"
-	assert.Equal(t, key, eNode.Key)
-	assert.Equal(t, ttl, eNode.TTL)
-	assert.Equal(t, ci, eNode.CreatedIndex)
-	assert.Equal(t, mi, eNode.ModifiedIndex)
-	assert.Equal(t, child, *eNode.Nodes[0])
+	testutil.AssertEqual(t, eNode.Key, key)
+	testutil.AssertEqual(t, eNode.TTL, ttl)
+	testutil.AssertEqual(t, eNode.CreatedIndex, ci)
+	testutil.AssertEqual(t, eNode.ModifiedIndex, mi)
+	testutil.AssertEqual(t, *eNode.Nodes[0], child)
 	// Change the original and ensure the clone is not affected
 	eNode.Key = "/wuf"
-	assert.Equal(t, "/wuf", eNode.Key)
-	assert.Equal(t, "/baz", gNode.Key)
+	testutil.AssertEqual(t, eNode.Key, "/wuf")
+	testutil.AssertEqual(t, gNode.Key, "/baz")
 }
 
 func sameSlice(a, b []*NodeExtern) bool {

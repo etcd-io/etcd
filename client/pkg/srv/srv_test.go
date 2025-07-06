@@ -22,8 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 )
 
@@ -54,7 +52,7 @@ func TestSRVGetCluster(t *testing.T) {
 		{Target: "2.example.com.", Port: 2480},
 		{Target: "3.example.com.", Port: 2480},
 	}
-	var srvNone []*net.SRV
+	srvNone := []*net.SRV{}
 
 	tests := []struct {
 		service    string
@@ -154,8 +152,12 @@ func TestSRVGetCluster(t *testing.T) {
 		urls := testutil.MustNewURLs(t, tt.urls)
 		str, err := GetCluster(tt.scheme, tt.service, name, "example.com", urls)
 
-		require.Equalf(t, hasErr(err), tt.werr, "%d: err = %#v, want = %#v", i, err, tt.werr)
-		require.Equalf(t, tt.expected, strings.Join(str, ","), "#%d: cluster = %s, want %s", i, str, tt.expected)
+		if hasErr(err) != tt.werr {
+			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
+		}
+		if strings.Join(str, ",") != tt.expected {
+			t.Errorf("#%d: cluster = %s, want %s", i, str, tt.expected)
+		}
 	}
 }
 
@@ -226,10 +228,10 @@ func TestSRVDiscover(t *testing.T) {
 			[]*net.SRV{
 				{Target: "a.example.com", Port: 2480},
 				{Target: "b.example.com", Port: 2480},
-				{Target: "c.example.com.", Port: 2480},
+				{Target: "c.example.com", Port: 2480},
 			},
 			[]*net.SRV{},
-			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com.:2480"},
+			[]string{"https://a.example.com:2480", "https://b.example.com:2480", "https://c.example.com:2480"},
 			false,
 		},
 	}
@@ -253,7 +255,9 @@ func TestSRVDiscover(t *testing.T) {
 
 		srvs, err := GetClient("etcd-client", "example.com", "")
 
-		require.Equalf(t, hasErr(err), tt.werr, "%d: err = %#v, want = %#v", i, err, tt.werr)
+		if hasErr(err) != tt.werr {
+			t.Fatalf("%d: err = %#v, want = %#v", i, err, tt.werr)
+		}
 		if srvs == nil {
 			if len(tt.expected) > 0 {
 				t.Errorf("#%d: srvs = nil, want non-nil", i)

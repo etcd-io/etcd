@@ -1,0 +1,81 @@
+leave-joint
+----
+can't leave a non-joint config
+
+enter-joint
+----
+can't make a zero-voter config joint
+
+enter-joint
+v1
+----
+can't make a zero-voter config joint
+
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=3
+
+leave-joint
+----
+can't leave a non-joint config
+
+# Can enter into joint config.
+enter-joint
+----
+voters=(1)&&(1)
+1: StateProbe match=0 next=3
+
+enter-joint
+----
+config is already joint
+
+leave-joint
+----
+voters=(1)
+1: StateProbe match=0 next=3
+
+leave-joint
+----
+can't leave a non-joint config
+
+# Can enter again, this time with some ops.
+enter-joint
+r1 v2 v3 l4
+----
+voters=(2 3)&&(1) learners=(4)
+1: StateProbe match=0 next=3
+2: StateProbe match=0 next=9
+3: StateProbe match=0 next=9
+4: StateProbe match=0 next=9 learner
+
+enter-joint
+----
+config is already joint
+
+enter-joint
+v12
+----
+config is already joint
+
+simple
+l15
+----
+can't apply simple config change in joint config
+
+leave-joint
+----
+voters=(2 3) learners=(4)
+2: StateProbe match=0 next=9
+3: StateProbe match=0 next=9
+4: StateProbe match=0 next=9 learner
+
+simple
+l9
+----
+voters=(2 3) learners=(4 9)
+2: StateProbe match=0 next=9
+3: StateProbe match=0 next=9
+4: StateProbe match=0 next=9 learner
+9: StateProbe match=0 next=14 learner

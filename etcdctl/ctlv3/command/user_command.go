@@ -21,12 +21,13 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/spf13/cobra"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
-var userShowDetail bool
+var (
+	userShowDetail bool
+)
 
 // NewUserCommand returns the cobra command for "user".
 func NewUserCommand() *cobra.Command {
@@ -198,7 +199,7 @@ func userGetCommandFunc(cmd *cobra.Command, args []string) {
 	if userShowDetail {
 		fmt.Printf("User: %s\n", name)
 		for _, role := range resp.Roles {
-			fmt.Print("\n")
+			fmt.Printf("\n")
 			roleResp, err := client.Auth.RoleGet(context.TODO(), role)
 			if err != nil {
 				cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -278,7 +279,7 @@ func readPasswordInteractive(name string) string {
 	prompt1 := fmt.Sprintf("Password of %s: ", name)
 	password1, err1 := speakeasy.Ask(prompt1)
 	if err1 != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("failed to ask password: %w", err1))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("failed to ask password: %s", err1))
 	}
 
 	if len(password1) == 0 {
@@ -288,7 +289,7 @@ func readPasswordInteractive(name string) string {
 	prompt2 := fmt.Sprintf("Type password of %s again for confirmation: ", name)
 	password2, err2 := speakeasy.Ask(prompt2)
 	if err2 != nil {
-		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("failed to ask password: %w", err2))
+		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("failed to ask password: %s", err2))
 	}
 
 	if password1 != password2 {

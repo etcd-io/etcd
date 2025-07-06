@@ -13,38 +13,36 @@
 // limitations under the License.
 
 //go:build !cluster_proxy
+// +build !cluster_proxy
 
 package connectivity_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"google.golang.org/grpc"
 )
 
 // TestBalancerUnderBlackholeKeepAliveWatch tests when watch discovers it cannot talk to
 // blackholed endpoint, client balancer switches to healthy one.
 // TODO: test server-to-client keepalive ping
 func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
 		Size:                 2,
 		GRPCKeepAliveMinTime: time.Millisecond, // avoid too_many_pings
 		UseBridge:            true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
 
 	ccfg := clientv3.Config{
 		Endpoints:            []string{eps[0]},
@@ -60,15 +58,18 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	// TODO: only send healthy endpoint to gRPC so gRPC wont waste time to
 	// dial for unhealthy endpoint.
 	// then we can reduce 3s to 1s.
-	timeout := pingInterval + integration2.RequestWaitTimeout
+	timeout := pingInterval + integration.RequestWaitTimeout
 
-	cli, err := integration2.NewClient(t, ccfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 
-	wch := cli.Watch(t.Context(), "foo", clientv3.WithCreatedNotify())
-	_, ok := <-wch
-	require.Truef(t, ok, "watch failed on creation")
+	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
+	if _, ok := <-wch; !ok {
+		t.Fatalf("watch failed on creation")
+	}
 
 	// endpoint can switch to eps[1] when it detects the failure of eps[0]
 	cli.SetEndpoints(eps...)
@@ -78,8 +79,9 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	clus.Members[0].Bridge().Blackhole()
 
-	_, err = clus.Client(1).Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
+	if _, err = clus.Client(1).Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case <-wch:
 	case <-time.After(timeout):
@@ -94,10 +96,12 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	clus.Members[1].Bridge().Blackhole()
 
 	// make sure client[0] can connect to eps[0] after remove the blackhole.
-	_, err = clus.Client(0).Get(t.Context(), "foo")
-	require.NoError(t, err)
-	_, err = clus.Client(0).Put(t.Context(), "foo", "bar1")
-	require.NoError(t, err)
+	if _, err = clus.Client(0).Get(context.TODO(), "foo"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = clus.Client(0).Put(context.TODO(), "foo", "bar1"); err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case <-wch:
@@ -109,7 +113,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "foo", "bar")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || errors.Is(err, rpctypes.ErrTimeout) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -119,7 +123,7 @@ func TestBalancerUnderBlackholeNoKeepAlivePut(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAliveDelete(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "foo")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || errors.Is(err, rpctypes.ErrTimeout) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -132,7 +136,7 @@ func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || errors.Is(err, rpctypes.ErrTimeout) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -142,7 +146,7 @@ func TestBalancerUnderBlackholeNoKeepAliveTxn(t *testing.T) {
 func TestBalancerUnderBlackholeNoKeepAliveLinearizableGet(t *testing.T) {
 	testBalancerUnderBlackholeNoKeepAlive(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || errors.Is(err, rpctypes.ErrTimeout) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -162,23 +166,26 @@ func TestBalancerUnderBlackholeNoKeepAliveSerializableGet(t *testing.T) {
 // testBalancerUnderBlackholeNoKeepAlive ensures that first request to blackholed endpoint
 // fails due to context timeout, but succeeds on next try, with endpoint switch.
 func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Client, context.Context) error) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size:      2,
-		UseBridge: true,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               2,
+		SkipCreatingClient: true,
+		UseBridge:          true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL()}
 
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 1 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := integration2.NewClient(t, ccfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -196,16 +203,18 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	// TODO: first operation can succeed
 	// when gRPC supports better retry on non-delivered request
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(t.Context(), time.Second*5)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		err = op(cli, ctx)
 		cancel()
 		if err == nil {
 			break
-		} else if errors.Is(err, errExpected) {
+		} else if err == errExpected {
 			t.Logf("#%d: current error %v", i, err)
 		} else {
 			t.Errorf("#%d: failed with error %v", i, err)
 		}
 	}
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

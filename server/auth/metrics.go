@@ -21,13 +21,12 @@ import (
 )
 
 var (
-	currentAuthRevision = prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: "etcd_debugging",
-			Subsystem: "auth",
-			Name:      "revision",
-			Help:      "The current revision of auth store.",
-		},
+	currentAuthRevision = prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: "etcd_debugging",
+		Subsystem: "auth",
+		Name:      "revision",
+		Help:      "The current revision of auth store.",
+	},
 		func() float64 {
 			reportCurrentAuthRevMu.RLock()
 			defer reportCurrentAuthRevMu.RUnlock()

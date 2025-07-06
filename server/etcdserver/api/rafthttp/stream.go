@@ -16,25 +16,25 @@ package rafthttp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"path"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
-	"golang.org/x/time/rate"
-
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/httputil"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -59,8 +59,6 @@ var (
 		"3.3.0": {streamTypeMsgAppV2, streamTypeMessage},
 		"3.4.0": {streamTypeMsgAppV2, streamTypeMessage},
 		"3.5.0": {streamTypeMsgAppV2, streamTypeMessage},
-		"3.6.0": {streamTypeMsgAppV2, streamTypeMessage},
-		"3.7.0": {streamTypeMsgAppV2, streamTypeMessage},
 	}
 )
 
@@ -91,10 +89,12 @@ func (t streamType) String() string {
 	}
 }
 
-// linkHeartbeatMessage is a special message used as heartbeat message in
-// link layer. It never conflicts with messages from raft because raft
-// doesn't send out messages without From and To fields.
-var linkHeartbeatMessage = raftpb.Message{Type: raftpb.MsgHeartbeat}
+var (
+	// linkHeartbeatMessage is a special message used as heartbeat message in
+	// link layer. It never conflicts with messages from raft because raft
+	// doesn't send out messages without From and To fields.
+	linkHeartbeatMessage = raftpb.Message{Type: raftpb.MsgHeartbeat}
+)
 
 func isLinkHeartbeatMessage(m *raftpb.Message) bool {
 	return m.Type == raftpb.MsgHeartbeat && m.From == 0 && m.To == 0
@@ -111,21 +111,26 @@ type outgoingConn struct {
 }
 
 // streamWriter writes messages to the attached outgoingConn.
+// 向 Stream 消息通道写入消息
 type streamWriter struct {
 	lg *zap.Logger
 
 	localID types.ID
-	peerID  types.ID
+	peerID  types.ID // 对端节点的 ID
 
 	status *peerStatus
 	fs     *stats.FollowerStats
 	r      Raft
 
 	mu      sync.Mutex // guard field working and closer
-	closer  io.Closer
-	working bool
+	closer  io.Closer  // 负责关闭底层的长连接。
+	working bool       // 负责标识当 前的 streamWriter 是否可用( 底层是 否关联了 相应 的网络连接)。
 
-	msgc  chan raftpb.Message
+	// Peer会将待发送的消息写入该通道， streamWriter则从该通道中读取消息并发送 出去。
+	msgc chan raftpb.Message
+
+	// 通过 该通道获取当前 streamWriter 实例关联的底层网络连接，
+	//  outgoingConn 其实是对网络连接的一层封装，其中 记录了 当前连接使用 的协议版本，以及用于关闭连接的 Flusher和 Closer等信息。
 	connc chan *outgoingConn
 	stopc chan struct{}
 	done  chan struct{}
@@ -154,12 +159,14 @@ func startStreamWriter(lg *zap.Logger, local, id types.ID, status *peerStatus, f
 
 func (cw *streamWriter) run() {
 	var (
-		msgc       chan raftpb.Message
+		msgc chan raftpb.Message
+
+		// 有所不同，该心跳消息的主要目的是为了防止连接长时间不用断升的
 		heartbeatc <-chan time.Time
-		t          streamType
-		enc        encoder
-		flusher    http.Flusher
-		batched    int
+		t          streamType   // 用来记录消息的版本信息
+		enc        encoder      //编码器，负责将消息序列化并写入连接的缓冲区
+		flusher    http.Flusher // 负责刷新底层连接，将数据真正发送 出去
+		batched    int          // 当前未 Flush 的消息个数
 	)
 	tickc := time.NewTicker(ConnReadTimeout / 3)
 	defer tickc.Stop()
@@ -175,10 +182,11 @@ func (cw *streamWriter) run() {
 
 	for {
 		select {
-		case <-heartbeatc:
+		case <-heartbeatc: // 定时器到期，触发心跳消息
 			err := enc.encode(&linkHeartbeatMessage)
-			unflushed += linkHeartbeatMessage.Size()
+			unflushed += linkHeartbeatMessage.Size() // 增加未 Flush 出去的字节数
 			if err == nil {
+				// 若没有异常，则使用 flusher 把缓存的消息全部发送出去，并重置 batched 和 unflushed
 				flusher.Flush()
 				batched = 0
 				sentBytes.WithLabelValues(cw.peerID.String()).Add(float64(unflushed))
@@ -198,14 +206,18 @@ func (cw *streamWriter) run() {
 					zap.String("remote-peer-id", cw.peerID.String()),
 				)
 			}
+
+			// 将 heartbeatc 和 msgc 两个通道清 空，后续就不会再发送心跳消息和其他类型的消息了
 			heartbeatc, msgc = nil, nil
 
 		case m := <-msgc:
+			// 将消息序列化并写入底层连接
 			err := enc.encode(&m)
 			if err == nil {
 				unflushed += m.Size()
 
 				if len(msgc) == 0 || batched > streamBufSize/2 {
+					// msgc 通道中的消息全部发送完成或是未 Flush 的消息较多，则触发 Flush, 否则只是递增 batched 变量
 					flusher.Flush()
 					sentBytes.WithLabelValues(cw.peerID.String()).Add(float64(unflushed))
 					unflushed = 0
@@ -231,7 +243,10 @@ func (cw *streamWriter) run() {
 			cw.r.ReportUnreachable(m.To)
 			sentFailures.WithLabelValues(cw.peerID.String()).Inc()
 
-		case conn := <-cw.connc:
+		case conn := <-cw.connc: // 获取与当前 streamWriter 实例绑定的底层连接
+			// 当其他节点主动与当前节点创建 Stream 消息通道时，会先通过 StreamHandler 的处理，
+			// StreamHandler会通过 attach() 方法将连接写入对应peer.writer.connc通道
+			// 而当前的 goroutine 会通过该通道获取连接，然后开始发送消息
 			cw.mu.Lock()
 			closed := cw.closeUnlocked()
 			t = conn.t
@@ -253,11 +268,11 @@ func (cw *streamWriter) run() {
 					zap.String("stream-type", t.String()),
 				)
 			}
-			flusher = conn.Flusher
-			unflushed = 0
-			cw.status.activate()
+			flusher = conn.Flusher // 记录底层连接对应的 Flusher
+			unflushed = 0          // 重直未 Flush 的字节数
+			cw.status.activate()   // peerStatus.activate 设置为 true
 			cw.closer = conn.Closer
-			cw.working = true
+			cw.working = true // 标识当前 streamWriter 正在运行
 			cw.mu.Unlock()
 
 			if closed {
@@ -278,6 +293,8 @@ func (cw *streamWriter) run() {
 					zap.String("remote-peer-id", cw.peerID.String()),
 				)
 			}
+
+			// 更新 heartbeatc 和 msgc 两个远远，自此之后，才能发送消息
 			heartbeatc, msgc = tickc.C, cw.msgc
 
 		case <-cw.stopc:
@@ -356,20 +373,23 @@ type streamReader struct {
 	lg *zap.Logger
 
 	peerID types.ID
-	typ    streamType
+	typ    streamType // 关联 的底 层连接使用的协议版本信息。
 
 	tr     *Transport
-	picker *urlPicker
+	picker *urlPicker // 用于获取对端节点的可用的 URL
 	status *peerStatus
-	recvc  chan<- raftpb.Message
-	propc  chan<- raftpb.Message
+
+	// 主要是读取底层网络连接数据，写入通道，然后再由peer的后台协程读取并调用底层的Raft
+	// 在前面介绍的 peer.startPeer()方法中提 ，streamReader 实例时是使用 peer.recvc 通道初始化该宇段的，其中还会启动一个后台 goroutine 从 peer.recvc 通道中读取消息。在下面分析中会看到，从对端节点发送来的 非 MsgProp 类型 的消息会首先由 streamReader 写入 recvc 通道 中， 然后由 peer.start() 启动的后台 goroutine读取出来，交由底层的 etcd-raft模块进行处理。
+	recvc chan<- raftpb.Message // 和peer的recvc共享
+	propc chan<- raftpb.Message // 和peer的propc共享，接收的是 MsgProp 类型的消息
 
 	rl *rate.Limiter // alters the frequency of dial retrial attempts
 
 	errorc chan<- error
 
 	mu     sync.Mutex
-	paused bool
+	paused bool // 是否暂停读取数据
 	closer io.Closer
 
 	ctx    context.Context
@@ -401,9 +421,10 @@ func (cr *streamReader) run() {
 	}
 
 	for {
+		// 向对端节点发送一个 GET 请求 ， 然后获取并返回相应的 ReadCloser
 		rc, err := cr.dial(t)
 		if err != nil {
-			if !errors.Is(err, errUnsupportedStreamType) {
+			if err != errUnsupportedStreamType {
 				cr.status.deactivate(failureType{source: t.String(), action: "dial"}, err.Error())
 			}
 		} else {
@@ -416,6 +437,7 @@ func (cr *streamReader) run() {
 					zap.String("remote-peer-id", cr.peerID.String()),
 				)
 			}
+			// 如未出现异常，则开始读取对端返回的消息，并将读取到的消息写入 streamReader.recvc 通道 中
 			err = cr.decodeLoop(rc, t)
 			if cr.lg != nil {
 				cr.lg.Warn(
@@ -428,7 +450,7 @@ func (cr *streamReader) run() {
 			}
 			switch {
 			// all data is read out
-			case errors.Is(err, io.EOF):
+			case err == io.EOF:
 			// connection is closed by the remote
 			case transport.IsClosedConnError(err):
 			default:
@@ -463,6 +485,7 @@ func (cr *streamReader) run() {
 	}
 }
 
+// 它会从底层的网络连接读取数据并进行反序列化，之后将得到的消息实例写入 recvc 通道(或 prope通道)中， 等待 Peer进行处理
 func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 	var dec decoder
 	cr.mu.Lock()
@@ -490,6 +513,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 
 	// gofail: labelRaftDropHeartbeat:
 	for {
+		// //从底层连接中读取数据，并反序列化成 raftpb . Message 实例
 		m, err := dec.decode()
 		if err != nil {
 			cr.mu.Lock()
@@ -511,20 +535,23 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 		}
 
 		if isLinkHeartbeatMessage(&m) {
+			// /忽略连接层的心跳消息
 			// raft is not interested in link layer
 			// heartbeat message, so we should ignore
 			// it.
 			continue
 		}
 
+		// 根据读取到的消息类型，选择对应通道进行写入
 		recvc := cr.recvc
 		if m.Type == raftpb.MsgProp {
 			recvc = cr.propc
 		}
 
 		select {
-		case recvc <- m:
+		case recvc <- m: // 把收到的消息赋值给recvc通道
 		default:
+			// recvc 通过满了之后，只能丢弃消息，并打印日志
 			if cr.status.isActive() {
 				if cr.lg != nil {
 					cr.lg.Warn(
@@ -561,9 +588,11 @@ func (cr *streamReader) stop() {
 	<-cr.done
 }
 
+// 负责与对端节点建立连接
 func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
-	u := cr.picker.pick()
+	u := cr.picker.pick() //  获取对端节点暴露的一个 URL
 	uu := u
+	// 根据使用协议的版本和节点 ID创建最终的 URL地址
 	uu.Path = path.Join(t.endpoint(cr.lg), cr.tr.ID.String())
 
 	if cr.lg != nil {
@@ -574,10 +603,11 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 			zap.String("address", uu.String()),
 		)
 	}
-	req, err := http.NewRequest(http.MethodGet, uu.String(), nil)
+	// 创建一个 GET请求
+	req, err := http.NewRequest("GET", uu.String(), nil)
 	if err != nil {
 		cr.picker.unreachable(u)
-		return nil, fmt.Errorf("failed to make http request to %v (%w)", u, err)
+		return nil, fmt.Errorf("failed to make http request to %v (%v)", u, err)
 	}
 	req.Header.Set("X-Server-From", cr.tr.ID.String())
 	req.Header.Set("X-Server-Version", version.Version)
@@ -585,6 +615,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	req.Header.Set("X-Etcd-Cluster-ID", cr.tr.ClusterID.String())
 	req.Header.Set("X-Raft-To", cr.peerID.String())
 
+	// 将当前节点暴露的 URL 也一起发送给对端节点 检测当前 streamReader 是否被关闭，若已被关闭，则返回异常(略)
 	setPeerURLsHeader(req, cr.tr.URLs)
 
 	req = req.WithContext(cr.ctx)
@@ -598,6 +629,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 	}
 	cr.mu.Unlock()
 
+	// 通过前面介绍的 rafthttp.Transport.streamRt 与对端建立连接
 	resp, err := cr.tr.streamRt.RoundTrip(req)
 	if err != nil {
 		cr.picker.unreachable(u)
@@ -628,7 +660,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("peer %s failed to find local node %s", cr.peerID, cr.tr.ID)
 
 	case http.StatusPreconditionFailed:
-		b, err := io.ReadAll(resp.Body)
+		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			cr.picker.unreachable(u)
 			return nil, err
@@ -648,7 +680,7 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 			}
 			return nil, errIncompatibleVersion
 
-		case ErrClusterIDMismatch.Error():
+		case errClusterIDMismatch.Error():
 			if cr.lg != nil {
 				cr.lg.Warn(
 					"request sent was ignored by remote peer due to cluster ID mismatch",
@@ -656,10 +688,10 @@ func (cr *streamReader) dial(t streamType) (io.ReadCloser, error) {
 					zap.String("remote-peer-cluster-id", resp.Header.Get("X-Etcd-Cluster-ID")),
 					zap.String("local-member-id", cr.tr.ID.String()),
 					zap.String("local-member-cluster-id", cr.tr.ClusterID.String()),
-					zap.Error(ErrClusterIDMismatch),
+					zap.Error(errClusterIDMismatch),
 				)
 			}
-			return nil, ErrClusterIDMismatch
+			return nil, errClusterIDMismatch
 
 		default:
 			return nil, fmt.Errorf("unhandled error %q when precondition failed", string(b))

@@ -1,0 +1,22 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+'!theme plain'
+
+autonumber
+
+
+
+participant "etcd.Client" as other_api
+participant "hippo.user.notify\n消息通知" as notify
+participant "bytedance.notice.api\nNotice中台" as notice_api
+participant "toutiao.cloudpush.newopenservice\nPush中台" as push
+
+etcd.Client -> grpc.ClientConn: 点赞,评论
+
+
+
+
+
+@enduml
+

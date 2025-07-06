@@ -19,13 +19,13 @@ import (
 	"log"
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
-func mockConfigInsecure() {}
+func mockConfig_insecure() {}
 
 func ExampleConfig_insecure() {
-	forUnitTestsRunInMockedContext(mockConfigInsecure, func() {
+	forUnitTestsRunInMockedContext(mockConfig_insecure, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -46,10 +46,10 @@ func ExampleConfig_insecure() {
 	// Output:
 }
 
-func mockConfigWithTLS() {}
+func mockConfig_withTLS() {}
 
 func ExampleConfig_withTLS() {
-	forUnitTestsRunInMockedContext(mockConfigWithTLS, func() {
+	forUnitTestsRunInMockedContext(mockConfig_withTLS, func() {
 		tlsInfo := transport.TLSInfo{
 			CertFile:      "/tmp/test-certs/test-name-1.pem",
 			KeyFile:       "/tmp/test-certs/test-name-1-key.pem",

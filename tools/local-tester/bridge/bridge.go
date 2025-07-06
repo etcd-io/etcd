@@ -13,14 +13,13 @@
 // limitations under the License.
 
 // Package main is the entry point for the local tester network bridge.
-// Deprecated: etcd local tester is now deprecated. Use the etcd robustness
-// testing suite instead to validate etcd behaviour under failure conditions.
 package main
 
 import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -75,7 +74,7 @@ func timeBridge(b *bridgeConn) {
 
 func blackhole(b *bridgeConn) {
 	log.Println("blackholing connection", b.String())
-	io.Copy(io.Discard, b.in)
+	io.Copy(ioutil.Discard, b.in)
 	b.Close()
 }
 
@@ -188,10 +187,8 @@ type config struct {
 	rxDelay string
 }
 
-type (
-	acceptFaultFunc func()
-	connFaultFunc   func(*bridgeConn)
-)
+type acceptFaultFunc func()
+type connFaultFunc func(*bridgeConn)
 
 func main() {
 	var cfg config
@@ -242,6 +239,7 @@ func main() {
 				log.Fatal(err)
 			}
 			l = newListener
+
 		}
 		acceptFaults = append(acceptFaults, f)
 	}

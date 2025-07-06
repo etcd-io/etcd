@@ -17,30 +17,32 @@ package rafthttp
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/dustin/go-humanize"
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
+	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/raft/v3"
+
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 )
 
-// timeout for reading snapshot response body
-var snapResponseReadTimeout = 5 * time.Second
+var (
+	// timeout for reading snapshot response body
+	snapResponseReadTimeout = 5 * time.Second
+)
 
 type snapshotSender struct {
-	from, to types.ID
-	cid      types.ID
+	from, to types.ID //  记录当前节点的ID及对端节点的ID。
+	cid      types.ID // 记录当前集群的ID。
 
 	tr     *Transport
-	picker *urlPicker
+	picker *urlPicker // 负责获取对端节点可用的URL地址
 	status *peerStatus
 	r      Raft
 	errorc chan error
@@ -109,7 +111,7 @@ func (s *snapshotSender) send(merged snap.Message) {
 
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
-		if errors.Is(err, errMemberRemoved) {
+		if err == errMemberRemoved {
 			reportCriticalError(err, s.errorc)
 		}
 
@@ -167,7 +169,7 @@ func (s *snapshotSender) post(req *http.Request) (err error) {
 		// prevents from reading the body forever when the other side dies right after
 		// successfully receives the request body.
 		time.AfterFunc(snapResponseReadTimeout, func() { httputil.GracefulClose(resp) })
-		body, err := io.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
 		result <- responseAndError{resp, body, err}
 	}()
 

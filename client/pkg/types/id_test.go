@@ -18,8 +18,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestIDString(t *testing.T) {
@@ -81,7 +79,9 @@ func TestIDFromStringFail(t *testing.T) {
 
 	for i, tt := range tests {
 		_, err := IDFromString(tt)
-		require.Errorf(t, err, "#%d: IDFromString expected error", i)
+		if err == nil {
+			t.Fatalf("#%d: IDFromString expected error, but err=nil", i)
+		}
 	}
 }
 

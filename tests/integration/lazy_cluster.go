@@ -22,7 +22,6 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // Infrastructure to provision a single shared cluster for tests - only
@@ -31,19 +30,19 @@ import (
 // See ./tests/integration/clientv3/examples/main_test.go for canonical usage.
 // Please notice that the shared (LazyCluster's) state is preserved between
 // testcases, so left-over state might has cross-testcase effects.
-// Prefer dedicated clusters for substantial test-cases.
+// Prefer dedicated clusters for substancial test-cases.
 
 type LazyCluster interface {
-	// EndpointsHTTP - exposes connection points for http endpoints.
+	// EndpointsV2 - exposes connection points for client v2.
 	// Calls to this method might initialize the cluster.
-	EndpointsHTTP() []string
+	EndpointsV2() []string
 
-	// EndpointsGRPC - exposes connection points for client v3.
+	// EndpointsV3 - exposes connection points for client v3.
 	// Calls to this method might initialize the cluster.
-	EndpointsGRPC() []string
+	EndpointsV3() []string
 
 	// Cluster - calls to this method might initialize the cluster.
-	Cluster() *integration.Cluster
+	Cluster() *ClusterV3
 
 	// Transport - call to this method might initialize the cluster.
 	Transport() *http.Transport
@@ -54,8 +53,8 @@ type LazyCluster interface {
 }
 
 type lazyCluster struct {
-	cfg       integration.ClusterConfig
-	cluster   *integration.Cluster
+	cfg       ClusterConfig
+	cluster   *ClusterV3
 	transport *http.Transport
 	once      sync.Once
 	tb        testutil.TB
@@ -65,34 +64,29 @@ type lazyCluster struct {
 // NewLazyCluster returns a new test cluster handler that gets created on the
 // first call to GetEndpoints() or GetTransport()
 func NewLazyCluster() LazyCluster {
-	return NewLazyClusterWithConfig(integration.ClusterConfig{Size: 1})
+	return NewLazyClusterWithConfig(ClusterConfig{Size: 1})
 }
 
 // NewLazyClusterWithConfig returns a new test cluster handler that gets created
 // on the first call to GetEndpoints() or GetTransport()
-func NewLazyClusterWithConfig(cfg integration.ClusterConfig) LazyCluster {
+func NewLazyClusterWithConfig(cfg ClusterConfig) LazyCluster {
 	tb, closer := testutil.NewTestingTBProthesis("lazy_cluster")
 	return &lazyCluster{cfg: cfg, tb: tb, closer: closer}
 }
 
 func (lc *lazyCluster) mustLazyInit() {
 	lc.once.Do(func() {
-		lc.tb.Logf("LazyIniting ...")
 		var err error
 		lc.transport, err = transport.NewTransport(transport.TLSInfo{}, time.Second)
 		if err != nil {
 			log.Fatal(err)
 		}
-		lc.cluster = integration.NewCluster(lc.tb, &lc.cfg)
-		lc.tb.Logf("LazyIniting [Done]")
+		lc.cluster = NewClusterV3(lc.tb, &lc.cfg)
 	})
 }
 
 func (lc *lazyCluster) Terminate() {
-	if lc != nil && lc.tb != nil {
-		lc.tb.Logf("Terminating...")
-	}
-
+	lc.tb.Logf("Terminating...")
 	if lc != nil && lc.cluster != nil {
 		lc.cluster.Terminate(nil)
 		lc.cluster = nil
@@ -103,15 +97,15 @@ func (lc *lazyCluster) Terminate() {
 	}
 }
 
-func (lc *lazyCluster) EndpointsHTTP() []string {
+func (lc *lazyCluster) EndpointsV2() []string {
 	return []string{lc.Cluster().Members[0].URL()}
 }
 
-func (lc *lazyCluster) EndpointsGRPC() []string {
+func (lc *lazyCluster) EndpointsV3() []string {
 	return lc.Cluster().Client(0).Endpoints()
 }
 
-func (lc *lazyCluster) Cluster() *integration.Cluster {
+func (lc *lazyCluster) Cluster() *ClusterV3 {
 	lc.mustLazyInit()
 	return lc.cluster
 }

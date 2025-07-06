@@ -156,6 +156,7 @@ func BenchmarkWatchWithSetBatch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		<-watchers[i].EventChan()
 	}
+
 }
 
 func BenchmarkWatchOneKey(b *testing.B) {
@@ -173,7 +174,7 @@ func BenchmarkWatchOneKey(b *testing.B) {
 	}
 }
 
-func benchStoreSet(b *testing.B, valueSize int, process func(any) ([]byte, error)) {
+func benchStoreSet(b *testing.B, valueSize int, process func(interface{}) ([]byte, error)) {
 	s := newStore()
 	b.StopTimer()
 	kvs, size := generateNRandomKV(b.N, valueSize)

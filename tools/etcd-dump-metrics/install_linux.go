@@ -13,14 +13,14 @@
 // limitations under the License.
 
 //go:build linux
+// +build linux
 
 package main
 
 import (
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -38,13 +38,13 @@ func install(ver, dir string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	d, err := io.ReadAll(resp.Body)
+	d, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
 
 	tarPath := filepath.Join(dir, "etcd.tar.gz")
-	if err = os.WriteFile(tarPath, d, fileutil.PrivateFileMode); err != nil {
+	if err = ioutil.WriteFile(tarPath, d, fileutil.PrivateFileMode); err != nil {
 		return "", err
 	}
 

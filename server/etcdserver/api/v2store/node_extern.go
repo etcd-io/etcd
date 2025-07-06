@@ -25,15 +25,16 @@ import (
 // internal node with additional fields
 // PrevValue is the previous value of the node
 // TTL is time to live in second
+// 当其他模块调用 v2存储的 Storage接口获取节点数据时，v2存储并不会直接将相应的 node 实例暴露出去， 而是会将 node实例封装成 NodeExtern 实例之后再返回
 type NodeExtern struct {
-	Key           string      `json:"key,omitempty"`
-	Value         *string     `json:"value,omitempty"`
+	Key           string      `json:"key,omitempty"`   // 对应 node 实例中的 Path 字段。 为了实现排序功能， NodeExtern 实现了 sort 接口，在其Less()方法实现中比较的就是Key宇段
+	Value         *string     `json:"value,omitempty"` // 对应键值对节点中的Value字段
 	Dir           bool        `json:"dir,omitempty"`
 	Expiration    *time.Time  `json:"expiration,omitempty"`
-	TTL           int64       `json:"ttl,omitempty"`
-	Nodes         NodeExterns `json:"nodes,omitempty"`
-	ModifiedIndex uint64      `json:"modifiedIndex,omitempty"`
-	CreatedIndex  uint64      `json:"createdIndex,omitempty"`
+	TTL           int64       `json:"ttl,omitempty"`           // 对应节点的剩余存活时间，单位是秒。 如果对应节点是 “永久节 点”，则该字段值为 0。
+	Nodes         NodeExterns `json:"nodes,omitempty"`         // 子节点对应的Nod巳Extern实例
+	ModifiedIndex uint64      `json:"modifiedIndex,omitempty"` // 对应节点的 ModifiedIndex 宇段值
+	CreatedIndex  uint64      `json:"createdIndex,omitempty"`  // 对应节点的 CreatedIndex 宇段值
 }
 
 func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool, clock clockwork.Clock) {
@@ -62,6 +63,7 @@ func (eNode *NodeExtern) loadInternalNode(n *node, recursive, sorted bool, clock
 		if sorted {
 			sort.Sort(eNode.Nodes)
 		}
+
 	} else { // node is a file
 		value, _ := n.Read()
 		eNode.Value = &value

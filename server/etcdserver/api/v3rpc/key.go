@@ -17,6 +17,7 @@ package v3rpc
 
 import (
 	"context"
+	"fmt"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -24,9 +25,15 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver"
 )
 
+// kvServer 结构体处理请求的大致步骤如下:
+// 首先会对请求消息进行各方面的检查，检查完成之后会将所有的请求交给其内封装的 RaftKV 接口实现进行处理，待处理完成得到响应消息之后
+// 会通过 header.fill()方法填充响应的头信息，最终将完整的响应消息返回给客户端，整个 请求 的处理流程结束
+// 手写的实现类，实现了protobuf生成的 KVServer
 type kvServer struct {
-	hdr header
-	kv  etcdserver.RaftKV
+	hdr header // 用于填充响应消息的头信息。
+
+	// 该 RaftKV 接口继承了 KVServer 接口。 在 NewKVSerer()函数 中 我们可以看到， kvServer.kv 字段实际 指向了前面介绍 的 EtcdServer 实例 。
+	kv etcdserver.RaftKV
 	// maxTxnOps is the max operations per txn.
 	// e.g suppose maxTxnOps = 128.
 	// Txn.Success can have at most 128 operations,
@@ -39,15 +46,18 @@ func NewKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 }
 
 func (s *kvServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	// 检测 RangeRequest 请求
 	if err := checkRangeRequest(r); err != nil {
 		return nil, err
 	}
 
+	// 将 RangeRequest 请求委托给 kvServer 中封装的 RaftKV 实现进行处理
 	resp, err := s.kv.Range(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
 
+	// 调用 header.fill ()填充响应的头信息
 	s.hdr.fill(resp.Header)
 	return resp, nil
 }
@@ -57,10 +67,13 @@ func (s *kvServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, 
 		return nil, err
 	}
 
+	fmt.Println("kvServer 开始处理put")
+	fmt.Println("PutRequest=", r)
 	resp, err := s.kv.Put(ctx, r)
 	if err != nil {
 		return nil, togRPCError(err)
 	}
+	fmt.Println("kvServer put 处理结束")
 
 	s.hdr.fill(resp.Header)
 	return resp, nil
@@ -115,15 +128,6 @@ func checkRangeRequest(r *pb.RangeRequest) error {
 	if len(r.Key) == 0 {
 		return rpctypes.ErrGRPCEmptyKey
 	}
-
-	if _, ok := pb.RangeRequest_SortOrder_name[int32(r.SortOrder)]; !ok {
-		return rpctypes.ErrGRPCInvalidSortOption
-	}
-
-	if _, ok := pb.RangeRequest_SortTarget_name[int32(r.SortTarget)]; !ok {
-		return rpctypes.ErrGRPCInvalidSortOption
-	}
-
 	return nil
 }
 

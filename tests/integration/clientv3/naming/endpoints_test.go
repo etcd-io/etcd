@@ -19,24 +19,23 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	etcd "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestEndpointManager(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")
 	if err != nil {
 		t.Fatal("failed to create EndpointManager", err)
 	}
-	ctx, watchCancel := context.WithCancel(t.Context())
+	ctx, watchCancel := context.WithCancel(context.Background())
 	defer watchCancel()
 	w, err := em.NewWatchChannel(ctx)
 	if err != nil {
@@ -44,7 +43,7 @@ func TestEndpointManager(t *testing.T) {
 	}
 
 	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata"}
-	err = em.AddEndpoint(t.Context(), "foo/a1", e1)
+	err = em.AddEndpoint(context.TODO(), "foo/a1", e1)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
 	}
@@ -61,10 +60,14 @@ func TestEndpointManager(t *testing.T) {
 		Endpoint: e1,
 	}
 
-	require.Truef(t, reflect.DeepEqual(us[0], wu), "up = %#v, want %#v", us[0], wu)
+	if !reflect.DeepEqual(us[0], wu) {
+		t.Fatalf("up = %#v, want %#v", us[0], wu)
+	}
 
-	err = em.DeleteEndpoint(t.Context(), "foo/a1")
-	require.NoErrorf(t, err, "failed to udpate %v", err)
+	err = em.DeleteEndpoint(context.TODO(), "foo/a1")
+	if err != nil {
+		t.Fatalf("failed to udpate %v", err)
+	}
 
 	us = <-w
 	if us == nil {
@@ -76,16 +79,18 @@ func TestEndpointManager(t *testing.T) {
 		Key: "foo/a1",
 	}
 
-	require.Truef(t, reflect.DeepEqual(us[0], wu), "up = %#v, want %#v", us[0], wu)
+	if !reflect.DeepEqual(us[0], wu) {
+		t.Fatalf("up = %#v, want %#v", us[1], wu)
+	}
 }
 
 // TestEndpointManagerAtomicity ensures the resolver will initialize
 // correctly with multiple hosts and correctly receive multiple
 // updates in a single revision.
 func TestEndpointManagerAtomicity(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.RandClient()
@@ -94,22 +99,29 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 		t.Fatal("failed to create EndpointManager", err)
 	}
 
-	err = em.Update(t.Context(), []*endpoints.UpdateWithOpts{
+	err = em.Update(context.TODO(), []*endpoints.UpdateWithOpts{
 		endpoints.NewAddUpdateOpts("foo/host", endpoints.Endpoint{Addr: "127.0.0.1:2000"}),
-		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"}),
-	})
-	require.NoError(t, err)
+		endpoints.NewAddUpdateOpts("foo/host2", endpoints.Endpoint{Addr: "127.0.0.1:2001"})})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	ctx, watchCancel := context.WithCancel(t.Context())
+	ctx, watchCancel := context.WithCancel(context.Background())
 	defer watchCancel()
 	w, err := em.NewWatchChannel(ctx)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	updates := <-w
-	require.Lenf(t, updates, 2, "expected two updates, got %+v", updates)
+	if len(updates) != 2 {
+		t.Fatalf("expected two updates, got %+v", updates)
+	}
 
-	_, err = c.Txn(t.Context()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
-	require.NoError(t, err)
+	_, err = c.Txn(context.TODO()).Then(etcd.OpDelete("foo/host"), etcd.OpDelete("foo/host2")).Commit()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	updates = <-w
 	if len(updates) != 2 || (updates[0].Op != endpoints.Delete && updates[1].Op != endpoints.Delete) {
@@ -118,9 +130,9 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 }
 
 func TestEndpointManagerCRUD(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")
@@ -131,38 +143,48 @@ func TestEndpointManagerCRUD(t *testing.T) {
 	// Add
 	k1 := "foo/a1"
 	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata1"}
-	err = em.AddEndpoint(t.Context(), k1, e1)
+	err = em.AddEndpoint(context.TODO(), k1, e1)
 	if err != nil {
 		t.Fatal("failed to add", k1, err)
 	}
 
 	k2 := "foo/a2"
 	e2 := endpoints.Endpoint{Addr: "127.0.0.2", Metadata: "metadata2"}
-	err = em.AddEndpoint(t.Context(), k2, e2)
+	err = em.AddEndpoint(context.TODO(), k2, e2)
 	if err != nil {
 		t.Fatal("failed to add", k2, err)
 	}
 
-	eps, err := em.List(t.Context())
+	eps, err := em.List(context.TODO())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	require.Lenf(t, eps, 2, "unexpected the number of endpoints: %d", len(eps))
-	require.Truef(t, reflect.DeepEqual(eps[k1], e1), "unexpected endpoints: %s", k1)
-	require.Truef(t, reflect.DeepEqual(eps[k2], e2), "unexpected endpoints: %s", k2)
+	if len(eps) != 2 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k1], e1) {
+		t.Fatalf("unexpected endpoints: %s", k1)
+	}
+	if !reflect.DeepEqual(eps[k2], e2) {
+		t.Fatalf("unexpected endpoints: %s", k2)
+	}
 
 	// Delete
-	err = em.DeleteEndpoint(t.Context(), k1)
+	err = em.DeleteEndpoint(context.TODO(), k1)
 	if err != nil {
 		t.Fatal("failed to delete", k2, err)
 	}
 
-	eps, err = em.List(t.Context())
+	eps, err = em.List(context.TODO())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	require.Lenf(t, eps, 1, "unexpected the number of endpoints: %d", len(eps))
-	require.Truef(t, reflect.DeepEqual(eps[k2], e2), "unexpected endpoints: %s", k2)
+	if len(eps) != 1 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k2], e2) {
+		t.Fatalf("unexpected endpoints: %s", k2)
+	}
 
 	// Update
 	k3 := "foo/a3"
@@ -171,15 +193,19 @@ func TestEndpointManagerCRUD(t *testing.T) {
 		{Update: endpoints.Update{Op: endpoints.Add, Key: k3, Endpoint: e3}},
 		{Update: endpoints.Update{Op: endpoints.Delete, Key: k2}},
 	}
-	err = em.Update(t.Context(), updates)
+	err = em.Update(context.TODO(), updates)
 	if err != nil {
 		t.Fatal("failed to update", err)
 	}
 
-	eps, err = em.List(t.Context())
+	eps, err = em.List(context.TODO())
 	if err != nil {
 		t.Fatal("failed to list foo")
 	}
-	require.Lenf(t, eps, 1, "unexpected the number of endpoints: %d", len(eps))
-	require.Truef(t, reflect.DeepEqual(eps[k3], e3), "unexpected endpoints: %s", k3)
+	if len(eps) != 1 {
+		t.Fatalf("unexpected the number of endpoints: %d", len(eps))
+	}
+	if !reflect.DeepEqual(eps[k3], e3) {
+		t.Fatalf("unexpected endpoints: %s", k3)
+	}
 }

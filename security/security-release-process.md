@@ -8,10 +8,14 @@ Security vulnerabilities should be handled quickly and sometimes privately. The 
 
 The PSC is responsible for organizing the entire response including internal communication and external disclosure but will need help from relevant developers and release leads to successfully run this process.
 
-The PSC consists of the following:
+The initial PSC will consist of volunteers who have been involved in the initial discussion:
 
-- Maintainers
-- Volunteer members as described in the [Product Security Committee Membership](#Product-Security-Committee-Membership)
+- Brandon Philips (**[@philips](https://github.com/philips)**) [4096R/154343260542DF34]
+- Gyuho Lee (**[@gyuho](https://github.com/gyuho)**)
+- Joe Betz (**[@jpbetz](https://github.com/jpbetz)**)
+- Sahdev Zala (**[@spzala](https://github.com/spzala)**)
+- Sam Batschelet (**[@hexfusion](https://github.com/hexfusion)**)
+- Xiang Li (**[@xiang90](https://github.com/xiang90)**)
 
 The PSC members will share various tasks as listed below:
 
@@ -22,13 +26,13 @@ The PSC members will share various tasks as listed below:
 
 ### Contacting the Product Security Committee
 
-Contact the team by sending email to [security@etcd.io](mailto:security@etcd.io).
+Contact the team by sending email to [security@etcd.io](mailto:security@etcd.io)
 
 ### Product Security Committee Membership
 
 #### Joining
 
-New potential members to the PSC can express their interest to the PSC members. These individuals can be nominated by PSC members or etcd maintainers.
+The PSC should be consist of 2-4 members. New potential members to the PSC can express their interest to the PSC members. These individuals can be nominated by PSC members or etcd maintainers.
 
 If representation changes due to job shifts then PSC members are encouraged to grow the team or replace themselves through mentoring new members.
 
@@ -90,7 +94,7 @@ If the CVSS score is under ~4.0
 
 Note: CVSS is convenient but imperfect. Ultimately, the PSC has discretion on classifying the severity of a vulnerability.
 
-The severity of the bug and related handling decisions must be discussed on the [security@etcd.io](mailto:security@etcd.io) mailing list.
+The severity of the bug and related handling decisions must be discussed on the security@etcd.io mailing list.
 
 ### Fix Disclosure Process
 
@@ -104,7 +108,7 @@ With the Fix Development underway, the PSC needs to come up with an overall comm
 - The PSC will announce the new releases, the CVE number, severity, and impact, and the location of the binaries to get wide distribution and user action. As much as possible this announcement should be actionable, and include any mitigating steps users can take prior to upgrading to a fixed version. The recommended target time is 4pm UTC on a non-Friday weekday. This means the announcement will be seen morning Pacific, early evening Europe, and late evening Asia. The announcement will be sent via the following channels:
   - etcd-dev@googlegroups.com
   - [Kubernetes announcement slack channel](https://kubernetes.slack.com/messages/C9T0QMNG4)
-  - [sig-etcd slack channel](https://kubernetes.slack.com/archives/C3HD8ARJ5)
+  - [etcd slack channel](https://kubernetes.slack.com/messages/C3HD8ARJ5)
 
 ## Retrospective
 

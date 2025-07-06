@@ -22,12 +22,12 @@ import (
 
 func exampleEndpoints() []string { return nil }
 
-func forUnitTestsRunInMockedContext(mocking func(), _example func()) {
+func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 	mocking()
 	// TODO: Call 'example' when mocking() provides realistic mocking of transport.
 
 	// The real testing logic of examples gets executed
-	// as part of ./tests/integration/clientv3/concurrency/...
+	// as part of ./tests/integration/clientv3/integration/...
 }
 
 func TestMain(m *testing.M) {

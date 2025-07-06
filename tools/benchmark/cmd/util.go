@@ -22,10 +22,9 @@ import (
 	"strings"
 
 	"github.com/bgentry/speakeasy"
-	"google.golang.org/grpc/grpclog"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
+	"google.golang.org/grpc/grpclog"
 )
 
 var (
@@ -48,22 +47,22 @@ func mustFindLeaderEndpoints(c *clientv3.Client) {
 		os.Exit(1)
 	}
 
-	leaderID := uint64(0)
+	leaderId := uint64(0)
 	for _, ep := range c.Endpoints() {
 		if sresp, serr := c.Status(context.TODO(), ep); serr == nil {
-			leaderID = sresp.Leader
+			leaderId = sresp.Leader
 			break
 		}
 	}
 
 	for _, m := range resp.Members {
-		if m.ID == leaderID {
+		if m.ID == leaderId {
 			leaderEps = m.ClientURLs
 			return
 		}
 	}
 
-	fmt.Fprint(os.Stderr, "failed to find a leader endpoint\n")
+	fmt.Fprintf(os.Stderr, "failed to find a leader endpoint\n")
 	os.Exit(1)
 }
 
@@ -94,9 +93,8 @@ func mustCreateConn() *clientv3.Client {
 		dialTotal++
 	}
 	cfg := clientv3.Config{
-		AutoSyncInterval: autoSyncInterval,
-		Endpoints:        connEndpoints,
-		DialTimeout:      dialTimeout,
+		Endpoints:   connEndpoints,
+		DialTimeout: dialTimeout,
 	}
 	if !tls.Empty() || tls.TrustedCAFile != "" {
 		cfgtls, err := tls.ClientConfig()
@@ -115,6 +113,7 @@ func mustCreateConn() *clientv3.Client {
 		}
 		cfg.Username = username
 		cfg.Password = password
+
 	}
 
 	client, err := clientv3.New(cfg)
@@ -157,24 +156,24 @@ func mustRandBytes(n int) []byte {
 	return rb
 }
 
-func newReport(reportName string) report.Report {
+func newReport() report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, reportName, generatePerfReport)
+		return report.NewReportSample(p)
 	}
-	return report.NewReport(p, reportName, generatePerfReport)
+	return report.NewReport(p)
 }
 
-func newWeightedReport(reportName string) report.Report {
+func newWeightedReport() report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, reportName, generatePerfReport)
+		return report.NewReportSample(p)
 	}
-	return report.NewWeightedReport(report.NewReport(p, reportName, generatePerfReport), p, reportName, generatePerfReport)
+	return report.NewWeightedReport(report.NewReport(p), p)
 }

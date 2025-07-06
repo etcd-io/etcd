@@ -34,9 +34,9 @@ type Wait interface {
 	// Register waits returns a chan that waits on the given ID.
 	// The chan will be triggered when Trigger is called with
 	// the same ID.
-	Register(id uint64) <-chan any
+	Register(id uint64) <-chan interface{}
 	// Trigger triggers the waiting chans with the given ID.
-	Trigger(id uint64, x any)
+	Trigger(id uint64, x interface{})
 	IsRegistered(id uint64) bool
 }
 
@@ -46,7 +46,7 @@ type list struct {
 
 type listElement struct {
 	l sync.RWMutex
-	m map[uint64]chan any
+	m map[uint64]chan interface{}
 }
 
 // New creates a Wait.
@@ -55,14 +55,14 @@ func New() Wait {
 		e: make([]listElement, defaultListElementLength),
 	}
 	for i := 0; i < len(res.e); i++ {
-		res.e[i].m = make(map[uint64]chan any)
+		res.e[i].m = make(map[uint64]chan interface{})
 	}
 	return &res
 }
 
-func (w *list) Register(id uint64) <-chan any {
+func (w *list) Register(id uint64) <-chan interface{} {
 	idx := id % defaultListElementLength
-	newCh := make(chan any, 1)
+	newCh := make(chan interface{}, 1)
 	w.e[idx].l.Lock()
 	defer w.e[idx].l.Unlock()
 	if _, ok := w.e[idx].m[id]; !ok {
@@ -73,7 +73,7 @@ func (w *list) Register(id uint64) <-chan any {
 	return newCh
 }
 
-func (w *list) Trigger(id uint64, x any) {
+func (w *list) Trigger(id uint64, x interface{}) {
 	idx := id % defaultListElementLength
 	w.e[idx].l.Lock()
 	ch := w.e[idx].m[id]
@@ -94,17 +94,17 @@ func (w *list) IsRegistered(id uint64) bool {
 }
 
 type waitWithResponse struct {
-	ch <-chan any
+	ch <-chan interface{}
 }
 
-func NewWithResponse(ch <-chan any) Wait {
+func NewWithResponse(ch <-chan interface{}) Wait {
 	return &waitWithResponse{ch: ch}
 }
 
-func (w *waitWithResponse) Register(id uint64) <-chan any {
+func (w *waitWithResponse) Register(id uint64) <-chan interface{} {
 	return w.ch
 }
-func (w *waitWithResponse) Trigger(id uint64, x any) {}
+func (w *waitWithResponse) Trigger(id uint64, x interface{}) {}
 func (w *waitWithResponse) IsRegistered(id uint64) bool {
 	panic("waitWithResponse.IsRegistered() shouldn't be called")
 }

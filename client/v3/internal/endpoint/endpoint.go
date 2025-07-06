@@ -25,12 +25,12 @@ import (
 type CredsRequirement int
 
 const (
-	// CredsRequire - Credentials/certificate required for thi type of connection.
-	CredsRequire CredsRequirement = iota
-	// CredsDrop - Credentials/certificate not needed and should get ignored.
-	CredsDrop
-	// CredsOptional - Credentials/certificate might be used if supplied
-	CredsOptional
+	// CREDS_REQUIRE - Credentials/certificate required for thi type of connection.
+	CREDS_REQUIRE CredsRequirement = iota
+	// CREDS_DROP - Credentials/certificate not needed and should get ignored.
+	CREDS_DROP
+	// CREDS_OPTIONAL - Credentials/certificate might be used if supplied
+	CREDS_OPTIONAL
 )
 
 func extractHostFromHostPort(ep string) string {
@@ -39,6 +39,10 @@ func extractHostFromHostPort(ep string) string {
 		return ep
 	}
 	return host
+}
+
+func extractHostFromPath(pathStr string) string {
+	return extractHostFromHostPort(path.Base(pathStr))
 }
 
 // mustSplit2 returns the values from strings.SplitN(s, sep, 2).
@@ -54,20 +58,20 @@ func mustSplit2(s, sep string) (string, string) {
 func schemeToCredsRequirement(schema string) CredsRequirement {
 	switch schema {
 	case "https", "unixs":
-		return CredsRequire
+		return CREDS_REQUIRE
 	case "http":
-		return CredsDrop
+		return CREDS_DROP
 	case "unix":
 		// Preserving previous behavior from:
 		// https://github.com/etcd-io/etcd/blob/dae29bb719dd69dc119146fc297a0628fcc1ccf8/client/v3/client.go#L212
 		// that likely was a bug due to missing 'fallthrough'.
 		// At the same time it seems legit to let the users decide whether they
 		// want credential control or not (and 'unixs' schema is not a standard thing).
-		return CredsOptional
+		return CREDS_OPTIONAL
 	case "":
-		return CredsOptional
+		return CREDS_OPTIONAL
 	default:
-		return CredsOptional
+		return CREDS_OPTIONAL
 	}
 }
 
@@ -92,29 +96,29 @@ func translateEndpoint(ep string) (addr string, serverName string, requireCreds 
 		if strings.HasPrefix(ep, "unix:///") || strings.HasPrefix(ep, "unixs:///") {
 			// absolute path case
 			schema, absolutePath := mustSplit2(ep, "://")
-			return "unix://" + absolutePath, path.Base(absolutePath), schemeToCredsRequirement(schema)
+			return "unix://" + absolutePath, extractHostFromPath(absolutePath), schemeToCredsRequirement(schema)
 		}
 		if strings.HasPrefix(ep, "unix://") || strings.HasPrefix(ep, "unixs://") {
 			// legacy etcd local path
 			schema, localPath := mustSplit2(ep, "://")
-			return "unix:" + localPath, path.Base(localPath), schemeToCredsRequirement(schema)
+			return "unix:" + localPath, extractHostFromPath(localPath), schemeToCredsRequirement(schema)
 		}
 		schema, localPath := mustSplit2(ep, ":")
-		return "unix:" + localPath, path.Base(localPath), schemeToCredsRequirement(schema)
+		return "unix:" + localPath, extractHostFromPath(localPath), schemeToCredsRequirement(schema)
 	}
 
 	if strings.Contains(ep, "://") {
 		url, err := url.Parse(ep)
 		if err != nil {
-			return ep, ep, CredsOptional
+			return ep, extractHostFromHostPort(ep), CREDS_OPTIONAL
 		}
 		if url.Scheme == "http" || url.Scheme == "https" {
-			return url.Host, url.Host, schemeToCredsRequirement(url.Scheme)
+			return url.Host, url.Hostname(), schemeToCredsRequirement(url.Scheme)
 		}
-		return ep, url.Host, schemeToCredsRequirement(url.Scheme)
+		return ep, url.Hostname(), schemeToCredsRequirement(url.Scheme)
 	}
 	// Handles plain addresses like 10.0.0.44:437.
-	return ep, ep, CredsOptional
+	return ep, extractHostFromHostPort(ep), CREDS_OPTIONAL
 }
 
 // RequiresCredentials returns whether given endpoint requires

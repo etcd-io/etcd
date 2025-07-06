@@ -49,7 +49,7 @@ func (b *Barrier) Release() error {
 // Wait blocks on the barrier key until it is deleted. If there is no key, Wait
 // assumes Release has already been called and returns immediately.
 func (b *Barrier) Wait() error {
-	resp, err := b.client.Get(b.ctx, b.key)
+	resp, err := b.client.Get(b.ctx, b.key, v3.WithFirstKey()...)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (b *Barrier) Wait() error {
 	_, err = WaitEvents(
 		b.client,
 		b.key,
-		resp.Header.Revision+1,
-		[]mvccpb.Event_EventType{mvccpb.DELETE})
+		resp.Header.Revision,
+		[]mvccpb.Event_EventType{mvccpb.PUT, mvccpb.DELETE})
 	return err
 }

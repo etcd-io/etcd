@@ -15,15 +15,15 @@
 package leasehttp
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/server/v3/lease"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestRenewHTTP(t *testing.T) {
@@ -31,7 +31,7 @@ func TestRenewHTTP(t *testing.T) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -41,7 +41,7 @@ func TestRenewHTTP(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
 
-	ttl, err := RenewHTTP(t.Context(), l.ID, ts.URL+LeasePrefix, http.DefaultTransport)
+	ttl, err := RenewHTTP(context.TODO(), l.ID, ts.URL+LeasePrefix, http.DefaultTransport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestTimeToLiveHTTP(t *testing.T) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {
@@ -65,7 +65,7 @@ func TestTimeToLiveHTTP(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
 
-	resp, err := TimeToLiveHTTP(t.Context(), l.ID, true, ts.URL+LeaseInternalPrefix, http.DefaultTransport)
+	resp, err := TimeToLiveHTTP(context.TODO(), l.ID, true, ts.URL+LeaseInternalPrefix, http.DefaultTransport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,14 +79,14 @@ func TestTimeToLiveHTTP(t *testing.T) {
 
 func TestRenewHTTPTimeout(t *testing.T) {
 	testApplyTimeout(t, func(l *lease.Lease, serverURL string) error {
-		_, err := RenewHTTP(t.Context(), l.ID, serverURL+LeasePrefix, http.DefaultTransport)
+		_, err := RenewHTTP(context.TODO(), l.ID, serverURL+LeasePrefix, http.DefaultTransport)
 		return err
 	})
 }
 
 func TestTimeToLiveHTTPTimeout(t *testing.T) {
 	testApplyTimeout(t, func(l *lease.Lease, serverURL string) error {
-		_, err := TimeToLiveHTTP(t.Context(), l.ID, true, serverURL+LeaseInternalPrefix, http.DefaultTransport)
+		_, err := TimeToLiveHTTP(context.TODO(), l.ID, true, serverURL+LeaseInternalPrefix, http.DefaultTransport)
 		return err
 	})
 }
@@ -96,7 +96,7 @@ func testApplyTimeout(t *testing.T, f func(*lease.Lease, string) error) {
 	be, _ := betesting.NewTmpBackend(t, time.Hour, 10000)
 	defer betesting.Close(t, be)
 
-	le := lease.NewLessor(lg, be, nil, lease.LessorConfig{MinLeaseTTL: int64(5)})
+	le := lease.NewLessor(lg, be, lease.LessorConfig{MinLeaseTTL: int64(5)})
 	le.Promote(time.Second)
 	l, err := le.Grant(1, int64(5))
 	if err != nil {

@@ -1,0 +1,165 @@
+# Empty joint config wins all votes. This isn't used in production. Note that
+# by specifying cfgj explicitly we tell the test harness to treat the input as
+# a joint quorum and not a majority quorum.
+vote cfgj=zero
+----
+VoteWon
+
+# More examples with close to trivial configs.
+
+vote cfg=(1) cfgj=zero votes=(_)
+----
+VotePending
+
+vote cfg=(1) cfgj=zero votes=(y)
+----
+VoteWon
+
+vote cfg=(1) cfgj=zero votes=(n)
+----
+VoteLost
+
+vote cfg=(1) cfgj=(1) votes=(_)
+----
+VotePending
+
+vote cfg=(1) cfgj=(1) votes=(y)
+----
+VoteWon
+
+vote cfg=(1) cfgj=(1) votes=(n)
+----
+VoteLost
+
+vote cfg=(1) cfgj=(2) votes=(_,_)
+----
+VotePending
+
+vote cfg=(1) cfgj=(2) votes=(y,_)
+----
+VotePending
+
+vote cfg=(1) cfgj=(2) votes=(y,y)
+----
+VoteWon
+
+vote cfg=(1) cfgj=(2) votes=(y,n)
+----
+VoteLost
+
+vote cfg=(1) cfgj=(2) votes=(n,_)
+----
+VoteLost
+
+vote cfg=(1) cfgj=(2) votes=(n,n)
+----
+VoteLost
+
+vote cfg=(1) cfgj=(2) votes=(n,y)
+----
+VoteLost
+
+# Two node configs.
+
+vote cfg=(1,2) cfgj=(3,4) votes=(_,_,_,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,_,_,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,y,_,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,y,n,_)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,y,n,n)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,y,y,n)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(3,4) votes=(y,y,y,y)
+----
+VoteWon
+
+vote cfg=(1,2) cfgj=(2,3) votes=(_,_,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(2,3) votes=(_,n,_)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(2,3) votes=(y,y,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(2,3) votes=(y,y,n)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(2,3) votes=(y,y,y)
+----
+VoteWon
+
+vote cfg=(1,2) cfgj=(1,2) votes=(_,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(1,2) votes=(y,_)
+----
+VotePending
+
+vote cfg=(1,2) cfgj=(1,2) votes=(y,n)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(1,2) votes=(n,_)
+----
+VoteLost
+
+vote cfg=(1,2) cfgj=(1,2) votes=(n,n)
+----
+VoteLost
+
+
+# Simple example for overlapping three node configs.
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(_,_,_,_)
+----
+VotePending
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(_,n,_,_)
+----
+VotePending
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(_,n,n,_)
+----
+VoteLost
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(_,y,y,_)
+----
+VoteWon
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(y,y,_,_)
+----
+VotePending
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(y,y,n,_)
+----
+VotePending
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(y,y,n,n)
+----
+VoteLost
+
+vote cfg=(1,2,3) cfgj=(2,3,4) votes=(y,y,n,y)
+----
+VoteWon

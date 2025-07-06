@@ -57,8 +57,7 @@ discovery-proxy:
 # DNS domain used to bootstrap initial cluster.
 discovery-srv:
 
-# Comma separated string of initial cluster configuration for bootstrapping.
-# Example: initial-cluster: "infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380"
+# Initial cluster configuration for bootstrapping.
 initial-cluster:
 
 # Initial cluster token for the etcd cluster during bootstrap.
@@ -69,6 +68,9 @@ initial-cluster-state: 'new'
 
 # Reject reconfiguration requests that would cause quorum loss.
 strict-reconfig-check: false
+
+# Accept etcd V2 client requests
+enable-v2: true
 
 # Enable runtime profiling data via HTTP server
 enable-pprof: true
@@ -123,12 +125,6 @@ peer-transport-security:
   # Peer TLS using generated certificates.
   auto-tls: false
 
-  # Allowed CN for inter peer authentication.
-  allowed-cn:
-
-  # Allowed TLS hostname for inter peer authentication.
-  allowed-hostname:
-
 # The validity period of the self-signed certificate, the unit is year.
 self-signed-cert-validity: 1
 
@@ -145,13 +141,3 @@ force-new-cluster: false
 
 auto-compaction-mode: periodic
 auto-compaction-retention: "1"
-
-# Limit etcd to a specific set of tls cipher suites
-cipher-suites: [
-  TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-  TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-]
-
-# Limit etcd to specific TLS protocol versions 
-tls-min-version: 'TLS1.2'
-tls-max-version: 'TLS1.3'

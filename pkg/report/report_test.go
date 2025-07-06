@@ -17,27 +17,29 @@ package report
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPercentiles(t *testing.T) {
 	nums := make([]float64, 100)
 	nums[99] = 1 // 99-percentile (1 out of 100)
 	data := percentiles(nums)
-	require.InDeltaf(t, 1, data[len(pctls)-2], 0.0, "99-percentile expected 1, got %f", data[len(pctls)-2])
+	if data[len(pctls)-2] != 1 {
+		t.Fatalf("99-percentile expected 1, got %f", data[len(pctls)-2])
+	}
 
 	nums = make([]float64, 1000)
 	nums[999] = 1 // 99.9-percentile (1 out of 1000)
 	data = percentiles(nums)
-	require.InDeltaf(t, 1, data[len(pctls)-1], 0.0, "99.9-percentile expected 1, got %f", data[len(pctls)-1])
+	if data[len(pctls)-1] != 1 {
+		t.Fatalf("99.9-percentile expected 1, got %f", data[len(pctls)-1])
+	}
 }
 
 func TestReport(t *testing.T) {
-	r := NewReportSample("%f", "", false)
+	r := NewReportSample("%f")
 	go func() {
 		start := time.Now()
 		for i := 0; i < 5; i++ {
@@ -62,7 +64,9 @@ func TestReport(t *testing.T) {
 		ErrorDist: map[string]int{"oops": 1},
 		Lats:      []float64{1.0, 1.0, 1.0, 1.0, 1.0},
 	}
-	require.Truef(t, reflect.DeepEqual(stats, wStats), "got %+v, want %+v", stats, wStats)
+	if !reflect.DeepEqual(stats, wStats) {
+		t.Fatalf("got %+v, want %+v", stats, wStats)
+	}
 
 	wstrs := []string{
 		"Stddev:\t0",
@@ -72,12 +76,14 @@ func TestReport(t *testing.T) {
 	}
 	ss := <-r.Run()
 	for i, ws := range wstrs {
-		assert.Containsf(t, ss, ws, "#%d: stats string missing %s", i, ws)
+		if !strings.Contains(ss, ws) {
+			t.Errorf("#%d: stats string missing %s", i, ws)
+		}
 	}
 }
 
 func TestWeightedReport(t *testing.T) {
-	r := NewWeightedReport(NewReport("%f", "", false), "%f", "", false)
+	r := NewWeightedReport(NewReport("%f"), "%f")
 	go func() {
 		start := time.Now()
 		for i := 0; i < 5; i++ {
@@ -102,5 +108,7 @@ func TestWeightedReport(t *testing.T) {
 		ErrorDist: map[string]int{"oops": 1},
 		Lats:      []float64{0.5, 0.5, 0.5, 0.5, 0.5},
 	}
-	require.Truef(t, reflect.DeepEqual(stats, wStats), "got %+v, want %+v", stats, wStats)
+	if !reflect.DeepEqual(stats, wStats) {
+		t.Fatalf("got %+v, want %+v", stats, wStats)
+	}
 }

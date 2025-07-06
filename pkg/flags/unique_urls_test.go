@@ -15,11 +15,8 @@
 package flags
 
 import (
-	"flag"
-	"strings"
+	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestNewUniqueURLsWithExceptions(t *testing.T) {
@@ -86,29 +83,11 @@ func TestNewUniqueURLsWithExceptions(t *testing.T) {
 	}
 	for i := range tests {
 		uv := NewUniqueURLsWithExceptions(tests[i].s, tests[i].exception)
-		require.Equal(t, tests[i].exp, uv.Values)
-		require.Equal(t, tests[i].rs, uv.String())
+		if !reflect.DeepEqual(tests[i].exp, uv.Values) {
+			t.Fatalf("#%d: expected %+v, got %+v", i, tests[i].exp, uv.Values)
+		}
+		if uv.String() != tests[i].rs {
+			t.Fatalf("#%d: expected %q, got %q", i, tests[i].rs, uv.String())
+		}
 	}
-}
-
-func TestUniqueURLsFromFlag(t *testing.T) {
-	const name = "test"
-	urls := []string{
-		"https://1.2.3.4:1",
-		"https://1.2.3.4:2",
-		"https://1.2.3.4:3",
-		"https://1.2.3.4:1",
-	}
-	fs := flag.NewFlagSet(name, flag.ExitOnError)
-	u := NewUniqueURLsWithExceptions(strings.Join(urls, ","))
-	fs.Var(u, name, "usage")
-	uss := UniqueURLsFromFlag(fs, name)
-
-	require.Len(t, uss, len(u.Values))
-
-	um := make(map[string]struct{})
-	for _, x := range uss {
-		um[x.String()] = struct{}{}
-	}
-	require.Equal(t, u.Values, um)
 }

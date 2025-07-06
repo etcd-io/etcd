@@ -19,14 +19,14 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-	"golang.org/x/time/rate"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -65,25 +65,30 @@ type Peer interface {
 	// and has no promise that the message will be received by the remote.
 	// When it fails to send message out, it will report the status to underlying
 	// raft.
+	// 发送单个消息，该方法是非阻塞的，如果出现发送失败，则会将失败信息报告给底层的 Raft 接口
 	send(m raftpb.Message)
 
 	// sendSnap sends the merged snapshot message to the remote peer. Its behavior
 	// is similar to send.
+	// 发送 snap.Message，其他行为与上面的 send()方法类似
 	sendSnap(m snap.Message)
 
 	// update updates the urls of remote peer.
+	// 更新对应节点暴露的 URL 地址
 	update(urls types.URLs)
 
 	// attachOutgoingConn attaches the outgoing connection to the peer for
 	// stream usage. After the call, the ownership of the outgoing
 	// connection hands over to the peer. The peer will close the connection
 	// when it is no longer used.
+	// 将指定的连接与当前 Peer 绑定，Peer 会将该连接作为 Stream 消息通道使用，当 Peer 不再使用该连接时，会将该连接关闭
 	attachOutgoingConn(conn *outgoingConn)
 	// activeSince returns the time that the connection with the
 	// peer becomes active.
 	activeSince() time.Time
 	// stop performs any necessary finalization and terminates the peer
 	// elegantly.
+	// 关闭当前 Peer 实例 ，会关闭底层的网络连接
 	stop()
 }
 
@@ -103,26 +108,31 @@ type peer struct {
 
 	localID types.ID
 	// id of the remote raft peer node
+	// 该 peer 实例对应的节点的 ID
 	id types.ID
 
 	r Raft
 
 	status *peerStatus
 
+	// 每个节点可能提供了多个URL供其他节点访问，当其中一个访问失败时，我们应该可以尝试访问另一个。而 urlPicker 提供的主要功能就是在这些 URL 之间进行切换。
 	picker *urlPicker
 
-	msgAppV2Writer *streamWriter
-	writer         *streamWriter
-	pipeline       *pipeline
-	snapSender     *snapshotSender // snapshot sender to send v3 snapshot messages
-	msgAppV2Reader *streamReader
-	msgAppReader   *streamReader
+	msgAppV2Writer *streamWriter   // 负责向 stream 消息通道写入消息
+	writer         *streamWriter   // 负责向 stream 消息通道写入消息
+	pipeline       *pipeline       // Pipeline 消息通道
+	snapSender     *snapshotSender // snapshot sender to send v3 snapshot messages 负责发送快照数据
+	msgAppV2Reader *streamReader   // 负责从 Stream 消息通道读取消息
+	msgAppReader   *streamReader   // 负责从 Stream 消息通道读取消息
 
+	// 从 Stream 消息通道中读取到消息之后，会通过该通道将消息交给 Raft接口，然后由它返回给底层 etcd-raft模块进行处理。
 	recvc chan raftpb.Message
+
+	// 从 Stream 消息通道中读取到 MsgProp 类型的消息之后，会通过该通道将 MsgProp 消息交给 Raft 接口，然后由它返回给底层etcd-raft模块进行处理。
 	propc chan raftpb.Message
 
 	mu     sync.Mutex
-	paused bool
+	paused bool // 是否暂停向对应节点发送消息
 
 	cancel context.CancelFunc // cancel pending works in go routine created by peer.
 	stopc  chan struct{}
@@ -139,10 +149,11 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 	}()
 
 	status := newPeerStatus(t.Logger, t.ID, peerID)
-	picker := newURLPicker(urls)
+	picker := newURLPicker(urls) // 根据提供的urls创建 urlPicker
 	errorc := t.ErrorC
-	r := t.Raft
-	pipeline := &pipeline{
+	r := t.Raft // 底层的Raft状态机
+
+	pipeline := &pipeline{ // 创建pipeline实例
 		peerID:        peerID,
 		tr:            t,
 		picker:        picker,
@@ -151,7 +162,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		raft:          r,
 		errorc:        errorc,
 	}
-	pipeline.start()
+	pipeline.start() //启动 pipeline
 
 	p := &peer{
 		lg:             t.Logger,
@@ -160,21 +171,25 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		r:              r,
 		status:         status,
 		picker:         picker,
-		msgAppV2Writer: startStreamWriter(t.Logger, t.ID, peerID, status, fs, r),
-		writer:         startStreamWriter(t.Logger, t.ID, peerID, status, fs, r),
+		msgAppV2Writer: startStreamWriter(t.Logger, t.ID, peerID, status, fs, r), // 创建并启动StreamWriter
+		writer:         startStreamWriter(t.Logger, t.ID, peerID, status, fs, r), // 创建并启动StreamWriter
 		pipeline:       pipeline,
 		snapSender:     newSnapshotSender(t, picker, peerID, status),
-		recvc:          make(chan raftpb.Message, recvBufSize),
-		propc:          make(chan raftpb.Message, maxPendingProposals),
+		recvc:          make(chan raftpb.Message, recvBufSize),         //  创建recvc通道，注意缓冲区大小
+		propc:          make(chan raftpb.Message, maxPendingProposals), // 创建 propc 通道，注意缓冲区大小
 		stopc:          make(chan struct{}),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
+
+	// 启动单独的 goroutine，它主要负责从 recvc 通道中读取消息，该通道中的消息就是从对端节点发送过来的消息
+	// 然后将读取到的消息 交给底层的 Raft 状态机进行处理
 	go func() {
 		for {
 			select {
 			case mm := <-p.recvc:
+				// r：Raft
 				if err := r.Process(ctx, mm); err != nil {
 					if t.Logger != nil {
 						t.Logger.Warn("failed to process Raft message", zap.Error(err))
@@ -189,6 +204,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 	// r.Process might block for processing proposal when there is no leader.
 	// Thus propc must be put into a separate routine with recvc to avoid blocking
 	// processing other raft messages.
+	// 在底层 Raft 状态机处理 MsgProp 类型的 Message 时，可能会阻塞，所以启动单独的 goroutine 来处理
 	go func() {
 		for {
 			select {
@@ -204,6 +220,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		}
 	}()
 
+	// 创建并启动 streamReader 实例，它主要负责从 Stream 消息通道上读取消息
 	p.msgAppV2Reader = &streamReader{
 		lg:     t.Logger,
 		peerID: peerID,
@@ -211,7 +228,7 @@ func startPeer(t *Transport, urls types.URLs, peerID types.ID, fs *stats.Followe
 		tr:     t,
 		picker: picker,
 		status: status,
-		recvc:  p.recvc,
+		recvc:  p.recvc, // 管道这种方式赋值，理解为是地址，多个结构公用一个实例
 		propc:  p.propc,
 		rl:     rate.NewLimiter(t.DialRetryFrequency, 1),
 	}
@@ -242,24 +259,40 @@ func (p *peer) send(m raftpb.Message) {
 		return
 	}
 
+	// 根据消息的类型选择合适的消息通道
 	writec, name := p.pick(m)
 	select {
-	case writec <- m:
+	case writec <- m: // 将 Message 写入 writec 通道中，等到发送
 	default:
+		// 如果发送 出现阻塞，则将信息报告给底层 Raft 状态机，这里也会根据消息类型选择合适的报告方法
 		p.r.ReportUnreachable(m.To)
 		if isMsgSnap(m) {
 			p.r.ReportSnapshot(m.To, raft.SnapshotFailure)
 		}
-		if p.lg != nil {
-			p.lg.Warn(
-				"dropped internal Raft message since sending buffer is full",
-				zap.String("message-type", m.Type.String()),
-				zap.String("local-member-id", p.localID.String()),
-				zap.String("from", types.ID(m.From).String()),
-				zap.String("remote-peer-id", p.id.String()),
-				zap.String("remote-peer-name", name),
-				zap.Bool("remote-peer-active", p.status.isActive()),
-			)
+		if p.status.isActive() {
+			if p.lg != nil {
+				p.lg.Warn(
+					"dropped internal Raft message since sending buffer is full (overloaded network)",
+					zap.String("message-type", m.Type.String()),
+					zap.String("local-member-id", p.localID.String()),
+					zap.String("from", types.ID(m.From).String()),
+					zap.String("remote-peer-id", p.id.String()),
+					zap.String("remote-peer-name", name),
+					zap.Bool("remote-peer-active", p.status.isActive()),
+				)
+			}
+		} else {
+			if p.lg != nil {
+				p.lg.Warn(
+					"dropped internal Raft message since sending buffer is full (overloaded network)",
+					zap.String("message-type", m.Type.String()),
+					zap.String("local-member-id", p.localID.String()),
+					zap.String("from", types.ID(m.From).String()),
+					zap.String("remote-peer-id", p.id.String()),
+					zap.String("remote-peer-name", name),
+					zap.Bool("remote-peer-active", p.status.isActive()),
+				)
+			}
 		}
 		sentFailures.WithLabelValues(types.ID(m.To).String()).Inc()
 	}

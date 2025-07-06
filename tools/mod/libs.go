@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build libs
+// +build libs
 
 // This file implements that pattern:
-// https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
+// https://github.com/golang/go/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
 // for etcd. Thanks to this file 'go mod tidy' does not removes dependencies.
 
 package libs

@@ -3,7 +3,7 @@ empty
 Start dumping log entries from snapshot.
 WAL metadata:
 nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
-WAL entries: 34
+WAL entries:
 lastIndex=34
 term	     index	type	data
    1	         1	conf	method=ConfChangeAddNode id=2
@@ -29,7 +29,7 @@ term	     index	type	data
   15	        21	norm	ID:16 auth_user_add:<name:"name1" password:"pass1" options:<> > 
   16	        22	norm	ID:17 auth_user_delete:<name:"name1" > 
   17	        23	norm	ID:18 auth_user_get:<name:"name1" > 
-  18	        24	norm	ID:19 auth_user_change_password:<name:"name1" password:"<value removed>" > 
+  18	        24	norm	ID:19 auth_user_change_password:<name:"name1" password:"pass2" > 
   19	        25	norm	ID:20 auth_user_grant_role:<user:"user1" role:"role1" > 
   20	        26	norm	ID:21 auth_user_revoke_role:<name:"user2" role:"role2" > 
   21	        27	norm	ID:22 auth_user_list:<> 

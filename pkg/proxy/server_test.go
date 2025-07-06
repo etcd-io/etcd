@@ -16,9 +16,10 @@ package proxy
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -29,11 +30,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
+	"github.com/stretchr/testify/assert"
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.uber.org/zap"
 )
 
 func TestServer_Unix_Insecure(t *testing.T)         { testServer(t, "unix", false, false) }
@@ -72,9 +73,7 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	data1 := []byte("Hello World!")
@@ -83,21 +82,20 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	go func() {
 		defer close(donec)
 		for data := range writec {
-			send(t, data, scheme, srcAddr, tlsInfo) //nolint:testifylint //FIXME
+			send(t, data, scheme, srcAddr, tlsInfo)
 		}
 	}()
 
 	recvc := make(chan []byte, 1)
 	go func() {
 		for i := 0; i < 2; i++ {
-			recvc <- receive(t, ln) //nolint:testifylint //FIXME
+			recvc <- receive(t, ln)
 		}
 	}()
 
 	writec <- data1
 	now := time.Now()
 	if d := <-recvc; !bytes.Equal(data1, d) {
-		close(writec)
 		t.Fatalf("expected %q, got %q", string(data1), string(d))
 	}
 	took1 := time.Since(now)
@@ -112,7 +110,6 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	writec <- data2
 	now = time.Now()
 	if d := <-recvc; !bytes.Equal(data2, d) {
-		close(writec)
 		t.Fatalf("expected %q, got %q", string(data2), string(d))
 	}
 	took2 := time.Since(now)
@@ -125,7 +122,6 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	if delayTx {
 		p.UndelayTx()
 		if took2 < lat-rv {
-			close(writec)
 			t.Fatalf("expected took2 %v (with latency) > delay: %v", took2, lat-rv)
 		}
 	}
@@ -145,7 +141,9 @@ func testServer(t *testing.T, scheme string, secure bool, delayTx bool) {
 	default:
 	}
 
-	require.NoError(t, p.Close())
+	if err := p.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case <-p.Done():
@@ -195,34 +193,38 @@ func testServerDelayAccept(t *testing.T, secure bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	data := []byte("Hello World!")
 
 	now := time.Now()
 	send(t, data, scheme, srcAddr, tlsInfo)
-	d := receive(t, ln)
-	require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
+	if d := receive(t, ln); !bytes.Equal(data, d) {
+		t.Fatalf("expected %q, got %q", string(data), string(d))
+	}
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
 	lat, rv := 700*time.Millisecond, 10*time.Millisecond
 	p.DelayAccept(lat, rv)
 	defer p.UndelayAccept()
-	require.NoError(t, p.ResetListener())
+	if err := p.ResetListener(); err != nil {
+		t.Fatal(err)
+	}
 	time.Sleep(200 * time.Millisecond)
 
 	now = time.Now()
 	send(t, data, scheme, srcAddr, tlsInfo)
-	d = receive(t, ln)
-	require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
+	if d := receive(t, ln); !bytes.Equal(data, d) {
+		t.Fatalf("expected %q, got %q", string(data), string(d))
+	}
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
-	require.Lessf(t, took1, took2, "expected took1 %v < took2 %v", took1, took2)
+	if took1 >= took2 {
+		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
+	}
 }
 
 func TestServer_PauseTx(t *testing.T) {
@@ -241,9 +243,7 @@ func TestServer_PauseTx(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	p.PauseTx()
@@ -253,7 +253,7 @@ func TestServer_PauseTx(t *testing.T) {
 
 	recvc := make(chan []byte, 1)
 	go func() {
-		recvc <- receive(t, ln) //nolint:testifylint //FIXME
+		recvc <- receive(t, ln)
 	}()
 
 	select {
@@ -266,7 +266,9 @@ func TestServer_PauseTx(t *testing.T) {
 
 	select {
 	case d := <-recvc:
-		require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
+		if !bytes.Equal(data, d) {
+			t.Fatalf("expected %q, got %q", string(data), string(d))
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("took too long to receive after unpause")
 	}
@@ -288,9 +290,7 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	p.ModifyTx(func(d []byte) []byte {
@@ -299,13 +299,15 @@ func TestServer_ModifyTx_corrupt(t *testing.T) {
 	})
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d := receive(t, ln)
-	require.Falsef(t, bytes.Equal(d, data), "expected corrupted data, got %q", string(d))
+	if d := receive(t, ln); bytes.Equal(d, data) {
+		t.Fatalf("expected corrupted data, got %q", string(d))
+	}
 
 	p.UnmodifyTx()
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d = receive(t, ln)
-	require.Truef(t, bytes.Equal(d, data), "expected uncorrupted data, got %q", string(d))
+	if d := receive(t, ln); !bytes.Equal(d, data) {
+		t.Fatalf("expected uncorrupted data, got %q", string(d))
+	}
 }
 
 func TestServer_ModifyTx_packet_loss(t *testing.T) {
@@ -324,9 +326,7 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	// 50% packet loss
@@ -336,13 +336,15 @@ func TestServer_ModifyTx_packet_loss(t *testing.T) {
 	})
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d := receive(t, ln)
-	require.Falsef(t, bytes.Equal(d, data), "expected corrupted data, got %q", string(d))
+	if d := receive(t, ln); bytes.Equal(d, data) {
+		t.Fatalf("expected corrupted data, got %q", string(d))
+	}
 
 	p.UnmodifyTx()
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d = receive(t, ln)
-	require.Truef(t, bytes.Equal(d, data), "expected uncorrupted data, got %q", string(d))
+	if d := receive(t, ln); !bytes.Equal(d, data) {
+		t.Fatalf("expected uncorrupted data, got %q", string(d))
+	}
 }
 
 func TestServer_BlackholeTx(t *testing.T) {
@@ -361,9 +363,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	p.BlackholeTx()
@@ -373,7 +373,7 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	recvc := make(chan []byte, 1)
 	go func() {
-		recvc <- receive(t, ln) //nolint:testifylint //FIXME
+		recvc <- receive(t, ln)
 	}()
 
 	select {
@@ -390,7 +390,9 @@ func TestServer_BlackholeTx(t *testing.T) {
 
 	select {
 	case d := <-recvc:
-		require.Truef(t, bytes.Equal(data, d), "expected %q, got %q", string(data), string(d))
+		if !bytes.Equal(data, d) {
+			t.Fatalf("expected %q, got %q", string(data), string(d))
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("took too long to receive after unblackhole")
 	}
@@ -412,9 +414,7 @@ func TestServer_Shutdown(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	s, _ := p.(*server)
@@ -423,8 +423,9 @@ func TestServer_Shutdown(t *testing.T) {
 
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d := receive(t, ln)
-	require.Truef(t, bytes.Equal(d, data), "expected %q, got %q", string(data), string(d))
+	if d := receive(t, ln); !bytes.Equal(d, data) {
+		t.Fatalf("expected %q, got %q", string(data), string(d))
+	}
 }
 
 func TestServer_ShutdownListener(t *testing.T) {
@@ -444,9 +445,7 @@ func TestServer_ShutdownListener(t *testing.T) {
 		From:   url.URL{Scheme: scheme, Host: srcAddr},
 		To:     url.URL{Scheme: scheme, Host: dstAddr},
 	})
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer p.Close()
 
 	// shut down destination
@@ -458,8 +457,9 @@ func TestServer_ShutdownListener(t *testing.T) {
 
 	data := []byte("Hello World!")
 	send(t, data, scheme, srcAddr, transport.TLSInfo{})
-	d := receive(t, ln)
-	require.Truef(t, bytes.Equal(d, data), "expected %q, got %q", string(data), string(d))
+	if d := receive(t, ln); !bytes.Equal(d, data) {
+		t.Fatalf("expected %q, got %q", string(data), string(d))
+	}
 }
 
 func TestServerHTTP_Insecure_DelayTx(t *testing.T) { testServerHTTP(t, false, true) }
@@ -476,23 +476,28 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, req *http.Request) {
-		d, err := io.ReadAll(req.Body)
+		d, err := ioutil.ReadAll(req.Body)
 		req.Body.Close()
-		require.NoError(t, err) //nolint:testifylint //FIXME
-		_, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d))))
-		require.NoError(t, err) //nolint:testifylint //FIXME
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = w.Write([]byte(fmt.Sprintf("%q(confirmed)", string(d)))); err != nil {
+			t.Fatal(err)
+		}
 	})
 	tlsInfo := createTLSInfo(lg, secure)
 	var tlsConfig *tls.Config
 	if secure {
 		_, err := tlsInfo.ServerConfig()
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	srv := &http.Server{
 		Addr:      dstAddr,
 		Handler:   mux,
 		TLSConfig: tlsConfig,
-		ErrorLog:  log.New(io.Discard, "net/http", 0),
+		ErrorLog:  log.New(ioutil.Discard, "net/http", 0),
 	}
 
 	donec := make(chan struct{})
@@ -519,9 +524,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		cfg.TLSInfo = tlsInfo
 	}
 	p := NewServer(cfg)
-
-	waitForServer(t, p)
-
+	<-p.Ready()
 	defer func() {
 		lg.Info("closing Proxy server...")
 		p.Close()
@@ -535,7 +538,7 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	now := time.Now()
 	if secure {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		require.NoError(t, terr)
+		assert.NoError(t, terr)
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
@@ -544,16 +547,20 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
-	require.NoError(t, err)
-	d, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	assert.NoError(t, err)
+	d, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
 	took1 := time.Since(now)
 	t.Logf("took %v with no latency", took1)
 
 	rs1 := string(d)
 	exp := fmt.Sprintf("%q(confirmed)", data)
-	require.Equalf(t, exp, rs1, "got %q, expected %q", rs1, exp)
+	if rs1 != exp {
+		t.Fatalf("got %q, expected %q", rs1, exp)
+	}
 
 	lat, rv := 100*time.Millisecond, 10*time.Millisecond
 	if delayTx {
@@ -567,7 +574,9 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 	now = time.Now()
 	if secure {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		require.NoError(t, terr)
+		if terr != nil {
+			t.Fatal(terr)
+		}
 		cli := &http.Client{Transport: tp}
 		resp, err = cli.Post("https://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer cli.CloseIdleConnections()
@@ -576,20 +585,29 @@ func testServerHTTP(t *testing.T, secure, delayTx bool) {
 		resp, err = http.Post("http://"+srcAddr+"/hello", "", strings.NewReader(data))
 		defer http.DefaultClient.CloseIdleConnections()
 	}
-	require.NoError(t, err)
-	d, err = io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp.Body.Close()
 	took2 := time.Since(now)
 	t.Logf("took %v with latency %v±%v", took2, lat, rv)
 
 	rs2 := string(d)
-	require.Equalf(t, exp, rs2, "got %q, expected %q", rs2, exp)
-	require.LessOrEqualf(t, took1, took2, "expected took1 %v < took2 %v", took1, took2)
+	if rs2 != exp {
+		t.Fatalf("got %q, expected %q", rs2, exp)
+	}
+	if took1 > took2 {
+		t.Fatalf("expected took1 %v < took2 %v", took1, took2)
+	}
 }
 
 func newUnixAddr() string {
 	now := time.Now().UnixNano()
+	rand.Seed(now)
 	addr := fmt.Sprintf("%X%X.unix-conn", now, rand.Intn(35000))
 	os.RemoveAll(addr)
 	return addr
@@ -602,7 +620,9 @@ func listen(t *testing.T, scheme, addr string, tlsInfo transport.TLSInfo) (ln ne
 	} else {
 		ln, err = net.Listen(scheme, addr)
 	}
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return ln
 }
 
@@ -611,38 +631,39 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	var err error
 	if !tlsInfo.Empty() {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
-		require.NoError(t, terr)
-		out, err = tp.DialContext(t.Context(), scheme, addr)
+		if terr != nil {
+			t.Fatal(terr)
+		}
+		out, err = tp.DialContext(context.Background(), scheme, addr)
 	} else {
 		out, err = net.Dial(scheme, addr)
 	}
-	require.NoError(t, err)
-	_, err = out.Write(data)
-	require.NoError(t, err)
-	require.NoError(t, out.Close())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = out.Write(data); err != nil {
+		t.Fatal(err)
+	}
+	if err = out.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func receive(t *testing.T, ln net.Listener) (data []byte) {
 	buf := bytes.NewBuffer(make([]byte, 0, 1024))
 	for {
 		in, err := ln.Accept()
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 		var n int64
 		n, err = buf.ReadFrom(in)
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if n > 0 {
 			break
 		}
 	}
 	return buf.Bytes()
-}
-
-// Waits until a proxy is ready to serve.
-// Aborts test on proxy start-up error.
-func waitForServer(t *testing.T, s Server) {
-	select {
-	case <-s.Ready():
-	case err := <-s.Error():
-		t.Fatal(err)
-	}
 }

@@ -18,20 +18,20 @@ import (
 	"context"
 	"testing"
 
-	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap"
 )
 
 // TestSimpleTokenDisabled ensures that TokenProviderSimple behaves correctly when
 // disabled.
 func TestSimpleTokenDisabled(t *testing.T) {
-	initialState := newTokenProviderSimple(zaptest.NewLogger(t), dummyIndexWaiter, simpleTokenTTLDefault)
+	initialState := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter, simpleTokenTTLDefault)
 
-	explicitlyDisabled := newTokenProviderSimple(zaptest.NewLogger(t), dummyIndexWaiter, simpleTokenTTLDefault)
+	explicitlyDisabled := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter, simpleTokenTTLDefault)
 	explicitlyDisabled.enable()
 	explicitlyDisabled.disable()
 
 	for _, tp := range []*tokenSimple{initialState, explicitlyDisabled} {
-		ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+		ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 		token, err := tp.assign(ctx, "user1", 0)
 		if err != nil {
 			t.Fatal(err)
@@ -48,10 +48,10 @@ func TestSimpleTokenDisabled(t *testing.T) {
 // TestSimpleTokenAssign ensures that TokenProviderSimple can correctly assign a
 // token, look it up with info, and invalidate it by user.
 func TestSimpleTokenAssign(t *testing.T) {
-	tp := newTokenProviderSimple(zaptest.NewLogger(t), dummyIndexWaiter, simpleTokenTTLDefault)
+	tp := newTokenProviderSimple(zap.NewExample(), dummyIndexWaiter, simpleTokenTTLDefault)
 	tp.enable()
 	defer tp.disable()
-	ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	token, err := tp.assign(ctx, "user1", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,7 @@ func TestSimpleTokenAssign(t *testing.T) {
 
 	tp.invalidateUser("user1")
 
-	_, ok = tp.info(t.Context(), token, 0)
+	_, ok = tp.info(context.TODO(), token, 0)
 	if ok {
 		t.Errorf("expected ok == false after user is invalidated")
 	}

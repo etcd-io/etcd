@@ -17,8 +17,6 @@ package main
 import (
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func Test_kvstore_snapshot(t *testing.T) {
@@ -26,15 +24,24 @@ func Test_kvstore_snapshot(t *testing.T) {
 	s := &kvstore{kvStore: tm}
 
 	v, _ := s.Lookup("foo")
-	require.Equalf(t, "bar", v, "foo has unexpected value, got %s", v)
+	if v != "bar" {
+		t.Fatalf("foo has unexpected value, got %s", v)
+	}
 
 	data, err := s.getSnapshot()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s.kvStore = nil
 
-	err = s.recoverFromSnapshot(data)
-	require.NoError(t, err)
+	if err := s.recoverFromSnapshot(data); err != nil {
+		t.Fatal(err)
+	}
 	v, _ = s.Lookup("foo")
-	require.Equalf(t, "bar", v, "foo has unexpected value, got %s", v)
-	require.Truef(t, reflect.DeepEqual(s.kvStore, tm), "store expected %+v, got %+v", tm, s.kvStore)
+	if v != "bar" {
+		t.Fatalf("foo has unexpected value, got %s", v)
+	}
+	if !reflect.DeepEqual(s.kvStore, tm) {
+		t.Fatalf("store expected %+v, got %+v", tm, s.kvStore)
+	}
 }

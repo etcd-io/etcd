@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //go:build solaris
+// +build solaris
 
 package fileutil
 

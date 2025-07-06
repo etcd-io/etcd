@@ -18,7 +18,7 @@ import (
 	"context"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
@@ -45,47 +45,25 @@ func NewDoubleBarrier(s *concurrency.Session, key string, count int) *DoubleBarr
 // Enter waits for "count" processes to enter the barrier then returns
 func (b *DoubleBarrier) Enter() error {
 	client := b.s.Client()
-
-	// Check the entered clients before creating the UniqueEphemeralKey,
-	// fail the request if there are already too many clients.
-	if resp1, err := b.enteredClients(client); err != nil {
-		return err
-	} else if len(resp1.Kvs) >= b.count {
-		return ErrTooManyClients
-	}
-
 	ek, err := newUniqueEphemeralKey(b.s, b.key+"/waiters")
 	if err != nil {
 		return err
 	}
 	b.myKey = ek
 
-	// Check the entered clients after creating the UniqueEphemeralKey
-	resp2, err := b.enteredClients(client)
+	resp, err := client.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix())
 	if err != nil {
 		return err
 	}
-	if len(resp2.Kvs) >= b.count {
-		lastWaiter := resp2.Kvs[b.count-1]
-		if ek.rev > lastWaiter.CreateRevision {
-			// delete itself now, otherwise other processes may need to wait
-			// until these keys are automatically deleted when the related
-			// lease expires.
-			//nolint:staticcheck // SA9003 disable empty branch checker to keep the comment for why we ignore error
-			if err = b.myKey.Delete(); err != nil {
-				// Nothing to do here. We have to wait for the key to be
-				// deleted when the lease expires.
-			}
-			return ErrTooManyClients
-		}
 
-		if ek.rev == lastWaiter.CreateRevision {
-			// TODO(ahrtr): we might need to compare ek.key and
-			// string(lastWaiter.Key), they should be equal.
-			// unblock all other waiters
-			_, err = client.Put(b.ctx, b.key+"/ready", "")
-			return err
-		}
+	if len(resp.Kvs) > b.count {
+		return ErrTooManyClients
+	}
+
+	if len(resp.Kvs) == b.count {
+		// unblock waiters
+		_, err = client.Put(b.ctx, b.key+"/ready", "")
+		return err
 	}
 
 	_, err = WaitEvents(
@@ -94,18 +72,6 @@ func (b *DoubleBarrier) Enter() error {
 		ek.Revision(),
 		[]mvccpb.Event_EventType{mvccpb.PUT})
 	return err
-}
-
-// enteredClients gets all the entered clients, which are ordered by the
-// createRevision in ascending order.
-func (b *DoubleBarrier) enteredClients(cli *clientv3.Client) (*clientv3.GetResponse, error) {
-	resp, err := cli.Get(b.ctx, b.key+"/waiters", clientv3.WithPrefix(),
-		clientv3.WithSort(clientv3.SortByCreateRevision, clientv3.SortAscend))
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
 }
 
 // Leave waits for "count" processes to leave the barrier then returns
@@ -130,7 +96,7 @@ func (b *DoubleBarrier) Leave() error {
 	}
 	isLowest := string(lowest.Key) == b.myKey.Key()
 
-	if len(resp.Kvs) == 1 && isLowest {
+	if len(resp.Kvs) == 1 {
 		// this is the only node in the barrier; finish up
 		if _, err = client.Delete(b.ctx, b.key+"/ready"); err != nil {
 			return err

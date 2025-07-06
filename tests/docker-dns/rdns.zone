@@ -1,0 +1,13 @@
+$TTL    86400
+@   IN  SOA  etcdns.local. root.etcdns.local. (
+             100500     ; Serial
+             604800     ; Refresh
+              86400     ; Retry
+            2419200     ; Expire
+              86400 )   ; Negative Cache TTL
+    IN  NS  ns.etcdns.local.
+    IN  A   127.0.0.1
+
+1 IN PTR m1.etcd.local.
+1 IN PTR m2.etcd.local.
+1 IN PTR m3.etcd.local.

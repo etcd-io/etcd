@@ -1,36 +1,6 @@
-# etcd-dump-logs
+### etcd-dump-logs
 
-`etcd-dump-logs` dumps the log from data directory.
-
-## Installation
-
-Install the tool by running the following command from the etcd source directory.
-
-```
-  $ go install -v ./tools/etcd-dump-logs
-```
-
-The installation will place executables in the $GOPATH/bin. If $GOPATH environment variable is not set, the tool will be installed into the $HOME/go/bin. You can also find out the installed location by running the following command from the etcd source directory. Make sure that $PATH is set accordingly in your environment.
-
-```
-  $ go list -f "{{.Target}}" ./tools/etcd-dump-logs
-```
-
-Alternatively, instead of installing the tool, you can use it by simply running the following command from the etcd source directory.
-
-```
-  $ go run ./tools/etcd-dump-logs
-```
-
-## Usage
-
-The following command should output the usage per the latest development.
-
-```
-  $ etcd-dump-logs --help
-```
-
-An example of usage detail is provided below.
+etcd-dump-logs dumps the log from data directory.
 
 ```
 Usage:
@@ -43,19 +13,14 @@ Usage:
                 - data_dir/member/wal/0000000000000000-0000000000000000.wal
 
 Flags:
-  -wal-dir string
-      If set, dumps WAL from the informed path, rather than following the
-      standard 'data_dir/member/wal/' location
+
   -entry-type string
     	If set, filters output by entry type. Must be one or more than one of:
 	    ConfigChange, Normal, Request, InternalRaftRequest,
 	    IRRRange, IRRPut, IRRDeleteRange, IRRTxn,
 	    IRRCompaction, IRRLeaseGrant, IRRLeaseRevoke
   -start-index uint
-    	The index to start dumping (inclusive)
-      If unspecified, dumps from the index of the last snapshot.
-  -end-index uint
-      The index to stop dumping (exclusive)
+    	The index to start dumping
   -start-snap string
     	The base name of snapshot file to start dumping
   -stream-decoder string
@@ -100,7 +65,7 @@ Entry types (ConfigChange,IRRCompaction) count is : 5
 ```
 #### etcd-dump-logs -stream-decoder <EXECUTABLE_DECODER> [data dir]
 
-Decode each entry based on logic in the passed decoder. Decoder status and decoded data are listed in separated tab/columns in the output. For parsing purpose, the output from decoder are expected to be in format of "<DECODER_STATUS>|<DECODED_DATA>". Please refer to [decoder_correctoutputformat.sh] as an example.
+Decode each entry based on logic in the passed decoder. Decoder status and decoded data are listed in separated tab/columns in the ouput. For parsing purpose, the output from decoder are expected to be in format of "<DECODER_STATUS>|<DECODED_DATA>". Please refer to [decoder_correctoutputformat.sh] as an example.
 
 However, if the decoder output format is not as expected, "decoder_status" will be "decoder output format is not right, print output anyway", and all output from decoder will be considered as "decoded_data"
 
@@ -149,11 +114,11 @@ Entry types () count is : 8
 ```
 ####  etcd-dump-logs -start-index <INDEX NUMBER> [data dir]
 
-Only shows WAL log entries after the specified start-index number, inclusively.
+Only shows WAL log entries after the specified start-index number, exclusively.
 
 ```
-$ etcd-dump-logs -start-index 31  /tmp/datadir
-Start dumping log entries from index 31.
+$ etcd-dump-logs -start-index 30  /tmp/datadir
+Start dumping log entries from index 30.
 WAL metadata:
 nodeID=0 clusterID=0 term=0 commitIndex=0 vote=0
 WAL entries:
@@ -165,23 +130,4 @@ term	     index	type	data
   27	        34	norm	???
 Entry types () count is : 4
 ```
-
-####  etcd-dump-logs -start-index <INDEX NUMBER> -end-index <INDEX NUMBER> [data dir]
-
-Only shows WAL log entries from the specified start-index number (inclusively) to the specified end-index number (exclusively).
-
-```
-$ etcd-dump-logs -start-index 930 -end-index 932  /tmp/datadir
-Start dumping log entries from index 930.
-WAL metadata:
-nodeID=0 clusterID=0 term=5 commitIndex=2448 vote=0
-WAL entries: 2
-lastIndex=931
-term	     index	type	data
-   3	       930	norm	header:<ID:11010058442592651283 > put:<key:"key7" value:"923" >
-   3	       931	norm	header:<ID:6577953459306661672 > put:<key:"key8" value:"924" >
-
-Entry types (Normal,ConfigChange) count is : 2
-```
-
 [decoder_correctoutputformat.sh]: ./testdecoder/decoder_correctoutputformat.sh

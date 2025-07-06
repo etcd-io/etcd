@@ -17,33 +17,30 @@ package clientv3_test
 import (
 	"context"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"strings"
 
-	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
-	"github.com/prometheus/client_golang/prometheus"
+	"go.etcd.io/etcd/client/v3"
+
+	grpcprom "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func mockClientMetrics() {
+func mockClient_metrics() {
 	fmt.Println(`grpc_client_started_total{grpc_method="Range",grpc_service="etcdserverpb.KV",grpc_type="unary"} 1`)
 }
 
 func ExampleClient_metrics() {
-	forUnitTestsRunInMockedContext(mockClientMetrics, func() {
-		clientMetrics := grpcprom.NewClientMetrics()
-		prometheus.Register(clientMetrics)
+	forUnitTestsRunInMockedContext(mockClient_metrics, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints: exampleEndpoints(),
 			DialOptions: []grpc.DialOption{
-				grpc.WithUnaryInterceptor(clientMetrics.UnaryClientInterceptor()),
-				grpc.WithStreamInterceptor(clientMetrics.StreamClientInterceptor()),
+				grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
+				grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 			},
 		})
 		if err != nil {
@@ -75,7 +72,7 @@ func ExampleClient_metrics() {
 		if err != nil {
 			log.Fatalf("fetch error: %v", err)
 		}
-		b, err := io.ReadAll(resp.Body)
+		b, err := ioutil.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			log.Fatalf("fetch error: reading %s: %v", url, err)

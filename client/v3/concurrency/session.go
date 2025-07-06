@@ -18,8 +18,6 @@ import (
 	"context"
 	"time"
 
-	"go.uber.org/zap"
-
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -32,17 +30,15 @@ type Session struct {
 	opts   *sessionOptions
 	id     v3.LeaseID
 
-	ctx    context.Context
 	cancel context.CancelFunc
 	donec  <-chan struct{}
 }
 
 // NewSession gets the leased session for a client.
 func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
-	lg := client.GetLogger()
 	ops := &sessionOptions{ttl: defaultSessionTTL, ctx: client.Ctx()}
 	for _, opt := range opts {
-		opt(ops, lg)
+		opt(ops)
 	}
 
 	id := ops.leaseID
@@ -62,14 +58,11 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 	}
 
 	donec := make(chan struct{})
-	s := &Session{client: client, opts: ops, id: id, ctx: ctx, cancel: cancel, donec: donec}
+	s := &Session{client: client, opts: ops, id: id, cancel: cancel, donec: donec}
 
 	// keep the lease alive until client error or cancelled context
 	go func() {
-		defer func() {
-			close(donec)
-			cancel()
-		}()
+		defer close(donec)
 		for range keepAlive {
 			// eat messages until keep alive channel closes
 		}
@@ -85,12 +78,6 @@ func (s *Session) Client() *v3.Client {
 
 // Lease is the lease ID for keys bound to the session.
 func (s *Session) Lease() v3.LeaseID { return s.id }
-
-// Ctx is the context attached to the session, it is canceled when the lease is orphaned, expires, or
-// is otherwise no longer being refreshed.
-func (s *Session) Ctx() context.Context {
-	return s.ctx
-}
 
 // Done returns a channel that closes when the lease is orphaned, expires, or
 // is otherwise no longer being refreshed.
@@ -121,16 +108,14 @@ type sessionOptions struct {
 }
 
 // SessionOption configures Session.
-type SessionOption func(*sessionOptions, *zap.Logger)
+type SessionOption func(*sessionOptions)
 
 // WithTTL configures the session's TTL in seconds.
 // If TTL is <= 0, the default 60 seconds TTL will be used.
 func WithTTL(ttl int) SessionOption {
-	return func(so *sessionOptions, lg *zap.Logger) {
+	return func(so *sessionOptions) {
 		if ttl > 0 {
 			so.ttl = ttl
-		} else {
-			lg.Warn("WithTTL(): TTL should be > 0, preserving current TTL", zap.Int64("current-session-ttl", int64(so.ttl)))
 		}
 	}
 }
@@ -139,7 +124,7 @@ func WithTTL(ttl int) SessionOption {
 // This is useful in process restart scenario, for example, to reclaim
 // leadership from an election prior to restart.
 func WithLease(leaseID v3.LeaseID) SessionOption {
-	return func(so *sessionOptions, _ *zap.Logger) {
+	return func(so *sessionOptions) {
 		so.leaseID = leaseID
 	}
 }
@@ -150,7 +135,7 @@ func WithLease(leaseID v3.LeaseID) SessionOption {
 // context is canceled before Close() completes, the session's lease will be
 // abandoned and left to expire instead of being revoked.
 func WithContext(ctx context.Context) SessionOption {
-	return func(so *sessionOptions, _ *zap.Logger) {
+	return func(so *sessionOptions) {
 		so.ctx = ctx
 	}
 }

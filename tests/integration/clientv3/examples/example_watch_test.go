@@ -20,15 +20,15 @@ import (
 	"log"
 	"time"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
-func mockWatcherWatch() {
+func mockWatcher_watch() {
 	fmt.Println(`PUT "foo" : "bar"`)
 }
 
 func ExampleWatcher_watch() {
-	forUnitTestsRunInMockedContext(mockWatcherWatch, func() {
+	forUnitTestsRunInMockedContext(mockWatcher_watch, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -48,12 +48,12 @@ func ExampleWatcher_watch() {
 	// PUT "foo" : "bar"
 }
 
-func mockWatcherWatchWithPrefix() {
+func mockWatcher_watchWithPrefix() {
 	fmt.Println(`PUT "foo1" : "bar"`)
 }
 
 func ExampleWatcher_watchWithPrefix() {
-	forUnitTestsRunInMockedContext(mockWatcherWatchWithPrefix, func() {
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithPrefix, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -73,14 +73,14 @@ func ExampleWatcher_watchWithPrefix() {
 	// PUT "foo1" : "bar"
 }
 
-func mockWatcherWatchWithRange() {
+func mockWatcher_watchWithRange() {
 	fmt.Println(`PUT "foo1" : "bar1"`)
 	fmt.Println(`PUT "foo2" : "bar2"`)
 	fmt.Println(`PUT "foo3" : "bar3"`)
 }
 
 func ExampleWatcher_watchWithRange() {
-	forUnitTestsRunInMockedContext(mockWatcherWatchWithRange, func() {
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithRange, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -121,12 +121,12 @@ func ExampleWatcher_watchWithRange() {
 	// PUT "foo3" : "bar3"
 }
 
-func mockWatcherWatchWithProgressNotify() {
+func mockWatcher_watchWithProgressNotify() {
 	fmt.Println(`wresp.IsProgressNotify: true`)
 }
 
 func ExampleWatcher_watchWithProgressNotify() {
-	forUnitTestsRunInMockedContext(mockWatcherWatchWithProgressNotify, func() {
+	forUnitTestsRunInMockedContext(mockWatcher_watchWithProgressNotify, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,

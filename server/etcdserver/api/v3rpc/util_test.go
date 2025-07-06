@@ -19,11 +19,11 @@ import (
 	"errors"
 	"testing"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
+	"go.etcd.io/etcd/server/v3/mvcc"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
 func TestGRPCError(t *testing.T) {
@@ -38,7 +38,7 @@ func TestGRPCError(t *testing.T) {
 		{err: errors.New("foo"), exp: status.Error(codes.Unknown, "foo")},
 	}
 	for i := range tt {
-		if err := togRPCError(tt[i].err); !errors.Is(err, tt[i].exp) {
+		if err := togRPCError(tt[i].err); err != tt[i].exp {
 			if _, ok := status.FromError(err); ok {
 				if err.Error() == tt[i].exp.Error() {
 					continue

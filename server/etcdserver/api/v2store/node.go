@@ -19,9 +19,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/jonboulle/clockwork"
-
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
+
+	"github.com/jonboulle/clockwork"
 )
 
 // explanations of Compare function result
@@ -37,20 +37,21 @@ var Permanent time.Time
 // node is the basic element in the store system.
 // A key-value pair will have a string value
 // A directory will have a children map
+// etcdServer的V2版本的存储
 type node struct {
-	Path string
+	Path string // 当前节点的路径、类似 "/dir1/dir2/key"
 
-	CreatedIndex  uint64
-	ModifiedIndex uint64
+	CreatedIndex  uint64 // 记录创建当前节点时 对应的 CurrentIndex值
+	ModifiedIndex uint64 // 记录最后一次更新当前节点时对应的 CurrentIndex值
 
-	Parent *node `json:"-"` // should not encode this field! avoid circular dependency.
+	Parent *node `json:"-"` // should not encode this field! avoid circular dependency. 指向父节点的指针
 
-	ExpireTime time.Time
-	Value      string           // for key-value pair
-	Children   map[string]*node // for directory
+	ExpireTime time.Time        // 当前节点的过期时间，如果为0 表示不会过期，不会被过期删除
+	Value      string           // for key-value pair 如果当前节点表示一个 键值对，则改字段记录了对应的值
+	Children   map[string]*node // for directory 如果当前节点表示一个 目录节点，则该字段记录了其自节点，node.IsDir()方法检查 这个字段判断当前节点是否为目录
 
 	// A reference to the store this node is attached to.
-	store *store
+	store *store // 记录当前节点关联的v2版本存储实例
 }
 
 // newKV creates a Key-Value pair
@@ -277,6 +278,7 @@ func (n *node) Repr(recursive, sorted bool, clock clockwork.Clock) *NodeExtern {
 		i := 0
 
 		for _, child := range children {
+
 			if child.IsHidden() { // get will not list hidden node
 				continue
 			}

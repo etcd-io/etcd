@@ -16,25 +16,24 @@
 package traceutil
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
 )
 
-// TraceKey is used as a key of context for Trace.
-type TraceKey struct{}
-
-// StartTimeKey is used as a key of context for start time of operation.
-type StartTimeKey struct{}
+const (
+	TraceKey     = "trace"
+	StartTimeKey = "startTime"
+)
 
 // Field is a kv pair to record additional details of the trace.
 type Field struct {
 	Key   string
-	Value any
+	Value interface{}
 }
 
 func (f *Field) format() string {
@@ -45,7 +44,7 @@ func writeFields(fields []Field) string {
 	if len(fields) == 0 {
 		return ""
 	}
-	var buf strings.Builder
+	var buf bytes.Buffer
 	buf.WriteString("{")
 	for _, f := range fields {
 		buf.WriteString(f.format())
@@ -82,7 +81,7 @@ func TODO() *Trace {
 }
 
 func Get(ctx context.Context) *Trace {
-	if trace, ok := ctx.Value(TraceKey{}).(*Trace); ok && trace != nil {
+	if trace, ok := ctx.Value(TraceKey).(*Trace); ok && trace != nil {
 		return trace
 	}
 	return TODO()
@@ -182,43 +181,41 @@ func (t *Trace) logInfo(threshold time.Duration) (string, []zap.Field) {
 	var steps []string
 	lastStepTime := t.startTime
 	for i := 0; i < len(t.steps); i++ {
-		tstep := t.steps[i]
+		step := t.steps[i]
 		// add subtrace common fields which defined at the beginning to each sub-steps
-		if tstep.isSubTraceStart {
+		if step.isSubTraceStart {
 			for j := i + 1; j < len(t.steps) && !t.steps[j].isSubTraceEnd; j++ {
-				t.steps[j].fields = append(tstep.fields, t.steps[j].fields...)
+				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
 			}
 			continue
 		}
 		// add subtrace common fields which defined at the end to each sub-steps
-		if tstep.isSubTraceEnd {
+		if step.isSubTraceEnd {
 			for j := i - 1; j >= 0 && !t.steps[j].isSubTraceStart; j-- {
-				t.steps[j].fields = append(tstep.fields, t.steps[j].fields...)
+				t.steps[j].fields = append(step.fields, t.steps[j].fields...)
 			}
 			continue
 		}
 	}
 	for i := 0; i < len(t.steps); i++ {
-		tstep := t.steps[i]
-		if tstep.isSubTraceStart || tstep.isSubTraceEnd {
+		step := t.steps[i]
+		if step.isSubTraceStart || step.isSubTraceEnd {
 			continue
 		}
-		stepDuration := tstep.time.Sub(lastStepTime)
+		stepDuration := step.time.Sub(lastStepTime)
 		if stepDuration > threshold {
 			steps = append(steps, fmt.Sprintf("trace[%d] '%v' %s (duration: %v)",
-				traceNum, tstep.msg, writeFields(tstep.fields), stepDuration))
+				traceNum, step.msg, writeFields(step.fields), stepDuration))
 		}
-		lastStepTime = tstep.time
+		lastStepTime = step.time
 	}
 
-	fs := []zap.Field{
-		zap.String("detail", writeFields(t.fields)),
+	fs := []zap.Field{zap.String("detail", writeFields(t.fields)),
 		zap.Duration("duration", totalDuration),
 		zap.Time("start", t.startTime),
 		zap.Time("end", endTime),
 		zap.Strings("steps", steps),
-		zap.Int("step_count", len(steps)),
-	}
+		zap.Int("step_count", len(steps))}
 	return msg, fs
 }
 

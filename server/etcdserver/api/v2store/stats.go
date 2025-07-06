@@ -104,7 +104,7 @@ func (s *Stats) clone() *Stats {
 	}
 }
 
-func (s *Stats) toJSON() []byte {
+func (s *Stats) toJson() []byte {
 	b, _ := json.Marshal(s)
 	return b
 }

@@ -15,31 +15,32 @@
 package clientv3test
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3/mirror"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestMirrorSync(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
-	_, err := c.KV.Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
+	_, err := c.KV.Put(context.TODO(), "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	syncer := mirror.NewSyncer(c, "", 0)
-	gch, ech := syncer.SyncBase(t.Context())
+	gch, ech := syncer.SyncBase(context.TODO())
 	wkvs := []*mvccpb.KeyValue{{Key: []byte("foo"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}
 
 	for g := range gch {
@@ -52,10 +53,12 @@ func TestMirrorSync(t *testing.T) {
 		t.Fatalf("unexpected error %v", e)
 	}
 
-	wch := syncer.SyncUpdates(t.Context())
+	wch := syncer.SyncUpdates(context.TODO())
 
-	_, err = c.KV.Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
+	_, err = c.KV.Put(context.TODO(), "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case r := <-wch:
@@ -69,13 +72,13 @@ func TestMirrorSync(t *testing.T) {
 }
 
 func TestMirrorSyncBase(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)
-	ctx := t.Context()
+	ctx := context.TODO()
 
 	keyCh := make(chan string)
 	var wg sync.WaitGroup

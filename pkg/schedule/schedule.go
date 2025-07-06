@@ -17,36 +17,9 @@ package schedule
 import (
 	"context"
 	"sync"
-
-	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
-type Job interface {
-	Name() string
-	Do(context.Context)
-}
-
-type job struct {
-	name string
-	do   func(context.Context)
-}
-
-func (j job) Name() string {
-	return j.name
-}
-
-func (j job) Do(ctx context.Context) {
-	j.do(ctx)
-}
-
-func NewJob(name string, do func(ctx context.Context)) Job {
-	return job{
-		name: name,
-		do:   do,
-	}
-}
+type Job func(context.Context)
 
 // Scheduler can schedule jobs.
 type Scheduler interface {
@@ -83,18 +56,14 @@ type fifo struct {
 
 	finishCond *sync.Cond
 	donec      chan struct{}
-	lg         *zap.Logger
 }
 
 // NewFIFOScheduler returns a Scheduler that schedules jobs in FIFO
 // order sequentially
-func NewFIFOScheduler(lg *zap.Logger) Scheduler {
-	verify.Assert(lg != nil, "the logger should not be nil")
-
+func NewFIFOScheduler() Scheduler {
 	f := &fifo{
 		resume: make(chan struct{}, 1),
 		donec:  make(chan struct{}, 1),
-		lg:     lg,
 	}
 	f.finishCond = sync.NewCond(&f.mu)
 	f.ctx, f.cancel = context.WithCancel(context.Background())
@@ -156,6 +125,7 @@ func (f *fifo) Stop() {
 }
 
 func (f *fifo) run() {
+	// TODO: recover from job panic?
 	defer func() {
 		close(f.donec)
 		close(f.resume)
@@ -179,29 +149,17 @@ func (f *fifo) run() {
 				f.mu.Unlock()
 				// clean up pending jobs
 				for _, todo := range pendings {
-					f.executeJob(todo, true)
+					todo(f.ctx)
 				}
 				return
 			}
 		} else {
-			f.executeJob(todo, false)
-		}
-	}
-}
-
-func (f *fifo) executeJob(todo Job, updatedFinishedStats bool) {
-	defer func() {
-		if !updatedFinishedStats {
+			todo(f.ctx)
 			f.finishCond.L.Lock()
 			f.finished++
 			f.pendings = f.pendings[1:]
 			f.finishCond.Broadcast()
 			f.finishCond.L.Unlock()
 		}
-		if err := recover(); err != nil {
-			f.lg.Panic("execute job failed", zap.String("job", todo.Name()), zap.Any("panic", err))
-		}
-	}()
-
-	todo.Do(f.ctx)
+	}
 }

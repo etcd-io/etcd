@@ -15,13 +15,20 @@
 package embed
 
 import (
+	"context"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 )
 
 func TestEnableAuth(t *testing.T) {
-	tdir := t.TempDir()
+	tdir, err := ioutil.TempDir(os.TempDir(), "auth-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tdir)
 	cfg := NewConfig()
 	cfg.Dir = tdir
 	e, err := StartEtcd(cfg)
@@ -32,19 +39,19 @@ func TestEnableAuth(t *testing.T) {
 	client := v3client.New(e.Server)
 	defer client.Close()
 
-	_, err = client.RoleAdd(t.Context(), "root")
+	_, err = client.RoleAdd(context.TODO(), "root")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.UserAdd(t.Context(), "root", "root")
+	_, err = client.UserAdd(context.TODO(), "root", "root")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.UserGrantRole(t.Context(), "root", "root")
+	_, err = client.UserGrantRole(context.TODO(), "root", "root")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = client.AuthEnable(t.Context())
+	_, err = client.AuthEnable(context.TODO())
 	if err != nil {
 		t.Fatal(err)
 	}

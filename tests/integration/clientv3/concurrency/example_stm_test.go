@@ -21,11 +21,11 @@ import (
 	"math/rand"
 	"sync"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
 )
 
-func mockSTMApply() {
+func mockSTM_apply() {
 	fmt.Println("account sum is 500")
 }
 
@@ -33,7 +33,7 @@ func mockSTMApply() {
 // transfer between balances.
 func ExampleSTM_apply() {
 	forUnitTestsRunInMockedContext(
-		mockSTMApply,
+		mockSTM_apply,
 		func() {
 			cli, err := clientv3.New(clientv3.Config{Endpoints: exampleEndpoints()})
 			if err != nil {
@@ -50,11 +50,11 @@ func ExampleSTM_apply() {
 				}
 			}
 
-			exchange := func(stm concurrency.STM) {
+			exchange := func(stm concurrency.STM) error {
 				from, to := rand.Intn(totalAccounts), rand.Intn(totalAccounts)
 				if from == to {
 					// nothing to do
-					return
+					return nil
 				}
 				// read values
 				fromK, toK := fmt.Sprintf("accts/%d", from), fmt.Sprintf("accts/%d", to)
@@ -70,6 +70,7 @@ func ExampleSTM_apply() {
 				// write back
 				stm.Put(fromK, fmt.Sprintf("%d", fromInt))
 				stm.Put(toK, fmt.Sprintf("%d", toInt))
+				return nil
 			}
 
 			// concurrently exchange values between accounts
@@ -78,10 +79,7 @@ func ExampleSTM_apply() {
 			for i := 0; i < 10; i++ {
 				go func() {
 					defer wg.Done()
-					if _, serr := concurrency.NewSTM(cli, func(stm concurrency.STM) error {
-						exchange(stm)
-						return nil
-					}); serr != nil {
+					if _, serr := concurrency.NewSTM(cli, exchange); serr != nil {
 						log.Fatal(serr)
 					}
 				}()

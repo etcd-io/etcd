@@ -15,13 +15,11 @@
 package clientv3_test
 
 import (
-	"log"
 	"os"
 	"testing"
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
@@ -31,15 +29,13 @@ const (
 )
 
 var lazyCluster = integration.NewLazyClusterWithConfig(
-	integration2.ClusterConfig{
+	integration.ClusterConfig{
 		Size:                        3,
-		WatchProgressNotifyInterval: 200 * time.Millisecond,
-		DisableStrictReconfigCheck:  true,
-	})
+		WatchProgressNotifyInterval: 200 * time.Millisecond})
 
-func exampleEndpoints() []string { return lazyCluster.EndpointsGRPC() }
+func exampleEndpoints() []string { return lazyCluster.EndpointsV3() }
 
-func forUnitTestsRunInMockedContext(_ func(), example func()) {
+func forUnitTestsRunInMockedContext(mocking func(), example func()) {
 	// For integration tests runs in the provided environment
 	example()
 }
@@ -47,20 +43,6 @@ func forUnitTestsRunInMockedContext(_ func(), example func()) {
 // TestMain sets up an etcd cluster if running the examples.
 func TestMain(m *testing.M) {
 	testutil.ExitInShortMode("Skipping: the tests require real cluster")
-
-	tempDir, err := os.MkdirTemp(os.TempDir(), "etcd-integration")
-	if err != nil {
-		log.Printf("Failed to obtain tempDir: %v", tempDir)
-		os.Exit(1)
-	}
-	defer os.RemoveAll(tempDir)
-
-	err = os.Chdir(tempDir)
-	if err != nil {
-		log.Printf("Failed to change working dir to: %s: %v", tempDir, err)
-		os.Exit(1)
-	}
-	log.Printf("Running tests (examples) in dir(%v): ...", tempDir)
 	v := m.Run()
 	lazyCluster.Terminate()
 

@@ -17,13 +17,13 @@ package embed
 import (
 	"path/filepath"
 
-	"go.etcd.io/etcd/server/v3/storage/wal"
+	"go.etcd.io/etcd/server/v3/wal"
 )
 
 func isMemberInitialized(cfg *Config) bool {
-	walDir := cfg.WalDir
-	if walDir == "" {
-		walDir = filepath.Join(cfg.Dir, "member", "wal")
+	waldir := cfg.WalDir
+	if waldir == "" {
+		waldir = filepath.Join(cfg.Dir, "member", "wal")
 	}
-	return wal.Exist(walDir)
+	return wal.Exist(waldir)
 }

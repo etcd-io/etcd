@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -23,18 +24,18 @@ import (
 // We cannot implement testing.TB due to protection, so we expose this simplified interface.
 type TB interface {
 	Cleanup(func())
-	Error(args ...any)
-	Errorf(format string, args ...any)
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
 	Fail()
 	FailNow()
 	Failed() bool
-	Fatal(args ...any)
-	Fatalf(format string, args ...any)
-	Logf(format string, args ...any)
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Logf(format string, args ...interface{})
 	Name() string
 	TempDir() string
 	Helper()
-	Skip(args ...any)
+	Skip(args ...interface{})
 }
 
 // NewTestingTBProthesis creates a fake variant of testing.TB implementation.
@@ -59,20 +60,20 @@ func (t *testingTBProthesis) Helper() {
 	// Ignored
 }
 
-func (t *testingTBProthesis) Skip(args ...any) {
-	t.Log(append([]any{"Skipping due to: "}, args...))
+func (t *testingTBProthesis) Skip(args ...interface{}) {
+	t.Log(append([]interface{}{"Skipping due to: "}, args...))
 }
 
 func (t *testingTBProthesis) Cleanup(f func()) {
 	t.cleanups = append(t.cleanups, f)
 }
 
-func (t *testingTBProthesis) Error(args ...any) {
+func (t *testingTBProthesis) Error(args ...interface{}) {
 	log.Println(args...)
 	t.Fail()
 }
 
-func (t *testingTBProthesis) Errorf(format string, args ...any) {
+func (t *testingTBProthesis) Errorf(format string, args ...interface{}) {
 	log.Printf(format, args...)
 	t.Fail()
 }
@@ -90,19 +91,19 @@ func (t *testingTBProthesis) Failed() bool {
 	return t.failed
 }
 
-func (t *testingTBProthesis) Fatal(args ...any) {
+func (t *testingTBProthesis) Fatal(args ...interface{}) {
 	log.Fatalln(args...)
 }
 
-func (t *testingTBProthesis) Fatalf(format string, args ...any) {
+func (t *testingTBProthesis) Fatalf(format string, args ...interface{}) {
 	log.Fatalf(format, args...)
 }
 
-func (t *testingTBProthesis) Logf(format string, args ...any) {
+func (t *testingTBProthesis) Logf(format string, args ...interface{}) {
 	log.Printf(format, args...)
 }
 
-func (t *testingTBProthesis) Log(args ...any) {
+func (t *testingTBProthesis) Log(args ...interface{}) {
 	log.Println(args...)
 }
 
@@ -111,7 +112,7 @@ func (t *testingTBProthesis) Name() string {
 }
 
 func (t *testingTBProthesis) TempDir() string {
-	dir, err := os.MkdirTemp("", t.name)
+	dir, err := ioutil.TempDir("", t.name)
 	if err != nil {
 		t.Fatal(err)
 	}

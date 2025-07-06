@@ -17,54 +17,50 @@ package command
 import (
 	"os"
 
-	"github.com/olekukonko/tablewriter"
-	"github.com/olekukonko/tablewriter/tw"
-
 	v3 "go.etcd.io/etcd/client/v3"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 type tablePrinter struct{ printer }
 
 func (tp *tablePrinter) MemberList(r v3.MemberListResponse) {
 	hdr, rows := makeMemberListTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
-
 func (tp *tablePrinter) EndpointHealth(r []epHealth) {
 	hdr, rows := makeEndpointHealthTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
-
 func (tp *tablePrinter) EndpointStatus(r []epStatus) {
 	hdr, rows := makeEndpointStatusTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
-
 func (tp *tablePrinter) EndpointHashKV(r []epHashKV) {
 	hdr, rows := makeEndpointHashKVTable(r)
-	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
-	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
-	table.Header(hdr)
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
+	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }

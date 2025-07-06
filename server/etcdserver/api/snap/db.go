@@ -18,44 +18,51 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
-	humanize "github.com/dustin/go-humanize"
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+
+	"github.com/dustin/go-humanize"
+	"go.uber.org/zap"
 )
 
 var ErrNoDBSnapshot = errors.New("snap: snapshot file doesn't exist")
 
 // SaveDBFrom saves snapshot of the database from the given reader. It
 // guarantees the save operation is atomic.
+// 提供了另一套 读写 快照数据的方式，生成的快照文件名称也与上述方式不同
 func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 	start := time.Now()
 
-	f, err := os.CreateTemp(s.dir, "tmp")
+	f, err := ioutil.TempFile(s.dir, "tmp") // 创建临时文件
 	if err != nil {
 		return 0, err
 	}
 	var n int64
-	n, err = io.Copy(f, r)
+	n, err = io.Copy(f, r) // 将快照数据写入临时文件中
 	if err == nil {
 		fsyncStart := time.Now()
-		err = fileutil.Fsync(f)
+		err = fileutil.Fsync(f) // 将临时文件的改动刷新到磁盘
 		snapDBFsyncSec.Observe(time.Since(fsyncStart).Seconds())
 	}
 	f.Close()
 	if err != nil {
+		// 如果上述过程中出现异常， 则删除临时文件
 		os.Remove(f.Name())
 		return n, err
 	}
+
+	// 获取指定的"snap.db"文件， 如采存在则将其删除
 	fn := s.dbFilePath(id)
 	if fileutil.Exist(fn) {
 		os.Remove(f.Name())
 		return n, nil
 	}
+
+	// 重命名临时文件
 	err = os.Rename(f.Name(), fn)
 	if err != nil {
 		os.Remove(f.Name())
@@ -75,6 +82,7 @@ func (s *Snapshotter) SaveDBFrom(r io.Reader, id uint64) (int64, error) {
 
 // DBFilePath returns the file path for the snapshot of the database with
 // given id. If the snapshot does not exist, it returns error.
+// 查找指定的快照db文件
 func (s *Snapshotter) DBFilePath(id uint64) (string, error) {
 	if _, err := fileutil.ReadDir(s.dir); err != nil {
 		return "", err

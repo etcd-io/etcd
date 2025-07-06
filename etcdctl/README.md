@@ -119,30 +119,15 @@ RPC: Range
 
 - print-value-only -- print only value when used with write-out=simple
 
-- consistency -- Linearizable(l) or Serializable(s), defaults to Linearizable(l).
+- consistency -- Linearizable(l) or Serializable(s)
 
 - from-key -- Get keys that are greater than or equal to the given key using byte compare
 
 - keys-only -- Get only the keys
 
-- max-create-revision -- restrict results to kvs with create revision lower or equal than the supplied revision
-
-- min-create-revision -- restrict results to kvs with create revision greater or equal than the supplied revision
-
-- max-mod-revision -- restrict results to kvs with modified revision lower or equal than the supplied revision
-
-- min-mod-revision -- restrict results to kvs with modified revision greater or equal than the supplied revision
-
 #### Output
-Prints the data in format below,
-```
+
 \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
-```
-
-Note serializable requests are better for lower latency requirement, but
-stale data might be returned if serializable option (`--consistency=s`)
-is specified.
-
 
 #### Examples
 
@@ -391,7 +376,7 @@ Prints the compacted revision.
 
 ### WATCH [options] [key or prefix] [range_end] [--] [exec-command arg1 arg2 ...]
 
-Watch watches events stream on keys or prefixes, [key or prefix, range_end) if range_end is given. The watch command runs until it encounters an error or is terminated by the user. If range_end is given, it must be lexicographically greater than key or "\x00".
+Watch watches events stream on keys or prefixes, [key or prefix, range_end) if range_end is given. The watch command runs until it encounters an error or is terminated by the user.  If range_end is given, it must be lexicographically greater than key or "\x00".
 
 RPC: Watch
 
@@ -726,18 +711,9 @@ MEMBER LIST prints the member details for all members associated with an etcd cl
 
 RPC: MemberList
 
-#### Options
-- consistency -- Linearizable(l) or Serializable(s), defaults to Linearizable(l).
-
 #### Output
 
 Prints a humanized table of the member IDs, statuses, names, peer addresses, and client addresses.
-
-Note serializable requests are better for lower latency requirement, but
-stale member list might be returned if serializable option (`--consistency=s`)
-is specified. In some situations users may want to use serializable requests.
-For example, when adding a new member to a one-node cluster, it's reasonable
-and safe to use serializable request before the new added member gets started.
 
 #### Examples
 
@@ -833,13 +809,13 @@ Get the status for all endpoints in the cluster associated with the default endp
 
 ```bash
 ./etcdctl -w table endpoint --cluster status
-+------------------------+------------------+---------------+-----------------+---------+----------------+-----------+------------+-----------+------------+--------------------+--------+
-|        ENDPOINT        |        ID        |    VERSION    | STORAGE VERSION | DB SIZE | DB SIZE IN USE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
-+------------------------+------------------+---------------+-----------------+---------+----------------+-----------+------------+-----------+------------+--------------------+--------+
-|  http://127.0.0.1:2379 | 8211f1d0f64f3269 | 3.6.0-alpha.0 |           3.6.0 |   25 kB |          25 kB |     false |      false |         2 |          8 |                  8 |        |
-| http://127.0.0.1:22379 | 91bc3c398fb3c146 | 3.6.0-alpha.0 |           3.6.0 |   25 kB |          25 kB |      true |      false |         2 |          8 |                  8 |        |
-| http://127.0.0.1:32379 | fd422379fda50e48 | 3.6.0-alpha.0 |           3.6.0 |   25 kB |          25 kB |     false |      false |         2 |          8 |                  8 |        |
-+------------------------+------------------+---------------+-----------------+---------+----------------+-----------+------------+-----------+------------+--------------------+--------+
++------------------------+------------------+----------------+---------+-----------+-----------+------------+
+|        ENDPOINT        |        ID        |    VERSION     | DB SIZE | IS LEADER | RAFT TERM | RAFT INDEX |
++------------------------+------------------+----------------+---------+-----------+-----------+------------+
+| http://127.0.0.1:2379  | 8211f1d0f64f3269 | 3.2.0-rc.1+git |   25 kB |     false |         2 |          8 |
+| http://127.0.0.1:22379 | 91bc3c398fb3c146 | 3.2.0-rc.1+git |   25 kB |     false |         2 |          8 |
+| http://127.0.0.1:32379 | fd422379fda50e48 | 3.2.0-rc.1+git |   25 kB |      true |         2 |          8 |
++------------------------+------------------+----------------+---------+-----------+-----------+------------+
 ```
 
 ### ENDPOINT HASHKV
@@ -861,73 +837,28 @@ Prints a line of JSON encoding each endpoint URL and KV history hash.
 Get the hash for the default endpoint:
 
 ```bash
-./etcdctl endpoint hashkv --cluster
-http://127.0.0.1:2379, 2064120424, 13
-http://127.0.0.1:22379, 2064120424, 13
-http://127.0.0.1:32379, 2064120424, 13
+./etcdctl endpoint hashkv
+# 127.0.0.1:2379, 1084519789
 ```
 
 Get the status for the default endpoint as JSON:
 
 ```bash
-./etcdctl endpoint hash --cluster -w json | jq
-[
-  {
-    "Endpoint": "http://127.0.0.1:2379",
-    "HashKV": {
-      "header": {
-        "cluster_id": 17237436991929494000,
-        "member_id": 9372538179322590000,
-        "revision": 13,
-        "raft_term": 2
-      },
-      "hash": 2064120424,
-      "compact_revision": -1,
-      "hash_revision": 13
-    }
-  },
-  {
-    "Endpoint": "http://127.0.0.1:22379",
-    "HashKV": {
-      "header": {
-        "cluster_id": 17237436991929494000,
-        "member_id": 10501334649042878000,
-        "revision": 13,
-        "raft_term": 2
-      },
-      "hash": 2064120424,
-      "compact_revision": -1,
-      "hash_revision": 13
-    }
-  },
-  {
-    "Endpoint": "http://127.0.0.1:32379",
-    "HashKV": {
-      "header": {
-        "cluster_id": 17237436991929494000,
-        "member_id": 18249187646912140000,
-        "revision": 13,
-        "raft_term": 2
-      },
-      "hash": 2064120424,
-      "compact_revision": -1,
-      "hash_revision": 13
-    }
-  }
-]
+./etcdctl -w json endpoint hashkv
+# [{"Endpoint":"127.0.0.1:2379","Hash":{"header":{"cluster_id":14841639068965178418,"member_id":10276657743932975437,"revision":1,"raft_term":3},"hash":1084519789,"compact_revision":-1}}]
 ```
 
 Get the status for all endpoints in the cluster associated with the default endpoint:
 
 ```bash
-$ ./etcdctl endpoint hash --cluster -w table
-+------------------------+-----------+---------------+
-|        ENDPOINT        |   HASH    | HASH REVISION |
-+------------------------+-----------+---------------+
-|  http://127.0.0.1:2379 | 784522900 |            16 |
-| http://127.0.0.1:22379 | 784522900 |            16 |
-| http://127.0.0.1:32379 | 784522900 |            16 |
-+------------------------+-----------+---------------+
+./etcdctl -w table endpoint --cluster hashkv
++------------------------+------------+
+|        ENDPOINT        |    HASH    |
++------------------------+------------+
+| http://127.0.0.1:2379  | 1084519789 |
+| http://127.0.0.1:22379 | 1084519789 |
+| http://127.0.0.1:32379 | 1084519789 |
++------------------------+------------+
 ```
 
 ### ALARM \<subcommand\>
@@ -982,7 +913,7 @@ If NOSPACE alarm is present:
 
 ### DEFRAG [options]
 
-DEFRAG defragments the backend database file for a set of given endpoints while etcd is running. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
+DEFRAG defragments the backend database file for a set of given endpoints while etcd is running, ~~or directly defragments an etcd data directory while etcd is not running~~. When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
 
 **Note: to defragment offline (`--data-dir` flag), use: `etcutl defrag` instead**
 
@@ -990,6 +921,9 @@ DEFRAG defragments the backend database file for a set of given endpoints while 
 
 **Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag or `--cluster` flag to automatically find all cluster members.**
 
+#### Options
+
+- data-dir -- Optional. **Deprecated**. If present, defragments a data directory not in use by etcd. To be removed in v3.6.
 
 #### Output
 
@@ -1010,6 +944,16 @@ Run defragment operations for all endpoints in the cluster associated with the d
 Finished defragmenting etcd member[http://127.0.0.1:2379]
 Finished defragmenting etcd member[http://127.0.0.1:22379]
 Finished defragmenting etcd member[http://127.0.0.1:32379]
+```
+
+To defragment a data directory directly, use the `etcdutl` with `--data-dir` flag 
+(`etcdctl` will remove this flag in v3.6):
+
+``` bash
+# Defragment while etcd is not running
+./etcdutl defrag --data-dir default.etcd
+# success (exit status 0)
+# Error: cannot open database at default.etcd/member/snap/db
 ```
 
 #### Remarks
@@ -1037,12 +981,84 @@ Save a snapshot to "snapshot.db":
 
 ### SNAPSHOT RESTORE [options] \<filename\>
 
-Removed in v3.6. Use `etcdutl snapshot restore` instead.
+Note: Deprecated. Use `etcdutl snapshot restore` instead. To be removed in v3.6.
 
+SNAPSHOT RESTORE creates an etcd data directory for an etcd cluster member from a backend database snapshot and a new cluster configuration. Restoring the snapshot into each member for a new cluster configuration will initialize a new etcd cluster preloaded by the snapshot data.
+
+#### Options
+
+The snapshot restore options closely resemble to those used in the `etcd` command for defining a cluster.
+
+- data-dir -- Path to the data directory. Uses \<name\>.etcd if none given.
+
+- wal-dir -- Path to the WAL directory. Uses data directory if none given.
+
+- initial-cluster -- The initial cluster configuration for the restored etcd cluster.
+
+- initial-cluster-token -- Initial cluster token for the restored etcd cluster.
+
+- initial-advertise-peer-urls -- List of peer URLs for the member being restored.
+
+- name -- Human-readable name for the etcd cluster member being restored.
+
+- skip-hash-check -- Ignore snapshot integrity hash value (required if copied from data directory)
+
+#### Output
+
+A new etcd data directory initialized with the snapshot.
+
+#### Example
+
+Save a snapshot, restore into a new 3 node cluster, and start the cluster:
+```
+./etcdctl snapshot save snapshot.db
+
+# restore members
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:12380  --name sshot1 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:22380  --name sshot2 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdctl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:32380  --name sshot3 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+
+# launch members
+bin/etcd --name sshot1 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:12380 &
+bin/etcd --name sshot2 --listen-client-urls http://127.0.0.1:22379 --advertise-client-urls http://127.0.0.1:22379 --listen-peer-urls http://127.0.0.1:22380 &
+bin/etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 &
+```
 
 ### SNAPSHOT STATUS \<filename\>
 
-Removed in v3.6. Use `etcdutl snapshot status` instead.
+Note: Deprecated. Use `etcdutl snapshot restore` instead. To be removed in v3.6.
+
+SNAPSHOT STATUS lists information about a given backend database snapshot file.
+
+#### Output
+
+##### Simple format
+
+Prints a humanized table of the database hash, revision, total keys, and size.
+
+##### JSON format
+
+Prints a line of JSON encoding the database hash, revision, total keys, and size.
+
+#### Examples
+```bash
+./etcdctl snapshot status file.db
+# cf1550fb, 3, 3, 25 kB
+```
+
+```bash
+./etcdctl --write-out=json snapshot status file.db
+# {"hash":3474280699,"revision":3,"totalKey":3,"totalSize":24576}
+```
+
+```bash
+./etcdctl --write-out=table snapshot status file.db
++----------+----------+------------+------------+
+|   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
++----------+----------+------------+------------+
+| cf1550fb |        3 |          3 | 25 kB      |
++----------+----------+------------+------------+
+```
 
 ### MOVE-LEADER \<hexadecimal-transferee-id\>
 
@@ -1065,69 +1081,6 @@ echo ${transferee_id}
 # request to leader with target node ID
 ./etcdctl --endpoints ${leader_ep} move-leader ${transferee_id}
 # Leadership transferred from 45ddc0e800e20b93 to c89feb932daef420
-```
-
-### DOWNGRADE \<subcommand\>
-
-NOTICE: Downgrades is an experimental feature in v3.6 and is not recommended for production clusters.
-
-Downgrade provides commands to downgrade cluster.
-Normally etcd members cannot be downgraded due to cluster version mechanism.
-
-After initial bootstrap, cluster members agree on the cluster version. Every 5 seconds, leader checks versions of all members and picks lowers minor version.
-New members will refuse joining cluster with cluster version newer than theirs, thus preventing cluster from downgrading.
-Downgrade commands allow cluster administrator to force cluster version to be lowered to previous minor version, thus allowing to downgrade the cluster.
-
-Downgrade should be executed in stages:
-1. Verify that cluster is ready to be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
-2. Start the downgrade process by running `etcdctl downgrade enable <TARGET_VERSION>`
-3. For each cluster member:
-   1. Ensure that member is ready for downgrade by confirming that it wrote `The server is ready to downgrade` log.
-   2. Replace member binary with one with older version.
-   3. Confirm that member has correctly started and joined the cluster.
-4. Ensure that downgrade process has succeeded by checking leader log for `the cluster has been downgraded`
-
-Downgrade can be canceled by running `etcdctl downgrade cancel` command.
-
-In case of downgrade being canceled, cluster version will return to its normal behavior (pick the lowest member minor version).
-If no members were downgraded, cluster version will return to original value.
-If at least one member was downgraded, cluster version will stay at the `<TARGET_VALUE>` until downgraded members are upgraded back.
-
-### DOWNGRADE VALIDATE \<TARGET_VERSION\>
-
-DOWNGRADE VALIDATE validate downgrade capability before starting downgrade.
-
-#### Example
-
-```bash
-./etcdctl downgrade validate 3.5
-Downgrade validate success, cluster version 3.6
-
-./etcdctl downgrade validate 3.4
-Error: etcdserver: invalid downgrade target version
-
-```
-
-### DOWNGRADE ENABLE \<TARGET_VERSION\>
-
-DOWNGRADE ENABLE starts a downgrade action to cluster.
-
-#### Example
-
-```bash
-./etcdctl downgrade enable 3.5
-Downgrade enable success, cluster version 3.6
-```
-
-### DOWNGRADE CANCEL
-
-DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
-
-#### Example
-
-```bash
-./etcdctl downgrade cancel
-Downgrade cancel success, cluster version 3.5
 ```
 
 ## Concurrency commands
@@ -1202,7 +1155,7 @@ Whenever a leader is elected, its proposal is given as output.
 
 ELECT returns a zero exit code only if it is terminated by a signal and can revoke its candidacy or leadership, if any.
 
-If a candidate is abnormally terminated, election progress may be delayed by up to the default lease length of 60 seconds.
+If a candidate is abnormally terminated, election rogress may be delayed by up to the default lease length of 60 seconds.
 
 ## Authentication commands
 
@@ -1535,8 +1488,6 @@ RPC: UserRevokeRole
 
 - dest-insecure-transport -- Disable transport security for client connections
 
-- max-txn-ops -- Maximum number of operations permitted in a transaction during syncing updates
-
 #### Output
 
 The approximate total number of keys transferred to the destination cluster, updated every 30 seconds.
@@ -1575,26 +1526,6 @@ CHECK provides commands for checking properties of the etcd cluster.
 ### CHECK PERF [options]
 
 CHECK PERF checks the performance of the etcd cluster for 60 seconds. Running the `check perf` often can create a large keyspace history which can be auto compacted and defragmented using the `--auto-compact` and `--auto-defrag` options as described below.
-
-Notice that different workload models use different configurations in terms of number of clients and throughput. Here is the configuration for each load:
-
-
-| Load | Number of clients | Number of put requests (requests/sec) |
-|---------|------|---------|
-| Small   | 50   | 10000   |
-| Medium  | 200  | 100000  |
-| Large   | 500  | 1000000 |
-| xLarge  | 1000 | 3000000 |
-
-The test checks for the following conditions:
-
-- The throughput should be at least 90% of the issued request
-- All the requests should be done in less than 500 ms
-- The standard deviation of the requests should be less than 100 ms
-
-
-Hence, a workload model may work while another one might fail.
-
 
 RPC: CheckPerf
 

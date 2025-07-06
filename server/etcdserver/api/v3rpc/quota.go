@@ -21,7 +21,6 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
-	"go.etcd.io/etcd/server/v3/storage"
 )
 
 type quotaKVServer struct {
@@ -30,14 +29,14 @@ type quotaKVServer struct {
 }
 
 type quotaAlarmer struct {
-	q  storage.Quota
+	q  etcdserver.Quota
 	a  Alarmer
 	id types.ID
 }
 
 // check whether request satisfies the quota. If there is not enough space,
 // ignore request and raise the free space alarm.
-func (qa *quotaAlarmer) check(ctx context.Context, r any) error {
+func (qa *quotaAlarmer) check(ctx context.Context, r interface{}) error {
 	if qa.q.Available(r) {
 		return nil
 	}
@@ -53,7 +52,7 @@ func (qa *quotaAlarmer) check(ctx context.Context, r any) error {
 func NewQuotaKVServer(s *etcdserver.EtcdServer) pb.KVServer {
 	return &quotaKVServer{
 		NewKVServer(s),
-		quotaAlarmer{newBackendQuota(s, "kv"), s, s.MemberID()},
+		quotaAlarmer{etcdserver.NewBackendQuota(s, "kv"), s, s.ID()},
 	}
 }
 
@@ -86,10 +85,6 @@ func (s *quotaLeaseServer) LeaseGrant(ctx context.Context, cr *pb.LeaseGrantRequ
 func NewQuotaLeaseServer(s *etcdserver.EtcdServer) pb.LeaseServer {
 	return &quotaLeaseServer{
 		NewLeaseServer(s),
-		quotaAlarmer{newBackendQuota(s, "lease"), s, s.MemberID()},
+		quotaAlarmer{etcdserver.NewBackendQuota(s, "lease"), s, s.ID()},
 	}
-}
-
-func newBackendQuota(s *etcdserver.EtcdServer, name string) storage.Quota {
-	return storage.NewBackendQuota(s.Logger(), s.Cfg.QuotaBackendBytes, s.Backend(), name)
 }

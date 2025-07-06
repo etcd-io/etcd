@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build !cluster_proxy
+//go:build !cov && !cluster_proxy
+// +build !cov,!cluster_proxy
 
 package e2e
 
@@ -20,19 +21,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCurlV3CipherSuitesValid(t *testing.T)    { testCurlV3CipherSuites(t, true) }
-func TestCurlV3CipherSuitesMismatch(t *testing.T) { testCurlV3CipherSuites(t, false) }
-func testCurlV3CipherSuites(t *testing.T, valid bool) {
-	cc := e2e.NewConfigClientTLS()
-	cc.ClusterSize = 1
-	cc.ServerConfig.CipherSuites = []string{
+func TestV3CurlCipherSuitesValid(t *testing.T)    { testV3CurlCipherSuites(t, true) }
+func TestV3CurlCipherSuitesMismatch(t *testing.T) { testV3CurlCipherSuites(t, false) }
+func testV3CurlCipherSuites(t *testing.T, valid bool) {
+	cc := newConfigClientTLS()
+	cc.clusterSize = 1
+	cc.cipherSuites = []string{
 		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
 		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
@@ -48,20 +45,30 @@ func testCurlV3CipherSuites(t *testing.T, valid bool) {
 }
 
 func cipherSuiteTestValid(cx ctlCtx) {
-	if err := e2e.CURLGet(cx.epc, e2e.CURLReq{
-		Endpoint: "/metrics",
-		Expected: expect.ExpectedResponse{Value: fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version)},
-		Ciphers:  "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+	if err := cURLGet(cx.epc, cURLReq{
+		endpoint:         "/metrics",
+		expected:         fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version),
+		metricsURLScheme: cx.cfg.metricsURLScheme,
+		ciphers:          "ECDHE-RSA-AES128-GCM-SHA256", // TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 	}); err != nil {
-		require.ErrorContains(cx.t, err, fmt.Sprintf(`etcd_server_version{server_version="%s"} 1`, version.Version))
+		cx.t.Fatalf("failed get with curl (%v)", err)
 	}
 }
 
 func cipherSuiteTestMismatch(cx ctlCtx) {
-	err := e2e.CURLGet(cx.epc, e2e.CURLReq{
-		Endpoint: "/metrics",
-		Expected: expect.ExpectedResponse{Value: "failed setting cipher list"},
-		Ciphers:  "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
-	})
-	require.ErrorContains(cx.t, err, "curl: (59) failed setting cipher list")
+	var err error
+	for _, exp := range []string{"alert handshake failure", "failed setting cipher list"} {
+		err = cURLGet(cx.epc, cURLReq{
+			endpoint:         "/metrics",
+			expected:         exp,
+			metricsURLScheme: cx.cfg.metricsURLScheme,
+			ciphers:          "ECDHE-RSA-DES-CBC3-SHA", // TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+		})
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		cx.t.Fatalf("failed get with curl (%v)", err)
+	}
 }

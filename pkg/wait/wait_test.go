@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestWait(t *testing.T) {
@@ -28,8 +26,9 @@ func TestWait(t *testing.T) {
 	ch := wt.Register(eid)
 	wt.Trigger(eid, "foo")
 	v := <-ch
-	g, w := fmt.Sprintf("%v (%T)", v, v), "foo (string)"
-	assert.Equalf(t, g, w, "<-ch = %v, want %v", g, w)
+	if g, w := fmt.Sprintf("%v (%T)", v, v), "foo (string)"; g != w {
+		t.Errorf("<-ch = %v, want %v", g, w)
+	}
 
 	if g := <-ch; g != nil {
 		t.Errorf("unexpected non-nil value: %v (%T)", g, g)
@@ -70,8 +69,9 @@ func TestTriggerDupSuppression(t *testing.T) {
 	wt.Trigger(eid, "bar")
 
 	v := <-ch
-	g, w := fmt.Sprintf("%v (%T)", v, v), "foo (string)"
-	assert.Equalf(t, g, w, "<-ch = %v, want %v", g, w)
+	if g, w := fmt.Sprintf("%v (%T)", v, v), "foo (string)"; g != w {
+		t.Errorf("<-ch = %v, want %v", g, w)
+	}
 
 	if g := <-ch; g != nil {
 		t.Errorf("unexpected non-nil value: %v (%T)", g, g)
@@ -86,11 +86,17 @@ func TestIsRegistered(t *testing.T) {
 	wt.Register(2)
 
 	for i := uint64(0); i < 3; i++ {
-		assert.Truef(t, wt.IsRegistered(i), "event ID %d isn't registered", i)
+		if !wt.IsRegistered(i) {
+			t.Errorf("event ID %d isn't registered", i)
+		}
 	}
 
-	assert.Falsef(t, wt.IsRegistered(4), "event ID 4 shouldn't be registered")
+	if wt.IsRegistered(4) {
+		t.Errorf("event ID 4 shouldn't be registered")
+	}
 
 	wt.Trigger(0, "foo")
-	assert.Falsef(t, wt.IsRegistered(0), "event ID 0 is already triggered, shouldn't be registered")
+	if wt.IsRegistered(0) {
+		t.Errorf("event ID 0 is already triggered, shouldn't be registered")
+	}
 }

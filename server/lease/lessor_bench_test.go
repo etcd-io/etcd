@@ -19,9 +19,8 @@ import (
 	"testing"
 	"time"
 
+	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
-
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
 func BenchmarkLessorGrant1000(b *testing.B)   { benchmarkLessorGrant(1000, b) }
@@ -33,9 +32,13 @@ func BenchmarkLessorRevoke100000(b *testing.B) { benchmarkLessorRevoke(100000, b
 func BenchmarkLessorRenew1000(b *testing.B)   { benchmarkLessorRenew(1000, b) }
 func BenchmarkLessorRenew100000(b *testing.B) { benchmarkLessorRenew(100000, b) }
 
-// BenchmarkLessorFindExpired10000 uses findExpired10000 replace findExpired1000, which takes too long.
+// Use findExpired10000 replace findExpired1000, which takes too long.
 func BenchmarkLessorFindExpired10000(b *testing.B)  { benchmarkLessorFindExpired(10000, b) }
 func BenchmarkLessorFindExpired100000(b *testing.B) { benchmarkLessorFindExpired(100000, b) }
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 const (
 	// minTTL keep lease will not auto expire in benchmark
@@ -60,12 +63,12 @@ func demote(le *lessor) {
 }
 
 // return new lessor and tearDown to release resource
-func setUp(tb testing.TB) (le *lessor, tearDown func()) {
+func setUp(t testing.TB) (le *lessor, tearDown func()) {
 	lg := zap.NewNop()
-	be, _ := betesting.NewDefaultTmpBackend(tb)
+	be, _ := betesting.NewDefaultTmpBackend(t)
 	// MinLeaseTTL is negative, so we can grant expired lease in benchmark.
 	// ExpiredLeasesRetryInterval should small, so benchmark of findExpired will recheck expired lease.
-	le = newLessor(lg, be, nil, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
+	le = newLessor(lg, be, LessorConfig{MinLeaseTTL: -1000, ExpiredLeasesRetryInterval: 10 * time.Microsecond})
 	le.SetRangeDeleter(func() TxnDelete {
 		ftd := &FakeTxnDelete{be.BatchTx()}
 		ftd.Lock()
@@ -90,6 +93,7 @@ func benchmarkLessorGrant(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
+			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		b.StartTimer()
@@ -116,6 +120,7 @@ func benchmarkLessorRevoke(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
+			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -146,6 +151,7 @@ func benchmarkLessorRenew(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
+			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {
@@ -178,6 +184,7 @@ func benchmarkLessorFindExpired(benchSize int, b *testing.B) {
 		b.StopTimer()
 		if tearDown != nil {
 			tearDown()
+			tearDown = nil
 		}
 		le, tearDown = setUp(b)
 		for j := 1; j <= benchSize; j++ {

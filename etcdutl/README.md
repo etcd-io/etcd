@@ -1,4 +1,5 @@
-# etcdutl
+etcdutl
+========
 
 `etcdutl` is a command line administration utility for [etcd][etcd].
 
@@ -7,7 +8,7 @@ For operations over a network, please use `etcdctl`.
 
 ### DEFRAG [options]
 
-DEFRAG directly defragments an etcd data directory while etcd is not running.
+DEFRAG directly defragments an etcd data directory while etcd is not running. 
 When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
 
 In order to defrag a live etcd instances over the network, please use `etcdctl defrag` instead.
@@ -35,6 +36,7 @@ To defragment a data directory directly, use the `--data-dir` flag:
 
 DEFRAG returns a zero exit code only if it succeeded in defragmenting all given endpoints.
 
+
 ### SNAPSHOT RESTORE [options] \<filename\>
 
 SNAPSHOT RESTORE creates an etcd data directory for an etcd cluster member from a backend database snapshot and a new cluster configuration. Restoring the snapshot into each member for a new cluster configuration will initialize a new etcd cluster preloaded by the snapshot data.
@@ -57,10 +59,6 @@ The snapshot restore options closely resemble to those used in the `etcd` comman
 
 - skip-hash-check -- Ignore snapshot integrity hash value (required if copied from data directory)
 
-- bump-revision -- How much to increase the latest revision after restore
-
-- mark-compacted -- Mark the latest revision after restore as the point of scheduled compaction (required if --bump-revision > 0, disallowed otherwise)
-
 #### Output
 
 A new etcd data directory initialized with the snapshot.
@@ -69,18 +67,17 @@ A new etcd data directory initialized with the snapshot.
 
 Save a snapshot, restore into a new 3 node cluster, and start the cluster:
 ```
-# save snapshot
-./etcdctl snapshot save snapshot.db
+./etcdutl snapshot save snapshot.db
 
 # restore members
-./etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:12380  --name sshot1 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
-./etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:22380  --name sshot2 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
-./etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:32380  --name sshot3 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:12380  --name sshot1 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:22380  --name sshot2 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
+bin/etcdutl snapshot restore snapshot.db --initial-cluster-token etcd-cluster-1 --initial-advertise-peer-urls http://127.0.0.1:32380  --name sshot3 --initial-cluster 'sshot1=http://127.0.0.1:12380,sshot2=http://127.0.0.1:22380,sshot3=http://127.0.0.1:32380'
 
 # launch members
-./etcd --name sshot1 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:12380 &
-./etcd --name sshot2 --listen-client-urls http://127.0.0.1:22379 --advertise-client-urls http://127.0.0.1:22379 --listen-peer-urls http://127.0.0.1:22380 &
-./etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 &
+bin/etcd --name sshot1 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379 --listen-peer-urls http://127.0.0.1:12380 &
+bin/etcd --name sshot2 --listen-client-urls http://127.0.0.1:22379 --advertise-client-urls http://127.0.0.1:22379 --listen-peer-urls http://127.0.0.1:22380 &
+bin/etcd --name sshot3 --listen-client-urls http://127.0.0.1:32379 --advertise-client-urls http://127.0.0.1:32379 --listen-peer-urls http://127.0.0.1:32380 &
 ```
 
 ### SNAPSHOT STATUS \<filename\>
@@ -117,44 +114,6 @@ Prints a line of JSON encoding the database hash, revision, total keys, and size
 +----------+----------+------------+------------+
 ```
 
-### HASHKV [options] \<filename\>
-
-HASHKV prints hash of keys and values up to given revision.
-
-#### Options
-
-- rev -- Revision number. Default is 0 which means the latest revision.
-
-#### Output
-
-##### Simple format
-
-Prints a humanized table of the KV hash, hash revision and compact revision.
-
-##### JSON format
-
-Prints a line of JSON encoding the KV hash, hash revision and compact revision.
-
-#### Examples
-```bash
-./etcdutl hashkv file.db
-# 35c86e9b, 214, 150
-```
-
-```bash
-./etcdutl --write-out=json hashkv file.db
-# {"hash":902327963,"hashRevision":214,"compactRevision":150}
-```
-
-```bash
-./etcdutl --write-out=table hashkv file.db
-+----------+---------------+------------------+
-|   HASH   | HASH REVISION | COMPACT REVISION |
-+----------+---------------+------------------+
-| 35c86e9b |           214 |              150 |
-+----------+---------------+------------------+
-```
-
 ### VERSION
 
 Prints the version of etcdutl.
@@ -165,6 +124,21 @@ Prints etcd version and API version.
 
 #### Examples
 
+```bash
+./etcdutl version
+# etcdutl version: 3.1.0-alpha.0+git
+# API version: 3.1
+```
+
+### VERSION
+
+Prints the version of etcdctl.
+
+#### Output
+
+Prints etcd version and API version.
+
+#### Examples
 
 ```bash
 ./etcdutl version
@@ -172,74 +146,6 @@ Prints etcd version and API version.
 # API version: 3.1
 ```
 
-### LIST-BUCKET [options] \<data dir or db file path\>
-
-`list-bucket` prints all bucket names.
-
-#### Flags
-
-- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
-
-##### Examples for LIST-BUCKET
-
-```bash
-
-$ ./etcdutl list-bucket ~/tmp/etcd/default.etcd/member/snap/db
-alarm
-auth
-authRoles
-authUsers
-cluster
-key
-lease
-members
-members_removed
-meta
-```
-
-### ITERATE-BUCKET [options] \<data dir or db file path\> \<bucket name\>
-
-`iterate-bucket` lists key-value pairs in a given bucket in reverse order.
-
-#### Flags for ITERATE-BUCKET
-
-- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
-- limit -- Max number of key-value pairs to iterate (0 to iterate all).
-- decode -- true to decode Protocol Buffer encoded data.
-
-##### Examples for ITERATE-BUCKET
-
-```bash
-
-# with `--decode` option
-$ ./etcdutl iterate-bucket ~/tmp/etcd/default.etcd/member/snap/db key --decode
-rev={Revision:{Main:4 Sub:0} tombstone:false}, value=[key "k1" | val "v3" | created 2 | mod 4 | ver 3]
-rev={Revision:{Main:3 Sub:0} tombstone:false}, value=[key "k1" | val "v2" | created 2 | mod 3 | ver 2]
-rev={Revision:{Main:2 Sub:0} tombstone:false}, value=[key "k1" | val "v1" | created 2 | mod 2 | ver 1]
-
-# without `--decode` option
-$ ./etcdutl iterate-bucket ~/tmp/etcd/default.etcd/member/snap/db key
-key="\x00\x00\x00\x00\x00\x00\x00\x04_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x04 \x03*\x02v3"
-key="\x00\x00\x00\x00\x00\x00\x00\x03_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x03 \x02*\x02v2"
-key="\x00\x00\x00\x00\x00\x00\x00\x02_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x02 \x01*\x02v1"
-```
-
-### HASH [options] \<data dir or db file path\>
-
-`hash` prints the hash of the db file.
-
-#### Flags for HASH
-
-- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
-
-##### Examples for HASH
-
-```bash
-
-$ ./etcdutl hash ~/tmp/etcd/default.etcd/member/snap/db
-db path: /Users/wachao/tmp/etcd/default.etcd/member/snap/db
-Hash: 4031086527
-```
 
 ## Exit codes
 

@@ -19,9 +19,9 @@ import (
 	"math"
 	"sync"
 
-	"golang.org/x/time/rate"
+	"go.etcd.io/etcd/client/v3"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"golang.org/x/time/rate"
 )
 
 const (

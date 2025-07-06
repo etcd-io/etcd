@@ -31,9 +31,8 @@ type UniqueStringsValue struct {
 // Implements "flag.Value" interface.
 // The values are set in order.
 func (us *UniqueStringsValue) Set(s string) error {
-	values := strings.Split(s, ",")
-	us.Values = make(map[string]struct{}, len(values))
-	for _, v := range values {
+	us.Values = make(map[string]struct{})
+	for _, v := range strings.Split(s, ",") {
 		us.Values[v] = struct{}{}
 	}
 	return nil

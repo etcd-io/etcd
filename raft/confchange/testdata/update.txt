@@ -1,0 +1,23 @@
+# Nobody cares about ConfChangeUpdateNode, but at least use it once. It is used
+# by etcd as a convenient way to pass a blob through their conf change machinery
+# that updates information tracked outside of raft.
+
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=0
+
+simple
+v2 u1
+----
+voters=(1 2)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+
+simple
+u1 u2 u3 u1 u2 u3
+----
+voters=(1 2)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1

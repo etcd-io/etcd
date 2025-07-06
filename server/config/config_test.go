@@ -18,12 +18,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
+
+	"go.uber.org/zap"
 )
 
 func mustNewURLs(t *testing.T, urls []string) []url.URL {
@@ -31,20 +28,18 @@ func mustNewURLs(t *testing.T, urls []string) []url.URL {
 		return nil
 	}
 	u, err := types.NewURLs(urls)
-	require.NoErrorf(t, err, "error creating new URLs from %q: %v", urls, err)
+	if err != nil {
+		t.Fatalf("error creating new URLs from %q: %v", urls, err)
+	}
 	return u
 }
 
-func TestConfigVerifyBootstrapWithoutClusterFail(t *testing.T) {
+func TestConfigVerifyBootstrapWithoutClusterAndDiscoveryURLFail(t *testing.T) {
 	c := &ServerConfig{
-		Name: "node1",
-		DiscoveryCfg: v3discovery.DiscoveryConfig{
-			ConfigSpec: clientv3.ConfigSpec{
-				Endpoints: []string{},
-			},
-		},
+		Name:               "node1",
+		DiscoveryURL:       "",
 		InitialPeerURLsMap: types.URLsMap{},
-		Logger:             zaptest.NewLogger(t),
+		Logger:             zap.NewExample(),
 	}
 	if err := c.VerifyBootstrap(); err == nil {
 		t.Errorf("err = nil, want not nil")
@@ -53,18 +48,16 @@ func TestConfigVerifyBootstrapWithoutClusterFail(t *testing.T) {
 
 func TestConfigVerifyExistingWithDiscoveryURLFail(t *testing.T) {
 	cluster, err := types.NewURLsMap("node1=http://127.0.0.1:2380")
-	require.NoErrorf(t, err, "NewCluster error: %v", err)
+	if err != nil {
+		t.Fatalf("NewCluster error: %v", err)
+	}
 	c := &ServerConfig{
-		Name: "node1",
-		DiscoveryCfg: v3discovery.DiscoveryConfig{
-			ConfigSpec: clientv3.ConfigSpec{
-				Endpoints: []string{"http://192.168.0.100:2379"},
-			},
-		},
+		Name:               "node1",
+		DiscoveryURL:       "http://127.0.0.1:2379/abcdefg",
 		PeerURLs:           mustNewURLs(t, []string{"http://127.0.0.1:2380"}),
 		InitialPeerURLsMap: cluster,
 		NewCluster:         false,
-		Logger:             zaptest.NewLogger(t),
+		Logger:             zap.NewExample(),
 	}
 	if err := c.VerifyJoinExisting(); err == nil {
 		t.Errorf("err = nil, want not nil")
@@ -146,11 +139,13 @@ func TestConfigVerifyLocalMember(t *testing.T) {
 
 	for i, tt := range tests {
 		cluster, err := types.NewURLsMap(tt.clusterSetting)
-		require.NoErrorf(t, err, "#%d: Got unexpected error: %v", i, err)
+		if err != nil {
+			t.Fatalf("#%d: Got unexpected error: %v", i, err)
+		}
 		cfg := ServerConfig{
 			Name:               "node1",
 			InitialPeerURLsMap: cluster,
-			Logger:             zaptest.NewLogger(t),
+			Logger:             zap.NewExample(),
 		}
 		if tt.apurls != nil {
 			cfg.PeerURLs = mustNewURLs(t, tt.apurls)
@@ -175,7 +170,7 @@ func TestSnapDir(t *testing.T) {
 	for dd, w := range tests {
 		cfg := ServerConfig{
 			DataDir: dd,
-			Logger:  zaptest.NewLogger(t),
+			Logger:  zap.NewExample(),
 		}
 		if g := cfg.SnapDir(); g != w {
 			t.Errorf("DataDir=%q: SnapDir()=%q, want=%q", dd, g, w)
@@ -191,7 +186,7 @@ func TestWALDir(t *testing.T) {
 	for dd, w := range tests {
 		cfg := ServerConfig{
 			DataDir: dd,
-			Logger:  zaptest.NewLogger(t),
+			Logger:  zap.NewExample(),
 		}
 		if g := cfg.WALDir(); g != w {
 			t.Errorf("DataDir=%q: WALDir()=%q, want=%q", dd, g, w)
@@ -206,17 +201,9 @@ func TestShouldDiscover(t *testing.T) {
 		"http://discovery.etcd.io/asdf": true,
 	}
 	for durl, w := range tests {
-		var eps []string
-		if durl != "" {
-			eps = append(eps, durl)
-		}
 		cfg := ServerConfig{
-			DiscoveryCfg: v3discovery.DiscoveryConfig{
-				ConfigSpec: clientv3.ConfigSpec{
-					Endpoints: eps,
-				},
-			},
-			Logger: zaptest.NewLogger(t),
+			DiscoveryURL: durl,
+			Logger:       zap.NewExample(),
 		}
 		if g := cfg.ShouldDiscover(); g != w {
 			t.Errorf("durl=%q: ShouldDiscover()=%t, want=%t", durl, g, w)

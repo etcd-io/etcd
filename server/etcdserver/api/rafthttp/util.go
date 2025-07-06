@@ -23,12 +23,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
 )
 
 var (
@@ -64,7 +64,7 @@ func newStreamRoundTripper(tlsInfo transport.TLSInfo, dialTimeout time.Duration)
 func createPostRequest(lg *zap.Logger, u url.URL, path string, body io.Reader, ct string, urls types.URLs, from, cid types.ID) *http.Request {
 	uu := u
 	uu.Path = path
-	req, err := http.NewRequest(http.MethodPost, uu.String(), body)
+	req, err := http.NewRequest("POST", uu.String(), body)
 	if err != nil {
 		if lg != nil {
 			lg.Panic("unexpected new request error", zap.Error(err))
@@ -94,7 +94,7 @@ func checkPostResponse(lg *zap.Logger, resp *http.Response, body []byte, req *ht
 				)
 			}
 			return errIncompatibleVersion
-		case ErrClusterIDMismatch.Error():
+		case errClusterIDMismatch.Error():
 			if lg != nil {
 				lg.Error(
 					"request sent was ignored due to cluster ID mismatch",
@@ -103,7 +103,7 @@ func checkPostResponse(lg *zap.Logger, resp *http.Response, body []byte, req *ht
 					zap.String("local-member-cluster-id", req.Header.Get("X-Etcd-Cluster-ID")),
 				)
 			}
-			return ErrClusterIDMismatch
+			return errClusterIDMismatch
 		default:
 			return fmt.Errorf("unhandled error %q when precondition failed", string(body))
 		}
@@ -169,8 +169,7 @@ func minClusterVersion(h http.Header) *semver.Version {
 func checkVersionCompatibility(name string, server, minCluster *semver.Version) (
 	localServer *semver.Version,
 	localMinCluster *semver.Version,
-	err error,
-) {
+	err error) {
 	localServer = semver.Must(semver.NewVersion(version.Version))
 	localMinCluster = semver.Must(semver.NewVersion(version.MinClusterVersion))
 	if compareMajorMinorVersion(server, localMinCluster) == -1 {

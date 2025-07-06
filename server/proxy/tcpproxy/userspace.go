@@ -74,12 +74,14 @@ func (tp *TCPProxy) Run() error {
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
-
-	var eps []string // for logging
 	for _, srv := range tp.Endpoints {
-		addr := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+		addr := fmt.Sprintf("%s:%d", srv.Target, srv.Port)
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
-		eps = append(eps, addr)
+	}
+
+	eps := []string{}
+	for _, ep := range tp.Endpoints {
+		eps = append(eps, fmt.Sprintf("%s:%d", ep.Target, ep.Port))
 	}
 	if tp.Logger != nil {
 		tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))

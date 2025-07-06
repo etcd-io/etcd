@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package gogoproto;
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FileOptions {
+  optional bool marshaler_all = 1;
+  optional bool unmarshaler_all = 2;
+  optional bool sizer_all = 3;
+  optional bool goproto_getters_all = 4;
+  optional bool goproto_enum_prefix_all = 5;
+}
+
+extend google.protobuf.FieldOptions {
+  optional bool nullable = 6;
+}
+

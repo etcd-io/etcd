@@ -16,8 +16,6 @@ package flags
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestSelectiveStringValue(t *testing.T) {
@@ -37,9 +35,13 @@ func TestSelectiveStringValue(t *testing.T) {
 	}
 	for i, tt := range tests {
 		sf := NewSelectiveStringValue(tt.vals...)
-		assert.Equalf(t, sf.v, tt.vals[0], "#%d: want default val=%v,but got %v", i, tt.vals[0], sf.v)
+		if sf.v != tt.vals[0] {
+			t.Errorf("#%d: want default val=%v,but got %v", i, tt.vals[0], sf.v)
+		}
 		err := sf.Set(tt.val)
-		assert.Equalf(t, tt.pass, (err == nil), "#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		}
 	}
 }
 
@@ -61,6 +63,8 @@ func TestSelectiveStringsValue(t *testing.T) {
 	for i, tt := range tests {
 		sf := NewSelectiveStringsValue(tt.vals...)
 		err := sf.Set(tt.val)
-		assert.Equalf(t, tt.pass, (err == nil), "#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		if tt.pass != (err == nil) {
+			t.Errorf("#%d: want pass=%t, but got err=%v", i, tt.pass, err)
+		}
 	}
 }

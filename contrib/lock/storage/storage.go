@@ -17,7 +17,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -57,7 +57,7 @@ func writeResponse(resp response, w http.ResponseWriter) {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	rBytes, err := io.ReadAll(r.Body)
+	rBytes, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		fmt.Printf("failed to read http request: %s\n", err)
 		os.Exit(1)
@@ -79,7 +79,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	} else if strings.Compare(req.Op, "write") == 0 {
 		if val, ok := data[req.Key]; ok {
 			if req.Version != val.version {
-				writeResponse(response{"", -1, fmt.Sprintf("given version (%x) is different from the existing version (%x)", req.Version, val.version)}, w)
+				writeResponse(response{"", -1, fmt.Sprintf("given version (%d) is different from the existing version (%d)", req.Version, val.version)}, w)
 			} else {
 				data[req.Key].val = req.Val
 				data[req.Key].version = req.Version
@@ -90,22 +90,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			writeResponse(response{req.Val, req.Version, ""}, w)
 		}
 	} else {
-		fmt.Printf("unknown op: %s\n", escape(req.Op))
+		fmt.Printf("unknown op: %s\n", req.Op)
 		return
 	}
 }
 
-func escape(s string) string {
-	escaped := strings.ReplaceAll(s, "\n", " ")
-	escaped = strings.ReplaceAll(escaped, "\r", " ")
-	return escaped
-}
-
 func main() {
 	http.HandleFunc("/", handler)
-	err := http.ListenAndServe(":8080", nil)
-	if err != nil {
-		fmt.Printf("failed to listen and serve: %s\n", err)
-		os.Exit(1)
-	}
+	http.ListenAndServe(":8080", nil)
 }

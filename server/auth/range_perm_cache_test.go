@@ -17,10 +17,10 @@ package auth
 import (
 	"testing"
 
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/api/v3/authpb"
 	"go.etcd.io/etcd/pkg/v3/adt"
+
+	"go.uber.org/zap"
 )
 
 func TestRangePermission(t *testing.T) {
@@ -45,30 +45,6 @@ func TestRangePermission(t *testing.T) {
 			[]byte("a"), []byte("f"),
 			true,
 		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte("c"), []byte("f"))},
-			[]byte("a"),
-			[]byte{},
-			false,
-		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte{})},
-			[]byte("a"),
-			[]byte{},
-			true,
-		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte{0x00}, []byte{})},
-			[]byte("a"),
-			[]byte{},
-			true,
-		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte{0x00}, []byte{})},
-			[]byte{0x00},
-			[]byte{},
-			true,
-		},
 	}
 
 	for i, tt := range tests {
@@ -77,7 +53,7 @@ func TestRangePermission(t *testing.T) {
 			readPerms.Insert(p, struct{}{})
 		}
 
-		result := checkKeyInterval(zaptest.NewLogger(t), &unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
+		result := checkKeyInterval(zap.NewExample(), &unifiedRangePermissions{readPerms: readPerms}, tt.begin, tt.end, authpb.READ)
 		if result != tt.want {
 			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}
@@ -110,16 +86,6 @@ func TestKeyPermission(t *testing.T) {
 			[]byte("f"),
 			false,
 		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte("c"), []byte{})},
-			[]byte("f"),
-			true,
-		},
-		{
-			[]adt.Interval{adt.NewBytesAffineInterval([]byte("a"), []byte("d")), adt.NewBytesAffineInterval([]byte("a"), []byte("b")), adt.NewBytesAffineInterval([]byte{0x00}, []byte{})},
-			[]byte("f"),
-			true,
-		},
 	}
 
 	for i, tt := range tests {
@@ -128,94 +94,9 @@ func TestKeyPermission(t *testing.T) {
 			readPerms.Insert(p, struct{}{})
 		}
 
-		result := checkKeyPoint(zaptest.NewLogger(t), &unifiedRangePermissions{readPerms: readPerms}, tt.key, authpb.READ)
+		result := checkKeyPoint(zap.NewExample(), &unifiedRangePermissions{readPerms: readPerms}, tt.key, authpb.READ)
 		if result != tt.want {
 			t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
 		}
-	}
-}
-
-func TestRangeCheck(t *testing.T) {
-	tests := []struct {
-		name     string
-		key      []byte
-		rangeEnd []byte
-		want     bool
-	}{
-		{
-			name:     "valid single key",
-			key:      []byte("a"),
-			rangeEnd: []byte(""),
-			want:     true,
-		},
-		{
-			name:     "valid single key",
-			key:      []byte("a"),
-			rangeEnd: nil,
-			want:     true,
-		},
-		{
-			name:     "valid key range, key < rangeEnd",
-			key:      []byte("a"),
-			rangeEnd: []byte("b"),
-			want:     true,
-		},
-		{
-			name:     "invalid empty key range, key == rangeEnd",
-			key:      []byte("a"),
-			rangeEnd: []byte("a"),
-			want:     false,
-		},
-		{
-			name:     "invalid empty key range, key > rangeEnd",
-			key:      []byte("b"),
-			rangeEnd: []byte("a"),
-			want:     false,
-		},
-		{
-			name:     "invalid key, key must not be \"\"",
-			key:      []byte(""),
-			rangeEnd: []byte("a"),
-			want:     false,
-		},
-		{
-			name:     "invalid key range, key must not be \"\"",
-			key:      []byte(""),
-			rangeEnd: []byte(""),
-			want:     false,
-		},
-		{
-			name:     "invalid key range, key must not be \"\"",
-			key:      []byte(""),
-			rangeEnd: []byte("\x00"),
-			want:     false,
-		},
-		{
-			name:     "valid single key (not useful in practice)",
-			key:      []byte("\x00"),
-			rangeEnd: []byte(""),
-			want:     true,
-		},
-		{
-			name:     "valid key range, larger or equals to \"a\"",
-			key:      []byte("a"),
-			rangeEnd: []byte("\x00"),
-			want:     true,
-		},
-		{
-			name:     "valid key range, which includes all keys",
-			key:      []byte("\x00"),
-			rangeEnd: []byte("\x00"),
-			want:     true,
-		},
-	}
-
-	for i, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := isValidPermissionRange(tt.key, tt.rangeEnd)
-			if result != tt.want {
-				t.Errorf("#%d: result=%t, want=%t", i, result, tt.want)
-			}
-		})
 	}
 }

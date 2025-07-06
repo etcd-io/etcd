@@ -17,19 +17,18 @@ package auth
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/ed25519"
 	"crypto/rsa"
 	"errors"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	jwt "github.com/form3tech-oss/jwt-go"
 	"go.uber.org/zap"
 )
 
 type tokenJWT struct {
 	lg         *zap.Logger
 	signMethod jwt.SigningMethod
-	key        any
+	key        interface{}
 	ttl        time.Duration
 	verifyOnly bool
 }
@@ -43,10 +42,10 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 	// rev isn't used in JWT, it is only used in simple token
 	var (
 		username string
-		revision float64
+		revision uint64
 	)
 
-	parsed, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
+	parsed, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if token.Method.Alg() != t.signMethod.Alg() {
 			return nil, errors.New("invalid signing method")
 		}
@@ -55,15 +54,15 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 			return &k.PublicKey, nil
 		case *ecdsa.PrivateKey:
 			return &k.PublicKey, nil
-		case ed25519.PrivateKey:
-			return k.Public(), nil
 		default:
 			return t.key, nil
 		}
 	})
+
 	if err != nil {
 		t.lg.Warn(
 			"failed to parse a JWT token",
+			zap.String("token", token),
 			zap.Error(err),
 		)
 		return nil, false
@@ -71,23 +70,14 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 
 	claims, ok := parsed.Claims.(jwt.MapClaims)
 	if !parsed.Valid || !ok {
-		t.lg.Warn("failed to obtain claims from a JWT token")
+		t.lg.Warn("invalid JWT token", zap.String("token", token))
 		return nil, false
 	}
 
-	username, ok = claims["username"].(string)
-	if !ok {
-		t.lg.Warn("failed to obtain user claims from jwt token")
-		return nil, false
-	}
+	username = claims["username"].(string)
+	revision = uint64(claims["revision"].(float64))
 
-	revision, ok = claims["revision"].(float64)
-	if !ok {
-		t.lg.Warn("failed to obtain revision claims from jwt token")
-		return nil, false
-	}
-
-	return &AuthInfo{Username: username, Revision: uint64(revision)}, true
+	return &AuthInfo{Username: username, Revision: revision}, true
 }
 
 func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64) (string, error) {
@@ -121,7 +111,7 @@ func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64)
 		zap.Uint64("revision", revision),
 		zap.String("token", token),
 	)
-	return token, nil
+	return token, err
 }
 
 func newTokenProviderJWT(lg *zap.Logger, optMap map[string]string) (*tokenJWT, error) {
@@ -136,7 +126,7 @@ func newTokenProviderJWT(lg *zap.Logger, optMap map[string]string) (*tokenJWT, e
 		return nil, ErrInvalidAuthOpts
 	}
 
-	keys := make([]string, 0, len(optMap))
+	var keys = make([]string, 0, len(optMap))
 	for k := range optMap {
 		if !knownOptions[k] {
 			keys = append(keys, k)
@@ -161,10 +151,6 @@ func newTokenProviderJWT(lg *zap.Logger, optMap map[string]string) (*tokenJWT, e
 	switch t.signMethod.(type) {
 	case *jwt.SigningMethodECDSA:
 		if _, ok := t.key.(*ecdsa.PublicKey); ok {
-			t.verifyOnly = true
-		}
-	case *jwt.SigningMethodEd25519:
-		if _, ok := t.key.(ed25519.PublicKey); ok {
 			t.verifyOnly = true
 		}
 	case *jwt.SigningMethodRSA, *jwt.SigningMethodRSAPSS:

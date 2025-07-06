@@ -1,0 +1,253 @@
+agent-configs:
+- etcd-exec: ./bin/etcd
+  agent-addr: 127.0.0.1:19027
+  failpoint-http-addr: http://127.0.0.1:7381
+  base-dir: /tmp/etcd-functional-1
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:1379
+  etcd:
+    name: s1
+    data-dir: /tmp/etcd-functional-1/etcd.data
+    wal-dir: /tmp/etcd-functional-1/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:1379"]
+    advertise-client-urls: ["https://127.0.0.1:1379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:1380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:1381"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 2000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+    logger: zap
+    log-outputs: [/tmp/etcd-functional-1/etcd.log]
+    log-level: info
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-1.snapshot.db
+
+- etcd-exec: ./bin/etcd
+  agent-addr: 127.0.0.1:29027
+  failpoint-http-addr: http://127.0.0.1:7382
+  base-dir: /tmp/etcd-functional-2
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:2379
+  etcd:
+    name: s2
+    data-dir: /tmp/etcd-functional-2/etcd.data
+    wal-dir: /tmp/etcd-functional-2/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:2379"]
+    advertise-client-urls: ["https://127.0.0.1:2379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:2380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:2381"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 2000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+    logger: zap
+    log-outputs: [/tmp/etcd-functional-2/etcd.log]
+    log-level: info
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-2.snapshot.db
+
+- etcd-exec: ./bin/etcd
+  agent-addr: 127.0.0.1:39027
+  failpoint-http-addr: http://127.0.0.1:7383
+  base-dir: /tmp/etcd-functional-3
+  etcd-client-proxy: false
+  etcd-peer-proxy: true
+  etcd-client-endpoint: 127.0.0.1:3379
+  etcd:
+    name: s3
+    data-dir: /tmp/etcd-functional-3/etcd.data
+    wal-dir: /tmp/etcd-functional-3/etcd.data/member/wal
+    heartbeat-interval: 100
+    election-timeout: 1000
+    listen-client-urls: ["https://127.0.0.1:3379"]
+    advertise-client-urls: ["https://127.0.0.1:3379"]
+    auto-tls: true
+    client-cert-auth: false
+    cert-file: ""
+    key-file: ""
+    trusted-ca-file: ""
+    listen-peer-urls: ["https://127.0.0.1:3380"]
+    initial-advertise-peer-urls: ["https://127.0.0.1:3381"]
+    peer-auto-tls: true
+    peer-client-cert-auth: false
+    peer-cert-file: ""
+    peer-key-file: ""
+    peer-trusted-ca-file: ""
+    initial-cluster: s1=https://127.0.0.1:1381,s2=https://127.0.0.1:2381,s3=https://127.0.0.1:3381
+    initial-cluster-state: new
+    initial-cluster-token: tkn
+    snapshot-count: 2000
+    quota-backend-bytes: 10740000000 # 10 GiB
+    pre-vote: true
+    initial-corrupt-check: true
+    logger: zap
+    log-outputs: [/tmp/etcd-functional-3/etcd.log]
+    log-level: info
+  client-cert-data: ""
+  client-cert-path: ""
+  client-key-data: ""
+  client-key-path: ""
+  client-trusted-ca-data: ""
+  client-trusted-ca-path: ""
+  peer-cert-data: ""
+  peer-cert-path: ""
+  peer-key-data: ""
+  peer-key-path: ""
+  peer-trusted-ca-data: ""
+  peer-trusted-ca-path: ""
+  snapshot-path: /tmp/etcd-functional-3.snapshot.db
+
+tester-config:
+  data-dir: /tmp/etcd-tester-data
+  network: tcp
+  addr: 127.0.0.1:9028
+
+  # slow enough to trigger election
+  delay-latency-ms: 5000
+  delay-latency-ms-rv: 500
+
+  round-limit: 1
+  exit-on-failure: true
+  enable-pprof: true
+
+  case-delay-ms: 7000
+  case-shuffle: true
+
+  # For full descriptions,
+  # https://godoc.org/github.com/etcd-io/etcd/functional/rpcpb#Case
+  cases:
+  - SIGTERM_ONE_FOLLOWER
+  - SIGTERM_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - SIGTERM_LEADER
+  - SIGTERM_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - SIGTERM_QUORUM
+  - SIGTERM_ALL
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER
+  - SIGQUIT_AND_REMOVE_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER
+  - BLACKHOLE_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - BLACKHOLE_PEER_PORT_TX_RX_QUORUM
+  - BLACKHOLE_PEER_PORT_TX_RX_ALL
+  - DELAY_PEER_PORT_TX_RX_LEADER
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER
+  - DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - RANDOM_DELAY_PEER_PORT_TX_RX_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  - DELAY_PEER_PORT_TX_RX_QUORUM
+  - RANDOM_DELAY_PEER_PORT_TX_RX_QUORUM
+  - DELAY_PEER_PORT_TX_RX_ALL
+  - RANDOM_DELAY_PEER_PORT_TX_RX_ALL
+  - NO_FAIL_WITH_STRESS
+  - NO_FAIL_WITH_NO_STRESS_FOR_LIVENESS
+  # - FAILPOINTS_WITH_DISK_IO_LATENCY
+
+  # TODO: use iptables for discarding outbound rafthttp traffic to peer port
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - BLACKHOLE_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER
+  # - DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - RANDOM_DELAY_PEER_PORT_TX_RX_ONE_FOLLOWER_UNTIL_TRIGGER_SNAPSHOT
+  # - SIGQUIT_AND_REMOVE_LEADER
+  # - SIGQUIT_AND_REMOVE_LEADER_UNTIL_TRIGGER_SNAPSHOT
+  # - SIGQUIT_AND_REMOVE_QUORUM_AND_RESTORE_LEADER_SNAPSHOT_FROM_SCRATCH
+
+  failpoint-commands:
+  - panic("etcd-tester")
+  # - panic("etcd-tester"),1*sleep(1000)
+  # - sleep(3000)
+
+  runner-exec-path: ./bin/etcd-runner
+  external-exec-path: ""
+
+  # make up ±70% of workloads with writes
+  stressers:
+  - type: KV_WRITE_SMALL
+    weight: 0.35
+  - type: KV_WRITE_LARGE
+    weight: 0.002
+  - type: KV_READ_ONE_KEY
+    weight: 0.07
+  - type: KV_READ_RANGE
+    weight: 0.07
+  - type: KV_DELETE_ONE_KEY
+    weight: 0.07
+  - type: KV_DELETE_RANGE
+    weight: 0.07
+  - type: KV_TXN_WRITE_DELETE
+    weight: 0.35
+  - type: LEASE
+    weight: 0.0
+
+  # - ELECTION_RUNNER
+  # - WATCH_RUNNER
+  # - LOCK_RACER_RUNNER
+  # - LEASE_RUNNER
+
+  checkers:
+  - KV_HASH
+  - LEASE_EXPIRE
+  #- SHORT_TTL_LEASE_EXPIRE
+
+  stress-key-size: 100
+  stress-key-size-large: 32769
+  stress-key-suffix-range: 250000
+  stress-key-suffix-range-txn: 100
+  stress-key-txn-ops: 10
+
+  stress-clients: 100
+  stress-qps: 2000

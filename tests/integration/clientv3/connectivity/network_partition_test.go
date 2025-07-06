@@ -13,6 +13,7 @@
 // limitations under the License.
 
 //go:build !cluster_proxy
+// +build !cluster_proxy
 
 package connectivity_test
 
@@ -22,22 +23,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
-	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"go.etcd.io/etcd/tests/v3/integration/clientv3"
+	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
 )
 
 var errExpected = errors.New("expected error")
-
-func isErrorExpected(err error) bool {
-	return clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) ||
-		errors.Is(err, rpctypes.ErrTimeout) || errors.Is(err, rpctypes.ErrTimeoutDueToLeaderFail)
-}
 
 // TestBalancerUnderNetworkPartitionPut tests when one member becomes isolated,
 // first Put request fails, and following retry succeeds with client balancer
@@ -45,7 +40,7 @@ func isErrorExpected(err error) bool {
 func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Put(ctx, "a", "b")
-		if isErrorExpected(err) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -55,7 +50,7 @@ func TestBalancerUnderNetworkPartitionPut(t *testing.T) {
 func TestBalancerUnderNetworkPartitionDelete(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Delete(ctx, "a")
-		if isErrorExpected(err) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -68,7 +63,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 			If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 			Then(clientv3.OpPut("foo", "bar")).
 			Else(clientv3.OpPut("foo", "baz")).Commit()
-		if isErrorExpected(err) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -81,7 +76,7 @@ func TestBalancerUnderNetworkPartitionTxn(t *testing.T) {
 func TestBalancerUnderNetworkPartitionLinearizableGetWithLongTimeout(t *testing.T) {
 	testBalancerUnderNetworkPartition(t, func(cli *clientv3.Client, ctx context.Context) error {
 		_, err := cli.Get(ctx, "a")
-		if isErrorExpected(err) {
+		if clientv3test.IsClientTimeout(err) || clientv3test.IsServerCtxTimeout(err) || err == rpctypes.ErrTimeout {
 			return errExpected
 		}
 		return err
@@ -109,23 +104,27 @@ func TestBalancerUnderNetworkPartitionSerializableGet(t *testing.T) {
 }
 
 func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, context.Context) error, timeout time.Duration) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	// expect pin eps[0]
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 3 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		Logger:      zaptest.NewLogger(t).Named("client"),
 	}
-	cli, err := integration2.NewClient(t, ccfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 	// wait for eps[0] to be pinned
 	clientv3test.MustWaitPinReady(t, cli)
@@ -136,7 +135,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
 
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(t.Context(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		err = op(cli, ctx)
 		t.Logf("Op returned error: %v", err)
 		t.Log("Cancelling...")
@@ -144,7 +143,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 		if err == nil {
 			break
 		}
-		if !errors.Is(err, errExpected) {
+		if err != errExpected {
 			t.Errorf("#%d: expected '%v', got '%v'", i, errExpected, err)
 		}
 		// give enough time for endpoint switch
@@ -162,24 +161,27 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 // switches endpoint when leader fails and linearizable get requests returns
 // "etcdserver: request timed out".
 func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	lead := clus.WaitLeader(t)
 
 	timeout := 3 * clus.Members[(lead+1)%2].ServerConfig.ReqTimeout()
 
-	cli, err := integration2.NewClient(t, clientv3.Config{
+	cli, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},
 		DialTimeout: 2 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	})
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 
 	// add all eps to list, so that when the original pined one fails
@@ -191,14 +193,16 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 
 	// expects balancer to round robin to leader within two attempts
 	for i := 0; i < 2; i++ {
-		ctx, cancel := context.WithTimeout(t.Context(), timeout)
+		ctx, cancel := context.WithTimeout(context.TODO(), timeout)
 		_, err = cli.Get(ctx, "a")
 		cancel()
 		if err == nil {
 			break
 		}
 	}
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestBalancerUnderNetworkPartitionWatchLeader(t *testing.T) {
@@ -212,14 +216,15 @@ func TestBalancerUnderNetworkPartitionWatchFollower(t *testing.T) {
 // testBalancerUnderNetworkPartitionWatch ensures watch stream
 // to a partitioned node be closed when context requires leader.
 func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 
-	eps := []string{clus.Members[0].GRPCURL, clus.Members[1].GRPCURL, clus.Members[2].GRPCURL}
+	eps := []string{clus.Members[0].GRPCURL(), clus.Members[1].GRPCURL(), clus.Members[2].GRPCURL()}
 
 	target := clus.WaitLeader(t)
 	if !isolateLeader {
@@ -227,8 +232,10 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	}
 
 	// pin eps[target]
-	watchCli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
-	require.NoError(t, err)
+	watchCli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{eps[target]}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("watchCli created to: %v", target)
 	defer watchCli.Close()
 
@@ -240,10 +247,10 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 	// under the cover to other available eps, but expose the failure to the
 	// caller (test assertion).
 
-	wch := watchCli.Watch(clientv3.WithRequireLeader(t.Context()), "foo", clientv3.WithCreatedNotify())
+	wch := watchCli.Watch(clientv3.WithRequireLeader(context.Background()), "foo", clientv3.WithCreatedNotify())
 	select {
 	case <-wch:
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("took too long to create watch")
 	}
 
@@ -260,29 +267,34 @@ func testBalancerUnderNetworkPartitionWatch(t *testing.T, isolateLeader bool) {
 		if len(ev.Events) != 0 {
 			t.Fatal("expected no event")
 		}
-		require.ErrorIs(t, ev.Err(), rpctypes.ErrNoLeader)
-	case <-time.After(integration2.RequestWaitTimeout): // enough time to detect leader lost
+		if err = ev.Err(); err != rpctypes.ErrNoLeader {
+			t.Fatalf("expected %v, got %v", rpctypes.ErrNoLeader, err)
+		}
+	case <-time.After(integration.RequestWaitTimeout): // enough time to detect leader lost
 		t.Fatal("took too long to detect leader lost")
 	}
 }
 
 func TestDropReadUnderNetworkPartition(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{
-		Size: 3,
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{
+		Size:               3,
+		SkipCreatingClient: true,
 	})
 	defer clus.Terminate(t)
 	leaderIndex := clus.WaitLeader(t)
 	// get a follower endpoint
-	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCURL}
+	eps := []string{clus.Members[(leaderIndex+1)%3].GRPCURL()}
 	ccfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 10 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := integration2.NewClient(t, ccfg)
-	require.NoError(t, err)
+	cli, err := integration.NewClient(t, ccfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer cli.Close()
 
 	// wait for eps[0] to be pinned
@@ -291,23 +303,27 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	// add other endpoints for later endpoint switch
 	cli.SetEndpoints(eps...)
 	time.Sleep(time.Second * 2)
-	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCURL)
-	require.NoError(t, err)
+	conn, err := cli.Dial(clus.Members[(leaderIndex+1)%3].GRPCURL())
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer conn.Close()
 
 	clus.Members[leaderIndex].InjectPartition(t, clus.Members[(leaderIndex+1)%3], clus.Members[(leaderIndex+2)%3])
 	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), nil)
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	_, err = kvc.Get(ctx, "a")
 	cancel()
-	require.ErrorIsf(t, err, rpctypes.ErrLeaderChanged, "expected %v, got %v", rpctypes.ErrLeaderChanged, err)
+	if err != rpctypes.ErrLeaderChanged {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrLeaderChanged, err)
+	}
 
 	for i := 0; i < 5; i++ {
-		ctx, cancel = context.WithTimeout(t.Context(), 10*time.Second)
+		ctx, cancel = context.WithTimeout(context.TODO(), 10*time.Second)
 		_, err = kvc.Get(ctx, "a")
 		cancel()
 		if err != nil {
-			if errors.Is(err, rpctypes.ErrTimeout) {
+			if err == rpctypes.ErrTimeout {
 				<-time.After(time.Second)
 				i++
 				continue

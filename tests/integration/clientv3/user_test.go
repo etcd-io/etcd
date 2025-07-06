@@ -16,101 +16,57 @@ package clientv3test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"google.golang.org/grpc"
 )
 
 func TestUserError(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
 
-	_, err := authapi.UserAdd(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-
-	_, err = authapi.UserAdd(t.Context(), "foo", "bar")
-	require.ErrorIsf(t, err, rpctypes.ErrUserAlreadyExist, "expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
-
-	_, err = authapi.UserDelete(t.Context(), "not-exist-user")
-	require.ErrorIsf(t, err, rpctypes.ErrUserNotFound, "expected %v, got %v", rpctypes.ErrUserNotFound, err)
-
-	_, err = authapi.UserGrantRole(t.Context(), "foo", "test-role-does-not-exist")
-	require.ErrorIsf(t, err, rpctypes.ErrRoleNotFound, "expected %v, got %v", rpctypes.ErrRoleNotFound, err)
-}
-
-func TestAddUserAfterDelete(t *testing.T) {
-	integration2.BeforeTest(t)
-
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
-	defer clus.Terminate(t)
-
-	authapi := clus.RandClient()
-	authSetupRoot(t, authapi.Auth)
-	cfg := clientv3.Config{
-		Endpoints:   authapi.Endpoints(),
-		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+	_, err := authapi.UserAdd(context.TODO(), "foo", "bar")
+	if err != nil {
+		t.Fatal(err)
 	}
-	cfg.Username, cfg.Password = "root", "123"
-	authed, err := integration2.NewClient(t, cfg)
-	require.NoError(t, err)
-	defer authed.Close()
 
-	// add user
-	_, err = authed.UserAdd(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-	_, err = authapi.Authenticate(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-	// delete user
-	_, err = authed.UserDelete(t.Context(), "foo")
-	require.NoError(t, err)
-	if _, err = authed.Authenticate(t.Context(), "foo", "bar"); err == nil {
-		t.Errorf("expect Authenticate error for old password")
+	_, err = authapi.UserAdd(context.TODO(), "foo", "bar")
+	if err != rpctypes.ErrUserAlreadyExist {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrUserAlreadyExist, err)
 	}
-	// add user back
-	_, err = authed.UserAdd(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-	_, err = authed.Authenticate(t.Context(), "foo", "bar")
-	require.NoError(t, err)
-	// change password
-	_, err = authed.UserChangePassword(t.Context(), "foo", "bar2")
-	require.NoError(t, err)
-	_, err = authed.UserChangePassword(t.Context(), "foo", "bar1")
-	require.NoError(t, err)
 
-	if _, err = authed.Authenticate(t.Context(), "foo", "bar"); err == nil {
-		t.Errorf("expect Authenticate error for old password")
+	_, err = authapi.UserDelete(context.TODO(), "not-exist-user")
+	if err != rpctypes.ErrUserNotFound {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrUserNotFound, err)
 	}
-	if _, err = authed.Authenticate(t.Context(), "foo", "bar2"); err == nil {
-		t.Errorf("expect Authenticate error for old password")
+
+	_, err = authapi.UserGrantRole(context.TODO(), "foo", "test-role-does-not-exist")
+	if err != rpctypes.ErrRoleNotFound {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrRoleNotFound, err)
 	}
-	_, err = authed.Authenticate(t.Context(), "foo", "bar1")
-	require.NoError(t, err)
 }
 
 func TestUserErrorAuth(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
 	authSetupRoot(t, authapi.Auth)
 
 	// unauthenticated client
-	_, err := authapi.UserAdd(t.Context(), "foo", "bar")
-	require.ErrorIsf(t, err, rpctypes.ErrUserEmpty, "expected %v, got %v", rpctypes.ErrUserEmpty, err)
+	if _, err := authapi.UserAdd(context.TODO(), "foo", "bar"); err != rpctypes.ErrUserEmpty {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrUserEmpty, err)
+	}
 
 	// wrong id or password
 	cfg := clientv3.Config{
@@ -119,38 +75,46 @@ func TestUserErrorAuth(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	cfg.Username, cfg.Password = "wrong-id", "123"
-	_, err = integration2.NewClient(t, cfg)
-	require.ErrorIsf(t, err, rpctypes.ErrAuthFailed, "expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	if _, err := integration.NewClient(t, cfg); err != rpctypes.ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	}
 	cfg.Username, cfg.Password = "root", "wrong-pass"
-	_, err = integration2.NewClient(t, cfg)
-	require.ErrorIsf(t, err, rpctypes.ErrAuthFailed, "expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	if _, err := integration.NewClient(t, cfg); err != rpctypes.ErrAuthFailed {
+		t.Fatalf("expected %v, got %v", rpctypes.ErrAuthFailed, err)
+	}
 
 	cfg.Username, cfg.Password = "root", "123"
-	authed, err := integration2.NewClient(t, cfg)
-	require.NoError(t, err)
+	authed, err := integration.NewClient(t, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer authed.Close()
 
-	_, err = authed.UserList(t.Context())
-	require.NoError(t, err)
+	if _, err := authed.UserList(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func authSetupRoot(t *testing.T, auth clientv3.Auth) {
-	_, err := auth.UserAdd(t.Context(), "root", "123")
-	require.NoError(t, err)
-	_, err = auth.RoleAdd(t.Context(), "root")
-	require.NoError(t, err)
-	_, err = auth.UserGrantRole(t.Context(), "root", "root")
-	require.NoError(t, err)
-	_, err = auth.AuthEnable(t.Context())
-	require.NoError(t, err)
+	if _, err := auth.UserAdd(context.TODO(), "root", "123"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.RoleAdd(context.TODO(), "root"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.UserGrantRole(context.TODO(), "root", "root"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.AuthEnable(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
 }
 
-// TestGetTokenWithoutAuth is when Client can connect to etcd even if they
-// supply credentials and the server is in AuthDisable mode.
+// Client can connect to etcd even if they supply credentials and the server is in AuthDisable mode.
 func TestGetTokenWithoutAuth(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 2})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 2})
 	defer clus.Terminate(t)
 
 	authapi := clus.RandClient()
@@ -159,8 +123,9 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 	var client *clientv3.Client
 
 	// make sure "auth" was disabled
-	_, err = authapi.AuthDisable(t.Context())
-	require.NoError(t, err)
+	if _, err = authapi.AuthDisable(context.TODO()); err != nil {
+		t.Fatal(err)
+	}
 
 	// "Username" and "Password" must be used
 	cfg := clientv3.Config{
@@ -170,15 +135,15 @@ func TestGetTokenWithoutAuth(t *testing.T) {
 		Password:    "123",
 	}
 
-	client, err = integration2.NewClient(t, cfg)
+	client, err = integration.NewClient(t, cfg)
 	if err == nil {
 		defer client.Close()
 	}
 
-	switch {
-	case err == nil:
+	switch err {
+	case nil:
 		t.Log("passes as expected")
-	case errors.Is(err, context.DeadlineExceeded):
+	case context.DeadlineExceeded:
 		t.Errorf("not expected result:%v with endpoint:%s", err, authapi.Endpoints())
 	default:
 		t.Errorf("other errors:%v", err)

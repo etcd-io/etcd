@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -e
 
 # Top level problems with modules can lead to test_lib being not functional
 go mod tidy
@@ -29,10 +29,11 @@ function bash_ws_fix {
   find ./ -name '*.sh.bak' -print0 | xargs -0 rm
 }
 
-log_callout -e "\\nFixing etcd code for you...\n"
+log_callout -e "\\nFixing etcd code for you...\\n"
 
 run_for_modules mod_tidy_fix || exit 2
 run_for_modules run ${GO_CMD} fmt || exit 2
+run_for_module tests bom_fix || exit 2
 bash_ws_fix || exit 2
 
 log_success -e "\\nSUCCESS: etcd code is fixed :)"

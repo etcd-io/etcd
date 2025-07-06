@@ -1,6 +1,6 @@
 # raftexample
 
-raftexample is an example usage of etcd's [raft library](https://github.com/etcd-io/raft). It provides a simple REST API for a key-value store cluster backed by the [Raft][raft] consensus algorithm.
+raftexample is an example usage of etcd's [raft library](../../raft). It provides a simple REST API for a key-value store cluster backed by the [Raft][raft] consensus algorithm.
 
 [raft]: http://raftconsensus.github.io/
 

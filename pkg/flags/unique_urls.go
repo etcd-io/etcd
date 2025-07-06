@@ -50,11 +50,7 @@ func (us *UniqueURLs) Set(s string) error {
 	us.Values = make(map[string]struct{})
 	us.uss = make([]url.URL, 0)
 	for _, v := range ss {
-		x := v.String()
-		if _, exists := us.Values[x]; exists {
-			continue
-		}
-		us.Values[x] = struct{}{}
+		us.Values[v.String()] = struct{}{}
 		us.uss = append(us.uss, v)
 	}
 	return nil

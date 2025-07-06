@@ -18,6 +18,7 @@ import (
 	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -49,18 +50,18 @@ type Member struct {
 // NewMember creates a Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for bootstrapping/adding new member.
 func NewMember(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	memberID := computeMemberID(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberID, false)
+	memberId := computeMemberId(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberId, false)
 }
 
 // NewMemberAsLearner creates a learner Member without an ID and generates one based on the
 // cluster name, peer URLs, and time. This is used for adding new learner member.
 func NewMemberAsLearner(name string, peerURLs types.URLs, clusterName string, now *time.Time) *Member {
-	memberID := computeMemberID(peerURLs, clusterName, now)
-	return newMember(name, peerURLs, memberID, true)
+	memberId := computeMemberId(peerURLs, clusterName, now)
+	return newMember(name, peerURLs, memberId, true)
 }
 
-func computeMemberID(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
+func computeMemberId(peerURLs types.URLs, clusterName string, now *time.Time) types.ID {
 	peerURLstrs := peerURLs.StringSlice()
 	sort.Strings(peerURLstrs)
 	joinedPeerUrls := strings.Join(peerURLstrs, "")
@@ -75,16 +76,25 @@ func computeMemberID(peerURLs types.URLs, clusterName string, now *time.Time) ty
 	return types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func newMember(name string, peerURLs types.URLs, memberID types.ID, isLearner bool) *Member {
+func newMember(name string, peerURLs types.URLs, memberId types.ID, isLearner bool) *Member {
 	m := &Member{
 		RaftAttributes: RaftAttributes{
 			PeerURLs:  peerURLs.StringSlice(),
 			IsLearner: isLearner,
 		},
 		Attributes: Attributes{Name: name},
-		ID:         memberID,
+		ID:         memberId,
 	}
 	return m
+}
+
+// PickPeerURL chooses a random address from a given Member's PeerURLs.
+// It will panic if there is no PeerURLs available in Member.
+func (m *Member) PickPeerURL() string {
+	if len(m.PeerURLs) == 0 {
+		panic("member should always have some peer url")
+	}
+	return m.PeerURLs[rand.Intn(len(m.PeerURLs))]
 }
 
 func (m *Member) Clone() *Member {

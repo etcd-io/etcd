@@ -20,18 +20,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/tests/v3/framework/config"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // MustFetchNotEmptyMetric attempts to fetch given 'metric' from 'member',
 // waiting for not-empty value or 'timeout'.
-func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric string, timeout <-chan time.Time) string {
+func MustFetchNotEmptyMetric(tb testing.TB, member *member, metric string, timeout <-chan time.Time) string {
 	metricValue := ""
-	tick := time.Tick(config.TickDuration)
+	tick := time.Tick(tickDuration)
 	for metricValue == "" {
 		tb.Logf("Waiting for metric: %v", metric)
 		select {
@@ -54,9 +50,9 @@ func MustFetchNotEmptyMetric(tb testing.TB, member *integration.Member, metric s
 // that were created in synced watcher group in the first place.
 // TODO: fix panic with gRPC proxy "panic: watcher current revision should not exceed current revision"
 func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
-	integration.BeforeTest(t)
+	BeforeTest(t)
 
-	clus := integration.NewCluster(t, &integration.ClusterConfig{
+	clus := NewClusterV3(t, &ClusterConfig{
 		Size:                   3,
 		SnapshotCount:          10,
 		SnapshotCatchUpEntries: 5,
@@ -64,13 +60,14 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	defer clus.Terminate(t)
 
 	// spawn a watcher before shutdown, and put it in synced watcher
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	wStream, errW := integration.ToGRPC(clus.Client(0)).Watch.Watch(ctx)
-	require.NoError(t, errW)
+	wStream, errW := toGRPC(clus.Client(0)).Watch.Watch(ctx)
+	if errW != nil {
+		t.Fatal(errW)
+	}
 	if err := wStream.Send(&pb.WatchRequest{RequestUnion: &pb.WatchRequest_CreateRequest{
-		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5},
-	}}); err != nil {
+		CreateRequest: &pb.WatchCreateRequest{Key: []byte("foo"), StartRevision: 5}}}); err != nil {
 		t.Fatalf("wStream.Send error: %v", err)
 	}
 	wresp, errR := wStream.Recv()
@@ -82,44 +79,26 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	}
 
 	clus.Members[0].InjectPartition(t, clus.Members[1:]...)
-	initialLead := clus.WaitMembersForLeader(t, clus.Members[1:]) + 1
-	t.Logf("elected lead: %v", clus.Members[initialLead].Server.MemberID())
+	initialLead := clus.waitLeader(t, clus.Members[1:])
+	t.Logf("elected lead: %v", clus.Members[initialLead].s.ID())
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
 	t.Logf("sleeping for 2 seconds DONE")
 
-	kvc := integration.ToGRPC(clus.Client(1)).KV
+	kvc := toGRPC(clus.Client(1)).KV
 
 	// to trigger snapshot from the leader to the stopped follower
 	for i := 0; i < 15; i++ {
-		_, err := kvc.Put(t.Context(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
+		_, err := kvc.Put(context.TODO(), &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
 		if err != nil {
 			t.Errorf("#%d: couldn't put key (%v)", i, err)
 		}
 	}
 
-	// NOTE: When starting a new cluster with 3 members, each member will
-	// apply 3 ConfChange directly at the beginning before a leader is
-	// elected. Leader will apply 3 MemberAttrSet and 1 ClusterVersionSet
-	// changes. So member 0 has index 8 in raft log before network
-	// partition. We need to trigger EtcdServer.snapshot() at least twice.
-	//
-	// SnapshotCount: 10, SnapshotCatchUpEntries: 5
-	//
-	// T1: L(snapshot-index: 11, compacted-index:  6), F_m0(index:8)
-	// T2: L(snapshot-index: 22, compacted-index: 17), F_m0(index:8, out of date)
-	//
-	// Since there is no way to confirm server has compacted the log, we
-	// use log monitor to watch and expect "compacted Raft logs" content.
-	// In v3.6 we no longer generates "compacted Raft logs" log as raft compaction happens independently to snapshot.
-	// For now let's use snapshot log which should be equivalent to compaction.
-	expectMemberLog(t, clus.Members[initialLead], 5*time.Second, "saved snapshot to disk", 2)
-
-	// After RecoverPartition, leader L will send snapshot to slow F_m0
-	// follower, because F_m0(index:8) is 'out of date' compared to
-	// L(compacted-index:17).
+	// trigger snapshot send from leader to this slow follower
+	// which then calls watchable store Restore
 	clus.Members[0].RecoverPartition(t, clus.Members[1:]...)
-	// We don't expect leadership change here, just recompute the leader'Server index
+	// We don't expect leadership change here, just recompute the leader's index
 	// within clus.Members list.
 	lead := clus.WaitLeader(t)
 
@@ -142,8 +121,6 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		t.Fatalf("inflight snapshot receives expected 0 or 1, got %q", receives)
 	}
 
-	expectMemberLog(t, clus.Members[0], 5*time.Second, "received and saved database snapshot", 1)
-
 	t.Logf("sleeping for 2 seconds")
 	time.Sleep(2 * time.Second)
 	t.Logf("sleeping for 2 seconds DONE")
@@ -152,7 +129,7 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 	// should be able to notify on old-revision watchers in unsynced
 	// make sure restore watch operation correctly moves watchers
 	// between synced and unsynced watchers
-	errc := make(chan error, 1)
+	errc := make(chan error)
 	go func() {
 		cresp, cerr := wStream.Recv()
 		if cerr != nil {
@@ -173,18 +150,5 @@ func TestV3WatchRestoreSnapshotUnsync(t *testing.T) {
 		if err != nil {
 			t.Fatalf("wStream.Recv error: %v", err)
 		}
-	}
-}
-
-func expectMemberLog(t *testing.T, m *integration.Member, timeout time.Duration, s string, count int) {
-	ctx, cancel := context.WithTimeout(t.Context(), timeout)
-	defer cancel()
-
-	lines, err := m.LogObserver.Expect(ctx, s, count)
-	if err != nil {
-		t.Fatalf("failed to expect (log:%s, count:%v): %v", s, count, err)
-	}
-	for _, line := range lines {
-		t.Logf("[expected line]: %v", line)
 	}
 }

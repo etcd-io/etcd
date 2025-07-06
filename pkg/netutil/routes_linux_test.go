@@ -13,23 +13,24 @@
 // limitations under the License.
 
 //go:build linux
+// +build linux
 
 package netutil
 
-import (
-	"testing"
-
-	"github.com/stretchr/testify/require"
-)
+import "testing"
 
 func TestGetDefaultInterface(t *testing.T) {
 	ifc, err := GetDefaultInterfaces()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("default network interfaces: %+v\n", ifc)
 }
 
 func TestGetDefaultHost(t *testing.T) {
 	ip, err := GetDefaultHost()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Logf("default ip: %v", ip)
 }

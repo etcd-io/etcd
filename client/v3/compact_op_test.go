@@ -18,13 +18,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
 func TestCompactOp(t *testing.T) {
 	req1 := OpCompact(100, WithCompactPhysical()).toRequest()
 	req2 := &etcdserverpb.CompactionRequest{Revision: 100, Physical: true}
-	require.Truef(t, reflect.DeepEqual(req1, req2), "expected %+v, got %+v", req2, req1)
+	if !reflect.DeepEqual(req1, req2) {
+		t.Fatalf("expected %+v, got %+v", req2, req1)
+	}
 }

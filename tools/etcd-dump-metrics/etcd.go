@@ -17,15 +17,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"go.uber.org/zap"
-
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
+
+	"go.uber.org/zap"
 )
 
 func newEmbedURLs(n int) (urls []url.URL) {
@@ -43,15 +44,15 @@ func setupEmbedCfg(cfg *embed.Config, curls, purls, ics []url.URL) {
 	// []string{"stderr"} to enable server logging
 
 	var err error
-	cfg.Dir, err = os.MkdirTemp(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))
+	cfg.Dir, err = ioutil.TempDir(os.TempDir(), fmt.Sprintf("%016X", time.Now().UnixNano()))
 	if err != nil {
 		panic(err)
 	}
 	os.RemoveAll(cfg.Dir)
 
 	cfg.ClusterState = "new"
-	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = curls, curls
-	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = purls, purls
+	cfg.LCUrls, cfg.ACUrls = curls, curls
+	cfg.LPUrls, cfg.APUrls = purls, purls
 
 	cfg.InitialCluster = ""
 	for i := range ics {

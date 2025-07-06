@@ -21,11 +21,10 @@ import (
 	"os"
 	"time"
 
+	"go.etcd.io/etcd/server/v3/proxy/tcpproxy"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/logutil"
-	"go.etcd.io/etcd/server/v3/proxy/tcpproxy"
 )
 
 var (
@@ -38,11 +37,13 @@ var (
 	gatewayCA                    string
 )
 
-var rootCmd = &cobra.Command{
-	Use:        "etcd",
-	Short:      "etcd server",
-	SuggestFor: []string{"etcd"},
-}
+var (
+	rootCmd = &cobra.Command{
+		Use:        "etcd",
+		Short:      "etcd server",
+		SuggestFor: []string{"etcd"},
+	}
+)
 
 func init() {
 	rootCmd.AddCommand(newGatewayCommand())
@@ -91,7 +92,8 @@ func stripSchema(eps []string) []string {
 }
 
 func startGateway(cmd *cobra.Command, args []string) {
-	lg, err := logutil.CreateDefaultZapLogger(zap.InfoLevel)
+	var lg *zap.Logger
+	lg, err := zap.NewProduction()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

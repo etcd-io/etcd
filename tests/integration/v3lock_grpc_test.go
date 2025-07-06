@@ -15,35 +15,39 @@
 package integration
 
 import (
+	"context"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	lockpb "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
-	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestV3LockLockWaiter tests that a client will wait for a lock, then acquire it
 // once it is unlocked.
 func TestV3LockLockWaiter(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	BeforeTest(t)
+	clus := NewClusterV3(t, &ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	lease1, err1 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
-	require.NoError(t, err1)
-	lease2, err2 := integration.ToGRPC(clus.RandClient()).Lease.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
-	require.NoError(t, err2)
+	lease1, err1 := toGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	if err1 != nil {
+		t.Fatal(err1)
+	}
+	lease2, err2 := toGRPC(clus.RandClient()).Lease.LeaseGrant(context.TODO(), &pb.LeaseGrantRequest{TTL: 30})
+	if err2 != nil {
+		t.Fatal(err2)
+	}
 
-	lc := integration.ToGRPC(clus.Client(0)).Lock
-	l1, lerr1 := lc.Lock(t.Context(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
-	require.NoError(t, lerr1)
+	lc := toGRPC(clus.Client(0)).Lock
+	l1, lerr1 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease1.ID})
+	if lerr1 != nil {
+		t.Fatal(lerr1)
+	}
 
 	lockc := make(chan struct{})
 	go func() {
-		l2, lerr2 := lc.Lock(t.Context(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease2.ID})
+		l2, lerr2 := lc.Lock(context.TODO(), &lockpb.LockRequest{Name: []byte("foo"), Lease: lease2.ID})
 		if lerr2 != nil {
 			t.Error(lerr2)
 		}
@@ -59,8 +63,9 @@ func TestV3LockLockWaiter(t *testing.T) {
 		t.Fatalf("locked before unlock")
 	}
 
-	_, uerr := lc.Unlock(t.Context(), &lockpb.UnlockRequest{Key: l1.Key})
-	require.NoError(t, uerr)
+	if _, uerr := lc.Unlock(context.TODO(), &lockpb.UnlockRequest{Key: l1.Key}); uerr != nil {
+		t.Fatal(uerr)
+	}
 
 	select {
 	case <-time.After(200 * time.Millisecond):

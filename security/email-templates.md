@@ -8,7 +8,6 @@ This is a collection of email templates to handle various situations the securit
 Subject: Upcoming security release of etcd $VERSION
 To: etcd-dev@googlegroups.com
 Cc: security@etcd-io
-Cc: etcd-maintainers@googlegroups.com
 
 Hello etcd Community,
 
@@ -36,7 +35,6 @@ $PERSON on behalf of the etcd Product Security Committee and maintainers
 Subject: Security release of etcd $VERSION is now available
 To: etcd-dev@googlegroups.com
 Cc: security@etcd-io
-Cc: etcd-maintainers@googlegroups.com
 
 Hello etcd Community,
 

@@ -19,13 +19,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
-
-	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 )
 
 var (
@@ -43,11 +40,6 @@ var (
 		Short: "iterate-bucket lists key-value pairs in reverse order.",
 		Run:   iterateBucketCommandFunc,
 	}
-	scanKeySpaceCommand = &cobra.Command{
-		Use:   "scan-keys [data dir or db file path] [start revision]",
-		Short: "scan-keys scans all the key-value pairs starting from a specific revision in the key space.",
-		Run:   scanKeysCommandFunc,
-	}
 	getHashCommand = &cobra.Command{
 		Use:   "hash [data dir or db file path]",
 		Short: "hash computes the hash of db file.",
@@ -55,11 +47,9 @@ var (
 	}
 )
 
-var (
-	flockTimeout        time.Duration
-	iterateBucketLimit  uint64
-	iterateBucketDecode bool
-)
+var flockTimeout time.Duration
+var iterateBucketLimit uint64
+var iterateBucketDecode bool
 
 func init() {
 	rootCommand.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
@@ -68,7 +58,6 @@ func init() {
 
 	rootCommand.AddCommand(listBucketCommand)
 	rootCommand.AddCommand(iterateBucketCommand)
-	rootCommand.AddCommand(scanKeySpaceCommand)
 	rootCommand.AddCommand(getHashCommand)
 }
 
@@ -79,7 +68,7 @@ func main() {
 	}
 }
 
-func listBucketCommandFunc(_ *cobra.Command, args []string) {
+func listBucketCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
 		log.Fatalf("Must provide at least 1 argument (got %v)", args)
 	}
@@ -87,7 +76,7 @@ func listBucketCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !fileutil.Exist(dp) {
+	if !existFileOrDir(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 
@@ -100,7 +89,7 @@ func listBucketCommandFunc(_ *cobra.Command, args []string) {
 	}
 }
 
-func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
+func iterateBucketCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
 		log.Fatalf("Must provide 2 arguments (got %v)", args)
 	}
@@ -108,7 +97,7 @@ func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !fileutil.Exist(dp) {
+	if !existFileOrDir(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 	bucket := args[1]
@@ -118,28 +107,7 @@ func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
 	}
 }
 
-func scanKeysCommandFunc(_ *cobra.Command, args []string) {
-	if len(args) != 2 {
-		log.Fatalf("Must provide 2 arguments (got %v)", args)
-	}
-	dp := args[0]
-	if !strings.HasSuffix(dp, "db") {
-		dp = filepath.Join(snapDir(dp), "db")
-	}
-	if !fileutil.Exist(dp) {
-		log.Fatalf("%q does not exist", dp)
-	}
-	startRev, err := strconv.ParseInt(args[1], 10, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = scanKeys(dp, startRev)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func getHashCommandFunc(_ *cobra.Command, args []string) {
+func getHashCommandFunc(cmd *cobra.Command, args []string) {
 	if len(args) < 1 {
 		log.Fatalf("Must provide at least 1 argument (got %v)", args)
 	}
@@ -147,7 +115,7 @@ func getHashCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !fileutil.Exist(dp) {
+	if !existFileOrDir(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 

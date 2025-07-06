@@ -15,26 +15,26 @@
 package grpcproxy
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
+
+	"google.golang.org/grpc"
 )
 
 func TestKVProxyRange(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL}, t)
+	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL()}, t)
 	defer kvts.close()
 
 	// create a client and try to get key from proxy.
@@ -42,10 +42,14 @@ func TestKVProxyRange(t *testing.T) {
 		Endpoints:   []string{kvts.l.Addr().String()},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration2.NewClient(t, cfg)
-	require.NoErrorf(t, err, "err = %v, want nil", err)
-	_, err = client.Get(t.Context(), "foo")
-	require.NoErrorf(t, err, "err = %v, want nil", err)
+	client, err := integration.NewClient(t, cfg)
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	_, err = client.Get(context.Background(), "foo")
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
 	client.Close()
 }
 
@@ -67,8 +71,10 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration2.NewClient(t, cfg)
-	require.NoError(t, err)
+	client, err := integration.NewClient(t, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	kvp, _ := grpcproxy.NewKvProxy(client)
 
@@ -82,7 +88,9 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 	pb.RegisterKVServer(kvts.server, kvts.kp)
 
 	kvts.l, err = net.Listen("tcp", "127.0.0.1:0")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	go kvts.server.Serve(kvts.l)
 

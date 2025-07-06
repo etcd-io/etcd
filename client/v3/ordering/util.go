@@ -18,7 +18,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
 type OrderViolationFunc func(op clientv3.Op, resp clientv3.OpResponse, prevRev int64) error
@@ -29,7 +29,7 @@ func NewOrderViolationSwitchEndpointClosure(c *clientv3.Client) OrderViolationFu
 	violationCount := int32(0)
 	return func(_ clientv3.Op, _ clientv3.OpResponse, _ int64) error {
 		// Each request is assigned by round-robin load-balancer's picker to a different
-		// endpoint. If we cycled them 5 times (even with some level of concurrency),
+		// endpoints. If we cycled them 5 times (even with some level of concurrency),
 		// with high probability no endpoint points on a member with fresh data.
 		// TODO: Ideally we should track members (resp.opp.Header) that returned
 		// stale result and explicitly temporarily disable them in 'picker'.

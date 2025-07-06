@@ -15,20 +15,21 @@
 package clientv3
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
+	"google.golang.org/grpc/metadata"
 )
 
 func TestMetadataWithRequireLeader(t *testing.T) {
-	ctx := t.Context()
+	ctx := context.TODO()
 	_, ok := metadata.FromOutgoingContext(ctx)
-	require.Falsef(t, ok, "expected no outgoing metadata ctx key")
+	if ok {
+		t.Fatal("expected no outgoing metadata ctx key")
+	}
 
 	// add a conflicting key with some other value
 	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, "invalid")
@@ -39,20 +40,28 @@ func TestMetadataWithRequireLeader(t *testing.T) {
 	// expect overwrites but still keep other keys
 	ctx = WithRequireLeader(ctx)
 	md, ok = metadata.FromOutgoingContext(ctx)
-	require.Truef(t, ok, "expected outgoing metadata ctx key")
-	ss := md.Get(rpctypes.MetadataRequireLeaderKey)
-	require.Truef(t, reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}), "unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
-	ss = md.Get("hello")
-	require.Truef(t, reflect.DeepEqual(ss, []string{"1", "2"}), "unexpected metadata for 'hello' %v", ss)
+	if !ok {
+		t.Fatal("expected outgoing metadata ctx key")
+	}
+	if ss := md.Get(rpctypes.MetadataRequireLeaderKey); !reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
+	}
+	if ss := md.Get("hello"); !reflect.DeepEqual(ss, []string{"1", "2"}) {
+		t.Fatalf("unexpected metadata for 'hello' %v", ss)
+	}
 }
 
 func TestMetadataWithClientAPIVersion(t *testing.T) {
-	ctx := withVersion(WithRequireLeader(t.Context()))
+	ctx := withVersion(WithRequireLeader(context.TODO()))
 
 	md, ok := metadata.FromOutgoingContext(ctx)
-	require.Truef(t, ok, "expected outgoing metadata ctx key")
-	ss := md.Get(rpctypes.MetadataRequireLeaderKey)
-	require.Truef(t, reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}), "unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
-	ss = md.Get(rpctypes.MetadataClientAPIVersionKey)
-	require.Truef(t, reflect.DeepEqual(ss, []string{version.APIVersion}), "unexpected metadata for %q %v", rpctypes.MetadataClientAPIVersionKey, ss)
+	if !ok {
+		t.Fatal("expected outgoing metadata ctx key")
+	}
+	if ss := md.Get(rpctypes.MetadataRequireLeaderKey); !reflect.DeepEqual(ss, []string{rpctypes.MetadataHasLeader}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataRequireLeaderKey, ss)
+	}
+	if ss := md.Get(rpctypes.MetadataClientAPIVersionKey); !reflect.DeepEqual(ss, []string{version.APIVersion}) {
+		t.Fatalf("unexpected metadata for %q %v", rpctypes.MetadataClientAPIVersionKey, ss)
+	}
 }

@@ -15,17 +15,13 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/pkg/v3/expect"
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3Lock(t *testing.T) {
@@ -40,7 +36,9 @@ func testLock(cx ctlCtx) {
 	name := "a"
 
 	holder, ch, err := ctlV3Lock(cx, name)
-	require.NoError(cx.t, err)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
 
 	l1 := ""
 	select {
@@ -54,7 +52,9 @@ func testLock(cx ctlCtx) {
 
 	// blocked process that won't acquire the lock
 	blocked, ch, err := ctlV3Lock(cx, name)
-	require.NoError(cx.t, err)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-ch:
@@ -63,13 +63,10 @@ func testLock(cx ctlCtx) {
 
 	// overlap with a blocker that will acquire the lock
 	blockAcquire, ch, err := ctlV3Lock(cx, name)
-	require.NoError(cx.t, err)
-	defer func(blockAcquire *expect.ExpectProcess) {
-		err = blockAcquire.Stop()
-		require.NoError(cx.t, err)
-		blockAcquire.Wait()
-	}(blockAcquire)
-
+	if err != nil {
+		cx.t.Fatal(err)
+	}
+	defer blockAcquire.Stop()
 	select {
 	case <-time.After(100 * time.Millisecond):
 	case <-ch:
@@ -77,16 +74,20 @@ func testLock(cx ctlCtx) {
 	}
 
 	// kill blocked process with clean shutdown
-	require.NoError(cx.t, blocked.Signal(os.Interrupt))
-	err = e2e.CloseWithTimeout(blocked, time.Second)
-	if err != nil {
-		// due to being blocked, this can potentially get killed and thus exit non-zero sometimes
-		require.ErrorContains(cx.t, err, "unexpected exit code")
+	if err = blocked.Signal(os.Interrupt); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = closeWithTimeout(blocked, time.Second); err != nil {
+		cx.t.Fatal(err)
 	}
 
 	// kill the holder with clean shutdown
-	require.NoError(cx.t, holder.Signal(os.Interrupt))
-	require.NoError(cx.t, e2e.CloseWithTimeout(holder, 200*time.Millisecond+time.Second))
+	if err = holder.Signal(os.Interrupt); err != nil {
+		cx.t.Fatal(err)
+	}
+	if err = closeWithTimeout(holder, 200*time.Millisecond+time.Second); err != nil {
+		cx.t.Fatal(err)
+	}
 
 	// blockAcquire should acquire the lock
 	select {
@@ -102,31 +103,32 @@ func testLock(cx ctlCtx) {
 func testLockWithCmd(cx ctlCtx) {
 	// exec command with zero exit code
 	echoCmd := []string{"echo"}
-	require.NoError(cx.t, ctlV3LockWithCmd(cx, echoCmd, expect.ExpectedResponse{Value: ""}))
+	if err := ctlV3LockWithCmd(cx, echoCmd, ""); err != nil {
+		cx.t.Fatal(err)
+	}
 
 	// exec command with non-zero exit code
 	code := 3
 	awkCmd := []string{"awk", fmt.Sprintf("BEGIN{exit %d}", code)}
-	expect := expect.ExpectedResponse{Value: fmt.Sprintf("Error: exit status %d", code)}
-	require.ErrorContains(cx.t, ctlV3LockWithCmd(cx, awkCmd, expect), expect.Value)
+	expect := fmt.Sprintf("Error: exit status %d", code)
+	if err := ctlV3LockWithCmd(cx, awkCmd, expect); err != nil {
+		cx.t.Fatal(err)
+	}
 }
 
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
 func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lock", name)
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
 	if err != nil {
 		close(outc)
 		return proc, outc, err
 	}
 	go func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		s, xerr := proc.ExpectFunc(ctx, func(string) bool { return true })
+		s, xerr := proc.ExpectFunc(func(string) bool { return true })
 		if xerr != nil {
-			require.ErrorContains(cx.t, xerr, "Error: context canceled")
+			cx.t.Errorf("expect failed (%v)", xerr)
 		}
 		outc <- s
 	}()
@@ -134,11 +136,9 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 }
 
 // ctlV3LockWithCmd creates a lock process to exec command.
-func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...expect.ExpectedResponse) error {
+func ctlV3LockWithCmd(cx ctlCtx, execCmd []string, as ...string) error {
 	// use command as lock name
 	cmdArgs := append(cx.PrefixArgs(), "lock", execCmd[0])
 	cmdArgs = append(cmdArgs, execCmd...)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	return e2e.SpawnWithExpectsContext(ctx, cmdArgs, cx.envMap, as...)
+	return spawnWithExpects(cmdArgs, cx.envMap, as...)
 }

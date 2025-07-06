@@ -17,8 +17,6 @@ package flags
 import (
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestStringsValue(t *testing.T) {
@@ -32,6 +30,8 @@ func TestStringsValue(t *testing.T) {
 	}
 	for i := range tests {
 		ss := []string(*NewStringsValue(tests[i].s))
-		require.Truef(t, reflect.DeepEqual(tests[i].exp, ss), "#%d: expected %q, got %q", i, tests[i].exp, ss)
+		if !reflect.DeepEqual(tests[i].exp, ss) {
+			t.Fatalf("#%d: expected %q, got %q", i, tests[i].exp, ss)
+		}
 	}
 }

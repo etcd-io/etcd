@@ -14,19 +14,21 @@
 
 package v2store
 
+// 当 eventQueue 被填满之后， 继续向其中添加 Event， 则会导致最先添加的 Event实例被覆盖
 type eventQueue struct {
-	Events   []*Event
-	Size     int
-	Front    int
-	Back     int
-	Capacity int
+	Events   []*Event // 底层真正存储 Event实例的数组
+	Size     int      // 当前 Events字段中存储的 Event实例个数
+	Front    int      // eventQueue 队列中第一个元素的下标值
+	Back     int      // eventQueue 巳队列中最后一个元素的下标值
+	Capacity int      // Events宇段的长度
 }
 
 func (eq *eventQueue) insert(e *Event) {
 	eq.Events[eq.Back] = e
-	eq.Back = (eq.Back + 1) % eq.Capacity
+	eq.Back = (eq.Back + 1) % eq.Capacity // 后移 Back
 
-	if eq.Size == eq.Capacity { // dequeue
+	if eq.Size == eq.Capacity { //dequeue
+		// 当队列满了的时候， 则后移 Front， 抛弃 Front指向的 Event 实例
 		eq.Front = (eq.Front + 1) % eq.Capacity
 	} else {
 		eq.Size++

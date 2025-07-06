@@ -18,13 +18,13 @@ import (
 	"context"
 	"log"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
-func mockMaintenanceStatus() {}
+func mockMaintenance_status() {}
 
 func ExampleMaintenance_status() {
-	forUnitTestsRunInMockedContext(mockMaintenanceStatus, func() {
+	forUnitTestsRunInMockedContext(mockMaintenance_status, func() {
 		for _, ep := range exampleEndpoints() {
 			cli, err := clientv3.New(clientv3.Config{
 				Endpoints:   []string{ep},
@@ -44,10 +44,10 @@ func ExampleMaintenance_status() {
 	// Output:
 }
 
-func mockMaintenanceDefragment() {}
+func mockMaintenance_defragment() {}
 
 func ExampleMaintenance_defragment() {
-	forUnitTestsRunInMockedContext(mockMaintenanceDefragment, func() {
+	forUnitTestsRunInMockedContext(mockMaintenance_defragment, func() {
 		for _, ep := range exampleEndpoints() {
 			cli, err := clientv3.New(clientv3.Config{
 				Endpoints:   []string{ep},

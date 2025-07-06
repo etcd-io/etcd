@@ -2,19 +2,9 @@
 
 > NOTE: This project is *alpha* stage. Flags, configuration, behaviour and design may change significantly in following releases.
 
-A customisable set of Grafana dashboard and Prometheus alerts for etcd.
+A set of customisable Prometheus alerts for etcd.
 
 Instructions for use are the same as the [kubernetes-mixin](https://github.com/kubernetes-monitoring/kubernetes-mixin).
-
-## Grafana 7.x support
-
-By default, this mixin generates the dashboard compatible with Grafana 8.x or newer.
-To generate dashboard for Grafana 7.x, set in the config.libsonnet:
-
-```
-// set to true if dashboards should be compatible with Grafana 7x or earlier
-grafana7x: true,
-```
 
 ## Background
 
@@ -22,15 +12,11 @@ grafana7x: true,
 
 ## Testing alerts
 
-Make sure to have [jsonnet](https://jsonnet.org/) and [gojsontoyaml](https://github.com/brancz/gojsontoyaml) installed. You can fetch it via
-
-```
-make tools
-```
+Make sure to have [jsonnet](https://jsonnet.org/) and [gojsontoyaml](https://github.com/brancz/gojsontoyaml) installed.
 
 First compile the mixin to a YAML file, which the promtool will read:
 ```
-make manifests
+jsonnet -e '(import "mixin.libsonnet").prometheusAlerts' | gojsontoyaml > mixin.yaml
 ```
 
 Then run the unit test:

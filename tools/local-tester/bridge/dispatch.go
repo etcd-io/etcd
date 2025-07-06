@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Deprecated: etcd local tester is now deprecated. Use the etcd robustness
-// testing suite instead to validate etcd behaviour under failure conditions.
 package main
 
 import (
@@ -72,7 +70,7 @@ func (d *dispatcherPool) flush() {
 
 	// sort by sockets; preserve the packet ordering within a socket
 	pktmap := make(map[io.Writer][]dispatchPacket)
-	var outs []io.Writer
+	outs := []io.Writer{}
 	for _, pkt := range pkts {
 		opkts, ok := pktmap[pkt.out]
 		if !ok {
@@ -105,7 +103,7 @@ func (d *dispatcherPool) Copy(w io.Writer, f fetchFunc) error {
 			return err
 		}
 
-		var pkts []dispatchPacket
+		pkts := []dispatchPacket{}
 		for len(b) > 0 {
 			pkt := b
 			if len(b) > dispatchPacketBytes {

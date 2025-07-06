@@ -25,38 +25,38 @@ func Test_interpret(t *testing.T) {
 		wantServerName    string
 		wantRequiresCreds CredsRequirement
 	}{
-		{"127.0.0.1", "127.0.0.1", "127.0.0.1", CredsOptional},
-		{"localhost", "localhost", "localhost", CredsOptional},
-		{"localhost:8080", "localhost:8080", "localhost:8080", CredsOptional},
+		{"127.0.0.1", "127.0.0.1", "127.0.0.1", CREDS_OPTIONAL},
+		{"localhost", "localhost", "localhost", CREDS_OPTIONAL},
+		{"localhost:8080", "localhost:8080", "localhost", CREDS_OPTIONAL},
 
-		{"unix:127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CredsOptional},
-		{"unix:127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1:8080", CredsOptional},
+		{"unix:127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CREDS_OPTIONAL},
+		{"unix:127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1", CREDS_OPTIONAL},
 
-		{"unix://127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CredsOptional},
-		{"unix://127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1:8080", CredsOptional},
+		{"unix://127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CREDS_OPTIONAL},
+		{"unix://127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1", CREDS_OPTIONAL},
 
-		{"unixs:127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CredsRequire},
-		{"unixs:127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1:8080", CredsRequire},
-		{"unixs://127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CredsRequire},
-		{"unixs://127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1:8080", CredsRequire},
+		{"unixs:127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CREDS_REQUIRE},
+		{"unixs:127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1", CREDS_REQUIRE},
+		{"unixs://127.0.0.1", "unix:127.0.0.1", "127.0.0.1", CREDS_REQUIRE},
+		{"unixs://127.0.0.1:8080", "unix:127.0.0.1:8080", "127.0.0.1", CREDS_REQUIRE},
 
-		{"http://127.0.0.1", "127.0.0.1", "127.0.0.1", CredsDrop},
-		{"http://127.0.0.1:8080", "127.0.0.1:8080", "127.0.0.1:8080", CredsDrop},
-		{"https://127.0.0.1", "127.0.0.1", "127.0.0.1", CredsRequire},
-		{"https://127.0.0.1:8080", "127.0.0.1:8080", "127.0.0.1:8080", CredsRequire},
-		{"https://localhost:20000", "localhost:20000", "localhost:20000", CredsRequire},
+		{"http://127.0.0.1", "127.0.0.1", "127.0.0.1", CREDS_DROP},
+		{"http://127.0.0.1:8080", "127.0.0.1:8080", "127.0.0.1", CREDS_DROP},
+		{"https://127.0.0.1", "127.0.0.1", "127.0.0.1", CREDS_REQUIRE},
+		{"https://127.0.0.1:8080", "127.0.0.1:8080", "127.0.0.1", CREDS_REQUIRE},
+		{"https://localhost:20000", "localhost:20000", "localhost", CREDS_REQUIRE},
 
-		{"unix:///tmp/abc", "unix:///tmp/abc", "abc", CredsOptional},
-		{"unixs:///tmp/abc", "unix:///tmp/abc", "abc", CredsRequire},
-		{"unix:///tmp/abc:1234", "unix:///tmp/abc:1234", "abc:1234", CredsOptional},
-		{"unixs:///tmp/abc:1234", "unix:///tmp/abc:1234", "abc:1234", CredsRequire},
-		{"etcd.io", "etcd.io", "etcd.io", CredsOptional},
-		{"http://etcd.io/abc", "etcd.io", "etcd.io", CredsDrop},
-		{"dns://something-other", "dns://something-other", "something-other", CredsOptional},
+		{"unix:///tmp/abc", "unix:///tmp/abc", "abc", CREDS_OPTIONAL},
+		{"unixs:///tmp/abc", "unix:///tmp/abc", "abc", CREDS_REQUIRE},
+		{"unix:///tmp/abc:1234", "unix:///tmp/abc:1234", "abc", CREDS_OPTIONAL},
+		{"unixs:///tmp/abc:1234", "unix:///tmp/abc:1234", "abc", CREDS_REQUIRE},
+		{"etcd.io", "etcd.io", "etcd.io", CREDS_OPTIONAL},
+		{"http://etcd.io/abc", "etcd.io", "etcd.io", CREDS_DROP},
+		{"dns://something-other", "dns://something-other", "something-other", CREDS_OPTIONAL},
 
-		{"http://[2001:db8:1f70::999:de8:7648:6e8]:100/", "[2001:db8:1f70::999:de8:7648:6e8]:100", "[2001:db8:1f70::999:de8:7648:6e8]:100", CredsDrop},
-		{"[2001:db8:1f70::999:de8:7648:6e8]:100", "[2001:db8:1f70::999:de8:7648:6e8]:100", "[2001:db8:1f70::999:de8:7648:6e8]:100", CredsOptional},
-		{"unix:unexpected-file_name#123$456", "unix:unexpected-file_name#123$456", "unexpected-file_name#123$456", CredsOptional},
+		{"http://[2001:db8:1f70::999:de8:7648:6e8]:100/", "[2001:db8:1f70::999:de8:7648:6e8]:100", "2001:db8:1f70::999:de8:7648:6e8", CREDS_DROP},
+		{"[2001:db8:1f70::999:de8:7648:6e8]:100", "[2001:db8:1f70::999:de8:7648:6e8]:100", "2001:db8:1f70::999:de8:7648:6e8", CREDS_OPTIONAL},
+		{"unix:unexpected-file_name#123$456", "unix:unexpected-file_name#123$456", "unexpected-file_name#123$456", CREDS_OPTIONAL},
 	}
 	for _, tt := range tests {
 		t.Run("Interpret_"+tt.endpoint, func(t *testing.T) {

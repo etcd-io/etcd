@@ -15,36 +15,32 @@
 package fileutil
 
 import (
+	"io/ioutil"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 func TestPreallocateExtend(t *testing.T) {
 	pf := func(f *os.File, sz int64) error { return Preallocate(f, sz, true) }
-	tf := func(t *testing.T, f *os.File) {
-		t.Helper()
-		testPreallocateExtend(t, f, pf)
-	}
+	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, pf) }
 	runPreallocTest(t, tf)
 }
 
 func TestPreallocateExtendTrunc(t *testing.T) {
-	tf := func(t *testing.T, f *os.File) {
-		t.Helper()
-		testPreallocateExtend(t, f, preallocExtendTrunc)
-	}
+	tf := func(t *testing.T, f *os.File) { testPreallocateExtend(t, f, preallocExtendTrunc) }
 	runPreallocTest(t, tf)
 }
 
 func testPreallocateExtend(t *testing.T, f *os.File, pf func(*os.File, int64) error) {
-	t.Helper()
 	size := int64(64 * 1000)
-	require.NoError(t, pf(f, size))
+	if err := pf(f, size); err != nil {
+		t.Fatal(err)
+	}
 
 	stat, err := f.Stat()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if stat.Size() != size {
 		t.Errorf("size = %d, want %d", stat.Size(), size)
 	}
@@ -52,22 +48,30 @@ func testPreallocateExtend(t *testing.T, f *os.File, pf func(*os.File, int64) er
 
 func TestPreallocateFixed(t *testing.T) { runPreallocTest(t, testPreallocateFixed) }
 func testPreallocateFixed(t *testing.T, f *os.File) {
-	t.Helper()
 	size := int64(64 * 1000)
-	require.NoError(t, Preallocate(f, size, false))
+	if err := Preallocate(f, size, false); err != nil {
+		t.Fatal(err)
+	}
 
 	stat, err := f.Stat()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if stat.Size() != 0 {
 		t.Errorf("size = %d, want %d", stat.Size(), 0)
 	}
 }
 
 func runPreallocTest(t *testing.T, test func(*testing.T, *os.File)) {
-	t.Helper()
-	p := t.TempDir()
+	p, err := ioutil.TempDir(os.TempDir(), "preallocateTest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(p)
 
-	f, err := os.CreateTemp(p, "")
-	require.NoError(t, err)
+	f, err := ioutil.TempFile(p, "")
+	if err != nil {
+		t.Fatal(err)
+	}
 	test(t, f)
 }

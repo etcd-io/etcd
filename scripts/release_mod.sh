@@ -10,7 +10,7 @@
 #
 # % DRY_RUN=false REMOTE_REPO="origin" ./scripts/release_mod.sh push_mod_tags
 
-set -euo pipefail
+set -e
 
 source ./scripts/test_lib.sh
 
@@ -31,7 +31,7 @@ function update_module_version() {
   local v2version="${2}"
   local modules
   run go mod tidy
-  modules=$(go mod edit -json | jq -r '.Require[] | select(.Indirect | not) | .Path')
+  modules=$(run go list -f '{{if not .Main}}{{if not .Indirect}}{{.Path}}{{end}}{{end}}' -m all)
 
   v3deps=$(echo "${modules}" | grep -E "${ROOT_MODULE}/.*/v3")
   for dep in ${v3deps}; do
@@ -55,7 +55,7 @@ function mod_tidy_fix {
 function update_versions_cmd() {
   assert_no_git_modifications || return 2
 
-  if [ -z "${TARGET_VERSION:-}" ]; then
+  if [ -z "${TARGET_VERSION}" ]; then
     log_error "TARGET_VERSION environment variable not set. Set it to e.g. v3.5.10-alpha.0"
     return 2
   fi
@@ -89,7 +89,7 @@ function get_gpg_key {
 function push_mod_tags_cmd {
   assert_no_git_modifications || return 2
 
-  if [ -z "${REMOTE_REPO:-}" ]; then
+  if [ -z "${REMOTE_REPO}" ]; then
     log_error "REMOTE_REPO environment variable not set"
     return 2
   fi
@@ -97,16 +97,16 @@ function push_mod_tags_cmd {
 
   # Any module ccan be used for this
   local main_version
-  main_version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${ROOT_MODULE}"'/api/v3") | .Version')
+  main_version=$(go list -f '{{.Version}}' -m "${ROOT_MODULE}/api/v3")
   local tags=()
 
   keyid=$(get_gpg_key) || return 2
 
   for module in $(modules); do
     local version
-    version=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Version')
+    version=$(go list -f '{{.Version}}' -m "${module}")
     local path
-    path=$(go mod edit -json | jq -r '.Require[] | select(.Path == "'"${module}"'") | .Path')
+    path=$(go list -f '{{.Path}}' -m "${module}")
     local subdir="${path//${ROOT_MODULE}\//}"
     local tag
     if [ -z "${version}" ]; then
@@ -121,7 +121,7 @@ function push_mod_tags_cmd {
     # consider main-module's tag as the latest.
     run sleep 2
     run git tag --local-user "${keyid}" --sign "${tag}" --message "${version}"
-    tags+=("${tag}")
+    tags=("${tags[@]}" "${tag}")
   done
   maybe_run git push -f "${REMOTE_REPO}" "${tags[@]}"
 }

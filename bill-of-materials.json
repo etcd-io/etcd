@@ -1,32 +1,5 @@
 [
 	{
-		"project": "github.com/VividCortex/ewma",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/anishathalye/porcupine",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.96875
-			}
-		]
-	},
-	{
-		"project": "github.com/antithesishq/antithesis-sdk-go",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/beorn7/perks/quantile",
 		"licenses": [
 			{
@@ -45,10 +18,10 @@
 		]
 	},
 	{
-		"project": "github.com/cenkalti/backoff/v5",
+		"project": "github.com/certifi/gocertifi",
 		"licenses": [
 			{
-				"type": "MIT License",
+				"type": "Mozilla Public License 2.0",
 				"confidence": 1
 			}
 		]
@@ -63,11 +36,29 @@
 		]
 	},
 	{
-		"project": "github.com/cheggaaa/pb/v3",
+		"project": "github.com/cockroachdb/datadriven",
 		"licenses": [
 			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9916666666666667
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cockroachdb/errors",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/cockroachdb/logtags",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -86,6 +77,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 0.9966703662597114
+			}
+		]
+	},
+	{
+		"project": "github.com/cpuguy83/go-md2man/v2/md2man",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -117,29 +117,29 @@
 		]
 	},
 	{
-		"project": "github.com/fatih/color",
+		"project": "github.com/etcd-io/gofail/runtime",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/form3tech-oss/jwt-go",
 		"licenses": [
 			{
 				"type": "MIT License",
-				"confidence": 1
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
 	{
-		"project": "github.com/go-logr/logr",
+		"project": "github.com/getsentry/raven-go",
 		"licenses": [
 			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/go-logr/stdr",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -149,15 +149,6 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9163346613545816
-			}
-		]
-	},
-	{
-		"project": "github.com/golang-jwt/jwt/v5",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9891304347826086
 			}
 		]
 	},
@@ -189,24 +180,6 @@
 		]
 	},
 	{
-		"project": "github.com/google/go-cmp/cmp",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "github.com/google/uuid",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
 		"project": "github.com/gorilla/websocket",
 		"licenses": [
 			{
@@ -225,7 +198,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
+		"project": "github.com/grpc-ecosystem/go-grpc-prometheus",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -234,16 +207,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/grpc-ecosystem/grpc-gateway/v2",
+		"project": "github.com/grpc-ecosystem/grpc-gateway",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -270,20 +234,11 @@
 		]
 	},
 	{
-		"project": "github.com/mattn/go-colorable",
+		"project": "github.com/json-iterator/go",
 		"licenses": [
 			{
 				"type": "MIT License",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/mattn/go-isatty",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 0.9587628865979382
 			}
 		]
 	},
@@ -297,28 +252,28 @@
 		]
 	},
 	{
-		"project": "github.com/munnerz/goautoneg",
+		"project": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 		"licenses": [
 			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9794238683127572
-			}
-		]
-	},
-	{
-		"project": "github.com/olekukonko/errors",
-		"licenses": [
-			{
-				"type": "MIT License",
+				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
 	},
 	{
-		"project": "github.com/olekukonko/ll",
+		"project": "github.com/modern-go/concurrent",
 		"licenses": [
 			{
-				"type": "MIT License",
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/modern-go/reflect2",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
@@ -333,20 +288,20 @@
 		]
 	},
 	{
+		"project": "github.com/pkg/errors",
+		"licenses": [
+			{
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/pmezard/go-difflib/difflib",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9830508474576272
-			}
-		]
-	},
-	{
-		"project": "github.com/prometheus/client_golang/internal/github.com/golang/gddo/httputil",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
 			}
 		]
 	},
@@ -387,7 +342,16 @@
 		]
 	},
 	{
-		"project": "github.com/rivo/uniseg",
+		"project": "github.com/russross/blackfriday/v2",
+		"licenses": [
+			{
+				"type": "BSD 2-clause \"Simplified\" License",
+				"confidence": 0.9626168224299065
+			}
+		]
+	},
+	{
+		"project": "github.com/shurcooL/sanitized_anchor_name",
 		"licenses": [
 			{
 				"type": "MIT License",
@@ -432,7 +396,7 @@
 		]
 	},
 	{
-		"project": "github.com/stretchr/testify",
+		"project": "github.com/stretchr/testify/assert",
 		"licenses": [
 			{
 				"type": "MIT License",
@@ -446,6 +410,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.9891304347826086
+			}
+		]
+	},
+	{
+		"project": "github.com/urfave/cli",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
@@ -472,7 +445,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -481,7 +454,16 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/etcd/client/v2",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -490,7 +472,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -499,7 +481,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -508,7 +490,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -517,7 +499,16 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/etcd/raft/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
@@ -526,7 +517,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -535,7 +526,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
+				"confidence": 1
 			}
 		]
 	},
@@ -544,30 +535,12 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 0.9988925802879292
-			}
-		]
-	},
-	{
-		"project": "go.etcd.io/gofail/runtime",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
 				"confidence": 1
 			}
 		]
 	},
 	{
-		"project": "go.etcd.io/raft/v3",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/auto/sdk",
+		"project": "go.opentelemetry.io/contrib",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -594,16 +567,7 @@
 		]
 	},
 	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
+		"project": "go.opentelemetry.io/otel/exporters/otlp",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -630,6 +594,24 @@
 		]
 	},
 	{
+		"project": "go.opentelemetry.io/otel/sdk/export/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.opentelemetry.io/otel/sdk/metric",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "go.opentelemetry.io/otel/trace",
 		"licenses": [
 			{
@@ -644,6 +626,15 @@
 			{
 				"type": "Apache License 2.0",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "go.uber.org/atomic",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 0.9891304347826086
 			}
 		]
 	},
@@ -684,16 +675,7 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sync/errgroup",
-		"licenses": [
-			{
-				"type": "BSD 3-clause \"New\" or \"Revised\" License",
-				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "golang.org/x/sys/unix",
+		"project": "golang.org/x/sys",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -720,16 +702,7 @@
 		]
 	},
 	{
-		"project": "google.golang.org/genproto/googleapis/api",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "google.golang.org/genproto/googleapis/rpc",
+		"project": "google.golang.org/genproto",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -756,11 +729,33 @@
 		]
 	},
 	{
+		"project": "gopkg.in/cheggaaa/pb.v1",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9916666666666667
+			}
+		]
+	},
+	{
 		"project": "gopkg.in/natefinch/lumberjack.v2",
 		"licenses": [
 			{
 				"type": "MIT License",
 				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "gopkg.in/yaml.v2",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			},
+			{
+				"type": "MIT License",
+				"confidence": 0.8975609756097561
 			}
 		]
 	},
@@ -777,25 +772,8 @@
 		"project": "sigs.k8s.io/yaml",
 		"licenses": [
 			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			},
-			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "sigs.k8s.io/yaml/goyaml.v2",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			},
-			{
-				"type": "MIT License",
-				"confidence": 0.8975609756097561
 			}
 		]
 	}

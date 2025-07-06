@@ -55,6 +55,39 @@ func TestMemberTime(t *testing.T) {
 	}
 }
 
+func TestMemberPick(t *testing.T) {
+	tests := []struct {
+		memb *Member
+		urls map[string]bool
+	}{
+		{
+			newTestMember(1, []string{"abc", "def", "ghi", "jkl", "mno", "pqr", "stu"}, "", nil),
+			map[string]bool{
+				"abc": true,
+				"def": true,
+				"ghi": true,
+				"jkl": true,
+				"mno": true,
+				"pqr": true,
+				"stu": true,
+			},
+		},
+		{
+			newTestMember(2, []string{"xyz"}, "", nil),
+			map[string]bool{"xyz": true},
+		},
+	}
+	for i, tt := range tests {
+		for j := 0; j < 1000; j++ {
+			a := tt.memb.PickPeerURL()
+			if !tt.urls[a] {
+				t.Errorf("#%d: returned ID %q not in expected range!", i, a)
+				break
+			}
+		}
+	}
+}
+
 func TestMemberClone(t *testing.T) {
 	tests := []*Member{
 		newTestMember(1, nil, "abc", nil),

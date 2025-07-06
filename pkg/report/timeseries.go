@@ -15,12 +15,12 @@
 package report
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"log"
 	"math"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 )
@@ -64,9 +64,9 @@ func (sp *secondPoints) Add(ts time.Time, lat time.Duration) {
 		sp.tm[tk] = secondPoint{minLatency: lat, maxLatency: lat, totalLatency: lat, count: 1}
 	} else {
 		if lat != time.Duration(0) {
-			v.minLatency = min(v.minLatency, lat)
+			v.minLatency = minDuration(v.minLatency, lat)
 		}
-		v.maxLatency = max(v.maxLatency, lat)
+		v.maxLatency = maxDuration(v.maxLatency, lat)
 		v.totalLatency += lat
 		v.count++
 		sp.tm[tk] = v
@@ -119,12 +119,12 @@ func (sp *secondPoints) getTimeSeries() TimeSeries {
 }
 
 func (t TimeSeries) String() string {
-	buf := new(strings.Builder)
+	buf := new(bytes.Buffer)
 	wr := csv.NewWriter(buf)
 	if err := wr.Write([]string{"UNIX-SECOND", "MIN-LATENCY-MS", "AVG-LATENCY-MS", "MAX-LATENCY-MS", "AVG-THROUGHPUT"}); err != nil {
 		log.Fatal(err)
 	}
-	var rows [][]string
+	rows := [][]string{}
 	for i := range t {
 		row := []string{
 			fmt.Sprintf("%d", t[i].Timestamp),
@@ -143,4 +143,18 @@ func (t TimeSeries) String() string {
 		log.Fatal(err)
 	}
 	return fmt.Sprintf("\nSample in one second (unix latency throughput):\n%s", buf.String())
+}
+
+func minDuration(a, b time.Duration) time.Duration {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxDuration(a, b time.Duration) time.Duration {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -1,0 +1,60 @@
+# Set up three voters for this test.
+
+simple
+v1
+----
+voters=(1)
+1: StateProbe match=0 next=0
+
+simple
+v2
+----
+voters=(1 2)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+
+simple
+v3
+----
+voters=(1 2 3)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+3: StateProbe match=0 next=2
+
+# Can atomically demote and promote without a hitch.
+# This is pointless, but possible.
+simple
+l1 v1
+----
+voters=(1 2 3)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+3: StateProbe match=0 next=2
+
+# Can demote a voter.
+simple
+l2
+----
+voters=(1 3) learners=(2)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1 learner
+3: StateProbe match=0 next=2
+
+# Can atomically promote and demote the same voter.
+# This is pointless, but possible.
+simple
+v2 l2
+----
+voters=(1 3) learners=(2)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1 learner
+3: StateProbe match=0 next=2
+
+# Can promote a voter.
+simple
+v2
+----
+voters=(1 2 3)
+1: StateProbe match=0 next=0
+2: StateProbe match=0 next=1
+3: StateProbe match=0 next=2

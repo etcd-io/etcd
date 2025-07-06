@@ -16,14 +16,13 @@ package clientv3
 
 import (
 	"context"
-	"errors"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 )
 
 type retryPolicy uint8
@@ -53,8 +52,7 @@ func (rp retryPolicy) String() string {
 // handle itself even with retries.
 func isSafeRetryImmutableRPC(err error) bool {
 	eErr := rpctypes.Error(err)
-	var serverErr rpctypes.EtcdError
-	if errors.As(eErr, &serverErr) && serverErr.Code() != codes.Unavailable {
+	if serverErr, ok := eErr.(rpctypes.EtcdError); ok && serverErr.Code() != codes.Unavailable {
 		// interrupted by non-transient server-side or gRPC-side error
 		// client cannot handle itself (e.g. rpctypes.ErrCompacted)
 		return false
@@ -103,9 +101,8 @@ func RetryKVClient(c *Client) pb.KVClient {
 		kc: pb.NewKVClient(c.conn),
 	}
 }
-
 func (rkv *retryKVClient) Range(ctx context.Context, in *pb.RangeRequest, opts ...grpc.CallOption) (resp *pb.RangeResponse, err error) {
-	return rkv.kc.Range(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rkv.kc.Range(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rkv *retryKVClient) Put(ctx context.Context, in *pb.PutRequest, opts ...grpc.CallOption) (resp *pb.PutResponse, err error) {
@@ -136,23 +133,23 @@ func RetryLeaseClient(c *Client) pb.LeaseClient {
 }
 
 func (rlc *retryLeaseClient) LeaseTimeToLive(ctx context.Context, in *pb.LeaseTimeToLiveRequest, opts ...grpc.CallOption) (resp *pb.LeaseTimeToLiveResponse, err error) {
-	return rlc.lc.LeaseTimeToLive(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rlc.lc.LeaseTimeToLive(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rlc *retryLeaseClient) LeaseLeases(ctx context.Context, in *pb.LeaseLeasesRequest, opts ...grpc.CallOption) (resp *pb.LeaseLeasesResponse, err error) {
-	return rlc.lc.LeaseLeases(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rlc.lc.LeaseLeases(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rlc *retryLeaseClient) LeaseGrant(ctx context.Context, in *pb.LeaseGrantRequest, opts ...grpc.CallOption) (resp *pb.LeaseGrantResponse, err error) {
-	return rlc.lc.LeaseGrant(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rlc.lc.LeaseGrant(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rlc *retryLeaseClient) LeaseRevoke(ctx context.Context, in *pb.LeaseRevokeRequest, opts ...grpc.CallOption) (resp *pb.LeaseRevokeResponse, err error) {
-	return rlc.lc.LeaseRevoke(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rlc.lc.LeaseRevoke(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rlc *retryLeaseClient) LeaseKeepAlive(ctx context.Context, opts ...grpc.CallOption) (stream pb.Lease_LeaseKeepAliveClient, err error) {
-	return rlc.lc.LeaseKeepAlive(ctx, append(opts, withRepeatablePolicy())...)
+	return rlc.lc.LeaseKeepAlive(ctx, append(opts, withRetryPolicy(repeatable))...)
 }
 
 type retryClusterClient struct {
@@ -167,7 +164,7 @@ func RetryClusterClient(c *Client) pb.ClusterClient {
 }
 
 func (rcc *retryClusterClient) MemberList(ctx context.Context, in *pb.MemberListRequest, opts ...grpc.CallOption) (resp *pb.MemberListResponse, err error) {
-	return rcc.cc.MemberList(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rcc.cc.MemberList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rcc *retryClusterClient) MemberAdd(ctx context.Context, in *pb.MemberAddRequest, opts ...grpc.CallOption) (resp *pb.MemberAddResponse, err error) {
@@ -198,27 +195,27 @@ func RetryMaintenanceClient(c *Client, conn *grpc.ClientConn) pb.MaintenanceClie
 }
 
 func (rmc *retryMaintenanceClient) Alarm(ctx context.Context, in *pb.AlarmRequest, opts ...grpc.CallOption) (resp *pb.AlarmResponse, err error) {
-	return rmc.mc.Alarm(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.Alarm(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) Status(ctx context.Context, in *pb.StatusRequest, opts ...grpc.CallOption) (resp *pb.StatusResponse, err error) {
-	return rmc.mc.Status(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.Status(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) Hash(ctx context.Context, in *pb.HashRequest, opts ...grpc.CallOption) (resp *pb.HashResponse, err error) {
-	return rmc.mc.Hash(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.Hash(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) HashKV(ctx context.Context, in *pb.HashKVRequest, opts ...grpc.CallOption) (resp *pb.HashKVResponse, err error) {
-	return rmc.mc.HashKV(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.HashKV(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) Snapshot(ctx context.Context, in *pb.SnapshotRequest, opts ...grpc.CallOption) (stream pb.Maintenance_SnapshotClient, err error) {
-	return rmc.mc.Snapshot(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.Snapshot(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) MoveLeader(ctx context.Context, in *pb.MoveLeaderRequest, opts ...grpc.CallOption) (resp *pb.MoveLeaderResponse, err error) {
-	return rmc.mc.MoveLeader(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rmc.mc.MoveLeader(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rmc *retryMaintenanceClient) Defragment(ctx context.Context, in *pb.DefragmentRequest, opts ...grpc.CallOption) (resp *pb.DefragmentResponse, err error) {
@@ -241,19 +238,19 @@ func RetryAuthClient(c *Client) pb.AuthClient {
 }
 
 func (rac *retryAuthClient) UserList(ctx context.Context, in *pb.AuthUserListRequest, opts ...grpc.CallOption) (resp *pb.AuthUserListResponse, err error) {
-	return rac.ac.UserList(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rac.ac.UserList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rac *retryAuthClient) UserGet(ctx context.Context, in *pb.AuthUserGetRequest, opts ...grpc.CallOption) (resp *pb.AuthUserGetResponse, err error) {
-	return rac.ac.UserGet(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rac.ac.UserGet(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rac *retryAuthClient) RoleGet(ctx context.Context, in *pb.AuthRoleGetRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleGetResponse, err error) {
-	return rac.ac.RoleGet(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rac.ac.RoleGet(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rac *retryAuthClient) RoleList(ctx context.Context, in *pb.AuthRoleListRequest, opts ...grpc.CallOption) (resp *pb.AuthRoleListResponse, err error) {
-	return rac.ac.RoleList(ctx, in, append(opts, withRepeatablePolicy())...)
+	return rac.ac.RoleList(ctx, in, append(opts, withRetryPolicy(repeatable))...)
 }
 
 func (rac *retryAuthClient) AuthEnable(ctx context.Context, in *pb.AuthEnableRequest, opts ...grpc.CallOption) (resp *pb.AuthEnableResponse, err error) {

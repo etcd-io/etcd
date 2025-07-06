@@ -1,21 +1,15 @@
 #!/bin/bash
 
-set -euo pipefail
+set -e
 
 if ! [[ "$0" =~ "./gencerts.sh" ]]; then
   echo "must be run from 'fixtures'"
   exit 255
 fi
 
-if ! command -v cfssl; then
+if ! which cfssl; then
   echo "cfssl is not installed"
-  echo 'use: bash -c "cd ../../tools/mod; go install github.com/cloudflare/cfssl/cmd/cfssl"'
-  exit 255
-fi
-
-if ! command -v cfssljson; then
-  echo "cfssljson is not installed"
-  echo 'use: bash -c "cd ../../tools/mod; go install github.com/cloudflare/cfssl/cmd/cfssljson"'
+  echo "use: go install -mod mod github.com/cloudflare/cfssl/cmd/cfssl github.com/cloudflare/cfssl/cmd/cfssljson"
   exit 255
 fi
 

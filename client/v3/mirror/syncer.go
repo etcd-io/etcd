@@ -18,7 +18,7 @@ package mirror
 import (
 	"context"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -52,13 +52,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 	// if rev is not specified, we will choose the most recent revision.
 	if s.rev == 0 {
-		// If len(s.prefix) == 0, we will check a random key to fetch the most recent
-		// revision (foo), otherwise we use the provided prefix.
-		checkPath := "foo"
-		if len(s.prefix) != 0 {
-			checkPath = s.prefix
-		}
-		resp, err := s.c.Get(ctx, checkPath)
+		resp, err := s.c.Get(ctx, "foo")
 		if err != nil {
 			errchan <- err
 			close(respchan)
@@ -74,10 +68,7 @@ func (s *syncer) SyncBase(ctx context.Context) (<-chan clientv3.GetResponse, cha
 
 		var key string
 
-		opts := []clientv3.OpOption{
-			clientv3.WithLimit(batchLimit), clientv3.WithRev(s.rev),
-			clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend),
-		}
+		opts := []clientv3.OpOption{clientv3.WithLimit(batchLimit), clientv3.WithRev(s.rev)}
 
 		if len(s.prefix) == 0 {
 			// If len(s.prefix) == 0, we will sync the entire key-value space.

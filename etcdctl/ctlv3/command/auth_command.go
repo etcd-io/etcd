@@ -15,11 +15,9 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
@@ -83,7 +81,7 @@ func authEnableCommandFunc(cmd *cobra.Command, args []string) {
 		if _, err = cli.AuthEnable(ctx); err == nil {
 			break
 		}
-		if errors.Is(err, rpctypes.ErrRootRoleNotExist) {
+		if err == rpctypes.ErrRootRoleNotExist {
 			if _, err = cli.RoleAdd(ctx, "root"); err != nil {
 				break
 			}

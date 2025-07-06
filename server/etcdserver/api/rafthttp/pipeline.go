@@ -18,18 +18,18 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"io"
+	"io/ioutil"
 	"runtime"
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -44,24 +44,26 @@ const (
 var errStopped = errors.New("stopped")
 
 type pipeline struct {
-	peerID types.ID
+	peerID types.ID // 该 pipeline对应节点的 ID
 
-	tr     *Transport
+	tr     *Transport // 关联的 raft.Transport实例。
 	picker *urlPicker
 	status *peerStatus
-	raft   Raft
+	raft   Raft // 底层的Raft实例。
 	errorc chan error
 	// deprecate when we depercate v2 API
 	followerStats *stats.FollowerStats
 
-	msgc chan raftpb.Message
+	msgc chan raftpb.Message // pipeline实例从该通道中获取待发送的消息。
 	// wait for the handling routines
+	// 负责同步多个goroutine结束。每个pipeline实例会启动 多个后台 goroutine (默认值是 4 个) 来处理 msgc 通道中的消息，在 pipeline.stop()方 法中 必须等待这些 goroutine都结束(通过 wg.Wait()方法实现)，才能真正关闭该 pipeline 实例。
 	wg    sync.WaitGroup
 	stopc chan struct{}
 }
 
 func (p *pipeline) start() {
 	p.stopc = make(chan struct{})
+	// 注意缓存，默认是 64，主妥是为了防止瞬间网络延迟造成消息丢失
 	p.msgc = make(chan raftpb.Message, pipelineBufSize)
 	p.wg.Add(connPerPipeline)
 	for i := 0; i < connPerPipeline; i++ {
@@ -90,6 +92,8 @@ func (p *pipeline) stop() {
 	}
 }
 
+// 在 pipeline.handle()方法中会从 msgc 通道中读取待发送的 Message 消息，然后调用 pipeline.post()方法将其发送出去，
+// 发送结束之后会调用底层 Raft接口的相应方法报告发送结果
 func (p *pipeline) handle() {
 	defer p.wg.Done()
 
@@ -103,7 +107,7 @@ func (p *pipeline) handle() {
 			if err != nil {
 				p.status.deactivate(failureType{source: pipelineMsg, action: "write"}, err.Error())
 
-				if isMsgApp(m) && p.followerStats != nil {
+				if m.Type == raftpb.MsgApp && p.followerStats != nil {
 					p.followerStats.Fail()
 				}
 				p.raft.ReportUnreachable(m.To)
@@ -115,7 +119,7 @@ func (p *pipeline) handle() {
 			}
 
 			p.status.activate()
-			if isMsgApp(m) && p.followerStats != nil {
+			if m.Type == raftpb.MsgApp && p.followerStats != nil {
 				p.followerStats.Succ(end.Sub(start))
 			}
 			if isMsgSnap(m) {
@@ -142,6 +146,7 @@ func (p *pipeline) post(data []byte) (err error) {
 		case <-done:
 			cancel()
 		case <-p.stopc:
+			// 如在请求的发送过程中， pipeline被关闭，取消该请求
 			waitSchedule()
 			cancel()
 		}
@@ -154,8 +159,9 @@ func (p *pipeline) post(data []byte) (err error) {
 		return err
 	}
 	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
+	b, err := ioutil.ReadAll(resp.Body) // 读取 HttpResponse.Body 内容
 	if err != nil {
+		// 出现异常时，则将该 URL标识为不可用，再尝试其他 URL地址
 		p.picker.unreachable(u)
 		return err
 	}
@@ -165,7 +171,7 @@ func (p *pipeline) post(data []byte) (err error) {
 		p.picker.unreachable(u)
 		// errMemberRemoved is a critical error since a removed member should
 		// always be stopped. So we use reportCriticalError to report it to errorc.
-		if errors.Is(err, errMemberRemoved) {
+		if err == errMemberRemoved {
 			reportCriticalError(err, p.errorc)
 		}
 		return err

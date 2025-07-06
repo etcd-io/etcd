@@ -19,15 +19,15 @@ import (
 	"fmt"
 	"log"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
-func mockClusterMemberList() {
+func mockCluster_memberList() {
 	fmt.Println("members: 3")
 }
 
 func ExampleCluster_memberList() {
-	forUnitTestsRunInMockedContext(mockClusterMemberList, func() {
+	forUnitTestsRunInMockedContext(mockCluster_memberList, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -46,13 +46,13 @@ func ExampleCluster_memberList() {
 	// Output: members: 3
 }
 
-func mockClusterMemberAdd() {
+func mockCluster_memberAdd() {
 	fmt.Println("added member.PeerURLs: [http://localhost:32380]")
 	fmt.Println("members count: 4")
 }
 
 func ExampleCluster_memberAdd() {
-	forUnitTestsRunInMockedContext(mockClusterMemberAdd, func() {
+	forUnitTestsRunInMockedContext(mockCluster_memberAdd, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -81,13 +81,13 @@ func ExampleCluster_memberAdd() {
 	// members count: 4
 }
 
-func mockClusterMemberAddAsLearner() {
+func mockCluster_memberAddAsLearner() {
 	fmt.Println("members count: 4")
 	fmt.Println("added member.IsLearner: true")
 }
 
 func ExampleCluster_memberAddAsLearner() {
-	forUnitTestsRunInMockedContext(mockClusterMemberAddAsLearner, func() {
+	forUnitTestsRunInMockedContext(mockCluster_memberAddAsLearner, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -116,10 +116,10 @@ func ExampleCluster_memberAddAsLearner() {
 	// added member.IsLearner: true
 }
 
-func mockClusterMemberRemove() {}
+func mockCluster_memberRemove() {}
 
 func ExampleCluster_memberRemove() {
-	forUnitTestsRunInMockedContext(mockClusterMemberRemove, func() {
+	forUnitTestsRunInMockedContext(mockCluster_memberRemove, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,
@@ -147,10 +147,10 @@ func ExampleCluster_memberRemove() {
 	})
 }
 
-func mockClusterMemberUpdate() {}
+func mockCluster_memberUpdate() {}
 
 func ExampleCluster_memberUpdate() {
-	forUnitTestsRunInMockedContext(mockClusterMemberUpdate, func() {
+	forUnitTestsRunInMockedContext(mockCluster_memberUpdate, func() {
 		cli, err := clientv3.New(clientv3.Config{
 			Endpoints:   exampleEndpoints(),
 			DialTimeout: dialTimeout,

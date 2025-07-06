@@ -17,9 +17,6 @@ package ioutil
 import (
 	"bytes"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestLimitedBufferReaderRead(t *testing.T) {
@@ -27,6 +24,10 @@ func TestLimitedBufferReaderRead(t *testing.T) {
 	ln := 1
 	lr := NewLimitedBufferReader(buf, ln)
 	n, err := lr.Read(make([]byte, 10))
-	require.NoErrorf(t, err, "unexpected read error: %v", err)
-	assert.Equalf(t, n, ln, "len(data read) = %d, want %d", n, ln)
+	if err != nil {
+		t.Fatalf("unexpected read error: %v", err)
+	}
+	if n != ln {
+		t.Errorf("len(data read) = %d, want %d", n, ln)
+	}
 }

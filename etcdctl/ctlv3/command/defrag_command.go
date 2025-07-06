@@ -17,11 +17,14 @@ package command
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/spf13/cobra"
-
+	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+)
+
+var (
+	defragDataDir string
 )
 
 // NewDefragCommand returns the cobra command for "Defrag".
@@ -32,27 +35,31 @@ func NewDefragCommand() *cobra.Command {
 		Run:   defragCommandFunc,
 	}
 	cmd.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
+	cmd.Flags().StringVar(&defragDataDir, "data-dir", "", "Optional. If present, defragments a data directory not in use by etcd.")
 	return cmd
 }
 
 func defragCommandFunc(cmd *cobra.Command, args []string) {
+	if len(defragDataDir) > 0 {
+		fmt.Fprintf(os.Stderr, "Use `etcdutl defrag` instead. The --data-dir is going to be decomissioned in v3.6.\n\n")
+		err := etcdutl.DefragData(defragDataDir)
+		if err != nil {
+			cobrautl.ExitWithError(cobrautl.ExitError, err)
+		}
+	}
+
 	failures := 0
-	cfg := clientConfigFromCmd(cmd)
+	c := mustClientFromCmd(cmd)
 	for _, ep := range endpointsFromCluster(cmd) {
-		cfg.Endpoints = []string{ep}
-		c := mustClient(cfg)
 		ctx, cancel := commandCtx(cmd)
-		start := time.Now()
 		_, err := c.Defragment(ctx, ep)
-		d := time.Since(start)
 		cancel()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s]. took %s. (%v)\n", ep, d.String(), err)
+			fmt.Fprintf(os.Stderr, "Failed to defragment etcd member[%s] (%v)\n", ep, err)
 			failures++
 		} else {
-			fmt.Printf("Finished defragmenting etcd member[%s]. took %s\n", ep, d.String())
+			fmt.Printf("Finished defragmenting etcd member[%s]\n", ep)
 		}
-		c.Close()
 	}
 
 	if failures != 0 {

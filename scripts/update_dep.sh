@@ -9,8 +9,6 @@
 #
 # Updates version of given dependency in all the modules that depend on the mod.
 
-set -euo pipefail
-
 source ./scripts/test_lib.sh
 
 mod="$1"

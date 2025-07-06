@@ -20,13 +20,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/xiang90/probing"
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"github.com/xiang90/probing"
+	"go.uber.org/zap"
 )
 
 // TestTransportSend tests that transport can send messages using correct
@@ -96,7 +96,7 @@ func TestTransportCutMend(t *testing.T) {
 }
 
 func TestTransportAdd(t *testing.T) {
-	ls := stats.NewLeaderStats(zaptest.NewLogger(t), "")
+	ls := stats.NewLeaderStats(zap.NewExample(), "")
 	tr := &Transport{
 		LeaderStats:    ls,
 		streamRt:       &roundTripperRecorder{},
@@ -127,32 +127,13 @@ func TestTransportAdd(t *testing.T) {
 
 func TestTransportRemove(t *testing.T) {
 	tr := &Transport{
-		LeaderStats:    stats.NewLeaderStats(zaptest.NewLogger(t), ""),
+		LeaderStats:    stats.NewLeaderStats(zap.NewExample(), ""),
 		streamRt:       &roundTripperRecorder{},
 		peers:          make(map[types.ID]Peer),
 		pipelineProber: probing.NewProber(nil),
 		streamProber:   probing.NewProber(nil),
 	}
 	tr.AddPeer(1, []string{"http://localhost:2380"})
-	tr.RemovePeer(types.ID(1))
-	defer tr.Stop()
-
-	if _, ok := tr.peers[types.ID(1)]; ok {
-		t.Fatalf("senders[1] exists, want removed")
-	}
-}
-
-func TestTransportRemoveIsIdempotent(t *testing.T) {
-	tr := &Transport{
-		LeaderStats:    stats.NewLeaderStats(zaptest.NewLogger(t), ""),
-		streamRt:       &roundTripperRecorder{},
-		peers:          make(map[types.ID]Peer),
-		pipelineProber: probing.NewProber(nil),
-		streamProber:   probing.NewProber(nil),
-	}
-
-	tr.AddPeer(1, []string{"http://localhost:2380"})
-	tr.RemovePeer(types.ID(1))
 	tr.RemovePeer(types.ID(1))
 	defer tr.Stop()
 
@@ -180,7 +161,7 @@ func TestTransportErrorc(t *testing.T) {
 	errorc := make(chan error, 1)
 	tr := &Transport{
 		Raft:           &fakeRaft{},
-		LeaderStats:    stats.NewLeaderStats(zaptest.NewLogger(t), ""),
+		LeaderStats:    stats.NewLeaderStats(zap.NewExample(), ""),
 		ErrorC:         errorc,
 		streamRt:       newRespRoundTripper(http.StatusForbidden, nil),
 		pipelineRt:     newRespRoundTripper(http.StatusForbidden, nil),

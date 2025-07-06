@@ -18,6 +18,3 @@ var (
 	TokenFieldNameGRPC    = "token"
 	TokenFieldNameSwagger = "authorization"
 )
-
-// TokenFieldNameGRPCKey is used as a key of context to store token.
-type TokenFieldNameGRPCKey struct{}

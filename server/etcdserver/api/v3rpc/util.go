@@ -16,56 +16,53 @@ package v3rpc
 
 import (
 	"context"
-	errorspkg "errors"
 	"strings"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/auth"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
-	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
-	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/etcd/server/v3/mvcc"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 var toGRPCErrorMap = map[error]error{
-	membership.ErrIDRemoved:           rpctypes.ErrGRPCMemberNotFound,
-	membership.ErrIDNotFound:          rpctypes.ErrGRPCMemberNotFound,
-	membership.ErrIDExists:            rpctypes.ErrGRPCMemberExist,
-	membership.ErrPeerURLexists:       rpctypes.ErrGRPCPeerURLExist,
-	membership.ErrMemberNotLearner:    rpctypes.ErrGRPCMemberNotLearner,
-	membership.ErrTooManyLearners:     rpctypes.ErrGRPCTooManyLearners,
-	errors.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
-	errors.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
+	membership.ErrIDRemoved:               rpctypes.ErrGRPCMemberNotFound,
+	membership.ErrIDNotFound:              rpctypes.ErrGRPCMemberNotFound,
+	membership.ErrIDExists:                rpctypes.ErrGRPCMemberExist,
+	membership.ErrPeerURLexists:           rpctypes.ErrGRPCPeerURLExist,
+	membership.ErrMemberNotLearner:        rpctypes.ErrGRPCMemberNotLearner,
+	membership.ErrTooManyLearners:         rpctypes.ErrGRPCTooManyLearners,
+	etcdserver.ErrNotEnoughStartedMembers: rpctypes.ErrMemberNotEnoughStarted,
+	etcdserver.ErrLearnerNotReady:         rpctypes.ErrGRPCLearnerNotReady,
 
-	mvcc.ErrCompacted:         rpctypes.ErrGRPCCompacted,
-	mvcc.ErrFutureRev:         rpctypes.ErrGRPCFutureRev,
-	errors.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
-	errors.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
-	errors.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
+	mvcc.ErrCompacted:             rpctypes.ErrGRPCCompacted,
+	mvcc.ErrFutureRev:             rpctypes.ErrGRPCFutureRev,
+	etcdserver.ErrRequestTooLarge: rpctypes.ErrGRPCRequestTooLarge,
+	etcdserver.ErrNoSpace:         rpctypes.ErrGRPCNoSpace,
+	etcdserver.ErrTooManyRequests: rpctypes.ErrTooManyRequests,
 
-	errors.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
-	errors.ErrNotLeader:                  rpctypes.ErrGRPCNotLeader,
-	errors.ErrLeaderChanged:              rpctypes.ErrGRPCLeaderChanged,
-	errors.ErrStopped:                    rpctypes.ErrGRPCStopped,
-	errors.ErrTimeout:                    rpctypes.ErrGRPCTimeout,
-	errors.ErrTimeoutDueToLeaderFail:     rpctypes.ErrGRPCTimeoutDueToLeaderFail,
-	errors.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
-	errors.ErrTimeoutWaitAppliedIndex:    rpctypes.ErrGRPCTimeoutWaitAppliedIndex,
-	errors.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
-	errors.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
-	errors.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
-	errors.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
+	etcdserver.ErrNoLeader:                   rpctypes.ErrGRPCNoLeader,
+	etcdserver.ErrNotLeader:                  rpctypes.ErrGRPCNotLeader,
+	etcdserver.ErrLeaderChanged:              rpctypes.ErrGRPCLeaderChanged,
+	etcdserver.ErrStopped:                    rpctypes.ErrGRPCStopped,
+	etcdserver.ErrTimeout:                    rpctypes.ErrGRPCTimeout,
+	etcdserver.ErrTimeoutDueToLeaderFail:     rpctypes.ErrGRPCTimeoutDueToLeaderFail,
+	etcdserver.ErrTimeoutDueToConnectionLost: rpctypes.ErrGRPCTimeoutDueToConnectionLost,
+	etcdserver.ErrUnhealthy:                  rpctypes.ErrGRPCUnhealthy,
+	etcdserver.ErrKeyNotFound:                rpctypes.ErrGRPCKeyNotFound,
+	etcdserver.ErrCorrupt:                    rpctypes.ErrGRPCCorrupt,
+	etcdserver.ErrBadLeaderTransferee:        rpctypes.ErrGRPCBadLeaderTransferee,
 
-	errors.ErrClusterVersionUnavailable:      rpctypes.ErrGRPCClusterVersionUnavailable,
-	errors.ErrWrongDowngradeVersionFormat:    rpctypes.ErrGRPCWrongDowngradeVersionFormat,
-	version.ErrInvalidDowngradeTargetVersion: rpctypes.ErrGRPCInvalidDowngradeTargetVersion,
-	version.ErrDowngradeInProcess:            rpctypes.ErrGRPCDowngradeInProcess,
-	version.ErrNoInflightDowngrade:           rpctypes.ErrGRPCNoInflightDowngrade,
+	etcdserver.ErrClusterVersionUnavailable:     rpctypes.ErrGRPCClusterVersionUnavailable,
+	etcdserver.ErrWrongDowngradeVersionFormat:   rpctypes.ErrGRPCWrongDowngradeVersionFormat,
+	etcdserver.ErrInvalidDowngradeTargetVersion: rpctypes.ErrGRPCInvalidDowngradeTargetVersion,
+	etcdserver.ErrDowngradeInProcess:            rpctypes.ErrGRPCDowngradeInProcess,
+	etcdserver.ErrNoInflightDowngrade:           rpctypes.ErrGRPCNoInflightDowngrade,
 
 	lease.ErrLeaseNotFound:    rpctypes.ErrGRPCLeaseNotFound,
 	lease.ErrLeaseExists:      rpctypes.ErrGRPCLeaseExist,
@@ -87,7 +84,6 @@ var toGRPCErrorMap = map[error]error{
 	auth.ErrAuthNotEnabled:       rpctypes.ErrGRPCAuthNotEnabled,
 	auth.ErrInvalidAuthToken:     rpctypes.ErrGRPCInvalidAuthToken,
 	auth.ErrInvalidAuthMgmt:      rpctypes.ErrGRPCInvalidAuthMgmt,
-	auth.ErrAuthOldRevision:      rpctypes.ErrGRPCAuthOldRevision,
 
 	// In sync with status.FromContextError
 	context.Canceled:         rpctypes.ErrGRPCCanceled,
@@ -96,7 +92,7 @@ var toGRPCErrorMap = map[error]error{
 
 func togRPCError(err error) error {
 	// let gRPC server convert to codes.Canceled, codes.DeadlineExceeded
-	if errorspkg.Is(err, context.Canceled) || errorspkg.Is(err, context.DeadlineExceeded) {
+	if err == context.Canceled || err == context.DeadlineExceeded {
 		return err
 	}
 	grpcErr, ok := toGRPCErrorMap[err]
@@ -139,7 +135,7 @@ func isClientCtxErr(ctxErr error, err error) bool {
 }
 
 // in v3.4, learner is allowed to serve serializable read and endpoint status
-func isRPCSupportedForLearner(req any) bool {
+func isRPCSupportedForLearner(req interface{}) bool {
 	switch r := req.(type) {
 	case *pb.StatusRequest:
 		return true

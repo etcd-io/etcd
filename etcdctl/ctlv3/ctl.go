@@ -16,15 +16,13 @@
 package ctlv3
 
 import (
-	"os"
 	"time"
-
-	"github.com/spf13/cobra"
 
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -39,7 +37,10 @@ const (
 
 var (
 	globalFlags = command.GlobalFlags{}
-	rootCmd     = &cobra.Command{
+)
+
+var (
+	rootCmd = &cobra.Command{
 		Use:        cliName,
 		Short:      cliDescription,
 		SuggestFor: []string{"etcdctl"},
@@ -52,16 +53,11 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.OutputFormat, "write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.IsHex, "hex", false, "print byte strings as hex encoded strings")
-	rootCmd.RegisterFlagCompletionFunc("write-out", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-		return []string{"fields", "json", "protobuf", "simple", "table"}, cobra.ShellCompDirectiveDefault
-	})
 
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.DialTimeout, "dial-timeout", defaultDialTimeout, "dial timeout for client connections")
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.CommandTimeOut, "command-timeout", defaultCommandTimeOut, "timeout for short running command (excluding dial timeout)")
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTime, "keepalive-time", defaultKeepAliveTime, "keepalive time for client connections")
 	rootCmd.PersistentFlags().DurationVar(&globalFlags.KeepAliveTimeout, "keepalive-timeout", defaultKeepAliveTimeOut, "keepalive timeout for client connections")
-	rootCmd.PersistentFlags().IntVar(&globalFlags.MaxCallSendMsgSize, "max-request-bytes", 0, "client-side request send limit in bytes (if 0, it defaults to 2.0 MiB (2 * 1024 * 1024).)")
-	rootCmd.PersistentFlags().IntVar(&globalFlags.MaxCallRecvMsgSize, "max-recv-bytes", 0, "client-side response receive limit in bytes (if 0, it defaults to \"math.MaxInt32\")")
 
 	// TODO: secure by default when etcd enables secure gRPC by default.
 	rootCmd.PersistentFlags().BoolVar(&globalFlags.Insecure, "insecure-transport", true, "disable transport security for client connections")
@@ -70,7 +66,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CertFile, "cert", "", "identify secure client using this TLS certificate file")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.KeyFile, "key", "", "identify secure client using this TLS key file")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.TrustedCAFile, "cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
-	rootCmd.PersistentFlags().StringVar(&globalFlags.Token, "auth-jwt-token", "", "JWT token used for authentication (if this option is used, --user and --password should not be set)")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.User, "user", "", "username[:password] for authentication (prompt if password is not supplied)")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.Password, "password", "", "password for authentication (if this option is used, --user option shouldn't include password)")
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.TLS.ServerName, "discovery-srv", "d", "", "domain name to query for SRV records describing cluster endpoints")
@@ -98,13 +93,11 @@ func init() {
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
-		command.NewCompletionCommand(),
-		command.NewDowngradeCommand(),
 	)
 }
 
 func usageFunc(c *cobra.Command) error {
-	return util.UsageFunc(c, version.Version, version.APIVersion)
+	return cobrautl.UsageFunc(c, version.Version, version.APIVersion)
 }
 
 func Start() error {
@@ -116,10 +109,7 @@ func Start() error {
 
 func MustStart() {
 	if err := Start(); err != nil {
-		if rootCmd.SilenceErrors {
-			cobrautl.ExitWithError(cobrautl.ExitError, err)
-		}
-		os.Exit(cobrautl.ExitError)
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 }
 

@@ -1,4 +1,6 @@
-This directory includes etcd project internal documentation for new and existing contributors.
+# The etcd documentation
 
-For user and developer documentation please go to [etcd.io](https://etcd.io/),
-which is developed in [website](https://github.com/etcd-io/website/) repo.
+etcd is a distributed key-value store designed to reliably and quickly preserve and provide access to critical data. It enables reliable distributed coordination through distributed locking, leader elections, and write barriers. An etcd cluster is intended for high availability and permanent data storage and retrieval.
+
+These documents have moved to the [etcd-io/website repo](https://github.com/etcd-io/website/), and can be viewed live at [https://etcd.io/docs/latest/](https://etcd.io/docs/latest/).
+

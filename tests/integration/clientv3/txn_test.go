@@ -16,30 +16,27 @@ package clientv3test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestTxnError(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := t.Context()
+	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar1"), clientv3.OpPut("foo", "bar2")).Commit()
-	if !errors.Is(err, rpctypes.ErrDuplicateKey) {
+	if err != rpctypes.ErrDuplicateKey {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrDuplicateKey, err)
 	}
 
@@ -48,15 +45,15 @@ func TestTxnError(t *testing.T) {
 		ops[i] = clientv3.OpPut(fmt.Sprintf("foo%d", i), "")
 	}
 	_, err = kv.Txn(ctx).Then(ops...).Commit()
-	if !errors.Is(err, rpctypes.ErrTooManyOps) {
+	if err != rpctypes.ErrTooManyOps {
 		t.Fatalf("expected %v, got %v", rpctypes.ErrTooManyOps, err)
 	}
 }
 
 func TestTxnWriteFail(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -65,7 +62,7 @@ func TestTxnWriteFail(t *testing.T) {
 
 	txnc, getc := make(chan struct{}), make(chan struct{})
 	go func() {
-		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 		defer cancel()
 		resp, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
 		if err == nil {
@@ -82,7 +79,7 @@ func TestTxnWriteFail(t *testing.T) {
 		case <-txnc:
 		}
 		// and ensure the put didn't take
-		gresp, gerr := clus.Client(1).Get(t.Context(), "foo")
+		gresp, gerr := clus.Client(1).Get(context.TODO(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -104,9 +101,9 @@ func TestTxnWriteFail(t *testing.T) {
 func TestTxnReadRetry(t *testing.T) {
 	t.Skipf("skipping txn read retry test: re-enable after we do retry on txn read request")
 
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
@@ -123,7 +120,7 @@ func TestTxnReadRetry(t *testing.T) {
 
 		donec := make(chan struct{}, 1)
 		go func() {
-			_, err := kv.Txn(t.Context()).Then(thenOps[i]...).Commit()
+			_, err := kv.Txn(context.TODO()).Then(thenOps[i]...).Commit()
 			if err != nil {
 				t.Errorf("expected response, got error %v", err)
 			}
@@ -143,73 +140,88 @@ func TestTxnReadRetry(t *testing.T) {
 }
 
 func TestTxnSuccess(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
-	ctx := t.Context()
+	ctx := context.TODO()
 
 	_, err := kv.Txn(ctx).Then(clientv3.OpPut("foo", "bar")).Commit()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	resp, err := kv.Get(ctx, "foo")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Key) != "foo" {
 		t.Fatalf("unexpected Get response %v", resp)
 	}
 }
 
 func TestTxnCompareRange(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
-	fooResp, err := kv.Put(t.Context(), "foo/", "bar")
-	require.NoError(t, err)
-	_, err = kv.Put(t.Context(), "foo/a", "baz")
-	require.NoError(t, err)
-	tresp, terr := kv.Txn(t.Context()).If(
+	fooResp, err := kv.Put(context.TODO(), "foo/", "bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = kv.Put(context.TODO(), "foo/a", "baz"); err != nil {
+		t.Fatal(err)
+	}
+	tresp, terr := kv.Txn(context.TODO()).If(
 		clientv3.Compare(
 			clientv3.CreateRevision("foo/"), "=", fooResp.Header.Revision).
 			WithPrefix(),
 	).Commit()
-	require.NoError(t, terr)
+	if terr != nil {
+		t.Fatal(terr)
+	}
 	if tresp.Succeeded {
 		t.Fatal("expected prefix compare to false, got compares as true")
 	}
 }
 
 func TestTxnNested(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
 
-	tresp, err := kv.Txn(t.Context()).
+	tresp, err := kv.Txn(context.TODO()).
 		If(clientv3.Compare(clientv3.Version("foo"), "=", 0)).
 		Then(
 			clientv3.OpPut("foo", "bar"),
 			clientv3.OpTxn(nil, []clientv3.Op{clientv3.OpPut("abc", "123")}, nil)).
 		Else(clientv3.OpPut("foo", "baz")).Commit()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(tresp.Responses) != 2 {
 		t.Errorf("expected 2 top-level txn responses, got %+v", tresp.Responses)
 	}
 
 	// check txn writes were applied
-	resp, err := kv.Get(t.Context(), "foo")
-	require.NoError(t, err)
+	resp, err := kv.Get(context.TODO(), "foo")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "bar" {
 		t.Errorf("unexpected Get response %+v", resp)
 	}
-	resp, err = kv.Get(t.Context(), "abc")
-	require.NoError(t, err)
+	resp, err = kv.Get(context.TODO(), "abc")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(resp.Kvs) != 1 || string(resp.Kvs[0].Value) != "123" {
 		t.Errorf("unexpected Get response %+v", resp)
 	}

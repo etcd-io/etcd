@@ -16,21 +16,19 @@ package etcdhttp
 
 import (
 	"encoding/json"
-	errorspkg "errors"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-
-	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	"go.etcd.io/etcd/server/v3/lease/leasehttp"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -73,7 +71,7 @@ func newPeerHandler(
 	if hashKVHandler != nil {
 		mux.Handle(etcdserver.PeerHashKVPath, hashKVHandler)
 	}
-	mux.HandleFunc(versionPath, versionHandler(s, serveVersion))
+	mux.HandleFunc(versionPath, versionHandler(s.Cluster(), serveVersion))
 	return mux
 }
 
@@ -139,15 +137,15 @@ func (h *peerMemberPromoteHandler) ServeHTTP(w http.ResponseWriter, r *http.Requ
 
 	resp, err := h.server.PromoteMember(r.Context(), id)
 	if err != nil {
-		switch {
-		case errorspkg.Is(err, membership.ErrIDNotFound):
+		switch err {
+		case membership.ErrIDNotFound:
 			http.Error(w, err.Error(), http.StatusNotFound)
-		case errorspkg.Is(err, membership.ErrMemberNotLearner):
+		case membership.ErrMemberNotLearner:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
-		case errorspkg.Is(err, errors.ErrLearnerNotReady):
+		case etcdserver.ErrLearnerNotReady:
 			http.Error(w, err.Error(), http.StatusPreconditionFailed)
 		default:
-			writeError(h.lg, w, r, err)
+			WriteError(h.lg, w, r, err)
 		}
 		h.lg.Warn(
 			"failed to promote a member",

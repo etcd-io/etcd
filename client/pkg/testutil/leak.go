@@ -34,8 +34,6 @@ running(leaking) after all tests.
 		...
 	}
 */
-var normalizedRegexp = regexp.MustCompile(`\(0[0-9a-fx, ]*\)`)
-
 func CheckLeakedGoroutine() bool {
 	gs := interestingGoroutines()
 	if len(gs) == 0 {
@@ -43,13 +41,14 @@ func CheckLeakedGoroutine() bool {
 	}
 
 	stackCount := make(map[string]int)
+	re := regexp.MustCompile(`\(0[0-9a-fx, ]*\)`)
 	for _, g := range gs {
 		// strip out pointer arguments in first function of stack dump
-		normalized := string(normalizedRegexp.ReplaceAll([]byte(g), []byte("(...)")))
+		normalized := string(re.ReplaceAll([]byte(g), []byte("(...)")))
 		stackCount[normalized]++
 	}
 
-	fmt.Fprint(os.Stderr, "Unexpected goroutines running after all test(s).\n")
+	fmt.Fprintf(os.Stderr, "Unexpected goroutines running after all test(s).\n")
 	for stack, count := range stackCount {
 		fmt.Fprintf(os.Stderr, "%d instances of:\n%s\n", count, stack)
 	}
@@ -130,45 +129,28 @@ func interestingGoroutines() (gs []string) {
 			continue
 		}
 		stack := strings.TrimSpace(sl[1])
-		if stack == "" {
+		if stack == "" ||
+			strings.Contains(stack, "sync.(*WaitGroup).Done") ||
+			strings.Contains(stack, "os.(*file).close") ||
+			strings.Contains(stack, "os.(*Process).Release") ||
+			strings.Contains(stack, "created by os/signal.init") ||
+			strings.Contains(stack, "runtime/panic.go") ||
+			strings.Contains(stack, "created by testing.RunTests") ||
+			strings.Contains(stack, "created by testing.runTests") ||
+			strings.Contains(stack, "created by testing.(*T).Run") ||
+			strings.Contains(stack, "testing.Main(") ||
+			strings.Contains(stack, "runtime.goexit") ||
+			strings.Contains(stack, "go.etcd.io/etcd/client/pkg/v3/testutil.interestingGoroutines") ||
+			strings.Contains(stack, "go.etcd.io/etcd/client/pkg/v3/logutil.(*MergeLogger).outputLoop") ||
+			strings.Contains(stack, "github.com/golang/glog.(*loggingT).flushDaemon") ||
+			strings.Contains(stack, "created by runtime.gc") ||
+			strings.Contains(stack, "created by text/template/parse.lex") ||
+			strings.Contains(stack, "runtime.MHeap_Scavenger") ||
+			strings.Contains(stack, "rcrypto/internal/boring.(*PublicKeyRSA).finalize") ||
+			strings.Contains(stack, "net.(*netFD).Close(") ||
+			strings.Contains(stack, "testing.(*T).Run") {
 			continue
 		}
-
-		shouldSkip := func() bool {
-			uninterestingMsgs := [...]string{
-				"sync.(*WaitGroup).Done",
-				"os.(*file).close",
-				"os.(*Process).Release",
-				"created by os/signal.init",
-				"runtime/panic.go",
-				"created by testing.RunTests",
-				"created by testing.runTests",
-				"created by testing.(*T).Run",
-				"testing.Main(",
-				"runtime.goexit",
-				"go.etcd.io/etcd/client/pkg/v3/testutil.interestingGoroutines",
-				"go.etcd.io/etcd/client/pkg/v3/logutil.(*MergeLogger).outputLoop",
-				"github.com/golang/glog.(*loggingT).flushDaemon",
-				"created by runtime.gc",
-				"created by text/template/parse.lex",
-				"runtime.MHeap_Scavenger",
-				"rcrypto/internal/boring.(*PublicKeyRSA).finalize",
-				"net.(*netFD).Close(",
-				"testing.(*T).Run",
-				"crypto/tls.(*certCache).evict",
-			}
-			for _, msg := range uninterestingMsgs {
-				if strings.Contains(stack, msg) {
-					return true
-				}
-			}
-			return false
-		}()
-
-		if shouldSkip {
-			continue
-		}
-
 		gs = append(gs, stack)
 	}
 	sort.Strings(gs)

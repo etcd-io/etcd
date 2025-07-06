@@ -17,9 +17,6 @@ package ioutil
 import (
 	"math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPageWriterRandom(t *testing.T) {
@@ -32,17 +29,22 @@ func TestPageWriterRandom(t *testing.T) {
 	n := 0
 	for i := 0; i < 4096; i++ {
 		c, err := w.Write(buf[:rand.Intn(len(buf))])
-		require.NoError(t, err)
+		if err != nil {
+			t.Fatal(err)
+		}
 		n += c
 	}
-	require.LessOrEqualf(t, cw.writeBytes, n, "wrote %d bytes to io.Writer, but only wrote %d bytes", cw.writeBytes, n)
-	maxPendingBytes := pageBytes + defaultBufferBytes
-	require.LessOrEqualf(t, n-cw.writeBytes, maxPendingBytes, "got %d bytes pending, expected less than %d bytes", n-cw.writeBytes, maxPendingBytes)
+	if cw.writeBytes > n {
+		t.Fatalf("wrote %d bytes to io.Writer, but only wrote %d bytes", cw.writeBytes, n)
+	}
+	if n-cw.writeBytes > pageBytes {
+		t.Fatalf("got %d bytes pending, expected less than %d bytes", n-cw.writeBytes, pageBytes)
+	}
 	t.Logf("total writes: %d", cw.writes)
 	t.Logf("total write bytes: %d (of %d)", cw.writeBytes, n)
 }
 
-// TestPageWriterPartialSlack tests the case where a write overflows the buffer
+// TestPageWriterPariallack tests the case where a write overflows the buffer
 // but there is not enough data to complete the slack write.
 func TestPageWriterPartialSlack(t *testing.T) {
 	defaultBufferBytes = 1024
@@ -51,21 +53,33 @@ func TestPageWriterPartialSlack(t *testing.T) {
 	cw := &checkPageWriter{pageBytes: 64, t: t}
 	w := NewPageWriter(cw, pageBytes, 0)
 	// put writer in non-zero page offset
-	_, err := w.Write(buf[:64])
-	require.NoError(t, err)
-	require.NoError(t, w.Flush())
-	require.Equalf(t, 1, cw.writes, "got %d writes, expected 1", cw.writes)
+	if _, err := w.Write(buf[:64]); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if cw.writes != 1 {
+		t.Fatalf("got %d writes, expected 1", cw.writes)
+	}
 	// nearly fill buffer
-	_, err = w.Write(buf[:1022])
-	require.NoError(t, err)
+	if _, err := w.Write(buf[:1022]); err != nil {
+		t.Fatal(err)
+	}
 	// overflow buffer, but without enough to write as aligned
-	_, err = w.Write(buf[:8])
-	require.NoError(t, err)
-	require.Equalf(t, 1, cw.writes, "got %d writes, expected 1", cw.writes)
+	if _, err := w.Write(buf[:8]); err != nil {
+		t.Fatal(err)
+	}
+	if cw.writes != 1 {
+		t.Fatalf("got %d writes, expected 1", cw.writes)
+	}
 	// finish writing slack space
-	_, err = w.Write(buf[:128])
-	require.NoError(t, err)
-	require.Equalf(t, 2, cw.writes, "got %d writes, expected 2", cw.writes)
+	if _, err := w.Write(buf[:128]); err != nil {
+		t.Fatal(err)
+	}
+	if cw.writes != 2 {
+		t.Fatalf("got %d writes, expected 2", cw.writes)
+	}
 }
 
 // TestPageWriterOffset tests if page writer correctly repositions when offset is given.
@@ -75,54 +89,25 @@ func TestPageWriterOffset(t *testing.T) {
 	buf := make([]byte, defaultBufferBytes)
 	cw := &checkPageWriter{pageBytes: 64, t: t}
 	w := NewPageWriter(cw, pageBytes, 0)
-	_, err := w.Write(buf[:64])
-	require.NoError(t, err)
-	require.NoError(t, w.Flush())
-	require.Equalf(t, 64, w.pageOffset, "w.pageOffset expected 64, got %d", w.pageOffset)
-
-	w = NewPageWriter(cw, w.pageOffset, pageBytes)
-	_, err = w.Write(buf[:64])
-	require.NoError(t, err)
-	require.NoError(t, w.Flush())
-	require.Equalf(t, 0, w.pageOffset, "w.pageOffset expected 0, got %d", w.pageOffset)
-}
-
-func TestPageWriterPageBytes(t *testing.T) {
-	cases := []struct {
-		name        string
-		pageBytes   int
-		expectPanic bool
-	}{
-		{
-			name:        "normal page bytes",
-			pageBytes:   4096,
-			expectPanic: false,
-		},
-		{
-			name:        "negative page bytes",
-			pageBytes:   -1,
-			expectPanic: true,
-		},
-		{
-			name:        "zero page bytes",
-			pageBytes:   0,
-			expectPanic: true,
-		},
+	if _, err := w.Write(buf[:64]); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if w.pageOffset != 64 {
+		t.Fatalf("w.pageOffset expected 64, got %d", w.pageOffset)
 	}
 
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			defaultBufferBytes = 1024
-			cw := &checkPageWriter{pageBytes: tc.pageBytes, t: t}
-			if tc.expectPanic {
-				assert.Panicsf(t, func() {
-					NewPageWriter(cw, tc.pageBytes, 0)
-				}, "expected panic when pageBytes is %d", tc.pageBytes)
-			} else {
-				pw := NewPageWriter(cw, tc.pageBytes, 0)
-				assert.NotNil(t, pw)
-			}
-		})
+	w = NewPageWriter(cw, w.pageOffset, pageBytes)
+	if _, err := w.Write(buf[:64]); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	if w.pageOffset != 0 {
+		t.Fatalf("w.pageOffset expected 0, got %d", w.pageOffset)
 	}
 }
 
@@ -135,7 +120,9 @@ type checkPageWriter struct {
 }
 
 func (cw *checkPageWriter) Write(p []byte) (int, error) {
-	require.Equalf(cw.t, 0, len(p)%cw.pageBytes, "got write len(p) = %d, expected len(p) == k*cw.pageBytes", len(p))
+	if len(p)%cw.pageBytes != 0 {
+		cw.t.Fatalf("got write len(p) = %d, expected len(p) == k*cw.pageBytes", len(p))
+	}
 	cw.writes++
 	cw.writeBytes += len(p)
 	return len(p), nil

@@ -23,10 +23,11 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2error"
 )
 
+// EventHistory 是对 eventQueue 的一层封装
 type EventHistory struct {
-	Queue      eventQueue
-	StartIndex uint64
-	LastIndex  uint64
+	Queue      eventQueue // 用来存储Event实例的eventQueue实例
+	StartIndex uint64     // 当前 EventHistory 实例中记录 的 第一个 Event 实例的 ModifiedIndex 字段值。
+	LastIndex  uint64     // 当前 EventHistory 实例中记录 的 第一个 Event 实例的 ModifiedIndex 字段值。
 	rwl        sync.RWMutex
 }
 
@@ -55,6 +56,7 @@ func (eh *EventHistory) addEvent(e *Event) *Event {
 
 // scan enumerates events from the index history and stops at the first point
 // where the key matches.
+// 从 index参数指定的位置开始查找 EventHistory 中是否记录了参数 key 指定节点对应的 Event 实例，
 func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, *v2error.Error) {
 	eh.rwl.RLock()
 	defer eh.rwl.RUnlock()
@@ -79,6 +81,7 @@ func (eh *EventHistory) scan(key string, recursive bool, index uint64) (*Event, 
 		e := eh.Queue.Events[i]
 
 		if !e.Refresh {
+			// 过滤Refresh类型的修改操作
 			ok := e.Node.Key == key
 
 			if recursive {
@@ -125,4 +128,5 @@ func (eh *EventHistory) clone() *EventHistory {
 		Queue:      clonedQueue,
 		LastIndex:  eh.LastIndex,
 	}
+
 }

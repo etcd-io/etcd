@@ -15,40 +15,53 @@
 package fileutil
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestReadDir(t *testing.T) {
-	tmpdir := t.TempDir()
+	tmpdir, err := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpdir)
+	if err != nil {
+		t.Fatalf("unexpected ioutil.TempDir error: %v", err)
+	}
 
 	files := []string{"def", "abc", "xyz", "ghi"}
 	for _, f := range files {
 		writeFunc(t, filepath.Join(tmpdir, f))
 	}
 	fs, err := ReadDir(tmpdir)
-	require.NoErrorf(t, err, "error calling ReadDir")
+	if err != nil {
+		t.Fatalf("error calling ReadDir: %v", err)
+	}
 	wfs := []string{"abc", "def", "ghi", "xyz"}
-	require.Truef(t, reflect.DeepEqual(fs, wfs), "ReadDir: got %v, want %v", fs, wfs)
+	if !reflect.DeepEqual(fs, wfs) {
+		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
+	}
 
 	files = []string{"def.wal", "abc.wal", "xyz.wal", "ghi.wal"}
 	for _, f := range files {
 		writeFunc(t, filepath.Join(tmpdir, f))
 	}
 	fs, err = ReadDir(tmpdir, WithExt(".wal"))
-	require.NoErrorf(t, err, "error calling ReadDir")
+	if err != nil {
+		t.Fatalf("error calling ReadDir: %v", err)
+	}
 	wfs = []string{"abc.wal", "def.wal", "ghi.wal", "xyz.wal"}
-	require.Truef(t, reflect.DeepEqual(fs, wfs), "ReadDir: got %v, want %v", fs, wfs)
+	if !reflect.DeepEqual(fs, wfs) {
+		t.Fatalf("ReadDir: got %v, want %v", fs, wfs)
+	}
 }
 
 func writeFunc(t *testing.T, path string) {
-	t.Helper()
 	fh, err := os.Create(path)
-	require.NoErrorf(t, err, "error creating file")
-	assert.NoErrorf(t, fh.Close(), "error closing file")
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	if err = fh.Close(); err != nil {
+		t.Fatalf("error closing file: %v", err)
+	}
 }

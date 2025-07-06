@@ -30,3 +30,9 @@ import (
 func main() {
 	etcdmain.Main(os.Args)
 }
+
+// ./bin/etcd --name infra0 --initial-advertise-peer-urls http://127.0.0.1:2380  --listen-peer-urls http://127.0.0.1:2380 --listen-client-urls http://127.0.0.1:2379 --advertise-client-urls http://127.0.0.1:2379  --initial-cluster-token etcd-cluster-1 --initial-cluster infra0=http://127.0.0.1:2380,infra1=http://127.0.0.1:2382,infra2=http://127.0.0.1:2384 --initial-cluster-state new
+//
+// ./bin/etcd --name infra1 --initial-advertise-peer-urls http://127.0.0.1:2382  --listen-peer-urls http://127.0.0.1:2382 --listen-client-urls http://127.0.0.1:2381 --advertise-client-urls http://127.0.0.1:2381  --initial-cluster-token etcd-cluster-1 --initial-cluster infra0=http://127.0.0.1:2380,infra1=http://127.0.0.1:2382,infra2=http://127.0.0.1:2384 --initial-cluster-state new
+//
+// ./bin/etcd --name infra2 --initial-advertise-peer-urls http://127.0.0.1:2384  --listen-peer-urls http://127.0.0.1:2384 --listen-client-urls http://127.0.0.1:2383 --advertise-client-urls http://127.0.0.1:2383  --initial-cluster-token etcd-cluster-1 --initial-cluster infra0=http://127.0.0.1:2380,infra1=http://127.0.0.1:2382,infra2=http://127.0.0.1:2384 --initial-cluster-state new

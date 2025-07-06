@@ -15,24 +15,18 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
-
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
 func TestCtlV3MakeMirror(t *testing.T)                 { testCtl(t, makeMirrorTest) }
 func TestCtlV3MakeMirrorModifyDestPrefix(t *testing.T) { testCtl(t, makeMirrorModifyDestPrefixTest) }
 func TestCtlV3MakeMirrorNoDestPrefix(t *testing.T)     { testCtl(t, makeMirrorNoDestPrefixTest) }
-func TestCtlV3MakeMirrorWithWatchRev(t *testing.T)     { testCtl(t, makeMirrorWithWatchRev) }
 
 func makeMirrorTest(cx ctlCtx) {
 	var (
-		flags  []string
+		flags  = []string{}
 		kvs    = []kv{{"key1", "val1"}, {"key2", "val2"}, {"key3", "val3"}}
 		kvs2   = []kvExec{{key: "key1", val: "val1"}, {key: "key2", val: "val2"}, {key: "key3", val: "val3"}}
 		prefix = "key"
@@ -63,30 +57,18 @@ func makeMirrorNoDestPrefixTest(cx ctlCtx) {
 	testMirrorCommand(cx, flags, kvs, kvs2, srcprefix, destprefix)
 }
 
-func makeMirrorWithWatchRev(cx ctlCtx) {
-	var (
-		flags      = []string{"--prefix", "o_", "--no-dest-prefix", "--rev", "4"}
-		kvs        = []kv{{"o_key1", "val1"}, {"o_key2", "val2"}, {"o_key3", "val3"}, {"o_key4", "val4"}}
-		kvs2       = []kvExec{{key: "key3", val: "val3"}, {key: "key4", val: "val4"}}
-		srcprefix  = "o_"
-		destprefix = "key"
-	)
-
-	testMirrorCommand(cx, flags, kvs, kvs2, srcprefix, destprefix)
-}
-
 func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvExec, srcprefix, destprefix string) {
 	// set up another cluster to mirror with
-	mirrorcfg := e2e.NewConfigAutoTLS()
-	mirrorcfg.ClusterSize = 1
-	mirrorcfg.BasePort = 10000
+	mirrorcfg := newConfigAutoTLS()
+	mirrorcfg.clusterSize = 1
+	mirrorcfg.basePort = 10000
 	mirrorctx := ctlCtx{
 		t:           cx.t,
 		cfg:         *mirrorcfg,
 		dialTimeout: 7 * time.Second,
 	}
 
-	mirrorepc, err := e2e.NewEtcdProcessCluster(context.TODO(), cx.t, e2e.WithConfig(&mirrorctx.cfg))
+	mirrorepc, err := newEtcdProcessCluster(cx.t, &mirrorctx.cfg)
 	if err != nil {
 		cx.t.Fatalf("could not start etcd process cluster (%v)", err)
 	}
@@ -100,16 +82,28 @@ func testMirrorCommand(cx ctlCtx, flags []string, sourcekvs []kv, destkvs []kvEx
 
 	cmdArgs := append(cx.PrefixArgs(), "make-mirror")
 	cmdArgs = append(cmdArgs, flags...)
-	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.BasePort))
-	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
-	require.NoError(cx.t, err)
+	cmdArgs = append(cmdArgs, fmt.Sprintf("localhost:%d", mirrorcfg.basePort))
+	proc, err := spawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		cx.t.Fatal(err)
+	}
 	defer func() {
-		require.NoError(cx.t, proc.Stop())
+		err = proc.Stop()
+		if err != nil {
+			cx.t.Fatal(err)
+		}
 	}()
 
 	for i := range sourcekvs {
-		require.NoError(cx.t, ctlV3Put(cx, sourcekvs[i].key, sourcekvs[i].val, ""))
+		if err = ctlV3Put(cx, sourcekvs[i].key, sourcekvs[i].val, ""); err != nil {
+			cx.t.Fatal(err)
+		}
 	}
-	require.NoError(cx.t, ctlV3Get(cx, []string{srcprefix, "--prefix"}, sourcekvs...))
-	require.NoError(cx.t, ctlV3Watch(mirrorctx, []string{destprefix, "--rev", "1", "--prefix"}, destkvs...))
+	if err = ctlV3Get(cx, []string{srcprefix, "--prefix"}, sourcekvs...); err != nil {
+		cx.t.Fatal(err)
+	}
+
+	if err = ctlV3Watch(mirrorctx, []string{destprefix, "--rev", "1", "--prefix"}, destkvs...); err != nil {
+		cx.t.Fatal(err)
+	}
 }

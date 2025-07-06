@@ -3,8 +3,6 @@ package mvccpb;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "go.etcd.io/etcd/api/v3/mvccpb";
-
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 option (gogoproto.unmarshaler_all) = true;
@@ -13,20 +11,27 @@ option (gogoproto.goproto_enum_prefix_all) = false;
 
 message KeyValue {
   // key is the key in bytes. An empty key is not allowed.
+  // 原始的 key 值。
   bytes key = 1;
   // create_revision is the revision of last creation on this key.
+  // 最近一次创建当前键值对时的 main revision 值
   int64 create_revision = 2;
   // mod_revision is the revision of last modification on this key.
+  // 最近一次修改当前键值对时的 main revision 值
   int64 mod_revision = 3;
   // version is the version of the key. A deletion resets
   // the version to zero and any modification of the key
   // increases its version.
+  // 当前键值对的版本，每当修改当前键值对时，都会使得该宇段递增。当删除当前键值对时，该值会重置为0。
   int64 version = 4;
   // value is the value held by the key, in bytes.
+  // 原始的 value 值。
   bytes value = 5;
   // lease is the ID of the lease that attached to key.
   // When the attached lease expires, the key will be deleted.
   // If lease is 0, then no lease is attached to the key.
+  // 关联的 Lease实例 ID， 当关联的 Lease实例过期，则当前键值对也会被删除。
+  // 如果该字段为 0，则表示没有 Lease实例与当前键值对关联
   int64 lease = 6;
 }
 
@@ -44,8 +49,10 @@ message Event {
   // A PUT event with kv.Version=1 indicates the creation of a key.
   // A DELETE/EXPIRE event contains the deleted key with
   // its modification revision set to the revision of deletion.
+  // 该字段记录发生此次事件之后的键值对数据。
   KeyValue kv = 2;
 
   // prev_kv holds the key-value pair before the event happens.
+  // 该宇段记录发生此次事件之前的键值对数据。
   KeyValue prev_kv = 3;
 }

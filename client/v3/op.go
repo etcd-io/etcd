@@ -77,9 +77,6 @@ type Op struct {
 	cmps    []Cmp
 	thenOps []Op
 	elseOps []Op
-
-	isOptsWithFromKey bool
-	isOptsWithPrefix  bool
 }
 
 // accessors / mutators
@@ -106,9 +103,6 @@ func (op Op) RangeBytes() []byte { return op.end }
 // Rev returns the requested revision, if any.
 func (op Op) Rev() int64 { return op.rev }
 
-// Limit returns limit of the result, if any.
-func (op Op) Limit() int64 { return op.limit }
-
 // IsPut returns true iff the operation is a Put.
 func (op Op) IsPut() bool { return op.t == tPut }
 
@@ -126,10 +120,6 @@ func (op Op) IsKeysOnly() bool { return op.keysOnly }
 
 // IsCountOnly returns whether countOnly is set.
 func (op Op) IsCountOnly() bool { return op.countOnly }
-
-func (op Op) IsOptsWithFromKey() bool { return op.isOptsWithFromKey }
-
-func (op Op) IsOptsWithPrefix() bool { return op.isOptsWithPrefix }
 
 // MinModRev returns the operation's minimum modify revision.
 func (op Op) MinModRev() int64 { return op.minModRev }
@@ -224,10 +214,6 @@ func (op Op) isWrite() bool {
 		return false
 	}
 	return op.t != tRange
-}
-
-func NewOp() *Op {
-	return &Op{key: []byte("")}
 }
 
 // OpGet returns "get" operation based on given key and operation options.
@@ -396,7 +382,6 @@ func getPrefix(key []byte) []byte {
 // can return 'foo1', 'foo2', and so on.
 func WithPrefix() OpOption {
 	return func(op *Op) {
-		op.isOptsWithPrefix = true
 		if len(op.key) == 0 {
 			op.key, op.end = []byte{0}, []byte{0}
 			return
@@ -421,19 +406,12 @@ func WithFromKey() OpOption {
 			op.key = []byte{0}
 		}
 		op.end = []byte("\x00")
-		op.isOptsWithFromKey = true
 	}
 }
 
-// WithSerializable makes `Get` and `MemberList` requests serializable.
-// By default, they are linearizable. Serializable requests are better
-// for lower latency requirement, but users should be aware that they
-// could get stale data with serializable requests.
-//
-// In some situations users may want to use serializable requests. For
-// example, when adding a new member to a one-node cluster, it's reasonable
-// and safe to use serializable request before the new added member gets
-// started.
+// WithSerializable makes 'Get' request serializable. By default,
+// it's linearizable. Serializable requests are better for lower latency
+// requirement.
 func WithSerializable() OpOption {
 	return func(op *Op) { op.serializable = true }
 }
@@ -576,37 +554,7 @@ func toLeaseTimeToLiveRequest(id LeaseID, opts ...LeaseOption) *pb.LeaseTimeToLi
 }
 
 // IsOptsWithPrefix returns true if WithPrefix option is called in the given opts.
-func IsOptsWithPrefix(opts []OpOption) bool {
-	ret := NewOp()
-	for _, opt := range opts {
-		opt(ret)
-	}
-
-	return ret.isOptsWithPrefix
-}
+func IsOptsWithPrefix(opts []OpOption) bool { return isOpFuncCalled("WithPrefix", opts) }
 
 // IsOptsWithFromKey returns true if WithFromKey option is called in the given opts.
-func IsOptsWithFromKey(opts []OpOption) bool {
-	ret := NewOp()
-	for _, opt := range opts {
-		opt(ret)
-	}
-
-	return ret.isOptsWithFromKey
-}
-
-func (op Op) IsSortOptionValid() bool {
-	if op.sort != nil {
-		sortOrder := int32(op.sort.Order)
-		sortTarget := int32(op.sort.Target)
-
-		if _, ok := pb.RangeRequest_SortOrder_name[sortOrder]; !ok {
-			return false
-		}
-
-		if _, ok := pb.RangeRequest_SortTarget_name[sortTarget]; !ok {
-			return false
-		}
-	}
-	return true
-}
+func IsOptsWithFromKey(opts []OpOption) bool { return isOpFuncCalled("WithFromKey", opts) }

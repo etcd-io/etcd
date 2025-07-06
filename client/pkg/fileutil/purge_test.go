@@ -16,30 +16,36 @@ package fileutil
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap"
 )
 
 func TestPurgeFile(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := ioutil.TempDir("", "purgefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
 
 	// minimal file set
 	for i := 0; i < 3; i++ {
 		f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
-		require.NoError(t, ferr)
+		if ferr != nil {
+			t.Fatal(err)
+		}
 		f.Close()
 	}
 
 	stop, purgec := make(chan struct{}), make(chan string, 10)
 
 	// keep 3 most recent files
-	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil, false)
+	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec, nil)
 	select {
 	case f := <-purgec:
 		t.Errorf("unexpected purge on %q", f)
@@ -51,7 +57,7 @@ func TestPurgeFile(t *testing.T) {
 		go func(n int) {
 			f, ferr := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", n)))
 			if ferr != nil {
-				t.Error(ferr)
+				t.Error(err)
 			}
 			f.Close()
 		}(i)
@@ -67,7 +73,9 @@ func TestPurgeFile(t *testing.T) {
 	}
 
 	fnames, rerr := ReadDir(dir)
-	require.NoError(t, rerr)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
 	wnames := []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)
@@ -85,22 +93,30 @@ func TestPurgeFile(t *testing.T) {
 }
 
 func TestPurgeFileHoldingLockFile(t *testing.T) {
-	dir := t.TempDir()
+	dir, err := ioutil.TempDir("", "purgefile")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
 
 	for i := 0; i < 10; i++ {
 		var f *os.File
-		f, err := os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
-		require.NoError(t, err)
+		f, err = os.Create(filepath.Join(dir, fmt.Sprintf("%d.test", i)))
+		if err != nil {
+			t.Fatal(err)
+		}
 		f.Close()
 	}
 
 	// create a purge barrier at 5
 	p := filepath.Join(dir, fmt.Sprintf("%d.test", 5))
 	l, err := LockFile(p, os.O_WRONLY, PrivateFileMode)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	stop, purgec := make(chan struct{}), make(chan string, 10)
-	errch := purgeFile(zaptest.NewLogger(t), dir, "test", 3, time.Millisecond, stop, purgec, nil, true)
+	errch := purgeFile(zap.NewExample(), dir, "test", 3, time.Millisecond, stop, purgec, nil)
 
 	for i := 0; i < 5; i++ {
 		select {
@@ -111,7 +127,9 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	fnames, rerr := ReadDir(dir)
-	require.NoError(t, rerr)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
 
 	wnames := []string{"5.test", "6.test", "7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
@@ -127,7 +145,9 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	// remove the purge barrier
-	require.NoError(t, l.Close())
+	if err = l.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	// wait for rest of purges (5, 6)
 	for i := 0; i < 2; i++ {
@@ -139,7 +159,9 @@ func TestPurgeFileHoldingLockFile(t *testing.T) {
 	}
 
 	fnames, rerr = ReadDir(dir)
-	require.NoError(t, rerr)
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
 	wnames = []string{"7.test", "8.test", "9.test"}
 	if !reflect.DeepEqual(fnames, wnames) {
 		t.Errorf("filenames = %v, want %v", fnames, wnames)

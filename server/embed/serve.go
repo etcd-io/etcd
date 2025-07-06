@@ -16,29 +16,19 @@ package embed
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	defaultLog "log"
+	"math"
 	"net"
 	"net/http"
 	"strings"
-	"sync"
-
-	gw "github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/soheilhy/cmux"
-	"github.com/tmc/grpc-websocket-proxy/wsproxy"
-	"go.uber.org/zap"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/trace"
-	"google.golang.org/grpc"
-	"google.golang.org/protobuf/encoding/protojson"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
+	"go.etcd.io/etcd/client/v3/credentials"
 	"go.etcd.io/etcd/pkg/v3/debugutil"
 	"go.etcd.io/etcd/pkg/v3/httputil"
-	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
@@ -48,48 +38,29 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
 	v3lockgw "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
+
+	gw "github.com/grpc-ecosystem/grpc-gateway/runtime"
+	"github.com/soheilhy/cmux"
+	"github.com/tmc/grpc-websocket-proxy/wsproxy"
+	"go.uber.org/zap"
+	"golang.org/x/net/trace"
+	"google.golang.org/grpc"
 )
 
 type serveCtx struct {
-	lg *zap.Logger
-	l  net.Listener
+	lg       *zap.Logger
+	l        net.Listener // 监听器
+	addr     string       // 节点提供Client访问的地址
+	network  string       // tcp/unix/unixs
+	secure   bool         // 是安全的
+	insecure bool         // 是不安全的
 
-	scheme   string
-	addr     string
-	network  string
-	secure   bool
-	insecure bool
-	httpOnly bool
-
-	// ctx is used to control the grpc gateway. Terminate the grpc gateway
-	// by calling `cancel` when shutting down the etcd.
 	ctx    context.Context
 	cancel context.CancelFunc
 
 	userHandlers    map[string]http.Handler
 	serviceRegister func(*grpc.Server)
-
-	// serversC is used to receive the http and grpc server objects (created
-	// in `serve`), both of which will be closed when shutting down the etcd.
-	// Close it when `serve` returns or when etcd fails to bootstrap.
-	serversC chan *servers
-	// closeOnce is to ensure `serversC` is closed only once.
-	closeOnce sync.Once
-
-	// wg is used to track the lifecycle of all sub goroutines created by `serve`.
-	wg sync.WaitGroup
-}
-
-func (sctx *serveCtx) startHandler(errHandler func(error), handler func() error) {
-	// start each handler in a separate goroutine
-	sctx.wg.Add(1)
-	go func() {
-		defer sctx.wg.Done()
-		err := handler()
-		if errHandler != nil {
-			errHandler(err)
-		}
-	}()
+	serversC        chan *servers
 }
 
 type servers struct {
@@ -112,6 +83,8 @@ func newServeCtx(lg *zap.Logger) *serveCtx {
 	}
 }
 
+// 会为每个ClientURL地址创建相应的 serverCtx
+// 在 serverCtx实例中记录了对应的 ClientURL、 相应的 Listener实例和用户自定义 Handler 等信息。
 // serve accepts incoming connections on the listener l,
 // creating a new service goroutine for each. The service goroutines
 // read requests and then call handler to reply to them.
@@ -120,184 +93,117 @@ func (sctx *serveCtx) serve(
 	tlsinfo *transport.TLSInfo,
 	handler http.Handler,
 	errHandler func(error),
-	grpcDialForRestGatewayBackends func(ctx context.Context) (*grpc.ClientConn, error),
-	splitHTTP bool,
-	gopts ...grpc.ServerOption,
-) (err error) {
-	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
+	gopts ...grpc.ServerOption) (err error) {
 
-	// Make sure serversC is closed even if we prematurely exit the function.
-	defer sctx.close()
+	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
 
-	select {
-	case <-s.StoppingNotify():
-		return errors.New("server is stopping")
-	case <-s.ReadyNotify():
-	}
+	// EtcdServer 当前其完全初始化之后会关闭 EtcdServer.readych 通道，因为如果EtcdServer创建失败了，那内部肯定也没法交互，就不要再继续下面了
+	<-s.ReadyNotify() // 阻塞监听 EtcdServer.readych 通过
 
 	sctx.lg.Info("ready to serve client requests")
 
 	m := cmux.New(sctx.l)
-	var server func() error
-	onlyGRPC := splitHTTP && !sctx.httpOnly
-	onlyHTTP := splitHTTP && sctx.httpOnly
-	grpcEnabled := !onlyHTTP
-	httpEnabled := !onlyGRPC
-
 	v3c := v3client.New(s)
 	servElection := v3election.NewElectionServer(v3c)
 	servLock := v3lock.NewLockServer(v3c)
 
-	var gwmux *gw.ServeMux
-	if s.Cfg.EnableGRPCGateway {
-		// GRPC gateway connects to grpc server via connection provided by grpc dial.
-		gwmux, err = sctx.registerGateway(grpcDialForRestGatewayBackends)
-		if err != nil {
-			sctx.lg.Error("registerGateway failed", zap.Error(err))
-			return err
+	var gs *grpc.Server
+	defer func() {
+		if err != nil && gs != nil {
+			gs.Stop()
 		}
-	}
-	var traffic string
-	switch {
-	case onlyGRPC:
-		traffic = "grpc"
-	case onlyHTTP:
-		traffic = "http"
-	default:
-		traffic = "grpc+http"
-	}
+	}()
 
 	if sctx.insecure {
-		var gs *grpc.Server
-		var srv *http.Server
-		if httpEnabled {
-			httpmux := sctx.createMux(gwmux, handler)
-			srv = &http.Server{
-				Handler:  createAccessController(sctx.lg, s, httpmux),
-				ErrorLog: logger, // do not log user error
-			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure http server failed", zap.Error(err))
+		// 在其中会完成GRPC服务的汪册
+		gs = v3rpc.Server(s, nil, nil, gopts...)
+		v3electionpb.RegisterElectionServer(gs, servElection)
+		v3lockpb.RegisterLockServer(gs, servLock)
+		if sctx.serviceRegister != nil {
+			sctx.serviceRegister(gs)
+		}
+		grpcl := m.Match(cmux.HTTP2())
+
+		// 在单独后台的 goroutine 中启动 GRPC服务
+		go func() { errHandler(gs.Serve(grpcl)) }()
+
+		var gwmux *gw.ServeMux
+		if s.Cfg.EnableGRPCGateway {
+			gwmux, err = sctx.registerGateway([]grpc.DialOption{grpc.WithInsecure()})
+			if err != nil {
 				return err
 			}
 		}
-		if grpcEnabled {
-			gs = v3rpc.Server(s, nil, nil, gopts...)
-			v3electionpb.RegisterElectionServer(gs, servElection)
-			v3lockpb.RegisterLockServer(gs, servLock)
-			if sctx.serviceRegister != nil {
-				sctx.serviceRegister(gs)
-			}
-			defer func(gs *grpc.Server) {
-				if err != nil {
-					sctx.lg.Warn("stopping insecure grpc server due to error", zap.Error(err))
-					gs.Stop()
-					sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
-				}
-			}(gs)
+
+		httpmux := sctx.createMux(gwmux, handler)
+
+		// 在单独的后台 goroutine 中启动一个 http.Server 实例，用来处理 Client V2 请求
+		srvhttp := &http.Server{
+			Handler:  createAccessController(sctx.lg, s, httpmux),
+			ErrorLog: logger, // do not log user error
 		}
-		if onlyGRPC {
-			server = func() error {
-				return gs.Serve(sctx.l)
-			}
-		} else {
-			server = m.Serve
+		httpl := m.Match(cmux.HTTP1())
+		go func() { errHandler(srvhttp.Serve(httpl)) }()
 
-			httpl := m.Match(cmux.HTTP1())
-			sctx.startHandler(errHandler, func() error {
-				return srv.Serve(httpl)
-			})
-
-			if grpcEnabled {
-				grpcl := m.Match(cmux.HTTP2())
-				sctx.startHandler(errHandler, func() error {
-					return gs.Serve(grpcl)
-				})
-			}
-		}
-
-		sctx.serversC <- &servers{grpc: gs, http: srv}
+		sctx.serversC <- &servers{grpc: gs, http: srvhttp}
 		sctx.lg.Info(
 			"serving client traffic insecurely; this is strongly discouraged!",
-			zap.String("traffic", traffic),
 			zap.String("address", sctx.l.Addr().String()),
 		)
 	}
 
 	if sctx.secure {
-		var gs *grpc.Server
-		var srv *http.Server
-
+		// 加密场景下的初始化与上述初始化类似 需要注意的是，在这里注册之后得到的 grpc.Server 实例也会写入相应的 grpcServerC 通道中
+		// 在该节点关闭时，会在 Etcd.Close ()方法中关闭这些 GRPC 服务
 		tlscfg, tlsErr := tlsinfo.ServerConfig()
 		if tlsErr != nil {
 			return tlsErr
 		}
-
-		if grpcEnabled {
-			gs = v3rpc.Server(s, tlscfg, nil, gopts...)
-			v3electionpb.RegisterElectionServer(gs, servElection)
-			v3lockpb.RegisterLockServer(gs, servLock)
-			if sctx.serviceRegister != nil {
-				sctx.serviceRegister(gs)
-			}
-			defer func(gs *grpc.Server) {
-				if err != nil {
-					sctx.lg.Warn("stopping secure grpc server due to error", zap.Error(err))
-					gs.Stop()
-					sctx.lg.Warn("stopped secure grpc server due to error", zap.Error(err))
-				}
-			}(gs)
+		gs = v3rpc.Server(s, tlscfg, nil, gopts...)
+		v3electionpb.RegisterElectionServer(gs, servElection)
+		v3lockpb.RegisterLockServer(gs, servLock)
+		if sctx.serviceRegister != nil {
+			sctx.serviceRegister(gs)
 		}
-		if httpEnabled {
-			if grpcEnabled {
-				handler = grpcHandlerFunc(gs, handler)
-			}
-			httpmux := sctx.createMux(gwmux, handler)
+		handler = grpcHandlerFunc(gs, handler)
 
-			srv = &http.Server{
-				Handler:   createAccessController(sctx.lg, s, httpmux),
-				TLSConfig: tlscfg,
-				ErrorLog:  logger, // do not log user error
-			}
-			if err = configureHTTPServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure https server failed", zap.Error(err))
+		var gwmux *gw.ServeMux
+		if s.Cfg.EnableGRPCGateway {
+			dtls := tlscfg.Clone()
+			// trust local server
+			dtls.InsecureSkipVerify = true
+			bundle := credentials.NewBundle(credentials.Config{TLSConfig: dtls})
+			opts := []grpc.DialOption{grpc.WithTransportCredentials(bundle.TransportCredentials())}
+			gwmux, err = sctx.registerGateway(opts)
+			if err != nil {
 				return err
 			}
 		}
 
-		if onlyGRPC {
-			server = func() error { return gs.Serve(sctx.l) }
-		} else {
-			server = m.Serve
-
-			tlsl, tlsErr := transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
-			if tlsErr != nil {
-				return tlsErr
-			}
-			sctx.startHandler(errHandler, func() error {
-				return srv.Serve(tlsl)
-			})
+		var tlsl net.Listener
+		tlsl, err = transport.NewTLSListener(m.Match(cmux.Any()), tlsinfo)
+		if err != nil {
+			return err
 		}
+		// TODO: add debug flag; enable logging when debug flag is set
+		httpmux := sctx.createMux(gwmux, handler)
+
+		srv := &http.Server{
+			Handler:   createAccessController(sctx.lg, s, httpmux),
+			TLSConfig: tlscfg,
+			ErrorLog:  logger, // do not log user error
+		}
+		go func() { errHandler(srv.Serve(tlsl)) }()
 
 		sctx.serversC <- &servers{secure: true, grpc: gs, http: srv}
 		sctx.lg.Info(
 			"serving client traffic securely",
-			zap.String("traffic", traffic),
 			zap.String("address", sctx.l.Addr().String()),
 		)
 	}
 
-	err = server()
-	sctx.close()
-	sctx.wg.Wait()
-	return err
-}
-
-func configureHTTPServer(srv *http.Server, cfg config.ServerConfig) error {
-	// todo (ahrtr): should we support configuring other parameters in the future as well?
-	return http2.ConfigureServer(srv, &http2.Server{
-		MaxConcurrentStreams: cfg.MaxConcurrentStreams,
-	})
+	close(sctx.serversC)
+	return m.Serve()
 }
 
 // grpcHandlerFunc returns an http.Handler that delegates to grpcServer on incoming gRPC
@@ -319,30 +225,24 @@ func grpcHandlerFunc(grpcServer *grpc.Server, otherHandler http.Handler) http.Ha
 
 type registerHandlerFunc func(context.Context, *gw.ServeMux, *grpc.ClientConn) error
 
-func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.ClientConn, error)) (*gw.ServeMux, error) {
+func (sctx *serveCtx) registerGateway(opts []grpc.DialOption) (*gw.ServeMux, error) {
 	ctx := sctx.ctx
 
-	conn, err := dial(ctx)
+	addr := sctx.addr
+	if network := sctx.network; network == "unix" {
+		// explicitly define unix network for gRPC socket support
+		addr = fmt.Sprintf("%s://%s", network, addr)
+	}
+
+	opts = append(opts, grpc.WithDefaultCallOptions([]grpc.CallOption{
+		grpc.MaxCallRecvMsgSize(math.MaxInt32),
+	}...))
+
+	conn, err := grpc.DialContext(ctx, addr, opts...)
 	if err != nil {
 		return nil, err
 	}
-
-	// Refer to https://grpc-ecosystem.github.io/grpc-gateway/docs/mapping/customizing_your_gateway/
-	gwmux := gw.NewServeMux(
-		gw.WithMarshalerOption(gw.MIMEWildcard,
-			&gw.HTTPBodyMarshaler{
-				Marshaler: &gw.JSONPb{
-					MarshalOptions: protojson.MarshalOptions{
-						UseProtoNames:   true,
-						EmitUnpopulated: false,
-					},
-					UnmarshalOptions: protojson.UnmarshalOptions{
-						DiscardUnknown: true,
-					},
-				},
-			},
-		),
-	)
+	gwmux := gw.NewServeMux()
 
 	handlers := []registerHandlerFunc{
 		etcdservergw.RegisterKVHandler,
@@ -359,7 +259,7 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 			return nil, err
 		}
 	}
-	sctx.startHandler(nil, func() error {
+	go func() {
 		<-ctx.Done()
 		if cerr := conn.Close(); cerr != nil {
 			sctx.lg.Warn(
@@ -368,22 +268,9 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 				zap.Error(cerr),
 			)
 		}
-		return nil
-	})
+	}()
 
 	return gwmux, nil
-}
-
-type wsProxyZapLogger struct {
-	*zap.Logger
-}
-
-func (w wsProxyZapLogger) Warnln(i ...any) {
-	w.Warn(fmt.Sprint(i...))
-}
-
-func (w wsProxyZapLogger) Debugln(i ...any) {
-	w.Debug(fmt.Sprint(i...))
 }
 
 func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.ServeMux {
@@ -405,7 +292,6 @@ func (sctx *serveCtx) createMux(gwmux *gw.ServeMux, handler http.Handler) *http.
 					},
 				),
 				wsproxy.WithMaxRespBodyBufferSize(0x7fffffff),
-				wsproxy.WithLogger(wsProxyZapLogger{sctx.lg}),
 			),
 		)
 	}
@@ -472,7 +358,7 @@ func (ac *accessController) ServeHTTP(rw http.ResponseWriter, req *http.Request)
 		addCORSHeader(rw, origin)
 	}
 
-	if req.Method == http.MethodOptions {
+	if req.Method == "OPTIONS" {
 		rw.WriteHeader(http.StatusOK)
 		return
 	}
@@ -522,7 +408,7 @@ func (ch *corsHandler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 		addCORSHeader(rw, origin)
 	}
 
-	if req.Method == http.MethodOptions {
+	if req.Method == "OPTIONS" {
 		rw.WriteHeader(http.StatusOK)
 		return
 	}
@@ -549,10 +435,4 @@ func (sctx *serveCtx) registerTrace() {
 	sctx.registerUserHandler("/debug/requests", http.HandlerFunc(reqf))
 	evf := func(w http.ResponseWriter, r *http.Request) { trace.RenderEvents(w, r, true) }
 	sctx.registerUserHandler("/debug/events", http.HandlerFunc(evf))
-}
-
-func (sctx *serveCtx) close() {
-	sctx.closeOnce.Do(func() {
-		close(sctx.serversC)
-	})
 }

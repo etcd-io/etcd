@@ -16,7 +16,6 @@ package clientv3test
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -25,21 +24,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/metadata"
-
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
+	"google.golang.org/grpc/metadata"
 )
 
 type watcherTest func(*testing.T, *watchctx)
 
 type watchctx struct {
-	clus          *integration2.Cluster
+	clus          *integration.ClusterV3
 	w             clientv3.Watcher
 	kv            clientv3.KV
 	wclientMember int
@@ -48,9 +45,9 @@ type watchctx struct {
 }
 
 func runWatchTest(t *testing.T, f watcherTest) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	wclientMember := rand.Intn(3)
@@ -77,17 +74,11 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	keys := []string{"foo", "bar", "baz"}
 
 	donec := make(chan struct{})
-	// wait for watcher shutdown
-	defer func() {
-		for i := 0; i < len(keys)+1; i++ {
-			<-donec
-		}
-	}()
 	readyc := make(chan struct{})
 	for _, k := range keys {
 		// key watcher
 		go func(key string) {
-			ch := wctx.w.Watch(t.Context(), key)
+			ch := wctx.w.Watch(context.TODO(), key)
 			if ch == nil {
 				t.Errorf("expected watcher channel, got nil")
 			}
@@ -108,12 +99,12 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 	}
 	// prefix watcher on "b" (bar and baz)
 	go func() {
-		prefixc := wctx.w.Watch(t.Context(), "b", clientv3.WithPrefix())
+		prefixc := wctx.w.Watch(context.TODO(), "b", clientv3.WithPrefix())
 		if prefixc == nil {
 			t.Errorf("expected watcher channel, got nil")
 		}
 		readyc <- struct{}{}
-		var evs []*clientv3.Event
+		evs := []*clientv3.Event{}
 		for i := 0; i < numKeyUpdates*2; i++ {
 			resp, ok := <-prefixc
 			if !ok {
@@ -123,14 +114,14 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		}
 
 		// check response
-		var expected []string
+		expected := []string{}
 		bkeys := []string{"bar", "baz"}
 		for _, k := range bkeys {
 			for i := 0; i < numKeyUpdates; i++ {
 				expected = append(expected, fmt.Sprintf("%s-%d", k, i))
 			}
 		}
-		var got []string
+		got := []string{}
 		for _, ev := range evs {
 			got = append(got, string(ev.Kv.Value))
 		}
@@ -156,13 +147,18 @@ func testWatchMultiWatcher(t *testing.T, wctx *watchctx) {
 		<-readyc
 	}
 	// generate events
-	ctx := t.Context()
+	ctx := context.TODO()
 	for i := 0; i < numKeyUpdates; i++ {
 		for _, k := range keys {
 			v := fmt.Sprintf("%s-%d", k, i)
-			_, err := wctx.kv.Put(ctx, k, v)
-			require.NoError(t, err)
+			if _, err := wctx.kv.Put(ctx, k, v); err != nil {
+				t.Fatal(err)
+			}
 		}
+	}
+	// wait for watcher shutdown
+	for i := 0; i < len(keys)+1; i++ {
+		<-donec
 	}
 }
 
@@ -172,8 +168,9 @@ func TestWatchRange(t *testing.T) {
 }
 
 func testWatchRange(t *testing.T, wctx *watchctx) {
-	wctx.ch = wctx.w.Watch(t.Context(), "a", clientv3.WithRange("c"))
-	require.NotNilf(t, wctx.ch, "expected non-nil channel")
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a", clientv3.WithRange("c")); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
 	putAndWatch(t, wctx, "a", "a")
 	putAndWatch(t, wctx, "b", "b")
 	putAndWatch(t, wctx, "bar", "bar")
@@ -203,8 +200,9 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 		}
 	}()
 	// should reconnect when requesting watch
-	wctx.ch = wctx.w.Watch(t.Context(), "a")
-	require.NotNilf(t, wctx.ch, "expected non-nil channel")
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
 
 	// wait for disconnections to stop
 	stopc <- struct{}{}
@@ -212,9 +210,10 @@ func testWatchReconnRequest(t *testing.T, wctx *watchctx) {
 
 	// spinning on dropping connections may trigger a leader election
 	// due to resource starvation; l-read to ensure the cluster is stable
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	_, err := wctx.kv.Get(ctx, "_")
-	require.NoError(t, err)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
+	if _, err := wctx.kv.Get(ctx, "_"); err != nil {
+		t.Fatal(err)
+	}
 	cancel()
 
 	// ensure watcher works
@@ -228,8 +227,9 @@ func TestWatchReconnInit(t *testing.T) {
 }
 
 func testWatchReconnInit(t *testing.T, wctx *watchctx) {
-	wctx.ch = wctx.w.Watch(t.Context(), "a")
-	require.NotNilf(t, wctx.ch, "expected non-nil channel")
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
 	wctx.clus.Members[wctx.wclientMember].Bridge().DropConnections()
 	// watcher should recover
 	putAndWatch(t, wctx, "a", "a")
@@ -242,8 +242,9 @@ func TestWatchReconnRunning(t *testing.T) {
 }
 
 func testWatchReconnRunning(t *testing.T, wctx *watchctx) {
-	wctx.ch = wctx.w.Watch(t.Context(), "a")
-	require.NotNilf(t, wctx.ch, "expected non-nil channel")
+	if wctx.ch = wctx.w.Watch(context.TODO(), "a"); wctx.ch == nil {
+		t.Fatalf("expected non-nil channel")
+	}
 	putAndWatch(t, wctx, "a", "a")
 	// take down watcher connection
 	wctx.clus.Members[wctx.wclientMember].Bridge().DropConnections()
@@ -258,12 +259,14 @@ func TestWatchCancelImmediate(t *testing.T) {
 }
 
 func testWatchCancelImmediate(t *testing.T, wctx *watchctx) {
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	wch := wctx.w.Watch(ctx, "a")
 	select {
 	case wresp, ok := <-wch:
-		require.Falsef(t, ok, "read wch got %v; expected closed channel", wresp)
+		if ok {
+			t.Fatalf("read wch got %v; expected closed channel", wresp)
+		}
 	default:
 		t.Fatalf("closed watcher channel should not block")
 	}
@@ -275,15 +278,18 @@ func TestWatchCancelInit(t *testing.T) {
 }
 
 func testWatchCancelInit(t *testing.T, wctx *watchctx) {
-	ctx, cancel := context.WithCancel(t.Context())
-	wctx.ch = wctx.w.Watch(ctx, "a")
-	require.NotNilf(t, wctx.ch, "expected non-nil watcher channel")
+	ctx, cancel := context.WithCancel(context.Background())
+	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
+		t.Fatalf("expected non-nil watcher channel")
+	}
 	cancel()
 	select {
 	case <-time.After(time.Second):
 		t.Fatalf("took too long to cancel")
 	case _, ok := <-wctx.ch:
-		require.Falsef(t, ok, "expected watcher channel to close")
+		if ok {
+			t.Fatalf("expected watcher channel to close")
+		}
 	}
 }
 
@@ -293,11 +299,15 @@ func TestWatchCancelRunning(t *testing.T) {
 }
 
 func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
-	ctx, cancel := context.WithCancel(t.Context())
-	wctx.ch = wctx.w.Watch(ctx, "a")
-	require.NotNilf(t, wctx.ch, "expected non-nil watcher channel")
-	_, err := wctx.kv.Put(ctx, "a", "a")
-	require.NoError(t, err)
+	integration.BeforeTest(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	if wctx.ch = wctx.w.Watch(ctx, "a"); wctx.ch == nil {
+		t.Fatalf("expected non-nil watcher channel")
+	}
+	if _, err := wctx.kv.Put(ctx, "a", "a"); err != nil {
+		t.Fatal(err)
+	}
 	cancel()
 	select {
 	case <-time.After(time.Second):
@@ -312,45 +322,48 @@ func testWatchCancelRunning(t *testing.T, wctx *watchctx) {
 		case <-time.After(time.Second):
 			t.Fatalf("took too long to close")
 		case v, ok2 := <-wctx.ch:
-			require.Falsef(t, ok2, "expected watcher channel to close, got %v", v)
+			if ok2 {
+				t.Fatalf("expected watcher channel to close, got %v", v)
+			}
 		}
 	}
 }
 
 func putAndWatch(t *testing.T, wctx *watchctx, key, val string) {
-	_, err := wctx.kv.Put(t.Context(), key, val)
-	require.NoError(t, err)
+	if _, err := wctx.kv.Put(context.TODO(), key, val); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case <-time.After(5 * time.Second):
 		t.Fatalf("watch timed out")
 	case v, ok := <-wctx.ch:
-		require.Truef(t, ok, "unexpected watch close")
-		err := v.Err()
-		require.NoErrorf(t, err, "unexpected watch response error")
-		require.Equalf(t, string(v.Events[0].Kv.Value), val, "bad value got %v, wanted %v", v.Events[0].Kv.Value, val)
+		if !ok {
+			t.Fatalf("unexpected watch close")
+		}
+		if string(v.Events[0].Kv.Value) != val {
+			t.Fatalf("bad value got %v, wanted %v", v.Events[0].Kv.Value, val)
+		}
 	}
 }
 
-// TestWatchResumeAfterDisconnect tests watch resume after member disconnects then connects.
-// It ensures that correct events are returned corresponding to the start revision.
-func TestWatchResumeAfterDisconnect(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+func TestWatchResumeInitRev(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
-	_, err := cli.Put(t.Context(), "b", "2")
-	require.NoError(t, err)
-	_, err = cli.Put(t.Context(), "a", "3")
-	require.NoError(t, err)
+	if _, err := cli.Put(context.TODO(), "b", "2"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cli.Put(context.TODO(), "a", "3"); err != nil {
+		t.Fatal(err)
+	}
 	// if resume is broken, it'll pick up this key first instead of a=3
-	_, err = cli.Put(t.Context(), "a", "4")
-	require.NoError(t, err)
+	if _, err := cli.Put(context.TODO(), "a", "4"); err != nil {
+		t.Fatal(err)
+	}
 
-	// watch from revision 1
-	wch := clus.Client(0).Watch(t.Context(), "a", clientv3.WithRev(1), clientv3.WithCreatedNotify())
-	// response for the create watch request, no events are in this response
-	// the current revision of etcd should be 4
+	wch := clus.Client(0).Watch(context.Background(), "a", clientv3.WithRev(1), clientv3.WithCreatedNotify())
 	if resp, ok := <-wch; !ok || resp.Header.Revision != 4 {
 		t.Fatalf("got (%v, %v), expected create notification rev=4", resp, ok)
 	}
@@ -372,12 +385,12 @@ func TestWatchResumeAfterDisconnect(t *testing.T) {
 		if !ok {
 			t.Fatal("unexpected watch close")
 		}
-		// Events should be put(a, 3) and put(a, 4)
-		if len(resp.Events) != 2 {
-			t.Fatal("expected two events on watch")
+		if len(resp.Events) == 0 {
+			t.Fatal("expected event on watch")
 		}
-		require.Equalf(t, "3", string(resp.Events[0].Kv.Value), "expected value=3, got event %+v", resp.Events[0])
-		require.Equalf(t, "4", string(resp.Events[1].Kv.Value), "expected value=4, got event %+v", resp.Events[1])
+		if string(resp.Events[0].Kv.Value) != "3" {
+			t.Fatalf("expected value=3, got event %+v", resp.Events[0])
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("watch timed out")
 	}
@@ -389,14 +402,14 @@ func TestWatchResumeAfterDisconnect(t *testing.T) {
 // either a compaction error or all keys by staying in sync before the compaction
 // is finally applied.
 func TestWatchResumeCompacted(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// create a waiting watcher at rev 1
 	w := clus.Client(0)
-	wch := w.Watch(t.Context(), "foo", clientv3.WithRev(1))
+	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(1))
 	select {
 	case w := <-wch:
 		t.Errorf("unexpected message from wch %v", w)
@@ -404,17 +417,27 @@ func TestWatchResumeCompacted(t *testing.T) {
 	}
 	clus.Members[0].Stop(t)
 
-	clus.WaitLeader(t)
+	ticker := time.After(time.Second * 10)
+	for clus.WaitLeader(t) <= 0 {
+		select {
+		case <-ticker:
+			t.Fatalf("failed to wait for new leader")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 
 	// put some data and compact away
 	numPuts := 5
 	kv := clus.Client(1)
 	for i := 0; i < numPuts; i++ {
-		_, err := kv.Put(t.Context(), "foo", "bar")
-		require.NoError(t, err)
+		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
+			t.Fatal(err)
+		}
 	}
-	_, err := kv.Compact(t.Context(), 3)
-	require.NoError(t, err)
+	if _, err := kv.Compact(context.TODO(), 3); err != nil {
+		t.Fatal(err)
+	}
 
 	clus.Members[0].Restart(t)
 
@@ -428,18 +451,22 @@ func TestWatchResumeCompacted(t *testing.T) {
 		var ok bool
 		select {
 		case wresp, ok = <-wch:
-			require.Truef(t, ok, "expected wresp, but got closed channel")
+			if !ok {
+				t.Fatalf("expected wresp, but got closed channel")
+			}
 		case <-time.After(5 * time.Second):
 			t.Fatalf("compacted watch timed out")
 		}
 		for _, ev := range wresp.Events {
-			require.Equalf(t, ev.Kv.ModRevision, wRev, "expected modRev %v, got %+v", wRev, ev)
+			if ev.Kv.ModRevision != wRev {
+				t.Fatalf("expected modRev %v, got %+v", wRev, ev)
+			}
 			wRev++
 		}
 		if wresp.Err() == nil {
 			continue
 		}
-		if !errors.Is(wresp.Err(), rpctypes.ErrCompacted) {
+		if wresp.Err() != rpctypes.ErrCompacted {
 			t.Fatalf("wresp.Err() expected %v, got %+v", rpctypes.ErrCompacted, wresp.Err())
 		}
 		break
@@ -462,30 +489,32 @@ func TestWatchResumeCompacted(t *testing.T) {
 // TestWatchCompactRevision ensures the CompactRevision error is given on a
 // compaction event ahead of a watcher.
 func TestWatchCompactRevision(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// set some keys
 	kv := clus.RandClient()
 	for i := 0; i < 5; i++ {
-		_, err := kv.Put(t.Context(), "foo", "bar")
-		require.NoError(t, err)
+		if _, err := kv.Put(context.TODO(), "foo", "bar"); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	w := clus.RandClient()
 
-	_, err := kv.Compact(t.Context(), 4)
-	require.NoError(t, err)
-	wch := w.Watch(t.Context(), "foo", clientv3.WithRev(2))
+	if _, err := kv.Compact(context.TODO(), 4); err != nil {
+		t.Fatal(err)
+	}
+	wch := w.Watch(context.Background(), "foo", clientv3.WithRev(2))
 
 	// get compacted error message
 	wresp, ok := <-wch
 	if !ok {
 		t.Fatalf("expected wresp, but got closed channel")
 	}
-	if !errors.Is(wresp.Err(), rpctypes.ErrCompacted) {
+	if wresp.Err() != rpctypes.ErrCompacted {
 		t.Fatalf("wresp.Err() expected %v, but got %v", rpctypes.ErrCompacted, wresp.Err())
 	}
 	if !wresp.Canceled {
@@ -502,7 +531,7 @@ func TestWatchWithProgressNotify(t *testing.T)        { testWatchWithProgressNot
 func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNotify(t, false) }
 
 func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	// accelerate report interval so test terminates quickly
 	oldpi := v3rpc.GetProgressReportInterval()
@@ -511,7 +540,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	pi := 3 * time.Second
 	defer func() { v3rpc.SetProgressReportInterval(oldpi) }()
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	wc := clus.RandClient()
@@ -520,7 +549,7 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	if watchOnPut {
 		opts = append(opts, clientv3.WithPrefix())
 	}
-	rch := wc.Watch(t.Context(), "foo", opts...)
+	rch := wc.Watch(context.Background(), "foo", opts...)
 
 	select {
 	case resp := <-rch: // wait for notification
@@ -532,8 +561,9 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 	}
 
 	kvc := clus.RandClient()
-	_, err := kvc.Put(t.Context(), "foox", "bar")
-	require.NoError(t, err)
+	if _, err := kvc.Put(context.TODO(), "foox", "bar"); err != nil {
+		t.Fatal(err)
+	}
 
 	select {
 	case resp := <-rch:
@@ -541,10 +571,8 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 			t.Fatalf("resp.Header.Revision expected 2, got %d", resp.Header.Revision)
 		}
 		if watchOnPut { // wait for put if watch on the put key
-			ev := []*clientv3.Event{{
-				Type: clientv3.EventTypePut,
-				Kv:   &mvccpb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1},
-			}}
+			ev := []*clientv3.Event{{Type: clientv3.EventTypePut,
+				Kv: &mvccpb.KeyValue{Key: []byte("foox"), Value: []byte("bar"), CreateRevision: 2, ModRevision: 2, Version: 1}}}
 			if !reflect.DeepEqual(ev, resp.Events) {
 				t.Fatalf("expected %+v, got %+v", ev, resp.Events)
 			}
@@ -557,18 +585,18 @@ func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
 }
 
 func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	progressInterval := 200 * time.Millisecond
-	clus := integration2.NewCluster(t,
-		&integration2.ClusterConfig{
+	clus := integration.NewClusterV3(t,
+		&integration.ClusterConfig{
 			Size:                        3,
 			WatchProgressNotifyInterval: progressInterval,
 		})
 	defer clus.Terminate(t)
 
 	opts := []clientv3.OpOption{clientv3.WithProgressNotify()}
-	rch := clus.RandClient().Watch(t.Context(), "foo", opts...)
+	rch := clus.RandClient().Watch(context.Background(), "foo", opts...)
 
 	timeout := 1 * time.Second // we expect to receive watch progress notify in 2 * progressInterval,
 	// but for CPU-starved situation it may take longer. So we use 1 second here for timeout.
@@ -583,7 +611,7 @@ func TestConfigurableWatchProgressNotifyInterval(t *testing.T) {
 }
 
 func TestWatchRequestProgress(t *testing.T) {
-	if integration2.ThroughProxy {
+	if integration.ThroughProxy {
 		t.Skipf("grpc-proxy does not support WatchProgress yet")
 	}
 	testCases := []struct {
@@ -597,11 +625,11 @@ func TestWatchRequestProgress(t *testing.T) {
 
 	for _, c := range testCases {
 		t.Run(c.name, func(t *testing.T) {
-			integration2.BeforeTest(t)
+			integration.BeforeTest(t)
 
 			watchTimeout := 3 * time.Second
 
-			clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+			clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 			defer clus.Terminate(t)
 
 			wc := clus.RandClient()
@@ -609,33 +637,46 @@ func TestWatchRequestProgress(t *testing.T) {
 			var watchChans []clientv3.WatchChan
 
 			for _, prefix := range c.watchers {
-				watchChans = append(watchChans, wc.Watch(t.Context(), prefix, clientv3.WithPrefix()))
+				watchChans = append(watchChans, wc.Watch(context.Background(), prefix, clientv3.WithPrefix()))
 			}
 
-			_, err := wc.Put(t.Context(), "/a", "1")
-			require.NoError(t, err)
+			_, err := wc.Put(context.Background(), "/a", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			for _, rch := range watchChans {
 				select {
 				case resp := <-rch: // wait for notification
-					require.Lenf(t, resp.Events, 1, "resp.Events expected 1, got %d", len(resp.Events))
+					if len(resp.Events) != 1 {
+						t.Fatalf("resp.Events expected 1, got %d", len(resp.Events))
+					}
 				case <-time.After(watchTimeout):
 					t.Fatalf("watch response expected in %v, but timed out", watchTimeout)
 				}
 			}
 
 			// put a value not being watched to increment revision
-			_, err = wc.Put(t.Context(), "x", "1")
-			require.NoError(t, err)
+			_, err = wc.Put(context.Background(), "x", "1")
+			if err != nil {
+				t.Fatal(err)
+			}
 
-			require.NoError(t, wc.RequestProgress(t.Context()))
+			err = wc.RequestProgress(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			// verify all watch channels receive a progress notify
 			for _, rch := range watchChans {
 				select {
 				case resp := <-rch:
-					require.Truef(t, resp.IsProgressNotify(), "expected resp.IsProgressNotify() == true")
-					require.Equalf(t, int64(3), resp.Header.Revision, "resp.Header.Revision expected 3, got %d", resp.Header.Revision)
+					if !resp.IsProgressNotify() {
+						t.Fatalf("expected resp.IsProgressNotify() == true")
+					}
+					if resp.Header.Revision != 3 {
+						t.Fatalf("resp.Header.Revision expected 3, got %d", resp.Header.Revision)
+					}
 				case <-time.After(watchTimeout):
 					t.Fatalf("progress response expected in %v, but timed out", watchTimeout)
 				}
@@ -645,25 +686,31 @@ func TestWatchRequestProgress(t *testing.T) {
 }
 
 func TestWatchEventType(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
-	ctx := t.Context()
+	ctx := context.Background()
 	watchChan := client.Watch(ctx, "/", clientv3.WithPrefix())
 
-	_, err := client.Put(ctx, "/toDelete", "foo")
-	require.NoErrorf(t, err, "Put failed: %v", err)
-	_, err = client.Put(ctx, "/toDelete", "bar")
-	require.NoErrorf(t, err, "Put failed: %v", err)
-	_, err = client.Delete(ctx, "/toDelete")
-	require.NoErrorf(t, err, "Delete failed: %v", err)
+	if _, err := client.Put(ctx, "/toDelete", "foo"); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+	if _, err := client.Put(ctx, "/toDelete", "bar"); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
+	if _, err := client.Delete(ctx, "/toDelete"); err != nil {
+		t.Fatalf("Delete failed: %v", err)
+	}
 	lcr, err := client.Lease.Grant(ctx, 1)
-	require.NoErrorf(t, err, "lease create failed: %v", err)
-	_, err = client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID))
-	require.NoErrorf(t, err, "Put failed: %v", err)
+	if err != nil {
+		t.Fatalf("lease create failed: %v", err)
+	}
+	if _, err := client.Put(ctx, "/toExpire", "foo", clientv3.WithLease(lcr.ID)); err != nil {
+		t.Fatalf("Put failed: %v", err)
+	}
 
 	tests := []struct {
 		et       mvccpb.Event_EventType
@@ -713,9 +760,9 @@ func TestWatchEventType(t *testing.T) {
 }
 
 func TestWatchErrConnClosed(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -723,43 +770,47 @@ func TestWatchErrConnClosed(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		ch := cli.Watch(t.Context(), "foo")
+		ch := cli.Watch(context.TODO(), "foo")
 
 		if wr := <-ch; !IsCanceled(wr.Err()) {
 			t.Errorf("expected context canceled, got %v", wr.Err())
 		}
 	}()
 
-	require.NoError(t, cli.ActiveConnection().Close())
+	if err := cli.ActiveConnection().Close(); err != nil {
+		t.Fatal(err)
+	}
 	clus.TakeClient(0)
 
 	select {
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("wc.Watch took too long")
 	case <-donec:
 	}
 }
 
 func TestWatchAfterClose(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
 	clus.TakeClient(0)
-	require.NoError(t, cli.Close())
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
 
 	donec := make(chan struct{})
 	go func() {
-		cli.Watch(t.Context(), "foo")
-		if err := cli.Close(); err != nil && !errors.Is(err, context.Canceled) {
+		cli.Watch(context.TODO(), "foo")
+		if err := cli.Close(); err != nil && err != context.Canceled {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()
 	select {
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("wc.Watch took too long")
 	case <-donec:
 	}
@@ -767,9 +818,9 @@ func TestWatchAfterClose(t *testing.T) {
 
 // TestWatchWithRequireLeader checks the watch channel closes when no leader.
 func TestWatchWithRequireLeader(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// Put a key for the non-require leader watch to read as an event.
@@ -777,8 +828,9 @@ func TestWatchWithRequireLeader(t *testing.T) {
 	// ensure that it receives the update so watching after killing quorum
 	// is guaranteed to have the key.
 	liveClient := clus.Client(0)
-	_, err := liveClient.Put(t.Context(), "foo", "bar")
-	require.NoError(t, err)
+	if _, err := liveClient.Put(context.TODO(), "foo", "bar"); err != nil {
+		t.Fatal(err)
+	}
 
 	clus.Members[1].Stop(t)
 	clus.Members[2].Stop(t)
@@ -793,55 +845,70 @@ func TestWatchWithRequireLeader(t *testing.T) {
 	// so proxy tests receive a leader loss event on its existing watch before creating a new watch.
 	time.Sleep(time.Duration(5*clus.Members[0].ElectionTicks) * tickDuration)
 
-	chLeader := liveClient.Watch(clientv3.WithRequireLeader(t.Context()), "foo", clientv3.WithRev(1))
-	chNoLeader := liveClient.Watch(t.Context(), "foo", clientv3.WithRev(1))
+	chLeader := liveClient.Watch(clientv3.WithRequireLeader(context.TODO()), "foo", clientv3.WithRev(1))
+	chNoLeader := liveClient.Watch(context.TODO(), "foo", clientv3.WithRev(1))
 
 	select {
 	case resp, ok := <-chLeader:
-		require.Truef(t, ok, "expected %v watch channel, got closed channel", rpctypes.ErrNoLeader)
-		require.ErrorIsf(t, resp.Err(), rpctypes.ErrNoLeader, "expected %v watch response error, got %+v", rpctypes.ErrNoLeader, resp)
-	case <-time.After(integration2.RequestWaitTimeout):
+		if !ok {
+			t.Fatalf("expected %v watch channel, got closed channel", rpctypes.ErrNoLeader)
+		}
+		if resp.Err() != rpctypes.ErrNoLeader {
+			t.Fatalf("expected %v watch response error, got %+v", rpctypes.ErrNoLeader, resp)
+		}
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("watch without leader took too long to close")
 	}
 
 	select {
 	case resp, ok := <-chLeader:
-		require.Falsef(t, ok, "expected closed channel, got response %v", resp)
-	case <-time.After(integration2.RequestWaitTimeout):
+		if ok {
+			t.Fatalf("expected closed channel, got response %v", resp)
+		}
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("waited too long for channel to close")
 	}
 
-	_, ok := <-chNoLeader
-	require.Truef(t, ok, "expected response, got closed channel")
+	if _, ok := <-chNoLeader; !ok {
+		t.Fatalf("expected response, got closed channel")
+	}
 
 	cnt, err := clus.Members[0].Metric(
 		"etcd_server_client_requests_total",
 		`type="stream"`,
 		fmt.Sprintf(`client_api_version="%v"`, version.APIVersion),
 	)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 	cv, err := strconv.ParseInt(cnt, 10, 32)
-	require.NoError(t, err)
-	require.GreaterOrEqualf(t, cv, int64(2), "expected at least 2, got %q", cnt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cv < 2 { // >2 when retried
+		t.Fatalf("expected at least 2, got %q", cnt)
+	}
 }
 
 // TestWatchWithFilter checks that watch filtering works.
 func TestWatchWithFilter(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
-	ctx := t.Context()
+	ctx := context.Background()
 
 	wcNoPut := client.Watch(ctx, "a", clientv3.WithFilterPut())
 	wcNoDel := client.Watch(ctx, "a", clientv3.WithFilterDelete())
 
-	_, err := client.Put(ctx, "a", "abc")
-	require.NoError(t, err)
-	_, err = client.Delete(ctx, "a")
-	require.NoError(t, err)
+	if _, err := client.Put(ctx, "a", "abc"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Delete(ctx, "a"); err != nil {
+		t.Fatal(err)
+	}
 
 	npResp := <-wcNoPut
 	if len(npResp.Events) != 1 || npResp.Events[0].Type != clientv3.EventTypeDelete {
@@ -864,38 +931,42 @@ func TestWatchWithFilter(t *testing.T) {
 // TestWatchWithCreatedNotification checks that WithCreatedNotify returns a
 // Created watch response.
 func TestWatchWithCreatedNotification(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
 
-	ctx := t.Context()
+	ctx := context.Background()
 
 	createC := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
 
 	resp := <-createC
 
-	require.Truef(t, resp.Created, "expected created event, got %v", resp)
+	if !resp.Created {
+		t.Fatalf("expected created event, got %v", resp)
+	}
 }
 
 // TestWatchWithCreatedNotificationDropConn ensures that
 // a watcher with created notify does not post duplicate
 // created events from disconnect.
 func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
 
-	wch := client.Watch(t.Context(), "a", clientv3.WithCreatedNotify())
+	wch := client.Watch(context.Background(), "a", clientv3.WithCreatedNotify())
 
 	resp := <-wch
 
-	require.Truef(t, resp.Created, "expected created event, got %v", resp)
+	if !resp.Created {
+		t.Fatalf("expected created event, got %v", resp)
+	}
 
 	cluster.Members[0].Bridge().DropConnections()
 
@@ -911,9 +982,9 @@ func TestWatchWithCreatedNotificationDropConn(t *testing.T) {
 
 // TestWatchCancelOnServer ensures client watcher cancels propagate back to the server.
 func TestWatchCancelOnServer(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	client := cluster.RandClient()
@@ -924,7 +995,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 	// until require leader watches get create responses to ensure the leadership
 	// watches have started.
 	for {
-		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(t.Context()))
+		ctx, cancel := context.WithCancel(clientv3.WithRequireLeader(context.TODO()))
 		ww := client.Watch(ctx, "a", clientv3.WithCreatedNotify())
 		wresp := <-ww
 		cancel()
@@ -937,7 +1008,7 @@ func TestWatchCancelOnServer(t *testing.T) {
 	for i := 0; i < numWatches; i++ {
 		// force separate streams in client
 		md := metadata.Pairs("some-key", fmt.Sprintf("%d", i))
-		mctx := metadata.NewOutgoingContext(t.Context(), md)
+		mctx := metadata.NewOutgoingContext(context.Background(), md)
 		ctx, cancel := context.WithCancel(mctx)
 		cancels[i] = cancel
 		w := client.Watch(ctx, fmt.Sprintf("%d", i), clientv3.WithCreatedNotify())
@@ -954,7 +1025,9 @@ func TestWatchCancelOnServer(t *testing.T) {
 	time.Sleep(time.Second)
 
 	minWatches, err := cluster.Members[0].Metric("etcd_debugging_mvcc_watcher_total")
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	maxWatchV, minWatchV := 0, 0
 	n, serr := fmt.Sscanf(maxWatches+" "+minWatches, "%d %d", &maxWatchV, &minWatchV)
@@ -962,7 +1035,9 @@ func TestWatchCancelOnServer(t *testing.T) {
 		t.Fatalf("expected n=2 and err=nil, got n=%d and err=%v", n, serr)
 	}
 
-	require.GreaterOrEqualf(t, maxWatchV-minWatchV, numWatches, "expected %d canceled watchers, got %d", numWatches, maxWatchV-minWatchV)
+	if maxWatchV-minWatchV < numWatches {
+		t.Fatalf("expected %d canceled watchers, got %d", numWatches, maxWatchV-minWatchV)
+	}
 }
 
 // TestWatchOverlapContextCancel stresses the watcher stream teardown path by
@@ -975,20 +1050,20 @@ func TestWatchCancelOnServer(t *testing.T) {
 //  4. watcher client finishes tearing down stream on "ctx"
 //  5. w2 comes back canceled
 func TestWatchOverlapContextCancel(t *testing.T) {
-	f := func(clus *integration2.Cluster) {}
+	f := func(clus *integration.ClusterV3) {}
 	testWatchOverlapContextCancel(t, f)
 }
 
 func TestWatchOverlapDropConnContextCancel(t *testing.T) {
-	f := func(clus *integration2.Cluster) {
+	f := func(clus *integration.ClusterV3) {
 		clus.Members[0].Bridge().DropConnections()
 	}
 	testWatchOverlapContextCancel(t, f)
 }
 
-func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+func testWatchOverlapContextCancel(t *testing.T, f func(*integration.ClusterV3)) {
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	n := 100
@@ -996,18 +1071,17 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) 
 	for i := range ctxs {
 		// make unique stream
 		md := metadata.Pairs("some-key", fmt.Sprintf("%d", i))
-		ctxs[i] = metadata.NewOutgoingContext(t.Context(), md)
+		ctxs[i] = metadata.NewOutgoingContext(context.Background(), md)
 		// limits the maximum number of outstanding watchers per stream
 		ctxc[i] = make(chan struct{}, 2)
 	}
 
 	// issue concurrent watches on "abc" with cancel
 	cli := clus.RandClient()
-	_, err := cli.Put(t.Context(), "abc", "def")
-	require.NoError(t, err)
+	if _, err := cli.Put(context.TODO(), "abc", "def"); err != nil {
+		t.Fatal(err)
+	}
 	ch := make(chan struct{}, n)
-	tCtx, cancelFunc := context.WithCancel(t.Context())
-	defer cancelFunc()
 	for i := 0; i < n; i++ {
 		go func() {
 			defer func() { ch <- struct{}{} }()
@@ -1015,12 +1089,6 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) 
 			ctx, cancel := context.WithCancel(ctxs[idx])
 			ctxc[idx] <- struct{}{}
 			wch := cli.Watch(ctx, "abc", clientv3.WithRev(1))
-			select {
-			case <-tCtx.Done():
-				cancel()
-				return
-			default:
-			}
 			f(clus)
 			select {
 			case _, ok := <-wch:
@@ -1055,11 +1123,11 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration2.Cluster)) 
 // TestWatchCancelAndCloseClient ensures that canceling a watcher then immediately
 // closing the client does not return a client closing error.
 func TestWatchCancelAndCloseClient(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	wch := cli.Watch(ctx, "abc")
 	donec := make(chan struct{})
 	go func() {
@@ -1074,7 +1142,9 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 		}
 	}()
 	cancel()
-	require.NoError(t, cli.Close())
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
 	<-donec
 	clus.TakeClient(0)
 }
@@ -1083,12 +1153,12 @@ func TestWatchCancelAndCloseClient(t *testing.T) {
 // to put them in resuming mode, cancels them so some resumes by cancel fail,
 // then closes the watcher interface to ensure correct clean up.
 func TestWatchStressResumeClose(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	// add more watches than can be resumed before the cancel
 	wchs := make([]clientv3.WatchChan, 2000)
 	for i := range wchs {
@@ -1096,18 +1166,20 @@ func TestWatchStressResumeClose(t *testing.T) {
 	}
 	clus.Members[0].Bridge().DropConnections()
 	cancel()
-	require.NoError(t, cli.Close())
+	if err := cli.Close(); err != nil {
+		t.Fatal(err)
+	}
 	clus.TakeClient(0)
 }
 
 // TestWatchCancelDisconnected ensures canceling a watcher works when
 // its grpc stream is disconnected / reconnecting.
 func TestWatchCancelDisconnected(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 	cli := clus.Client(0)
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	// add more watches than can be resumed before the cancel
 	wch := cli.Watch(ctx, "abc")
 	clus.Members[0].Stop(t)
@@ -1125,11 +1197,17 @@ func TestWatchClose(t *testing.T) {
 }
 
 func testWatchClose(t *testing.T, wctx *watchctx) {
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	wch := wctx.w.Watch(ctx, "a")
 	cancel()
-	require.NotNilf(t, wch, "expected watcher channel, got nil")
-	require.NoErrorf(t, wctx.w.Close(), "watch did not close successfully")
+	if wch == nil {
+		t.Fatalf("expected watcher channel, got nil")
+	}
+	if wctx.w.Close() != nil {
+		t.Fatalf("watch did not close successfully")
+	}
 	wresp, ok := <-wch
-	require.Falsef(t, ok, "read wch got %v; expected closed channel", wresp)
+	if ok {
+		t.Fatalf("read wch got %v; expected closed channel", wresp)
+	}
 }

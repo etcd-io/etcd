@@ -21,12 +21,12 @@ import (
 	"testing"
 	"time"
 
-	"go.uber.org/zap/zaptest"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"go.uber.org/zap"
 )
 
 func TestSendMessage(t *testing.T) {
@@ -36,7 +36,7 @@ func TestSendMessage(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -50,7 +50,7 @@ func TestSendMessage(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        p,
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())
@@ -72,7 +72,7 @@ func TestSendMessage(t *testing.T) {
 		{Type: raftpb.MsgAppResp, From: 1, To: 2, Term: 1, Index: 3},
 		{Type: raftpb.MsgVote, From: 1, To: 2, Term: 1, Index: 3, LogTerm: 0},
 		{Type: raftpb.MsgVoteResp, From: 1, To: 2, Term: 1},
-		{Type: raftpb.MsgSnap, From: 1, To: 2, Term: 1, Snapshot: &raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1000, Term: 1}, Data: data}},
+		{Type: raftpb.MsgSnap, From: 1, To: 2, Term: 1, Snapshot: raftpb.Snapshot{Metadata: raftpb.SnapshotMetadata{Index: 1000, Term: 1}, Data: data}},
 		{Type: raftpb.MsgHeartbeat, From: 1, To: 2, Term: 1, Commit: 3},
 		{Type: raftpb.MsgHeartbeatResp, From: 1, To: 2, Term: 1},
 	}
@@ -94,7 +94,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        &fakeRaft{},
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "1"),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "1"),
 	}
 	tr.Start()
 	srv := httptest.NewServer(tr.Handler())
@@ -108,7 +108,7 @@ func TestSendMessageWhenStreamIsBroken(t *testing.T) {
 		ClusterID:   types.ID(1),
 		Raft:        p,
 		ServerStats: newServerStats(),
-		LeaderStats: stats.NewLeaderStats(zaptest.NewLogger(t), "2"),
+		LeaderStats: stats.NewLeaderStats(zap.NewExample(), "2"),
 	}
 	tr2.Start()
 	srv2 := httptest.NewServer(tr2.Handler())

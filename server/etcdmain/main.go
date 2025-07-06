@@ -41,6 +41,9 @@ func Main(args []string) {
 }
 
 func notifySystemd(lg *zap.Logger) {
+	if lg == nil {
+		lg = zap.NewExample()
+	}
 	lg.Info("notifying init daemon")
 	_, err := daemon.SdNotify(false, daemon.SdNotifyReady)
 	if err != nil {

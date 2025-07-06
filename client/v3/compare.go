@@ -18,10 +18,8 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 )
 
-type (
-	CompareTarget int
-	CompareResult int
-)
+type CompareTarget int
+type CompareResult int
 
 const (
 	CompareVersion CompareTarget = iota
@@ -32,7 +30,7 @@ const (
 
 type Cmp pb.Compare
 
-func Compare(cmp Cmp, result string, v any) Cmp {
+func Compare(cmp Cmp, result string, v interface{}) Cmp {
 	var r pb.Compare_CompareResult
 
 	switch result {
@@ -122,7 +120,7 @@ func (cmp Cmp) WithPrefix() Cmp {
 }
 
 // mustInt64 panics if val isn't an int or int64. It returns an int64 otherwise.
-func mustInt64(val any) int64 {
+func mustInt64(val interface{}) int64 {
 	if v, ok := val.(int64); ok {
 		return v
 	}
@@ -134,7 +132,7 @@ func mustInt64(val any) int64 {
 
 // mustInt64orLeaseID panics if val isn't a LeaseID, int or int64. It returns an
 // int64 otherwise.
-func mustInt64orLeaseID(val any) int64 {
+func mustInt64orLeaseID(val interface{}) int64 {
 	if v, ok := val.(LeaseID); ok {
 		return int64(v)
 	}

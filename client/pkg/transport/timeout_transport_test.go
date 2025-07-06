@@ -16,20 +16,20 @@ package transport
 
 import (
 	"bytes"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestNewTimeoutTransport tests that NewTimeoutTransport returns a transport
 // that can dial out timeout connections.
 func TestNewTimeoutTransport(t *testing.T) {
 	tr, err := NewTimeoutTransport(TLSInfo{}, time.Hour, time.Hour, time.Hour)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected NewTimeoutTransport error: %v", err)
+	}
 
 	remoteAddr := func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(r.RemoteAddr))
@@ -38,11 +38,15 @@ func TestNewTimeoutTransport(t *testing.T) {
 
 	defer srv.Close()
 	conn, err := tr.Dial("tcp", srv.Listener.Addr().String())
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected dial error: %v", err)
+	}
 	defer conn.Close()
 
 	tconn, ok := conn.(*timeoutConn)
-	require.Truef(t, ok, "failed to dial out *timeoutConn")
+	if !ok {
+		t.Fatalf("failed to dial out *timeoutConn")
+	}
 	if tconn.readTimeout != time.Hour {
 		t.Errorf("read timeout = %s, want %s", tconn.readTimeout, time.Hour)
 	}
@@ -51,21 +55,31 @@ func TestNewTimeoutTransport(t *testing.T) {
 	}
 
 	// ensure not reuse timeout connection
-	req, err := http.NewRequest(http.MethodGet, srv.URL, nil)
-	require.NoError(t, err)
+	req, err := http.NewRequest("GET", srv.URL, nil)
+	if err != nil {
+		t.Fatalf("unexpected err %v", err)
+	}
 	resp, err := tr.RoundTrip(req)
-	require.NoError(t, err)
-	addr0, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("unexpected err %v", err)
+	}
+	addr0, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected err %v", err)
+	}
 
 	resp, err = tr.RoundTrip(req)
-	require.NoError(t, err)
-	addr1, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("unexpected err %v", err)
+	}
+	addr1, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected err %v", err)
+	}
 
 	if bytes.Equal(addr0, addr1) {
-		t.Errorf("addr0 = %s addr1= %s, want not equal", addr0, addr1)
+		t.Errorf("addr0 = %s addr1= %s, want not equal", string(addr0), string(addr1))
 	}
 }

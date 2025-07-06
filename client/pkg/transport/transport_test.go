@@ -20,15 +20,16 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TestNewTransportTLSInvalidCipherSuitesTLS12 expects a client with invalid
 // cipher suites fail to handshake with the server.
 func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
-	tlsInfo, err := createSelfCert(t)
-	require.NoErrorf(t, err, "unable to create cert")
+	tlsInfo, del, err := createSelfCert()
+	if err != nil {
+		t.Fatalf("unable to create cert: %v", err)
+	}
+	defer del()
 
 	cipherSuites := []uint16{
 		tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -44,7 +45,9 @@ func TestNewTransportTLSInvalidCipherSuitesTLS12(t *testing.T) {
 	srvTLS.CipherSuites, cliTLS.CipherSuites = cipherSuites[:2], cipherSuites[2:]
 
 	ln, err := NewListener("127.0.0.1:0", "https", &srvTLS)
-	require.NoError(t, err)
+	if err != nil {
+		t.Fatalf("unexpected NewListener error: %v", err)
+	}
 	defer ln.Close()
 
 	donec := make(chan struct{})

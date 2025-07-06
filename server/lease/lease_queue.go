@@ -42,14 +42,14 @@ func (pq LeaseQueue) Swap(i, j int) {
 	pq[j].index = j
 }
 
-func (pq *LeaseQueue) Push(x any) {
+func (pq *LeaseQueue) Push(x interface{}) {
 	n := len(*pq)
 	item := x.(*LeaseWithTime)
 	item.index = n
 	*pq = append(*pq, item)
 }
 
-func (pq *LeaseQueue) Pop() any {
+func (pq *LeaseQueue) Pop() interface{} {
 	old := *pq
 	n := len(old)
 	item := old[n-1]
@@ -96,7 +96,7 @@ func (mq *LeaseExpiredNotifier) Unregister() *LeaseWithTime {
 	return item
 }
 
-func (mq *LeaseExpiredNotifier) Peek() *LeaseWithTime {
+func (mq *LeaseExpiredNotifier) Poll() *LeaseWithTime {
 	if mq.Len() == 0 {
 		return nil
 	}

@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"os"
 
-	"go.uber.org/zap"
-
 	"go.etcd.io/etcd/client/pkg/v3/srv"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
+
+	"go.uber.org/zap"
 )
 
 func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, serviceName string) (s srv.SRVClients) {
@@ -35,11 +35,13 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 	}
 	endpoints := srvs.Endpoints
 
-	lg.Info(
-		"discovered cluster from SRV",
-		zap.String("srv-server", dns),
-		zap.Strings("endpoints", endpoints),
-	)
+	if lg != nil {
+		lg.Info(
+			"discovered cluster from SRV",
+			zap.String("srv-server", dns),
+			zap.Strings("endpoints", endpoints),
+		)
+	}
 
 	if insecure {
 		return *srvs
@@ -50,26 +52,32 @@ func discoverEndpoints(lg *zap.Logger, dns string, ca string, insecure bool, ser
 		ServerName:    dns,
 	}
 
-	lg.Info(
-		"validating discovered SRV endpoints",
-		zap.String("srv-server", dns),
-		zap.Strings("endpoints", endpoints),
-	)
+	if lg != nil {
+		lg.Info(
+			"validating discovered SRV endpoints",
+			zap.String("srv-server", dns),
+			zap.Strings("endpoints", endpoints),
+		)
+	}
 
 	endpoints, err = transport.ValidateSecureEndpoints(tlsInfo, endpoints)
 	if err != nil {
-		lg.Warn(
-			"failed to validate discovered endpoints",
-			zap.String("srv-server", dns),
-			zap.Strings("endpoints", endpoints),
-			zap.Error(err),
-		)
+		if lg != nil {
+			lg.Warn(
+				"failed to validate discovered endpoints",
+				zap.String("srv-server", dns),
+				zap.Strings("endpoints", endpoints),
+				zap.Error(err),
+			)
+		}
 	} else {
-		lg.Info(
-			"using validated discovered SRV endpoints",
-			zap.String("srv-server", dns),
-			zap.Strings("endpoints", endpoints),
-		)
+		if lg != nil {
+			lg.Info(
+				"using validated discovered SRV endpoints",
+				zap.String("srv-server", dns),
+				zap.Strings("endpoints", endpoints),
+			)
+		}
 	}
 
 	// map endpoints back to SRVClients struct with SRV data

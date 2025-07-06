@@ -15,7 +15,9 @@
 package rafthttp
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -24,22 +26,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-	"go.uber.org/zap/zaptest"
-	"golang.org/x/time/rate"
-
 	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 	stats "go.etcd.io/etcd/server/v3/etcdserver/api/v2stats"
-	"go.etcd.io/raft/v3/raftpb"
+
+	"github.com/coreos/go-semver/semver"
+	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 // TestStreamWriterAttachOutgoingConn tests that outgoingConn can be attached
 // to streamWriter. After that, streamWriter can use it to send messages
 // continuously, and closes it when stopped.
 func TestStreamWriterAttachOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	// the expected initial state of streamWriter is not working
 	if _, ok := sw.writec(); ok {
 		t.Errorf("initial working status = %v, want false", ok)
@@ -91,7 +93,7 @@ func TestStreamWriterAttachOutgoingConn(t *testing.T) {
 // TestStreamWriterAttachBadOutgoingConn tests that streamWriter with bad
 // outgoingConn will close the outgoingConn and fall back to non-working status.
 func TestStreamWriterAttachBadOutgoingConn(t *testing.T) {
-	sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+	sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 	defer sw.stop()
 	wfc := newFakeWriteFlushCloser(errors.New("blah"))
 	sw.attach(&outgoingConn{t: streamTypeMessage, Writer: wfc, Flusher: wfc, Closer: wfc})
@@ -115,7 +117,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			ctx:    t.Context(),
+			ctx:    context.Background(),
 		}
 		sr.dial(tt)
 
@@ -125,7 +127,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := "http://localhost:2380" + tt.endpoint(zaptest.NewLogger(t)) + "/1"
+		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint(zap.NewExample()) + "/1")
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
@@ -170,7 +172,7 @@ func TestStreamReaderDialResult(t *testing.T) {
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
 			errorc: make(chan error, 1),
-			ctx:    t.Context(),
+			ctx:    context.Background(),
 		}
 
 		_, err := sr.dial(streamTypeMessage)
@@ -195,7 +197,7 @@ func TestStreamReaderStopOnDial(t *testing.T) {
 		picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
 		errorc: make(chan error, 1),
 		typ:    streamTypeMessage,
-		status: newPeerStatus(zaptest.NewLogger(t), types.ID(1), types.ID(2)),
+		status: newPeerStatus(zap.NewExample(), types.ID(1), types.ID(2)),
 		rl:     rate.NewLimiter(rate.Every(100*time.Millisecond), 1),
 	}
 	tr.onResp = func() {
@@ -233,7 +235,6 @@ func (wrc *waitReadCloser) Read(p []byte) (int, error) {
 	<-wrc.closec
 	return 0, io.EOF
 }
-
 func (wrc *waitReadCloser) Close() error {
 	close(wrc.closec)
 	return nil
@@ -252,11 +253,11 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			ctx:    t.Context(),
+			ctx:    context.Background(),
 		}
 
 		_, err := sr.dial(typ)
-		if !errors.Is(err, errUnsupportedStreamType) {
+		if err != errUnsupportedStreamType {
 			t.Errorf("#%d: error = %v, want %v", i, err, errUnsupportedStreamType)
 		}
 	}
@@ -303,7 +304,7 @@ func TestStream(t *testing.T) {
 		srv := httptest.NewServer(h)
 		defer srv.Close()
 
-		sw := startStreamWriter(zaptest.NewLogger(t), types.ID(0), types.ID(1), newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
+		sw := startStreamWriter(zap.NewExample(), types.ID(0), types.ID(1), newPeerStatus(zap.NewExample(), types.ID(0), types.ID(1)), &stats.FollowerStats{}, &fakeRaft{})
 		defer sw.stop()
 		h.sw = sw
 
@@ -315,7 +316,7 @@ func TestStream(t *testing.T) {
 			typ:    tt.t,
 			tr:     tr,
 			picker: picker,
-			status: newPeerStatus(zaptest.NewLogger(t), types.ID(0), types.ID(2)),
+			status: newPeerStatus(zap.NewExample(), types.ID(0), types.ID(2)),
 			recvc:  recvc,
 			propc:  propc,
 			rl:     rate.NewLimiter(rate.Every(100*time.Millisecond), 1),

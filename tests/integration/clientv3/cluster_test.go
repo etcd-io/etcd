@@ -16,28 +16,25 @@ package clientv3test
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"go.etcd.io/etcd/client/pkg/v3/types"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/integration"
 )
 
 func TestMemberList(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
 
-	resp, err := capi.MemberList(t.Context())
+	resp, err := capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -48,15 +45,15 @@ func TestMemberList(t *testing.T) {
 }
 
 func TestMemberAdd(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
 
 	urls := []string{"http://127.0.0.1:1234"}
-	resp, err := capi.MemberAdd(t.Context(), urls)
+	resp, err := capi.MemberAdd(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
@@ -67,20 +64,20 @@ func TestMemberAdd(t *testing.T) {
 }
 
 func TestMemberAddWithExistingURLs(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
 
-	resp, err := capi.MemberList(t.Context())
+	resp, err := capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
 
 	existingURL := resp.Members[0].PeerURLs[0]
-	_, err = capi.MemberAdd(t.Context(), []string{existingURL})
+	_, err = capi.MemberAdd(context.Background(), []string{existingURL})
 	expectedErrKeywords := "Peer URLs already exists"
 	if err == nil {
 		t.Fatalf("expecting add member to fail, got no error")
@@ -91,13 +88,13 @@ func TestMemberAddWithExistingURLs(t *testing.T) {
 }
 
 func TestMemberRemove(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.Client(1)
-	resp, err := capi.MemberList(t.Context())
+	resp, err := capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -113,12 +110,12 @@ func TestMemberRemove(t *testing.T) {
 		}
 	}
 
-	_, err = capi.MemberRemove(t.Context(), rmvID)
+	_, err = capi.MemberRemove(context.Background(), rmvID)
 	if err != nil {
 		t.Fatalf("failed to remove member %v", err)
 	}
 
-	resp, err = capi.MemberList(t.Context())
+	resp, err = capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -129,24 +126,24 @@ func TestMemberRemove(t *testing.T) {
 }
 
 func TestMemberUpdate(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
-	resp, err := capi.MemberList(t.Context())
+	resp, err := capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
 
 	urls := []string{"http://127.0.0.1:1234"}
-	_, err = capi.MemberUpdate(t.Context(), resp.Members[0].ID, urls)
+	_, err = capi.MemberUpdate(context.Background(), resp.Members[0].ID, urls)
 	if err != nil {
 		t.Fatalf("failed to update member %v", err)
 	}
 
-	resp, err = capi.MemberList(t.Context())
+	resp, err = capi.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -157,9 +154,9 @@ func TestMemberUpdate(t *testing.T) {
 }
 
 func TestMemberAddUpdateWrongURLs(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
@@ -178,11 +175,11 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 		{"localhost:1234"},
 	}
 	for i := range tt {
-		_, err := capi.MemberAdd(t.Context(), tt[i])
+		_, err := capi.MemberAdd(context.Background(), tt[i])
 		if err == nil {
 			t.Errorf("#%d: MemberAdd err = nil, but error", i)
 		}
-		_, err = capi.MemberUpdate(t.Context(), 0, tt[i])
+		_, err = capi.MemberUpdate(context.Background(), 0, tt[i])
 		if err == nil {
 			t.Errorf("#%d: MemberUpdate err = nil, but error", i)
 		}
@@ -190,15 +187,15 @@ func TestMemberAddUpdateWrongURLs(t *testing.T) {
 }
 
 func TestMemberAddForLearner(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	capi := clus.RandClient()
 
 	urls := []string{"http://127.0.0.1:1234"}
-	resp, err := capi.MemberAddAsLearner(t.Context(), urls)
+	resp, err := capi.MemberAddAsLearner(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
@@ -219,9 +216,9 @@ func TestMemberAddForLearner(t *testing.T) {
 }
 
 func TestMemberPromote(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -232,9 +229,8 @@ func TestMemberPromote(t *testing.T) {
 	followerIdx := (leaderIdx + 1) % 3
 	capi := clus.Client(followerIdx)
 
-	learnerMember := clus.MustNewMember(t)
-	urls := learnerMember.PeerURLs.StringSlice()
-	memberAddResp, err := capi.MemberAddAsLearner(t.Context(), urls)
+	urls := []string{"http://127.0.0.1:1234"}
+	memberAddResp, err := capi.MemberAddAsLearner(context.Background(), urls)
 	if err != nil {
 		t.Fatalf("failed to add member %v", err)
 	}
@@ -256,7 +252,7 @@ func TestMemberPromote(t *testing.T) {
 
 	// learner is not started yet. Expect learner progress check to fail.
 	// As the result, member promote request will fail.
-	_, err = capi.MemberPromote(t.Context(), learnerID)
+	_, err = capi.MemberPromote(context.Background(), learnerID)
 	expectedErrKeywords := "can only promote a learner member which is in sync with leader"
 	if err == nil {
 		t.Fatalf("expecting promote not ready learner to fail, got no error")
@@ -265,11 +261,13 @@ func TestMemberPromote(t *testing.T) {
 		t.Fatalf("expecting error to contain %s, got %s", expectedErrKeywords, err.Error())
 	}
 
-	// Initialize and launch learner member based on the response of V3 Member Add API.
+	// create and launch learner member based on the response of V3 Member Add API.
 	// (the response has information on peer urls of the existing members in cluster)
-	clus.InitializeMemberWithResponse(t, learnerMember, memberAddResp)
+	learnerMember := clus.MustNewMember(t, memberAddResp)
 
-	require.NoError(t, learnerMember.Launch())
+	if err := learnerMember.Launch(); err != nil {
+		t.Fatal(err)
+	}
 
 	// retry until promote succeed or timeout
 	timeout := time.After(5 * time.Second)
@@ -280,7 +278,7 @@ func TestMemberPromote(t *testing.T) {
 			t.Fatalf("failed all attempts to promote learner member, last error: %v", err)
 		}
 
-		_, err = capi.MemberPromote(t.Context(), learnerID)
+		_, err = capi.MemberPromote(context.Background(), learnerID)
 		// successfully promoted learner
 		if err == nil {
 			break
@@ -295,9 +293,9 @@ func TestMemberPromote(t *testing.T) {
 
 // TestMemberPromoteMemberNotLearner ensures that promoting a voting member fails.
 func TestMemberPromoteMemberNotLearner(t *testing.T) {
-	integration2.BeforeTest(t, integration2.WithFailpoint("raftBeforeAdvance", `sleep(100)`))
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -308,7 +306,7 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 	followerIdx := (leaderIdx + 1) % 3
 	cli := clus.Client(followerIdx)
 
-	resp, err := cli.MemberList(t.Context())
+	resp, err := cli.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -319,7 +317,7 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 	// promoting any of the voting members in cluster should fail
 	expectedErrKeywords := "can only promote a learner member"
 	for _, m := range resp.Members {
-		_, err = cli.MemberPromote(t.Context(), m.ID)
+		_, err = cli.MemberPromote(context.Background(), m.ID)
 		if err == nil {
 			t.Fatalf("expect promoting voting member to fail, got no error")
 		}
@@ -331,9 +329,9 @@ func TestMemberPromoteMemberNotLearner(t *testing.T) {
 
 // TestMemberPromoteMemberNotExist ensures that promoting a member that does not exist in cluster fails.
 func TestMemberPromoteMemberNotExist(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// member promote request can be sent to any server in cluster,
@@ -344,7 +342,7 @@ func TestMemberPromoteMemberNotExist(t *testing.T) {
 	followerIdx := (leaderIdx + 1) % 3
 	cli := clus.Client(followerIdx)
 
-	resp, err := cli.MemberList(t.Context())
+	resp, err := cli.MemberList(context.Background())
 	if err != nil {
 		t.Fatalf("failed to list member %v", err)
 	}
@@ -369,7 +367,7 @@ func TestMemberPromoteMemberNotExist(t *testing.T) {
 	}
 
 	expectedErrKeywords := "member not found"
-	_, err = cli.MemberPromote(t.Context(), randID)
+	_, err = cli.MemberPromote(context.Background(), randID)
 	if err == nil {
 		t.Fatalf("expect promoting voting member to fail, got no error")
 	}
@@ -378,30 +376,18 @@ func TestMemberPromoteMemberNotExist(t *testing.T) {
 	}
 }
 
-// TestMaxLearnerInCluster verifies that the maximum number of learners allowed in a cluster
+// TestMaxLearnerInCluster verifies that the maximum number of learners allowed in a cluster is 1
 func TestMaxLearnerInCluster(t *testing.T) {
-	integration2.BeforeTest(t, integration2.WithFailpoint("raftBeforeAdvance", `sleep(100)`))
+	integration.BeforeTest(t)
 
-	// 1. start with a cluster with 3 voting member and max learner 2
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, MaxLearners: 2, DisableStrictReconfigCheck: true})
+	// 1. start with a cluster with 3 voting member and 0 learner member
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	// 2. adding 2 learner members should succeed
-	for i := 0; i < 2; i++ {
-		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-		_, err := clus.Client(0).MemberAddAsLearner(ctx, []string{fmt.Sprintf("http://127.0.0.1:123%d", i)})
-		cancel()
-		if err != nil {
-			t.Fatalf("failed to add learner member %v", err)
-		}
-	}
-
-	// ensure client endpoint is voting member
-	leaderIdx := clus.WaitLeader(t)
-	capi := clus.Client(leaderIdx)
-	resp1, err := capi.MemberList(t.Context())
+	// 2. adding a learner member should succeed
+	resp1, err := clus.Client(0).MemberAddAsLearner(context.Background(), []string{"http://127.0.0.1:1234"})
 	if err != nil {
-		t.Fatalf("failed to get member list")
+		t.Fatalf("failed to add learner member %v", err)
 	}
 	numberOfLearners := 0
 	for _, m := range resp1.Members {
@@ -409,12 +395,12 @@ func TestMaxLearnerInCluster(t *testing.T) {
 			numberOfLearners++
 		}
 	}
-	if numberOfLearners != 2 {
-		t.Fatalf("added 2 learner node to cluster, got %d", numberOfLearners)
+	if numberOfLearners != 1 {
+		t.Fatalf("Added 1 learner node to cluster, got %d", numberOfLearners)
 	}
 
-	// 3. cluster has 3 voting member and 2 learner, adding another learner should fail
-	_, err = clus.Client(0).MemberAddAsLearner(t.Context(), []string{"http://127.0.0.1:2342"})
+	// 3. cluster has 3 voting member and 1 learner, adding another learner should fail
+	_, err = clus.Client(0).MemberAddAsLearner(context.Background(), []string{"http://127.0.0.1:2345"})
 	if err == nil {
 		t.Fatalf("expect member add to fail, got no error")
 	}
@@ -424,7 +410,7 @@ func TestMaxLearnerInCluster(t *testing.T) {
 	}
 
 	// 4. cluster has 3 voting member and 1 learner, adding a voting member should succeed
-	_, err = clus.Client(0).MemberAdd(t.Context(), []string{"http://127.0.0.1:3453"})
+	_, err = clus.Client(0).MemberAdd(context.Background(), []string{"http://127.0.0.1:3456"})
 	if err != nil {
 		t.Errorf("failed to add member %v", err)
 	}

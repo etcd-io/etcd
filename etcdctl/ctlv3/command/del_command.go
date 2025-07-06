@@ -16,12 +16,9 @@ package command
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/spf13/cobra"
-
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -29,7 +26,6 @@ var (
 	delPrefix  bool
 	delPrevKV  bool
 	delFromKey bool
-	delRange   bool
 )
 
 // NewDelCommand returns the cobra command for "del".
@@ -43,7 +39,6 @@ func NewDelCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&delPrefix, "prefix", false, "delete keys with matching prefix")
 	cmd.Flags().BoolVar(&delPrevKV, "prev-kv", false, "return deleted key-value pairs")
 	cmd.Flags().BoolVar(&delFromKey, "from-key", false, "delete keys that are greater than or equal to the given key using byte compare")
-	cmd.Flags().BoolVar(&delRange, "range", false, "delete range of keys")
 	return cmd
 }
 
@@ -68,18 +63,13 @@ func getDelOp(args []string) (string, []clientv3.OpOption) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("`--prefix` and `--from-key` cannot be set at the same time, choose one"))
 	}
 
-	var opts []clientv3.OpOption
+	opts := []clientv3.OpOption{}
 	key := args[0]
 	if len(args) > 1 {
 		if delPrefix || delFromKey {
 			cobrautl.ExitWithError(cobrautl.ExitBadArgs, fmt.Errorf("too many arguments, only accept one argument when `--prefix` or `--from-key` is set"))
 		}
 		opts = append(opts, clientv3.WithRange(args[1]))
-		if !delRange {
-			fmt.Fprintf(os.Stderr, "Warning: Keys between %q and %q will be deleted. Please interrupt the command within next 2 seconds to cancel. "+
-				"You can provide `--range` flag to avoid the delay.\n", args[0], args[1])
-			time.Sleep(2 * time.Second)
-		}
 	}
 
 	if delPrefix {

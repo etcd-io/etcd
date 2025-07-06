@@ -15,57 +15,22 @@
 package command
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
-	"strings"
 
-	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3"
 )
 
 type jsonPrinter struct {
-	writer io.Writer
-	isHex  bool
+	isHex bool
 	printer
-}
-
-type (
-	HexResponseHeader pb.ResponseHeader
-	HexMember         pb.Member
-)
-
-func (h *HexResponseHeader) MarshalJSON() ([]byte, error) {
-	type Alias pb.ResponseHeader
-
-	return json.Marshal(&struct {
-		ClusterID string `json:"cluster_id"`
-		MemberID  string `json:"member_id"`
-		Alias
-	}{
-		ClusterID: fmt.Sprintf("%x", h.ClusterId),
-		MemberID:  fmt.Sprintf("%x", h.MemberId),
-		Alias:     (Alias)(*h),
-	})
-}
-
-func (m *HexMember) MarshalJSON() ([]byte, error) {
-	type Alias pb.Member
-
-	return json.Marshal(&struct {
-		ID string `json:"ID"`
-		Alias
-	}{
-		ID:    fmt.Sprintf("%x", m.ID),
-		Alias: (Alias)(*m),
-	})
 }
 
 func newJSONPrinter(isHex bool) printer {
 	return &jsonPrinter{
-		writer:  os.Stdout,
 		isHex:   isHex,
 		printer: &printerRPC{newPrinterUnsupported("json"), printJSON},
 	}
@@ -77,28 +42,23 @@ func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse) {
 	if p.isHex {
-		printMemberListWithHexJSON(p.writer, r)
+		printMemberListWithHexJSON(r)
 	} else {
 		printJSON(r)
 	}
 }
-func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse) { p.printJSON(r) }
 
-func printJSONTo(w io.Writer, v any) {
+func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		return
 	}
-	fmt.Fprintln(w, string(b))
+	fmt.Println(string(b))
 }
 
-func printJSON(v any) {
-	printJSONTo(os.Stdout, v)
-}
-
-func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
-	var buffer strings.Builder
+func printMemberListWithHexJSON(r clientv3.MemberListResponse) {
+	var buffer bytes.Buffer
 	var b []byte
 	buffer.WriteString("{\"header\":{\"cluster_id\":\"")
 	b = strconv.AppendUint(nil, r.Header.ClusterId, 16)
@@ -107,7 +67,7 @@ func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
 	b = strconv.AppendUint(nil, r.Header.MemberId, 16)
 	buffer.Write(b)
 	buffer.WriteString("\",\"raft_term\":")
-	b = strconv.AppendUint(nil, r.Header.RaftTerm, 10)
+	b = strconv.AppendUint(nil, r.Header.RaftTerm, 16)
 	buffer.Write(b)
 	buffer.WriteByte('}')
 	for i := 0; i < len(r.Members); i++ {
@@ -124,7 +84,7 @@ func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
 			return
 		}
 		buffer.Write(b)
-		buffer.WriteString(",\"clientURLs\":")
+		buffer.WriteString(",\"clientURLS\":")
 		b, err = json.Marshal(r.Members[i].ClientURLs)
 		if err != nil {
 			return
@@ -136,42 +96,6 @@ func printMemberListWithHexJSON(w io.Writer, r clientv3.MemberListResponse) {
 		}
 	}
 	buffer.WriteString("}")
-	fmt.Fprintln(w, buffer.String())
-}
+	fmt.Println(buffer.String())
 
-func (p *jsonPrinter) printJSON(v any) {
-	var data any
-	if !p.isHex {
-		printJSONTo(p.writer, v)
-		return
-	}
-
-	switch r := v.(type) {
-	case clientv3.MemberAddResponse:
-		type Alias clientv3.MemberAddResponse
-
-		data = &struct {
-			Header  *HexResponseHeader `json:"header"`
-			Member  *HexMember         `json:"member"`
-			Members []*HexMember       `json:"members"`
-			*Alias
-		}{
-			Header:  (*HexResponseHeader)(r.Header),
-			Member:  (*HexMember)(r.Member),
-			Members: toHexMembers(r.Members),
-			Alias:   (*Alias)(&r),
-		}
-	default:
-		data = v
-	}
-
-	printJSONTo(p.writer, data)
-}
-
-func toHexMembers(members []*pb.Member) []*HexMember {
-	hexMembers := make([]*HexMember, len(members))
-	for i, member := range members {
-		hexMembers[i] = (*HexMember)(member)
-	}
-	return hexMembers
 }

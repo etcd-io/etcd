@@ -33,10 +33,9 @@ func newJSONPrinter() printer {
 }
 
 func (p *jsonPrinter) DBStatus(r snapshot.Status) { printJSON(r) }
-func (p *jsonPrinter) DBHashKV(r HashKV)          { printJSON(r) }
 
 // !!! Share ??
-func printJSON(v any) {
+func printJSON(v interface{}) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)

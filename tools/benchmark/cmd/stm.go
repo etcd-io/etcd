@@ -23,14 +23,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/cheggaaa/pb/v3"
-	"github.com/spf13/cobra"
-	"golang.org/x/time/rate"
-
 	v3 "go.etcd.io/etcd/client/v3"
 	v3sync "go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/pkg/v3/report"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb"
+
+	"github.com/spf13/cobra"
+	"golang.org/x/time/rate"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 // stmCmd represents the STM benchmark command
@@ -69,7 +69,7 @@ func init() {
 	stmCmd.Flags().IntVar(&stmRate, "rate", 0, "Maximum STM transactions per second (0 is no limit)")
 }
 
-func stmFunc(cmd *cobra.Command, _ []string) {
+func stmFunc(cmd *cobra.Command, args []string) {
 	if stmKeyCount <= 0 {
 		fmt.Fprintf(os.Stderr, "expected positive --keys, got (%v)", stmKeyCount)
 		os.Exit(1)
@@ -108,9 +108,10 @@ func stmFunc(cmd *cobra.Command, _ []string) {
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(stmTotal)
+	bar.Format("Bom !")
 	bar.Start()
 
-	r := newReport(cmd.Name())
+	r := newReport()
 	for i := range clients {
 		wg.Add(1)
 		go doSTM(clients[i], requests, r.Results())
