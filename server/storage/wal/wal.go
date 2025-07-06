@@ -362,12 +362,12 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	names, nameIndex, err := selectWALFiles(lg, dirpath, snap)
+	names, nameIndex, err := SelectWALFiles(lg, dirpath, snap)
 	if err != nil {
 		return nil, fmt.Errorf("[openAtIndex] selectWALFiles failed: %w", err)
 	}
 
-	rs, ls, closer, err := openWALFiles(lg, dirpath, names, nameIndex, write)
+	rs, ls, closer, err := OpenWALFiles(lg, dirpath, names, nameIndex, write)
 	if err != nil {
 		return nil, fmt.Errorf("[openAtIndex] openWALFiles failed: %w", err)
 	}
@@ -396,7 +396,7 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 	return w, nil
 }
 
-func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]string, int, error) {
+func SelectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]string, int, error) {
 	names, err := readWALNames(lg, dirpath)
 	if err != nil {
 		return nil, -1, fmt.Errorf("readWALNames failed: %w", err)
@@ -414,7 +414,7 @@ func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]stri
 	return names, nameIndex, nil
 }
 
-func openWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int, write bool) ([]fileutil.FileReader, []*fileutil.LockedFile, func() error, error) {
+func OpenWALFiles(lg *zap.Logger, dirpath string, names []string, nameIndex int, write bool) ([]fileutil.FileReader, []*fileutil.LockedFile, func() error, error) {
 	rcs := make([]io.ReadCloser, 0)
 	rs := make([]fileutil.FileReader, 0)
 	ls := make([]*fileutil.LockedFile, 0)
@@ -605,7 +605,7 @@ func ValidSnapshotEntries(lg *zap.Logger, walDir string) ([]walpb.Snapshot, erro
 
 	// open wal files in read mode, so that there is no conflict
 	// when the same WAL is opened elsewhere in write mode
-	rs, _, closer, err := openWALFiles(lg, walDir, names, 0, false)
+	rs, _, closer, err := OpenWALFiles(lg, walDir, names, 0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -672,14 +672,14 @@ func Verify(lg *zap.Logger, walDir string, snap walpb.Snapshot) (*raftpb.HardSta
 	if lg == nil {
 		lg = zap.NewNop()
 	}
-	names, nameIndex, err := selectWALFiles(lg, walDir, snap)
+	names, nameIndex, err := SelectWALFiles(lg, walDir, snap)
 	if err != nil {
 		return nil, err
 	}
 
 	// open wal files in read mode, so that there is no conflict
 	// when the same WAL is opened elsewhere in write mode
-	rs, _, closer, err := openWALFiles(lg, walDir, names, nameIndex, false)
+	rs, _, closer, err := OpenWALFiles(lg, walDir, names, nameIndex, false)
 	if err != nil {
 		return nil, err
 	}

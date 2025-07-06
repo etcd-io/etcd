@@ -160,11 +160,15 @@ func requestsPersistedInWAL(lg *zap.Logger, dataDir string) ([]model.EtcdRequest
 	return requests, nil
 }
 
-func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
+func ReadWAL(lg *zap.Logger, dataDir string, snapShot ...walpb.Snapshot) (state raftpb.HardState, ents []raftpb.Entry, err error) {
 	walDir := datadir.ToWALDir(dataDir)
 	repaired := false
+	ss := walpb.Snapshot{Index: 0}
+	if len(snapShot) > 0 {
+		ss = snapShot[0]
+	}
 	for {
-		w, err := wal.OpenForRead(lg, walDir, walpb.Snapshot{Index: 0})
+		w, err := wal.OpenForRead(lg, walDir, ss)
 		if err != nil {
 			return state, nil, fmt.Errorf("failed to open WAL, err: %w", err)
 		}
@@ -176,6 +180,13 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 				return state, ents, nil
 			}
 			if errors.Is(err, wal.ErrSliceOutOfRange) {
+				if len(snapShot) == 0 { // retry only once
+					ss, err = findFirstEntry(lg, walDir)
+					if err != nil {
+						return state, nil, err
+					}
+					return ReadWAL(lg, dataDir, ss)
+				}
 				return state, nil, fmt.Errorf("failed to read WAL, err: %w", err)
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
@@ -323,4 +334,28 @@ func toEtcdOperation(op *pb.RequestOp) (operation model.EtcdOperation) {
 		panic(fmt.Sprintf("Unknown op type %v", op))
 	}
 	return operation
+}
+
+func findFirstEntry(lg *zap.Logger, walDir string) (walpb.Snapshot, error) {
+	snapShot := walpb.Snapshot{Index: 0}
+	names, nameIndex, err := wal.SelectWALFiles(lg, walDir, snapShot)
+	if err != nil {
+		return walpb.Snapshot{}, fmt.Errorf("wal.SelectWALFiles failed: %w", err)
+	}
+	rs, _, closer, err := wal.OpenWALFiles(lg, walDir, names, nameIndex, false)
+	if err != nil {
+		return walpb.Snapshot{}, fmt.Errorf("wal.OpenWALFiles failed: %w", err)
+	}
+	defer closer()
+	decoder := wal.NewDecoder(rs...)
+	rec := &walpb.Record{}
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
+		if rec.Type == wal.EntryType {
+			e := wal.MustUnmarshalEntry(rec.Data)
+			snapShot.Index = e.Index
+			snapShot.Term = e.Term
+			return walpb.Snapshot{}, nil
+		}
+	}
+	return walpb.Snapshot{}, fmt.Errorf("no wal entry found")
 }

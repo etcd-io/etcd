@@ -1094,7 +1094,7 @@ func TestValidSnapshotEntriesAfterPurgeWal(t *testing.T) {
 			}
 		}
 	}()
-	files, _, err := selectWALFiles(nil, p, snap0)
+	files, _, err := SelectWALFiles(nil, p, snap0)
 	if err != nil {
 		t.Fatal(err)
 	}
