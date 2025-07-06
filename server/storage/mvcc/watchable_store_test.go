@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -572,102 +573,112 @@ func TestWatchFutureRev(t *testing.T) {
 }
 
 func TestWatchRestore(t *testing.T) {
-	test := func(delay time.Duration) func(t *testing.T) {
-		return func(t *testing.T) {
-			b, _ := betesting.NewDefaultTmpBackend(t)
-			s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
-			defer cleanup(s, b)
+	resyncDelay := watchResyncPeriod * 3 / 2
 
-			testKey := []byte("foo")
-			testValue := []byte("bar")
-			w := s.NewWatchStream()
-			defer w.Close()
-			w.Watch(0, testKey, nil, 1)
+	t.Run("NoResync", func(t *testing.T) {
+		testWatchRestore(t, 0, 0)
+	})
+	t.Run("ResyncBefore", func(t *testing.T) {
+		testWatchRestore(t, resyncDelay, 0)
+	})
+	t.Run("ResyncAfter", func(t *testing.T) {
+		testWatchRestore(t, 0, resyncDelay)
+	})
 
-			time.Sleep(delay)
-			wantRev := s.Put(testKey, testValue, lease.NoLease)
-
-			s.Restore(b)
-			events := readEventsForSecond(w.Chan())
-			if len(events) != 1 {
-				t.Errorf("Expected only one event, got %d", len(events))
-			}
-			if events[0].Kv.ModRevision != wantRev {
-				t.Errorf("Expected revision to match, got %d, want %d", events[0].Kv.ModRevision, wantRev)
-			}
-		}
-	}
-
-	t.Run("Normal", test(0))
-	t.Run("RunSyncWatchLoopBeforeRestore", test(time.Millisecond*120)) // longer than default waitDuration
+	t.Run("ResyncBeforeAndAfter", func(t *testing.T) {
+		testWatchRestore(t, resyncDelay, resyncDelay)
+	})
 }
 
-func readEventsForSecond(ws <-chan WatchResponse) (events []mvccpb.Event) {
+func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.Duration) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+
+	tcs := []struct {
+		name          string
+		startRevision int64
+		wantEvents    []mvccpb.Event
+	}{
+		{
+			name:          "zero revision",
+			startRevision: 0,
+			wantEvents: []mvccpb.Event{
+				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+			},
+		},
+		{
+			name:          "revsion before first write",
+			startRevision: 1,
+			wantEvents: []mvccpb.Event{
+				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+			},
+		},
+		{
+			name:          "revision of first write",
+			startRevision: 2,
+			wantEvents: []mvccpb.Event{
+				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
+				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+			},
+		},
+		{
+			name:          "current revision",
+			startRevision: 3,
+			wantEvents: []mvccpb.Event{
+				{Type: mvccpb.DELETE, Kv: &mvccpb.KeyValue{Key: testKey, ModRevision: 3}},
+			},
+		},
+		{
+			name:          "future revision",
+			startRevision: 4,
+			wantEvents:    []mvccpb.Event{},
+		},
+	}
+	watchers := []WatchStream{}
+	for i, tc := range tcs {
+		w := s.NewWatchStream()
+		defer w.Close()
+		watchers = append(watchers, w)
+		w.Watch(WatchID(i+1), testKey, nil, tc.startRevision)
+	}
+
+	s.Put(testKey, testValue, lease.NoLease)
+	time.Sleep(delayBeforeRestore)
+	s.Restore(b)
+	time.Sleep(delayAfterRestore)
+	s.DeleteRange(testKey, nil)
+
+	for i, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			events := readEventsForSecond(t, watchers[i].Chan())
+			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
+				t.Errorf("unexpected events (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func readEventsForSecond(t *testing.T, ws <-chan WatchResponse) []mvccpb.Event {
+	events := []mvccpb.Event{}
+	deadline := time.After(time.Second)
 	for {
 		select {
 		case resp := <-ws:
+			if len(resp.Events) == 0 {
+				t.Fatalf("Events should never be empty, resp: %+v", resp)
+			}
 			events = append(events, resp.Events...)
-		case <-time.After(time.Second):
+		case <-deadline:
+			return events
+		case <-time.After(watchResyncPeriod):
 			return events
 		}
-	}
-}
-
-// TestWatchRestoreSyncedWatcher tests such a case that:
-//  1. watcher is created with a future revision "math.MaxInt64 - 2"
-//  2. watcher with a future revision is added to "synced" watcher group
-//  3. restore/overwrite storage with snapshot of a higher lasat revision
-//  4. restore operation moves "synced" to "unsynced" watcher group
-//  5. choose the watcher from step 1, without panic
-func TestWatchRestoreSyncedWatcher(t *testing.T) {
-	b1, _ := betesting.NewDefaultTmpBackend(t)
-	s1 := New(zaptest.NewLogger(t), b1, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s1, b1)
-
-	b2, _ := betesting.NewDefaultTmpBackend(t)
-	s2 := New(zaptest.NewLogger(t), b2, &lease.FakeLessor{}, StoreConfig{})
-	defer cleanup(s2, b2)
-
-	testKey, testValue := []byte("foo"), []byte("bar")
-	rev := s1.Put(testKey, testValue, lease.NoLease)
-	startRev := rev + 2
-
-	// create a watcher with a future revision
-	// add to "synced" watcher group (startRev > s.store.currentRev)
-	w1 := s1.NewWatchStream()
-	defer w1.Close()
-
-	w1.Watch(0, testKey, nil, startRev)
-
-	// make "s2" ends up with a higher last revision
-	s2.Put(testKey, testValue, lease.NoLease)
-	s2.Put(testKey, testValue, lease.NoLease)
-
-	// overwrite storage with higher revisions
-	if err := s1.Restore(b2); err != nil {
-		t.Fatal(err)
-	}
-
-	// wait for next "syncWatchersLoop" iteration
-	// and the unsynced watcher should be chosen
-	time.Sleep(2 * time.Second)
-
-	// trigger events for "startRev"
-	s1.Put(testKey, testValue, lease.NoLease)
-
-	select {
-	case resp := <-w1.Chan():
-		if resp.Revision != startRev {
-			t.Fatalf("resp.Revision expect %d, got %d", startRev, resp.Revision)
-		}
-		if len(resp.Events) != 1 {
-			t.Fatalf("len(resp.Events) expect 1, got %d", len(resp.Events))
-		}
-		if resp.Events[0].Kv.ModRevision != startRev {
-			t.Fatalf("resp.Events[0].Kv.ModRevision expect %d, got %d", startRev, resp.Events[0].Kv.ModRevision)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("failed to receive event in 1 second")
 	}
 }
 
