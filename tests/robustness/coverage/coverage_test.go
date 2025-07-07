@@ -15,12 +15,16 @@
 package coverage_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	traceservice "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -51,8 +55,10 @@ func testInterfaceUse(t *testing.T, filename string) {
 	if err != nil {
 		t.Fatalf("unmarshal testdata %s: %v", filename, err)
 	}
+	if dump.Result == nil {
+		t.Fatalf("missing result data")
+	}
 	traces := dump.Result
-	t.Log("Traces found:", len(traces.GetResourceSpans()))
 
 	callsByOperationName := make(map[string]int)
 	for _, trace := range traces.GetResourceSpans() {
@@ -63,7 +69,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 		opName := getOperationName(trace)
 		callsByOperationName[opName]++
 	}
-	t.Logf("API calls by gRPC method: %+v", callsByOperationName)
+	t.Logf("\n%s", printableCallTable(callsByOperationName))
 
 	knownMethodsUsedByKubernetes := map[string]bool{
 		"etcdserverpb.KV/Range":           true, // All calls should go through etcd-k8s interface
@@ -120,4 +126,24 @@ func getOperationName(trace *tracev1.ResourceSpans) string {
 		}
 	}
 	return ""
+}
+
+func printableCallTable(callsByOperationName map[string]int) string {
+	buf := new(bytes.Buffer)
+	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
+	table := tablewriter.NewTable(buf, tablewriter.WithConfig(cfgBuilder.Build()))
+	table.Header("method", "calls", "percent")
+
+	totalCalls := 0
+	for _, c := range callsByOperationName {
+		totalCalls += c
+	}
+
+	for opName, callCount := range callsByOperationName {
+		table.Append(opName, callCount, fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)))
+	}
+	table.Footer("total", totalCalls, "100.00%")
+
+	table.Render()
+	return buf.String()
 }
