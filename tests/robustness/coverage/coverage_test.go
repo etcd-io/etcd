@@ -73,11 +73,20 @@ func testInterfaceUse(t *testing.T, filename string) {
 		"etcdserverpb.Lease/LeaseGrant":   true, // Used to manage masterleases and events
 		"etcdserverpb.Maintenance/Status": true, // Used to expose database size on apiserver's metrics endpoint
 	}
-	for opName := range callsByOperationName {
-		if !knownMethodsUsedByKubernetes[opName] {
-			t.Errorf("method called outside the list: %s", opName)
-		}
+	for method := range knownMethodsUsedByKubernetes {
+		t.Run(method, func(t *testing.T) {
+			if _, ok := callsByOperationName[method]; !ok {
+				t.Errorf("expected %q method to be called at least once", method)
+			}
+		})
 	}
+	t.Run("only_expected_methods_were_called", func(t *testing.T) {
+		for opName := range callsByOperationName {
+			if !knownMethodsUsedByKubernetes[opName] {
+				t.Errorf("method called outside the list: %s", opName)
+			}
+		}
+	})
 }
 
 type Traces struct {
