@@ -22,6 +22,7 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 | Watch dropping an event when compacting on delete [#18089]                   | May 2024   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue18089`   |
 | Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024   | v3.4 or earlier   | User            |                                                   |                                     |
 | Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue19179`   |
+| Watch on future revision returns old events or notifications [#20221]        | Jun 2025   | v3.4 or earlier   | Robustness      | Yes, after covering connection to multiple members|                                     |
 
 [#13766]: https://github.com/etcd-io/etcd/issues/13766
 [#14370]: https://github.com/etcd-io/etcd/issues/14370
@@ -35,7 +36,7 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 [#18089]: https://github.com/etcd-io/etcd/issues/18089
 [#18667]: https://github.com/etcd-io/etcd/issues/18667
 [#19179]: https://github.com/etcd-io/etcd/issues/19179
-
+[#20221]: https://github.com/etcd-io/etcd/issues/20221
 
 ## How Robustness Tests Work
 
