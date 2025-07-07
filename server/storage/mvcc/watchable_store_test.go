@@ -676,7 +676,7 @@ func readEventsForSecond(t *testing.T, ws <-chan WatchResponse) []mvccpb.Event {
 			events = append(events, resp.Events...)
 		case <-deadline:
 			return events
-		case <-time.After(watchResyncPeriod):
+		case <-time.After(watchResyncPeriod * 3 / 2):
 			return events
 		}
 	}
