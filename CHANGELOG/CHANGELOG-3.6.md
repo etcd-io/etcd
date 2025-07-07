@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.2 (TBD)
 
+### etcd server
+
+- Fix [Watch on future revision returns old events or notifications](https://github.com/etcd-io/etcd/pull/20286)
+
 ### Dependencies
 
 - [Bump bbolt to v1.4.2](https://github.com/etcd-io/etcd/pull/20267)
