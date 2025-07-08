@@ -15,12 +15,14 @@
 package apply
 
 import (
+	"context"
 	"errors"
 	"time"
 
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
@@ -130,19 +132,29 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 	switch {
 	case r.Range != nil:
 		op = "Range"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Range(r.Range)
+		ctx, trace := traceutil.EnsureTrace(context.Background(), a.lg, op)
+		ar.Resp, ar.Err = a.applyV3.Range(ctx, r.Range)
+		ar.Trace = trace
 	case r.Put != nil:
 		op = "Put"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Put(r.Put)
+		ctx, trace := traceutil.EnsureTrace(context.Background(), a.lg, op)
+		ar.Resp, ar.Err = a.applyV3.Put(ctx, r.Put)
+		ar.Trace = trace
 	case r.DeleteRange != nil:
 		op = "DeleteRange"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.DeleteRange(r.DeleteRange)
+		ctx, trace := traceutil.EnsureTrace(context.Background(), a.lg, op)
+		ar.Resp, ar.Err = a.applyV3.DeleteRange(ctx, r.DeleteRange)
+		ar.Trace = trace
 	case r.Txn != nil:
 		op = "Txn"
-		ar.Resp, ar.Trace, ar.Err = a.applyV3.Txn(r.Txn)
+		ctx, trace := traceutil.EnsureTrace(context.Background(), a.lg, op)
+		ar.Resp, ar.Err = a.applyV3.Txn(ctx, r.Txn)
+		ar.Trace = trace
 	case r.Compaction != nil:
 		op = "Compaction"
-		ar.Resp, ar.Physc, ar.Trace, ar.Err = a.applyV3.Compaction(r.Compaction)
+		ctx, trace := traceutil.EnsureTrace(context.Background(), a.lg, op)
+		ar.Resp, ar.Physc, ar.Err = a.applyV3.Compaction(ctx, r.Compaction)
+		ar.Trace = trace
 	case r.LeaseGrant != nil:
 		op = "LeaseGrant"
 		ar.Resp, ar.Err = a.applyV3.LeaseGrant(r.LeaseGrant)

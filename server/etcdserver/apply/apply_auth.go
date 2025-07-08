@@ -15,10 +15,10 @@
 package apply
 
 import (
+	"context"
 	"sync"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/txn"
@@ -63,9 +63,9 @@ func (aa *authApplierV3) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 	return ret
 }
 
-func (aa *authApplierV3) Put(r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
 	if err := aa.as.IsPutPermitted(&aa.authInfo, r.Key); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if err := aa.checkLeasePuts(lease.LeaseID(r.Lease)); err != nil {
@@ -73,44 +73,44 @@ func (aa *authApplierV3) Put(r *pb.PutRequest) (*pb.PutResponse, *traceutil.Trac
 		// be written by this user. It means the user cannot revoke the
 		// lease so attaching the lease to the newly written key should
 		// be forbidden.
-		return nil, nil, err
+		return nil, err
 	}
 
 	if r.PrevKv {
 		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, nil)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
-	return aa.applierV3.Put(r)
+	return aa.applierV3.Put(ctx, r)
 }
 
-func (aa *authApplierV3) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
 	if err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return aa.applierV3.Range(r)
+	return aa.applierV3.Range(ctx, r)
 }
 
-func (aa *authApplierV3) DeleteRange(r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
 	if err := aa.as.IsDeleteRangePermitted(&aa.authInfo, r.Key, r.RangeEnd); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if r.PrevKv {
 		err := aa.as.IsRangePermitted(&aa.authInfo, r.Key, r.RangeEnd)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	return aa.applierV3.DeleteRange(r)
+	return aa.applierV3.DeleteRange(ctx, r)
 }
 
-func (aa *authApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (aa *authApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if err := txn.CheckTxnAuth(aa.as, &aa.authInfo, rt); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return aa.applierV3.Txn(rt)
+	return aa.applierV3.Txn(ctx, rt)
 }
 
 func (aa *authApplierV3) LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {

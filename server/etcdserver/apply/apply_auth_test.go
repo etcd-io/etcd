@@ -440,7 +440,7 @@ func TestAuthApplierV3_Put(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Put(tc.request)
+			_, err := authApplier.Put(t.Context(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Put returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -459,7 +459,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 
 	// The user should be able to put the key
 	setAuthInfo(authApplier, userWriteOnly)
-	_, _, err = authApplier.Put(&pb.PutRequest{
+	_, err = authApplier.Put(t.Context(), &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
 		Lease: leaseID,
@@ -468,7 +468,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 
 	// Put a key under the lease outside user's key range
 	setAuthInfo(authApplier, userRoot)
-	_, _, err = authApplier.Put(&pb.PutRequest{
+	_, err = authApplier.Put(t.Context(), &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
 		Lease: leaseID,
@@ -477,7 +477,7 @@ func TestAuthApplierV3_LeasePut(t *testing.T) {
 
 	// The user should not be able to put the key anymore
 	setAuthInfo(authApplier, userWriteOnly)
-	_, _, err = authApplier.Put(&pb.PutRequest{
+	_, err = authApplier.Put(t.Context(), &pb.PutRequest{
 		Key:   []byte(key),
 		Value: []byte("1"),
 		Lease: leaseID,
@@ -523,7 +523,7 @@ func TestAuthApplierV3_Range(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Range(tc.request)
+			_, err := authApplier.Range(t.Context(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -587,7 +587,7 @@ func TestAuthApplierV3_DeleteRange(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.DeleteRange(tc.request)
+			_, err := authApplier.DeleteRange(t.Context(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -657,7 +657,7 @@ func TestAuthApplierV3_Txn(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			setAuthInfo(authApplier, tc.userName)
-			_, _, err := authApplier.Txn(tc.request)
+			_, err := authApplier.Txn(t.Context(), tc.request)
 			require.Equalf(t, tc.expectError, err, "Range returned unexpected error (or lack thereof), expected: %v, got: %v", tc.expectError, err)
 		})
 	}
@@ -690,7 +690,7 @@ func TestAuthApplierV3_LeaseRevoke(t *testing.T) {
 
 	// Put a key under the lease outside user's key range
 	setAuthInfo(authApplier, userRoot)
-	_, _, err = authApplier.Put(&pb.PutRequest{
+	_, err = authApplier.Put(t.Context(), &pb.PutRequest{
 		Key:   []byte(keyOutsideRange),
 		Value: []byte("1"),
 		Lease: leaseID,
