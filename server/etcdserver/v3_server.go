@@ -102,12 +102,10 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.New("range",
-		s.Logger(),
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range",
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
 		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
-	ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 
 	var resp *pb.RangeResponse
 	var err error
@@ -159,12 +157,11 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 }
 
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	if txn.IsTxnReadonly(r) {
-		trace := traceutil.New("transaction",
-			s.Logger(),
-			traceutil.Field{Key: "read_only", Value: true},
-		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
+	readOnly := txn.IsTxnReadonly(r)
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "transaction",
+		traceutil.Field{Key: "read_only", Value: readOnly},
+	)
+	if readOnly {
 		if !txn.IsTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
@@ -202,8 +199,8 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	startTime := time.Now()
-	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
 	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact")
+	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
 	if result != nil && result.Trace != nil {
 		trace = result.Trace
 		defer func() {
@@ -816,7 +813,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 
 		// as a single loop is can unlock multiple reads, it is not very useful
 		// to propagate the trace from Txn or Range.
-		trace := traceutil.New("linearizableReadLoop", s.Logger())
+		_, trace := traceutil.EnsureTrace(context.Background(), s.Logger(), "linearizableReadLoop")
 
 		nextnr := newNotifier()
 		s.readMu.Lock()

@@ -161,8 +161,7 @@ func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.T
 func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	trace := traceutil.New("compact",
-		a.options.Logger,
+	ctx, trace := traceutil.EnsureTrace(context.TODO(), a.options.Logger, "compact",
 		traceutil.Field{Key: "revision", Value: compaction.Revision},
 	)
 
@@ -171,7 +170,7 @@ func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.Com
 		return nil, ch, nil, err
 	}
 	// get the current revision. which key to get is not important.
-	rr, _ := a.options.KV.Range(context.TODO(), []byte("compaction"), nil, mvcc.RangeOptions{})
+	rr, _ := a.options.KV.Range(ctx, []byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
 	return resp, ch, trace, err
 }
