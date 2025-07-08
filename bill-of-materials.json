@@ -666,6 +666,19 @@
 		]
 	},
 	{
+		"project": "go.yaml.in/yaml/v2",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
+			},
+			{
+				"type": "MIT License",
+				"confidence": 0.8975609756097561
+			}
+		]
+	},
+	{
 		"project": "golang.org/x/crypto",
 		"licenses": [
 			{
@@ -783,19 +796,6 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "sigs.k8s.io/yaml/goyaml.v2",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			},
-			{
-				"type": "MIT License",
-				"confidence": 0.8975609756097561
 			}
 		]
 	}
