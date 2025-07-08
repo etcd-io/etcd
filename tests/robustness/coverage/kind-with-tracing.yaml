@@ -1,16 +1,17 @@
+---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
-- role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: ClusterConfiguration
-    etcd:
-      local:
-        extraArgs:
-          experimental-enable-distributed-tracing: "true"
-          experimental-distributed-tracing-address: "0.0.0.0:4317"
-          experimental-distributed-tracing-service-name: "etcd"
-          experimental-distributed-tracing-sampling-rate: "1000000"
-- role: worker
-- role: worker
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        etcd:
+          local:
+            extraArgs:
+              experimental-enable-distributed-tracing: "true"
+              experimental-distributed-tracing-address: "0.0.0.0:4317"
+              experimental-distributed-tracing-service-name: "etcd"
+              experimental-distributed-tracing-sampling-rate: "1000000"
+  - role: worker
+  - role: worker
