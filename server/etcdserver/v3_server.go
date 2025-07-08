@@ -203,7 +203,7 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
 	startTime := time.Now()
 	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
-	trace := traceutil.TODO()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact")
 	if result != nil && result.Trace != nil {
 		trace = result.Trace
 		defer func() {

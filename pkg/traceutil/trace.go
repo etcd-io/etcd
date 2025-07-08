@@ -88,6 +88,19 @@ func Get(ctx context.Context) *Trace {
 	return TODO()
 }
 
+// EnsureTrace creates a new trace if needed and adds it to the context.
+func EnsureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...Field) (context.Context, *Trace) {
+	trace := Get(ctx)
+	if trace.IsEmpty() {
+		trace = New(operation,
+			lg,
+			fields...,
+		)
+		ctx = context.WithValue(ctx, TraceKey{}, trace)
+	}
+	return ctx, trace
+}
+
 func (t *Trace) GetStartTime() time.Time {
 	return t.startTime
 }
