@@ -72,7 +72,7 @@ type step struct {
 	isSubTraceEnd   bool
 }
 
-func New(op string, lg *zap.Logger, fields ...Field) *Trace {
+func newTrace(op string, lg *zap.Logger, fields ...Field) *Trace {
 	return &Trace{operation: op, lg: lg, startTime: time.Now(), fields: fields}
 }
 
@@ -86,6 +86,19 @@ func Get(ctx context.Context) *Trace {
 		return trace
 	}
 	return TODO()
+}
+
+// EnsureTrace creates a new trace if needed and adds it to the context.
+func EnsureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...Field) (context.Context, *Trace) {
+	trace := Get(ctx)
+	if trace.IsEmpty() {
+		trace = newTrace(operation,
+			lg,
+			fields...,
+		)
+		ctx = context.WithValue(ctx, TraceKey{}, trace)
+	}
+	return ctx, trace
 }
 
 func (t *Trace) GetStartTime() time.Time {

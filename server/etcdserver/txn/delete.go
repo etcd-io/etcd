@@ -26,7 +26,7 @@ import (
 )
 
 func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "delete_range",
+	ctx, trace = traceutil.EnsureTrace(ctx, lg, "delete_range",
 		traceutil.Field{Key: "key", Value: string(dr.Key)},
 		traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
 	)

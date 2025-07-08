@@ -30,7 +30,7 @@ import (
 )
 
 func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "transaction")
+	ctx, trace = traceutil.EnsureTrace(ctx, lg, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
@@ -405,16 +405,4 @@ func checkTxnReqsPermission(as auth.AuthStore, ai *auth.AuthInfo, reqs []*pb.Req
 	}
 
 	return nil
-}
-
-func ensureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...traceutil.Field) (context.Context, *traceutil.Trace) {
-	trace := traceutil.Get(ctx)
-	if trace.IsEmpty() {
-		trace = traceutil.New(operation,
-			lg,
-			fields...,
-		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
-	}
-	return ctx, trace
 }

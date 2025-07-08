@@ -29,7 +29,7 @@ import (
 )
 
 func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = ensureTrace(ctx, lg, "range")
+	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(success, time.Since(start))
