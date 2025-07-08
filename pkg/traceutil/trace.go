@@ -72,7 +72,7 @@ type step struct {
 	isSubTraceEnd   bool
 }
 
-func New(op string, lg *zap.Logger, fields ...Field) *Trace {
+func newTrace(op string, lg *zap.Logger, fields ...Field) *Trace {
 	return &Trace{operation: op, lg: lg, startTime: time.Now(), fields: fields}
 }
 
@@ -92,7 +92,7 @@ func Get(ctx context.Context) *Trace {
 func EnsureTrace(ctx context.Context, lg *zap.Logger, operation string, fields ...Field) (context.Context, *Trace) {
 	trace := Get(ctx)
 	if trace.IsEmpty() {
-		trace = New(operation,
+		trace = newTrace(operation,
 			lg,
 			fields...,
 		)
