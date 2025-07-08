@@ -6,6 +6,7 @@ toolchain go1.24.4
 
 replace (
 	go.etcd.io/etcd/api/v3 => ../api
+	go.etcd.io/etcd/cache/v3 => ../cache
 	go.etcd.io/etcd/client/pkg/v3 => ../client/pkg
 	go.etcd.io/etcd/client/v3 => ../client/v3
 	go.etcd.io/etcd/etcdctl/v3 => ../etcdctl
@@ -32,6 +33,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.4.2
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
+	go.etcd.io/etcd/cache/v3 v3.6.1
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/etcdctl/v3 v3.6.0-alpha.0

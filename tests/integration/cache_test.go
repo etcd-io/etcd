@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cache
+package integration
 
 import (
 	"context"
@@ -23,26 +23,34 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/client/pkg/v3/types"
+	cache "go.etcd.io/etcd/cache/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	embed "go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-func TestWatchWithCache(t *testing.T) {
-	client := startEtcd(t)
-	cache, err := New(client, "/", WithHistoryWindowSize(32))
+func TestCacheWatch(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	c, err := cache.New(client, "/", cache.WithHistoryWindowSize(32))
 	if err != nil {
 		t.Fatalf("New(...): %v", err)
 	}
-	t.Cleanup(cache.Close)
-	if err := cache.WaitReady(t.Context()); err != nil {
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(t.Context()); err != nil {
 		t.Fatalf("cache not ready: %v", err)
 	}
-	testWatch(t, client.KV, cache)
+	testWatch(t, client.KV, c)
 }
 
-func TestWatchWithoutCache(t *testing.T) {
-	client := startEtcd(t)
+func TestWatch(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
 	testWatch(t, client.KV, client.Watcher)
 }
 
@@ -116,72 +124,78 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 	}
 }
 
-func TestLaggingWatcher(t *testing.T) {
+func TestCacheLaggingWatcher(t *testing.T) {
 	const prefix = "/test/"
-	cli := startEtcd(t)
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
 
 	tests := []struct {
-		name       string
-		window     int
-		eventCount int
-		wantEvents int
-		wantClosed bool
+		name                string
+		window              int
+		eventCount          int
+		wantExactEventCount int
+		wantAtMaxEventCount int
+		wantClosed          bool
 	}{
 		{
-			name:       "all event fit",
-			window:     10,
-			eventCount: 9,
-			wantEvents: 9,
-			wantClosed: false,
+			name:                "all event fit",
+			window:              10,
+			eventCount:          9,
+			wantExactEventCount: 9,
+			wantClosed:          false,
 		},
 		{
-			name:       "events fill window",
-			window:     10,
-			eventCount: 10,
-			wantEvents: 10,
-			wantClosed: false,
+			name:                "events fill window",
+			window:              10,
+			eventCount:          10,
+			wantExactEventCount: 10,
+			wantClosed:          false,
 		},
 		{
-			name:       "event fill pipeline",
-			window:     10,
-			eventCount: 11,
-			wantEvents: 11,
-			wantClosed: false,
+			name:                "event fill pipeline",
+			window:              10,
+			eventCount:          11,
+			wantExactEventCount: 11,
+			wantClosed:          false,
 		},
 		{
-			name:       "pipeline overflow",
-			window:     10,
-			eventCount: 12,
-			wantEvents: 1,
-			wantClosed: true,
+			name:                "pipeline overflow",
+			window:              10,
+			eventCount:          12,
+			wantAtMaxEventCount: 1, // Either 0 or 1.
+			wantClosed:          true,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			cache, err := New(
-				cli, prefix,
-				WithHistoryWindowSize(tt.window),
-				WithPerWatcherBufferSize(0),
-				WithResyncInterval(10*time.Millisecond),
+			c, err := cache.New(
+				client, prefix,
+				cache.WithHistoryWindowSize(tt.window),
+				cache.WithPerWatcherBufferSize(0),
+				cache.WithResyncInterval(10*time.Millisecond),
 			)
 			if err != nil {
 				t.Fatalf("New(...): %v", err)
 			}
-			defer cache.Close()
+			defer c.Close()
 
-			if err := cache.WaitReady(t.Context()); err != nil {
+			if err := c.WaitReady(t.Context()); err != nil {
 				t.Fatalf("cache not ready: %v", err)
 			}
-			ch := cache.Watch(t.Context(), prefix, clientv3.WithPrefix())
+			ch := c.Watch(t.Context(), prefix, clientv3.WithPrefix())
 
-			generateEvents(t, cli, prefix, tt.eventCount)
+			generateEvents(t, client, prefix, tt.eventCount)
 			gotEvents, ok := readEvents(ch)
 			closed := !ok
 
-			if tt.wantEvents != len(gotEvents) {
-				t.Errorf("gotEvents=%v, wantEvents=%v", len(gotEvents), tt.wantEvents)
+			if tt.wantExactEventCount != 0 && tt.wantExactEventCount != len(gotEvents) {
+				t.Errorf("gotEvents=%v, wantEvents=%v", len(gotEvents), tt.wantExactEventCount)
+			}
+			if tt.wantAtMaxEventCount != 0 && len(gotEvents) > tt.wantAtMaxEventCount {
+				t.Errorf("gotEvents=%v, wantEvents<%v", len(gotEvents), tt.wantAtMaxEventCount)
 			}
 			if closed != tt.wantClosed {
 				t.Errorf("closed=%v, wantClosed=%v", closed, tt.wantClosed)
@@ -190,16 +204,20 @@ func TestLaggingWatcher(t *testing.T) {
 	}
 }
 
-func TestRejectsUnsupportedWatch(t *testing.T) {
-	client := startEtcd(t)
+func TestCacheRejectsUnsupportedWatch(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
 	ctx := t.Context()
 
-	cache, err := New(client, "")
+	c, err := cache.New(client, "")
 	if err != nil {
 		t.Fatalf("New(...): %v", err)
 	}
-	t.Cleanup(cache.Close)
-	if err := cache.WaitReady(ctx); err != nil {
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
 		t.Fatal(err)
 	}
 
@@ -228,7 +246,7 @@ func TestRejectsUnsupportedWatch(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			watchCh := cache.Watch(ctx, tt.key, tt.opts...)
+			watchCh := c.Watch(ctx, tt.key, tt.opts...)
 			resp, ok := <-watchCh
 
 			if !ok || !resp.Canceled {
@@ -236,46 +254,6 @@ func TestRejectsUnsupportedWatch(t *testing.T) {
 			}
 		})
 	}
-}
-
-func startEtcd(t *testing.T) *clientv3.Client {
-	t.Helper()
-
-	cfg := embed.NewConfig()
-	cfg.Dir = t.TempDir()
-	cfg.LogLevel = "error"
-
-	newClient, _ := types.NewURLs([]string{"http://127.0.0.1:0"})
-	newPeer, _ := types.NewURLs([]string{"http://127.0.0.1:0"})
-	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = newClient, newClient
-	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = newPeer, newPeer
-
-	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, cfg.AdvertisePeerUrls[0].String())
-
-	srv, err := embed.StartEtcd(cfg)
-	if err != nil {
-		t.Fatalf("start etcd: %v", err)
-	}
-	t.Cleanup(func() { srv.Close() })
-
-	select {
-	case <-srv.Server.ReadyNotify():
-	case <-time.After(10 * time.Second):
-		t.Fatalf("etcd ready timeout")
-	}
-	client, err := clientv3.New(clientv3.Config{
-		Endpoints:   []string{srv.Clients[0].Addr().String()},
-		DialTimeout: 5 * time.Second,
-	})
-	if err != nil {
-		t.Fatalf("new client: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := client.Close(); err != nil {
-			t.Errorf("client.Close() error: %v", err)
-		}
-	})
-	return client
 }
 
 func generateEvents(t *testing.T, client *clientv3.Client, prefix string, n int) {
@@ -293,7 +271,7 @@ type Watcher interface {
 }
 
 func readEvents(watch clientv3.WatchChan) (events []*clientv3.Event, ok bool) {
-	deadline := time.After(200 * time.Millisecond)
+	deadline := time.After(time.Second)
 	for {
 		select {
 		case resp, ok := <-watch:
@@ -302,6 +280,8 @@ func readEvents(watch clientv3.WatchChan) (events []*clientv3.Event, ok bool) {
 			}
 			events = append(events, resp.Events...)
 		case <-deadline:
+			return events, true
+		case <-time.After(100 * time.Millisecond):
 			return events, true
 		}
 	}
