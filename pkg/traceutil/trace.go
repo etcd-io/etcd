@@ -22,8 +22,18 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
+
+const instrumentationScope = "go.etcd.io/etcd"
+
+var Tracer trace.Tracer = noop.NewTracerProvider().Tracer(instrumentationScope)
+
+func Init(tp trace.TracerProvider) {
+	Tracer = tp.Tracer(instrumentationScope)
+}
 
 // TraceKey is used as a key of context for Trace.
 type TraceKey struct{}
