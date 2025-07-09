@@ -31,13 +31,14 @@ var ErrUnsupportedWatch = errors.New("cache: unsupported watch parameters")
 
 // Cache buffers a single etcd Watch for a given key‐prefix and fan‑outs local watchers.
 type Cache struct {
-	prefix    string // prefix is the key-prefix this shard is responsible for ("" = root).
-	cfg       Config // immutable runtime configuration
-	watcher   clientv3.Watcher
-	demux     *demux // demux fans incoming events out to active watchers and manages resync.
-	ready     chan struct{}
-	stop      context.CancelFunc
-	waitGroup sync.WaitGroup
+	prefix      string // prefix is the key-prefix this shard is responsible for ("" = root).
+	cfg         Config // immutable runtime configuration
+	watcher     clientv3.Watcher
+	demux       *demux // demux fans incoming events out to active watchers and manages resync.
+	ready       chan struct{}
+	stop        context.CancelFunc
+	waitGroup   sync.WaitGroup
+	internalCtx context.Context
 }
 
 // watchCtx collects all the knobs that both serveWatchEvents and watchRetryLoop need.
@@ -63,11 +64,12 @@ func New(watcher clientv3.Watcher, prefix string, opts ...Option) (*Cache, error
 	internalCtx, cancel := context.WithCancel(context.Background())
 
 	cache := &Cache{
-		prefix:  prefix,
-		cfg:     cfg,
-		watcher: watcher,
-		ready:   make(chan struct{}),
-		stop:    cancel,
+		prefix:      prefix,
+		cfg:         cfg,
+		watcher:     watcher,
+		ready:       make(chan struct{}),
+		stop:        cancel,
+		internalCtx: internalCtx,
 	}
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
@@ -101,36 +103,42 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	}
 
 	op := clientv3.OpGet(key, opts...)
-	requestedRev := op.Rev()
+	startRev := op.Rev()
 
-	// build the internal Watch event stream (for historic reply + live)
-	stream, w, err := c.newWatchEventStream(ctx, key, requestedRev, opts)
-	if err != nil {
-		// terminal error → one-shot reply, needs a single buffer slot
+	// TODO: Support watch on subprefix and single key & arbitrary startRev support once we guarantee gap-free replay.
+	if key != c.prefix || !clientv3.IsOptsWithPrefix(opts) || startRev != 0 {
 		responseChan := make(chan clientv3.WatchResponse, 1)
-		if errors.Is(err, rpctypes.ErrCompacted) {
-			compactRev := c.demux.PeekOldest()
-			responseChan <- clientv3.WatchResponse{CompactRevision: compactRev}
-		} else {
-			responseChan <- clientv3.WatchResponse{Canceled: true}
-		}
+		responseChan <- clientv3.WatchResponse{Canceled: true}
 		close(responseChan)
 		return responseChan
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	go func() { <-w.Done(); cancel() }()
+	w := newWatcher(c.cfg.PerWatcherBufferSize, func(k []byte) bool { return strings.HasPrefix(string(k), key) })
+	c.demux.Register(w, startRev)
 
 	responseChan := make(chan clientv3.WatchResponse)
+	c.waitGroup.Add(1)
 	go func() {
-		defer cancel()
+		defer c.waitGroup.Done()
 		defer close(responseChan)
-
-		for events := range stream {
+		defer c.demux.Unregister(w)
+		for {
 			select {
 			case <-ctx.Done():
 				return
-			case responseChan <- clientv3.WatchResponse{Events: events}:
+			case <-c.internalCtx.Done():
+				return
+			case events, ok := <-w.eventQueue:
+				if !ok {
+					return
+				}
+				select {
+				case <-ctx.Done():
+					return
+				case <-c.internalCtx.Done():
+					return
+				case responseChan <- clientv3.WatchResponse{Events: events}:
+				}
 			}
 		}
 	}()
@@ -161,32 +169,6 @@ func (c *Cache) WaitReady(ctx context.Context) error {
 func (c *Cache) Close() {
 	c.stop()
 	c.waitGroup.Wait()
-}
-
-// newWatchEventStream builds a single internal Watch event stream for
-// both historical replay (>= startRev) and live updates filtered by key.
-func (c *Cache) newWatchEventStream(
-	ctx context.Context,
-	key string,
-	startRev int64,
-	opts []clientv3.OpOption,
-) (<-chan []*clientv3.Event, *watcher, error) {
-	// TODO: Support watch on subprefix and single key & arbitrary startRev support once we guarantee gap-free replay.
-	if key != c.prefix || !clientv3.IsOptsWithPrefix(opts) || startRev != 0 {
-		return nil, nil, ErrUnsupportedWatch
-	}
-
-	pred := func(k []byte) bool { return strings.HasPrefix(string(k), key) }
-
-	w := newWatcher(c.cfg.PerWatcherBufferSize, pred)
-	c.demux.Register(w, startRev)
-
-	go func() {
-		<-ctx.Done()
-		c.demux.Unregister(w)
-	}()
-
-	return w.eventQueue, w, nil
 }
 
 func serveWatchEvents(ctx context.Context, watchCtx *watchCtx) {
