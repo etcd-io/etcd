@@ -201,10 +201,8 @@ func (c *Client) Sync(ctx context.Context) error {
 	}
 	// The linearizable `MemberList` returned successfully, so the
 	// endpoints shouldn't be empty.
-	verify.Verify(func() {
-		if len(eps) == 0 {
-			panic("empty endpoints returned from etcd cluster")
-		}
+	verify.Verify("empty endpoints returned from etcd cluster", func() (bool, map[string]any) {
+		return len(eps) > 0, nil
 	})
 	c.SetEndpoints(eps...)
 	c.lg.Debug("set etcd endpoints by autoSync", zap.Strings("endpoints", eps))
