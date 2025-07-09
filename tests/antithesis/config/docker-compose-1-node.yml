@@ -32,6 +32,9 @@ services:
       ETCD_INITIAL_CLUSTER: "etcd0=http://etcd0:2380"
       ETCD_INITIAL_CLUSTER_STATE: "new"
       ETCD_DATA_DIR: "/var/etcd/data"
+      ETCD_SNAPSHOT_CATCHUP_ENTRIES: 100
+      ETCD_SNAPSHOT_COUNT: 50
+      ETCD_COMPACTION_BATCH_LIMIT: 10
     user: "${USER_ID:-root}:${GROUP_ID:-root}"
     depends_on:
       init:
