@@ -34,7 +34,7 @@ func TestCacheWatch(t *testing.T) {
 	t.Cleanup(func() { clus.Terminate(t) })
 	client := clus.Client(0)
 
-	c, err := cache.New(client, "/", cache.WithHistoryWindowSize(32))
+	c, err := cache.New(client, "/foo", cache.WithHistoryWindowSize(32))
 	if err != nil {
 		t.Fatalf("New(...): %v", err)
 	}
@@ -56,50 +56,101 @@ func TestWatch(t *testing.T) {
 
 func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 	ctx := t.Context()
-	event1Put := &clientv3.Event{
+	event1PutFooA := &clientv3.Event{
 		Type: clientv3.EventTypePut,
 		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/a"),
+			Key:            []byte("/foo/a"),
 			Value:          []byte("1"),
 			CreateRevision: 2,
 			ModRevision:    2,
 			Version:        1,
 		},
 	}
-	event2Put := &clientv3.Event{
+	event2PutFooB := &clientv3.Event{
 		Type: clientv3.EventTypePut,
 		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/b"),
+			Key:            []byte("/foo/b"),
 			Value:          []byte("2"),
 			CreateRevision: 3,
 			ModRevision:    3,
 			Version:        1,
 		},
 	}
-	event3Delete := &clientv3.Event{
+	event3DeleteFooA := &clientv3.Event{
 		Type: clientv3.EventTypeDelete,
 		Kv: &mvccpb.KeyValue{
-			Key:         []byte("/a"),
+			Key:         []byte("/foo/a"),
 			ModRevision: 4,
 		},
 	}
-	event4Put := &clientv3.Event{
+	event4PutFooA := &clientv3.Event{
 		Type: clientv3.EventTypePut,
 		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/a"),
+			Key:            []byte("/foo/a"),
 			Value:          []byte("3"),
 			CreateRevision: 5,
 			ModRevision:    5,
 			Version:        1,
 		},
 	}
-	event5Delete := &clientv3.Event{
+	event5DeleteFooB := &clientv3.Event{
 		Type: clientv3.EventTypeDelete,
 		Kv: &mvccpb.KeyValue{
-			Key:         []byte("/b"),
+			Key:         []byte("/foo/b"),
 			ModRevision: 5,
 		},
 	}
+	event6PutFooC := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/c"),
+			Value:          []byte("x"),
+			CreateRevision: 6,
+			ModRevision:    6,
+			Version:        1,
+		},
+	}
+	event7PutFooBar := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/bar"),
+			Value:          []byte("y"),
+			CreateRevision: 7,
+			ModRevision:    7,
+			Version:        1,
+		},
+	}
+	event8PutFooBaz := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/baz"),
+			Value:          []byte("z"),
+			CreateRevision: 8,
+			ModRevision:    8,
+			Version:        1,
+		},
+	}
+	event9PutFooYoo := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/yoo"),
+			Value:          []byte("1"),
+			CreateRevision: 9,
+			ModRevision:    9,
+			Version:        1,
+		},
+	}
+	event10PutZoo := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/zoo"),
+			Value:          []byte("1"),
+			CreateRevision: 10,
+			ModRevision:    10,
+			Version:        1,
+		},
+	}
+
 	tcs := []struct {
 		name       string
 		key        string
@@ -107,38 +158,182 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 		wantEvents []*clientv3.Event
 	}{
 		{
-			name:       "Watch all events",
-			key:        "/",
+			name:       "Watch single key existing /foo/c",
+			key:        "/foo/c",
+			opts:       nil,
+			wantEvents: []*clientv3.Event{event6PutFooC},
+		},
+		{
+			name:       "Watch single key non‑existent /doesnotexist",
+			key:        "/doesnotexist",
+			opts:       nil,
+			wantEvents: nil,
+		},
+		{
+			name:       "Watch range empty",
+			key:        "",
+			opts:       []clientv3.OpOption{clientv3.WithRange("")},
+			wantEvents: nil,
+		},
+		{
+			name:       "Watch range [/foo/a, /foo/b)",
+			key:        "/foo/a",
+			opts:       []clientv3.OpOption{clientv3.WithRange("/foo/b")},
+			wantEvents: []*clientv3.Event{event1PutFooA, event3DeleteFooA, event4PutFooA},
+		},
+		{
+			name:       "Watch with prefix /foo/b",
+			key:        "/foo/b",
 			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
-			wantEvents: []*clientv3.Event{event1Put, event2Put, event3Delete, event4Put, event5Delete},
+			wantEvents: []*clientv3.Event{event2PutFooB, event5DeleteFooB, event7PutFooBar, event8PutFooBaz},
+		},
+		{
+			name:       "Watch with prefix non-existent /doesnotexist",
+			key:        "/doesnotexist",
+			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
+			wantEvents: nil,
 		},
 	}
+
 	t.Log("Open test watchers")
 	watches := make([]clientv3.WatchChan, len(tcs))
 	for i, tc := range tcs {
 		watches[i] = watcher.Watch(ctx, tc.key, tc.opts...)
 	}
 	t.Log("Setup data")
-	if _, err := kv.Put(ctx, string(event1Put.Kv.Key), string(event1Put.Kv.Value)); err != nil {
+	if _, err := kv.Put(ctx, string(event1PutFooA.Kv.Key), string(event1PutFooA.Kv.Value)); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
-	if _, err := kv.Put(ctx, string(event2Put.Kv.Key), string(event2Put.Kv.Value)); err != nil {
+	if _, err := kv.Put(ctx, string(event2PutFooB.Kv.Key), string(event2PutFooB.Kv.Value)); err != nil {
 		t.Fatalf("Put: %v", err)
 	}
-	if _, err := kv.Delete(ctx, string(event3Delete.Kv.Key)); err != nil {
+	if _, err := kv.Delete(ctx, string(event3DeleteFooA.Kv.Key)); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
-	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(event4Put.Kv.Key), string(event4Put.Kv.Value)), clientv3.OpDelete(string(event5Delete.Kv.Key))).Commit(); err != nil {
+	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(event4PutFooA.Kv.Key), string(event4PutFooA.Kv.Value)), clientv3.OpDelete(string(event5DeleteFooB.Kv.Key))).Commit(); err != nil {
 		t.Fatalf("Txn: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(event6PutFooC.Kv.Key), string(event6PutFooC.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(event7PutFooBar.Kv.Key), string(event7PutFooBar.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(event8PutFooBaz.Kv.Key), string(event8PutFooBaz.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(event9PutFooYoo.Kv.Key), string(event9PutFooYoo.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(event10PutZoo.Kv.Key), string(event10PutZoo.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
 	}
 	t.Log("Validate")
 	for i, tc := range tcs {
-		tc := tc
+		i, tc := i, tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			events, _ := readEvents(watches[i])
 			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestCacheRejectsInvalidWatch(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	tests := []struct {
+		name        string
+		cachePrefix string
+		key         string
+		opts        []clientv3.OpOption
+	}{
+		{
+			name:        "non‑zero start revision",
+			cachePrefix: "",
+			key:         "",
+			opts:        []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(123)},
+		},
+		{
+			name:        "zero length range",
+			cachePrefix: "/foo",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithRange("/foo/a")},
+		},
+		{
+			name:        "invalid range (start > end)",
+			cachePrefix: "/foo",
+			key:         "/foo/b",
+			opts:        []clientv3.OpOption{clientv3.WithRange("/foo/a")},
+		},
+		{
+			name:        "range crosses cache prefix boundary",
+			cachePrefix: "/foo",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithRange("/zzz")},
+		},
+		{
+			name:        "fromkey empty key",
+			cachePrefix: "/foo",
+			key:         "",
+			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+		},
+		{
+			name:        "fromkey within cache prefix",
+			cachePrefix: "/foo",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+		},
+		{
+			name:        "fromkey outside cache prefix",
+			cachePrefix: "/foo",
+			key:         "/zzz",
+			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+		},
+		{
+			name:        "prefix() outside cache prefix",
+			cachePrefix: "/foo",
+			key:         "/zzz",
+			opts:        []clientv3.OpOption{clientv3.WithPrefix()},
+		},
+		{
+			name:        "prefix() with empty key",
+			cachePrefix: "/foo",
+			key:         "",
+			opts:        []clientv3.OpOption{clientv3.WithPrefix()},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := cache.New(client, tc.cachePrefix)
+			if err != nil {
+				t.Fatalf("New(...): %v", err)
+			}
+			defer c.Close()
+			if err := c.WaitReady(ctx); err != nil {
+				t.Fatal(err)
+			}
+
+			watchCtx, cancel := context.WithTimeout(ctx, time.Second)
+			defer cancel()
+
+			ch := c.Watch(watchCtx, tc.key, tc.opts...)
+			select {
+			case resp, ok := <-ch:
+				if !ok || !resp.Canceled {
+					t.Fatalf("expected canceled watch, got %+v (closed=%v)", resp, !ok)
+				}
+			case <-watchCtx.Done():
+				t.Fatalf("watch did not cancel within timeout")
 			}
 		})
 	}
@@ -219,58 +414,6 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			}
 			if closed != tt.wantClosed {
 				t.Errorf("closed=%v, wantClosed=%v", closed, tt.wantClosed)
-			}
-		})
-	}
-}
-
-func TestCacheRejectsUnsupportedWatch(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	t.Cleanup(func() { clus.Terminate(t) })
-	client := clus.Client(0)
-
-	ctx := t.Context()
-
-	c, err := cache.New(client, "")
-	if err != nil {
-		t.Fatalf("New(...): %v", err)
-	}
-	t.Cleanup(c.Close)
-	if err := c.WaitReady(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	tests := []struct {
-		name string
-		key  string
-		opts []clientv3.OpOption
-	}{
-		{
-			name: "non_zero_start_revision",
-			key:  "",
-			opts: []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(123)},
-		},
-		{
-			name: "subprefix_watch",
-			key:  "foo/",
-			opts: []clientv3.OpOption{clientv3.WithPrefix()},
-		},
-		{
-			name: "single_key_watch",
-			key:  "foo/bar",
-			opts: nil, // exact-key watch (no WithPrefix)
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			watchCh := c.Watch(ctx, tt.key, tt.opts...)
-			resp, ok := <-watchCh
-
-			if !ok || !resp.Canceled {
-				t.Errorf("expected canceled response, got %#v (closed=%v)", resp, !ok)
 			}
 		})
 	}
