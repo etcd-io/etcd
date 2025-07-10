@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### Dependencies
 
 - [Bump bbolt to v1.4.2](https://github.com/etcd-io/etcd/pull/20267)
+- Compile binaries using [go 1.23.11](https://github.com/etcd-io/etcd/pull/20314).
 
 ---
 
