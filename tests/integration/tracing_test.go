@@ -50,6 +50,28 @@ func TestTracing(t *testing.T) {
 		})
 	})
 
+	t.Run("UnaryGetRPC", func(t *testing.T) {
+		testRPCTracing(t, "UnaryGetWithCountOnlyRPC", containsRangeSpan, func(cli *clientv3.Client) error {
+			// make a request with the instrumented client
+			resp, err := cli.Get(t.Context(), "key", clientv3.WithCountOnly())
+			require.NoError(t, err)
+			require.Empty(t, resp.Kvs)
+			return nil
+		})
+	})
+
+	t.Run("UnaryTxnRPC", func(t *testing.T) {
+		testRPCTracing(t, "UnaryTxnRPC", containsTxnSpan, func(cli *clientv3.Client) error {
+			// make a request with the instrumented client
+			_, err := cli.Txn(t.Context()).
+				If(clientv3.Compare(clientv3.ModRevision("key"), "=", 1)).
+				Then(clientv3.OpGet("key")).
+				Commit()
+			require.NoError(t, err)
+			return nil
+		})
+	})
+
 	// Test Stream RPC tracing
 	t.Run("StreamRPC", func(t *testing.T) {
 		testRPCTracing(t, "StreamRPC", containsStreamRPCSpan, func(cli *clientv3.Client) error {
@@ -165,6 +187,52 @@ func containsUnaryRPCSpan(req *traceservice.ExportTraceServiceRequest) bool {
 				for _, span := range scoped.GetSpans() {
 					if span.GetName() == "etcdserverpb.KV/Range" {
 						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func containsRangeSpan(req *traceservice.ExportTraceServiceRequest) bool {
+	for _, resourceSpans := range req.GetResourceSpans() {
+		for _, attr := range resourceSpans.GetResource().GetAttributes() {
+			if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
+				continue
+			}
+			for _, scoped := range resourceSpans.GetScopeSpans() {
+				for _, span := range scoped.GetSpans() {
+					if span.GetName() == "range" {
+						for _, spanAttr := range span.GetAttributes() {
+							if spanAttr.GetKey() == "count_only" && spanAttr.GetValue().GetBoolValue() {
+								return true
+							}
+						}
+						return false
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+func containsTxnSpan(req *traceservice.ExportTraceServiceRequest) bool {
+	for _, resourceSpans := range req.GetResourceSpans() {
+		for _, attr := range resourceSpans.GetResource().GetAttributes() {
+			if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
+				continue
+			}
+			for _, scoped := range resourceSpans.GetScopeSpans() {
+				for _, span := range scoped.GetSpans() {
+					if span.GetName() == "txn" {
+						for _, spanAttr := range span.GetAttributes() {
+							if spanAttr.GetKey() == "compare_first_key" && spanAttr.GetValue().GetStringValue() == "key" {
+								return true
+							}
+						}
+						return false
 					}
 				}
 			}
