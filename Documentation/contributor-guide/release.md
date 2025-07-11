@@ -108,8 +108,8 @@ On the day of the release:
    - Open the **draft** release URL shown by the release script
    - Click the pen button at the top right to edit the release
    - Review that it looks correct, reviewing that the bottom checkboxes are checked depending on the
-     release version (v3.4 no checkboxes, v3.5 has the set as latest release checkbox checked,
-     v3.6 has the set as pre-release checkbox checked)
+     release version (v3.4 & v3.5 no checkboxes, v3.6 has the set as latest release checkbox checked,
+     v3.7 has the set as pre-release checkbox checked)
    - Then, publish the release
 5. Announce to the etcd-dev googlegroup
 
