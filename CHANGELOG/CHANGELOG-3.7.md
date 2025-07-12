@@ -22,7 +22,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.24.4](https://github.com/etcd-io/etcd/pull/20163)
+- Compile binaries using [go 1.24.5](https://github.com/etcd-io/etcd/pull/20320)
 
 ### Deprecations
 

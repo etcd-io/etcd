@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24.4
+ARG GO_VERSION=1.24.5
 
 FROM golang:$GO_VERSION AS build
 RUN go install github.com/a8m/envsubst/cmd/envsubst@v1.4.3
