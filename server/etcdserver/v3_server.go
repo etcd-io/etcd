@@ -721,6 +721,7 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
+		trace.SpanFromContext(ctx).RecordError(err)
 		return nil, err
 	}
 	if result.Err != nil {
@@ -809,6 +810,8 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	defer cancel()
 
 	start := time.Now()
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent("Send raft proposal")
 	err = s.r.Propose(cctx, data)
 	if err != nil {
 		proposalsFailed.Inc()
@@ -820,6 +823,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 
 	select {
 	case x := <-ch:
+		span.AddEvent("Receive raft result")
 		return x.(*apply2.Result), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
