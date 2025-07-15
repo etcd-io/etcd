@@ -21,12 +21,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	traceservice "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	v1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -40,100 +44,93 @@ func TestTracing(t *testing.T) {
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
 
 	for _, tc := range []struct {
-		name  string
-		rpc   func(*clientv3.Client) error
-		match func(*traceservice.ExportTraceServiceRequest) bool
+		name     string
+		rpc      func(context.Context, *clientv3.Client) error
+		wantSpan *v1.Span
 	}{
 		{
 			name: "UnaryGet",
-			rpc: func(cli *clientv3.Client) error {
-				_, err := cli.Get(t.Context(), "key")
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Get(ctx, "key")
 				return err
 			},
-			match: func(req *traceservice.ExportTraceServiceRequest) bool {
-				for _, resourceSpans := range req.GetResourceSpans() {
-					for _, attr := range resourceSpans.GetResource().GetAttributes() {
-						if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
-							continue
-						}
-						for _, scoped := range resourceSpans.GetScopeSpans() {
-							for _, span := range scoped.GetSpans() {
-								if span.GetName() == "etcdserverpb.KV/Range" {
-									return true
-								}
-							}
-						}
-					}
-				}
-				return false
+			wantSpan: &v1.Span{
+				Name: "etcdserverpb.KV/Range",
+				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
 			},
 		},
 		{
 			name: "UnaryGetWithCountOnly",
-			rpc: func(cli *clientv3.Client) error {
-				_, err := cli.Get(t.Context(), "key", clientv3.WithCountOnly())
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Get(ctx, "key", clientv3.WithCountOnly())
 				return err
 			},
-			match: func(req *traceservice.ExportTraceServiceRequest) bool {
-				for _, resourceSpans := range req.GetResourceSpans() {
-					for _, attr := range resourceSpans.GetResource().GetAttributes() {
-						if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
-							continue
-						}
-						for _, scoped := range resourceSpans.GetScopeSpans() {
-							for _, span := range scoped.GetSpans() {
-								if span.GetName() == "range" {
-									for _, spanAttr := range span.GetAttributes() {
-										if spanAttr.GetKey() == "count_only" && spanAttr.GetValue().GetBoolValue() {
-											return true
-										}
-									}
-									return false
-								}
-							}
-						}
-					}
-				}
-				return false
+			wantSpan: &v1.Span{
+				Name: "range",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "range_begin",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+					},
+					{
+						Key:   "range_end",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ""}},
+					},
+					{
+						Key:   "rev",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "limit",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "count_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+				},
 			},
 		},
 		{
 			name: "UnaryTxn",
-			rpc: func(cli *clientv3.Client) error {
-				_, err := cli.Txn(t.Context()).
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Txn(ctx).
 					If(clientv3.Compare(clientv3.ModRevision("key"), "=", 1)).
-					Then(clientv3.OpGet("key")).
+					Then(clientv3.OpGet("key"), clientv3.OpGet("other_key")).
 					Commit()
 				return err
 			},
-			match: func(req *traceservice.ExportTraceServiceRequest) bool {
-				for _, resourceSpans := range req.GetResourceSpans() {
-					for _, attr := range resourceSpans.GetResource().GetAttributes() {
-						if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
-							continue
-						}
-						for _, scoped := range resourceSpans.GetScopeSpans() {
-							for _, span := range scoped.GetSpans() {
-								if span.GetName() == "txn" {
-									for _, spanAttr := range span.GetAttributes() {
-										if spanAttr.GetKey() == "compare_first_key" && spanAttr.GetValue().GetStringValue() == "key" {
-											return true
-										}
-									}
-									return false
-								}
-							}
-						}
-					}
-				}
-				return false
+			wantSpan: &v1.Span{
+				Name: "txn",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "compare_first_key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+					},
+					{
+						Key:   "compare_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1}},
+					},
+					{
+						Key:   "success_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 2}},
+					},
+					{
+						Key:   "failure_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "read_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+				},
 			},
 		},
 		{
 			name: "StreamWatch",
-			rpc: func(cli *clientv3.Client) error {
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				// Create a context with a reasonable timeout
-				ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 				defer cancel()
 
 				// Create a watch channel
@@ -153,28 +150,20 @@ func TestTracing(t *testing.T) {
 					return fmt.Errorf("Timed out waiting for watch event")
 				}
 			},
-			match: func(req *traceservice.ExportTraceServiceRequest) bool {
-				for _, resourceSpans := range req.GetResourceSpans() {
-					for _, scoped := range resourceSpans.GetScopeSpans() {
-						for _, span := range scoped.GetSpans() {
-							if span.GetName() == "etcdserverpb.Watch/Watch" {
-								return true
-							}
-						}
-					}
-				}
-				return false
+			wantSpan: &v1.Span{
+				Name: "etcdserverpb.Watch/Watch",
+				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
 			},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			testRPCTracing(t, tc.match, tc.rpc)
+			testRPCTracing(t, tc.wantSpan, tc.rpc)
 		})
 	}
 }
 
 // testRPCTracing is a common test function for both Unary and Stream RPC tracing
-func testRPCTracing(t *testing.T, filterFunc func(*traceservice.ExportTraceServiceRequest) bool, clientAction func(*clientv3.Client) error) {
+func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.Context, *clientv3.Client) error) {
 	// set up trace collector
 	listener, err := net.Listen("tcp", "localhost:")
 	require.NoError(t, err)
@@ -185,7 +174,41 @@ func testRPCTracing(t *testing.T, filterFunc func(*traceservice.ExportTraceServi
 	srv := grpc.NewServer()
 	traceservice.RegisterTraceServiceServer(srv, &traceServer{
 		traceFound: traceFound,
-		filterFunc: filterFunc,
+		filterFunc: func(req *traceservice.ExportTraceServiceRequest) bool {
+			for _, resourceSpans := range req.GetResourceSpans() {
+				// Skip spans which weren't produced by test's gRPC client.
+				matched := false
+				for _, attr := range resourceSpans.GetResource().GetAttributes() {
+					if attr.GetKey() == "service.name" && attr.GetValue().GetStringValue() == "integration-test-tracing" {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+
+				for _, scoped := range resourceSpans.GetScopeSpans() {
+					for _, gotSpan := range scoped.GetSpans() {
+						if gotSpan.GetName() != wantSpan.GetName() {
+							continue
+						}
+						if len(wantSpan.GetAttributes()) == 0 && len(wantSpan.GetEvents()) == 0 {
+							// Diff will compare only attributes and events when needed
+							return true
+						}
+						if diff := cmp.Diff(wantSpan, gotSpan,
+							protocmp.Transform(),
+							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id"),
+						); diff != "" {
+							t.Errorf("Span mismatch (-want +got):\n%s", diff)
+						}
+						return true
+					}
+				}
+			}
+			return false
+		},
 	})
 
 	go srv.Serve(listener)
@@ -236,7 +259,7 @@ func testRPCTracing(t *testing.T, filterFunc func(*traceservice.ExportTraceServi
 	defer cli.Close()
 
 	// Execute the client action (either Unary or Stream RPC)
-	err = clientAction(cli)
+	err = clientAction(t.Context(), cli)
 	require.NoError(t, err)
 
 	// Wait for a span to be recorded from our request
