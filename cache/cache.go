@@ -105,6 +105,18 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	op := clientv3.OpGet(key, opts...)
 	startRev := op.Rev()
 
+	if startRev != 0 {
+		if oldest := c.demux.PeekOldest(); oldest != 0 && startRev < oldest {
+			ch := make(chan clientv3.WatchResponse, 1)
+			ch <- clientv3.WatchResponse{
+				Canceled:        true,
+				CompactRevision: startRev,
+			}
+			close(ch)
+			return ch
+		}
+	}
+
 	pred, err := c.validateWatch(key, opts...)
 	if err != nil {
 		ch := make(chan clientv3.WatchResponse, 1)
@@ -229,11 +241,6 @@ func readWatchChannel(
 
 func (c *Cache) validateWatch(key string, opts ...clientv3.OpOption) (pred KeyPredicate, err error) {
 	op := clientv3.OpGet(key, opts...)
-	startRev := op.Rev()
-	// TODO: Support watch on arbitrary startRev support once we guarantee gap-free replay.
-	if startRev != 0 {
-		return nil, ErrUnsupportedWatch
-	}
 
 	startKey := []byte(key)
 	endKey := op.RangeBytes() // nil = single key, {0}=FromKey, else explicit range
