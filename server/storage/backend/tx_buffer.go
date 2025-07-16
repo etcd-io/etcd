@@ -247,8 +247,9 @@ func (bb *bucketBuffer) Less(i, j int) bool {
 func (bb *bucketBuffer) Swap(i, j int) { bb.buf[i], bb.buf[j] = bb.buf[j], bb.buf[i] }
 
 func (bb *bucketBuffer) CopyUsed() *bucketBuffer {
-	verify.Assert(bb.used <= len(bb.buf),
-		"used (%d) should never be bigger than the length of buf (%d)", bb.used, len(bb.buf))
+	if bb.used > len(bb.buf) {
+		panic(fmt.Sprintf("used (%d) should never be bigger than the length of buf (%d)", bb.used, len(bb.buf)))
+	}
 	bbCopy := bucketBuffer{
 		buf:  make([]kv, bb.used),
 		used: bb.used,

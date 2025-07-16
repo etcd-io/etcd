@@ -27,7 +27,6 @@ import (
 
 	"go.uber.org/zap"
 
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 	pioutil "go.etcd.io/etcd/pkg/v3/ioutil"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap/snappb"
@@ -154,7 +153,9 @@ func (s *Snapshotter) loadSnap(name string) (*raftpb.Snapshot, error) {
 
 // Read reads the snapshot named by snapname and returns the snapshot.
 func Read(lg *zap.Logger, snapname string) (*raftpb.Snapshot, error) {
-	verify.Assert(lg != nil, "the logger should not be nil")
+	if lg == nil {
+		panic("the logger should not be nil")
+	}
 	b, err := os.ReadFile(snapname)
 	if err != nil {
 		lg.Warn("failed to read a snap file", zap.String("path", snapname), zap.Error(err))
