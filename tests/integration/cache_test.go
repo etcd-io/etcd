@@ -28,13 +28,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
-func TestCacheWatch(t *testing.T) {
+func TestCacheWithoutPrefixWatch(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
 	client := clus.Client(0)
 
-	c, err := cache.New(client, "/foo", cache.WithHistoryWindowSize(32))
+	c, err := cache.New(client, "", cache.WithHistoryWindowSize(32))
 	if err != nil {
 		t.Fatalf("New(...): %v", err)
 	}
@@ -193,6 +193,30 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
 			wantEvents: nil,
 		},
+		{
+			name:       "Watch with prefix empty string",
+			key:        "",
+			opts:       []clientv3.OpOption{clientv3.WithPrefix()},
+			wantEvents: []*clientv3.Event{event1PutFooA, event2PutFooB, event3DeleteFooA, event4PutFooA, event5DeleteFooB, event6PutFooC, event7PutFooBar, event8PutFooBaz, event9PutFooYoo, event10PutZoo},
+		},
+		{
+			name:       "Watch from key /foo/b",
+			key:        "/foo/b",
+			opts:       []clientv3.OpOption{clientv3.WithFromKey()},
+			wantEvents: []*clientv3.Event{event2PutFooB, event5DeleteFooB, event6PutFooC, event7PutFooBar, event8PutFooBaz, event9PutFooYoo, event10PutZoo},
+		},
+		{
+			name:       "Watch from empty key",
+			key:        "",
+			opts:       []clientv3.OpOption{clientv3.WithFromKey()},
+			wantEvents: []*clientv3.Event{event1PutFooA, event2PutFooB, event3DeleteFooA, event4PutFooA, event5DeleteFooB, event6PutFooC, event7PutFooBar, event8PutFooBaz, event9PutFooYoo, event10PutZoo},
+		},
+		{
+			name:       "Watch from non-existent key /doesnotexist",
+			key:        "/doesnotexist",
+			opts:       []clientv3.OpOption{clientv3.WithFromKey()},
+			wantEvents: []*clientv3.Event{event1PutFooA, event2PutFooB, event3DeleteFooA, event4PutFooA, event5DeleteFooB, event6PutFooC, event7PutFooBar, event8PutFooBaz, event9PutFooYoo, event10PutZoo},
+		},
 	}
 
 	t.Log("Open test watchers")
@@ -241,7 +265,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 	}
 }
 
-func TestCacheRejectsInvalidWatch(t *testing.T) {
+func TestCacheWithPrefix(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
@@ -250,71 +274,67 @@ func TestCacheRejectsInvalidWatch(t *testing.T) {
 	ctx := t.Context()
 
 	tests := []struct {
-		name        string
-		cachePrefix string
-		key         string
-		opts        []clientv3.OpOption
+		name           string
+		key            string
+		opts           []clientv3.OpOption
+		expectCanceled bool
 	}{
 		{
-			name:        "non‑zero start revision",
-			cachePrefix: "",
-			key:         "",
-			opts:        []clientv3.OpOption{clientv3.WithPrefix(), clientv3.WithRev(123)},
+			name:           "non‑zero start revision returns error",
+			key:            "/foo/a",
+			opts:           []clientv3.OpOption{clientv3.WithRev(123)},
+			expectCanceled: true,
 		},
 		{
-			name:        "zero length range",
-			cachePrefix: "/foo",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithRange("/foo/a")},
+			name:           "single key within prefix",
+			key:            "/foo/a",
+			opts:           nil,
+			expectCanceled: false,
 		},
 		{
-			name:        "invalid range (start > end)",
-			cachePrefix: "/foo",
-			key:         "/foo/b",
-			opts:        []clientv3.OpOption{clientv3.WithRange("/foo/a")},
+			name:           "single key outside prefix returns error",
+			key:            "/bar/a",
+			opts:           nil,
+			expectCanceled: true,
 		},
 		{
-			name:        "range crosses cache prefix boundary",
-			cachePrefix: "/foo",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithRange("/zzz")},
+			name:           "prefix() within cache prefix",
+			key:            "/foo",
+			opts:           []clientv3.OpOption{clientv3.WithPrefix()},
+			expectCanceled: false,
 		},
 		{
-			name:        "fromkey empty key",
-			cachePrefix: "/foo",
-			key:         "",
-			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+			name:           "prefix() outside cache prefix returns error",
+			key:            "/bar",
+			opts:           []clientv3.OpOption{clientv3.WithPrefix()},
+			expectCanceled: true,
 		},
 		{
-			name:        "fromkey within cache prefix",
-			cachePrefix: "/foo",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+			name:           "range within prefix",
+			key:            "/foo/a",
+			opts:           []clientv3.OpOption{clientv3.WithRange("/foo/b")},
+			expectCanceled: false,
 		},
 		{
-			name:        "fromkey outside cache prefix",
-			cachePrefix: "/foo",
-			key:         "/zzz",
-			opts:        []clientv3.OpOption{clientv3.WithFromKey()},
+			name:           "range crosses cache prefix boundary returns error",
+			key:            "/foo/a",
+			opts:           []clientv3.OpOption{clientv3.WithRange("/zzz")},
+			expectCanceled: true,
 		},
 		{
-			name:        "prefix() outside cache prefix",
-			cachePrefix: "/foo",
-			key:         "/zzz",
-			opts:        []clientv3.OpOption{clientv3.WithPrefix()},
-		},
-		{
-			name:        "prefix() with empty key",
-			cachePrefix: "/foo",
-			key:         "",
-			opts:        []clientv3.OpOption{clientv3.WithPrefix()},
+			name:           "fromKey not allowed when cache has prefix returns error",
+			key:            "/foo/a",
+			opts:           []clientv3.OpOption{clientv3.WithFromKey()},
+			expectCanceled: true,
 		},
 	}
+
+	const testPutKey = "/foo/a"
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := cache.New(client, tc.cachePrefix)
+			c, err := cache.New(client, "/foo")
 			if err != nil {
 				t.Fatalf("New(...): %v", err)
 			}
@@ -327,13 +347,37 @@ func TestCacheRejectsInvalidWatch(t *testing.T) {
 			defer cancel()
 
 			ch := c.Watch(watchCtx, tc.key, tc.opts...)
+
+			if !tc.expectCanceled {
+				if _, err := client.Put(ctx, testPutKey, "val"); err != nil {
+					t.Fatalf("Put(%q): %v", testPutKey, err)
+				}
+			}
+
 			select {
 			case resp, ok := <-ch:
-				if !ok || !resp.Canceled {
-					t.Fatalf("expected canceled watch, got %+v (closed=%v)", resp, !ok)
+				if tc.expectCanceled {
+					if !ok || !resp.Canceled {
+						t.Fatalf("expected canceled watch, got %+v (closed=%v)", resp, !ok)
+					}
+					return
+				}
+
+				if !ok || resp.Canceled {
+					t.Fatalf("expected active watch (not canceled), got %+v (closed=%v)", resp, !ok)
+				}
+				if len(resp.Events) == 0 {
+					t.Fatalf("watch returned no events, expected at least the test event")
+				}
+				if string(resp.Events[0].Kv.Key) != testPutKey {
+					t.Fatalf("got event for key %q, want %q", resp.Events[0].Kv.Key, testPutKey)
 				}
 			case <-watchCtx.Done():
-				t.Fatalf("watch did not cancel within timeout")
+				if tc.expectCanceled {
+					t.Fatalf("watch did not cancel within timeout")
+				} else {
+					t.Fatalf("active watch did not deliver event within timeout")
+				}
 			}
 		})
 	}
