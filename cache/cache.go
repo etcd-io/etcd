@@ -15,10 +15,10 @@
 package cache
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -105,15 +105,15 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	op := clientv3.OpGet(key, opts...)
 	startRev := op.Rev()
 
-	// TODO: Support watch on subprefix and single key & arbitrary startRev support once we guarantee gap-free replay.
-	if key != c.prefix || !clientv3.IsOptsWithPrefix(opts) || startRev != 0 {
-		responseChan := make(chan clientv3.WatchResponse, 1)
-		responseChan <- clientv3.WatchResponse{Canceled: true}
-		close(responseChan)
-		return responseChan
+	pred, err := c.validateWatch(key, opts...)
+	if err != nil {
+		ch := make(chan clientv3.WatchResponse, 1)
+		ch <- clientv3.WatchResponse{Canceled: true}
+		close(ch)
+		return ch
 	}
 
-	w := newWatcher(c.cfg.PerWatcherBufferSize, func(k []byte) bool { return strings.HasPrefix(string(k), key) })
+	w := newWatcher(c.cfg.PerWatcherBufferSize, pred)
 	c.demux.Register(w, startRev)
 
 	responseChan := make(chan clientv3.WatchResponse)
@@ -225,4 +225,58 @@ func readWatchChannel(
 		demux.Broadcast(resp.Events)
 	}
 	return nil
+}
+
+func (c *Cache) validateWatch(key string, opts ...clientv3.OpOption) (pred KeyPredicate, err error) {
+	op := clientv3.OpGet(key, opts...)
+	startRev := op.Rev()
+	// TODO: Support watch on arbitrary startRev support once we guarantee gap-free replay.
+	if startRev != 0 {
+		return nil, ErrUnsupportedWatch
+	}
+
+	startKey := []byte(key)
+	endKey := op.RangeBytes() // nil = single key, {0}=FromKey, else explicit range
+
+	if err := c.validateWatchRange(startKey, endKey); err != nil {
+		return nil, err
+	}
+	return KeyPredForRange(startKey, endKey), nil
+}
+
+func (c *Cache) validateWatchRange(startKey, endKey []byte) error {
+	prefixStart := []byte(c.prefix)
+	prefixEnd := []byte(clientv3.GetPrefixRangeEnd(c.prefix))
+
+	isSingleKey := len(endKey) == 0
+	isFromKey := len(endKey) == 1 && endKey[0] == 0
+
+	switch {
+	case isSingleKey:
+		if c.prefix == "" {
+			return nil
+		}
+		if bytes.Compare(startKey, prefixStart) < 0 || bytes.Compare(startKey, prefixEnd) >= 0 {
+			return ErrUnsupportedWatch
+		}
+		return nil
+
+	case isFromKey:
+		if c.prefix != "" {
+			return ErrUnsupportedWatch
+		}
+		return nil
+
+	default:
+		if bytes.Compare(endKey, startKey) <= 0 {
+			return ErrUnsupportedWatch
+		}
+		if c.prefix == "" {
+			return nil
+		}
+		if bytes.Compare(startKey, prefixStart) < 0 || bytes.Compare(endKey, prefixEnd) > 0 {
+			return ErrUnsupportedWatch
+		}
+		return nil
+	}
 }
