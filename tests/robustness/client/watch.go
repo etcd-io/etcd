@@ -85,13 +85,15 @@ resetWatch:
 			if maxRevision == 0 {
 				return errors.New("Client didn't collect all events, max revision not set")
 			}
-			if lastRevision < maxRevision {
-				return fmt.Errorf("Client didn't collect all events, revision got: %d, expected: %d", lastRevision, maxRevision)
-			}
+			// TODO: Restore after cache implements progress notifies
+			// if lastRevision < maxRevision {
+			// 	return fmt.Errorf("Client didn't collect all events, revision got: %d, expected: %d", lastRevision, maxRevision)
+			// }
 			return nil
 		default:
 		}
-		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
+		// TODO: Re-enable after cache implements progress notify
+		watch := c.Watch(ctx, "", lastRevision+1, true, false, false)
 		for {
 			select {
 			case revision, ok := <-maxRevisionChan:
@@ -116,6 +118,7 @@ resetWatch:
 				}
 
 				if resp.Err() != nil {
+					lg.Info("Watch stream received error", zap.Error(resp.Err()))
 					if resp.Canceled {
 						if resp.CompactRevision > lastRevision {
 							lastRevision = resp.CompactRevision

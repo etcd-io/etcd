@@ -206,10 +206,8 @@ func (c *Cache) getWatchLoop(ctx context.Context) {
 	cfg := defaultConfig()
 	backoff := cfg.InitialBackoff
 	for {
-		if err := ctx.Err(); err != nil {
-			return
-		}
-		if err := c.getWatch(ctx); err != nil {
+		err := c.getWatch(ctx)
+		if err != nil && !errors.Is(err, context.Canceled) {
 			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		}
 		select {
