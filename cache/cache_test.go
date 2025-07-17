@@ -212,7 +212,7 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 			}
 			close(mw.responses)
 
-			got := collectEvents(ctx, t, watchCh, len(tt.wantBatch))
+			got := collectAndAssertAtomicEvents(ctx, t, watchCh, len(tt.wantBatch))
 
 			if diff := cmp.Diff(tt.wantBatch, got); diff != "" {
 				t.Fatalf("event mismatch (-want +got):\n%s", diff)
@@ -423,20 +423,32 @@ func event(eventType mvccpb.Event_EventType, key string, rev int64) *clientv3.Ev
 	}
 }
 
-func collectEvents(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan, wantCount int) []*clientv3.Event {
+func collectAndAssertAtomicEvents(ctx context.Context, t *testing.T, watchCh clientv3.WatchChan, wantCount int) []*clientv3.Event {
 	t.Helper()
-	var got []*clientv3.Event
+	var events []*clientv3.Event
+	var lastRevision int64
 	for {
 		select {
 		case <-ctx.Done():
-			t.Fatalf("timed out waiting for Watch events (got %d/%d events)", len(got), wantCount)
+			t.Fatalf("timed out waiting for events (%d/%d received)",
+				len(events), wantCount)
+
 		case resp, ok := <-watchCh:
 			if !ok {
-				return got
+				return events
 			}
-			got = append(got, resp.Events...)
-			if len(got) >= wantCount {
-				return got
+			if len(resp.Events) != 0 && resp.Events[0].Kv.ModRevision == lastRevision {
+				t.Fatalf("same revision found as in previous response: %d", lastRevision)
+			}
+			for _, ev := range resp.Events {
+				if ev.Kv.ModRevision < lastRevision {
+					t.Fatalf("revision went backwards: last %d, now %d", lastRevision, ev.Kv.ModRevision)
+				}
+				events = append(events, ev)
+				lastRevision = ev.Kv.ModRevision
+			}
+			if wantCount != 0 && len(events) >= wantCount {
+				return events
 			}
 		}
 	}

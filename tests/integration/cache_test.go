@@ -257,7 +257,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 		i, tc := i, tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			events, _ := readEvents(watches[i])
+			events, _ := collectAndAssertAtomicEvents(t, watches[i])
 			if diff := cmp.Diff(tc.wantEvents, events); diff != "" {
 				t.Errorf("unexpected events (-want +got):\n%s", diff)
 			}
@@ -447,7 +447,7 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			ch := c.Watch(t.Context(), prefix, clientv3.WithPrefix())
 
 			generateEvents(t, client, prefix, tt.eventCount)
-			gotEvents, ok := readEvents(ch)
+			gotEvents, ok := collectAndAssertAtomicEvents(t, ch)
 			closed := !ok
 
 			if tt.wantExactEventCount != 0 && tt.wantExactEventCount != len(gotEvents) {
@@ -477,15 +477,26 @@ type Watcher interface {
 	Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan
 }
 
-func readEvents(watch clientv3.WatchChan) (events []*clientv3.Event, ok bool) {
+func collectAndAssertAtomicEvents(t *testing.T, watch clientv3.WatchChan) (events []*clientv3.Event, ok bool) {
 	deadline := time.After(time.Second)
+	var lastRevision int64
+
 	for {
 		select {
 		case resp, ok := <-watch:
 			if !ok {
 				return events, false
 			}
-			events = append(events, resp.Events...)
+			if len(resp.Events) != 0 && resp.Events[0].Kv.ModRevision == lastRevision {
+				t.Fatalf("same revision found as in previous response: %d", lastRevision)
+			}
+			for _, ev := range resp.Events {
+				if ev.Kv.ModRevision < lastRevision {
+					t.Fatalf("revision went backwards: last %d, now %d", lastRevision, ev.Kv.ModRevision)
+				}
+				events = append(events, ev)
+				lastRevision = ev.Kv.ModRevision
+			}
 		case <-deadline:
 			return events, true
 		case <-time.After(100 * time.Millisecond):
