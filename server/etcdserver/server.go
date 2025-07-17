@@ -1163,18 +1163,22 @@ func (s *EtcdServer) NewUberApplier() apply.UberApplier {
 }
 
 func verifySnapshotIndex(snapshot raftpb.Snapshot, cindex uint64) {
-	verify.Verify(func() {
-		if cindex != snapshot.Metadata.Index {
-			panic(fmt.Sprintf("consistent_index(%d) isn't equal to snapshot index (%d)", cindex, snapshot.Metadata.Index))
-		}
+	verify.Verify("consistent_index isn't equal to snapshot index", func() (bool, map[string]any) {
+		return cindex == snapshot.Metadata.Index,
+			map[string]any{
+				"consistent_index": cindex,
+				"snapshot_index":   snapshot.Metadata.Index,
+			}
 	})
 }
 
-func verifyConsistentIndexIsLatest(lg *zap.Logger, snapshot raftpb.Snapshot, cindex uint64) {
-	verify.Verify(func() {
-		if cindex < snapshot.Metadata.Index {
-			lg.Panic(fmt.Sprintf("consistent_index(%d) is older than snapshot index (%d)", cindex, snapshot.Metadata.Index))
-		}
+func verifyConsistentIndexIsLatest(snapshot raftpb.Snapshot, cindex uint64) {
+	verify.Verify("consistent_index is older than snapshot_index", func() (bool, map[string]any) {
+		return cindex >= snapshot.Metadata.Index,
+			map[string]any{
+				"consistent_index": cindex,
+				"snapshot_index":   snapshot.Metadata.Index,
+			}
 	})
 }
 
@@ -2147,7 +2151,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	}
 	ep.memorySnapshotIndex = ep.appliedi
 
-	verifyConsistentIndexIsLatest(lg, snap, s.consistIndex.ConsistentIndex())
+	verifyConsistentIndexIsLatest(snap, s.consistIndex.ConsistentIndex())
 
 	if toDisk {
 		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
