@@ -171,6 +171,14 @@ func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 				ts.Failures++
 			}
 		}
+		for _, event := range r.Watch {
+			for _, resp := range event.Responses {
+				if resp.Time < start || resp.Time > end {
+					continue
+				}
+				ts.Events += len(resp.Events)
+			}
+		}
 	}
 	return ts
 }
@@ -178,6 +186,7 @@ func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 type trafficStats struct {
 	Successes, Failures int
 	Period              time.Duration
+	Events              int
 }
 
 func (ts *trafficStats) SuccessRate() float64 {
