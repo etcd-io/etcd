@@ -66,6 +66,10 @@ func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit
 	}
 	var respRevision int64
 	if resp != nil && resp.Header != nil {
+		// TODO: Remove after cache supports consistent read.
+		if request.Range.Revision == 0 {
+			panic("Consistent read not expected")
+		}
 		respRevision = resp.Header.Revision
 	}
 	h.appendSuccessful(request, start, end, rangeResponse(resp.Kvs, resp.Count, respRevision))

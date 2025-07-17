@@ -31,18 +31,18 @@ import (
 )
 
 var (
-	DefragBeforeCopyPanic                     Failpoint = goPanicFailpoint{"defragBeforeCopy", triggerDefrag{}, AnyMember}
-	DefragBeforeRenamePanic                   Failpoint = goPanicFailpoint{"defragBeforeRename", triggerDefrag{}, AnyMember}
-	BeforeCommitPanic                         Failpoint = goPanicFailpoint{"beforeCommit", nil, AnyMember}
-	AfterCommitPanic                          Failpoint = goPanicFailpoint{"afterCommit", nil, AnyMember}
-	RaftBeforeSavePanic                       Failpoint = goPanicFailpoint{"raftBeforeSave", nil, AnyMember}
-	RaftAfterSavePanic                        Failpoint = goPanicFailpoint{"raftAfterSave", nil, AnyMember}
-	BackendBeforePreCommitHookPanic           Failpoint = goPanicFailpoint{"commitBeforePreCommitHook", nil, AnyMember}
-	BackendAfterPreCommitHookPanic            Failpoint = goPanicFailpoint{"commitAfterPreCommitHook", nil, AnyMember}
-	BackendBeforeStartDBTxnPanic              Failpoint = goPanicFailpoint{"beforeStartDBTxn", nil, AnyMember}
-	BackendAfterStartDBTxnPanic               Failpoint = goPanicFailpoint{"afterStartDBTxn", nil, AnyMember}
-	BackendBeforeWritebackBufPanic            Failpoint = goPanicFailpoint{"beforeWritebackBuf", nil, AnyMember}
-	BackendAfterWritebackBufPanic             Failpoint = goPanicFailpoint{"afterWritebackBuf", nil, AnyMember}
+	DefragBeforeCopyPanic           Failpoint = goPanicFailpoint{"defragBeforeCopy", triggerDefrag{}, AnyMember}
+	DefragBeforeRenamePanic         Failpoint = goPanicFailpoint{"defragBeforeRename", triggerDefrag{}, AnyMember}
+	BeforeCommitPanic               Failpoint = goPanicFailpoint{"beforeCommit", nil, AnyMember}
+	AfterCommitPanic                Failpoint = goPanicFailpoint{"afterCommit", nil, AnyMember}
+	RaftBeforeSavePanic             Failpoint = goPanicFailpoint{"raftBeforeSave", nil, AnyMember}
+	RaftAfterSavePanic              Failpoint = goPanicFailpoint{"raftAfterSave", nil, AnyMember}
+	BackendBeforePreCommitHookPanic Failpoint = goPanicFailpoint{"commitBeforePreCommitHook", nil, AnyMember}
+	BackendAfterPreCommitHookPanic  Failpoint = goPanicFailpoint{"commitAfterPreCommitHook", nil, AnyMember}
+	BackendBeforeStartDBTxnPanic    Failpoint = goPanicFailpoint{"beforeStartDBTxn", nil, AnyMember}
+	BackendAfterStartDBTxnPanic     Failpoint = goPanicFailpoint{"afterStartDBTxn", nil, AnyMember}
+	BackendBeforeWritebackBufPanic  Failpoint = goPanicFailpoint{"beforeWritebackBuf", nil, AnyMember}
+	BackendAfterWritebackBufPanic   Failpoint = goPanicFailpoint{"afterWritebackBuf", nil, AnyMember}
 	CompactBeforeCommitScheduledCompactPanic  Failpoint = goPanicFailpoint{"compactBeforeCommitScheduledCompact", triggerCompact{}, AnyMember}
 	CompactAfterCommitScheduledCompactPanic   Failpoint = goPanicFailpoint{"compactAfterCommitScheduledCompact", triggerCompact{}, AnyMember}
 	CompactBeforeSetFinishedCompactPanic      Failpoint = goPanicFailpoint{"compactBeforeSetFinishedCompact", triggerCompact{}, AnyMember}
@@ -50,18 +50,18 @@ var (
 	CompactAfterSetFinishedCompactPanic       Failpoint = goPanicFailpoint{"compactAfterSetFinishedCompact", triggerCompact{}, AnyMember}
 	CompactBeforeCommitBatchPanic             Failpoint = goPanicFailpoint{"compactBeforeCommitBatch", triggerCompact{multiBatchCompaction: true}, AnyMember}
 	CompactAfterCommitBatchPanic              Failpoint = goPanicFailpoint{"compactAfterCommitBatch", triggerCompact{multiBatchCompaction: true}, AnyMember}
-	RaftBeforeLeaderSendPanic                 Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
-	RaftBeforeFollowerSendPanic               Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, Follower}
-	RaftBeforeApplySnapPanic                  Failpoint = goPanicFailpoint{"raftBeforeApplySnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	RaftAfterApplySnapPanic                   Failpoint = goPanicFailpoint{"raftAfterApplySnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	RaftAfterWALReleasePanic                  Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	RaftBeforeSaveSnapPanic                   Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	RaftAfterSaveSnapPanic                    Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	ApplyBeforeOpenSnapshot                   Failpoint = goPanicFailpoint{"applyBeforeOpenSnapshot", triggerBlackhole{waitTillSnapshot: true}, Follower}
-	BeforeApplyOneConfChangeSleep             Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
-	RaftBeforeSaveSleep                       Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
-	RaftAfterSaveSleep                        Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
-	SleepBeforeSendWatchResponse              Failpoint = gofailSleepAndDeactivate{"beforeSendWatchResponse", time.Second}
+	RaftBeforeLeaderSendPanic     Failpoint = goPanicFailpoint{"raftBeforeLeaderSend", nil, Leader}
+	RaftBeforeFollowerSendPanic   Failpoint = goPanicFailpoint{"raftBeforeFollowerSend", nil, Follower}
+	RaftBeforeApplySnapPanic      Failpoint = goPanicFailpoint{"raftBeforeApplySnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	RaftAfterApplySnapPanic       Failpoint = goPanicFailpoint{"raftAfterApplySnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	RaftAfterWALReleasePanic      Failpoint = goPanicFailpoint{"raftAfterWALRelease", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	RaftBeforeSaveSnapPanic       Failpoint = goPanicFailpoint{"raftBeforeSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	RaftAfterSaveSnapPanic        Failpoint = goPanicFailpoint{"raftAfterSaveSnap", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	ApplyBeforeOpenSnapshot       Failpoint = goPanicFailpoint{"applyBeforeOpenSnapshot", triggerBlackhole{waitTillSnapshot: true}, Follower}
+	BeforeApplyOneConfChangeSleep Failpoint = killAndGofailSleep{"beforeApplyOneConfChange", time.Second}
+	RaftBeforeSaveSleep           Failpoint = gofailSleepAndDeactivate{"raftBeforeSave", time.Second}
+	RaftAfterSaveSleep            Failpoint = gofailSleepAndDeactivate{"raftAfterSave", time.Second}
+	SleepBeforeSendWatchResponse  Failpoint = gofailSleepAndDeactivate{"beforeSendWatchResponse", time.Second}
 )
 
 type goPanicFailpoint struct {

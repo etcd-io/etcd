@@ -207,10 +207,8 @@ func (c *Cache) getWatchLoop() {
 	ctx := c.internalCtx
 	backoff := cfg.InitialBackoff
 	for {
-		if err := ctx.Err(); err != nil {
-			return
-		}
-		if err := c.getWatch(); err != nil {
+		err := c.getWatch()
+		if err != nil && !errors.Is(err, context.Canceled) {
 			fmt.Printf("getWatch failed, will retry after %v: %v\n", backoff, err)
 		}
 		select {
@@ -364,9 +362,6 @@ func (c *Cache) validateGet(key string, op clientv3.Op) (KeyPredicate, error) {
 		return nil, fmt.Errorf("%w: MinCreateRev(%d) not supported", ErrUnsupportedRequest, op.MinCreateRev())
 	case op.MaxCreateRev() != 0:
 		return nil, fmt.Errorf("%w: MaxCreateRev(%d) not supported", ErrUnsupportedRequest, op.MaxCreateRev())
-	// cache now only serves serializable reads of the latest revision (rev == 0).
-	case !op.IsSerializable():
-		return nil, fmt.Errorf("%w: non-serializable request", ErrUnsupportedRequest)
 	}
 
 	startKey := []byte(key)

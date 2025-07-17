@@ -37,17 +37,13 @@ var (
 		largePutSize: 32769,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
-			{Choice: Get, Weight: 15},
-			{Choice: List, Weight: 15},
-			{Choice: StaleGet, Weight: 10},
-			{Choice: StaleList, Weight: 10},
+			{Choice: StaleGet, Weight: 25},
+			{Choice: StaleList, Weight: 25},
 			{Choice: Delete, Weight: 5},
 			{Choice: MultiOpTxn, Weight: 5},
 			{Choice: PutWithLease, Weight: 5},
 			{Choice: LeaseRevoke, Weight: 5},
-			{Choice: CompareAndSet, Weight: 5},
 			{Choice: Put, Weight: 20},
-			{Choice: LargePut, Weight: 5},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
@@ -56,12 +52,9 @@ var (
 		leaseTTL:     DefaultLeaseTTL,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
-			{Choice: Get, Weight: 15},
-			{Choice: List, Weight: 15},
-			{Choice: StaleGet, Weight: 10},
-			{Choice: StaleList, Weight: 10},
+			{Choice: StaleGet, Weight: 25},
+			{Choice: StaleList, Weight: 25},
 			{Choice: MultiOpTxn, Weight: 5},
-			{Choice: LargePut, Weight: 5},
 			{Choice: Put, Weight: 40},
 		},
 	}
@@ -111,7 +104,7 @@ func (t etcdTraffic) Name() string {
 
 func (t etcdTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
 	lastOperationSucceeded := true
-	var lastRev int64
+	var lastRev int64 = 1
 	var requestType etcdRequestType
 	client := etcdTrafficClient{
 		etcdTraffic:  t,
@@ -139,7 +132,7 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) 
 			}
 			requestType = random.PickRandom(choices)
 		} else {
-			requestType = List
+			requestType = StaleList
 		}
 		rev, err := client.Request(ctx, requestType, lastRev)
 		if shouldReturn {

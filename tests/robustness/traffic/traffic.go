@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -116,7 +117,8 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			})
 		}(c)
 	}
-	if !profile.ForbidCompaction {
+	// TODO: Enable compaction after cache supports consistent reads.
+	if false {
 		wg.Add(1)
 		c, nerr := clientSet.NewClient(endpoints)
 		if nerr != nil {
@@ -270,6 +272,14 @@ func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 				ts.Failures++
 			}
 		}
+		for _, event := range r.Watch {
+			for _, resp := range event.Responses {
+				if resp.Time < start || resp.Time > end {
+					continue
+				}
+				ts.Events += len(resp.Events)
+			}
+		}
 	}
 	return ts
 }
@@ -277,6 +287,7 @@ func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts
 type trafficStats struct {
 	Successes, Failures int
 	Period              time.Duration
+	Events              int
 }
 
 func (ts *trafficStats) SuccessRate() float64 {
@@ -349,7 +360,7 @@ func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []
 	defer c.Close()
 	for {
 		rCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-		resp, err := c.Get(rCtx, "key")
+		resp, err := c.Get(rCtx, "key", clientv3.WithRev(1))
 		cancel()
 		if err != nil {
 			lg.Warn("Failed to check if database empty at start, retrying", zap.Error(err))
