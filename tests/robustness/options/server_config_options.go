@@ -17,6 +17,7 @@ package options
 import (
 	"time"
 
+	"go.etcd.io/etcd/server/v3/embed"
 	e2e "go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -52,7 +53,7 @@ func WithElectionMs(input ...uint) e2e.EPClusterOption {
 
 func WithWatchProgressNotifyInterval(input ...time.Duration) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
-		c.ServerConfig.WatchProgressNotifyInterval = input[internalRand.Intn(len(input))]
+		c.ServerConfig.WatchProgressNotifyInterval = embed.FromTimeDuration(input[internalRand.Intn(len(input))])
 	}
 }
 
