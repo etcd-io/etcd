@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -54,6 +55,7 @@ type EtcdProcess interface {
 	Restart() error
 	Stop() error
 	Close() error
+	Kill() error
 	WithStopSignal(sig os.Signal) os.Signal
 	Config() *EtcdServerProcessConfig
 	Logs() LogsExpect
@@ -61,6 +63,7 @@ type EtcdProcess interface {
 	PeerProxy() proxy.Server
 	Failpoints() *BinaryFailpoints
 	IsRunning() bool
+	Wait(ctx context.Context) error
 
 	Etcdctl(connType ClientConnType, isAutoTLS bool, v2 bool) *Etcdctl
 }
@@ -135,6 +138,7 @@ func (ep *EtcdServerProcess) EndpointsHTTP() []string {
 func (ep *EtcdServerProcess) EndpointsMetrics() []string { return []string{ep.cfg.Murl} }
 
 func (ep *EtcdServerProcess) Start() error {
+	ep.donec = make(chan struct{})
 	if ep.proc != nil {
 		panic("already started")
 	}
@@ -213,6 +217,28 @@ func (ep *EtcdServerProcess) Close() error {
 		return os.RemoveAll(ep.cfg.DataDirPath)
 	}
 	return nil
+}
+
+func (ep *EtcdServerProcess) Kill() error {
+	ep.cfg.lg.Info("killing server...", zap.String("name", ep.cfg.Name))
+	return ep.proc.Signal(syscall.SIGKILL)
+}
+
+func (ep *EtcdServerProcess) Wait(ctx context.Context) error {
+	ch := make(chan struct{})
+	go func() {
+		defer close(ch)
+		if ep.proc != nil {
+			ep.proc.Wait()
+		}
+	}()
+	select {
+	case <-ch:
+		ep.proc = nil
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (ep *EtcdServerProcess) WithStopSignal(sig os.Signal) os.Signal {
