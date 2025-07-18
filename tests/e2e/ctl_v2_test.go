@@ -467,6 +467,11 @@ func etcdctlRoleAdd(clus *e2e.EtcdProcessCluster, role string) error {
 	return e2e.SpawnWithExpect(cmdArgs, role)
 }
 
+func etcdctlRoleRemove(clus *e2e.EtcdProcessCluster, role string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "role", "remove", role)
+	return e2e.SpawnWithExpect(cmdArgs, role)
+}
+
 func etcdctlRoleGrant(clus *e2e.EtcdProcessCluster, role string, perms ...string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "role", "grant")
 	cmdArgs = append(cmdArgs, perms...)
@@ -482,6 +487,11 @@ func etcdctlRoleList(clus *e2e.EtcdProcessCluster, expectedRole string) error {
 func etcdctlUserAdd(clus *e2e.EtcdProcessCluster, user, pass string) error {
 	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "add", user+":"+pass)
 	return e2e.SpawnWithExpect(cmdArgs, "User "+user+" created")
+}
+
+func etcdctlUserRemove(clus *e2e.EtcdProcessCluster, user string) error {
+	cmdArgs := append(etcdctlPrefixArgs(clus), "user", "remove", user)
+	return e2e.SpawnWithExpect(cmdArgs, "User "+user+" removed")
 }
 
 func etcdctlUserGrant(clus *e2e.EtcdProcessCluster, user, role string) error {
