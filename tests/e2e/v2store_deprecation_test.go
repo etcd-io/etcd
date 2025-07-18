@@ -17,8 +17,10 @@ package e2e
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -143,6 +145,51 @@ func TestV2DeprecationCheckCustomContentOffline(t *testing.T) {
 		_, err = proc.Expect("No custom content found in v2store")
 		assert.NoError(t, err)
 	})
+}
+
+func TestCtlV2CustomContentWithAuthData(t *testing.T) {
+	BeforeTestV2(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:   1,
+		EnableV2:      true,
+		SnapshotCount: 1,
+	})
+	require.NoError(t, err)
+
+	t.Logf("Add and remove role 'role1'")
+	err = etcdctlRoleAdd(epc, "role1")
+	require.NoError(t, err)
+	err = etcdctlRoleRemove(epc, "role1")
+	require.NoError(t, err)
+
+	t.Logf("Add and remove user 'user1'")
+	err = etcdctlUserAdd(epc, "user1", "pass1")
+	require.NoError(t, err)
+	err = etcdctlUserRemove(epc, "user1")
+	require.NoError(t, err)
+
+	t.Log("Stop the cluster")
+	require.NoError(t, epc.Stop())
+
+	t.Log("Execute 'etcdutl check v2store' to ensure there is no custom content in v2store")
+	dataDirPath := epc.Procs[0].Config().DataDirPath
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
+
+	doneC := make(chan struct{})
+	go func() {
+		defer close(doneC)
+		_, err = proc.Expect("No custom content found in v2store")
+		assert.NoError(t, err)
+	}()
+
+	t.Log("Wait until v2store check is done")
+	select {
+	case <-doneC:
+	case <-time.After(time.Second * 5):
+		t.Fatal("timed out waiting for v2store check")
+	}
 }
 
 func assertVerifyCheckCustomContentOffline(t *testing.T, dataDirPath string) {
