@@ -102,7 +102,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		return emptyWatchChan
 	}
 
-	op := clientv3.OpGet(key, opts...)
+	op := clientv3.OpWatch(key, opts...)
 	startRev := op.Rev()
 
 	if startRev != 0 {
@@ -240,7 +240,16 @@ func readWatchChannel(
 }
 
 func (c *Cache) validateWatch(key string, opts ...clientv3.OpOption) (pred KeyPredicate, err error) {
-	op := clientv3.OpGet(key, opts...)
+	op := clientv3.OpWatch(key, opts...)
+
+	if op.IsPrevKV() ||
+		op.IsFragment() ||
+		op.IsProgressNotify() ||
+		op.IsCreatedNotify() ||
+		op.IsFilterPut() ||
+		op.IsFilterDelete() {
+		return nil, ErrUnsupportedWatch
+	}
 
 	startKey := []byte(key)
 	endKey := op.RangeBytes() // nil = single key, {0}=FromKey, else explicit range

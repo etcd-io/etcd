@@ -296,7 +296,7 @@ func (w *watcher) newWatcherGRPCStream(inctx context.Context) *watchGRPCStream {
 
 // Watch posts a watch request to run() and waits for a new watcher channel
 func (w *watcher) Watch(ctx context.Context, key string, opts ...OpOption) WatchChan {
-	ow := opWatch(key, opts...)
+	ow := OpWatch(key, opts...)
 
 	var filters []pb.WatchCreateRequest_FilterType
 	if ow.filterPut {
