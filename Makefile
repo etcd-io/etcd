@@ -8,6 +8,23 @@ include $(REPOSITORY_ROOT)/tests/robustness/Makefile
 build:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
 
+.PHONY: bench
+bench: build
+ifeq (, $(shell which benchmark))
+	@echo "Installing etcd benchmark tool..."
+	go install -v ./tools/benchmark
+else
+	@echo "benchmark tool already installed..."
+endif
+
+ifeq ($(strip $(TESTS)),)
+	@echo "Running the default benchmark suite..."
+	./scripts/benchmark_test.sh
+else
+	@echo "Running benchmarks tests with TESTS='$(TESTS)'"
+	./scripts/benchmark_test.sh $(TESTS)
+endif
+
 PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 
 .PHONY: build-all
