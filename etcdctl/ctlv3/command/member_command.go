@@ -35,8 +35,9 @@ var (
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
 	mc := &cobra.Command{
-		Use:   "member <subcommand>",
-		Short: "Membership related commands",
+		Use:     "member <subcommand>",
+		Short:   "Membership related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	mc.AddCommand(NewMemberAddCommand())
