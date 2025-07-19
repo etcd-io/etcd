@@ -19,8 +19,6 @@ import (
 	"sync"
 
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 type Job interface {
@@ -89,7 +87,9 @@ type fifo struct {
 // NewFIFOScheduler returns a Scheduler that schedules jobs in FIFO
 // order sequentially
 func NewFIFOScheduler(lg *zap.Logger) Scheduler {
-	verify.Assert(lg != nil, "the logger should not be nil")
+	if lg == nil {
+		panic("the logger should not be nil")
+	}
 
 	f := &fifo{
 		resume: make(chan struct{}, 1),

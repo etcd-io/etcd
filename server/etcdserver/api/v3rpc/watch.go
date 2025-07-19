@@ -17,6 +17,7 @@ package v3rpc
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"sync"
@@ -27,7 +28,6 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver"
@@ -493,7 +493,9 @@ func (sws *serverWatchStream) sendLoop() {
 			// track id creation
 			wid := mvcc.WatchID(c.WatchId)
 
-			verify.Assert(!(c.Canceled && c.Created) || wid == clientv3.InvalidWatchID, "unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true", wid, clientv3.InvalidWatchID)
+			if c.Canceled && c.Created && wid != clientv3.InvalidWatchID {
+				panic(fmt.Sprintf("unexpected watchId: %d, wanted: %d, since both 'Canceled' and 'Created' are true", wid, clientv3.InvalidWatchID))
+			}
 
 			if c.Canceled && wid != clientv3.InvalidWatchID {
 				delete(ids, wid)
