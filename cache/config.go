@@ -29,6 +29,8 @@ type Config struct {
 	InitialBackoff time.Duration
 	// MaxBackoff caps the exponential back-off between successive upstream watch retries.
 	MaxBackoff time.Duration
+	// InitialLoadTimeout is the timeout applied to the first Get() used to bootstrap the cache.
+	InitialLoadTimeout time.Duration
 }
 
 // TODO: tune via performance/load tests.
@@ -39,6 +41,7 @@ func defaultConfig() Config {
 		ResyncInterval:       50 * time.Millisecond,
 		InitialBackoff:       50 * time.Millisecond,
 		MaxBackoff:           2 * time.Second,
+		InitialLoadTimeout:   5 * time.Second,
 	}
 }
 
@@ -62,4 +65,8 @@ func WithInitialBackoff(d time.Duration) Option {
 
 func WithMaxBackoff(d time.Duration) Option {
 	return func(c *Config) { c.MaxBackoff = d }
+}
+
+func WithInitialLoadTimeout(d time.Duration) Option {
+	return func(c *Config) { c.InitialLoadTimeout = d }
 }

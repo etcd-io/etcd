@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	rpctypes "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -40,6 +41,7 @@ type Cache struct {
 	cfg         Config // immutable runtime configuration
 	watcher     clientv3.Watcher
 	demux       *demux // demux fans incoming events out to active watchers and manages resync.
+	store       *store // last‑observed snapshot
 	ready       chan struct{}
 	stop        context.CancelFunc
 	waitGroup   sync.WaitGroup
@@ -72,12 +74,31 @@ func New(watcher clientv3.Watcher, prefix string, opts ...Option) (*Cache, error
 		prefix:      prefix,
 		cfg:         cfg,
 		watcher:     watcher,
+		store:       newStore(),
 		ready:       make(chan struct{}),
 		stop:        cancel,
 		internalCtx: internalCtx,
 	}
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
+
+	storeW := newWatcher(cfg.HistoryWindowSize, nil) // nil predicate == match all
+	cache.demux.Register(storeW, 0)
+	cache.waitGroup.Add(1)
+	go func() {
+		defer cache.waitGroup.Done()
+		for {
+			select {
+			case <-cache.internalCtx.Done():
+				return
+			case evs, ok := <-storeW.eventQueue:
+				if !ok { // compaction purge closed the queue
+					return
+				}
+				_ = cache.store.apply(evs)
+			}
+		}
+	}()
 
 	cache.waitGroup.Add(1)
 	go func() {
@@ -162,6 +183,29 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	return responseChan
 }
 
+func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	select {
+	case <-c.ready:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+	op := clientv3.OpGet(key, opts...)
+
+	if _, err := c.validateGet(key, op); err != nil {
+		return nil, err
+	}
+
+	startKey := []byte(key)
+	endKey := op.RangeBytes()
+	kvs, rev := c.store.Get(startKey, endKey)
+
+	return &clientv3.GetResponse{
+		Header: &pb.ResponseHeader{Revision: rev},
+		Kvs:    kvs,
+		Count:  int64(len(kvs)),
+	}, nil
+}
+
 // Ready reports whether the cache has finished its initial load.
 func (c *Cache) Ready() bool {
 	select {
@@ -191,14 +235,27 @@ func (c *Cache) Close() {
 func serveWatchEvents(ctx context.Context, watchCtx *watchCtx) {
 	backoff := watchCtx.backoffStart
 	for {
+		var startRev int64
+		if kv, ok := watchCtx.cache.watcher.(clientv3.KV); ok {
+			if resp, err := kv.Get(ctx, watchCtx.cache.prefix, clientv3.WithPrefix()); err == nil {
+				events := make([]*clientv3.Event, 0, len(resp.Kvs))
+				for _, kv := range resp.Kvs {
+					events = append(events, &clientv3.Event{
+						Type: clientv3.EventTypePut,
+						Kv:   kv,
+					})
+				}
+				watchCtx.cache.demux.Broadcast(events)
+				watchCtx.onFirstResponse()
+				startRev = resp.Header.Revision + 1
+			}
+		}
+
 		opts := []clientv3.OpOption{
 			clientv3.WithPrefix(),
 			clientv3.WithProgressNotify(),
 			clientv3.WithCreatedNotify(),
-		}
-		if oldestRev := watchCtx.cache.demux.PeekOldest(); oldestRev != 0 {
-			opts = append(opts,
-				clientv3.WithRev(oldestRev+1))
+			clientv3.WithRev(startRev),
 		}
 		watchCh := watchCtx.cache.watcher.Watch(ctx, watchCtx.cache.prefix, opts...)
 
@@ -236,6 +293,7 @@ func readWatchChannel(
 				default:
 				}
 				demux.Purge()
+				cache.store.Reset()
 			}
 			return err
 		}
@@ -245,13 +303,19 @@ func readWatchChannel(
 }
 
 func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, err error) {
-	if op.IsPrevKV() ||
-		op.IsFragment() ||
-		op.IsProgressNotify() ||
-		op.IsCreatedNotify() ||
-		op.IsFilterPut() ||
-		op.IsFilterDelete() {
-		return nil, ErrUnsupportedRequest
+	switch {
+	case op.IsPrevKV():
+		return nil, fmt.Errorf("%w: PrevKV not supported", ErrUnsupportedRequest)
+	case op.IsFragment():
+		return nil, fmt.Errorf("%w: Fragment not supported", ErrUnsupportedRequest)
+	case op.IsProgressNotify():
+		return nil, fmt.Errorf("%w: ProgressNotify not supported", ErrUnsupportedRequest)
+	case op.IsCreatedNotify():
+		return nil, fmt.Errorf("%w: CreatedNotify not supported", ErrUnsupportedRequest)
+	case op.IsFilterPut():
+		return nil, fmt.Errorf("%w: FilterPut not supported", ErrUnsupportedRequest)
+	case op.IsFilterDelete():
+		return nil, fmt.Errorf("%w: FilterDelete not supported", ErrUnsupportedRequest)
 	}
 
 	startKey := []byte(key)
@@ -260,6 +324,41 @@ func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, er
 	if err := c.validateRange(startKey, endKey); err != nil {
 		return nil, err
 	}
+	return KeyPredForRange(startKey, endKey), nil
+}
+
+func (c *Cache) validateGet(key string, op clientv3.Op) (KeyPredicate, error) {
+	switch {
+	case op.IsCountOnly():
+		return nil, fmt.Errorf("%w: CountOnly not supported", ErrUnsupportedRequest)
+	case op.IsPrevKV():
+		return nil, fmt.Errorf("%w: PrevKV not supported", ErrUnsupportedRequest)
+	case op.IsSortSet():
+		return nil, fmt.Errorf("%w: SortSet not supported", ErrUnsupportedRequest)
+	case op.Limit() != 0:
+		return nil, fmt.Errorf("%w: Limit(%d) not supported", ErrUnsupportedRequest, op.Limit())
+	case op.MinModRev() != 0:
+		return nil, fmt.Errorf("%w: MinModRev(%d) not supported", ErrUnsupportedRequest, op.MinModRev())
+	case op.MaxModRev() != 0:
+		return nil, fmt.Errorf("%w: MaxModRev(%d) not supported", ErrUnsupportedRequest, op.MaxModRev())
+	case op.MinCreateRev() != 0:
+		return nil, fmt.Errorf("%w: MinCreateRev(%d) not supported", ErrUnsupportedRequest, op.MinCreateRev())
+	case op.MaxCreateRev() != 0:
+		return nil, fmt.Errorf("%w: MaxCreateRev(%d) not supported", ErrUnsupportedRequest, op.MaxCreateRev())
+	// cache now only serves serializable reads of the latest revision (rev == 0).
+	case op.Rev() != 0:
+		return nil, fmt.Errorf("%w: Rev(%d) not supported", ErrUnsupportedRequest, op.Rev())
+	case !op.IsSerializable():
+		return nil, fmt.Errorf("%w: non-serializable request", ErrUnsupportedRequest)
+	}
+
+	startKey := []byte(key)
+	endKey := op.RangeBytes()
+
+	if err := c.validateRange(startKey, endKey); err != nil {
+		return nil, err
+	}
+
 	return KeyPredForRange(startKey, endKey), nil
 }
 
