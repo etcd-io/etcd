@@ -374,7 +374,7 @@ func testWatch(t *testing.T, kv clientv3.KV, watcher Watcher) {
 	}
 }
 
-func TestCacheWithPrefix(t *testing.T) {
+func TestCacheWithPrefixWatch(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
@@ -481,6 +481,304 @@ func TestCacheWithPrefix(t *testing.T) {
 				} else {
 					t.Fatalf("active watch did not deliver event within timeout")
 				}
+			}
+		})
+	}
+}
+
+func TestCacheWithoutPrefixGet(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+
+	client := clus.Client(0)
+
+	c, err := cache.New(client, "", cache.WithHistoryWindowSize(32))
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(t.Context()); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	testGet(t, client.KV, c)
+}
+
+func TestGet(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+
+	client := clus.Client(0)
+	testGet(t, client.KV, client.KV)
+}
+
+func testGet(t *testing.T, kv clientv3.KV, reader Getter) {
+	ctx := t.Context()
+	rev2PutFooA := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a1"),
+			CreateRevision: 2,
+			ModRevision:    2,
+			Version:        1,
+		},
+	}
+	rev3PutFooB := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/b"),
+			Value:          []byte("b1"),
+			CreateRevision: 3,
+			ModRevision:    3,
+			Version:        1,
+		},
+	}
+	rev4PutFooC := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/c"),
+			Value:          []byte("c1"),
+			CreateRevision: 4,
+			ModRevision:    4,
+			Version:        1,
+		},
+	}
+	rev5PutFooD := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/d"),
+			Value:          []byte("d1"),
+			CreateRevision: 5,
+			ModRevision:    5,
+			Version:        1,
+		},
+	}
+	rev6DeleteFooD := &clientv3.Event{
+		Type: clientv3.EventTypeDelete,
+		Kv: &mvccpb.KeyValue{
+			Key:         []byte("/foo/d"),
+			ModRevision: 6,
+		},
+	}
+	rev7TxnPutFooA := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a2"),
+			CreateRevision: 2,
+			ModRevision:    7,
+			Version:        2,
+		},
+	}
+	rev7TxnPutFooB := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/b"),
+			Value:          []byte("b2"),
+			CreateRevision: 3,
+			ModRevision:    7,
+			Version:        2,
+		},
+	}
+	rev8PutFooA := &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a3"),
+			CreateRevision: 2,
+			ModRevision:    8,
+			Version:        3,
+		},
+	}
+
+	tests := []struct {
+		name         string
+		key          string
+		opts         []clientv3.OpOption
+		wantKVs      []*mvccpb.KeyValue
+		wantRevision int64
+	}{
+		{
+			name:         "single key /foo/a",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv},
+			wantRevision: 8,
+		},
+		{
+			name:         "non‑existing key",
+			key:          "/doesnotexist",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+			wantKVs:      nil,
+			wantRevision: 8,
+		},
+		{
+			name:         "prefix /foo",
+			key:          "/foo",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv, rev7TxnPutFooB.Kv, rev4PutFooC.Kv},
+			wantRevision: 8,
+		},
+		{
+			name:         "range [/foo/a, /foo/c)",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
+			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv, rev7TxnPutFooB.Kv},
+			wantRevision: 8,
+		},
+		{
+			name:         "fromKey /foo/b",
+			key:          "/foo/b",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
+			wantKVs:      []*mvccpb.KeyValue{rev7TxnPutFooB.Kv, rev4PutFooC.Kv},
+			wantRevision: 8,
+		},
+	}
+
+	t.Log("Setup")
+	if _, err := kv.Put(ctx, string(rev2PutFooA.Kv.Key), string(rev2PutFooA.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(rev3PutFooB.Kv.Key), string(rev3PutFooB.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(rev4PutFooC.Kv.Key), string(rev4PutFooC.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Put(ctx, string(rev5PutFooD.Kv.Key), string(rev5PutFooD.Kv.Value)); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if _, err := kv.Delete(ctx, string(rev6DeleteFooD.Kv.Key)); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(rev7TxnPutFooA.Kv.Key), string(rev7TxnPutFooA.Kv.Value)), clientv3.OpPut(string(rev7TxnPutFooB.Kv.Key), string(rev7TxnPutFooB.Kv.Value))).Commit(); err != nil {
+		t.Fatalf("Txn: %v", err)
+	}
+	lastPutResp, err := kv.Put(ctx, string(rev8PutFooA.Kv.Key), string(rev8PutFooA.Kv.Value))
+	if err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+
+	switch cacheReader := reader.(type) {
+	case *cache.Cache:
+		if err := cacheReader.WaitForRevision(ctx, lastPutResp.Header.Revision); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", lastPutResp.Header.Revision, err)
+		}
+	default:
+	}
+
+	t.Log("Validate")
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := reader.Get(ctx, tc.key, tc.opts...)
+			if err != nil {
+				t.Fatalf("Get %q failed: %v", tc.key, err)
+			}
+			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
+				t.Fatalf("unexpected KVs (-want +got):\n%s", diff)
+			}
+			if resp.Header.Revision != tc.wantRevision {
+				t.Fatalf("revision: got %d, want %d", resp.Header.Revision, tc.wantRevision)
+			}
+		})
+	}
+}
+
+func TestCacheWithPrefixGet(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	tests := []struct {
+		name        string
+		key         string
+		opts        []clientv3.OpOption
+		expectError bool
+	}{
+		{
+			name:        "single key within prefix",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable()},
+			expectError: false,
+		},
+		{
+			name:        "single key outside prefix returns error",
+			key:         "/bar/a",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable()},
+			expectError: true,
+		},
+		{
+			name:        "prefix() within cache prefix",
+			key:         "/foo",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+			expectError: false,
+		},
+		{
+			name:        "prefix() outside cache prefix returns error",
+			key:         "/bar",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+			expectError: true,
+		},
+		{
+			name:        "range within prefix",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
+			expectError: false,
+		},
+		{
+			name:        "range crosses cache prefix boundary returns error /foo/a",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/zzz")},
+			expectError: true,
+		},
+		{
+			name:        "fromKey not allowed when cache has prefix returns error /foo/a",
+			key:         "/foo/a",
+			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
+			expectError: true,
+		},
+	}
+
+	c, err := cache.New(client, "/foo")
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	defer c.Close()
+	if err = c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	const testKey = "/foo/a"
+	putResp, err := client.Put(ctx, testKey, "val")
+	if err != nil {
+		t.Fatalf("client.Put(%q, \"val\") failed: %v", testKey, err)
+	}
+	if err := c.WaitForRevision(ctx, putResp.Header.Revision); err != nil {
+		t.Fatalf("cache never caught up to rev %d: %v", putResp.Header.Revision, err)
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := c.Get(ctx, tc.key, tc.opts...)
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("expected error for Get %q under prefix /foo, got none", tc.key)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Get %q failed: %v", tc.key, err)
+			}
+			if len(resp.Kvs) == 0 {
+				t.Fatalf("Get %q returned no KVs, expected at least one", tc.key)
 			}
 		})
 	}
@@ -613,6 +911,48 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 	}
 }
 
+func TestCacheUnsupportedGetOptions(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	c, err := cache.New(client, "", cache.WithHistoryWindowSize(1))
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	defer c.Close()
+	if err := c.WaitReady(t.Context()); err != nil {
+		t.Fatalf("cache not ready: %v", err)
+	}
+
+	unsupported := []struct {
+		name string
+		opts []clientv3.OpOption
+	}{
+		{"WithCountOnly", []clientv3.OpOption{clientv3.WithCountOnly()}},
+		{"WithLimit", []clientv3.OpOption{clientv3.WithLimit(1)}},
+		{"WithSort", []clientv3.OpOption{clientv3.WithSort(clientv3.SortByKey, clientv3.SortAscend)}},
+		{"WithPrevKV", []clientv3.OpOption{clientv3.WithPrevKV()}},
+		{"WithMinModRevision", []clientv3.OpOption{clientv3.WithMinModRev(2)}},
+		{"WithMaxModRevision", []clientv3.OpOption{clientv3.WithMaxModRev(10)}},
+		{"WithMinCreateRevision", []clientv3.OpOption{clientv3.WithMinCreateRev(3)}},
+		{"WithMaxCreateRevision", []clientv3.OpOption{clientv3.WithMaxCreateRev(5)}},
+		{"WithRev", []clientv3.OpOption{clientv3.WithRev(123)}},
+		{"NoSerializable", nil},
+	}
+
+	for _, tc := range unsupported {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := c.Get(t.Context(), "foo", tc.opts...)
+			if !errors.Is(err, cache.ErrUnsupportedRequest) {
+				t.Errorf("Get with %s: expected ErrUnsupportedRequest, got %v", tc.name, err)
+			}
+		})
+	}
+}
+
 func TestCacheWatchOldRevisionCompacted(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
@@ -675,6 +1015,10 @@ func generateEvents(t *testing.T, client *clientv3.Client, prefix string, n int)
 
 type Watcher interface {
 	Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan
+}
+
+type Getter interface {
+	Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error)
 }
 
 func collectAndAssertAtomicEvents(t *testing.T, watch clientv3.WatchChan) (events []*clientv3.Event, ok bool) {
