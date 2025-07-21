@@ -169,6 +169,10 @@ func TestCtlV2CustomContentWithAuthData(t *testing.T) {
 	err = etcdctlUserRemove(epc, "user1")
 	require.NoError(t, err)
 
+	t.Log("Add t a learner to trigger a final v2 snapshot")
+	_, _, err = epc.AddMember(nil, true, t)
+	require.NoError(t, err)
+
 	t.Log("Stop the cluster")
 	require.NoError(t, epc.Stop())
 
