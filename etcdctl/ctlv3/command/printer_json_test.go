@@ -114,9 +114,9 @@ func TestMemberAdd(t *testing.T) {
 					require.NoErrorf(t, err, "failed to decode JSON")
 
 					rawHeader, ok := got[keyHeader]
-					require.Truef(t, ok, "output does not contain %s field: %v", keyHeader, got)
+					require.Truef(t, ok, "output does not contain %q field: %v", keyHeader, got)
 					header, ok := rawHeader.(map[string]any)
-					require.Truef(t, ok, "field %s is not map[string]any: %v", keyHeader, rawHeader)
+					require.Truef(t, ok, "field %q is not map[string]any: %v", keyHeader, rawHeader)
 
 					if testGroup.isHex {
 						assertHexFieldEqual(t, header, keyClusterID, tt.wantHexString)
@@ -129,9 +129,9 @@ func TestMemberAdd(t *testing.T) {
 					assertNumericFieldEqual(t, header, keyRevision, tt.wantDecimalNumber)
 
 					rawMember, ok := got[keyMember]
-					require.Truef(t, ok, "output does not contain %s field: %v", keyMember, got)
+					require.Truef(t, ok, "output does not contain %q field: %v", keyMember, got)
 					member, ok := rawMember.(map[string]any)
-					require.Truef(t, ok, "field %s is not map[string]any: %v", keyMember, rawMember)
+					require.Truef(t, ok, "field %q is not map[string]any: %v", keyMember, rawMember)
 
 					if testGroup.isHex {
 						assertHexFieldEqual(t, member, keyID, tt.wantHexString)
@@ -140,13 +140,85 @@ func TestMemberAdd(t *testing.T) {
 					}
 
 					rawMembers, ok := got[keyMembers]
-					require.Truef(t, ok, "output does not contain %s field: %v", keyMembers, got)
+					require.Truef(t, ok, "output does not contain %q field: %v", keyMembers, got)
 					members, ok := rawMembers.([]any)
-					require.Truef(t, ok, "field %s is not []any: %v", keyMembers, rawMembers)
+					require.Truef(t, ok, "field %q is not []any: %v", keyMembers, rawMembers)
 
 					for _, rawMemberItem := range members {
 						memberItem, ok := rawMemberItem.(map[string]any)
-						require.Truef(t, ok, "%s item is not map[string]any: %v", keyMembers, rawMemberItem)
+						require.Truef(t, ok, "%q item is not map[string]any: %v", keyMembers, rawMemberItem)
+
+						if testGroup.isHex {
+							assertHexFieldEqual(t, memberItem, keyID, tt.wantHexString)
+						} else {
+							assertNumericFieldEqual(t, memberItem, keyID, tt.wantDecimalNumber)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestMemberList(t *testing.T) {
+	tests := []struct {
+		name  string
+		isHex bool
+		cases []testCase
+	}{
+		{name: "decimal", isHex: false, cases: testCases},
+		{name: "hex", isHex: true, cases: testCases},
+	}
+
+	for _, testGroup := range tests {
+		t.Run(testGroup.name, func(t *testing.T) {
+			var buffer bytes.Buffer
+			p := &jsonPrinter{writer: &buffer, isHex: testGroup.isHex}
+
+			for _, tt := range testGroup.cases {
+				t.Run(fmt.Sprintf("number=%d", tt.number), func(t *testing.T) {
+					buffer.Reset()
+					decoder := json.NewDecoder(&buffer)
+					decoder.UseNumber()
+
+					response := clientv3.MemberListResponse{
+						Header: &pb.ResponseHeader{
+							ClusterId: tt.number,
+							MemberId:  tt.number,
+							Revision:  int64(tt.number),
+							RaftTerm:  tt.number,
+						},
+						Members: []*pb.Member{{ID: tt.number}},
+					}
+					p.MemberList(response)
+
+					var got map[string]any
+					err := decoder.Decode(&got)
+					require.NoErrorf(t, err, "failed to decode JSON")
+
+					rawHeader, ok := got[keyHeader]
+					require.Truef(t, ok, "output does not contain %q field: %v", keyHeader, got)
+					header, ok := rawHeader.(map[string]any)
+					require.Truef(t, ok, "field %q is not map[string]any: %v", keyHeader, rawHeader)
+
+					if testGroup.isHex {
+						assertHexFieldEqual(t, header, keyClusterID, tt.wantHexString)
+						assertHexFieldEqual(t, header, keyMemberID, tt.wantHexString)
+					} else {
+						assertNumericFieldEqual(t, header, keyClusterID, tt.wantDecimalNumber)
+						assertNumericFieldEqual(t, header, keyMemberID, tt.wantDecimalNumber)
+					}
+					assertNumericFieldEqual(t, header, keyRaftTerm, tt.wantDecimalNumber)
+					assertNumericFieldEqual(t, header, keyRevision, tt.wantDecimalNumber)
+
+					rawMembers, ok := got[keyMembers]
+					require.Truef(t, ok, "output does not contain %q field: %v", keyMembers, got)
+					members, ok := rawMembers.([]any)
+					require.Truef(t, ok, "field %q is not []any: %v", keyMembers, rawMembers)
+
+					for _, rawMemberItem := range members {
+						memberItem, ok := rawMemberItem.(map[string]any)
+						require.Truef(t, ok, "%q item is not map[string]any: %v", keyMembers, rawMemberItem)
 
 						if testGroup.isHex {
 							assertHexFieldEqual(t, memberItem, keyID, tt.wantHexString)
