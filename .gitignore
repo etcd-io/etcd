@@ -21,3 +21,8 @@ hack/tls-setup/certs
 *.tmp
 *.bak
 .gobincache/
+
+/tools/etcd-dump-db/etcd-dump-db
+/tools/etcd-dump-logs/etcd-dump-logs
+/tools/etcd-dump-metrics/etcd-dump-metrics
+/tools/benchmark/benchmark
