@@ -2,43 +2,36 @@
 name: Build and trigger Antithesis exploration
 
 on:
-  # Disabled as discussed in https://github.com/etcd-io/etcd/pull/19750#issuecomment-2809840402
   # pull_request:
   #   branches: [main]
-  # schedule:
-  #   - cron: "0 0 * * *" # run every day at midnight
+  schedule:
+    - cron: "0 0 * * *" # run every day at midnight
   workflow_dispatch:
     inputs:
       test:
         description: 'Test name'
         required: false
-        default: 'etcd nightly antithesis run'
         type: string
       duration:
         description: 'Duration (exploration hours)'
         required: true
         type: int
-        default: 12
       description:
         description: 'Description (avoid quotes, please!)'
         required: true
         type: string
-        default: "etcd nightly antithesis run"
       etcd_ref:
         description: 'etcd version to build etcd-server from'
         required: false
         type: string
-        default: 'release-3.5'
       email:
         description: 'Additional email notification recipient (separate with ;)'
         required: true
         type: string
-        default: ""
       cfg_node_count:
         description: 'Number of nodes in the etcd cluster'
         required: false
         type: int
-        default: 3
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -52,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Antithesis
     env:
-      CFG_NODE_COUNT: ${{ inputs.cfg_node_count }}
+      CFG_NODE_COUNT: ${{ inputs.cfg_node_count || 3 }}
     steps:
       - name: Checkout the code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -67,8 +60,8 @@ jobs:
       - name: Build and push config image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-config-image IMAGE_TAG=${{ inputs.etcd_ref }}_${{ github.sha }}
-          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ inputs.etcd_ref }}_${{ github.sha }}"
+          make antithesis-build-config-image IMAGE_TAG=${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }}
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-config:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }}"
           docker tag etcd-config:latest $IMAGE
           docker push $IMAGE
 
@@ -83,8 +76,8 @@ jobs:
       - name: Build and push etcd image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-etcd-image REF=${{ inputs.etcd_ref }}
-          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:${{ inputs.etcd_ref }}_${{ github.sha }}"
+          make antithesis-build-etcd-image REF=${{ inputs.etcd_ref || 'latest' }}
+          export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-server:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }}"
           docker tag etcd-server:latest $IMAGE
           docker push $IMAGE
 
@@ -96,11 +89,11 @@ jobs:
           username: ${{ secrets.ANTITHESIS_WEBHOOK_USERNAME }}
           password: ${{ secrets.ANTITHESIS_WEBHOOK_PASSWORD }}
           github_token: ${{ secrets.GH_PAT }}
-          config_image: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref }}_${{ github.sha }}
-          images: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:${{ inputs.etcd_ref }}_${{ github.sha }};us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-server:${{ inputs.etcd_ref }}_${{ github.sha }};docker.io/library/ubuntu:latest;us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref }}_${{ github.sha }}
-          description: ${{ inputs.description }}
-          email_recipients: ${{ inputs.email }}
-          test_name: ${{ inputs.test }}
+          config_image: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }}
+          images: us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-client:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }};us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-server:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }};docker.io/library/ubuntu:latest;us-central1-docker.pkg.dev/molten-verve-216720/linuxfoundation-repository/etcd-config:${{ inputs.etcd_ref || 'latest' }}_${{ github.sha }}
+          description: ${{ inputs.description || 'etcd nightly antithesis run' }}
+          email_recipients: ${{ inputs.email || 'siarkowicz@google.com' }}
+          test_name: ${{ inputs.test || 'etcd nightly antithesis run' }}
           additional_parameters: |-
-            custom.duration = ${{ inputs.duration }}
-            antithesis.source = ${{ inputs.etcd_ref }}
+            custom.duration = ${{ inputs.duration || 12 }}
+            antithesis.source = ${{ inputs.etcd_ref || 'latest' }}
