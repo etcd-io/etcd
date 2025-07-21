@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -560,6 +561,53 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			}
 			if closed != tt.wantClosed {
 				t.Errorf("closed=%v, wantClosed=%v", closed, tt.wantClosed)
+			}
+		})
+	}
+}
+
+func TestCacheUnsupportedWatchOptions(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	c, err := cache.New(client, "", cache.WithHistoryWindowSize(1))
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	defer c.Close()
+	if err := c.WaitReady(t.Context()); err != nil {
+		t.Fatalf("cache not ready: %v", err)
+	}
+
+	unsupported := []struct {
+		name string
+		opt  clientv3.OpOption
+	}{
+		{"WithPrevKV", clientv3.WithPrevKV()},
+		{"WithFragment", clientv3.WithFragment()},
+		{"WithProgressNotify", clientv3.WithProgressNotify()},
+		{"WithCreatedNotify", clientv3.WithCreatedNotify()},
+		{"WithFilterPut", clientv3.WithFilterPut()},
+		{"WithFilterDelete", clientv3.WithFilterDelete()},
+	}
+
+	for _, tc := range unsupported {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			ch := c.Watch(t.Context(), "foo", tc.opt)
+
+			resp, ok := <-ch
+			if !ok {
+				t.Fatalf("channel closed without yielding a response")
+			}
+			if !resp.Canceled {
+				t.Errorf("expected Canceled=true, got %+v", resp)
+			}
+			if !strings.Contains(resp.Err().Error(), cache.ErrUnsupportedWatch.Error()) {
+				t.Errorf("expected ErrUnsupportedWatch text %q, got %v",
+					cache.ErrUnsupportedWatch.Error(), resp.Err())
 			}
 		})
 	}
