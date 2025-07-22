@@ -105,7 +105,7 @@ type WatchResponse struct {
 
 	closeErr error
 
-	// cancelReason is a reason of canceling watch
+	// CancelReason is a reason of canceling watch
 	CancelReason string
 }
 
