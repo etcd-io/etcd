@@ -18,8 +18,9 @@ heartbeat-interval: 100
 # Time (in milliseconds) for an election to timeout.
 election-timeout: 1000
 
-# Raise alarms when backend size exceeds the given quota. 0 means use the
-# default quota.
+# Sets the maximum size (in bytes) that the etcd backend database may consume.
+# Exceeding this triggers an alarm and puts etcd in read-only mode.
+# Set to 0 to use the default 2GiB limit.
 quota-backend-bytes: 0
 
 # List of comma separated URLs to listen on for peer traffic.

@@ -80,7 +80,7 @@ To start etcd automatically using custom settings at startup in Linux, using a [
 + env variable: ETCD_CORS
 
 ### --quota-backend-bytes
-+ Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
++ Sets the maximum size (in bytes) that the etcd backend database may consume. Exceeding this triggers an alarm and puts etcd in read-only mode. Set to 0 to use the default 2GiB limit.
 + default: 0
 + env variable: ETCD_QUOTA_BACKEND_BYTES
 
