@@ -11,12 +11,12 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/urfave/cli v1.22.4
-	go.etcd.io/etcd/api/v3 v3.5.21
-	go.etcd.io/etcd/client/pkg/v3 v3.5.21
-	go.etcd.io/etcd/client/v2 v2.305.21
-	go.etcd.io/etcd/client/v3 v3.5.21
-	go.etcd.io/etcd/etcdutl/v3 v3.5.21
-	go.etcd.io/etcd/pkg/v3 v3.5.21
+	go.etcd.io/etcd/api/v3 v3.5.22
+	go.etcd.io/etcd/client/pkg/v3 v3.5.22
+	go.etcd.io/etcd/client/v2 v2.305.22
+	go.etcd.io/etcd/client/v3 v3.5.22
+	go.etcd.io/etcd/etcdutl/v3 v3.5.22
+	go.etcd.io/etcd/pkg/v3 v3.5.22
 	go.uber.org/zap v1.17.0
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba
 	google.golang.org/grpc v1.71.1
@@ -51,8 +51,8 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.11 // indirect
-	go.etcd.io/etcd/raft/v3 v3.5.21 // indirect
-	go.etcd.io/etcd/server/v3 v3.5.21 // indirect
+	go.etcd.io/etcd/raft/v3 v3.5.22 // indirect
+	go.etcd.io/etcd/server/v3 v3.5.22 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
