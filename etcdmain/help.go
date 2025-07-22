@@ -70,7 +70,7 @@ Member:
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
     Maximum number of wal files to retain (0 is unlimited).
   --quota-backend-bytes '0'
-    Raise alarms when backend size exceeds the given quota (0 defaults to low space quota).
+    Sets the maximum size (in bytes) that the etcd backend database may consume. Exceeding this triggers an alarm and puts etcd in read-only mode. Set to 0 to use the default 2GiB limit.
   --backend-batch-interval ''
     BackendBatchInterval is the maximum time before commit the backend transaction.
   --backend-batch-limit '0'
