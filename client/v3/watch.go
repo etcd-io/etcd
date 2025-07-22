@@ -106,7 +106,7 @@ type WatchResponse struct {
 	closeErr error
 
 	// cancelReason is a reason of canceling watch
-	cancelReason string
+	CancelReason string
 }
 
 // IsCreate returns true if the event tells that the key is newly created.
@@ -127,8 +127,8 @@ func (wr *WatchResponse) Err() error {
 	case wr.CompactRevision != 0:
 		return v3rpc.ErrCompacted
 	case wr.Canceled:
-		if len(wr.cancelReason) != 0 {
-			return v3rpc.Error(status.Error(codes.FailedPrecondition, wr.cancelReason))
+		if len(wr.CancelReason) != 0 {
+			return v3rpc.Error(status.Error(codes.FailedPrecondition, wr.CancelReason))
 		}
 		return v3rpc.ErrFutureRev
 	}
@@ -723,7 +723,7 @@ func (w *watchGRPCStream) dispatchEvent(pbresp *pb.WatchResponse) bool {
 		CompactRevision: pbresp.CompactRevision,
 		Created:         pbresp.Created,
 		Canceled:        pbresp.Canceled,
-		cancelReason:    pbresp.CancelReason,
+		CancelReason:    pbresp.CancelReason,
 	}
 
 	// watch IDs are zero indexed, so request notify watch responses are assigned a watch ID of InvalidWatchID to
