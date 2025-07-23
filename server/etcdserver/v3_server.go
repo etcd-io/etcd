@@ -111,6 +111,7 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		attribute.Int64("rev", r.GetRevision()),
 		attribute.Int64("limit", r.GetLimit()),
 		attribute.Bool("count_only", r.GetCountOnly()),
+		attribute.Bool("keys_only", r.GetKeysOnly()),
 	))
 	defer span.End()
 
