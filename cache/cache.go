@@ -102,7 +102,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		return emptyWatchChan
 	}
 
-	op := clientv3.OpGet(key, opts...)
+	op := clientv3.OpWatch(key, opts...)
 	startRev := op.Rev()
 
 	if startRev != 0 {
@@ -117,10 +117,10 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 		}
 	}
 
-	pred, err := c.validateWatch(key, opts...)
+	pred, err := c.validateWatch(key, op)
 	if err != nil {
 		ch := make(chan clientv3.WatchResponse, 1)
-		ch <- clientv3.WatchResponse{Canceled: true}
+		ch <- clientv3.WatchResponse{Canceled: true, CancelReason: err.Error()}
 		close(ch)
 		return ch
 	}
@@ -239,8 +239,15 @@ func readWatchChannel(
 	return nil
 }
 
-func (c *Cache) validateWatch(key string, opts ...clientv3.OpOption) (pred KeyPredicate, err error) {
-	op := clientv3.OpGet(key, opts...)
+func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, err error) {
+	if op.IsPrevKV() ||
+		op.IsFragment() ||
+		op.IsProgressNotify() ||
+		op.IsCreatedNotify() ||
+		op.IsFilterPut() ||
+		op.IsFilterDelete() {
+		return nil, ErrUnsupportedWatch
+	}
 
 	startKey := []byte(key)
 	endKey := op.RangeBytes() // nil = single key, {0}=FromKey, else explicit range
