@@ -10,6 +10,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 - Fix [mvcc: avoid double decrement of watcher gauge on close/cancel race](https://github.com/etcd-io/etcd/pull/20065)
 - Fix [Watch on future revision returns old events or notifications](https://github.com/etcd-io/etcd/pull/20291)
+- Improve [help message for --quota-backend-bytes](https://github.com/etcd-io/etcd/pull/20379)
 
 ### Dependencies
 

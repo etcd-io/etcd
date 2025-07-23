@@ -13,6 +13,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### etcd server
 
 - Fix [v2store check (IsMetaStoreOnly) returns wrong result even there is no any auth data](https://github.com/etcd-io/etcd/pull/20370)
+- Improve [help message for --quota-backend-bytes](https://github.com/etcd-io/etcd/pull/20352)
 
 ---
 
