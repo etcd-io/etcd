@@ -26,8 +26,13 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// TODO: add gap-free replay for arbitrary startRevs and drop this guard.
-var ErrUnsupportedWatch = errors.New("cache: unsupported watch parameters")
+var (
+	// TODO: add gap-free replay for arbitrary startRevs and drop this guard.
+	// Returned when an option combination isn’t yet handled by the cache (e.g. WithPrevKV, WithProgressNotify for Watch(), WithCountOnly for Get()).
+	ErrUnsupportedRequest = errors.New("cache: unsupported request parameters")
+	// Returned when the requested key or key‑range is invalid (empty or reversed) or lies outside c.prefix.
+	ErrKeyRangeInvalid = errors.New("cache: invalid or out‑of‑range key range")
+)
 
 // Cache buffers a single etcd Watch for a given key‐prefix and fan‑outs local watchers.
 type Cache struct {
@@ -246,7 +251,7 @@ func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, er
 		op.IsCreatedNotify() ||
 		op.IsFilterPut() ||
 		op.IsFilterDelete() {
-		return nil, ErrUnsupportedWatch
+		return nil, ErrUnsupportedRequest
 	}
 
 	startKey := []byte(key)
@@ -271,25 +276,25 @@ func (c *Cache) validateWatchRange(startKey, endKey []byte) error {
 			return nil
 		}
 		if bytes.Compare(startKey, prefixStart) < 0 || bytes.Compare(startKey, prefixEnd) >= 0 {
-			return ErrUnsupportedWatch
+			return ErrKeyRangeInvalid
 		}
 		return nil
 
 	case isFromKey:
 		if c.prefix != "" {
-			return ErrUnsupportedWatch
+			return ErrKeyRangeInvalid
 		}
 		return nil
 
 	default:
 		if bytes.Compare(endKey, startKey) <= 0 {
-			return ErrUnsupportedWatch
+			return ErrKeyRangeInvalid
 		}
 		if c.prefix == "" {
 			return nil
 		}
 		if bytes.Compare(startKey, prefixStart) < 0 || bytes.Compare(endKey, prefixEnd) > 0 {
-			return ErrUnsupportedWatch
+			return ErrKeyRangeInvalid
 		}
 		return nil
 	}

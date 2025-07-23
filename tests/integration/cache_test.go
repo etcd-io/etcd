@@ -605,9 +605,9 @@ func TestCacheUnsupportedWatchOptions(t *testing.T) {
 			if !resp.Canceled {
 				t.Errorf("expected Canceled=true, got %+v", resp)
 			}
-			if !strings.Contains(resp.Err().Error(), cache.ErrUnsupportedWatch.Error()) {
+			if !strings.Contains(resp.Err().Error(), cache.ErrUnsupportedRequest.Error()) {
 				t.Errorf("expected ErrUnsupportedWatch text %q, got %v",
-					cache.ErrUnsupportedWatch.Error(), resp.Err())
+					cache.ErrUnsupportedRequest.Error(), resp.Err())
 			}
 		})
 	}
@@ -655,8 +655,8 @@ func TestCacheWatchOldRevisionCompacted(t *testing.T) {
 			t.Fatalf("expected canceled watch, got %+v closed=%v", resp, ok)
 		}
 		if resp.Err() == nil || (!errors.Is(resp.Err(), rpctypes.ErrCompacted) &&
-			!errors.Is(resp.Err(), cache.ErrUnsupportedWatch)) {
-			t.Fatalf("expected ErrCompacted (or temporary ErrUnsupportedWatch), got %v", resp.Err())
+			!errors.Is(resp.Err(), cache.ErrUnsupportedRequest)) {
+			t.Fatalf("expected ErrCompacted (or temporary ErrUnsupportedRequest), got %v", resp.Err())
 		}
 	case <-watchCtx.Done():
 		t.Fatal("watch did not cancel with compaction error within timeout")
