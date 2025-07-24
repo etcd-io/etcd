@@ -72,7 +72,7 @@ func (tr *storeTxnCommon) Range(ctx context.Context, key, end []byte, ro RangeOp
 func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev int64, ro RangeOptions) (*RangeResult, error) {
 	rev := ro.Rev
 	if rev > curRev {
-		return &RangeResult{KVs: nil, Count: -1, Rev: curRev}, ErrFutureRev
+		return &RangeResult{KVs: nil, Count: -1, Rev: 0}, ErrFutureRev
 	}
 	if rev <= 0 {
 		rev = curRev
@@ -85,6 +85,13 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 		tr.trace.Step("count revisions from in-memory index tree")
 		return &RangeResult{KVs: nil, Count: total, Rev: curRev}, nil
 	}
+
+	// Optimize KeysOnly by reading directly from treeIndex
+	if ro.KeysOnly {
+		return tr.rangeKeysFromIndex(ctx, key, end, curRev, rev, ro)
+	}
+
+	// Original implementation for when values are needed
 	revpairs, total := tr.s.kvindex.Revisions(key, end, rev, int(ro.Limit))
 	tr.trace.Step("range keys from in-memory index tree")
 	if len(revpairs) == 0 {
@@ -126,13 +133,59 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				zap.Error(err),
 			)
 		}
-
-		// If KeysOnly is true, clear the value to reduce memory usage
-		if ro.KeysOnly {
-			kvs[i].Value = nil
-		}
 	}
 	tr.trace.Step("range keys from bolt db")
+	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
+}
+
+// rangeKeysFromIndex optimizes KeysOnly by reading directly from treeIndex
+func (tr *storeTxnCommon) rangeKeysFromIndex(ctx context.Context, key, end []byte, curRev, rev int64, ro RangeOptions) (*RangeResult, error) {
+	keys, revisions := tr.s.kvindex.Range(key, end, rev)
+	tr.trace.Step("range keys from in-memory index tree (keys only)")
+
+	if len(keys) == 0 {
+		return &RangeResult{KVs: nil, Count: 0, Rev: curRev}, nil
+	}
+
+	// Apply limit if specified
+	limit := int(ro.Limit)
+	if limit > 0 && limit < len(keys) {
+		keys = keys[:limit]
+		revisions = revisions[:limit]
+	}
+
+	// Create KeyValue structs with only key information and metadata
+	kvs := make([]mvccpb.KeyValue, len(keys))
+	for i, k := range keys {
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("rangeKeysFromIndex: context cancelled: %w", ctx.Err())
+		default:
+		}
+
+		// Get additional metadata for this key revision
+		_, created, ver, err := tr.s.kvindex.Get(k, rev)
+		if err != nil {
+			// Key might have been deleted, skip it
+			continue
+		}
+
+		kvs[i] = mvccpb.KeyValue{
+			Key:            k,
+			Value:          nil, // KeysOnly - no value
+			CreateRevision: created.Main,
+			ModRevision:    revisions[i].Main,
+			Version:        ver,
+		}
+	}
+
+	total := len(keys)
+	if ro.Limit > 0 {
+		// For count, we need to get total without limit
+		_, allRevisions := tr.s.kvindex.Range(key, end, rev)
+		total = len(allRevisions)
+	}
+
 	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
 }
 
