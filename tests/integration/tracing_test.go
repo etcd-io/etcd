@@ -88,6 +88,10 @@ func TestTracing(t *testing.T) {
 						Key:   "count_only",
 						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
 					},
+					{
+						Key:   "keys_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
 				},
 			},
 		},
