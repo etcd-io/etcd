@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.4 (TBA)
 
+### etcd server
+
+- Fix [etcdserver bootstrap failure when replaying learner promotion operation due to not exist in v3store](https://github.com/etcd-io/etcd/pull/20387)
+
 ---
 
 ## v3.6.3 (2025-07-22)
