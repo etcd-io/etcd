@@ -45,9 +45,10 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
-		Limit: limit,
-		Rev:   r.Revision,
-		Count: r.CountOnly,
+		Limit:    limit,
+		Rev:      r.Revision,
+		Count:    r.CountOnly,
+		KeysOnly: r.KeysOnly,
 	}
 
 	rr, err := txnRead.Range(ctx, r.Key, mkGteRange(r.RangeEnd), ro)
@@ -124,6 +125,11 @@ func sortRangeResults(rr *mvcc.RangeResult, r *pb.RangeRequest, lg *zap.Logger) 
 		case r.SortTarget == pb.RangeRequest_MOD:
 			sorter = &kvSortByMod{&kvSort{rr.KVs}}
 		case r.SortTarget == pb.RangeRequest_VALUE:
+			if r.KeysOnly {
+				lg.Warn("sorting by value with KeysOnly=true will result in undefined behavior",
+					zap.String("sort-target", "VALUE"),
+					zap.Bool("keys-only", r.KeysOnly))
+			}
 			sorter = &kvSortByValue{&kvSort{rr.KVs}}
 		default:
 			lg.Panic("unexpected sort target", zap.Int32("sort-target", int32(r.SortTarget)))
@@ -147,9 +153,7 @@ func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeRes
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
 	for i := range rr.KVs {
-		if r.KeysOnly {
-			rr.KVs[i].Value = nil
-		}
+		// Value is already nil if KeysOnly was set during rangeKeys operation
 		resp.Kvs[i] = &rr.KVs[i]
 	}
 	return resp

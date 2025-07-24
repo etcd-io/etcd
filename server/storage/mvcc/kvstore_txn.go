@@ -126,6 +126,11 @@ func (tr *storeTxnCommon) rangeKeys(ctx context.Context, key, end []byte, curRev
 				zap.Error(err),
 			)
 		}
+
+		// If KeysOnly is true, clear the value to reduce memory usage
+		if ro.KeysOnly {
+			kvs[i].Value = nil
+		}
 	}
 	tr.trace.Step("range keys from bolt db")
 	return &RangeResult{KVs: kvs, Count: total, Rev: curRev}, nil
