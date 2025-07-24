@@ -61,7 +61,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 	traces := dump.Result
 
 	callsByOperationName := make(map[string]int)
-	ignoredTracesWithoutGRPC := 0
+	ignoredTraces := make(map[string]int)
 	for _, trace := range traces.GetResourceSpans() {
 		serviceName := getServiceName(trace)
 		if serviceName != "etcd" {
@@ -69,9 +69,13 @@ func testInterfaceUse(t *testing.T, filename string) {
 		}
 		opName := getOperationName(trace)
 		if opName == "" {
+			if isInternalHC(trace) {
+				ignoredTraces["Internal Health Check"]++
+				continue
+			}
 			// This trace doesn't have grpc method associated. Ignoring for now
-			ignoredTracesWithoutGRPC++
-			if ignoredTracesWithoutGRPC <= 3 {
+			ignoredTraces["Other"]++
+			if ignoredTraces["Other"] < 3 {
 				t.Log(trace)
 			}
 			continue
@@ -79,7 +83,9 @@ func testInterfaceUse(t *testing.T, filename string) {
 		callsByOperationName[opName]++
 	}
 	t.Logf("\n%s", printableCallTable(callsByOperationName))
-	t.Logf("Ignored %d traces without associated gRPC method", ignoredTracesWithoutGRPC)
+	if len(ignoredTraces) > 0 {
+		t.Logf("Ignored traces:%+v", ignoredTraces)
+	}
 
 	knownMethodsUsedByKubernetes := map[string]bool{
 		"etcdserverpb.KV/Range":           true, // All calls should go through etcd-k8s interface
@@ -136,6 +142,31 @@ func getOperationName(trace *tracev1.ResourceSpans) string {
 		}
 	}
 	return ""
+}
+
+func isInternalHC(trace *tracev1.ResourceSpans) bool {
+	for _, scopeSpan := range trace.GetScopeSpans() {
+		for _, span := range scopeSpan.GetSpans() {
+			if span.GetName() != "range" {
+				continue
+			}
+			var keysOnly, limitOne, emptyBegin, emptyEnd bool
+			for _, attr := range span.GetAttributes() {
+				switch attr.GetKey() {
+				case "range_begin":
+					emptyBegin = len(attr.Value.GetStringValue()) == 0
+				case "range_end":
+					emptyEnd = len(attr.Value.GetStringValue()) == 0
+				case "limit":
+					limitOne = attr.GetValue().GetIntValue() == 1
+				case "keys_only":
+					keysOnly = attr.GetValue().GetBoolValue()
+				}
+			}
+			return keysOnly && limitOne && emptyBegin && emptyEnd
+		}
+	}
+	return false
 }
 
 func printableCallTable(callsByOperationName map[string]int) string {
