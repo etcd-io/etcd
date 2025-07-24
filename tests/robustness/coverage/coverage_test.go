@@ -18,8 +18,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -109,6 +112,40 @@ func testInterfaceUse(t *testing.T, filename string) {
 			}
 		}
 	})
+	t.Run("detailed_analysis", func(t *testing.T) {
+		for op, matchers := range map[string]map[string]Matched{
+			"etcdserverpb.KV/Range": {
+				"rev":         isRevisionSet,
+				"rangeEnd":    isRangeEndSet,
+				"limit":       isLimitSet,
+				"keysOrCount": orMatcher(isKeysOnly, isCountOnly),
+			},
+		} {
+			t.Run(op, func(t *testing.T) {
+				matcherKeys := slices.Collect(maps.Keys(matchers))
+				res := make([]int, 1<<len(matchers))
+				for _, trace := range traces.GetResourceSpans() {
+					if getServiceName(trace) != "etcd" || getOperationName(trace) != op {
+						continue
+					}
+					acc := matchedToBitEncoded(trace, matchers, matcherKeys)
+					res[acc]++
+				}
+				t.Logf("\n%s", printableMatcherTable(res, matcherKeys))
+			})
+		}
+	})
+}
+
+func matchedToBitEncoded(trace *tracev1.ResourceSpans, matchers map[string]Matched, matcherKeys []string) int {
+	acc, pow := 0, 1
+	for _, key := range matcherKeys {
+		if matchers[key](trace) {
+			acc += pow
+		}
+		pow *= 2
+	}
+	return acc
 }
 
 type Traces struct {
@@ -144,31 +181,6 @@ func getOperationName(trace *tracev1.ResourceSpans) string {
 	return ""
 }
 
-func isInternalHC(trace *tracev1.ResourceSpans) bool {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			if span.GetName() != "range" {
-				continue
-			}
-			var keysOnly, limitOne, emptyBegin, emptyEnd bool
-			for _, attr := range span.GetAttributes() {
-				switch attr.GetKey() {
-				case "range_begin":
-					emptyBegin = len(attr.Value.GetStringValue()) == 0
-				case "range_end":
-					emptyEnd = len(attr.Value.GetStringValue()) == 0
-				case "limit":
-					limitOne = attr.GetValue().GetIntValue() == 1
-				case "keys_only":
-					keysOnly = attr.GetValue().GetBoolValue()
-				}
-			}
-			return keysOnly && limitOne && emptyBegin && emptyEnd
-		}
-	}
-	return false
-}
-
 func printableCallTable(callsByOperationName map[string]int) string {
 	buf := new(bytes.Buffer)
 	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
@@ -184,6 +196,40 @@ func printableCallTable(callsByOperationName map[string]int) string {
 		table.Append(opName, callCount, fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)))
 	}
 	table.Footer("total", totalCalls, "100.00%")
+
+	table.Render()
+	return buf.String()
+}
+
+func printableMatcherTable(res []int, matcherKeys []string) string {
+	buf := new(bytes.Buffer)
+	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
+	table := tablewriter.NewTable(buf, tablewriter.WithConfig(cfgBuilder.Build()))
+	table.Header(append(matcherKeys, "calls", "percent"))
+
+	totalCalls := 0
+	for _, c := range res {
+		totalCalls += c
+	}
+
+	rowPrefix := make([]string, len(matcherKeys))
+	footer := make([]int, len(matcherKeys))
+	for acc, callCount := range res {
+		for i := range rowPrefix {
+			if (acc>>i)%2 == 1 {
+				rowPrefix[i] = "X"
+				footer[i] += callCount
+			} else {
+				rowPrefix[i] = ""
+			}
+		}
+		table.Append(append(rowPrefix, strconv.Itoa(callCount), fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls))))
+	}
+	footerStr := make([]string, len(matcherKeys))
+	for i := range footer {
+		footerStr[i] = strconv.Itoa(footer[i])
+	}
+	table.Footer(append(footerStr, strconv.Itoa(totalCalls), "100.00%"))
 
 	table.Render()
 	return buf.String()
