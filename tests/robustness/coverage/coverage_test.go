@@ -61,15 +61,25 @@ func testInterfaceUse(t *testing.T, filename string) {
 	traces := dump.Result
 
 	callsByOperationName := make(map[string]int)
+	ignoredTracesWithoutGRPC := 0
 	for _, trace := range traces.GetResourceSpans() {
 		serviceName := getServiceName(trace)
 		if serviceName != "etcd" {
 			continue
 		}
 		opName := getOperationName(trace)
+		if opName == "" {
+			// This trace doesn't have grpc method associated. Ignoring for now
+			ignoredTracesWithoutGRPC++
+			if ignoredTracesWithoutGRPC <= 3 {
+				t.Log(trace)
+			}
+			continue
+		}
 		callsByOperationName[opName]++
 	}
 	t.Logf("\n%s", printableCallTable(callsByOperationName))
+	t.Logf("Ignored %d traces without associated gRPC method", ignoredTracesWithoutGRPC)
 
 	knownMethodsUsedByKubernetes := map[string]bool{
 		"etcdserverpb.KV/Range":           true, // All calls should go through etcd-k8s interface
