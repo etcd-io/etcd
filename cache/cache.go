@@ -252,13 +252,13 @@ func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, er
 	startKey := []byte(key)
 	endKey := op.RangeBytes() // nil = single key, {0}=FromKey, else explicit range
 
-	if err := c.validateWatchRange(startKey, endKey); err != nil {
+	if err := c.validateRequestRange(startKey, endKey); err != nil {
 		return nil, err
 	}
 	return KeyPredForRange(startKey, endKey), nil
 }
 
-func (c *Cache) validateWatchRange(startKey, endKey []byte) error {
+func (c *Cache) validateRequestRange(startKey, endKey []byte) error {
 	prefixStart := []byte(c.prefix)
 	prefixEnd := []byte(clientv3.GetPrefixRangeEnd(c.prefix))
 
