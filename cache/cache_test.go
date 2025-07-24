@@ -381,7 +381,7 @@ func TestValidateWatchRange(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			dummyCache := &Cache{prefix: c.cachePrefix}
 			op := clientv3.OpGet(c.watchKey, c.opts...)
-			err := dummyCache.validateWatchRange([]byte(c.watchKey), op.RangeBytes())
+			err := dummyCache.validateRange([]byte(c.watchKey), op.RangeBytes())
 			if gotErr := err != nil; gotErr != c.wantErr {
 				t.Fatalf("validateWatchRange(%q, %q, %v) err=%v, wantErr=%v",
 					c.cachePrefix, c.watchKey, c.opts, err, c.wantErr)
