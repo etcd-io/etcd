@@ -127,6 +127,9 @@ func (op Op) IsKeysOnly() bool { return op.keysOnly }
 // IsCountOnly returns whether countOnly is set.
 func (op Op) IsCountOnly() bool { return op.countOnly }
 
+// IsSortSet returns true if WithSort is set.
+func (op Op) IsSortSet() bool { return op.sort != nil }
+
 func (op Op) IsOptsWithFromKey() bool { return op.isOptsWithFromKey }
 
 func (op Op) IsOptsWithPrefix() bool { return op.isOptsWithPrefix }
