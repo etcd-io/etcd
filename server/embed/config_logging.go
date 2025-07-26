@@ -19,9 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/url"
-	"os"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -224,13 +222,13 @@ func NewZapLoggerBuilder(lg *zap.Logger) func(*Config) error {
 func (cfg *Config) SetupGlobalLoggers() {
 	lg := cfg.GetLogger()
 	if lg != nil {
+		zap.ReplaceGlobals(lg)
 		if cfg.LogLevel == "debug" {
 			grpc.EnableTracing = true
-			grpclog.SetLoggerV2(zapgrpc.NewLogger(lg))
 		} else {
-			grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, os.Stderr, os.Stderr))
+			lg = lg.WithOptions(zap.IncreaseLevel(zap.WarnLevel))
 		}
-		zap.ReplaceGlobals(lg)
+		grpclog.SetLoggerV2(zapgrpc.NewLogger(lg.Named("grpc")))
 	}
 }
 
