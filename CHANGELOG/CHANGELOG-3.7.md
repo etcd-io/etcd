@@ -19,6 +19,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### Package `pkg`
 
 - [Optimize find performance by splitting intervals with the same left endpoint by their right endpoints](https://github.com/etcd-io/etcd/pull/19768)
+- [netutil: Refactor IPv6 address comparison logic](https://github.com/etcd-io/etcd/pull/20365)
 
 ### Dependencies
 
