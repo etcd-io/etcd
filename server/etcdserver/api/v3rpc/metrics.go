@@ -26,6 +26,15 @@ var (
 		Help:      "The total number of bytes sent to grpc clients.",
 	})
 
+	sentWatchResponseSize = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace: "etcd",
+		Subsystem: "network",
+		Name:      "watch_events_size_bytes",
+		// 64 bytes to 16MB (default kv size is 1.5M)
+		Buckets: []float64{64, 256, 512, 1024, 4096, 16384, 65536, 262144, 1048576, 4194304, 16777216},
+		Help:    "The watch response size sent to watch clients in bytes.",
+	})
+
 	receivedBytes = prometheus.NewCounter(prometheus.CounterOpts{
 		Namespace: "etcd",
 		Subsystem: "network",
@@ -56,6 +65,7 @@ var (
 
 func init() {
 	prometheus.MustRegister(sentBytes)
+	prometheus.MustRegister(sentWatchResponseSize)
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(streamFailures)
 	prometheus.MustRegister(clientRequests)
