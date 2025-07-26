@@ -68,7 +68,7 @@ jobs:
       - name: Build and push client image
         working-directory: ./tests/antithesis
         run: |
-          make antithesis-build-client-docker-image
+          make antithesis-build-client-image
           export IMAGE="${{ env.REGISTRY }}/${{ env.REPOSITORY }}/etcd-client:${{ inputs.etcd_ref || 'main' }}_${{ github.sha }}"
           docker tag etcd-client:latest $IMAGE
           docker push $IMAGE

@@ -1,21 +1,24 @@
 ARG GO_VERSION=1.24.5
 ARG ARCH=amd64
+ARG LOCATION=remote
 
-FROM golang:$GO_VERSION
-
-# cloning etcd
+FROM golang:$GO_VERSION as build-remote
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
 
+FROM golang:$GO_VERSION as build-local
+COPY . /etcd
+
+FROM build-${LOCATION}
+
 # replace verify with antithesis
 WORKDIR /etcd/client/pkg/verify
-COPY inject/verify.patch verify.patch
+COPY tests/antithesis/server/inject/verify.patch verify.patch
 RUN if [ "${REF}" == "main" ]; then \
       git apply verify.patch; \
     fi
 RUN rm verify.patch
-WORKDIR /etcd/client/pkg
-RUN go mod tidy
+
 WORKDIR /etcd
 
 # setup go mod

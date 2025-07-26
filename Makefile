@@ -15,6 +15,7 @@ build-all:
 	@for platform in $(PLATFORMS); do \
 		$(MAKE) build-$${platform}; \
 	done
+	$(MAKE) -C tests/antithesis antithesis-build-etcd-image-local antithesis-build-client-image antithesis-build-config-image
 
 .PHONY: build-%
 build-%:

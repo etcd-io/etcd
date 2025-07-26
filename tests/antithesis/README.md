@@ -7,7 +7,7 @@ This directory enables integration of Antithesis with etcd. There are 4 containe
 Run this command from the `antithesis/test-template` directory:
 
 ```bash
-make antithesis-build-client-docker-image
+make antithesis-build-client-image
 make antithesis-build-etcd-image
 ```
 
