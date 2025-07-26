@@ -87,10 +87,10 @@ var defaultSnapshotCount uint64 = 10000
 // current), then new log entries. To shutdown, close proposeC and read errorC.
 func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, error), proposeC <-chan string,
 	confChangeC <-chan raftpb.ConfChange,
-) (<-chan *commit, <-chan error, <-chan *snap.Snapshotter) {
-	commitC := make(chan *commit)
-	errorC := make(chan error)
-
+	commitC chan *commit,
+	errorC chan error,
+	snapshotterReady chan *snap.Snapshotter,
+) {
 	rc := &raftNode{
 		proposeC:    proposeC,
 		confChangeC: confChangeC,
@@ -109,11 +109,10 @@ func newRaftNode(id int, peers []string, join bool, getSnapshot func() ([]byte, 
 
 		logger: zap.NewExample(),
 
-		snapshotterReady: make(chan *snap.Snapshotter, 1),
+		snapshotterReady: snapshotterReady,
 		// rest of structure populated after WAL replay
 	}
 	go rc.startRaft()
-	return commitC, errorC, rc.snapshotterReady
 }
 
 func (rc *raftNode) saveSnap(snap raftpb.Snapshot) error {
