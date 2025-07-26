@@ -3,12 +3,13 @@ USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
 ARCH ?= $(shell go env GOARCH)
 REF = main
+LOCATION = local
 IMAGE_TAG = latest
 
 CFG_NODE_COUNT ?= 3
 
-.PHONY: antithesis-build-client-docker-image
-antithesis-build-client-docker-image: validate-node-count
+.PHONY: antithesis-build-client-image
+antithesis-build-client-image: validate-node-count
 	docker build \
 		--build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
 		--build-arg CFG_NODE_COUNT=$(CFG_NODE_COUNT) \
@@ -16,22 +17,31 @@ antithesis-build-client-docker-image: validate-node-count
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
+	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) --build-arg LOCATION=$(LOCATION) -f $(REPOSITORY_ROOT)/tests/antithesis/server/Dockerfile $(REPOSITORY_ROOT)/ -t etcd-server:latest
+
+.PHONY: antithesis-build-etcd-image-local
+antithesis-build-etcd-image-local: REF=main
+antithesis-build-etcd-image-local: LOCATION=local
+antithesis-build-etcd-image-local: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4
+antithesis-build-etcd-image-release-3.4: LOCATION=remote
 antithesis-build-etcd-image-release-3.4: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-release-3.5
 antithesis-build-etcd-image-release-3.5: REF=release-3.5
+antithesis-build-etcd-image-release-3.5: LOCATION=remote
 antithesis-build-etcd-image-release-3.5: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-release-3.6
 antithesis-build-etcd-image-release-3.6: REF=release-3.6
+antithesis-build-etcd-image-release-3.6: LOCATION=remote
 antithesis-build-etcd-image-release-3.6: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-etcd-image-main
 antithesis-build-etcd-image-main: REF=main
+antithesis-build-etcd-image-release-3.6: LOCATION=remote
 antithesis-build-etcd-image-main: antithesis-build-etcd-image
 
 .PHONY: antithesis-build-config-image
