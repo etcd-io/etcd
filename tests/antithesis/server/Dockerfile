@@ -10,10 +10,7 @@ RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etc
 # replace verify with antithesis
 WORKDIR /etcd/client/pkg/verify
 COPY inject/verify.patch verify.patch
-RUN if [ "${REF}" == "main" ]; then \
-      git apply verify.patch; \
-    fi
-RUN rm verify.patch
+RUN if [ "${REF}" = "main" ]; then git apply verify.patch; fi
 WORKDIR /etcd/client/pkg
 RUN go mod tidy
 WORKDIR /etcd
