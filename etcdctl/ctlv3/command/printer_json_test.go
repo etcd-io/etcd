@@ -207,6 +207,46 @@ func TestMemberRemove(t *testing.T) {
 	}
 }
 
+func TestMemberUpdate(t *testing.T) {
+	tests := []testScenario{
+		{name: "decimal", isHex: false, cases: testCases},
+		{name: "hex", isHex: true, cases: testCases},
+	}
+
+	for _, testGroup := range tests {
+		t.Run(testGroup.name, func(t *testing.T) {
+			var buffer bytes.Buffer
+			p := &jsonPrinter{writer: &buffer, isHex: testGroup.isHex}
+
+			for _, tt := range testGroup.cases {
+				t.Run(fmt.Sprintf("number=%d", tt.number), func(t *testing.T) {
+					buffer.Reset()
+					decoder := json.NewDecoder(&buffer)
+					decoder.UseNumber()
+
+					response := clientv3.MemberUpdateResponse{
+						Header: &pb.ResponseHeader{
+							ClusterId: tt.number,
+							MemberId:  tt.number,
+							Revision:  int64(tt.number),
+							RaftTerm:  tt.number,
+						},
+						Members: []*pb.Member{{ID: tt.number}},
+					}
+					p.MemberUpdate(0, response)
+
+					var got map[string]any
+					err := decoder.Decode(&got)
+					require.NoErrorf(t, err, "failed to decode JSON")
+
+					assertHeader(t, &testGroup, &tt, got)
+					assertMembers(t, &testGroup, &tt, got)
+				})
+			}
+		})
+	}
+}
+
 func TestMemberList(t *testing.T) {
 	tests := []testScenario{
 		{name: "decimal", isHex: false, cases: testCases},
