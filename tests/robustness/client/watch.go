@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -25,10 +26,14 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
+var watchEventCollectionTimeout = 10 * time.Second
+
 func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, clientSet *ClientSet) error {
 	var g errgroup.Group
 	reports := make([]report.ClientReport, len(endpoints))
 	memberMaxRevisionChans := make([]chan int64, len(endpoints))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	for i, endpoint := range endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
@@ -49,6 +54,8 @@ func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
+		time.Sleep(watchEventCollectionTimeout)
+		cancel()
 		return nil
 	})
 	return g.Wait()
@@ -62,19 +69,27 @@ type WatchConfig struct {
 func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
-	var closing bool
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 resetWatch:
 	for {
-		if closing {
+		select {
+		case <-ctx.Done():
+			select {
+			case revision, ok := <-maxRevisionChan:
+				if ok {
+					maxRevision = revision
+				}
+			default:
+			}
 			if maxRevision == 0 {
 				return errors.New("Client didn't collect all events, max revision not set")
 			}
 			if lastRevision < maxRevision {
-				return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+				return fmt.Errorf("Client didn't collect all events, revision got: %d, expected: %d", lastRevision, maxRevision)
 			}
 			return nil
+		default:
 		}
 		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
 		for {
@@ -83,13 +98,11 @@ resetWatch:
 				if ok {
 					maxRevision = revision
 					if lastRevision >= maxRevision {
-						closing = true
 						cancel()
 					}
 				} else {
 					// Only cancel if maxRevision was never set.
 					if maxRevision == 0 {
-						closing = true
 						cancel()
 					}
 				}
@@ -115,7 +128,6 @@ resetWatch:
 					lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 				}
 				if maxRevision != 0 && lastRevision >= maxRevision {
-					closing = true
 					cancel()
 				}
 			}
