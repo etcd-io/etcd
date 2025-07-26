@@ -117,7 +117,6 @@ func (p *jsonPrinter) printJSON(v any) {
 
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
-			Member  *HexMember         `json:"member"`
 			Members []*HexMember       `json:"members"`
 			*Alias
 		}{
