@@ -156,6 +156,46 @@ func init() {
 	defaultHostname, defaultHostStatus = netutil.GetDefaultHost()
 }
 
+type Duration struct {
+	time.Duration
+}
+
+func FromTimeDuration(duration time.Duration) Duration {
+	return Duration{Duration: duration}
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var v any
+	var err error
+	if err = yaml.Unmarshal(b, &v); err != nil {
+		return err
+	}
+	switch value := v.(type) {
+	case float64:
+		d.Duration = time.Duration(value)
+		return nil
+	case string:
+		d.Duration, err = time.ParseDuration(value)
+
+		return err
+	}
+	return err
+}
+
+func (d Duration) String() string {
+	return d.Duration.String()
+}
+
+func (d *Duration) Set(s string) error {
+	var err error
+	var td time.Duration
+	td, err = time.ParseDuration(s)
+	if err == nil {
+		d.Duration = td
+	}
+	return err
+}
+
 // Config holds the arguments for configuring an etcd server.
 type Config struct {
 	Name string `json:"name"`
@@ -366,7 +406,7 @@ type Config struct {
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	WatchProgressNotifyInterval time.Duration `json:"watch-progress-notify-interval"`
+	WatchProgressNotifyInterval Duration `json:"watch-progress-notify-interval"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
@@ -748,7 +788,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 
 	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
 	fs.DurationVar(&cfg.CompactionSleepInterval, "compaction-sleep-interval", cfg.CompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
-	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
+	fs.Var(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.DowngradeCheckTime, "downgrade-check-time", cfg.DowngradeCheckTime, "Duration of time between two downgrade status checks.")
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
