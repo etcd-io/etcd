@@ -253,6 +253,6 @@ Up to the first response, the `Revision` of events only increased up to a value 
 However, the following line includes an event with `Revision` equal `3`.
 If you follow the `revision` throughout the file you should notice that watch replayed revisions for a second time.
 This is incorrect and breaks `Ordered` [watch API guarantees].
-This is consistent with the root cause of [#14370] where the member reconnecting to cluster will resend revisions.
+This is consistent with the root cause of [#15271] where the member reconnecting to cluster will resend revisions.
 
 [#15271]: https://github.com/etcd-io/etcd/issues/15271
