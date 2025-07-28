@@ -75,6 +75,7 @@ func (p *jsonPrinter) EndpointHashKV(r []epHashKV) { printJSON(r) }
 
 func (p *jsonPrinter) MemberAdd(r clientv3.MemberAddResponse)                 { p.printJSON(r) }
 func (p *jsonPrinter) MemberRemove(_ uint64, r clientv3.MemberRemoveResponse) { p.printJSON(r) }
+func (p *jsonPrinter) MemberUpdate(_ uint64, r clientv3.MemberUpdateResponse) { p.printJSON(r) }
 func (p *jsonPrinter) MemberList(r clientv3.MemberListResponse)               { p.printJSON(r) }
 
 func printJSONTo(w io.Writer, v any) {
@@ -114,6 +115,18 @@ func (p *jsonPrinter) printJSON(v any) {
 		}
 	case clientv3.MemberRemoveResponse:
 		type Alias clientv3.MemberRemoveResponse
+
+		data = &struct {
+			Header  *HexResponseHeader `json:"header"`
+			Members []*HexMember       `json:"members"`
+			*Alias
+		}{
+			Header:  (*HexResponseHeader)(r.Header),
+			Members: toHexMembers(r.Members),
+			Alias:   (*Alias)(&r),
+		}
+	case clientv3.MemberUpdateResponse:
+		type Alias clientv3.MemberUpdateResponse
 
 		data = &struct {
 			Header  *HexResponseHeader `json:"header"`
