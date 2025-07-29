@@ -19,7 +19,7 @@ require (
 	github.com/anishathalye/porcupine v1.0.2
 	github.com/antithesishq/antithesis-sdk-go v0.4.3
 	github.com/coreos/go-semver v0.3.1
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.2.3
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
