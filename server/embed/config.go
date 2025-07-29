@@ -45,6 +45,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
+	"go.etcd.io/etcd/pkg/v3/timeutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -154,46 +155,6 @@ var (
 
 func init() {
 	defaultHostname, defaultHostStatus = netutil.GetDefaultHost()
-}
-
-type Duration struct {
-	time.Duration
-}
-
-func FromTimeDuration(duration time.Duration) Duration {
-	return Duration{Duration: duration}
-}
-
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v any
-	var err error
-	if err = yaml.Unmarshal(b, &v); err != nil {
-		return err
-	}
-	switch value := v.(type) {
-	case float64:
-		d.Duration = time.Duration(value)
-		return nil
-	case string:
-		d.Duration, err = time.ParseDuration(value)
-
-		return err
-	}
-	return err
-}
-
-func (d Duration) String() string {
-	return d.Duration.String()
-}
-
-func (d *Duration) Set(s string) error {
-	var err error
-	var td time.Duration
-	td, err = time.ParseDuration(s)
-	if err == nil {
-		d.Duration = td
-	}
-	return err
 }
 
 // Config holds the arguments for configuring an etcd server.
@@ -406,7 +367,7 @@ type Config struct {
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	WatchProgressNotifyInterval Duration `json:"watch-progress-notify-interval"`
+	WatchProgressNotifyInterval timeutil.Duration `json:"watch-progress-notify-interval"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to

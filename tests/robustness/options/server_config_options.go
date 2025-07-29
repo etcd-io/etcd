@@ -17,8 +17,9 @@ package options
 import (
 	"time"
 
-	"go.etcd.io/etcd/server/v3/embed"
 	e2e "go.etcd.io/etcd/tests/v3/framework/e2e"
+
+	"go.etcd.io/etcd/pkg/v3/timeutil"
 )
 
 func WithSnapshotCount(input ...uint64) e2e.EPClusterOption {
@@ -53,7 +54,7 @@ func WithElectionMs(input ...uint) e2e.EPClusterOption {
 
 func WithWatchProgressNotifyInterval(input ...time.Duration) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
-		c.ServerConfig.WatchProgressNotifyInterval = embed.FromTimeDuration(input[internalRand.Intn(len(input))])
+		c.ServerConfig.WatchProgressNotifyInterval = timeutil.FromTimeDuration(input[internalRand.Intn(len(input))])
 	}
 }
 

@@ -33,7 +33,7 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	"go.etcd.io/etcd/server/v3/embed"
+	"go.etcd.io/etcd/pkg/v3/timeutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
@@ -92,7 +92,7 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		tc := tc
 		cfg := e2e.DefaultConfig()
 		cfg.ClusterSize = 1
-		cfg.ServerConfig.WatchProgressNotifyInterval = embed.FromTimeDuration(watchResponsePeriod)
+		cfg.ServerConfig.WatchProgressNotifyInterval = timeutil.FromTimeDuration(watchResponsePeriod)
 		cfg.Client = tc.client
 		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {

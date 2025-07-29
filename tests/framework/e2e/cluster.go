@@ -36,6 +36,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/proxy"
+	"go.etcd.io/etcd/pkg/v3/timeutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -360,7 +361,7 @@ func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) {
-		c.ServerConfig.WatchProgressNotifyInterval = embed.FromTimeDuration(interval)
+		c.ServerConfig.WatchProgressNotifyInterval = timeutil.FromTimeDuration(interval)
 	}
 }
 
