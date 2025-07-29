@@ -35,6 +35,7 @@ services:
       ETCD_SNAPSHOT_CATCHUP_ENTRIES: 100
       ETCD_SNAPSHOT_COUNT: 50
       ETCD_COMPACTION_BATCH_LIMIT: 10
+      ETCD_VERIFY: "all"
     user: "${USER_ID:-root}:${GROUP_ID:-root}"
     depends_on:
       init:
