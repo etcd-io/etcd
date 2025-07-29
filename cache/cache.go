@@ -245,13 +245,19 @@ func readWatchChannel(
 }
 
 func (c *Cache) validateWatch(key string, op clientv3.Op) (pred KeyPredicate, err error) {
-	if op.IsPrevKV() ||
-		op.IsFragment() ||
-		op.IsProgressNotify() ||
-		op.IsCreatedNotify() ||
-		op.IsFilterPut() ||
-		op.IsFilterDelete() {
-		return nil, ErrUnsupportedRequest
+	switch {
+	case op.IsPrevKV():
+		return nil, fmt.Errorf("%w: PrevKV not supported", ErrUnsupportedRequest)
+	case op.IsFragment():
+		return nil, fmt.Errorf("%w: Fragment not supported", ErrUnsupportedRequest)
+	case op.IsProgressNotify():
+		return nil, fmt.Errorf("%w: ProgressNotify not supported", ErrUnsupportedRequest)
+	case op.IsCreatedNotify():
+		return nil, fmt.Errorf("%w: CreatedNotify not supported", ErrUnsupportedRequest)
+	case op.IsFilterPut():
+		return nil, fmt.Errorf("%w: FilterPut not supported", ErrUnsupportedRequest)
+	case op.IsFilterDelete():
+		return nil, fmt.Errorf("%w: FilterDelete not supported", ErrUnsupportedRequest)
 	}
 
 	startKey := []byte(key)
