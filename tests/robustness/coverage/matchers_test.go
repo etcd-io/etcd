@@ -43,6 +43,13 @@ func isInternalHC(trace *tracev1.ResourceSpans) bool {
 	return false
 }
 
+func keyIsEqual(key string, want int) Matched {
+	return func(trace *tracev1.ResourceSpans) bool {
+		got, found := intAttr(trace, key)
+		return found && got == want
+	}
+}
+
 func isLimitSet(trace *tracev1.ResourceSpans) bool {
 	limit, found := intAttr(trace, "limit")
 	return found && limit > 0
@@ -82,6 +89,11 @@ func strAttr(trace *tracev1.ResourceSpans, key string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func isReadOnly(trace *tracev1.ResourceSpans) bool {
+	isRO, found := boolAttr(trace, "read_only")
+	return found && isRO
 }
 
 func isKeysOnly(trace *tracev1.ResourceSpans) bool {

@@ -120,6 +120,14 @@ func testInterfaceUse(t *testing.T, filename string) {
 				"limit":       isLimitSet,
 				"keysOrCount": orMatcher(isKeysOnly, isCountOnly),
 			},
+			"etcdserverpb.KV/Txn": {
+				"optimisticPutOrDelete": andMatcher(
+					keyIsEqual("compare_len", 1),
+					keyIsEqual("success_len", 1),
+				),
+				"getOnFailure": keyIsEqual("failure_len", 1),
+				"readOnly":     isReadOnly,
+			},
 		} {
 			t.Run(op, func(t *testing.T) {
 				matcherKeys := slices.Collect(maps.Keys(matchers))
