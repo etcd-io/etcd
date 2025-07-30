@@ -16,6 +16,7 @@ package coverage_test
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -64,31 +65,14 @@ func testInterfaceUse(t *testing.T, filename string) {
 	traces := dump.Result
 
 	callsByOperationName := make(map[string]int)
-	ignoredTraces := make(map[string]int)
 	for _, trace := range traces.GetResourceSpans() {
-		serviceName := getServiceName(trace)
-		if serviceName != "etcd" {
+		if getServiceName(trace) != "etcd" {
 			continue
 		}
 		opName := getOperationName(trace)
-		if opName == "" {
-			if isInternalHC(trace) {
-				ignoredTraces["Internal Health Check"]++
-				continue
-			}
-			// This trace doesn't have grpc method associated. Ignoring for now
-			ignoredTraces["Other"]++
-			if ignoredTraces["Other"] < 3 {
-				t.Log(trace)
-			}
-			continue
-		}
 		callsByOperationName[opName]++
 	}
 	t.Logf("\n%s", printableCallTable(callsByOperationName))
-	if len(ignoredTraces) > 0 {
-		t.Logf("Ignored traces:%+v", ignoredTraces)
-	}
 
 	knownMethodsUsedByKubernetes := map[string]bool{
 		"etcdserverpb.KV/Range":           true, // All calls should go through etcd-k8s interface
@@ -128,8 +112,11 @@ func testInterfaceUse(t *testing.T, filename string) {
 				"getOnFailure": keyIsEqual("failure_len", 1),
 				"readOnly":     isReadOnly,
 			},
+			"": {
+				"internalHC": isInternalHC,
+			},
 		} {
-			t.Run(op, func(t *testing.T) {
+			t.Run(cmp.Or(op, "other"), func(t *testing.T) {
 				matcherKeys := slices.Collect(maps.Keys(matchers))
 				res := make([]int, 1<<len(matchers))
 				for _, trace := range traces.GetResourceSpans() {
@@ -196,11 +183,19 @@ func printableCallTable(callsByOperationName map[string]int) string {
 	table.Header("method", "calls", "percent")
 
 	totalCalls := 0
-	for _, c := range callsByOperationName {
+	for opName, c := range callsByOperationName {
+		if opName == "" {
+			// This trace doesn't have grpc method associated. Ignoring for now
+			continue
+		}
 		totalCalls += c
 	}
 
 	for opName, callCount := range callsByOperationName {
+		if opName == "" {
+			// This trace doesn't have grpc method associated. Ignoring for now
+			continue
+		}
 		table.Append(opName, callCount, fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)))
 	}
 	table.Footer("total", totalCalls, "100.00%")
