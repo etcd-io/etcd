@@ -45,7 +45,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/featuregate"
 	"go.etcd.io/etcd/pkg/v3/flags"
 	"go.etcd.io/etcd/pkg/v3/netutil"
-	"go.etcd.io/etcd/pkg/v3/timeutil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -367,7 +366,8 @@ type Config struct {
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	WatchProgressNotifyInterval timeutil.Duration `json:"watch-progress-notify-interval"`
+	WatchProgressNotifyInterval     time.Duration
+	WatchProgressNotifyIntervalJSON Duration `json:"watch-progress-notify-interval"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
@@ -749,7 +749,7 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 
 	fs.IntVar(&cfg.CompactionBatchLimit, "compaction-batch-limit", cfg.CompactionBatchLimit, "Sets the maximum revisions deleted in each compaction batch.")
 	fs.DurationVar(&cfg.CompactionSleepInterval, "compaction-sleep-interval", cfg.CompactionSleepInterval, "Sets the sleep interval between each compaction batch.")
-	fs.Var(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", "Duration of periodic watch progress notifications.")
+	fs.DurationVar(&cfg.WatchProgressNotifyInterval, "watch-progress-notify-interval", cfg.WatchProgressNotifyInterval, "Duration of periodic watch progress notifications.")
 	fs.DurationVar(&cfg.DowngradeCheckTime, "downgrade-check-time", cfg.DowngradeCheckTime, "Duration of time between two downgrade status checks.")
 	fs.DurationVar(&cfg.WarningApplyDuration, "warning-apply-duration", cfg.WarningApplyDuration, "Time duration after which a warning is generated if watch progress takes more time.")
 	fs.DurationVar(&cfg.WarningUnaryRequestDuration, "warning-unary-request-duration", cfg.WarningUnaryRequestDuration, "Time duration after which a warning is generated if a unary request takes more time.")
@@ -904,6 +904,10 @@ func (cfg *configYAML) configFromFile(path string) error {
 	cfg.PeerAutoTLS = cfg.PeerSecurityJSON.AutoTLS
 	if cfg.SelfSignedCertValidity == 0 {
 		cfg.SelfSignedCertValidity = 1
+	}
+
+	if cfg.WatchProgressNotifyIntervalJSON.Duration != 0 {
+		cfg.WatchProgressNotifyInterval = cfg.WatchProgressNotifyIntervalJSON.Duration
 	}
 	return cfg.Validate()
 }
