@@ -473,7 +473,11 @@ func checkClusterCompatibilityFromHeader(lg *zap.Logger, localID types.ID, heade
 		remoteMinClusterVs = remoteMinClusterVer.String()
 	}
 
-	localServer, localMinCluster, err := checkVersionCompatibility(remoteName, remoteServer, remoteMinClusterVer)
+	localServer := nil
+	localMinCluster := nil
+	if remoteServer != nil {
+		localServer, localMinCluster, err := checkVersionCompatibility(remoteName, remoteServer, remoteMinClusterVer)
+	}
 
 	localVs := ""
 	if localServer != nil {
