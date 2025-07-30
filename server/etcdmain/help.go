@@ -323,8 +323,6 @@ Experimental feature:
     Set time duration after which a warning is generated if a unary request takes more than this duration. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-unary-request-duration' instead.
   --max-learners '1'
     Set the max number of learner members allowed in the cluster membership.
-  --experimental-snapshot-catch-up-entries '5000'
-    Number of entries for a slow follower to catch up after compacting the raft storage entries.
   --experimental-compaction-sleep-interval
     Sets the sleep interval between each compaction batch. Deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-sleep-interval' instead.
   --compaction-sleep-interval
