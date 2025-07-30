@@ -125,6 +125,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 					return
 				}
 				matcherKeys := slices.Collect(maps.Keys(matchers))
+				slices.Sort(matcherKeys)
 				res := make([]int, 1<<len(matchers))
 				for _, trace := range traces.GetResourceSpans() {
 					if getServiceName(trace) != "etcd" || getOperationName(trace) != op {
