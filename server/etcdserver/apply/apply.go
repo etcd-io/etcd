@@ -459,11 +459,10 @@ func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantRes
 }
 
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {
-	readView := mvcc.ReadViewRTxMode(a.options.KV, mvcc.SharedBufReadTxMode)
 	return &pb.ResponseHeader{
 		ClusterId: uint64(a.options.Cluster.ID()),
 		MemberId:  uint64(a.options.RaftStatus.MemberID()),
-		Revision:  readView.Rev(),
+		Revision:  mvcc.ReadViewRTxMode(a.options.KV, mvcc.SharedBufReadTxMode).Rev(),
 		RaftTerm:  a.options.RaftStatus.Term(),
 	}
 }

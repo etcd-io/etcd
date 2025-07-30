@@ -22,33 +22,21 @@ import (
 )
 
 type readViewRTxMode struct {
-	kv      KV
+	KV
 	rTxMode ReadTxMode
 }
 
-func ReadViewRTxMode(kv KV, rTxMode ReadTxMode) *readViewRTxMode {
+func ReadViewRTxMode(rv KV, rTxMode ReadTxMode) *readViewRTxMode {
 	return &readViewRTxMode{
-		kv:      kv,
+		KV:      rv,
 		rTxMode: rTxMode,
 	}
 }
 
-func (rv *readViewRTxMode) FirstRev() int64 {
-	tr := rv.kv.Read(rv.rTxMode, traceutil.TODO())
-	defer tr.End()
-	return tr.FirstRev()
-}
-
 func (rv *readViewRTxMode) Rev() int64 {
-	tr := rv.kv.Read(rv.rTxMode, traceutil.TODO())
+	tr := rv.KV.Read(rv.rTxMode, traceutil.TODO())
 	defer tr.End()
 	return tr.Rev()
-}
-
-func (rv *readViewRTxMode) Range(ctx context.Context, key, end []byte, ro RangeOptions) (r *RangeResult, err error) {
-	tr := rv.kv.Read(rv.rTxMode, traceutil.TODO())
-	defer tr.End()
-	return tr.Range(ctx, key, end, ro)
 }
 
 type readView struct{ kv KV }
