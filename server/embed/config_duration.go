@@ -35,7 +35,6 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 		return nil
 	case string:
 		d.Duration, err = time.ParseDuration(value)
-
 		return err
 	}
 	return err

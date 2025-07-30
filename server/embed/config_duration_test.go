@@ -15,7 +15,6 @@
 package embed
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -23,12 +22,31 @@ import (
 )
 
 func TestUnmarshalJSON(t *testing.T) {
+	var d1 Duration
 	data := []byte(`"10s"`)
-	var d Duration
-	json.Unmarshal(data, &d)
-	require.Equal(t, 10*time.Second, d.Duration)
+	err := d1.UnmarshalJSON(data)
+	require.Equal(t, 10*time.Second, d1.Duration)
+	require.NoError(t, err)
 
-	data = []byte("10_000_000_000")
-	json.Unmarshal(data, &d)
-	require.Equal(t, 10*time.Second, d.Duration)
+	var d2 Duration
+	data = []byte("10000000000")
+	err = d2.UnmarshalJSON(data)
+	require.Equal(t, 10*time.Second, d2.Duration)
+	require.NoError(t, err)
+
+	var d3 Duration
+	data = []byte("")
+	err = d3.UnmarshalJSON(data)
+	require.Error(t, err)
+
+	var d4 Duration
+	data = []byte(`"non-duration string"`)
+	err = d4.UnmarshalJSON(data)
+	require.Error(t, err)
+
+	var d5 Duration
+	data = []byte(`["10s"]`)
+	err = d5.UnmarshalJSON(data)
+	require.NoError(t, err)
+	require.Equal(t, Duration{}, d5)
 }
