@@ -226,6 +226,9 @@ func printableMatcherTable(res []int, matcherKeys []string) string {
 				rowPrefix[i] = ""
 			}
 		}
+		if callCount == 0 {
+			continue
+		}
 		table.Append(append(rowPrefix, strconv.Itoa(callCount), fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls))))
 	}
 	footerStr := make([]string, len(matcherKeys))
