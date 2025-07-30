@@ -112,11 +112,18 @@ func testInterfaceUse(t *testing.T, filename string) {
 				"getOnFailure": keyIsEqual("failure_len", 1),
 				"readOnly":     isReadOnly,
 			},
+			"etcdserverpb.KV/Compact": {
+				"rev": isRevisionSet,
+			},
 			"": {
 				"internalHC": isInternalHC,
 			},
 		} {
 			t.Run(cmp.Or(op, "other"), func(t *testing.T) {
+				if callsByOperationName[op] == 0 {
+					t.Skipf("No calls to operation %q", op)
+					return
+				}
 				matcherKeys := slices.Collect(maps.Keys(matchers))
 				res := make([]int, 1<<len(matchers))
 				for _, trace := range traces.GetResourceSpans() {
