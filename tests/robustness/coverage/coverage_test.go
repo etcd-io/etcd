@@ -102,6 +102,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 				"rev":         isRevisionSet,
 				"rangeEnd":    isRangeEndSet,
 				"limit":       isLimitSet,
+				"limit=1":     keyIsEqual("limit", 1),
 				"keysOrCount": orMatcher(isKeysOnly, isCountOnly),
 			},
 			"etcdserverpb.KV/Txn": {
