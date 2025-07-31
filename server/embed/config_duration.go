@@ -19,11 +19,9 @@ import (
 	"time"
 )
 
-type Duration struct {
-	time.Duration
-}
+type ConfigDuration time.Duration
 
-func (d *Duration) UnmarshalJSON(b []byte) error {
+func (d *ConfigDuration) UnmarshalJSON(b []byte) error {
 	var v any
 	var err error
 	if err = json.Unmarshal(b, &v); err != nil {
@@ -31,11 +29,14 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	}
 	switch value := v.(type) {
 	case float64:
-		d.Duration = time.Duration(value)
+		*d = ConfigDuration(value)
 		return nil
 	case string:
-		d.Duration, err = time.ParseDuration(value)
+		td, err := time.ParseDuration(value)
+		if err == nil {
+			*d = ConfigDuration(td)
+		}
 		return err
 	}
-	return err
+	return nil
 }

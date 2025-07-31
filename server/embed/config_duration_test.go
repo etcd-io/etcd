@@ -22,31 +22,33 @@ import (
 )
 
 func TestUnmarshalJSON(t *testing.T) {
-	var d1 Duration
+	var d1 ConfigDuration
 	data := []byte(`"10s"`)
 	err := d1.UnmarshalJSON(data)
-	require.Equal(t, 10*time.Second, d1.Duration)
+	require.EqualValues(t, 10*time.Second, d1)
 	require.NoError(t, err)
 
-	var d2 Duration
+	var d2 ConfigDuration
 	data = []byte("10000000000")
 	err = d2.UnmarshalJSON(data)
-	require.Equal(t, 10*time.Second, d2.Duration)
+	require.EqualValues(t, 10*time.Second, d2)
 	require.NoError(t, err)
 
-	var d3 Duration
+	var d3 ConfigDuration
 	data = []byte("")
 	err = d3.UnmarshalJSON(data)
 	require.Error(t, err)
+	require.EqualValues(t, 0, d3)
 
-	var d4 Duration
+	var d4 ConfigDuration
 	data = []byte(`"non-duration string"`)
 	err = d4.UnmarshalJSON(data)
 	require.Error(t, err)
+	require.EqualValues(t, 0, d4)
 
-	var d5 Duration
+	var d5 ConfigDuration
 	data = []byte(`["10s"]`)
 	err = d5.UnmarshalJSON(data)
 	require.NoError(t, err)
-	require.Equal(t, Duration{}, d5)
+	require.EqualValues(t, 0, d5)
 }

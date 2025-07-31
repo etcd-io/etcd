@@ -359,9 +359,7 @@ func WithCompactionSleepInterval(time time.Duration) EPClusterOption {
 }
 
 func WithWatchProcessNotifyInterval(interval time.Duration) EPClusterOption {
-	return func(c *EtcdProcessClusterConfig) {
-		c.ServerConfig.WatchProgressNotifyInterval = interval
-	}
+	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.WatchProgressNotifyInterval = interval }
 }
 
 func WithEnvVars(ev map[string]string) EPClusterOption {
