@@ -45,6 +45,11 @@ test-robustness-issue14685: /tmp/etcd-v3.5.5-failpoints/bin
 	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue14685 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.5-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	 echo "Failed to reproduce" || echo "Successful reproduction"
 
+.PHONY: test-robustness-issue15220
+test-robustness-issue15220: /tmp/etcd-v3.5.7-failpoints/bin
+	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15220 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
+	 echo "Failed to reproduce" || echo "Successful reproduction"
+
 .PHONY: test-robustness-issue15271
 test-robustness-issue15271: /tmp/etcd-v3.5.7-failpoints/bin
 	GO_TEST_FLAGS='-v --run=TestRobustnessRegression/Issue15271 --count 100 --failfast --bin-dir=/tmp/etcd-v3.5.7-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \

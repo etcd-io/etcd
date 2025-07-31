@@ -14,7 +14,7 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 | Single node cluster can loose a write on crash [#14370]                      | Aug 2022   | v3.4 or earlier   | User            | Yes, report preceded robustness tests             | `make test-robustness-issue14370`   |
 | Enabling auth can lead to inconsistency [#14571]                             | Oct 2022   | v3.4 or earlier   | User            | No, authorization is not covered.                 |                                     |
 | Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022   | v3.5              | Robustness      | Yes, after covering defragmentation.              | `make test-robustness-issue14685`   |
-| Watch progress notification not synced with steam [#15220]                   | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   |                                     |
+| Watch progress notification not synced with steam [#15220]                   | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   | `make test-robustness-issue15220`   |
 | Watch traveling back in time after network partition [#15271]                | Feb 2023   | v3.4 or earlier   | Robustness      | Yes, after covering network partitions            | `make test-robustness-issue15271`   |
 | Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024   | main branch       | Robustness      | Yes, prevented regression in v3.6                 |                                     |
 | Watch events lost during stream starvation [#17529]                          | Mar 2024   | v3.4 or earlier   | User            | Yes, after covering of slow watch                 | `make test-robustness-issue17529`   |
@@ -88,7 +88,7 @@ Etcd provides strict serializability for KV operations and eventual consistency 
 
 [Implicit Kubernetes-ETCD Contract]: https://docs.google.com/document/d/1NUZDiJeiIH5vo_FMaTWf0JtrQKCx0kpEaIIuPoj9P6A/edit?usp=sharing
 
-## Running locally 
+## Running locally
 
 1. Build etcd with failpoints
     ```bash
@@ -100,9 +100,9 @@ Etcd provides strict serializability for KV operations and eventual consistency 
     ```bash
     make test-robustness
     ```
-   
+
     Optionally, you can pass environment variables:
-    * `GO_TEST_FLAGS` - to pass additional arguments to `go test`. 
+    * `GO_TEST_FLAGS` - to pass additional arguments to `go test`.
       It is recommended to run tests multiple times with failfast enabled. this can be done by setting `GO_TEST_FLAGS='--count=100 --failfast'`.
     * `EXPECT_DEBUG=true` - to get logs from the cluster.
     * `RESULTS_DIR` - to change the location where the results report will be saved.
@@ -212,7 +212,7 @@ You should see a graph similar to the one on the image below.
 ![issue14370](readme-images/issue14370.png)
 
 The last correct request (connected with the grey line) is a `Put` request that succeeded and got revision `168`.
-All following requests are invalid (connected with red line) as they have revision `167`. 
+All following requests are invalid (connected with red line) as they have revision `167`.
 Etcd guarantees that revision is non-decreasing, so this shows a bug in etcd as there is no way revision should decrease.
 This is consistent with the root cause of [#14370] as it was an issue with the process crash causing the last write to be lost.
 
