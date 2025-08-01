@@ -192,20 +192,24 @@ The report follows the hierarchy:
 
 Let's reproduce and analyse robustness test report for issue [#14370].
 To reproduce the issue by yourself run `make test-robustness-issue14370`.
-After a couple of tries robustness tests should fail with a log `Linearization failed` and save the report locally.
+After a couple of tries robustness tests should fail with a log `Linearization illegal` and save the report locally.
 
 Example:
 ```
-    logger.go:146: 2024-05-08T10:42:53.379+0200 INFO    Validating linearizable operations      {"timeout": "5m0s"}
-    logger.go:146: 2024-05-08T10:42:54.429+0200 ERROR   Linearization failed    {"duration": "1.050105973s"}
-    validate.go:39: Failed linearization, skipping further validation
-    logger.go:146: 2024-05-08T10:42:54.429+0200 INFO    Saving robustness test report   {"path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550"}
+    logger.go:146: 2025-08-01T22:54:26.550+0900	INFO	Validating linearizable operations	{"timeout": "5m0s"}
+    logger.go:146: 2025-08-01T22:54:26.755+0900	ERROR	Linearization illegal	{"duration": "205.05225ms"}
+    logger.go:146: 2025-08-01T22:54:26.755+0900	INFO	Skipping other validations as linearization failed
+    main_test.go:122: linearization: illegal
+    logger.go:146: 2025-08-01T22:54:26.756+0900	INFO	Saving robustness test report	{"path": "/tmp/TestRobustnessRegression_Issue14370/1754056466755991000"}
     ...
-    logger.go:146: 2024-05-08T10:42:54.441+0200 INFO    Saving visualization    {"path": "/tmp/TestRobustnessRegression_Issue14370/1715157774429416550/history.html"}
+    logger.go:146: 2025-08-01T22:54:26.850+0900	INFO	Saving visualization	{"path": "/tmp/TestRobustnessRegression_Issue14370/1754056466755991000/history.html"}
+    logger.go:146: 2025-08-01T22:54:26.878+0900	INFO	killing server...	{"name": "TestRobustnessRegressionIssue14370-test-0"}
+    logger.go:146: 2025-08-01T22:54:26.878+0900	INFO	stopping server...	{"name": "TestRobustnessRegressionIssue14370-test-0"}
+    logger.go:146: 2025-08-01T22:54:26.886+0900	INFO	stopped server.	{"name": "TestRobustnessRegressionIssue14370-test-0"}
 ```
 
 Linearization issues are easiest to analyse via history visualization.
-Open `/tmp/TestRobustnessRegression_Issue14370/1715157774429416550/history.html` file in your browser.
+Open `/tmp/TestRobustnessRegression_Issue14370/1754056466755991000/history.html` file in your browser.
 Jump to the error in linearization by clicking `[ jump to first error ]` on the top of the page.
 
 You should see a graph similar to the one on the image below.
