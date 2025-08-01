@@ -1,4 +1,4 @@
-// Copyright 2015 The etcd Authors
+// Copyright 2025 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,25 +14,8 @@
 
 package command
 
-import (
-	"fmt"
+import "github.com/spf13/cobra"
 
-	"github.com/spf13/cobra"
-
-	"go.etcd.io/etcd/api/v3/version"
-)
-
-// NewVersionCommand prints out the version of etcd.
-func NewVersionCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:     "version",
-		Short:   "Prints the version of etcdctl",
-		Run:     versionCommandFunc,
-		GroupID: groupUtilityID,
-	}
-}
-
-func versionCommandFunc(cmd *cobra.Command, args []string) {
-	fmt.Println("etcdctl version:", version.Version)
-	fmt.Println("API version:", version.APIVersion)
+func SetHelpCmdGroup(rootCmd *cobra.Command) {
+	rootCmd.SetHelpCommandGroupID(groupUtilityID)
 }
