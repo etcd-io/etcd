@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"sync"
+	"sync/atomic"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -30,6 +31,8 @@ var (
 )
 
 type WatchID int64
+
+var nextWatchID int64
 
 // FilterFunc returns true if the given event should be filtered out.
 type FilterFunc func(e mvccpb.Event) bool
@@ -100,9 +103,7 @@ type watchStream struct {
 	watchable watchable
 	ch        chan WatchResponse
 
-	mu sync.Mutex // guards fields below it
-	// nextID is the ID pre-allocated for next new watcher in this stream
-	nextID   WatchID
+	mu       sync.Mutex // guards fields below it
 	closed   bool
 	cancels  map[WatchID]cancelFunc
 	watchers map[WatchID]*watcher
@@ -123,11 +124,7 @@ func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ..
 	}
 
 	if id == clientv3.AutoWatchID {
-		for ws.watchers[ws.nextID] != nil {
-			ws.nextID++
-		}
-		id = ws.nextID
-		ws.nextID++
+		id = WatchID(atomic.AddInt64(&nextWatchID, 1))
 	} else if _, ok := ws.watchers[id]; ok {
 		return -1, ErrWatcherDuplicateID
 	}
