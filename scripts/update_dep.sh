@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/usr/bin/env bash
 # Copyright 2025 The etcd Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +15,7 @@
 #
 # Usage:
 #    ./scripts/update_dep.sh module version
-# or ./scripts/update_dep.sh module
+# or ./scripts/update_dep.sh module (to update to the latest version)
 # e.g.
 #   ./scripts/update_dep.sh github.com/golang/groupcache
 #   ./scripts/update_dep.sh github.com/soheilhy/cmux v0.1.5
@@ -26,48 +26,57 @@ set -euo pipefail
 
 source ./scripts/test_lib.sh
 
-if [ "$#" -ne 2 ]; then
-    echo "Illegal number of parameters"
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+    log_error "Illegal number of parameters. Usage: $0 module [version]"
     exit 1
 fi
 
 mod="$1"
-ver="$2"
+ver="${2:-}"
 
 function print_current_dep_version {
-  echo "${mod} version in all go mod files"
-  grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*$" | grep -v sum
-  printf "\n\n"
+  log_info "${mod} version in all go.mod files:"
+  find . -name go.mod -exec grep -H "^\s*${mod}\s" {} + | sed 's|:|\t|' || true
+  printf "\n"
 }
 
 function is_fully_indirect {
-  # check if all lines end with "// indirect"
-  # if grep found nothing, the error code will be non-zero
-  ALL=$(grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*$" | grep -v sum | wc -l)
-  ONLY_INDIRECT=$(grep --exclude-dir=.git --include=\*.mod -Ri "^.*${mod} v.*// indirect$" | grep -v sum | wc -l)
-  if  [[ "$ALL" == "$ONLY_INDIRECT" ]]; then 
-      echo "Fully indirect, we will terminate the script"
-      exit 1
-  else
-      echo "Not fully indirect, we will perform dependency bump"
+  # Returns 0 (true) if the dependency is fully indirect, 1 (false) otherwise.
+  local all_lines
+  all_lines=$(find . -name go.mod -exec grep -E "^\s*${mod}\s" {} + || true)
+  if [ -z "${all_lines}" ]; then
+    # Not a dependency anywhere.
+    return 0
   fi
+
+  local direct_lines
+  direct_lines=$(echo "${all_lines}" | grep -v "// indirect")
+
+  if [ -z "${direct_lines}" ]; then
+    return 0 # true, fully indirect
+  fi
+  return 1 # false, has direct dependencies
 }
 
 function update_module {
-  run go mod tidy
-
-  deps=$(go list -f '{{if .Version}}{{.Path}},{{.Version}}{{end}}' -m all)
-  if [[ "$deps" == *"${mod}"* ]]; then
+  # Check if the module is a dependency.
+  if go list -m all | grep -q -E "^\s*${mod}\s"; then
     if [ -z "${ver}" ]; then
+      log_info "Updating ${mod} to latest version in $(module_subdir)..."
       run go get -u "${mod}"
     else
+      log_info "Updating ${mod} to version ${ver} in $(module_subdir)..."
       run go get "${mod}@${ver}"
     fi
   fi
 }
 
 print_current_dep_version
-is_fully_indirect
+if is_fully_indirect; then
+  log_warning "Dependency '${mod}' is fully indirect or not used. Nothing to do."
+  exit 0
+fi
+
 run_for_modules update_module
 
 ./scripts/fix.sh
