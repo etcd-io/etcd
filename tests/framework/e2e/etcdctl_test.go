@@ -21,10 +21,10 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-func Test_AddTxnResponse(t *testing.T) {
+func Test_addTxnResponse(t *testing.T) {
 	jsonData := `{"header":{"cluster_id":238453183653593855,"member_id":14578408409545168728,"revision":3,"raft_term":2},"succeeded":true,"responses":[{"Response":{"response_range":{"header":{"revision":3},"kvs":[{"key":"a2V5MQ==","create_revision":2,"mod_revision":2,"version":1,"value":"dmFsdWUx"}],"count":1}}},{"Response":{"response_range":{"header":{"revision":3},"kvs":[{"key":"a2V5Mg==","create_revision":3,"mod_revision":3,"version":1,"value":"dmFsdWUy"}],"count":1}}}]}`
 	var resp clientv3.TxnResponse
-	AddTxnResponse(&resp, jsonData)
+	addTxnResponse(&resp, jsonData)
 	err := json.Unmarshal([]byte(jsonData), &resp)
 	if err != nil {
 		t.Errorf("json Unmarshal failed. err: %s", err)
