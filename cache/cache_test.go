@@ -21,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -188,7 +189,14 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw := newMockWatcher(16)
-			cache, err := New(mw, "")
+			fakeClient := &clientv3.Client{
+				Watcher: mw,
+				KV:      &kvStub{},
+			}
+			cache, err := New(fakeClient, "")
+			if err != nil {
+				t.Fatalf("New cache: %v", err)
+			}
 			if err != nil {
 				t.Fatalf("New cache: %v", err)
 			}
@@ -395,6 +403,32 @@ type mockWatcher struct {
 	registered chan struct{}
 }
 
+type kvStub struct{}
+
+func (kvStub) Get(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	return &clientv3.GetResponse{Header: &pb.ResponseHeader{Revision: 0}}, nil
+}
+
+func (kvStub) Put(ctx context.Context, key, val string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
+	return nil, nil
+}
+
+func (kvStub) Delete(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
+	return nil, nil
+}
+
+func (kvStub) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
+	return nil, nil
+}
+
+func (kvStub) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+	return clientv3.OpResponse{}, nil
+}
+
+func (kvStub) Txn(ctx context.Context) clientv3.Txn {
+	return nil
+}
+
 func newMockWatcher(buf int) *mockWatcher {
 	return &mockWatcher{
 		responses:  make(chan clientv3.WatchResponse, buf),
@@ -403,7 +437,11 @@ func newMockWatcher(buf int) *mockWatcher {
 }
 
 func (m *mockWatcher) Watch(_ context.Context, _ string, _ ...clientv3.OpOption) clientv3.WatchChan {
-	close(m.registered)
+	select { // prevent “close of closed channel” on re-watch
+	case <-m.registered:
+	default:
+		close(m.registered)
+	}
 	return m.responses
 }
 
