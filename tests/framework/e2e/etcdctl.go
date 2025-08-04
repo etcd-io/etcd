@@ -250,13 +250,13 @@ func (ctl *EtcdctlV3) Txn(ctx context.Context, compares, ifSucess, ifFail []stri
 		return nil, err
 	}
 	var resp clientv3.TxnResponse
-	AddTxnResponse(&resp, line)
+	addTxnResponse(&resp, line)
 	err = json.Unmarshal([]byte(line), &resp)
 	return &resp, err
 }
 
-// AddTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
-func AddTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
+// addTxnResponse looks for ResponseOp json tags and adds the objects for json decoding
+func addTxnResponse(resp *clientv3.TxnResponse, jsonData string) {
 	if resp == nil {
 		return
 	}
