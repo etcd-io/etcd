@@ -7,6 +7,13 @@ FROM golang:$GO_VERSION
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
 
+# inject assertions in place of gofail
+WORKDIR /etcd/server
+RUN go install golang.org/x/tools/cmd/goimports@latest
+RUN go get github.com/antithesishq/antithesis-sdk-go@v0.4.4
+RUN for file in $(grep -rl '// gofail'); do sed -i 's|\/\/ gofail.*var \([[:alnum:]]*\) .*|assert\.Reachable("\1", nil)|' $file; goimports -w $file; done
+RUN go mod tidy
+
 # replace verify with antithesis
 WORKDIR /etcd/client/pkg/verify
 COPY inject/verify.patch verify.patch
@@ -19,7 +26,7 @@ WORKDIR /etcd
 RUN go mod download
 
 # install instrumentor
-RUN go get github.com/antithesishq/antithesis-sdk-go@a802e8810442e01d16b3e9df77d7ce3875e36e55 # v0.4.3
+RUN go get github.com/antithesishq/antithesis-sdk-go@v0.4.4
 RUN go install github.com/antithesishq/antithesis-sdk-go/tools/antithesis-go-instrumentor@a802e8810442e01d16b3e9df77d7ce3875e36e55 # v0.4.3
 RUN go mod tidy
 
