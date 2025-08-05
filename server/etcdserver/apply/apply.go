@@ -462,7 +462,7 @@ func (a *applierV3backend) newHeader() *pb.ResponseHeader {
 	return &pb.ResponseHeader{
 		ClusterId: uint64(a.options.Cluster.ID()),
 		MemberId:  uint64(a.options.RaftStatus.MemberID()),
-		Revision:  mvcc.ReadViewRTxMode(a.options.KV, mvcc.SharedBufReadTxMode).Rev(),
+		Revision:  a.options.KV.Rev(),
 		RaftTerm:  a.options.RaftStatus.Term(),
 	}
 }

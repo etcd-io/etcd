@@ -21,34 +21,16 @@ import (
 	"go.etcd.io/etcd/server/v3/lease"
 )
 
-type readViewRTxMode struct {
-	KV
-	rTxMode ReadTxMode
-}
-
-func ReadViewRTxMode(rv KV, rTxMode ReadTxMode) *readViewRTxMode {
-	return &readViewRTxMode{
-		KV:      rv,
-		rTxMode: rTxMode,
-	}
-}
-
-func (rv *readViewRTxMode) Rev() int64 {
-	tr := rv.KV.Read(rv.rTxMode, traceutil.TODO())
-	defer tr.End()
-	return tr.Rev()
-}
-
 type readView struct{ kv KV }
 
 func (rv *readView) FirstRev() int64 {
-	tr := rv.kv.Read(ConcurrentReadTxMode, traceutil.TODO())
+	tr := rv.kv.Read(SharedBufReadTxMode, traceutil.TODO())
 	defer tr.End()
 	return tr.FirstRev()
 }
 
 func (rv *readView) Rev() int64 {
-	tr := rv.kv.Read(ConcurrentReadTxMode, traceutil.TODO())
+	tr := rv.kv.Read(SharedBufReadTxMode, traceutil.TODO())
 	defer tr.End()
 	return tr.Rev()
 }
