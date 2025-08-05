@@ -487,22 +487,35 @@ func TestCacheWithPrefixWatch(t *testing.T) {
 }
 
 func TestCacheWithoutPrefixGet(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	t.Cleanup(func() { clus.Terminate(t) })
-
-	client := clus.Client(0)
-
-	c, err := cache.New(client, "", cache.WithHistoryWindowSize(32))
-	if err != nil {
-		t.Fatalf("cache.New: %v", err)
-	}
-	t.Cleanup(c.Close)
-	if err := c.WaitReady(t.Context()); err != nil {
-		t.Fatalf("cache.WaitReady: %v", err)
+	tcs := []struct {
+		name                          string
+		initialEvents, followupEvents []*clientv3.Event
+	}{
+		{"empty cache", nil, TestGetEvents},
+		{"partial load", filterEvents(TestGetEvents, revLessThan(4)), filterEvents(TestGetEvents, revGreaterEqual(4))},
+		{"complete load", TestGetEvents, nil},
 	}
 
-	testGet(t, client.KV, c)
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			integration.BeforeTest(t)
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+			t.Cleanup(func() { clus.Terminate(t) })
+			client, kv := clus.Client(0), clus.Client(0).KV
+
+			testGet(t, kv, func() Getter {
+				c, err := cache.New(client, "")
+				if err != nil {
+					t.Fatalf("cache.New: %v", err)
+				}
+				t.Cleanup(c.Close)
+				if err := c.WaitReady(t.Context()); err != nil {
+					t.Fatalf("cache not ready: %v", err)
+				}
+				return c
+			}, tc.initialEvents, tc.followupEvents)
+		})
+	}
 }
 
 func TestGet(t *testing.T) {
@@ -511,167 +524,32 @@ func TestGet(t *testing.T) {
 	t.Cleanup(func() { clus.Terminate(t) })
 
 	client := clus.Client(0)
-	testGet(t, client.KV, client.KV)
+	kv := client.KV
+
+	testGet(t, kv, func() Getter { return kv }, TestGetEvents, nil)
 }
 
-func testGet(t *testing.T, kv clientv3.KV, reader Getter) {
+func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvents, followupEvents []*clientv3.Event) {
 	ctx := t.Context()
-	rev2PutFooA := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/a"),
-			Value:          []byte("a1"),
-			CreateRevision: 2,
-			ModRevision:    2,
-			Version:        1,
-		},
-	}
-	rev3PutFooB := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/b"),
-			Value:          []byte("b1"),
-			CreateRevision: 3,
-			ModRevision:    3,
-			Version:        1,
-		},
-	}
-	rev4PutFooC := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/c"),
-			Value:          []byte("c1"),
-			CreateRevision: 4,
-			ModRevision:    4,
-			Version:        1,
-		},
-	}
-	rev5PutFooD := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/d"),
-			Value:          []byte("d1"),
-			CreateRevision: 5,
-			ModRevision:    5,
-			Version:        1,
-		},
-	}
-	rev6DeleteFooD := &clientv3.Event{
-		Type: clientv3.EventTypeDelete,
-		Kv: &mvccpb.KeyValue{
-			Key:         []byte("/foo/d"),
-			ModRevision: 6,
-		},
-	}
-	rev7TxnPutFooA := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/a"),
-			Value:          []byte("a2"),
-			CreateRevision: 2,
-			ModRevision:    7,
-			Version:        2,
-		},
-	}
-	rev7TxnPutFooB := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/b"),
-			Value:          []byte("b2"),
-			CreateRevision: 3,
-			ModRevision:    7,
-			Version:        2,
-		},
-	}
-	rev8PutFooA := &clientv3.Event{
-		Type: clientv3.EventTypePut,
-		Kv: &mvccpb.KeyValue{
-			Key:            []byte("/foo/a"),
-			Value:          []byte("a3"),
-			CreateRevision: 2,
-			ModRevision:    8,
-			Version:        3,
-		},
-	}
-
-	tests := []struct {
-		name         string
-		key          string
-		opts         []clientv3.OpOption
-		wantKVs      []*mvccpb.KeyValue
-		wantRevision int64
-	}{
-		{
-			name:         "single key /foo/a",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
-			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv},
-			wantRevision: 8,
-		},
-		{
-			name:         "non‑existing key",
-			key:          "/doesnotexist",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
-			wantKVs:      nil,
-			wantRevision: 8,
-		},
-		{
-			name:         "prefix /foo",
-			key:          "/foo",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
-			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv, rev7TxnPutFooB.Kv, rev4PutFooC.Kv},
-			wantRevision: 8,
-		},
-		{
-			name:         "range [/foo/a, /foo/c)",
-			key:          "/foo/a",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
-			wantKVs:      []*mvccpb.KeyValue{rev8PutFooA.Kv, rev7TxnPutFooB.Kv},
-			wantRevision: 8,
-		},
-		{
-			name:         "fromKey /foo/b",
-			key:          "/foo/b",
-			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
-			wantKVs:      []*mvccpb.KeyValue{rev7TxnPutFooB.Kv, rev4PutFooC.Kv},
-			wantRevision: 8,
-		},
-	}
-
 	t.Log("Setup")
-	if _, err := kv.Put(ctx, string(rev2PutFooA.Kv.Key), string(rev2PutFooA.Kv.Value)); err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	if _, err := kv.Put(ctx, string(rev3PutFooB.Kv.Key), string(rev3PutFooB.Kv.Value)); err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	if _, err := kv.Put(ctx, string(rev4PutFooC.Kv.Key), string(rev4PutFooC.Kv.Value)); err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	if _, err := kv.Put(ctx, string(rev5PutFooD.Kv.Key), string(rev5PutFooD.Kv.Value)); err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	if _, err := kv.Delete(ctx, string(rev6DeleteFooD.Kv.Key)); err != nil {
-		t.Fatalf("Delete: %v", err)
-	}
-	if _, err := kv.Txn(ctx).Then(clientv3.OpPut(string(rev7TxnPutFooA.Kv.Key), string(rev7TxnPutFooA.Kv.Value)), clientv3.OpPut(string(rev7TxnPutFooB.Kv.Key), string(rev7TxnPutFooB.Kv.Value))).Commit(); err != nil {
-		t.Fatalf("Txn: %v", err)
-	}
-	lastPutResp, err := kv.Put(ctx, string(rev8PutFooA.Kv.Key), string(rev8PutFooA.Kv.Value))
-	if err != nil {
-		t.Fatalf("Put: %v", err)
+	lastRev := applyEvents(ctx, t, kv, initialEvents)
+
+	reader := getReader()
+	if c, ok := reader.(*cache.Cache); ok {
+		if err := c.WaitForRevision(ctx, lastRev); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", lastRev, err)
+		}
 	}
 
-	switch cacheReader := reader.(type) {
-	case *cache.Cache:
-		if err := cacheReader.WaitForRevision(ctx, lastPutResp.Header.Revision); err != nil {
-			t.Fatalf("cache never caught up to rev %d: %v", lastPutResp.Header.Revision, err)
+	lastRev = applyEvents(ctx, t, kv, followupEvents)
+	if c, ok := reader.(*cache.Cache); ok {
+		if err := c.WaitForRevision(ctx, lastRev); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", lastRev, err)
 		}
-	default:
 	}
 
 	t.Log("Validate")
-	for _, tc := range tests {
+	for _, tc := range getTestCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := reader.Get(ctx, tc.key, tc.opts...)
@@ -686,6 +564,136 @@ func testGet(t *testing.T, kv clientv3.KV, reader Getter) {
 			}
 		})
 	}
+}
+
+var TestGetEvents = []*clientv3.Event{
+	Rev2PutFooA, Rev3PutFooB, Rev4PutFooC, Rev5PutFooD, Rev6DeleteFooD, Rev7TxnPutFooA, Rev7TxnPutFooB, Rev8PutFooA,
+}
+
+var (
+	Rev2PutFooA = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a1"),
+			CreateRevision: 2,
+			ModRevision:    2,
+			Version:        1,
+		},
+	}
+	Rev3PutFooB = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/b"),
+			Value:          []byte("b1"),
+			CreateRevision: 3,
+			ModRevision:    3,
+			Version:        1,
+		},
+	}
+	Rev4PutFooC = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/c"),
+			Value:          []byte("c1"),
+			CreateRevision: 4,
+			ModRevision:    4,
+			Version:        1,
+		},
+	}
+	Rev5PutFooD = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/d"),
+			Value:          []byte("d1"),
+			CreateRevision: 5,
+			ModRevision:    5,
+			Version:        1,
+		},
+	}
+	Rev6DeleteFooD = &clientv3.Event{
+		Type: clientv3.EventTypeDelete,
+		Kv: &mvccpb.KeyValue{
+			Key:         []byte("/foo/d"),
+			ModRevision: 6,
+		},
+	}
+	Rev7TxnPutFooA = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a2"),
+			CreateRevision: 2,
+			ModRevision:    7,
+			Version:        2,
+		},
+	}
+	Rev7TxnPutFooB = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/b"),
+			Value:          []byte("b2"),
+			CreateRevision: 3,
+			ModRevision:    7,
+			Version:        2,
+		},
+	}
+	Rev8PutFooA = &clientv3.Event{
+		Type: clientv3.EventTypePut,
+		Kv: &mvccpb.KeyValue{
+			Key:            []byte("/foo/a"),
+			Value:          []byte("a3"),
+			CreateRevision: 2,
+			ModRevision:    8,
+			Version:        3,
+		},
+	}
+)
+
+type getTestCase struct {
+	name         string
+	key          string
+	opts         []clientv3.OpOption
+	wantKVs      []*mvccpb.KeyValue
+	wantRevision int64
+}
+
+var getTestCases = []getTestCase{
+	{
+		name:         "single key /foo/a",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "non-existing key",
+		key:          "/doesnotexist",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+		wantKVs:      nil,
+		wantRevision: 8,
+	},
+	{
+		name:         "prefix /foo",
+		key:          "/foo",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "range [/foo/a, /foo/c)",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
+		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv, Rev7TxnPutFooB.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "fromKey /foo/b",
+		key:          "/foo/b",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
+		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
+		wantRevision: 8,
+	},
 }
 
 func TestCacheWithPrefixGet(t *testing.T) {
@@ -1048,3 +1056,59 @@ func collectAndAssertAtomicEvents(t *testing.T, watch clientv3.WatchChan) (event
 		}
 	}
 }
+
+func applyEvents(ctx context.Context, t *testing.T, kv clientv3.KV, evs []*clientv3.Event) int64 {
+	var lastRev int64
+	for _, batches := range batchEventsByRevision(evs) {
+		lastRev = applyEventBatch(ctx, t, kv, batches)
+	}
+	return lastRev
+}
+
+func batchEventsByRevision(events []*clientv3.Event) [][]*clientv3.Event {
+	var batches [][]*clientv3.Event
+	if len(events) == 0 {
+		return batches
+	}
+	start := 0
+	for end := 1; end < len(events); end++ {
+		if events[end].Kv.ModRevision != events[start].Kv.ModRevision {
+			batches = append(batches, events[start:end])
+			start = end
+		}
+	}
+	batches = append(batches, events[start:])
+	return batches
+}
+
+func applyEventBatch(ctx context.Context, t *testing.T, kv clientv3.KV, batch []*clientv3.Event) int64 {
+	ops := make([]clientv3.Op, 0, len(batch))
+	for _, event := range batch {
+		switch event.Type {
+		case clientv3.EventTypePut:
+			ops = append(ops, clientv3.OpPut(string(event.Kv.Key), string(event.Kv.Value)))
+		case clientv3.EventTypeDelete:
+			ops = append(ops, clientv3.OpDelete(string(event.Kv.Key)))
+		default:
+			t.Fatalf("unsupported event type: %v", event.Type)
+		}
+	}
+	resp, err := kv.Txn(ctx).Then(ops...).Commit()
+	if err != nil {
+		t.Fatalf("Txn failed: %v", err)
+	}
+	return resp.Header.Revision
+}
+
+func filterEvents(evs []*clientv3.Event, pred func(int64) bool) []*clientv3.Event {
+	var out []*clientv3.Event
+	for _, ev := range evs {
+		if pred(ev.Kv.ModRevision) {
+			out = append(out, ev)
+		}
+	}
+	return out
+}
+
+func revLessThan(n int64) func(int64) bool     { return func(r int64) bool { return r < n } }
+func revGreaterEqual(n int64) func(int64) bool { return func(r int64) bool { return r >= n } }
