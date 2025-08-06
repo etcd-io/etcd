@@ -777,8 +777,8 @@ func TestCacheWithPrefixGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, err := c.Get(ctx, tc.key, tc.opts...)
 			if tc.expectError {
-				if err == nil {
-					t.Fatalf("expected error for Get %q under prefix /foo, got none", tc.key)
+				if !errors.Is(err, cache.ErrKeyRangeInvalid) {
+					t.Fatalf("expected ErrKeyRangeInvalid for Get %q, got: %v", tc.key, err)
 				}
 				return
 			}
