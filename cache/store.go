@@ -24,7 +24,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-var ErrNotInitialized = fmt.Errorf("cache: store not initialized")
+var ErrNotReady = fmt.Errorf("cache: store not ready")
 
 type store struct {
 	mu        sync.RWMutex
@@ -41,7 +41,7 @@ func (s *store) Get(startKey, endKey []byte) ([]*mvccpb.KeyValue, int64, error) 
 	defer s.mu.RUnlock()
 
 	if s.latestRev == 0 {
-		return nil, 0, ErrNotInitialized
+		return nil, 0, ErrNotReady
 	}
 
 	var out []*mvccpb.KeyValue

@@ -42,7 +42,7 @@ type Cache struct {
 	kv          clientv3.KV
 	demux       *demux // demux fans incoming events out to active watchers and manages resync.
 	store       *store // last‑observed snapshot
-	ready       chan struct{}
+	ready       *ready
 	stop        context.CancelFunc
 	waitGroup   sync.WaitGroup
 	internalCtx context.Context
@@ -68,7 +68,7 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 		watcher:     client.Watcher,
 		kv:          client.KV,
 		store:       newStore(),
-		ready:       make(chan struct{}),
+		ready:       newReady(),
 		stop:        cancel,
 		internalCtx: internalCtx,
 	}
@@ -172,24 +172,14 @@ func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) 
 	}, nil
 }
 
-// Ready reports whether the cache has finished its initial load.
+// Ready returns true if the snapshot has been loaded and the first watch has been confirmed.
 func (c *Cache) Ready() bool {
-	select {
-	case <-c.ready:
-		return true
-	default:
-		return false
-	}
+	return c.ready.Ready()
 }
 
 // WaitReady blocks until the cache is ready or the ctx is cancelled.
 func (c *Cache) WaitReady(ctx context.Context) error {
-	select {
-	case <-c.ready:
-		return ctx.Err()
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	return c.ready.WaitReady(ctx)
 }
 
 func (c *Cache) WaitForRevision(ctx context.Context, rev int64) error {
@@ -259,17 +249,17 @@ func (c *Cache) watch(ctx context.Context, rev int64) error {
 		)
 
 		for resp := range watchCh {
-			readyOnce.Do(func() { close(c.ready) })
+			readyOnce.Do(func() { c.ready.Set() })
 			if err := resp.Err(); err != nil {
+				c.ready.Reset()
 				c.demux.Purge()
-				c.resetReady()
 				c.store.Reset()
 				return err
 			}
 
 			if err := c.store.Apply(resp.Events); err != nil {
+				c.ready.Reset()
 				c.demux.Purge()
-				c.resetReady()
 				c.store.Reset()
 				return err
 			}
@@ -279,14 +269,6 @@ func (c *Cache) watch(ctx context.Context, rev int64) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-	}
-}
-
-func (c *Cache) resetReady() {
-	select {
-	case <-c.ready:
-		c.ready = make(chan struct{})
-	default:
 	}
 }
 
