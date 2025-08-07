@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -38,9 +36,6 @@ type column struct {
 
 	// matcher encodes column with boolean values.
 	matcher Matcher
-	// modeler encodes column with arbitrary string values.
-	modeler Modeler
-	// Only one of matcher and modeler can be set.
 }
 
 type method struct {
@@ -56,20 +51,27 @@ type refOp struct {
 	args []column
 	// methods tries to associate Matched with method name.
 	methods []method
+
+	keyAttrName string
 }
+
+type row struct {
+	method, pattern, args string
+}
+
+const notMatched byte = ' '
 
 var referenceUsageOfEtcdAPI = map[string]refOp{
 	"etcdserverpb.KV/Range": {
 		// All calls should go through etcd-k8s interface
 		args: []column{
-			{name: "pattern", modeler: patternRange},
-			{name: "limit", modeler: limit},
 			{name: "limit", matcher: isLimitSet},
 			{name: "rangeEnd", matcher: isRangeEndSet},
 			{name: "rev", matcher: isRevisionSet},
 			{name: "countOnly", matcher: isCountOnly},
 			{name: "keysOnly", matcher: isKeysOnly},
 		},
+		keyAttrName: "range_begin",
 		methods: []method{
 			{
 				name:    "Healthcheck",
@@ -114,10 +116,10 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 	"etcdserverpb.KV/Txn": {
 		// All calls should go through etcd-k8s interface
 		args: []column{
-			{name: "pattern", modeler: patternTXN},
 			{name: "getOnFailure", matcher: keyIsEqualInt("failure_len", 1)},
 			{name: "readOnly", matcher: isReadOnly},
 		},
+		keyAttrName: "compare_first_key",
 		methods: []method{
 			{
 				name:    "Compaction",
@@ -187,7 +189,10 @@ func testInterfaceUse(t *testing.T, filename string) {
 		}
 		callsByOperationName[opName] = append(callsByOperationName[opName], trace)
 	}
-	delete(callsByOperationName, "")
+	if c := len(callsByOperationName[""]); c > 0 {
+		t.Logf("Found traces that did not go through gRPC: %d", c)
+		delete(callsByOperationName, "") // Ignoring them.
+	}
 	t.Logf("\n%s", printableCallTable(callsByOperationName))
 
 	t.Run("only_expected_methods_were_called", func(t *testing.T) {
@@ -209,63 +214,90 @@ func testInterfaceUse(t *testing.T, filename string) {
 				return
 			}
 
-			methodGuess := make(map[string]string)
+			// tracesWithNoMethod ensures that we print error only once when a
+			// new call pattern is found.
+			tracesWithNoMethod := make(map[string]bool)
 
-			res := make(map[string]int)
+			callCounts := make(map[row]int)
 			for _, trace := range callsByOperationName[op] {
-				model, acc := columsToBytes(trace, td.args)
-				key := string(append(model, acc...))
-				if res[key] == 0 {
-					method := traceToInterfaceMethod(td.methods, trace)
-					if method == "" {
-						t.Errorf("New call pattern detected: %s(%s)", op, matchedBytesToDesciption(acc, td.args))
-					}
-					methodGuess[key] = method
+				args := columnsToArgs(trace, td.args)
+
+				pattern, pFound := extractPattern(trace, td.keyAttrName)
+				if !pFound && !tracesWithNoMethod[args] {
+					t.Errorf("New key pattern detected: %s", pattern)
 				}
-				res[key]++
+
+				method, mFound := extractMethod(td.methods, trace)
+				if !mFound && !tracesWithNoMethod[args] {
+					t.Errorf("New call pattern detected: %s(key=%s,%s)", op, pattern, argsToDescription(args, td.args))
+					tracesWithNoMethod[args] = true
+				}
+
+				callCounts[row{method, pattern, args}]++
 			}
-			t.Logf("\n%s", printableMatcherTable(res, td.args, methodGuess))
+
+			t.Logf("\n%s", printableMatcherTable(td.args, callCounts))
 		})
 	}
 }
 
-func columsToBytes(trace *tracev1.ResourceSpans, cols []column) (model, acc []byte) {
-	for _, col := range cols {
-		switch {
-		case col.matcher != nil:
-			if col.matcher(trace) {
-				acc = append(acc, 1)
-			} else {
-				acc = append(acc, 0)
-			}
-		case col.modeler != nil:
-			model = append(model, modelerToByte(col.name, col.modeler(trace)))
-		}
+func extractPattern(trace *tracev1.ResourceSpans, key string) (string, bool) {
+	k, found := strAttr(trace, key)
+	if !found {
+		return "", false
 	}
-	return model, acc
+	if k == "/registry/health" || k == "compact_rev_key" {
+		return k, true
+	}
+	if !strings.HasPrefix(k, "/registry") {
+		return k, false
+	}
+	suffix := ""
+	if strings.HasSuffix(k, "/") {
+		suffix = "/"
+	}
+	switch strings.Count(strings.TrimRight(k, "/"), "/") {
+	case 1:
+		return "/registry" + suffix, true
+	case 2:
+		return "/registry/{resource}" + suffix, true
+	case 3:
+		return "/registry/{resource}/{namespace}" + suffix, true
+	case 4:
+		return "/registry/{resource}/{namespace}/{name}" + suffix, true
+	case 5:
+		return "/registry/{api-group}/{resource}/{namespace}/{name}" + suffix, true
+	}
+	return k, false
 }
 
-func matchedBytesToDesciption(matched []byte, cols []column) string {
-	res := make([]string, 0, len(cols))
-	i := 0
-	for _, col := range cols {
-		if col.modeler != nil {
-			continue
+func columnsToArgs(trace *tracev1.ResourceSpans, cols []column) string {
+	acc := make([]byte, len(cols))
+	for i, col := range cols {
+		if col.matcher(trace) {
+			acc[i] = 'X'
+		} else {
+			acc[i] = notMatched
 		}
-		key := col.name
-		res = append(res, fmt.Sprintf("%s=%v", key, matched[i] == 1))
-		i++
 	}
-	return strings.Join(res, ",")
+	return string(acc)
 }
 
-func traceToInterfaceMethod(methodToMatched []method, trace *tracev1.ResourceSpans) string {
+func argsToDescription(matched string, cols []column) string {
+	ret := make([]string, len(cols))
+	for i, col := range cols {
+		ret[i] = fmt.Sprintf("%s=%v", col.name, matched[i] != notMatched)
+	}
+	return strings.Join(ret, ",")
+}
+
+func extractMethod(methodToMatched []method, trace *tracev1.ResourceSpans) (string, bool) {
 	for _, mm := range methodToMatched {
 		if mm.matcher(trace) {
-			return mm.name
+			return mm.name, true
 		}
 	}
-	return ""
+	return "", false
 }
 
 type Traces struct {
@@ -322,19 +354,11 @@ func printableCallTable(callsByOperationName map[string][]*tracev1.ResourceSpans
 	return buf.String()
 }
 
-func printableMatcherTable(res map[string]int, cols []column, methodGuess map[string]string) string {
-	keys := slices.Collect(maps.Keys(res))
-	slices.Sort(keys)
-
+func printableMatcherTable(cols []column, res map[row]int) string {
 	buf := new(bytes.Buffer)
-	width := 1 + len(cols) + 2
+	width := 2 + len(cols) + 2
 	alignment := make([]tw.Align, width)
-	for i, col := range cols {
-		if col.name == "pattern" {
-			alignment[1+i] = tw.AlignLeft
-			break
-		}
-	}
+	alignment[1] = tw.AlignLeft
 	cfgBuilder := tablewriter.NewConfigBuilder().
 		WithRowAlignment(tw.AlignRight).
 		Row().Alignment().WithPerColumn(alignment).Build()
@@ -342,8 +366,9 @@ func printableMatcherTable(res map[string]int, cols []column, methodGuess map[st
 
 	hdr := make([]string, width)
 	hdr[0] = "method"
+	hdr[1] = "pattern"
 	for i, col := range cols {
-		hdr[i+1] = col.name
+		hdr[i+2] = col.name
 	}
 	hdr[len(hdr)-2] = "calls"
 	hdr[len(hdr)-1] = "percent"
@@ -355,28 +380,17 @@ func printableMatcherTable(res map[string]int, cols []column, methodGuess map[st
 	}
 
 	footer := make([]int, len(cols))
-	for _, acc := range keys {
-		callCount := res[acc]
-		if callCount == 0 {
-			continue
-		}
+	for r, callCount := range res {
 		rowPrefix := make([]string, len(cols))
-		for i, col := range cols {
-			switch {
-			case col.matcher != nil:
-				if acc[i] == 1 {
-					rowPrefix[i] = "X"
-				}
-			case col.modeler != nil:
-				rowPrefix[i] = modelerValues[col.name][acc[i]]
-			}
-			if rowPrefix[i] != "" {
+		for i := range cols {
+			rowPrefix[i] = string(r.args[i])
+			if r.args[i] != notMatched {
 				footer[i] += callCount
 			}
 		}
 
 		table.Append(append(
-			[]string{methodGuess[acc]},
+			[]string{r.method, r.pattern},
 			append(rowPrefix,
 				strconv.Itoa(callCount),
 				fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)),
@@ -387,7 +401,7 @@ func printableMatcherTable(res map[string]int, cols []column, methodGuess map[st
 	for i := range footer {
 		footerStr[i] = strconv.Itoa(footer[i])
 	}
-	table.Footer(append([]string{""},
+	table.Footer(append([]string{"", ""},
 		append(
 			footerStr,
 			strconv.Itoa(totalCalls),
