@@ -90,60 +90,89 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 }
 
 func mergeMembersEntries(memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error) {
-	empty := 0
 	for _, entries := range memberEntries {
-		if len(entries) == 0 {
-			empty++
+		var lastIndex uint64
+		for _, e := range entries {
+			if e.Index <= lastIndex {
+				return nil, fmt.Errorf("raft index should increase, got: %d, previous: %d", e.Index, lastIndex)
+			}
+			lastIndex = e.Index
 		}
 	}
-	if empty == len(memberEntries) {
-		return nil, errors.New("no WAL entries matched")
-	}
-	// Each history collects votes from each history that it matches.
-	votes := make([]int, len(memberEntries))
-	for i := 0; i < len(memberEntries); i++ {
-		for j := 0; j < len(memberEntries); j++ {
-			if i == j {
-				// history votes for itself
-				votes[i]++
-				continue
+	memberIndices := make([]int, len(memberEntries))
+	mergedHistory := []raftpb.Entry{}
+	var raftIndex uint64
+	for {
+		// Find entry with raftIndex.
+		raftIndex++
+		entriesLeft := false
+		for i, entries := range memberEntries {
+			memberIndex := memberIndices[i]
+			for memberIndex < len(entries) && entries[memberIndex].Index < raftIndex {
+				memberIndex++
 			}
-			if i > j {
-				// avoid comparing things twice
-				continue
+			if memberIndex < len(entries) {
+				entriesLeft = true
 			}
-			first := memberEntries[i]
-			second := memberEntries[j]
-			minLength := min(len(first), len(second))
-			if reflect.DeepEqual(first[:minLength], second[:minLength]) {
-				votes[i]++
-				votes[j]++
-			}
+			memberIndices[i] = memberIndex
 		}
-	}
-	// Select longest history that has votes from quorum.
-	longestHistory := []raftpb.Entry{}
-	quorum := len(memberEntries)/2 + 1
-	foundQuorum := false
-	for i := 0; i < len(memberEntries); i++ {
-		if votes[i] < quorum {
-			continue
-		}
-		// There cannot be incompabible histories supported by quorum
-		minLength := min(len(memberEntries[i]), len(longestHistory))
-		if !reflect.DeepEqual(memberEntries[i][:minLength], longestHistory[:minLength]) {
-			foundQuorum = false
+		if !entriesLeft {
 			break
 		}
-		foundQuorum = true
-		if len(memberEntries[i]) > len(longestHistory) {
-			longestHistory = memberEntries[i]
+		// Entries collects votes from matching entries.
+		votes := make([]int, len(memberEntries))
+		for i := 0; i < len(memberEntries); i++ {
+			if len(memberEntries[i]) <= memberIndices[i] {
+				continue
+			}
+			entry1 := memberEntries[i][memberIndices[i]]
+			if entry1.Index != raftIndex {
+				continue
+			}
+			for j := i; j < len(memberEntries); j++ {
+				if i == j {
+					votes[i]++
+					continue
+				}
+				if len(memberEntries[j]) <= memberIndices[j] {
+					continue
+				}
+				entry2 := memberEntries[j][memberIndices[j]]
+				if entry2.Index != raftIndex {
+					continue
+				}
+				if reflect.DeepEqual(entry1, entry2) {
+					votes[i]++
+					votes[j]++
+				}
+			}
 		}
+		// Select entry with most votes
+		topVotes := 0
+		for _, vote := range votes {
+			if vote > topVotes {
+				topVotes = vote
+			}
+		}
+		if topVotes == 0 {
+			return nil, fmt.Errorf("no entry for raft index %d", raftIndex)
+		}
+		var entryWithMostVotes *raftpb.Entry
+		for i, vote := range votes {
+			if vote != topVotes {
+				continue
+			}
+			if entryWithMostVotes != nil && !reflect.DeepEqual(*entryWithMostVotes, memberEntries[i][memberIndices[i]]) {
+				return nil, fmt.Errorf("mismatching entries on raft index %d", raftIndex)
+			}
+			entryWithMostVotes = &memberEntries[i][memberIndices[i]]
+		}
+		mergedHistory = append(mergedHistory, *entryWithMostVotes)
 	}
-	if !foundQuorum {
-		return nil, errors.New("unexpected differences between wal entries")
+	if len(mergedHistory) == 0 {
+		return nil, errors.New("no WAL entries matched")
 	}
-	return longestHistory, nil
+	return mergedHistory, nil
 }
 
 func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
