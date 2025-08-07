@@ -207,7 +207,7 @@
               steppedLine: false,
               targets: [
                 {
-                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})' % $._config,
+                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Watch",grpc_type="bidi_stream"})' % $._config,
                   intervalFactor: 2,
                   legendFormat: 'Watch Streams',
                   metric: 'grpc_server_handled_total',
@@ -215,7 +215,7 @@
                   step: 4,
                 },
                 {
-                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})' % $._config,
+                  expr: 'sum(grpc_server_started_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"}) - sum(grpc_server_handled_total{%(etcd_selector)s,%(clusterLabel)s="$cluster",grpc_service="etcdserverpb.Lease",grpc_type="bidi_stream"})' % $._config,
                   intervalFactor: 2,
                   legendFormat: 'Lease Streams',
                   metric: 'grpc_server_handled_total',
