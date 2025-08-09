@@ -14,12 +14,21 @@
 
 package v3rpc
 
-import "github.com/golang/protobuf/proto"
+import (
+	"github.com/golang/protobuf/proto"
+
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+)
 
 type codec struct{}
 
 func (c *codec) Marshal(v any) ([]byte, error) {
 	b, err := proto.Marshal(v.(proto.Message))
+	switch v.(type) {
+	case *pb.WatchResponse:
+		sentWatchResponseSize.Observe(float64(len(b)))
+	default:
+	}
 	sentBytes.Add(float64(len(b)))
 	return b, err
 }
