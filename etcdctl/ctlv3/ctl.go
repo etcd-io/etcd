@@ -98,6 +98,7 @@ func init() {
 		command.NewUserCommand(),
 		command.NewRoleCommand(),
 		command.NewCheckCommand(),
+		command.NewDiagnosisCommand(),
 		command.NewCompletionCommand(),
 		command.NewDowngradeCommand(),
 	)
