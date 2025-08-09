@@ -29,7 +29,7 @@ import (
 )
 
 func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
+	// ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(success, time.Since(start))
@@ -41,7 +41,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 }
 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.Get(ctx)
+	// trace := traceutil.Get(ctx)
 
 	limit := rangeLimit(r)
 	ro := mvcc.RangeOptions{
@@ -57,10 +57,10 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 	filterRangeResults(rr, r)
 	sortRangeResults(rr, r, lg)
-	trace.Step("filter and sort the key-value pairs")
+	// trace.Step("filter and sort the key-value pairs")
 
 	resp := asembleRangeResponse(rr, r)
-	trace.Step("assemble the response")
+	// trace.Step("assemble the response")
 
 	return resp, nil
 }
@@ -143,6 +143,7 @@ func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeRes
 		rr.KVs = rr.KVs[:r.Limit]
 		resp.More = true
 	}
+	// trace.Step("filter and sort the key-value pairs")
 	resp.Header.Revision = rr.Rev
 	resp.Count = int64(rr.Count)
 	resp.Kvs = make([]*mvccpb.KeyValue, len(rr.KVs))
@@ -152,6 +153,7 @@ func asembleRangeResponse(rr *mvcc.RangeResult, r *pb.RangeRequest) *pb.RangeRes
 		}
 		resp.Kvs[i] = &rr.KVs[i]
 	}
+	// trace.Step("assemble the response")
 	return resp
 }
 
