@@ -35,8 +35,10 @@ var (
 // NewMemberCommand returns the cobra command for "member".
 func NewMemberCommand() *cobra.Command {
 	mc := &cobra.Command{
-		Use:   "member <subcommand>",
-		Short: "Membership related commands",
+		Use:     "member <subcommand>",
+		Short:   "Membership related commands. Use `etcdctl member --help` to see subcommands",
+		Long:    "Membership related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	mc.AddCommand(NewMemberAddCommand())

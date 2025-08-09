@@ -39,8 +39,10 @@ var (
 // NewEndpointCommand returns the cobra command for "endpoint".
 func NewEndpointCommand() *cobra.Command {
 	ec := &cobra.Command{
-		Use:   "endpoint <subcommand>",
-		Short: "Endpoint related commands",
+		Use:     "endpoint <subcommand>",
+		Short:   "Endpoint related commands. Use `etcdctl endpoint --help` to see subcommands",
+		Long:    "Endpoint related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	ec.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
