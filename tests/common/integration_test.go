@@ -63,3 +63,31 @@ func WithAuthToken(token string) config.ClientOption {
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return integration.WithEndpoints(endpoints)
 }
+
+func WithHTTP2Debug() config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
+}
+
+func WithUnixClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureIntegrationClusterContext(c)
+		ctx.UseUnix = true
+		c.ClusterContext = ctx
+	}
+}
+
+func WithTCPClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureIntegrationClusterContext(c)
+		ctx.UseUnix = false
+		c.ClusterContext = ctx
+	}
+}
+
+func ensureIntegrationClusterContext(c *config.ClusterConfig) *integration.ClusterContext {
+	ctx, _ := c.ClusterContext.(*integration.ClusterContext)
+	if ctx == nil {
+		ctx = &integration.ClusterContext{}
+	}
+	return ctx
+}
