@@ -1077,7 +1077,7 @@ func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
 
 	// support authorization headers with bearer prefix.
 	if strings.HasPrefix(token, bearerPrefix) {
-		token = strings.Split(token, bearerPrefix)[1]
+		token = token[len(bearerPrefix):]
 	}
 
 	authInfo, uok := as.authInfoFromToken(ctx, token)
