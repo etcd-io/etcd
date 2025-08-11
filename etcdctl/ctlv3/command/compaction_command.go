@@ -29,9 +29,10 @@ var compactPhysical bool
 // NewCompactionCommand returns the cobra command for "compaction".
 func NewCompactionCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "compaction [options] <revision>",
-		Short: "Compacts the event history in etcd",
-		Run:   compactionCommandFunc,
+		Use:     "compaction [options] <revision>",
+		Short:   "Compacts the event history in etcd",
+		Run:     compactionCommandFunc,
+		GroupID: groupKVID,
 	}
 	cmd.Flags().BoolVar(&compactPhysical, "physical", false, "'true' to wait for compaction to physically remove all old revisions")
 	return cmd

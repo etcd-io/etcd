@@ -21,9 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -76,6 +74,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.TLS.ServerName, "discovery-srv", "d", "", "domain name to query for SRV records describing cluster endpoints")
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.DNSClusterServiceName, "discovery-srv-name", "", "", "service name to query when using DNS discovery")
 
+	rootCmd.AddGroup(
+		command.NewKVGroup(),
+		command.NewClusterMaintenanceGroup(),
+		command.NewConcurrencyGroup(),
+		command.NewAuthenticationGroup(),
+		command.NewUtilityGroup(),
+	)
+
 	rootCmd.AddCommand(
 		command.NewGetCommand(),
 		command.NewPutCommand(),
@@ -101,16 +107,11 @@ func init() {
 		command.NewCompletionCommand(),
 		command.NewDowngradeCommand(),
 	)
-}
 
-func usageFunc(c *cobra.Command) error {
-	return util.UsageFunc(c, version.Version, version.APIVersion)
+	command.SetHelpCmdGroup(rootCmd)
 }
 
 func Start() error {
-	rootCmd.SetUsageFunc(usageFunc)
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
 	return rootCmd.Execute()
 }
 
