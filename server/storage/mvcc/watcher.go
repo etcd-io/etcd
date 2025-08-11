@@ -16,6 +16,7 @@ package mvcc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"sync"
 
@@ -45,7 +46,7 @@ type WatchStream interface {
 	// in events that are sent to the created watcher through stream channel.
 	// The watch ID is used when it's not equal to AutoWatchID. Otherwise,
 	// an auto-generated watch ID is returned.
-	Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error)
+	Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error)
 
 	// Chan returns a chan. All watch response will be sent to the returned chan.
 	Chan() <-chan WatchResponse
@@ -109,7 +110,7 @@ type watchStream struct {
 }
 
 // Watch creates a new watcher in the stream and returns its WatchID.
-func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
+func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, startRev int64, fcs ...FilterFunc) (WatchID, error) {
 	// prevent wrong range where key >= end lexicographically
 	// watch request with 'WithFromKey' has empty-byte range end
 	if len(end) != 0 && bytes.Compare(key, end) != -1 {
@@ -132,7 +133,7 @@ func (ws *watchStream) Watch(id WatchID, key, end []byte, startRev int64, fcs ..
 		return -1, ErrWatcherDuplicateID
 	}
 
-	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
+	w, c := ws.watchable.watch(ctx, key, end, startRev, id, ws.ch, fcs...)
 
 	ws.cancels[id] = c
 	ws.watchers[id] = w
