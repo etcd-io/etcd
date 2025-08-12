@@ -15,11 +15,9 @@
 package mvcc
 
 import (
-	"context"
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -48,7 +46,7 @@ var (
 func ChanBufLen() int { return chanBufLen }
 
 type watchable interface {
-	watch(ctx context.Context, key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
+	watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc)
 	progress(w *watcher)
 	progressAll(watchers map[WatchID]*watcher) bool
 	rev() int64
@@ -126,7 +124,7 @@ func (s *watchableStore) NewWatchStream() WatchStream {
 	}
 }
 
-func (s *watchableStore) watch(ctx context.Context, key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
+func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch chan<- WatchResponse, fcs ...FilterFunc) (*watcher, cancelFunc) {
 	wa := &watcher{
 		key:      key,
 		end:      end,
@@ -135,7 +133,6 @@ func (s *watchableStore) watch(ctx context.Context, key, end []byte, startRev in
 		id:       id,
 		ch:       ch,
 		fcs:      fcs,
-		span:     trace.SpanFromContext(ctx),
 	}
 
 	s.mu.Lock()
@@ -202,7 +199,6 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		time.Sleep(time.Millisecond)
 	}
 
-	wa.span.End()
 	wa.ch = nil
 	s.mu.Unlock()
 }
@@ -588,8 +584,6 @@ type watcher struct {
 	// minRev is the minimum revision update the watcher will accept
 	minRev int64
 	id     WatchID
-
-	span trace.Span
 
 	fcs []FilterFunc
 	// a chan to send out the watch response.

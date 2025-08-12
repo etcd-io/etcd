@@ -20,6 +20,8 @@ import (
 	"errors"
 	"sync"
 
+	"go.opentelemetry.io/otel/trace"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -133,9 +135,13 @@ func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, s
 		return -1, ErrWatcherDuplicateID
 	}
 
-	w, c := ws.watchable.watch(ctx, key, end, startRev, id, ws.ch, fcs...)
+	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
 
-	ws.cancels[id] = c
+	span := trace.SpanFromContext(ctx)
+	ws.cancels[id] = func() {
+		defer span.End()
+		c()
+	}
 	ws.watchers[id] = w
 	return id, nil
 }
