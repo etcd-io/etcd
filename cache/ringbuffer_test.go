@@ -65,7 +65,7 @@ func TestPeekLatestAndOldest(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			rb := newRingBuffer(tt.capacity)
+			rb := newRingBuffer(tt.capacity, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision })
 			for _, r := range tt.revs {
 				batch, err := makeEventBatch(r, "k", 1)
 				if err != nil {
@@ -168,7 +168,7 @@ func TestIterationMethods(t *testing.T) {
 }
 
 func TestIterationWithBatching(t *testing.T) {
-	rb := newRingBuffer(6)
+	rb := newRingBuffer(6, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision })
 	events := []*clientv3.Event{
 		{Kv: &mvccpb.KeyValue{Key: []byte("key-a"), ModRevision: 5}},
 		{Kv: &mvccpb.KeyValue{Key: []byte("key-b-1"), ModRevision: 10}},
@@ -328,7 +328,7 @@ const (
 	descendLTE iterMethod = "DescendLessOrEqual"
 )
 
-func (r *ringBuffer) iterate(method iterMethod, pivot int64, fn IterFunc) {
+func (r *ringBuffer[T]) iterate(method iterMethod, pivot int64, fn IterFunc[T]) {
 	switch method {
 	case ascendGTE:
 		r.AscendGreaterOrEqual(pivot, fn)
@@ -394,7 +394,7 @@ func TestAtomicOrdered(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			rb := newRingBuffer(tt.capacity)
+			rb := newRingBuffer(tt.capacity, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision })
 			for _, in := range tt.inputs {
 				batch, err := makeEventBatch(in.rev, in.key, in.size)
 				if err != nil {
@@ -445,7 +445,7 @@ func TestRebaseHistory(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			rb := newRingBuffer(4)
+			rb := newRingBuffer(4, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision })
 			for _, r := range tt.revs {
 				batch, err := makeEventBatch(r, "k", 1)
 				if err != nil {
@@ -479,8 +479,8 @@ func TestRebaseHistory(t *testing.T) {
 	}
 }
 
-func setupRingBuffer(t *testing.T, capacity int, revs []int64) *ringBuffer {
-	rb := newRingBuffer(capacity)
+func setupRingBuffer(t *testing.T, capacity int, revs []int64) *ringBuffer[*clientv3.Event] {
+	rb := newRingBuffer(capacity, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision })
 	for _, r := range revs {
 		batch, err := makeEventBatch(r, "key", 1)
 		if err != nil {
@@ -491,7 +491,7 @@ func setupRingBuffer(t *testing.T, capacity int, revs []int64) *ringBuffer {
 	return rb
 }
 
-func collectRevisions(rb *ringBuffer, method iterMethod, pivot int64) []int64 {
+func collectRevisions(rb *ringBuffer[*clientv3.Event], method iterMethod, pivot int64) []int64 {
 	revs := []int64{}
 	rb.iterate(method, pivot, func(rev int64, events []*clientv3.Event) bool {
 		revs = append(revs, rev)

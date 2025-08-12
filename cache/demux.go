@@ -27,7 +27,7 @@ type demux struct {
 	// activeWatchers & laggingWatchers hold the first revision the watcher still needs (nextRev).
 	activeWatchers  map[*watcher]int64
 	laggingWatchers map[*watcher]int64
-	history         *ringBuffer
+	history         ringBuffer[*clientv3.Event]
 	resyncInterval  time.Duration
 }
 
@@ -45,7 +45,7 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 	return &demux{
 		activeWatchers:  make(map[*watcher]int64),
 		laggingWatchers: make(map[*watcher]int64),
-		history:         newRingBuffer(historyWindowSize),
+		history:         *newRingBuffer(historyWindowSize, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision }),
 		resyncInterval:  resyncInterval,
 	}
 }
