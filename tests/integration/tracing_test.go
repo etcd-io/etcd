@@ -138,7 +138,7 @@ func TestTracing(t *testing.T) {
 				defer cancel()
 
 				// Create a watch channel
-				watchChan := cli.Watch(ctx, "watch-key")
+				watchChan := cli.Watch(ctx, "watch-key", clientv3.WithProgressNotify(), clientv3.WithRev(1))
 
 				// Put a value to trigger the watch
 				_, err := cli.Put(ctx, "watch-key", "watch-value")
@@ -155,8 +155,33 @@ func TestTracing(t *testing.T) {
 				}
 			},
 			wantSpan: &v1.Span{
-				Name: "etcdserverpb.Watch/Watch",
-				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
+				Name: "watch",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "watch-key"}},
+					},
+					{
+						Key:   "range_end",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ""}},
+					},
+					{
+						Key:   "start_rev",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1}},
+					},
+					{
+						Key:   "progress_notify",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+					{
+						Key:   "prev_kv",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+					{
+						Key:   "fragment",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+				},
 			},
 		},
 	} {
