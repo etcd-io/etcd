@@ -71,14 +71,6 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.latestRev = rev
 }
 
-// Reset purges all in-memory state when the upstream watch stream reports compaction.
-func (s *store) Reset() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.kvs = make(map[string]*mvccpb.KeyValue)
-	s.latestRev = 0
-}
-
 func (s *store) Apply(events []*clientv3.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

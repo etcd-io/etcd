@@ -149,8 +149,10 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 }
 
 func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	if err := c.WaitReady(ctx); err != nil {
-		return nil, err
+	if c.store.LatestRev() == 0 {
+		if err := c.WaitReady(ctx); err != nil {
+			return nil, err
+		}
 	}
 	op := clientv3.OpGet(key, opts...)
 
@@ -253,14 +255,12 @@ func (c *Cache) watch(ctx context.Context, rev int64) error {
 			if err := resp.Err(); err != nil {
 				c.ready.Reset()
 				c.demux.Purge()
-				c.store.Reset()
 				return err
 			}
 
 			if err := c.store.Apply(resp.Events); err != nil {
 				c.ready.Reset()
 				c.demux.Purge()
-				c.store.Reset()
 				return err
 			}
 			c.demux.Broadcast(resp.Events)
