@@ -1,12 +1,27 @@
 #!/usr/bin/env bash
+# Copyright 2025 The etcd Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 # This script runs markdownlint-cli2 on changed files.
 # Usage: ./markdown_lint.sh
 
+ETCD_ROOT_DIR=$(git rev-parse --show-toplevel)
 
-# We source ./scripts/test_lib.sh, it sets the log functions and color variables.
-source ./scripts/test_lib.sh
+# We source ./scripts/test_utils.sh, it sets the log functions and color variables.
+source ./scripts/test_utils.sh
 
-# When we source ./scripts/test_lib.sh, it has the line set -u which treats unset variables as errors.
+# When we source ./scripts/test_utils.sh, it has the line set -u which treats unset variables as errors.
 # We need to unset the variable to avoid the error.
 set +u -eo pipefail
 
@@ -66,6 +81,7 @@ for file in "${changed_files[@]}"; do
   markdownlint-cli2 "${file}" --config "${ETCD_ROOT_DIR}/tools/.markdownlint.jsonc" 2>/dev/null || true
   while IFS= read -r line; do
     line_number=$(echo "${line}" | awk -F: '{print $2}' | awk '{print $1}')
+
     while [ "${i}" -lt "${#end_ranges[@]}" ] && [ "${line_number}" -gt "${end_ranges["${i}"]}" ]; do
       i=$((1 + i))
     done

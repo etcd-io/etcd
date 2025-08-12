@@ -15,7 +15,6 @@
 package clientv3
 
 import (
-	"context"
 	"reflect"
 	"testing"
 
@@ -27,7 +26,7 @@ import (
 )
 
 func TestMetadataWithRequireLeader(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	_, ok := metadata.FromOutgoingContext(ctx)
 	require.Falsef(t, ok, "expected no outgoing metadata ctx key")
 
@@ -48,7 +47,7 @@ func TestMetadataWithRequireLeader(t *testing.T) {
 }
 
 func TestMetadataWithClientAPIVersion(t *testing.T) {
-	ctx := withVersion(WithRequireLeader(context.TODO()))
+	ctx := withVersion(WithRequireLeader(t.Context()))
 
 	md, ok := metadata.FromOutgoingContext(ctx)
 	require.Truef(t, ok, "expected outgoing metadata ctx key")

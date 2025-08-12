@@ -44,14 +44,10 @@ func TestSaveSnapshotFilePermissions(t *testing.T) {
 	defer os.RemoveAll(dbPath)
 
 	dbInfo, err := os.Stat(dbPath)
-	if err != nil {
-		t.Fatalf("failed to get test snapshot file status: %v", err)
-	}
+	require.NoErrorf(t, err, "failed to get test snapshot file status: %v", err)
 	actualFileMode := dbInfo.Mode()
 
-	if expectedFileMode != actualFileMode {
-		t.Fatalf("expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
-	}
+	require.Equalf(t, expectedFileMode, actualFileMode, "expected test snapshot file mode %s, got %s:", expectedFileMode, actualFileMode)
 }
 
 // TestSaveSnapshotVersion ensures that the snapshot returns proper storage version.
@@ -67,9 +63,7 @@ func TestSaveSnapshotVersion(t *testing.T) {
 	ver, dbPath := createSnapshotFile(t, cfg, kvs)
 	defer os.RemoveAll(dbPath)
 
-	if ver != "3.6.0" {
-		t.Fatalf("expected snapshot version %s, got %s:", "3.6.0", ver)
-	}
+	require.Equalf(t, "3.7.0", ver, "expected snapshot version %s, got %s:", "3.7.0", ver)
 }
 
 type kv struct {
@@ -109,14 +103,14 @@ func createSnapshotFile(t *testing.T, cfg *embed.Config, kvs []kv) (version stri
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
-		ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 		_, err = cli.Put(ctx, kvs[i].k, kvs[i].v)
 		cancel()
 		require.NoError(t, err)
 	}
 
 	dbPath = filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	version, err = snapshot.SaveWithVersion(context.Background(), zaptest.NewLogger(t), ccfg, dbPath)
+	version, err = snapshot.SaveWithVersion(t.Context(), zaptest.NewLogger(t), ccfg, dbPath)
 	require.NoError(t, err)
 	return version, dbPath
 }

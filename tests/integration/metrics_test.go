@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -40,9 +39,7 @@ func TestMetricDbSizeBoot(t *testing.T) {
 	v, err := clus.Members[0].Metric("etcd_debugging_mvcc_db_total_size_in_bytes")
 	require.NoError(t, err)
 
-	if v == "0" {
-		t.Fatalf("expected non-zero, got %q", v)
-	}
+	require.NotEqualf(t, "0", v, "expected non-zero, got %q", v)
 }
 
 func TestMetricDbSizeDefrag(t *testing.T) {
@@ -63,7 +60,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	putreq := &pb.PutRequest{Key: []byte("k"), Value: make([]byte, 4096)}
 	for i := 0; i < numPuts; i++ {
 		time.Sleep(10 * time.Millisecond) // to execute multiple backend txn
-		_, err := kvc.Put(context.TODO(), putreq)
+		_, err := kvc.Put(t.Context(), putreq)
 		require.NoError(t, err)
 	}
 
@@ -75,25 +72,21 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 	require.NoError(t, err)
 	bv, err := strconv.Atoi(beforeDefrag)
 	require.NoError(t, err)
-	if bv < expected {
-		t.Fatalf("expected db size greater than %d, got %d", expected, bv)
-	}
+	require.GreaterOrEqualf(t, bv, expected, "expected db size greater than %d, got %d", expected, bv)
 	beforeDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	require.NoError(t, err)
 	biu, err := strconv.Atoi(beforeDefragInUse)
 	require.NoError(t, err)
-	if biu < expected {
-		t.Fatalf("expected db size in use is greater than %d, got %d", expected, biu)
-	}
+	require.GreaterOrEqualf(t, biu, expected, "expected db size in use is greater than %d, got %d", expected, biu)
 
 	// clear out historical keys, in use bytes should free pages
 	creq := &pb.CompactionRequest{Revision: int64(numPuts), Physical: true}
-	_, kerr := kvc.Compact(context.TODO(), creq)
+	_, kerr := kvc.Compact(t.Context(), creq)
 	require.NoError(t, kerr)
 
 	validateAfterCompactionInUse := func() error {
 		// Put to move PendingPages to FreePages
-		_, verr := kvc.Put(context.TODO(), putreq)
+		_, verr := kvc.Put(t.Context(), putreq)
 		require.NoError(t, verr)
 		time.Sleep(500 * time.Millisecond)
 
@@ -116,29 +109,23 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 			break
 		}
 		retry++
-		if retry >= maxRetry {
-			t.Fatalf("%v", err.Error())
-		}
+		require.Lessf(t, retry, maxRetry, "%v", err.Error())
 	}
 
 	// defrag should give freed space back to fs
-	mc.Defragment(context.TODO(), &pb.DefragmentRequest{})
+	mc.Defragment(t.Context(), &pb.DefragmentRequest{})
 
 	afterDefrag, err := clus.Members[0].Metric(name + "_mvcc_db_total_size_in_bytes")
 	require.NoError(t, err)
 	av, err := strconv.Atoi(afterDefrag)
 	require.NoError(t, err)
-	if bv <= av {
-		t.Fatalf("expected less than %d, got %d after defrag", bv, av)
-	}
+	require.Greaterf(t, bv, av, "expected less than %d, got %d after defrag", bv, av)
 
 	afterDefragInUse, err := clus.Members[0].Metric("etcd_mvcc_db_total_size_in_use_in_bytes")
 	require.NoError(t, err)
 	adiu, err := strconv.Atoi(afterDefragInUse)
 	require.NoError(t, err)
-	if adiu > av {
-		t.Fatalf("db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
-	}
+	require.LessOrEqualf(t, adiu, av, "db size in use (%d) is expected less than db size (%d) after defrag", adiu, av)
 }
 
 func TestMetricQuotaBackendBytes(t *testing.T) {
@@ -150,9 +137,7 @@ func TestMetricQuotaBackendBytes(t *testing.T) {
 	require.NoError(t, err)
 	qv, err := strconv.ParseFloat(qs, 64)
 	require.NoError(t, err)
-	if int64(qv) != storage.DefaultQuotaBytes {
-		t.Fatalf("expected %d, got %f", storage.DefaultQuotaBytes, qv)
-	}
+	require.Equalf(t, storage.DefaultQuotaBytes, int64(qv), "expected %d, got %f", storage.DefaultQuotaBytes, qv)
 }
 
 func TestMetricsHealth(t *testing.T) {
@@ -174,9 +159,7 @@ func TestMetricsHealth(t *testing.T) {
 
 	hv, err := clus.Members[0].Metric("etcd_server_health_failures")
 	require.NoError(t, err)
-	if hv != "0" {
-		t.Fatalf("expected '0' from etcd_server_health_failures, got %q", hv)
-	}
+	require.Equalf(t, "0", hv, "expected '0' from etcd_server_health_failures, got %q", hv)
 }
 
 func TestMetricsRangeDurationSeconds(t *testing.T) {
@@ -190,11 +173,11 @@ func TestMetricsRangeDurationSeconds(t *testing.T) {
 		"my-namespace/foobar", "my-namespace/foobar1", "namespace/foobar1",
 	}
 	for _, key := range keys {
-		_, err := client.Put(context.Background(), key, "data")
+		_, err := client.Put(t.Context(), key, "data")
 		require.NoError(t, err)
 	}
 
-	_, err := client.Get(context.Background(), "", clientv3.WithFromKey())
+	_, err := client.Get(t.Context(), "", clientv3.WithFromKey())
 	require.NoError(t, err)
 
 	rangeDurationSeconds, err := clus.Members[0].Metric("etcd_server_range_duration_seconds")

@@ -56,7 +56,7 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 
 	urls := newEmbedURLs(t, 2)
 	newCURLs, newPURLs := urls[:1], urls[1:]
-	_, err = cli.MemberAdd(context.Background(), []string{newPURLs[0].String()})
+	_, err = cli.MemberAdd(t.Context(), []string{newPURLs[0].String()})
 	require.NoError(t, err)
 
 	// wait for membership reconfiguration apply
@@ -89,26 +89,20 @@ func TestSnapshotV3RestoreMultiMemberAdd(t *testing.T) {
 	require.NoError(t, err)
 	defer cli2.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 	mresp, err := cli2.MemberList(ctx)
 	cancel()
 	require.NoError(t, err)
-	if len(mresp.Members) != 4 {
-		t.Fatalf("expected 4 members, got %+v", mresp)
-	}
+	require.Lenf(t, mresp.Members, 4, "expected 4 members, got %+v", mresp)
 
 	// make sure restored cluster has kept all data on recovery
 	var gresp *clientv3.GetResponse
-	ctx, cancel = context.WithTimeout(context.Background(), testutil.RequestTimeout)
+	ctx, cancel = context.WithTimeout(t.Context(), testutil.RequestTimeout)
 	gresp, err = cli2.Get(ctx, "foo", clientv3.WithPrefix())
 	cancel()
 	require.NoError(t, err)
 	for i := range gresp.Kvs {
-		if string(gresp.Kvs[i].Key) != kvs[i].k {
-			t.Fatalf("#%d: key expected %s, got %s", i, kvs[i].k, gresp.Kvs[i].Key)
-		}
-		if string(gresp.Kvs[i].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[i].Value)
-		}
+		require.Equalf(t, string(gresp.Kvs[i].Key), kvs[i].k, "#%d: key expected %s, got %s", i, kvs[i].k, gresp.Kvs[i].Key)
+		require.Equalf(t, string(gresp.Kvs[i].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[i].Value)
 	}
 }

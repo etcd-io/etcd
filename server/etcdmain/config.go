@@ -62,23 +62,6 @@ var (
 		"snapshot-count": "--snapshot-count is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"max-snapshots":  "--max-snapshots is deprecated in 3.6 and will be decommissioned in 3.7.",
 		"v2-deprecation": "--v2-deprecation is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.",
-		"experimental-compact-hash-check-enabled":           "--experimental-compact-hash-check-enabled is deprecated in 3.6 and will be decommissioned in 3.7. Use '--feature-gates=CompactHashCheck=true' instead.",
-		"experimental-compact-hash-check-time":              "--experimental-compact-hash-check-time is deprecated in 3.6 and will be decommissioned in 3.7. Use '--compact-hash-check-time' instead.",
-		"experimental-txn-mode-write-with-shared-buffer":    "--experimental-txn-mode-write-with-shared-buffer is deprecated in v3.6 and will be decommissioned in v3.7. Use '--feature-gates=TxnModeWriteWithSharedBuffer=true' instead.",
-		"experimental-corrupt-check-time":                   "--experimental-corrupt-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--corrupt-check-time' instead.",
-		"experimental-compaction-batch-limit":               "--experimental-compaction-batch-limit is deprecated in v3.6 and will be decommissioned in v3.7. Use '--compaction-batch-limit' instead.",
-		"experimental-watch-progress-notify-interval":       "--experimental-watch-progress-notify-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use '--watch-progress-notify-interval' instead.",
-		"experimental-warning-apply-duration":               "--experimental-warning-apply-duration is deprecated in v3.6 and will be decommissioned in v3.7. Use '--warning-apply-duration' instead.",
-		"experimental-bootstrap-defrag-threshold-megabytes": "--experimental-bootstrap-defrag-threshold-megabytes is deprecated in v3.6 and will be decommissioned in v3.7. Use '--bootstrap-defrag-threshold-megabytes' instead.",
-		"experimental-memory-mlock":                         "--experimental-memory-mlock is deprecated in v3.6 and will be decommissioned in v3.7. Use '--memory-mlock' instead.",
-		"experimental-snapshot-catchup-entries":             "--experimental-snapshot-catchup-entries is deprecated in v3.6 and will be decommissioned in v3.7. Use '--snapshot-catchup-entries' instead.",
-		"experimental-compaction-sleep-interval":            "--experimental-compaction-sleep-interval is deprecated in v3.6 and will be decommissioned in v3.7. Use 'compaction-sleep-interval' instead.",
-		"experimental-downgrade-check-time":                 "--experimental-downgrade-check-time is deprecated in v3.6 and will be decommissioned in v3.7. Use '--downgrade-check-time' instead.",
-		"experimental-enable-distributed-tracing":           "--experimental-enable-distributed-tracing is deprecated in 3.6 and will be decommissioned in 3.7. Use --enable-distributed-tracing instead.",
-		"experimental-distributed-tracing-address":          "--experimental-distributed-tracing-address is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-address instead.",
-		"experimental-distributed-tracing-service-name":     "--experimental-distributed-tracing-service-name is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-service-name instead.",
-		"experimental-distributed-tracing-instance-id":      "--experimental-distributed-tracing-instance-id is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-instance-id instead.",
-		"experimental-distributed-tracing-sampling-rate":    "--experimental-distributed-tracing-sampling-rate is deprecated in 3.6 and will be decommissioned in 3.7. Use --distributed-tracing-sampling-rate instead.",
 	}
 )
 
@@ -182,78 +165,10 @@ func (cfg *config) parse(arguments []string) error {
 		err = cfg.configFromCmdLine()
 	}
 
-	// params related to experimental flag deprecation
-	// TODO: delete in v3.7
-	if cfg.ec.FlagsExplicitlySet["experimental-compact-hash-check-time"] {
-		cfg.ec.CompactHashCheckTime = cfg.ec.ExperimentalCompactHashCheckTime
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-corrupt-check-time"] {
-		cfg.ec.CorruptCheckTime = cfg.ec.ExperimentalCorruptCheckTime
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-compaction-batch-limit"] {
-		cfg.ec.CompactionBatchLimit = cfg.ec.ExperimentalCompactionBatchLimit
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-watch-progress-notify-interval"] {
-		cfg.ec.WatchProgressNotifyInterval = cfg.ec.ExperimentalWatchProgressNotifyInterval
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-warning-apply-duration"] {
-		cfg.ec.WarningApplyDuration = cfg.ec.ExperimentalWarningApplyDuration
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-bootstrap-defrag-threshold-megabytes"] {
-		cfg.ec.BootstrapDefragThresholdMegabytes = cfg.ec.ExperimentalBootstrapDefragThresholdMegabytes
-	}
-	if cfg.ec.FlagsExplicitlySet["experimental-peer-skip-client-san-verification"] {
-		cfg.ec.PeerTLSInfo.SkipClientSANVerify = cfg.ec.ExperimentalPeerSkipClientSanVerification
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-memory-mlock"] {
-		cfg.ec.MemoryMlock = cfg.ec.ExperimentalMemoryMlock
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-snapshot-catchup-entries"] {
-		cfg.ec.SnapshotCatchUpEntries = cfg.ec.ExperimentalSnapshotCatchUpEntries
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-compaction-sleep-interval"] {
-		cfg.ec.CompactionSleepInterval = cfg.ec.ExperimentalCompactionSleepInterval
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-downgrade-check-time"] {
-		cfg.ec.DowngradeCheckTime = cfg.ec.ExperimentalDowngradeCheckTime
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-enable-distributed-tracing"] {
-		cfg.ec.EnableDistributedTracing = cfg.ec.ExperimentalEnableDistributedTracing
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-address"] {
-		cfg.ec.DistributedTracingAddress = cfg.ec.ExperimentalDistributedTracingAddress
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-service-name"] {
-		cfg.ec.DistributedTracingServiceName = cfg.ec.ExperimentalDistributedTracingServiceName
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-instance-id"] {
-		cfg.ec.DistributedTracingServiceInstanceID = cfg.ec.ExperimentalDistributedTracingServiceInstanceID
-	}
-
-	if cfg.ec.FlagsExplicitlySet["experimental-distributed-tracing-sampling-rate"] {
-		cfg.ec.DistributedTracingSamplingRatePerMillion = cfg.ec.ExperimentalDistributedTracingSamplingRatePerMillion
-	}
-
 	// `V2Deprecation` (--v2-deprecation) is deprecated and scheduled for removal in v3.8. The default value is enforced, ignoring user input.
 	cfg.ec.V2Deprecation = cconfig.V2DeprDefault
 
-	cfg.ec.WarningUnaryRequestDuration, perr = cfg.parseWarningUnaryRequestDuration()
-	if perr != nil {
-		return perr
-	}
+	cfg.ec.WarningUnaryRequestDuration = cfg.parseWarningUnaryRequestDuration()
 
 	// Check for deprecated options from both command line and config file
 	var warningsForDeprecatedOpts []string
@@ -340,28 +255,13 @@ func (cfg *config) configFromCmdLine() error {
 	}
 
 	// disable default initial-cluster if discovery is set
-	if (cfg.ec.Durl != "" || cfg.ec.DNSCluster != "" || cfg.ec.DNSClusterServiceName != "" || len(cfg.ec.DiscoveryCfg.Endpoints) > 0) && !flags.IsSet(cfg.cf.flagSet, "initial-cluster") {
+	if (cfg.ec.DNSCluster != "" || cfg.ec.DNSClusterServiceName != "" || len(cfg.ec.DiscoveryCfg.Endpoints) > 0) && !flags.IsSet(cfg.cf.flagSet, "initial-cluster") {
 		cfg.ec.InitialCluster = ""
 	}
 
 	cfg.cf.flagSet.Visit(func(f *flag.Flag) {
 		cfg.ec.FlagsExplicitlySet[f.Name] = true
 	})
-
-	getBoolFlagVal := func(flagName string) *bool {
-		boolVal, parseErr := flags.GetBoolFlagVal(cfg.cf.flagSet, flagName)
-		if parseErr != nil {
-			panic(parseErr)
-		}
-		return boolVal
-	}
-
-	// SetFeatureGatesFromExperimentalFlags validates that cmd line flags for experimental feature and their feature gates are not explicitly set simultaneously,
-	// and passes the values of cmd line flags for experimental feature to the server feature gate.
-	err = embed.SetFeatureGatesFromExperimentalFlags(cfg.ec.ServerFeatureGate, getBoolFlagVal, cfg.cf.flagSet.Lookup(embed.ServerFeatureGateFlagName).Value.String())
-	if err != nil {
-		return err
-	}
 
 	return cfg.validate()
 }
@@ -383,23 +283,10 @@ func (cfg *config) validate() error {
 	return cfg.ec.Validate()
 }
 
-func (cfg *config) parseWarningUnaryRequestDuration() (time.Duration, error) {
-	if cfg.ec.ExperimentalWarningUnaryRequestDuration != 0 && cfg.ec.WarningUnaryRequestDuration != 0 {
-		return 0, errors.New(
-			"both --experimental-warning-unary-request-duration and --warning-unary-request-duration flags are set. " +
-				"Use only --warning-unary-request-duration")
-	}
-
+func (cfg *config) parseWarningUnaryRequestDuration() time.Duration {
 	if cfg.ec.WarningUnaryRequestDuration != 0 {
-		return cfg.ec.WarningUnaryRequestDuration, nil
+		return cfg.ec.WarningUnaryRequestDuration
 	}
 
-	if cfg.ec.ExperimentalWarningUnaryRequestDuration != 0 {
-		cfg.ec.GetLogger().Warn(
-			"--experimental-warning-unary-request-duration is deprecated, and will be decommissioned in v3.7. " +
-				"Use --warning-unary-request-duration instead.")
-		return cfg.ec.ExperimentalWarningUnaryRequestDuration, nil
-	}
-
-	return embed.DefaultWarningUnaryRequestDuration, nil
+	return embed.DefaultWarningUnaryRequestDuration
 }

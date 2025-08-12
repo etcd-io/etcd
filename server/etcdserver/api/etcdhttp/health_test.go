@@ -26,8 +26,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/raft/v3"
-
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -35,6 +33,7 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/raft/v3"
 )
 
 type fakeHealthServer struct {

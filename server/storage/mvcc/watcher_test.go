@@ -289,21 +289,12 @@ func TestWatchStreamCancelWatcherByID(t *testing.T) {
 	}
 }
 
-// TestWatcherRequestProgress ensures synced watcher can correctly
-// report its correct progress.
-func TestWatcherRequestProgress(t *testing.T) {
+func TestWatcherRequestProgressBadId(t *testing.T) {
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
 	defer cleanup(s, b)
-
-	testKey := []byte("foo")
-	notTestKey := []byte("bad")
-	testValue := []byte("bar")
-	s.Put(testKey, testValue, lease.NoLease)
-
 	w := s.NewWatchStream()
-
 	badID := WatchID(1000)
 	w.RequestProgress(badID)
 	select {
@@ -311,26 +302,79 @@ func TestWatcherRequestProgress(t *testing.T) {
 		t.Fatalf("unexpected %+v", resp)
 	default:
 	}
+}
 
-	id, _ := w.Watch(0, notTestKey, nil, 1)
-	w.RequestProgress(id)
-	select {
-	case resp := <-w.Chan():
-		t.Fatalf("unexpected %+v", resp)
-	default:
+func TestWatcherRequestProgress(t *testing.T) {
+	testKey := []byte("foo")
+	notTestKey := []byte("bad")
+	testValue := []byte("bar")
+	tcs := []struct {
+		name                     string
+		startRev                 int64
+		expectProgressBeforeSync bool
+		expectProgressAfterSync  bool
+	}{
+		{
+			name:                     "Zero revision",
+			startRev:                 0,
+			expectProgressBeforeSync: true,
+			expectProgressAfterSync:  true,
+		},
+		{
+			name:                    "Old revision",
+			startRev:                1,
+			expectProgressAfterSync: true,
+		},
+		{
+			name:                    "Current revision",
+			startRev:                2,
+			expectProgressAfterSync: true,
+		},
+		{
+			name:     "Current revision plus one",
+			startRev: 3,
+		},
+		{
+			name:     "Current revision plus two",
+			startRev: 4,
+		},
 	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			b, _ := betesting.NewDefaultTmpBackend(t)
+			s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 
-	s.syncWatchers([]mvccpb.Event{})
+			defer cleanup(s, b)
 
-	w.RequestProgress(id)
-	wrs := WatchResponse{WatchID: id, Revision: 2}
+			s.Put(testKey, testValue, lease.NoLease)
+
+			w := s.NewWatchStream()
+
+			id, _ := w.Watch(0, notTestKey, nil, tc.startRev)
+			w.RequestProgress(id)
+			asssertProgressSent(t, w, id, tc.expectProgressBeforeSync)
+			s.syncWatchers([]mvccpb.Event{})
+			w.RequestProgress(id)
+			asssertProgressSent(t, w, id, tc.expectProgressAfterSync)
+		})
+	}
+}
+
+func asssertProgressSent(t *testing.T, stream WatchStream, id WatchID, expectProgress bool) {
 	select {
-	case resp := <-w.Chan():
-		if !reflect.DeepEqual(resp, wrs) {
-			t.Fatalf("got %+v, expect %+v", resp, wrs)
+	case resp := <-stream.Chan():
+		if expectProgress {
+			wrs := WatchResponse{WatchID: id, Revision: 2}
+			if !reflect.DeepEqual(resp, wrs) {
+				t.Fatalf("got %+v, expect %+v", resp, wrs)
+			}
+		} else {
+			t.Fatalf("unexpected response %+v", resp)
 		}
-	case <-time.After(time.Second):
-		t.Fatal("failed to receive progress")
+	default:
+		if expectProgress {
+			t.Fatalf("failed to receive progress")
+		}
 	}
 }
 

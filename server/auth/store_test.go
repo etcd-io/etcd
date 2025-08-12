@@ -280,7 +280,7 @@ func TestUserChangePassword(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ctx1 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx1 := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err := as.Authenticate(ctx1, "foo", "bar")
 	if err != nil {
 		t.Fatal(err)
@@ -291,7 +291,7 @@ func TestUserChangePassword(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx2 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx2 := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err = as.Authenticate(ctx2, "foo", "baz")
 	if err != nil {
 		t.Fatal(err)
@@ -811,38 +811,38 @@ func TestAuthInfoFromCtx(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ai, err := as.AuthInfoFromCtx(ctx)
 	if err != nil && ai != nil {
 		t.Errorf("expected (nil, nil), got (%v, %v)", ai, err)
 	}
 
 	// as if it came from RPC
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{"tokens": "dummy"}))
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{"tokens": "dummy"}))
 	ai, err = as.AuthInfoFromCtx(ctx)
 	if err != nil && ai != nil {
 		t.Errorf("expected (nil, nil), got (%v, %v)", ai, err)
 	}
 
-	ctx = context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx = context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	resp, err := as.Authenticate(ctx, "foo", "bar")
 	if err != nil {
 		t.Error(err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid Token"}))
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
 	if !errors.Is(err, ErrInvalidAuthToken) {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid.Token"}))
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "Invalid.Token"}))
 	_, err = as.AuthInfoFromCtx(ctx)
 	if !errors.Is(err, ErrInvalidAuthToken) {
 		t.Errorf("expected %v, got %v", ErrInvalidAuthToken, err)
 	}
 
-	ctx = metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: resp.Token}))
+	ctx = metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: resp.Token}))
 	ai, err = as.AuthInfoFromCtx(ctx)
 	if err != nil {
 		t.Error(err)
@@ -857,7 +857,7 @@ func TestAuthDisable(t *testing.T) {
 	defer tearDown(t)
 
 	as.AuthDisable()
-	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err := as.Authenticate(ctx, "foo", "bar")
 	if !errors.Is(err, ErrAuthNotEnabled) {
 		t.Errorf("expected %v, got %v", ErrAuthNotEnabled, err)
@@ -879,7 +879,7 @@ func TestIsAuthEnabled(t *testing.T) {
 	as.AuthEnable()
 
 	status := as.IsAuthEnabled()
-	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, _ = as.Authenticate(ctx, "foo", "bar")
 	if status != true {
 		t.Errorf("expected %v, got %v", true, false)
@@ -907,7 +907,7 @@ func TestAuthInfoFromCtxRace(t *testing.T) {
 	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "test"}))
+		ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{rpctypes.TokenFieldNameGRPC: "test"}))
 		as.AuthInfoFromCtx(ctx)
 	}()
 	as.UserAdd(&pb.AuthUserAddRequest{Name: "test", Options: &authpb.UserAddOptions{NoPassword: false}})
@@ -1025,7 +1025,7 @@ func TestHammerSimpleAuthenticate(t *testing.T) {
 			go func(user string) {
 				defer wg.Done()
 				token := fmt.Sprintf("%s(%d)", user, i)
-				ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, token)
+				ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, token)
 				if _, err := as.Authenticate(ctx, user, "123"); err != nil {
 					t.Error(err)
 				}
@@ -1106,7 +1106,7 @@ func testAuthInfoFromCtxWithRoot(t *testing.T, opts string) {
 		t.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx = as.WithRoot(ctx)
 
 	ai, aerr := as.AuthInfoFromCtx(ctx)
@@ -1130,7 +1130,7 @@ func TestUserNoPasswordAdd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err = as.Authenticate(ctx, username, "")
 	require.ErrorIsf(t, err, ErrAuthFailed, "expected %v, got %v", ErrAuthFailed, err)
 }
@@ -1150,7 +1150,7 @@ func TestUserChangePasswordWithOldLog(t *testing.T) {
 	as, tearDown := setupAuthStore(t)
 	defer tearDown(t)
 
-	ctx1 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx1 := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(1)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err := as.Authenticate(ctx1, "foo", "bar")
 	if err != nil {
 		t.Fatal(err)
@@ -1161,7 +1161,7 @@ func TestUserChangePasswordWithOldLog(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx2 := context.WithValue(context.WithValue(context.TODO(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
+	ctx2 := context.WithValue(context.WithValue(t.Context(), AuthenticateParamIndex{}, uint64(2)), AuthenticateParamSimpleTokenPrefix{}, "dummy")
 	_, err = as.Authenticate(ctx2, "foo", "baz")
 	if err != nil {
 		t.Fatal(err)

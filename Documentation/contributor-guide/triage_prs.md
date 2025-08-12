@@ -14,7 +14,7 @@ Following are a few example searches on PR for convenience:
 
 ## Scope
 
-These guidelines serve as a primary document for managing PRs in `etcd`. Everyone is welcome to help manage PRs but the work and responsibilities discussed in this document are created with `etcd` maintainers and active contributors in mind.
+These guidelines serve as a primary document for managing PRs and review policy in `etcd`. Everyone is welcome to help manage PRs but the work and responsibilities discussed in this document are created with `etcd` maintainers and active contributors in mind.
 
 ## Ensure tests are run
 
@@ -30,3 +30,32 @@ Reviewers are responsive in a timely fashion, but considering everyone is busy, 
 ## Verify important labels are in place
 
 Make sure that appropriate reviewers are added to the PR. Also, make sure that a milestone is identified. If any of these or other important labels are missing, add them. If a correct label cannot be decided, leave a comment for the maintainers to do so as needed.
+
+## Review policy
+
+To ensure code quality and shared ownership, this review policy applies to all pull requests (PRs).
+
+### Default rule
+
+PRs should get at least two approvals (/lgtm or GitHub review approval) before merging.
+
+Notes:
+
+* Approvals should come from a maintainer, reviewer, or submodule owner familiar with the relevant code or area.
+* If there’s disagreement, maintainers should discuss and agree before merging.
+
+### Exceptions for Less Impactful PRs
+
+For low-risk changes — such as:
+
+* CI workflows
+* Documentation
+* Comments
+
+The rule can be relaxed:
+
+* One approval is generally enough.
+
+However:
+
+* If the author is a maintainer, they should still get approval from another maintainer, reviewer, or submodule owner, even for minor changes.

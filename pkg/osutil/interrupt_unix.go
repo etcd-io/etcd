@@ -22,9 +22,9 @@ import (
 	"sync"
 	"syscall"
 
-	"go.etcd.io/etcd/client/pkg/v3/verify"
-
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 // InterruptHandler is a function that is called on receiving a

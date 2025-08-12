@@ -110,7 +110,7 @@ func stmFunc(cmd *cobra.Command, _ []string) {
 	bar = pb.New(stmTotal)
 	bar.Start()
 
-	r := newReport()
+	r := newReport(cmd.Name())
 	for i := range clients {
 		wg.Add(1)
 		go doSTM(clients[i], requests, r.Results())

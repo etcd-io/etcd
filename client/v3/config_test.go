@@ -72,6 +72,25 @@ func TestNewClientConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "JWT specified",
+			spec: ConfigSpec{
+				Endpoints:        []string{"http://192.168.0.12:2379"},
+				DialTimeout:      1 * time.Second,
+				KeepAliveTime:    4 * time.Second,
+				KeepAliveTimeout: 6 * time.Second,
+				Auth: &AuthConfig{
+					Token: "test",
+				},
+			},
+			expectedConf: Config{
+				Endpoints:            []string{"http://192.168.0.12:2379"},
+				DialTimeout:          1 * time.Second,
+				DialKeepAliveTime:    4 * time.Second,
+				DialKeepAliveTimeout: 6 * time.Second,
+				Token:                "test",
+			},
+		},
+		{
 			name: "default secure transport",
 			spec: ConfigSpec{
 				Endpoints:        []string{"http://192.168.0.10:2379"},

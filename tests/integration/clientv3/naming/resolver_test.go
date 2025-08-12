@@ -16,7 +16,6 @@ package naming_test
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"strconv"
 	"testing"
@@ -60,12 +59,12 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	e1 := endpoints.Endpoint{Addr: s1.Addr()}
 	e2 := endpoints.Endpoint{Addr: s2.Addr()}
 
-	err = em.AddEndpoint(context.TODO(), "foo/e1", e1)
+	err = em.AddEndpoint(t.Context(), "foo/e1", e1)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
 	}
 
-	err = em.AddEndpoint(context.TODO(), "foo/e2", e2)
+	err = em.AddEndpoint(t.Context(), "foo/e2", e2)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
 	}
@@ -85,7 +84,7 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 
 	// Send an initial request that should go to e1
 	c := testpb.NewTestServiceClient(conn)
-	resp, err := c.UnaryCall(context.TODO(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
+	resp, err := c.UnaryCall(t.Context(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
 	if err != nil {
 		t.Fatal("failed to invoke rpc to foo (e1)", err)
 	}
@@ -97,33 +96,27 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	lastResponse := []byte{'1'}
 	totalRequests := 3500
 	for i := 1; i < totalRequests; i++ {
-		resp, err := c.UnaryCall(context.TODO(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
+		resp, err := c.UnaryCall(t.Context(), &testpb.SimpleRequest{}, grpc.WaitForReady(true))
 		if err != nil {
 			t.Fatal("failed to invoke rpc to foo", err)
 		}
 
 		t.Logf("Response: %v", string(resp.GetPayload().GetBody()))
 
-		if resp.GetPayload() == nil {
-			t.Fatalf("unexpected response from foo: %s", resp.GetPayload().GetBody())
-		}
+		require.NotNilf(t, resp.GetPayload(), "unexpected response from foo: %s", resp.GetPayload().GetBody())
 		lastResponse = resp.GetPayload().GetBody()
 	}
 
 	// If the load balancing policy is pick first then return payload should equal number of requests
 	t.Logf("Last response: %v", string(lastResponse))
 	if lbPolicy == "pick_first" {
-		if string(lastResponse) != "3500" {
-			t.Fatalf("unexpected total responses from foo: %s", lastResponse)
-		}
+		require.Equalf(t, "3500", string(lastResponse), "unexpected total responses from foo: %s", lastResponse)
 	}
 
 	// If the load balancing policy is round robin we should see roughly half total requests served by each server
 	if lbPolicy == "round_robin" {
 		responses, err := strconv.Atoi(string(lastResponse))
-		if err != nil {
-			t.Fatalf("couldn't convert to int: %s", lastResponse)
-		}
+		require.NoErrorf(t, err, "couldn't convert to int: %s", lastResponse)
 
 		// Allow 25% tolerance as round robin is not perfect and we don't want the test to flake
 		expected := float64(totalRequests) * 0.5
@@ -174,12 +167,12 @@ func TestEtcdEndpointManager(t *testing.T) {
 	e1 := endpoints.Endpoint{Addr: s1.Addr()}
 	e2 := endpoints.Endpoint{Addr: s2.Addr()}
 
-	em.AddEndpoint(context.Background(), "foo/e1", e1)
-	emOther.AddEndpoint(context.Background(), "foo_other/e2", e2)
+	em.AddEndpoint(t.Context(), "foo/e1", e1)
+	emOther.AddEndpoint(t.Context(), "foo_other/e2", e2)
 
-	epts, err := em.List(context.Background())
+	epts, err := em.List(t.Context())
 	require.NoError(t, err)
-	eptsOther, err := emOther.List(context.Background())
+	eptsOther, err := emOther.List(t.Context())
 	require.NoError(t, err)
 	assert.Len(t, epts, 1)
 	assert.Len(t, eptsOther, 1)

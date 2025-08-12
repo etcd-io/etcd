@@ -1,6 +1,15 @@
 ---
 run:
   timeout: 30m
+formatters:
+  enable:
+    - gci
+  settings: # please keep this alphabetized
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(go.etcd.io)
 issues:
   max-same-issues: 0
   # Excluding configuration per-path, per-linter, per-text and per-source
@@ -31,12 +40,12 @@ linters:
     - staticcheck
     - stylecheck
     - testifylint
+    - thelper
     - unconvert # Remove unnecessary type conversions
     - unparam
     - unused
     - usestdlibvars
-    # Disabled in the meanwhile, it raises several issues with new Go 1.24 functions
-    # - usetesting
+    - usetesting
     - whitespace
 linters-settings: # please keep this alphabetized
   goimports:
@@ -48,49 +57,30 @@ linters-settings: # please keep this alphabetized
     confidence: 0.8
     rules:
       - name: blank-imports
-        disabled: false
       - name: context-as-argument
-        disabled: false
       - name: context-keys-type
-        disabled: false
       - name: dot-imports
-        disabled: false
       - name: early-return
-        disabled: false
         arguments:
           - "preserveScope"
       - name: error-return
-        disabled: false
       - name: error-naming
-        disabled: false
       - name: error-strings
-        disabled: false
       - name: errorf
-        disabled: false
       - name: if-return
-        disabled: false
       - name: increment-decrement
-        disabled: false
       - name: indent-error-flow
-        disabled: false
       - name: package-comments
-        disabled: false
       - name: range
-        disabled: false
       - name: receiver-naming
-        disabled: false
       - name: superfluous-else
-        disabled: false
         arguments:
           - "preserveScope"
       - name: time-naming
-        disabled: false
+      - name: unnecessary-stmt
       - name: use-any
-        disabled: false
       - name: var-declaration
-        disabled: false
       - name: var-naming
-        disabled: false
         arguments:
           # The following is the configuration for var-naming rule, the first element is the allow list and the second element is the deny list.
           - [] # AllowList: leave it empty to use the default (empty, too). This means that we're not relaxing the rule in any way, i.e. elementId will raise a violation, it should be elementID, refer to the next line to see the list of denied initialisms.
@@ -121,5 +111,18 @@ linters-settings: # please keep this alphabetized
       # to always require f-functions for stretchr/testify, but not for golang standard lib.
       # Also refer to https://github.com/etcd-io/etcd/pull/18741#issuecomment-2422395914
       require-f-funcs: true
+  thelper:
+    test:
+      first: false
+      begin: false
+    benchmark:
+      first: false
+      begin: false
+    tb:
+      first: false
+      begin: false
+    fuzz:
+      first: false
+      begin: false
   usetesting:
     os-mkdir-temp: false

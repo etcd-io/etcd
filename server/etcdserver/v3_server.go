@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/proto"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 
@@ -102,12 +104,21 @@ type Authenticator interface {
 }
 
 func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
-	trace := traceutil.New("range",
-		s.Logger(),
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "range", trace.WithAttributes(
+		attribute.String("range_begin", string(r.GetKey())),
+		attribute.String("range_end", string(r.GetRangeEnd())),
+		attribute.Int64("rev", r.GetRevision()),
+		attribute.Int64("limit", r.GetLimit()),
+		attribute.Bool("count_only", r.GetCountOnly()),
+		attribute.Bool("keys_only", r.GetKeysOnly()),
+	))
+	defer span.End()
+
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "range",
 		traceutil.Field{Key: "range_begin", Value: string(r.Key)},
 		traceutil.Field{Key: "range_end", Value: string(r.RangeEnd)},
 	)
-	ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
 
 	var resp *pb.RangeResponse
 	var err error
@@ -142,6 +153,12 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 }
 
 func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "put", trace.WithAttributes(
+		attribute.String("key", string(r.GetKey())),
+	))
+	defer span.End()
+
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey{}, time.Now())
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
@@ -151,6 +168,13 @@ func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "delete_range", trace.WithAttributes(
+		attribute.String("range_begin", string(r.GetKey())),
+		attribute.String("range_end", string(r.GetRangeEnd())),
+	))
+	defer span.End()
+
 	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{DeleteRange: r})
 	if err != nil {
 		return nil, err
@@ -158,13 +182,34 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	return resp.(*pb.DeleteRangeResponse), nil
 }
 
+// firstCompareKey returns first non-empty key in the list of comparison operations.
+func firstCompareKey(c []*pb.Compare) string {
+	for _, op := range c {
+		key := string(op.GetKey())
+		if key != "" {
+			return key
+		}
+	}
+	return ""
+}
+
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
-	if txn.IsTxnReadonly(r) {
-		trace := traceutil.New("transaction",
-			s.Logger(),
-			traceutil.Field{Key: "read_only", Value: true},
-		)
-		ctx = context.WithValue(ctx, traceutil.TraceKey{}, trace)
+	readOnly := txn.IsTxnReadonly(r)
+
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "txn", trace.WithAttributes(
+		attribute.String("compare_first_key", firstCompareKey(r.GetCompare())),
+		attribute.Int("compare_len", len(r.GetCompare())),
+		attribute.Int("success_len", len(r.GetSuccess())),
+		attribute.Int("failure_len", len(r.GetFailure())),
+		attribute.Bool("read_only", readOnly),
+	))
+	defer span.End()
+
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "transaction",
+		traceutil.Field{Key: "read_only", Value: readOnly},
+	)
+	if readOnly {
 		if !txn.IsTxnSerializable(r) {
 			err := s.linearizableReadNotify(ctx)
 			trace.Step("agreement among raft nodes before linearized reading")
@@ -201,9 +246,16 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 }
 
 func (s *EtcdServer) Compact(ctx context.Context, r *pb.CompactionRequest) (*pb.CompactionResponse, error) {
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "compact", trace.WithAttributes(
+		attribute.Bool("is_physical", r.GetPhysical()),
+		attribute.Int64("rev", r.GetRevision()),
+	))
+	defer span.End()
+
 	startTime := time.Now()
+	ctx, trace := traceutil.EnsureTrace(ctx, s.Logger(), "compact")
 	result, err := s.processInternalRaftRequestOnce(ctx, pb.InternalRaftRequest{Compaction: r})
-	trace := traceutil.TODO()
 	if result != nil && result.Trace != nil {
 		trace = result.Trace
 		defer func() {
@@ -690,6 +742,7 @@ func (s *EtcdServer) RoleDelete(ctx context.Context, r *pb.AuthRoleDeleteRequest
 func (s *EtcdServer) raftRequestOnce(ctx context.Context, r pb.InternalRaftRequest) (proto.Message, error) {
 	result, err := s.processInternalRaftRequestOnce(ctx, r)
 	if err != nil {
+		trace.SpanFromContext(ctx).RecordError(err)
 		return nil, err
 	}
 	if result.Err != nil {
@@ -778,6 +831,8 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	defer cancel()
 
 	start := time.Now()
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent("Send raft proposal")
 	err = s.r.Propose(cctx, data)
 	if err != nil {
 		proposalsFailed.Inc()
@@ -789,6 +844,7 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 
 	select {
 	case x := <-ch:
+		span.AddEvent("Receive raft result")
 		return x.(*apply2.Result), nil
 	case <-cctx.Done():
 		proposalsFailed.Inc()
@@ -816,7 +872,7 @@ func (s *EtcdServer) linearizableReadLoop() {
 
 		// as a single loop is can unlock multiple reads, it is not very useful
 		// to propagate the trace from Txn or Range.
-		trace := traceutil.New("linearizableReadLoop", s.Logger())
+		_, trace := traceutil.EnsureTrace(context.Background(), s.Logger(), "linearizableReadLoop")
 
 		nextnr := newNotifier()
 		s.readMu.Lock()

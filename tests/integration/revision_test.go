@@ -81,7 +81,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
-	ctx, cancel := context.WithTimeout(context.Background(), testDuration)
+	ctx, cancel := context.WithTimeout(t.Context(), testDuration)
 	defer cancel()
 
 	wg := sync.WaitGroup{}
@@ -104,7 +104,7 @@ func testRevisionMonotonicWithFailures(t *testing.T, testDuration time.Duration,
 	injectFailures(clus)
 	wg.Wait()
 	kv := clus.Client(0)
-	resp, err := kv.Get(context.Background(), "foo")
+	resp, err := kv.Get(t.Context(), "foo")
 	require.NoError(t, err)
 	t.Logf("Revision %d", resp.Header.Revision)
 }
@@ -132,9 +132,7 @@ func getWorker(ctx context.Context, t *testing.T, clus *integration.Cluster) {
 		if resp == nil {
 			continue
 		}
-		if prevRev > resp.Header.Revision {
-			t.Fatalf("rev is less than previously observed revision, rev: %d, prevRev: %d", resp.Header.Revision, prevRev)
-		}
+		require.LessOrEqualf(t, prevRev, resp.Header.Revision, "rev is less than previously observed revision, rev: %d, prevRev: %d", resp.Header.Revision, prevRev)
 		prevRev = resp.Header.Revision
 	}
 }

@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
+# Copyright 2025 The etcd Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Run all etcd tests
 # ./scripts/test.sh
@@ -65,6 +78,18 @@ MARKDOWN_MARKER_VERSION=${MARKDOWN_MARKER_VERSION:="v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
+fi
+
+if [ -z "${OS:-}" ]; then
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -z "${ARCH:-}" ]; then
+  ARCH=$(uname -m)
+
+  if [ "$ARCH" = "arm64" ]; then
+    ARCH="aarch64"
+  fi
 fi
 
 # determine whether target supports race detection
@@ -331,7 +356,7 @@ function shellcheck_pass {
   SHELLCHECK=shellcheck
   if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
     log_callout "Installing shellcheck $SHELLCHECK_VERSION"
-    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
+    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.${OS}.${ARCH}.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
     mkdir -p ./bin
     mv /tmp/shellcheck ./bin/
     SHELLCHECK=./bin/shellcheck
@@ -356,7 +381,14 @@ function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if ! tool_exists "$marker" "https://crates.io/crates/marker"; then
     log_callout "Installing markdown marker $MARKDOWN_MARKER_VERSION"
-    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
+    MARKER_OS=$OS
+    if [ "$OS" = "darwin" ]; then
+      MARKER_OS="apple-darwin"
+    elif [ "$OS" = "linux" ]; then
+      MARKER_OS="unknown-linux-musl"
+    fi
+
+    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-${ARCH}-${MARKER_OS}.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
     mkdir -p ./bin
     mv /tmp/marker ./bin/
     marker=./bin/marker
@@ -483,7 +515,10 @@ function bom_pass {
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
+  # results in certain dependencies being excluded from the BOM file, such as procfs. 
+  # For more info, https://github.com/etcd-io/etcd/issues/19665
+  output=$(GOOS=linux GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
     "${modules[@]}")
   code="$?"
@@ -511,7 +546,12 @@ function dump_deps_of_module() {
   if ! module=$(run go mod edit -json | jq -r .Module.Path); then
     return 255
   fi
-  run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+  local require
+  require=$(run go mod edit -json | jq -r '.Require')
+  if [ "$require" == "null" ]; then
+    return 0
+  fi
+  echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
@@ -565,7 +605,7 @@ function release_pass {
   UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
     | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
     | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
-  log_callout "Found latest release: ${UPGRADE_VER}."
+  log_callout "Found previous minor version (v${binary_major}.${previous_minor}) latest release: ${UPGRADE_VER}."
 
   if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
@@ -596,9 +636,37 @@ function release_pass {
       ;;
   esac
 
-  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1
+  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1 --no-same-owner
   mkdir -p ./bin
   mv /tmp/etcd ./bin/etcd-last-release
+}
+
+function release_tests_pass {
+  if [ -z "${VERSION:-}" ]; then
+    VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
+     awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  fi
+
+  if [ -n "${CI:-}" ]; then
+    git config user.email "prow@etcd.io"
+    git config user.name "Prow"
+
+    gpg --batch --gen-key <<EOF
+%no-protection
+Key-Type: 1
+Key-Length: 2048
+Subkey-Type: 1
+Subkey-Length: 2048
+Name-Real: Prow
+Name-Email: prow@etcd.io
+Expire-Date: 0
+EOF
+
+    git remote add origin https://github.com/etcd-io/etcd.git
+  fi
+
+  DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
+  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
 function mod_tidy_for_module {

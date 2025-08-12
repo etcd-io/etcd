@@ -21,9 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -70,10 +68,19 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.CertFile, "cert", "", "identify secure client using this TLS certificate file")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.KeyFile, "key", "", "identify secure client using this TLS key file")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.TLS.TrustedCAFile, "cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	rootCmd.PersistentFlags().StringVar(&globalFlags.Token, "auth-jwt-token", "", "JWT token used for authentication (if this option is used, --user and --password should not be set)")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.User, "user", "", "username[:password] for authentication (prompt if password is not supplied)")
 	rootCmd.PersistentFlags().StringVar(&globalFlags.Password, "password", "", "password for authentication (if this option is used, --user option shouldn't include password)")
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.TLS.ServerName, "discovery-srv", "d", "", "domain name to query for SRV records describing cluster endpoints")
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.DNSClusterServiceName, "discovery-srv-name", "", "", "service name to query when using DNS discovery")
+
+	rootCmd.AddGroup(
+		command.NewKVGroup(),
+		command.NewClusterMaintenanceGroup(),
+		command.NewConcurrencyGroup(),
+		command.NewAuthenticationGroup(),
+		command.NewUtilityGroup(),
+	)
 
 	rootCmd.AddCommand(
 		command.NewGetCommand(),
@@ -100,16 +107,11 @@ func init() {
 		command.NewCompletionCommand(),
 		command.NewDowngradeCommand(),
 	)
-}
 
-func usageFunc(c *cobra.Command) error {
-	return util.UsageFunc(c, version.Version, version.APIVersion)
+	command.SetHelpCmdGroup(rootCmd)
 }
 
 func Start() error {
-	rootCmd.SetUsageFunc(usageFunc)
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
 	return rootCmd.Execute()
 }
 

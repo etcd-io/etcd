@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -26,6 +25,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/version"
@@ -37,7 +37,7 @@ func DowngradeEnable(t *testing.T, epc *EtcdProcessCluster, ver *semver.Version)
 	t.Logf("etcdctl downgrade enable %s", ver.String())
 	c := epc.Etcdctl()
 	testutils.ExecuteWithTimeout(t, 20*time.Second, func() {
-		err := c.DowngradeEnable(context.TODO(), ver.String())
+		err := c.DowngradeEnable(t.Context(), ver.String())
 		require.NoError(t, err)
 	})
 
@@ -60,7 +60,7 @@ func DowngradeCancel(t *testing.T, epc *EtcdProcessCluster) {
 	testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 		for {
 			t.Logf("etcdctl downgrade cancel")
-			err = c.DowngradeCancel(context.TODO())
+			err = c.DowngradeCancel(t.Context())
 			if err != nil {
 				if strings.Contains(err.Error(), "no inflight downgrade job") {
 					// cancellation has been performed successfully
@@ -93,7 +93,7 @@ func ValidateDowngradeInfo(t *testing.T, clus *EtcdProcessCluster, expected *pb.
 
 		testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
 			for {
-				statuses, err := mc.Status(context.Background())
+				statuses, err := mc.Status(t.Context())
 				if err != nil {
 					cfg.Logger.Warn("failed to get member status and retrying",
 						zap.Error(err),
@@ -146,6 +146,13 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		opString = "downgrading"
 		newExecPath = BinPath.EtcdLastRelease
 	}
+
+	binaryVersion, err := GetVersionFromBinary(newExecPath)
+	if err != nil {
+		return fmt.Errorf("failed to get binary version from %s: %w", newExecPath, err)
+	}
+
+	g := new(errgroup.Group)
 	for _, memberID := range membersToChange {
 		member := clus.Procs[memberID]
 		if member.Config().ExecPath == newExecPath {
@@ -155,12 +162,22 @@ func DowngradeUpgradeMembersByID(t *testing.T, lg *zap.Logger, clus *EtcdProcess
 		if err := member.Stop(); err != nil {
 			return err
 		}
+
+		// When we downgrade or upgrade a member, we need to re-generate the flags, to convert some non-experimental
+		// flags to experimental flags, or vice verse.
+		member.Config().Args = convertFlags(member.Config().Args, binaryVersion)
+
 		member.Config().ExecPath = newExecPath
 		lg.Info("Restarting member", zap.String("member", member.Config().Name))
-		err := member.Start(context.TODO())
-		if err != nil {
-			return err
-		}
+		// We shouldn't block on waiting for the member to be ready,
+		// otherwise it will be blocked forever if other members are
+		// not started yet.
+		g.Go(func() error {
+			return member.Start(t.Context())
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	t.Log("Waiting health interval to make sure the leader propagates version to new processes")

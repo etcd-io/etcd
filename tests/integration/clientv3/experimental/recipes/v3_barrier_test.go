@@ -15,9 +15,10 @@
 package recipes_test
 
 import (
-	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
@@ -40,15 +41,11 @@ func TestBarrierMultiNode(t *testing.T) {
 
 func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client) {
 	b := recipe.NewBarrier(chooseClient(), "test-barrier")
-	if err := b.Hold(); err != nil {
-		t.Fatalf("could not hold barrier (%v)", err)
-	}
-	if err := b.Hold(); err == nil {
-		t.Fatalf("able to double-hold barrier")
-	}
+	require.NoErrorf(t, b.Hold(), "could not hold barrier")
+	require.Errorf(t, b.Hold(), "able to double-hold barrier")
 
 	// put a random key to move the revision forward
-	if _, err := chooseClient().Put(context.Background(), "x", ""); err != nil {
+	if _, err := chooseClient().Put(t.Context(), "x", ""); err != nil {
 		t.Errorf("could not put x (%v)", err)
 	}
 
@@ -75,9 +72,7 @@ func testBarrier(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 	default:
 	}
 
-	if err := b.Release(); err != nil {
-		t.Fatalf("could not release barrier (%v)", err)
-	}
+	require.NoErrorf(t, b.Release(), "could not release barrier")
 
 	timerC := time.After(time.Duration(waiters*100) * time.Millisecond)
 	for i := 0; i < waiters; i++ {

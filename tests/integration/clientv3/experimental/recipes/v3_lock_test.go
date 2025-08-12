@@ -71,7 +71,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 				return
 			}
 			m := concurrency.NewMutex(session, "test-mutex")
-			if err := m.Lock(context.TODO()); err != nil {
+			if err := m.Lock(t.Context()); err != nil {
 				errC <- fmt.Errorf("#%d: failed to wait on lock: %w", i, err)
 				return
 			}
@@ -93,9 +93,7 @@ func testMutexLock(t *testing.T, waiters int, chooseClient func() *clientv3.Clie
 				t.Fatalf("lock %d followers did not wait", i)
 			default:
 			}
-			if err := m.Unlock(context.TODO()); err != nil {
-				t.Fatalf("could not release lock (%v)", err)
-			}
+			require.NoErrorf(t, m.Unlock(t.Context()), "could not release lock")
 		}
 	}
 	wg.Wait()
@@ -122,7 +120,7 @@ func TestMutexTryLockMultiNode(t *testing.T) {
 }
 
 func testMutexTryLock(t *testing.T, lockers int, chooseClient func() *clientv3.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	lockedC := make(chan *concurrency.Mutex)
@@ -184,10 +182,10 @@ func TestMutexSessionRelock(t *testing.T) {
 	}
 
 	m := concurrency.NewMutex(session, "test-mutex")
-	require.NoError(t, m.Lock(context.TODO()))
+	require.NoError(t, m.Lock(t.Context()))
 
 	m2 := concurrency.NewMutex(session, "test-mutex")
-	require.NoError(t, m2.Lock(context.TODO()))
+	require.NoError(t, m2.Lock(t.Context()))
 }
 
 // TestMutexWaitsOnCurrentHolder ensures a mutex is only acquired once all
@@ -199,7 +197,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
-	cctx := context.Background()
+	cctx := t.Context()
 
 	cli := clus.Client(0)
 
@@ -233,9 +231,7 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 			t.Fatal("failed to receive watch response")
 		}
 	}
-	if putCounts != 2 {
-		t.Fatalf("expect 2 put events, but got %v", putCounts)
-	}
+	require.Equalf(t, 2, putCounts, "expect 2 put events, but got %v", putCounts)
 
 	newOwnerSession, err := concurrency.NewSession(cli)
 	if err != nil {
@@ -250,12 +246,9 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 
 	select {
 	case wrp := <-wch:
-		if len(wrp.Events) != 1 {
-			t.Fatalf("expect a event, but got %v events", len(wrp.Events))
-		}
-		if e := wrp.Events[0]; e.Type != mvccpb.PUT {
-			t.Fatalf("expect a put event on prefix test-mutex, but got event type %v", e.Type)
-		}
+		require.Lenf(t, wrp.Events, 1, "expect a event, but got %v events", len(wrp.Events))
+		e := wrp.Events[0]
+		require.Equalf(t, mvccpb.PUT, e.Type, "expect a put event on prefix test-mutex, but got event type %v", e.Type)
 	case <-time.After(time.Second):
 		t.Fatalf("failed to receive a watch response")
 	}
@@ -266,12 +259,9 @@ func TestMutexWaitsOnCurrentHolder(t *testing.T) {
 	// ensures the deletion of victim waiter from server side.
 	select {
 	case wrp := <-wch:
-		if len(wrp.Events) != 1 {
-			t.Fatalf("expect a event, but got %v events", len(wrp.Events))
-		}
-		if e := wrp.Events[0]; e.Type != mvccpb.DELETE {
-			t.Fatalf("expect a delete event on prefix test-mutex, but got event type %v", e.Type)
-		}
+		require.Lenf(t, wrp.Events, 1, "expect a event, but got %v events", len(wrp.Events))
+		e := wrp.Events[0]
+		require.Equalf(t, mvccpb.DELETE, e.Type, "expect a delete event on prefix test-mutex, but got event type %v", e.Type)
 	case <-time.After(time.Second):
 		t.Fatal("failed to receive a watch response")
 	}
@@ -357,18 +347,14 @@ func testRWMutex(t *testing.T, waiters int, chooseClient func() *clientv3.Client
 				t.Fatalf("rlock %d readers did not wait", i)
 			default:
 			}
-			if err := wl.Unlock(); err != nil {
-				t.Fatalf("could not release lock (%v)", err)
-			}
+			require.NoErrorf(t, wl.Unlock(), "could not release lock")
 		case rl := <-rlockedC:
 			select {
 			case <-wlockedC:
 				t.Fatalf("rlock %d writers did not wait", i)
 			default:
 			}
-			if err := rl.RUnlock(); err != nil {
-				t.Fatalf("could not release rlock (%v)", err)
-			}
+			require.NoErrorf(t, rl.RUnlock(), "could not release rlock")
 		}
 	}
 }

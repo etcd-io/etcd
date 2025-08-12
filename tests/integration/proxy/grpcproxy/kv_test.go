@@ -15,7 +15,6 @@
 package grpcproxy
 
 import (
-	"context"
 	"net"
 	"testing"
 	"time"
@@ -44,13 +43,9 @@ func TestKVProxyRange(t *testing.T) {
 		DialTimeout: 5 * time.Second,
 	}
 	client, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	_, err = client.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
+	require.NoErrorf(t, err, "err = %v, want nil", err)
+	_, err = client.Get(t.Context(), "foo")
+	require.NoErrorf(t, err, "err = %v, want nil", err)
 	client.Close()
 }
 

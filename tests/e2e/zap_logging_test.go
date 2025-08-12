@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -29,7 +28,7 @@ import (
 func TestServerJsonLogging(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithLogLevel("debug"),
 	)
@@ -115,7 +114,7 @@ func TestConnectionRejectMessage(t *testing.T) {
 			t.Log("Starting an etcd process and wait for it to get ready.")
 			p, err := e2e.SpawnCmd(commonArgs, nil)
 			require.NoError(t, err)
-			err = e2e.WaitReadyExpectProc(context.TODO(), p, e2e.EtcdServerReadyLines)
+			err = e2e.WaitReadyExpectProc(t.Context(), p, e2e.EtcdServerReadyLines)
 			require.NoError(t, err)
 			defer func() {
 				p.Stop()
@@ -127,7 +126,7 @@ func TestConnectionRejectMessage(t *testing.T) {
 			doneCh := make(chan struct{}, 1)
 			go func() {
 				startedCh <- struct{}{}
-				verr := e2e.WaitReadyExpectProc(context.TODO(), p, []string{tc.expectedErrMsg})
+				verr := e2e.WaitReadyExpectProc(t.Context(), p, []string{tc.expectedErrMsg})
 				assert.NoError(t, verr)
 				doneCh <- struct{}{}
 			}()

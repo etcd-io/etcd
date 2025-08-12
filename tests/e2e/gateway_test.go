@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -28,7 +27,7 @@ import (
 var defaultGatewayEndpoint = "127.0.0.1:23790"
 
 func TestGateway(t *testing.T) {
-	ec, err := e2e.NewEtcdProcessCluster(context.TODO(), t)
+	ec, err := e2e.NewEtcdProcessCluster(t.Context(), t)
 	require.NoError(t, err)
 	defer ec.Stop()
 

@@ -138,7 +138,7 @@ func TestCompactionHash(t *testing.T) {
 	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, b)
 
-	testutil.TestCompactionHash(context.Background(), t, hashTestCase{s}, s.cfg.CompactionBatchLimit)
+	testutil.TestCompactionHash(t.Context(), t, hashTestCase{s}, s.cfg.CompactionBatchLimit)
 }
 
 type hashTestCase struct {

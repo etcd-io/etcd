@@ -54,3 +54,23 @@ func TestIsMetaStoreOnly(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Falsef(t, metaOnly, "Just created v2store should be meta-only")
 }
+
+func TestIsMetaStoreOnlyWithAuthData(t *testing.T) {
+	s := v2store.New("/0", "/1")
+
+	metaOnly, err := IsMetaStoreOnly(s)
+	require.NoError(t, err)
+	assert.Truef(t, metaOnly, "Just created v2store should be meta-only")
+
+	_, err = s.Create("/2/roles", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	require.NoError(t, err)
+	metaOnly, err = IsMetaStoreOnly(s)
+	require.NoError(t, err)
+	assert.Truef(t, metaOnly, "Just created empty roles directory should be meta-only")
+
+	_, err = s.Create("/2/users", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})
+	require.NoError(t, err)
+	metaOnly, err = IsMetaStoreOnly(s)
+	require.NoError(t, err)
+	assert.Truef(t, metaOnly, "Just created empty users directory should be meta-only")
+}

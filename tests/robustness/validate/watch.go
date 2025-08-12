@@ -16,6 +16,7 @@ package validate
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -37,8 +38,18 @@ var (
 	errBrokeFilter       = errors.New("event not matching watch filter")
 )
 
-func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) error {
+func validateWatch(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) Result {
 	lg.Info("Validating watch")
+	start := time.Now()
+	err := validateWatchError(lg, cfg, reports, replay)
+	if err != nil {
+		lg.Error("Watch validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
+	}
+	lg.Info("Watch validation success", zap.Duration("duration", time.Since(start)))
+	return ResultFromError(err)
+}
+
+func validateWatchError(lg *zap.Logger, cfg Config, reports []report.ClientReport, replay *model.EtcdReplay) error {
 	// Validate etcd watch properties defined in https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 	for _, r := range reports {
 		err := validateFilter(lg, r)

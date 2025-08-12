@@ -35,7 +35,7 @@ import (
 
 func TestRecoverSnapshotBackend(t *testing.T) {
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,

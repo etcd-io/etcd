@@ -1,6 +1,8 @@
+REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
+
 .PHONY: all
 all: build
-include tests/robustness/makefile.mk
+include $(REPOSITORY_ROOT)/tests/robustness/Makefile
 
 .PHONY: build
 build:
@@ -54,6 +56,11 @@ test-grpcproxy-e2e: build
 test-e2e-release: build
 	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+# When we release the first 3.7.0-alpha.0, we can remove `VERSION="3.7.99"` below.
+.PHONY: test-release
+test-release:
+	PASSES="release_tests" VERSION="3.7.99" ./scripts/test.sh $(GO_TEST_FLAGS)
+
 .PHONY: test-robustness
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
@@ -63,8 +70,11 @@ test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: upload-coverage-report
-upload-coverage-report: test-coverage
-	./scripts/codecov_upload.sh
+upload-coverage-report:
+	return_code=0; \
+	$(MAKE) test-coverage || return_code=$$?; \
+	COVERDIR=covdir ./scripts/codecov_upload.sh; \
+	exit $$return_code
 
 .PHONY: fuzz
 fuzz: 
@@ -177,12 +187,9 @@ endif
 
 # Tools
 
-GOLANGCI_LINT_VERSION = $(shell cd tools/mod && go list -m -f {{.Version}} github.com/golangci/golangci-lint)
 .PHONY: install-golangci-lint
 install-golangci-lint:
-ifeq (, $(shell which golangci-lint))
-	$(shell curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_LINT_VERSION))
-endif
+	./scripts/verify_golangci-lint_version.sh
 
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
@@ -222,4 +229,3 @@ sync-toolchain-directive:
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
 	./scripts/markdown_diff_lint.sh
-	

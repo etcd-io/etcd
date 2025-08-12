@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 )
 
 var (
@@ -85,7 +87,7 @@ func listBucketCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !existFileOrDir(dp) {
+	if !fileutil.Exist(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 
@@ -106,7 +108,7 @@ func iterateBucketCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !existFileOrDir(dp) {
+	if !fileutil.Exist(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 	bucket := args[1]
@@ -124,7 +126,7 @@ func scanKeysCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !existFileOrDir(dp) {
+	if !fileutil.Exist(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 	startRev, err := strconv.ParseInt(args[1], 10, 64)
@@ -145,7 +147,7 @@ func getHashCommandFunc(_ *cobra.Command, args []string) {
 	if !strings.HasSuffix(dp, "db") {
 		dp = filepath.Join(snapDir(dp), "db")
 	}
-	if !existFileOrDir(dp) {
+	if !fileutil.Exist(dp) {
 		log.Fatalf("%q does not exist", dp)
 	}
 

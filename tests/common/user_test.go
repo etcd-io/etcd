@@ -66,7 +66,7 @@ func TestUserAdd_Simple(t *testing.T) {
 	for _, tc := range clusterTestCases() {
 		for _, nc := range tcs {
 			t.Run(tc.name+"/"+nc.name, func(t *testing.T) {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 				defer cancel()
 				clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 				defer clus.Close()
@@ -90,7 +90,7 @@ func TestUserAdd_DuplicateUserNotAllowed(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
@@ -114,7 +114,7 @@ func TestUserList(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
@@ -145,7 +145,7 @@ func TestUserDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
@@ -182,7 +182,7 @@ func TestUserChangePassword(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()

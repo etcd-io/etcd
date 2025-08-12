@@ -110,7 +110,7 @@ func TestAuthority(t *testing.T) {
 		for _, clusterSize := range []int{1, 3} {
 			t.Run(fmt.Sprintf("Size: %d, Scenario: %q", clusterSize, tc.name), func(t *testing.T) {
 				e2e.BeforeTest(t)
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 
 				cfg := e2e.NewConfigNoTLS()
@@ -125,7 +125,7 @@ func TestAuthority(t *testing.T) {
 					cfg.BaseClientScheme = "unix"
 				}
 
-				epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(cfg))
+				epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 				if err != nil {
 					t.Fatalf("could not start etcd process cluster (%v)", err)
 				}
@@ -159,7 +159,7 @@ func templateEndpoints(t *testing.T, pattern string, clus *e2e.EtcdProcessCluste
 
 func assertAuthority(t *testing.T, expectAuthorityPattern string, clus *e2e.EtcdProcessCluster) {
 	for i := range clus.Procs {
-		line, _ := clus.Procs[i].Logs().ExpectWithContext(context.TODO(), expect.ExpectedResponse{Value: `http2: decoded hpack field header field ":authority"`})
+		line, _ := clus.Procs[i].Logs().ExpectWithContext(t.Context(), expect.ExpectedResponse{Value: `http2: decoded hpack field header field ":authority"`})
 		line = strings.TrimSuffix(line, "\n")
 		line = strings.TrimSuffix(line, "\r")
 

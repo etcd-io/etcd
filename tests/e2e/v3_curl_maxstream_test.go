@@ -88,7 +88,7 @@ func testCurlV3MaxStream(t *testing.T, reachLimit bool, opts ...ctlOption) {
 
 	// Step 2: create the cluster
 	t.Log("Creating an etcd cluster")
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t, e2e.WithConfig(&cx.cfg))
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(&cx.cfg))
 	require.NoErrorf(t, err, "Failed to start etcd cluster")
 	cx.epc = epc
 	cx.dataDir = epc.Procs[0].Config().DataDirPath

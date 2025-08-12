@@ -17,7 +17,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -63,7 +62,7 @@ func TestVerifyHashKVAfterCompact(t *testing.T) {
 					}
 				}
 
-				ctx := context.Background()
+				ctx := t.Context()
 
 				cfg := e2e.NewConfigClientTLS()
 				clus, err := e2e.NewEtcdProcessCluster(ctx, t,
@@ -107,7 +106,7 @@ func TestVerifyHashKVAfterTwoCompactionsOnTombstone_MixVersions(t *testing.T) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cfg := e2e.NewConfigClientTLS()
 	clus, err := e2e.NewEtcdProcessCluster(ctx, t,
@@ -149,7 +148,7 @@ func TestVerifyHashKVAfterCompactionOnLastTombstone_MixVersions(t *testing.T) {
 		{"key0", "key1"},
 	} {
 		t.Run(fmt.Sprintf("#%v", keys), func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 
 			cfg := e2e.NewConfigClientTLS()
 			clus, err := e2e.NewEtcdProcessCluster(ctx, t,
@@ -182,7 +181,7 @@ func populateDataForHashKV(t *testing.T, clus *e2e.EtcdProcessCluster, clientCfg
 	c := newClient(t, clus.EndpointsGRPC(), clientCfg)
 	defer c.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	totalOperations := 40
 
 	var (
@@ -218,7 +217,7 @@ func populateDataForHashKV(t *testing.T, clus *e2e.EtcdProcessCluster, clientCfg
 }
 
 func verifyConsistentHashKVAcrossAllMembers(t *testing.T, cli *e2e.EtcdctlV3, hashKVOnRev int64) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Logf("HashKV on rev=%d", hashKVOnRev)
 	resp, err := cli.HashKV(ctx, hashKVOnRev)

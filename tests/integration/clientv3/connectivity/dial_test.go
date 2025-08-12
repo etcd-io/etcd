@@ -63,9 +63,7 @@ func TestDialTLSExpired(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 		TLS:         tls,
 	})
-	if !clientv3test.IsClientTimeout(err) {
-		t.Fatalf("expected dial timeout error, got %v", err)
-	}
+	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
 }
 
 // TestDialTLSNoConfig ensures the client fails to dial / times out
@@ -85,9 +83,7 @@ func TestDialTLSNoConfig(t *testing.T) {
 			c.Close()
 		}
 	}()
-	if !clientv3test.IsClientTimeout(err) {
-		t.Fatalf("expected dial timeout error, got %v", err)
-	}
+	require.Truef(t, clientv3test.IsClientTimeout(err), "expected dial timeout error")
 }
 
 // TestDialSetEndpointsBeforeFail ensures SetEndpoints can replace unavailable
@@ -133,7 +129,7 @@ func testDialSetEndpoints(t *testing.T, setBefore bool) {
 		cli.SetEndpoints(eps[toKill%3], eps[(toKill+1)%3])
 	}
 	time.Sleep(time.Second * 2)
-	ctx, cancel := context.WithTimeout(context.Background(), integration2.RequestWaitTimeout)
+	ctx, cancel := context.WithTimeout(t.Context(), integration2.RequestWaitTimeout)
 	_, err = cli.Get(ctx, "foo", clientv3.WithSerializable())
 	require.NoError(t, err)
 	cancel()
@@ -154,7 +150,7 @@ func TestSwitchSetEndpoints(t *testing.T) {
 
 	cli.SetEndpoints(eps...)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	_, err := cli.Get(ctx, "foo")
 	require.NoError(t, err)
@@ -191,7 +187,7 @@ func TestDialForeignEndpoint(t *testing.T) {
 	// grpc can return a lazy connection that's not connected yet; confirm
 	// that it can communicate with the cluster.
 	kvc := clientv3.NewKVFromKVClient(pb.NewKVClient(conn), clus.Client(0))
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	_, gerr := kvc.Get(ctx, "abc")
 	require.NoError(t, gerr)
@@ -205,7 +201,7 @@ func TestSetEndpointAndPut(t *testing.T) {
 	defer clus.Terminate(t)
 
 	clus.Client(1).SetEndpoints(clus.Members[0].GRPCURL)
-	_, err := clus.Client(1).Put(context.TODO(), "foo", "bar")
+	_, err := clus.Client(1).Put(t.Context(), "foo", "bar")
 	if err != nil && !strings.Contains(err.Error(), "closing") {
 		t.Fatal(err)
 	}

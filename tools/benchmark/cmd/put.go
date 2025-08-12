@@ -88,7 +88,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	bar = pb.New(putTotal)
 	bar.Start()
 
-	r := newReport()
+	r := newReport(cmd.Name())
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {

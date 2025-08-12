@@ -16,17 +16,21 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 	traceservice "go.opentelemetry.io/proto/otlp/collector/trace/v1"
+	commonv1 "go.opentelemetry.io/proto/otlp/common/v1"
+	v1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -38,6 +42,132 @@ import (
 func TestTracing(t *testing.T) {
 	testutil.SkipTestIfShortMode(t,
 		"Wal creation tests are depending on embedded etcd server so are integration-level tests.")
+
+	for _, tc := range []struct {
+		name     string
+		rpc      func(context.Context, *clientv3.Client) error
+		wantSpan *v1.Span
+	}{
+		{
+			name: "UnaryGet",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Get(ctx, "key")
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "etcdserverpb.KV/Range",
+				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
+			},
+		},
+		{
+			name: "UnaryGetWithCountOnly",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Get(ctx, "key", clientv3.WithCountOnly())
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "range",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "range_begin",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+					},
+					{
+						Key:   "range_end",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ""}},
+					},
+					{
+						Key:   "rev",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "limit",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "count_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+					{
+						Key:   "keys_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryTxn",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Txn(ctx).
+					If(clientv3.Compare(clientv3.ModRevision("key"), "=", 1)).
+					Then(clientv3.OpGet("key"), clientv3.OpGet("other_key")).
+					Commit()
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "txn",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "compare_first_key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+					},
+					{
+						Key:   "compare_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1}},
+					},
+					{
+						Key:   "success_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 2}},
+					},
+					{
+						Key:   "failure_len",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "read_only",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+				},
+			},
+		},
+		{
+			name: "StreamWatch",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				// Create a context with a reasonable timeout
+				ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+				defer cancel()
+
+				// Create a watch channel
+				watchChan := cli.Watch(ctx, "watch-key")
+
+				// Put a value to trigger the watch
+				_, err := cli.Put(ctx, "watch-key", "watch-value")
+				if err != nil {
+					return err
+				}
+
+				// Wait for watch event
+				select {
+				case watchResp := <-watchChan:
+					return watchResp.Err()
+				case <-time.After(5 * time.Second):
+					return fmt.Errorf("Timed out waiting for watch event")
+				}
+			},
+			wantSpan: &v1.Span{
+				Name: "etcdserverpb.Watch/Watch",
+				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testRPCTracing(t, tc.wantSpan, tc.rpc)
+		})
+	}
+}
+
+// testRPCTracing is a common test function for both Unary and Stream RPC tracing
+func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.Context, *clientv3.Client) error) {
 	// set up trace collector
 	listener, err := net.Listen("tcp", "localhost:")
 	require.NoError(t, err)
@@ -48,7 +178,41 @@ func TestTracing(t *testing.T) {
 	srv := grpc.NewServer()
 	traceservice.RegisterTraceServiceServer(srv, &traceServer{
 		traceFound: traceFound,
-		filterFunc: containsNodeListSpan,
+		filterFunc: func(req *traceservice.ExportTraceServiceRequest) bool {
+			for _, resourceSpans := range req.GetResourceSpans() {
+				// Skip spans which weren't produced by test's gRPC client.
+				matched := false
+				for _, attr := range resourceSpans.GetResource().GetAttributes() {
+					if attr.GetKey() == "service.name" && attr.GetValue().GetStringValue() == "integration-test-tracing" {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+
+				for _, scoped := range resourceSpans.GetScopeSpans() {
+					for _, gotSpan := range scoped.GetSpans() {
+						if gotSpan.GetName() != wantSpan.GetName() {
+							continue
+						}
+						if len(wantSpan.GetAttributes()) == 0 && len(wantSpan.GetEvents()) == 0 {
+							// Diff will compare only attributes and events when needed
+							return true
+						}
+						if diff := cmp.Diff(wantSpan, gotSpan,
+							protocmp.Transform(),
+							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id"),
+						); diff != "" {
+							t.Errorf("Span mismatch (-want +got):\n%s", diff)
+						}
+						return true
+					}
+				}
+			}
+			return false
+		},
 	})
 
 	go srv.Serve(listener)
@@ -59,7 +223,7 @@ func TestTracing(t *testing.T) {
 	cfg.EnableDistributedTracing = true
 	cfg.DistributedTracingAddress = listener.Addr().String()
 	cfg.DistributedTracingServiceName = "integration-test-tracing"
-	cfg.DistributedTracingSamplingRatePerMillion = 100
+	cfg.DistributedTracingSamplingRatePerMillion = 100 // overriden later in the test
 
 	// start an etcd instance with tracing enabled
 	etcdSrv, err := embed.StartEtcd(cfg)
@@ -75,9 +239,8 @@ func TestTracing(t *testing.T) {
 	}
 
 	// create a client that has tracing enabled
-	tracer := sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.AlwaysSample()))
-	defer tracer.Shutdown(context.TODO())
-	tp := trace.TracerProvider(tracer)
+	tp := sdktrace.NewTracerProvider()
+	defer tp.Shutdown(t.Context())
 
 	tracingOpts := []otelgrpc.Option{
 		otelgrpc.WithTracerProvider(tp),
@@ -89,8 +252,7 @@ func TestTracing(t *testing.T) {
 	}
 
 	dialOptions := []grpc.DialOption{
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor(tracingOpts...)),
-		grpc.WithStreamInterceptor(otelgrpc.StreamClientInterceptor(tracingOpts...)),
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(tracingOpts...)),
 	}
 	ccfg := clientv3.Config{DialOptions: dialOptions, Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
 	cli, err := integration.NewClient(t, ccfg)
@@ -100,36 +262,19 @@ func TestTracing(t *testing.T) {
 	}
 	defer cli.Close()
 
-	// make a request with the instrumented client
-	resp, err := cli.Get(context.TODO(), "key")
+	// Execute the client action (either Unary or Stream RPC)
+	err = clientAction(t.Context(), cli)
 	require.NoError(t, err)
-	require.Empty(t, resp.Kvs)
 
 	// Wait for a span to be recorded from our request
 	select {
 	case <-traceFound:
+		t.Logf("Trace found")
 		return
 	case <-time.After(30 * time.Second):
+		// default exporter has 5s scheduling delay
 		t.Fatal("Timed out waiting for trace")
 	}
-}
-
-func containsNodeListSpan(req *traceservice.ExportTraceServiceRequest) bool {
-	for _, resourceSpans := range req.GetResourceSpans() {
-		for _, attr := range resourceSpans.GetResource().GetAttributes() {
-			if attr.GetKey() != "service.name" && attr.GetValue().GetStringValue() != "integration-test-tracing" {
-				continue
-			}
-			for _, scoped := range resourceSpans.GetScopeSpans() {
-				for _, span := range scoped.GetSpans() {
-					if span.GetName() == "etcdserverpb.KV/Range" {
-						return true
-					}
-				}
-			}
-		}
-	}
-	return false
 }
 
 // traceServer implements TracesServiceServer
@@ -142,7 +287,11 @@ type traceServer struct {
 func (t *traceServer) Export(ctx context.Context, req *traceservice.ExportTraceServiceRequest) (*traceservice.ExportTraceServiceResponse, error) {
 	emptyValue := traceservice.ExportTraceServiceResponse{}
 	if t.filterFunc(req) {
-		t.traceFound <- struct{}{}
+		select {
+		case t.traceFound <- struct{}{}:
+		default:
+			// Channel already notified
+		}
 	}
 	return &emptyValue, nil
 }

@@ -66,10 +66,9 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	require.NoError(t, err)
 	defer cli.Close()
 
-	wch := cli.Watch(context.Background(), "foo", clientv3.WithCreatedNotify())
-	if _, ok := <-wch; !ok {
-		t.Fatalf("watch failed on creation")
-	}
+	wch := cli.Watch(t.Context(), "foo", clientv3.WithCreatedNotify())
+	_, ok := <-wch
+	require.Truef(t, ok, "watch failed on creation")
 
 	// endpoint can switch to eps[1] when it detects the failure of eps[0]
 	cli.SetEndpoints(eps...)
@@ -79,7 +78,7 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 
 	clus.Members[0].Bridge().Blackhole()
 
-	_, err = clus.Client(1).Put(context.TODO(), "foo", "bar")
+	_, err = clus.Client(1).Put(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 	select {
 	case <-wch:
@@ -95,9 +94,9 @@ func TestBalancerUnderBlackholeKeepAliveWatch(t *testing.T) {
 	clus.Members[1].Bridge().Blackhole()
 
 	// make sure client[0] can connect to eps[0] after remove the blackhole.
-	_, err = clus.Client(0).Get(context.TODO(), "foo")
+	_, err = clus.Client(0).Get(t.Context(), "foo")
 	require.NoError(t, err)
-	_, err = clus.Client(0).Put(context.TODO(), "foo", "bar1")
+	_, err = clus.Client(0).Put(t.Context(), "foo", "bar1")
 	require.NoError(t, err)
 
 	select {
@@ -197,7 +196,7 @@ func testBalancerUnderBlackholeNoKeepAlive(t *testing.T, op func(*clientv3.Clien
 	// TODO: first operation can succeed
 	// when gRPC supports better retry on non-delivered request
 	for i := 0; i < 5; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second*5)
 		err = op(cli, ctx)
 		cancel()
 		if err == nil {

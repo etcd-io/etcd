@@ -30,7 +30,7 @@ import (
 
 func TestAuthCluster(t *testing.T) {
 	e2e.BeforeTest(t)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	epc, err := e2e.NewEtcdProcessCluster(ctx, t,

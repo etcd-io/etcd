@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -55,7 +54,7 @@ func testClusterUsingV3Discovery(t *testing.T, discoveryClusterSize, targetClust
 	e2e.BeforeTest(t)
 
 	// step 1: start the discovery service
-	ds, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	ds, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithBasePort(2000),
 		e2e.WithClusterSize(discoveryClusterSize),
 		e2e.WithClientConnType(clientTLSType),
@@ -122,5 +121,5 @@ func bootstrapEtcdClusterUsingV3Discovery(t *testing.T, discoveryEndpoints []str
 	}
 
 	// start the cluster
-	return e2e.StartEtcdProcessCluster(context.TODO(), t, epc, cfg)
+	return e2e.StartEtcdProcessCluster(t.Context(), t, epc, cfg)
 }

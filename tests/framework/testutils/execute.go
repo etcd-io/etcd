@@ -24,7 +24,7 @@ import (
 )
 
 func ExecuteWithTimeout(t *testing.T, timeout time.Duration, f func()) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(t.Context(), timeout)
 	defer cancel()
 	ExecuteUntil(ctx, t, f)
 }

@@ -15,9 +15,11 @@
 package model
 
 import (
-	"encoding/json"
+	"cmp"
 	"fmt"
 	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/anishathalye/porcupine"
 )
@@ -28,31 +30,64 @@ import (
 // Failed requests fork the possible states, while successful requests merge and filter them.
 var NonDeterministicModel = porcupine.Model{
 	Init: func() any {
-		data, err := json.Marshal(nonDeterministicState{freshEtcdState()})
-		if err != nil {
-			panic(err)
-		}
-		return string(data)
+		return nonDeterministicState{freshEtcdState()}
 	},
 	Step: func(st any, in any, out any) (bool, any) {
-		var states nonDeterministicState
-		err := json.Unmarshal([]byte(st.(string)), &states)
-		if err != nil {
-			panic(err)
-		}
-		ok, states := states.apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
-		data, err := json.Marshal(states)
-		if err != nil {
-			panic(err)
-		}
-		return ok, string(data)
+		return st.(nonDeterministicState).apply(in.(EtcdRequest), out.(MaybeEtcdResponse))
+	},
+	Equal: func(st1, st2 any) bool {
+		return st1.(nonDeterministicState).Equal(st2.(nonDeterministicState))
 	},
 	DescribeOperation: func(in, out any) string {
 		return fmt.Sprintf("%s -> %s", describeEtcdRequest(in.(EtcdRequest)), describeEtcdResponse(in.(EtcdRequest), out.(MaybeEtcdResponse)))
 	},
+	DescribeState: func(st any) string {
+		etcdStates := st.(nonDeterministicState)
+		desc := make([]string, 0, len(etcdStates))
+
+		slices.SortFunc(etcdStates, func(i, j EtcdState) int {
+			if c := cmp.Compare(i.Revision, j.Revision); c != 0 {
+				return c
+			}
+			return cmp.Compare(i.CompactRevision, j.CompactRevision)
+		})
+
+		for i, s := range etcdStates {
+			// Describe just 3 first states before truncating
+			if i >= 3 {
+				desc = append(desc, "...truncated...")
+				break
+			}
+			desc = append(desc, describeEtcdState(s))
+		}
+
+		return strings.Join(desc, "\n")
+	},
 }
 
 type nonDeterministicState []EtcdState
+
+func (states nonDeterministicState) Equal(other nonDeterministicState) bool {
+	if len(states) != len(other) {
+		return false
+	}
+
+	otherMatched := make([]bool, len(other))
+	for _, sItem := range states {
+		foundMatchInOther := false
+		for j, otherItem := range other {
+			if !otherMatched[j] && sItem.Equal(otherItem) {
+				otherMatched[j] = true
+				foundMatchInOther = true
+				break
+			}
+		}
+		if !foundMatchInOther {
+			return false
+		}
+	}
+	return true
+}
 
 func (states nonDeterministicState) apply(request EtcdRequest, response MaybeEtcdResponse) (bool, nonDeterministicState) {
 	var newStates nonDeterministicState

@@ -103,7 +103,7 @@ type EtcdServerProcessConfig struct {
 	Proxy         *proxy.ServerConfig
 }
 
-func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
+func NewEtcdServerProcess(tb testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServerProcess, error) {
 	if !fileutil.Exist(cfg.ExecPath) {
 		return nil, fmt.Errorf("could not find etcd binary: %s", cfg.ExecPath)
 	}
@@ -123,7 +123,7 @@ func NewEtcdServerProcess(t testing.TB, cfg *EtcdServerProcessConfig) (*EtcdServ
 		}
 	}
 	if cfg.LazyFSEnabled {
-		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, t)
+		ep.lazyfs = newLazyFS(cfg.lg, cfg.DataDirPath, tb)
 	}
 	return ep, nil
 }
@@ -321,7 +321,7 @@ func (ep *EtcdServerProcess) IsRunning() bool {
 func AssertProcessLogs(t *testing.T, ep EtcdProcess, expectLog string) {
 	t.Helper()
 	var err error
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	_, err = ep.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: expectLog})
 	if err != nil {

@@ -15,7 +15,6 @@
 package clientv3test
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -44,7 +43,7 @@ func TestEndpointSwitchResolvesViolation(t *testing.T) {
 	require.NoError(t, err)
 	defer cli.Close()
 
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err = clus.Client(0).Put(ctx, "foo", "bar")
 	require.NoError(t, err)
@@ -104,7 +103,7 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	require.NoError(t, err)
 	defer cli.Close()
 	eps := cli.Endpoints()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	cli.SetEndpoints(clus.Members[0].GRPCURL)
 	time.Sleep(1 * time.Second)
@@ -138,7 +137,5 @@ func TestUnresolvableOrderViolation(t *testing.T) {
 	time.Sleep(1 * time.Second) // give enough time for operation
 
 	_, err = OrderingKv.Get(ctx, "foo", clientv3.WithSerializable())
-	if !errors.Is(err, ordering.ErrNoGreaterRev) {
-		t.Fatalf("expected %v, got %v", ordering.ErrNoGreaterRev, err)
-	}
+	require.ErrorIsf(t, err, ordering.ErrNoGreaterRev, "expected %v, got %v", ordering.ErrNoGreaterRev, err)
 }

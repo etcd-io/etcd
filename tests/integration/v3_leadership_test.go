@@ -63,7 +63,7 @@ func testMoveLeader(t *testing.T, auto bool) {
 		require.NoError(t, err)
 	} else {
 		mvc := integration.ToGRPC(clus.Client(oldLeadIdx)).Maintenance
-		_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})
+		_, err := mvc.MoveLeader(t.Context(), &pb.MoveLeaderRequest{TargetID: target})
 		require.NoError(t, err)
 	}
 
@@ -108,7 +108,7 @@ func TestMoveLeaderError(t *testing.T) {
 	target := uint64(clus.Members[(oldLeadIdx+2)%3].Server.MemberID())
 
 	mvc := integration.ToGRPC(clus.Client(followerIdx)).Maintenance
-	_, err := mvc.MoveLeader(context.TODO(), &pb.MoveLeaderRequest{TargetID: target})
+	_, err := mvc.MoveLeader(t.Context(), &pb.MoveLeaderRequest{TargetID: target})
 	if !eqErrGRPC(err, rpctypes.ErrGRPCNotLeader) {
 		t.Errorf("err = %v, want %v", err, rpctypes.ErrGRPCNotLeader)
 	}
@@ -136,7 +136,7 @@ func TestMoveLeaderToLearnerError(t *testing.T) {
 	learnerID := learners[0].ID
 	leaderIdx := clus.WaitLeader(t)
 	cli := clus.Client(leaderIdx)
-	_, err = cli.MoveLeader(context.Background(), learnerID)
+	_, err = cli.MoveLeader(t.Context(), learnerID)
 	if err == nil {
 		t.Fatalf("expecting leader transfer to learner to fail, got no error")
 	}
@@ -183,7 +183,7 @@ func TestTransferLeadershipWithLearner(t *testing.T) {
 
 func TestFirstCommitNotification(t *testing.T) {
 	integration.BeforeTest(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	clusterSize := 3
 	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: clusterSize})
 	defer cluster.Terminate(t)
@@ -199,7 +199,7 @@ func TestFirstCommitNotification(t *testing.T) {
 		notifiers[i] = clusterMember.Server.FirstCommitInTermNotify()
 	}
 
-	_, err := oldLeaderClient.MoveLeader(context.Background(), newLeaderID)
+	_, err := oldLeaderClient.MoveLeader(t.Context(), newLeaderID)
 	if err != nil {
 		t.Errorf("got error during leadership transfer: %v", err)
 	}
@@ -236,14 +236,14 @@ func TestFirstCommitNotification(t *testing.T) {
 
 func checkFirstCommitNotification(
 	ctx context.Context,
-	t testing.TB,
+	tb testing.TB,
 	member *integration.Member,
 	leaderAppliedIndex uint64,
 	notifier <-chan struct{},
 ) error {
 	// wait until server applies all the changes of leader
 	for member.Server.AppliedIndex() < leaderAppliedIndex {
-		t.Logf("member.Server.AppliedIndex():%v <= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
+		tb.Logf("member.Server.AppliedIndex():%v <= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -261,7 +261,7 @@ func checkFirstCommitNotification(
 			)
 		}
 	default:
-		t.Logf("member.Server.AppliedIndex():%v >= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
+		tb.Logf("member.Server.AppliedIndex():%v >= leaderAppliedIndex:%v", member.Server.AppliedIndex(), leaderAppliedIndex)
 		return fmt.Errorf(
 			"notification was not triggered, member ID: %d",
 			member.ID(),
