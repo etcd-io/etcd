@@ -137,6 +137,17 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 	},
 	"etcdserverpb.Watch/Watch": {
 		// Not part of the contract interface (yet)
+		args: []column{
+			{name: "range_end", matcher: isRangeEndSet},
+			{name: "start_rev", matcher: intAttrSet("start_rev")},
+			{name: "prev_kv", matcher: boolAttrSet("prev_kv")},
+			{name: "fragment", matcher: boolAttrSet("fragment")},
+			{name: "progress_notify", matcher: boolAttrSet("progress_notify")},
+		},
+		keyAttrName: "key",
+		methods: []method{
+			{name: "Watch", matcher: notMatcher(keyIsEqualStr("key", "compact_rev_key"))},
+		},
 	},
 	"etcdserverpb.Lease/LeaseGrant": {
 		// Used to manage masterleases and events
