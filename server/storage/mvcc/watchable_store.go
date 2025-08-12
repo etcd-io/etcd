@@ -19,7 +19,6 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -136,6 +135,7 @@ func (s *watchableStore) watch(ctx context.Context, key, end []byte, startRev in
 		id:       id,
 		ch:       ch,
 		fcs:      fcs,
+		span:     trace.SpanFromContext(ctx),
 	}
 
 	s.mu.Lock()
@@ -155,12 +155,6 @@ func (s *watchableStore) watch(ctx context.Context, key, end []byte, startRev in
 	s.mu.Unlock()
 
 	watcherGauge.Inc()
-
-	_, wa.span = traceutil.Tracer.Start(ctx, "watch", trace.WithAttributes(
-		attribute.String("key", string(key)),
-		attribute.String("range_end", string(end)),
-		attribute.Int64("start_rev", startRev),
-	))
 
 	return wa, func() { s.cancelWatcher(wa) }
 }
