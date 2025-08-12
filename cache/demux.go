@@ -158,16 +158,15 @@ func (d *demux) resyncLaggingWatchers() {
 			continue
 		}
 		// TODO: re-enable key‐predicate in Filter when non‐zero startRev or performance tuning is needed
-		missed := d.history.Filter(nextRev)
-
 		enqueueFailed := false
-		for _, eventBatch := range missed {
+		d.history.AscendGreaterOrEqual(nextRev, func(rev int64, eventBatch []*clientv3.Event) bool {
 			if !w.enqueueEvent(eventBatch) { // buffer overflow: watcher still lagging
 				enqueueFailed = true
-				break
+				return false
 			}
-			nextRev = eventBatch[0].Kv.ModRevision + 1
-		}
+			nextRev = rev + 1
+			return true
+		})
 
 		if !enqueueFailed {
 			delete(d.laggingWatchers, w)
