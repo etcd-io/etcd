@@ -47,14 +47,16 @@ func keyIsEqualInt(key string, want int) Matcher {
 	}
 }
 
-func isLimitSet(trace *tracev1.ResourceSpans) bool {
-	limit, found := intAttr(trace, "limit")
-	return found && limit > 0
-}
+var (
+	isLimitSet    = intAttrSet("limit")
+	isRevisionSet = intAttrSet("rev")
+)
 
-func isRevisionSet(trace *tracev1.ResourceSpans) bool {
-	rev, found := intAttr(trace, "rev")
-	return found && rev > 0
+func intAttrSet(key string) Matcher {
+	return func(trace *tracev1.ResourceSpans) bool {
+		val, found := intAttr(trace, key)
+		return found && val > 0
+	}
 }
 
 func intAttr(trace *tracev1.ResourceSpans, key string) (int, bool) {
@@ -95,19 +97,17 @@ func strAttr(trace *tracev1.ResourceSpans, key string) (string, bool) {
 	return "", false
 }
 
-func isReadOnly(trace *tracev1.ResourceSpans) bool {
-	isRO, found := boolAttr(trace, "read_only")
-	return found && isRO
-}
+var (
+	isReadOnly  = boolAttrSet("read_only")
+	isKeysOnly  = boolAttrSet("keys_only")
+	isCountOnly = boolAttrSet("count_only")
+)
 
-func isKeysOnly(trace *tracev1.ResourceSpans) bool {
-	isKeys, found := boolAttr(trace, "keys_only")
-	return found && isKeys
-}
-
-func isCountOnly(trace *tracev1.ResourceSpans) bool {
-	isCount, found := boolAttr(trace, "count_only")
-	return found && isCount
+func boolAttrSet(key string) Matcher {
+	return func(trace *tracev1.ResourceSpans) bool {
+		val, found := boolAttr(trace, key)
+		return found && val
+	}
 }
 
 func boolAttr(trace *tracev1.ResourceSpans, key string) (bool, bool) {

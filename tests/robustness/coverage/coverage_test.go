@@ -134,9 +134,24 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 	"etcdserverpb.KV/Compact": {
 		// Compaction should move to using internal Etcd mechanism
 		// Discussed in https://github.com/kubernetes/kubernetes/issues/80513
+		args: []column{
+			{name: "rev", matcher: isRevisionSet},
+			{name: "physical", matcher: boolAttrSet("is_physical")},
+		},
 	},
 	"etcdserverpb.Watch/Watch": {
 		// Not part of the contract interface (yet)
+		args: []column{
+			{name: "range_end", matcher: isRangeEndSet},
+			{name: "start_rev", matcher: intAttrSet("start_rev")},
+			{name: "prev_kv", matcher: boolAttrSet("prev_kv")},
+			{name: "fragment", matcher: boolAttrSet("fragment")},
+			{name: "progress_notify", matcher: boolAttrSet("progress_notify")},
+		},
+		keyAttrName: "key",
+		methods: []method{
+			{name: "Watch", matcher: notMatcher(keyIsEqualStr("key", "compact_rev_key"))},
+		},
 	},
 	"etcdserverpb.Lease/LeaseGrant": {
 		// Used to manage masterleases and events
@@ -242,6 +257,9 @@ func testInterfaceUse(t *testing.T, filename string) {
 }
 
 func extractPattern(trace *tracev1.ResourceSpans, key string) (string, bool) {
+	if key == "" {
+		return "", true
+	}
 	k, found := strAttr(trace, key)
 	if !found {
 		return "", false
@@ -292,6 +310,9 @@ func argsToDescription(matched string, cols []column) string {
 }
 
 func extractMethod(methodToMatched []method, trace *tracev1.ResourceSpans) (string, bool) {
+	if len(methodToMatched) == 0 {
+		return getOperationName(trace), true
+	}
 	for _, mm := range methodToMatched {
 		if mm.matcher(trace) {
 			return mm.name, true
