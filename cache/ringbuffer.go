@@ -34,6 +34,8 @@ type batch struct {
 
 type KeyPredicate = func([]byte) bool
 
+type IterFunc func(rev int64, events []*clientv3.Event) bool
+
 func newRingBuffer(capacity int) *ringBuffer {
 	// assume capacity > 0 – validated by Cache
 	return &ringBuffer{
@@ -73,21 +75,94 @@ func (r *ringBuffer) append(b batch) {
 	r.head = (r.head + 1) % len(r.buffer)
 }
 
-// Filter returns all events in the buffer whose ModRevision is >= minRev.
+// AscendGreaterOrEqual iterates through batches in ascending order starting from the first batch with rev >= pivot.
 // TODO: use binary search on the ring buffer to locate the first entry >= nextRev instead of a full scan
-func (r *ringBuffer) Filter(minRev int64) (eventBatches [][]*clientv3.Event) {
-	eventBatches = make([][]*clientv3.Event, 0, r.size)
+func (r *ringBuffer) AscendGreaterOrEqual(pivot int64, iter IterFunc) {
+	if r.size == 0 {
+		return
+	}
 
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
 		eventBatch := r.buffer[i]
+
 		if eventBatch.events == nil {
-			panic(fmt.Sprintf("ringBuffer.Filter: unexpected nil eventBatch at index %d", i))
+			panic(fmt.Sprintf("ringBuffer.AscendGreaterOrEqual: unexpected nil at %d", i))
 		}
-		if eventBatch.rev >= minRev {
-			eventBatches = append(eventBatches, eventBatch.events)
+
+		if eventBatch.rev < pivot {
+			continue
+		}
+
+		if !iter(eventBatch.rev, eventBatch.events) {
+			return
 		}
 	}
-	return eventBatches
+}
+
+func (r *ringBuffer) AscendLessThan(pivot int64, iter IterFunc) {
+	if r.size == 0 {
+		return
+	}
+
+	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
+		eventBatch := r.buffer[i]
+
+		if eventBatch.events == nil {
+			panic(fmt.Sprintf("ringBuffer.AscendLessThan: unexpected nil at %d", i))
+		}
+
+		if eventBatch.rev >= pivot {
+			return
+		}
+
+		if !iter(eventBatch.rev, eventBatch.events) {
+			return
+		}
+	}
+}
+
+func (r *ringBuffer) DescendGreaterThan(pivot int64, iter IterFunc) {
+	if r.size == 0 {
+		return
+	}
+
+	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
+		eventBatch := r.buffer[i]
+
+		if eventBatch.events == nil {
+			panic(fmt.Sprintf("ringBuffer.DescendGreaterThan: unexpected nil at %d", i))
+		}
+
+		if eventBatch.rev <= pivot {
+			return
+		}
+
+		if !iter(eventBatch.rev, eventBatch.events) {
+			return
+		}
+	}
+}
+
+func (r *ringBuffer) DescendLessOrEqual(pivot int64, iter IterFunc) {
+	if r.size == 0 {
+		return
+	}
+
+	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
+		eventBatch := r.buffer[i]
+
+		if eventBatch.events == nil {
+			panic(fmt.Sprintf("ringBuffer.DescendLessOrEqual: unexpected nil at %d", i))
+		}
+
+		if eventBatch.rev > pivot {
+			continue
+		}
+
+		if !iter(eventBatch.rev, eventBatch.events) {
+			return
+		}
+	}
 }
 
 // PeekLatest returns the most recently-appended event (or nil if empty).
@@ -112,4 +187,8 @@ func (r *ringBuffer) RebaseHistory() {
 	for i := range r.buffer {
 		r.buffer[i] = batch{}
 	}
+}
+
+func (r *ringBuffer) moduloIndex(index int) int {
+	return (index + len(r.buffer)) % len(r.buffer)
 }
