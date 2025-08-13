@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bgentry/speakeasy"
@@ -35,6 +36,17 @@ import (
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
 )
+
+var grpcLoggerOnce sync.Once
+
+func init() {
+	// Setup gRPC logger at package initialization to avoid data races
+	// WARNING logs contain important information like TLS misconfirugation, but spams
+	// too many routine connection disconnects to turn on by default.
+	//
+	// See https://github.com/etcd-io/etcd/pull/9623 for background
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
+}
 
 // GlobalFlags are flags that defined globally
 // and are inherited to all sub-commands.
@@ -115,11 +127,7 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
 	} else {
-		// WARNING logs contain important information like TLS misconfirugation, but spams
-		// too many routine connection disconnects to turn on by default.
-		//
-		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
+		// Logger is already setup at package initialization to avoid data races
 	}
 
 	cfg := &clientv3.ConfigSpec{}
