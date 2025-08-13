@@ -63,6 +63,14 @@ func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts .
 	if err != nil {
 		tb.Fatalf("PeerTLS: %s", err)
 	}
+
+	if cfg.ClusterContext != nil {
+		if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
+			integrationCfg.UseTCP = !ctx.UseUnix
+			integrationCfg.UseIP = !ctx.UseUnix
+		}
+	}
+
 	return &integrationCluster{
 		Cluster: NewCluster(tb, &integrationCfg),
 		t:       tb,
@@ -98,6 +106,48 @@ func (c *integrationCluster) Members() (ms []intf.Member) {
 		ms = append(ms, integrationMember{Member: m, t: c.t})
 	}
 	return ms
+}
+
+func (c *integrationCluster) TemplateEndpoints(tb testing.TB, pattern string) []string {
+	tb.Helper()
+	var endpoints []string
+	for _, m := range c.Cluster.Members {
+		ent := pattern
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", m.GRPCPortNumber())
+		ent = strings.ReplaceAll(ent, "${MEMBER_NAME}", m.Name)
+		endpoints = append(endpoints, ent)
+	}
+	return endpoints
+}
+
+func templateAuthority(tb testing.TB, pattern string, m *Member) string {
+	tb.Helper()
+	authority := pattern
+	authority = strings.ReplaceAll(authority, "${MEMBER_PORT}", m.GRPCPortNumber())
+	authority = strings.ReplaceAll(authority, "${MEMBER_NAME}", m.Name)
+	return authority
+}
+
+func (c *integrationCluster) AssertAuthority(tb testing.TB, expectedAuthorityPattern string) {
+	tb.Helper()
+	const filterMethod = "/etcdserverpb.KV/Put"
+	for _, m := range c.Cluster.Members {
+		expectedAuthority := templateAuthority(tb, expectedAuthorityPattern, m)
+		requestsFound := 0
+		for _, r := range m.RecordedRequests() {
+			if r.FullMethod != filterMethod {
+				continue
+			}
+			if r.Authority == expectedAuthority {
+				requestsFound++
+			} else {
+				tb.Errorf("Got unexpected authority header, member %q, request %q, got %q, expected %q", m.Name, r.FullMethod, r.Authority, expectedAuthority)
+			}
+		}
+		if requestsFound == 0 {
+			tb.Errorf("Expect at least one request with matched authority header value was recorded by the server intercepter on member %s but got 0", m.Name)
+		}
+	}
 }
 
 type integrationMember struct {

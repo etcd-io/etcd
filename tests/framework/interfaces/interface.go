@@ -85,3 +85,11 @@ type Client interface {
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
 }
+
+type TemplateEndpoints interface {
+	TemplateEndpoints(tb testing.TB, pattern string) []string
+}
+
+type AssertAuthority interface {
+	AssertAuthority(tb testing.TB, expectedAuthorityPattern string)
+}

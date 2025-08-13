@@ -41,6 +41,8 @@ func (cv ClusterVersion) String() string {
 
 type ClusterContext struct {
 	Version ClusterVersion
+	EnvVars map[string]string
+	UseUnix bool
 }
 
 var experimentalFlags = map[string]struct{}{
