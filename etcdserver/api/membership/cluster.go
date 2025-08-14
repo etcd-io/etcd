@@ -874,6 +874,7 @@ func (c *RaftCluster) IsMemberExist(id types.ID) bool {
 	c.Lock()
 	defer c.Unlock()
 	_, ok := c.members[id]
+	// gofail: var afterIsMemberExist struct{}
 	return ok
 }
 

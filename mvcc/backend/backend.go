@@ -653,7 +653,9 @@ func (b *backend) begin(write bool) *bolt.Tx {
 }
 
 func (b *backend) unsafeBegin(write bool) *bolt.Tx {
+	// gofail: var beforeStartDBTxn struct{}
 	tx, err := b.db.Begin(write)
+	// gofail: var afterStartDBTxn struct{}
 	if err != nil {
 		if b.lg != nil {
 			b.lg.Fatal("failed to begin tx", zap.Error(err))

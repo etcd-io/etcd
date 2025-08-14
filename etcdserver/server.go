@@ -1301,6 +1301,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
+	// gofail: var applyBeforeOpenSnapshot struct{}
 	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot)
 	if err != nil {
 		if lg != nil {
@@ -2287,6 +2288,7 @@ func (s *EtcdServer) apply(
 			if e.Index > s.consistIndex.ConsistentIndex() {
 				s.consistIndex.setConsistentIndex(e.Index)
 			}
+			// gofail: var beforeApplyOneConfChange struct{}
 			var cc raftpb.ConfChange
 			pbutil.MustUnmarshal(&cc, e.Data)
 			removedSelf, err := s.applyConfChange(cc, confState)
