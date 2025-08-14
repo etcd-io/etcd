@@ -138,6 +138,9 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 			{name: "rev", matcher: isRevisionSet},
 			{name: "physical", matcher: boolAttrSet("is_physical")},
 		},
+		methods: []method{
+			{name: "Compact", matcher: all},
+		},
 	},
 	"etcdserverpb.Watch/Watch": {
 		// Not part of the contract interface (yet)
@@ -189,39 +192,21 @@ func testInterfaceUse(t *testing.T, filename string) {
 	if dump.Result == nil {
 		t.Fatalf("missing result data")
 	}
-	traces := dump.Result
-
-	callsByOperationName := make(map[string][]*tracev1.ResourceSpans)
-	for _, trace := range traces.GetResourceSpans() {
-		if getServiceName(trace) != "etcd" {
-			continue
-		}
-		opName := getOperationName(trace)
-		// Skip put key=_test after healthcheck in command tests.
-		// https://github.com/kubernetes/kubernetes/blob/release-1.33/hack/lib/etcd.sh#L93
-		if opName == "etcdserverpb.KV/Put" && isCommandTestHC(trace) {
-			continue
-		}
-		callsByOperationName[opName] = append(callsByOperationName[opName], trace)
-	}
-	if c := len(callsByOperationName[""]); c > 0 {
-		t.Logf("Found traces that did not go through gRPC: %d", c)
-		delete(callsByOperationName, "") // Ignoring them.
-	}
-	t.Logf("\n%s", printableCallTable(callsByOperationName))
+	spansByID := spansMap(t, dump.Result.GetResourceSpans())
+	callsByOperationName, countsByGRPC := callsMap(spansByID)
+	t.Logf("\n%s", printableCallTable(countsByGRPC))
 
 	t.Run("only_expected_methods_were_called", func(t *testing.T) {
-		for opName, traces := range callsByOperationName {
+		for opName, count := range countsByGRPC {
 			if _, ok := referenceUsageOfEtcdAPI[opName]; !ok {
-				t.Logf("Example trace to the unknown method: %+v", traces[0])
-				t.Errorf("unexpected %d calls to method: %s", len(traces), opName)
+				t.Errorf("unexpected %d calls to method: %s", count, opName)
 			}
 		}
 	})
 
 	for op, td := range referenceUsageOfEtcdAPI {
 		t.Run(op, func(t *testing.T) {
-			if _, ok := callsByOperationName[op]; !ok {
+			if _, ok := countsByGRPC[op]; !ok {
 				t.Fatalf("expected %q method to be called at least once", op)
 			}
 
@@ -234,15 +219,16 @@ func testInterfaceUse(t *testing.T, filename string) {
 			tracesWithNoMethod := make(map[string]bool)
 
 			callCounts := make(map[row]int)
-			for _, trace := range callsByOperationName[op] {
-				args := columnsToArgs(trace, td.args)
+			for _, span := range callsByOperationName[op] {
+				args := columnsToArgs(span, td.args)
 
-				pattern, pFound := extractPattern(trace, td.keyAttrName)
+				pattern, pFound := extractPattern(span, td.keyAttrName)
 				if !pFound && !tracesWithNoMethod[args] {
 					t.Errorf("New key pattern detected: %s", pattern)
+					tracesWithNoMethod[args] = true
 				}
 
-				method, mFound := extractMethod(td.methods, trace)
+				method, mFound := extractMethod(td.methods, span)
 				if !mFound && !tracesWithNoMethod[args] {
 					t.Errorf("New call pattern detected: %s(key=%s,%s)", op, pattern, argsToDescription(args, td.args))
 					tracesWithNoMethod[args] = true
@@ -256,11 +242,74 @@ func testInterfaceUse(t *testing.T, filename string) {
 	}
 }
 
-func extractPattern(trace *tracev1.ResourceSpans, key string) (string, bool) {
+func callsMap(spansByID map[string]*tracev1.Span) (map[string][]*tracev1.Span, map[string]int) {
+	// Add to map only spans that are direct children of Etcd grpc spans.
+	callsByOperationName := make(map[string][]*tracev1.Span)
+	grpcCounts := make(map[string]int)
+	for _, span := range spansByID {
+		if isEtcdGRPC(span) {
+			grpcCounts[span.GetName()]++
+			continue
+		}
+		parent, ok := spansByID[string(span.GetParentSpanId())]
+		if !ok || !isEtcdGRPC(parent) {
+			continue
+		}
+		opName := parent.GetName()
+		callsByOperationName[opName] = append(callsByOperationName[opName], span)
+	}
+	return callsByOperationName, grpcCounts
+}
+
+func spansMap(t *testing.T, traces []*tracev1.ResourceSpans) map[string]*tracev1.Span {
+	t.Helper()
+
+	// Mark all traces with at least one span recorded in apiserver.
+	inApiserver := make(map[string]bool)
+	for _, trace := range traces {
+		sn, sFound := serviceName(trace)
+		if !sFound {
+			t.Fatalf("resource span without service.name: %+v", trace)
+		}
+		if sn != "apiserver" {
+			continue
+		}
+		for _, scopeSpan := range trace.GetScopeSpans() {
+			for _, span := range scopeSpan.GetSpans() {
+				inApiserver[string(span.GetTraceId())] = true
+			}
+		}
+	}
+
+	// Map traces by their span ID.
+	spansByID := make(map[string]*tracev1.Span)
+	skipped := 0
+	for _, trace := range traces {
+		for _, scopeSpan := range trace.GetScopeSpans() {
+			for _, span := range scopeSpan.GetSpans() {
+				if !inApiserver[string(span.GetTraceId())] {
+					skipped++
+					continue
+				}
+				id := string(span.GetSpanId())
+				if id == "" {
+					t.Fatalf("span without id: %+v", span)
+				}
+				spansByID[id] = span
+			}
+		}
+	}
+	if skipped > 0 {
+		t.Logf("WARN: skipped %d spans without traces in apiserver", skipped)
+	}
+	return spansByID
+}
+
+func extractPattern(span *tracev1.Span, key string) (string, bool) {
 	if key == "" {
 		return "", true
 	}
-	k, found := strAttr(trace, key)
+	k, found := strAttr(span, key)
 	if !found {
 		return "", false
 	}
@@ -289,10 +338,10 @@ func extractPattern(trace *tracev1.ResourceSpans, key string) (string, bool) {
 	return k, false
 }
 
-func columnsToArgs(trace *tracev1.ResourceSpans, cols []column) string {
+func columnsToArgs(span *tracev1.Span, cols []column) string {
 	acc := make([]byte, len(cols))
 	for i, col := range cols {
-		if col.matcher(trace) {
+		if col.matcher(span) {
 			acc[i] = 'X'
 		} else {
 			acc[i] = notMatched
@@ -309,12 +358,9 @@ func argsToDescription(matched string, cols []column) string {
 	return strings.Join(ret, ",")
 }
 
-func extractMethod(methodToMatched []method, trace *tracev1.ResourceSpans) (string, bool) {
-	if len(methodToMatched) == 0 {
-		return getOperationName(trace), true
-	}
+func extractMethod(methodToMatched []method, span *tracev1.Span) (string, bool) {
 	for _, mm := range methodToMatched {
-		if mm.matcher(trace) {
+		if mm.matcher(span) {
 			return mm.name, true
 		}
 	}
@@ -333,28 +379,7 @@ type Dump struct {
 	Result *Traces `json:"result"`
 }
 
-func getServiceName(trace *tracev1.ResourceSpans) string {
-	for _, kv := range trace.GetResource().GetAttributes() {
-		if kv.GetKey() == "service.name" {
-			return kv.GetValue().GetStringValue()
-		}
-	}
-	return ""
-}
-
-func getOperationName(trace *tracev1.ResourceSpans) string {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			name := span.GetName()
-			if strings.HasPrefix(name, "etcdserverpb") {
-				return name
-			}
-		}
-	}
-	return ""
-}
-
-func printableCallTable(callsByOperationName map[string][]*tracev1.ResourceSpans) string {
+func printableCallTable(callsByOperationName map[string]int) string {
 	buf := new(bytes.Buffer)
 	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
 	table := tablewriter.NewTable(buf, tablewriter.WithConfig(cfgBuilder.Build()))
@@ -362,11 +387,10 @@ func printableCallTable(callsByOperationName map[string][]*tracev1.ResourceSpans
 
 	totalCalls := 0
 	for _, c := range callsByOperationName {
-		totalCalls += len(c)
+		totalCalls += c
 	}
 
-	for opName, calls := range callsByOperationName {
-		callCount := len(calls)
+	for opName, callCount := range callsByOperationName {
 		table.Append(opName, callCount, fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)))
 	}
 	table.Footer("total", totalCalls, "100.00%")
