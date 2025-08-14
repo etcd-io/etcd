@@ -54,6 +54,7 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 			revToBytes(revision{main: compactMainRev}, rbytes)
 			tx.UnsafePut(metaBucketName, finishedCompactKeyName, rbytes)
 			tx.Unlock()
+			// gofail: var compactAfterSetFinishedCompact struct{}
 			size, sizeInUse := s.b.Size(), s.b.SizeInUse()
 			if s.lg != nil {
 				s.lg.Info(
@@ -75,7 +76,9 @@ func (s *store) scheduleCompaction(compactMainRev int64, keep map[revision]struc
 		revToBytes(revision{main: rev.main, sub: rev.sub + 1}, last)
 		tx.Unlock()
 		// Immediately commit the compaction deletes instead of letting them accumulate in the write buffer
+		// gofail: var compactBeforeCommitBatch struct{}
 		s.b.ForceCommit()
+		// gofail: var compactAfterCommitBatch struct{}
 		dbCompactionPauseMs.Observe(float64(time.Since(start) / time.Millisecond))
 
 		select {

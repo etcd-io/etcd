@@ -279,6 +279,7 @@ func (t *batchTxBuffered) Unlock() {
 		t.backend.readTx.Lock() // blocks txReadBuffer for writing.
 		// gofail: var beforeWritebackBuf struct{}
 		t.buf.writeback(&t.backend.readTx.buf)
+		// gofail: var afterWritebackBuf struct{}
 		t.backend.readTx.Unlock()
 		// We commit the transaction when the number of pending operations
 		// reaches the configured limit(batchLimit) to prevent it from

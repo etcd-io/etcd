@@ -283,7 +283,9 @@ func (s *store) updateCompactRev(rev int64) (<-chan struct{}, error) {
 	tx.UnsafePut(metaBucketName, scheduledCompactKeyName, rbytes)
 	tx.Unlock()
 	// ensure that desired compaction is persisted
+	// gofail: var compactBeforeCommitScheduledCompact struct{}
 	s.b.ForceCommit()
+	// gofail: var compactAfterCommitScheduledCompact struct{}
 
 	s.revMu.Unlock()
 
