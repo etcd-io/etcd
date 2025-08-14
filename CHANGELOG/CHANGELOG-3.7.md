@@ -30,3 +30,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### Deprecations
 
 - Deprecated [UsageFunc in pkg/cobrautl](https://github.com/etcd-io/etcd/pull/18356).
+
+### etcdctl
+
+- [Organize etcdctl commands](https://github.com/etcd-io/etcd/pull/20162) to make them more concise and easier to understand.
