@@ -27,7 +27,6 @@ import (
 )
 
 var (
-	// TODO: add gap-free replay for arbitrary startRevs and drop this guard.
 	// Returned when an option combination isn’t yet handled by the cache (e.g. WithPrevKV, WithProgressNotify for Watch(), WithCountOnly for Get()).
 	ErrUnsupportedRequest = errors.New("cache: unsupported request parameters")
 	// Returned when the requested key or key‑range is invalid (empty or reversed) or lies outside c.prefix.
