@@ -19,6 +19,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"google.golang.org/grpc/metadata"
 	"io"
 	"log"
 	"math"
@@ -436,6 +437,20 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 	return &cfg, nil
 }
 
+func contextPropagationUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			ctx = metadata.NewOutgoingContext(ctx, md)
+		}
+		return handler(ctx, req)
+	}
+}
+
 func newTLS(ca, cert, key string, requireEmptyCN bool) *transport.TLSInfo {
 	if ca == "" && cert == "" && key == "" {
 		return nil
@@ -511,6 +526,7 @@ func newGRPCProxyServer(lg *zap.Logger, client *clientv3.Client) *grpc.Server {
 	}
 	grpcChainUnaryList := []grpc.UnaryServerInterceptor{
 		serverMetrics.UnaryServerInterceptor(),
+		contextPropagationUnaryServerInterceptor(),
 	}
 	if grpcProxyEnableLogging {
 		grpcChainStreamList = append(grpcChainStreamList,
