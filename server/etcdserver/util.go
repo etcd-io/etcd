@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -40,6 +41,25 @@ func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote ty
 // members in the cluster since the given time.
 func isConnectedFullySince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
 	return numConnectedSince(transport, since, self, members) == len(members)
+}
+
+// exceedsRequestLimit checks if the committed index is too far ahead of
+// the applied index. Priority requests are allowed up to 10% extra gap.
+func exceedsRequestLimit(ai, ci uint64, r *pb.InternalRaftRequest, enablePriority bool) bool {
+	if ci <= ai+maxGapBetweenApplyAndCommitIndex {
+		return false
+	}
+	// allow up to 100% extra gap for priority requests
+	if enablePriority && isPriorityRequest(r) {
+		if ci <= ai+maxGapBetweenApplyAndCommitIndex*200/100 {
+			return false
+		}
+	}
+	return true
+}
+
+func isPriorityRequest(r *pb.InternalRaftRequest) bool {
+	return r != nil && r.LeaseRevoke != nil
 }
 
 // numConnectedSince counts how many members are connected to the local member
