@@ -14,56 +14,55 @@
 
 package cache
 
-import (
-	"fmt"
+import "fmt"
 
-	clientv3 "go.etcd.io/etcd/client/v3"
-)
-
-type ringBuffer struct {
-	buffer []batch
+type ringBuffer[T any] struct {
+	buffer []entry[T]
 	// head is the index immediately after the last non-empty entry in the buffer (i.e., the next write position).
 	head, tail, size int
+	revisionOf       RevisionOf[T]
 }
 
-// batch groups all events that share one ModRevision.
-type batch struct {
-	rev    int64
-	events []*clientv3.Event
+type entry[T any] struct {
+	revision int64
+	items    []T
 }
 
-type KeyPredicate = func([]byte) bool
+type (
+	KeyPredicate      = func([]byte) bool
+	RevisionOf[T any] func(T) int64
+	IterFunc[T any]   func(rev int64, items []T) bool
+)
 
-type IterFunc func(rev int64, events []*clientv3.Event) bool
-
-func newRingBuffer(capacity int) *ringBuffer {
+func newRingBuffer[T any](capacity int, revisionOf RevisionOf[T]) *ringBuffer[T] {
 	// assume capacity > 0 – validated by Cache
-	return &ringBuffer{
-		buffer: make([]batch, capacity),
+	return &ringBuffer[T]{
+		buffer:     make([]entry[T], capacity),
+		revisionOf: revisionOf,
 	}
 }
 
-func (r *ringBuffer) Append(events []*clientv3.Event) {
+func (r *ringBuffer[T]) Append(items []T) {
 	start := 0
-	for end := 1; end < len(events); end++ {
-		if events[end].Kv.ModRevision != events[start].Kv.ModRevision {
-			r.append(batch{
-				rev:    events[start].Kv.ModRevision,
-				events: events[start:end],
+	for end := 1; end < len(items); end++ {
+		if r.revisionOf(items[end]) != r.revisionOf(items[start]) {
+			r.append(entry[T]{
+				revision: r.revisionOf(items[start]),
+				items:    items[start:end],
 			})
 			start = end
 		}
 	}
-	if start < len(events) {
-		r.append(batch{
-			rev:    events[start].Kv.ModRevision,
-			events: events[start:],
+	if start < len(items) {
+		r.append(entry[T]{
+			revision: r.revisionOf(items[start]),
+			items:    items[start:],
 		})
 	}
 }
 
-func (r *ringBuffer) append(b batch) {
-	if len(b.events) == 0 {
+func (r *ringBuffer[T]) append(entry entry[T]) {
+	if len(entry.items) == 0 {
 		return
 	}
 	if r.size == len(r.buffer) {
@@ -71,124 +70,127 @@ func (r *ringBuffer) append(b batch) {
 	} else {
 		r.size++
 	}
-	r.buffer[r.head] = b
+	r.buffer[r.head] = entry
 	r.head = (r.head + 1) % len(r.buffer)
 }
 
-// AscendGreaterOrEqual iterates through batches in ascending order starting from the first batch with rev >= pivot.
+// AscendGreaterOrEqual iterates through entries in ascending order starting from the first entry with revision >= pivot.
 // TODO: use binary search on the ring buffer to locate the first entry >= nextRev instead of a full scan
-func (r *ringBuffer) AscendGreaterOrEqual(pivot int64, iter IterFunc) {
+func (r *ringBuffer[T]) AscendGreaterOrEqual(pivot int64, iter IterFunc[T]) {
 	if r.size == 0 {
 		return
 	}
 
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
-		eventBatch := r.buffer[i]
+		entry := r.buffer[i]
 
-		if eventBatch.events == nil {
+		if entry.items == nil {
 			panic(fmt.Sprintf("ringBuffer.AscendGreaterOrEqual: unexpected nil at %d", i))
 		}
 
-		if eventBatch.rev < pivot {
+		if entry.revision < pivot {
 			continue
 		}
 
-		if !iter(eventBatch.rev, eventBatch.events) {
+		if !iter(entry.revision, entry.items) {
 			return
 		}
 	}
 }
 
-func (r *ringBuffer) AscendLessThan(pivot int64, iter IterFunc) {
+// AscendLessThan iterates in ascending order over entries with revision < pivot.
+func (r *ringBuffer[T]) AscendLessThan(pivot int64, iter IterFunc[T]) {
 	if r.size == 0 {
 		return
 	}
 
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
-		eventBatch := r.buffer[i]
+		entry := r.buffer[i]
 
-		if eventBatch.events == nil {
+		if entry.items == nil {
 			panic(fmt.Sprintf("ringBuffer.AscendLessThan: unexpected nil at %d", i))
 		}
 
-		if eventBatch.rev >= pivot {
+		if entry.revision >= pivot {
 			return
 		}
 
-		if !iter(eventBatch.rev, eventBatch.events) {
+		if !iter(entry.revision, entry.items) {
 			return
 		}
 	}
 }
 
-func (r *ringBuffer) DescendGreaterThan(pivot int64, iter IterFunc) {
+// DescendGreaterThan iterates in descending order over entries with revision > pivot.
+func (r *ringBuffer[T]) DescendGreaterThan(pivot int64, iter IterFunc[T]) {
 	if r.size == 0 {
 		return
 	}
 
 	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		eventBatch := r.buffer[i]
+		entry := r.buffer[i]
 
-		if eventBatch.events == nil {
+		if entry.items == nil {
 			panic(fmt.Sprintf("ringBuffer.DescendGreaterThan: unexpected nil at %d", i))
 		}
 
-		if eventBatch.rev <= pivot {
+		if entry.revision <= pivot {
 			return
 		}
 
-		if !iter(eventBatch.rev, eventBatch.events) {
+		if !iter(entry.revision, entry.items) {
 			return
 		}
 	}
 }
 
-func (r *ringBuffer) DescendLessOrEqual(pivot int64, iter IterFunc) {
+// DescendLessOrEqual iterates in descending order over entries with revision <= pivot.
+func (r *ringBuffer[T]) DescendLessOrEqual(pivot int64, iter IterFunc[T]) {
 	if r.size == 0 {
 		return
 	}
 
 	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		eventBatch := r.buffer[i]
+		entry := r.buffer[i]
 
-		if eventBatch.events == nil {
+		if entry.items == nil {
 			panic(fmt.Sprintf("ringBuffer.DescendLessOrEqual: unexpected nil at %d", i))
 		}
 
-		if eventBatch.rev > pivot {
+		if entry.revision > pivot {
 			continue
 		}
 
-		if !iter(eventBatch.rev, eventBatch.events) {
+		if !iter(entry.revision, entry.items) {
 			return
 		}
 	}
 }
 
-// PeekLatest returns the most recently-appended event (or nil if empty).
-func (r *ringBuffer) PeekLatest() int64 {
+// PeekLatest returns the most recently-appended revision (or 0 if empty).
+func (r *ringBuffer[T]) PeekLatest() int64 {
 	if r.size == 0 {
 		return 0
 	}
 	idx := (r.head - 1 + len(r.buffer)) % len(r.buffer)
-	return r.buffer[idx].rev
+	return r.buffer[idx].revision
 }
 
-// PeekOldest returns the oldest event currently stored (or nil if empty).
-func (r *ringBuffer) PeekOldest() int64 {
+// PeekOldest returns the oldest revision currently stored (or 0 if empty).
+func (r *ringBuffer[T]) PeekOldest() int64 {
 	if r.size == 0 {
 		return 0
 	}
-	return r.buffer[r.tail].rev
+	return r.buffer[r.tail].revision
 }
 
-func (r *ringBuffer) RebaseHistory() {
+func (r *ringBuffer[T]) RebaseHistory() {
 	r.head, r.tail, r.size = 0, 0, 0
 	for i := range r.buffer {
-		r.buffer[i] = batch{}
+		r.buffer[i] = entry[T]{}
 	}
 }
 
-func (r *ringBuffer) moduloIndex(index int) int {
+func (r *ringBuffer[T]) moduloIndex(index int) int {
 	return (index + len(r.buffer)) % len(r.buffer)
 }
