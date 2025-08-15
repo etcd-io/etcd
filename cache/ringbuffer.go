@@ -52,13 +52,22 @@ func (r *ringBuffer[T]) Append(item T) {
 }
 
 // AscendGreaterOrEqual iterates through entries in ascending order starting from the first entry with revision >= pivot.
-// TODO: use binary search on the ring buffer to locate the first entry >= nextRev instead of a full scan
 func (r *ringBuffer[T]) AscendGreaterOrEqual(pivot int64, iter IterFunc[T]) {
 	if r.size == 0 {
 		return
 	}
 
-	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
+	iterStartIndex := r.findFirstGreaterOrEqualIndex(pivot)
+	if iterStartIndex == -1 {
+		return
+	}
+
+	iterCount := r.moduloIndex(r.head - iterStartIndex)
+	if iterCount == 0 {
+		iterCount = r.size
+	}
+
+	for n, i := 0, iterStartIndex; n < iterCount; n, i = n+1, (i+1)%len(r.buffer) {
 		entry := r.buffer[i]
 
 		if entry.revision < pivot {
@@ -77,7 +86,13 @@ func (r *ringBuffer[T]) AscendLessThan(pivot int64, iter IterFunc[T]) {
 		return
 	}
 
-	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
+	firstGEIndex := r.findFirstGreaterOrEqualIndex(pivot)
+	iterCount := r.size
+	if firstGEIndex != -1 {
+		iterCount = r.moduloIndex(firstGEIndex - r.tail)
+	}
+
+	for n, i := 0, r.tail; n < iterCount; n, i = n+1, (i+1)%len(r.buffer) {
 		entry := r.buffer[i]
 
 		if entry.revision >= pivot {
@@ -96,12 +111,19 @@ func (r *ringBuffer[T]) DescendGreaterThan(pivot int64, iter IterFunc[T]) {
 		return
 	}
 
-	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		entry := r.buffer[i]
+	lastIndex := r.moduloIndex(r.head - 1)
+	if r.buffer[lastIndex].revision <= pivot {
+		return
+	}
 
-		if entry.revision <= pivot {
-			return
-		}
+	firstGTIndex := r.findFirstGreaterThanIndex(pivot)
+	if firstGTIndex == -1 {
+		return
+	}
+
+	iterCount := r.moduloIndex(lastIndex-firstGTIndex) + 1
+	for n, i := 0, lastIndex; n < iterCount; n, i = n+1, r.moduloIndex(i-1) {
+		entry := r.buffer[i]
 
 		if !iter(entry.revision, entry.item) {
 			return
@@ -115,12 +137,14 @@ func (r *ringBuffer[T]) DescendLessOrEqual(pivot int64, iter IterFunc[T]) {
 		return
 	}
 
-	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
-		entry := r.buffer[i]
+	lastLEIndex := r.findLastLessOrEqualIndex(pivot)
+	if lastLEIndex == -1 {
+		return
+	}
 
-		if entry.revision > pivot {
-			continue
-		}
+	iterCount := r.moduloIndex(lastLEIndex-r.tail) + 1
+	for n, i := 0, lastLEIndex; n < iterCount; n, i = n+1, r.moduloIndex(i-1) {
+		entry := r.buffer[i]
 
 		if !iter(entry.revision, entry.item) {
 			return
@@ -150,6 +174,77 @@ func (r *ringBuffer[T]) RebaseHistory() {
 	for i := range r.buffer {
 		r.buffer[i] = entry[T]{}
 	}
+}
+
+// findFirstGreaterOrEqualIndex returns first index with revision >= targetRev, or -1 if none.
+func (r *ringBuffer[T]) findFirstGreaterOrEqualIndex(targetRev int64) int {
+	if r.size == 0 {
+		return -1
+	}
+
+	left, right := 0, r.size-1
+	result := -1
+
+	for left <= right {
+		mid := left + (right-left)/2
+		i := (r.tail + mid) % len(r.buffer)
+		currentRev := r.buffer[i].revision
+
+		if currentRev >= targetRev {
+			result = i
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+	return result
+}
+
+// findFirstGreaterThanIndex finds the first index with revision > targetRev, or -1 if none.
+func (r *ringBuffer[T]) findFirstGreaterThanIndex(targetRev int64) int {
+	if r.size == 0 {
+		return -1
+	}
+
+	left, right := 0, r.size-1
+	result := -1
+
+	for left <= right {
+		mid := left + (right-left)/2
+		i := (r.tail + mid) % len(r.buffer)
+		currentRev := r.buffer[i].revision
+
+		if currentRev > targetRev {
+			result = i
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+	return result
+}
+
+func (r *ringBuffer[T]) findLastLessOrEqualIndex(targetRev int64) int {
+	if r.size == 0 {
+		return -1
+	}
+
+	left, right := 0, r.size-1
+	result := -1
+
+	for left <= right {
+		mid := left + (right-left)/2
+		i := (r.tail + mid) % len(r.buffer)
+		currentRev := r.buffer[i].revision
+
+		if currentRev <= targetRev {
+			result = i
+			left = mid + 1
+		} else {
+			right = mid - 1
+		}
+	}
+	return result
 }
 
 func (r *ringBuffer[T]) moduloIndex(index int) int {
