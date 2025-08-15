@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 ### etcd server
 
 - [Remove the flag `--experimental-snapshot-catch-up-entries` from `etcd --help` output](https://github.com/etcd-io/etcd/pull/20422)
+- Fix [etcd repeatedly log the error "cannot detect storage schema version: missing confstate information"](https://github.com/etcd-io/etcd/pull/20496)
 
 ### Dependencies
 
