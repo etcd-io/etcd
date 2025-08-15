@@ -15,8 +15,10 @@
 package cache
 
 import (
+	"sync"
 	"sync/atomic"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -26,6 +28,8 @@ type watcher struct {
 	keyPred    KeyPredicate
 	stopped    int32
 	done       chan struct{} // closed together with Stop()
+	cancelMu   sync.RWMutex
+	cancelResp *clientv3.WatchResponse
 }
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
@@ -57,6 +61,28 @@ func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
 	default:
 		return false
 	}
+}
+
+func (w *watcher) markCompacted(compactRev int64) {
+	w.cancelMu.Lock()
+	if w.cancelResp == nil {
+		w.cancelResp = &clientv3.WatchResponse{
+			Canceled:        true,
+			CompactRevision: compactRev,
+			CancelReason:    rpctypes.ErrCompacted.Error(),
+		}
+	}
+	w.cancelMu.Unlock()
+	w.Stop()
+}
+
+func (w *watcher) getCancelResponse() (clientv3.WatchResponse, bool) {
+	w.cancelMu.RLock()
+	defer w.cancelMu.RUnlock()
+	if w.cancelResp == nil {
+		return clientv3.WatchResponse{}, false
+	}
+	return *w.cancelResp, true
 }
 
 // Stop closes the event channel atomically.

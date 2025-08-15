@@ -166,7 +166,7 @@ func (d *demux) resyncLaggingWatchers() {
 
 	for w, nextRev := range d.laggingWatchers {
 		if nextRev < oldestRev {
-			w.Stop()
+			w.markCompacted(nextRev)
 			delete(d.laggingWatchers, w)
 			continue
 		}
@@ -188,10 +188,4 @@ func (d *demux) resyncLaggingWatchers() {
 			d.laggingWatchers[w] = nextRev
 		}
 	}
-}
-
-func (d *demux) PeekOldest() int64 {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.history.PeekOldest()
 }
