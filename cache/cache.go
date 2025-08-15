@@ -23,6 +23,7 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -95,18 +96,6 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	op := clientv3.OpWatch(key, opts...)
 	startRev := op.Rev()
 
-	if startRev != 0 {
-		if oldest := c.demux.PeekOldest(); oldest != 0 && startRev < oldest {
-			ch := make(chan clientv3.WatchResponse, 1)
-			ch <- clientv3.WatchResponse{
-				Canceled:        true,
-				CompactRevision: startRev,
-			}
-			close(ch)
-			return ch
-		}
-	}
-
 	pred, err := c.validateWatch(key, op)
 	if err != nil {
 		ch := make(chan clientv3.WatchResponse, 1)
@@ -132,6 +121,13 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 				return
 			case events, ok := <-w.eventQueue:
 				if !ok {
+					if w.cancelResp != nil {
+						select {
+						case <-ctx.Done():
+						case <-c.internalCtx.Done():
+						case responseChan <- *w.cancelResp:
+						}
+					}
 					return
 				}
 				select {
@@ -299,7 +295,11 @@ func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, r
 			readyOnce.Do(func() { c.ready.Set() })
 			if err := resp.Err(); err != nil {
 				c.ready.Reset()
-				c.demux.Purge()
+				if errors.Is(err, rpctypes.ErrCompacted) || resp.CompactRevision > 0 {
+					c.demux.Compact(resp.CompactRevision)
+				} else {
+					c.demux.Purge()
+				}
 				return err
 			}
 			c.demux.Broadcast(resp.Events)
