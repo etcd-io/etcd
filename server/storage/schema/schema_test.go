@@ -111,16 +111,7 @@ func TestMigrate(t *testing.T) {
 		expectErrorMsg string
 	}{
 		// As storage version field was added in v3.6, for v3.5 we will not set it.
-		// For storage to be considered v3.5 it have both confstate and term key set.
-		{
-			name:           `Upgrading v3.5 to v3.6 should be rejected if confstate is not set`,
-			version:        version.V3_5,
-			overrideKeys:   func(tx backend.UnsafeReadWriter) {},
-			targetVersion:  version.V3_6,
-			expectVersion:  nil,
-			expectError:    true,
-			expectErrorMsg: `cannot detect storage schema version: missing confstate information`,
-		},
+		// For storage to be considered v3.5 it has term key set.
 		{
 			name:    `Upgrading v3.5 to v3.6 should be rejected if term is not set`,
 			version: version.V3_5,
