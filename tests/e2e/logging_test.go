@@ -41,7 +41,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -71,7 +71,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -86,7 +86,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -101,7 +101,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 	}
