@@ -21,7 +21,7 @@ fi
 
 cfssl gencert --initca=true ./ca-csr.json | cfssljson --bare ./ca
 mv ca.pem ca.crt
-if which openssl >/dev/null; then
+if command -v openssl >/dev/null; then
   openssl x509 -in ca.crt -noout -text
 fi
 
@@ -43,7 +43,7 @@ cfssl gencert \
 mv server-ip.pem server-ip.crt
 mv server-ip-key.pem server-ip.key.insecure
 
-if which openssl >/dev/null; then
+if command -v openssl >/dev/null; then
   openssl x509 -in ./server.crt -text -noout
   openssl x509 -in ./server-ip.crt -text -noout
 fi
