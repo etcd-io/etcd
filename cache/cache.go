@@ -240,6 +240,12 @@ func (c *Cache) get(ctx context.Context) (*clientv3.GetResponse, error) {
 func (c *Cache) watch(ctx context.Context, rev int64) error {
 	readyOnce := sync.Once{}
 	for {
+		storeW := newWatcher(c.cfg.PerWatcherBufferSize*4, nil)
+		c.demux.Register(storeW, rev)
+		applyErr := make(chan error, 1)
+		c.waitGroup.Add(1)
+		go c.applyStorage(ctx, storeW, applyErr)
+
 		watchCh := c.watcher.Watch(
 			ctx,
 			c.prefix,
@@ -249,24 +255,61 @@ func (c *Cache) watch(ctx context.Context, rev int64) error {
 			clientv3.WithCreatedNotify(),
 		)
 
-		for resp := range watchCh {
+		err := c.watchEvents(ctx, watchCh, applyErr, &readyOnce)
+		c.demux.Unregister(storeW)
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (c *Cache) applyStorage(ctx context.Context, storeW *watcher, applyErr chan<- error) {
+	defer c.waitGroup.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.internalCtx.Done():
+			return
+		case events, ok := <-storeW.eventQueue:
+			if !ok {
+				return
+			}
+			if err := c.store.Apply(events); err != nil {
+				select {
+				case applyErr <- err:
+				default:
+				}
+				return
+			}
+		}
+	}
+}
+
+func (c *Cache) watchEvents(ctx context.Context, watchCh clientv3.WatchChan, applyErr <-chan error, readyOnce *sync.Once) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case resp, ok := <-watchCh:
+			if !ok {
+				return nil
+			}
 			readyOnce.Do(func() { c.ready.Set() })
 			if err := resp.Err(); err != nil {
 				c.ready.Reset()
 				c.demux.Purge()
 				return err
 			}
-
-			if err := c.store.Apply(resp.Events); err != nil {
-				c.ready.Reset()
-				c.demux.Purge()
-				return err
-			}
 			c.demux.Broadcast(resp.Events)
-		}
-
-		if ctx.Err() != nil {
-			return ctx.Err()
+		case err := <-applyErr:
+			c.ready.Reset()
+			c.demux.Purge()
+			return err
 		}
 	}
 }
