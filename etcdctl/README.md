@@ -1129,6 +1129,484 @@ DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 ./etcdctl downgrade cancel
 Downgrade cancel success, cluster version 3.5
 ```
+### DIAGNOSIS <subcommand>
+
+`diagnosis` collects a set of troubleshooting details from every endpoint and
+optionally analyses an etcd data directory when `--offline` is specified.
+The command runs several plugins including membership checks, endpoint status,
+serializable and linearizable reads and a small metrics snapshot.
+
+#### Example
+
+```bash
+# online analysis
+./etcdctl diagnosis --endpoints=http://127.0.0.1:2379
+
+# offline analysis
+./etcdctl diagnosis --offline --data-dir /var/lib/etcd
+```
+
+
+### DIAGNOSIS
+
+`etcdctl diagnosis [flags]` - Collects and analyzes troubleshooting data from an etcd cluster.
+
+The `diagnosis` command is a powerful tool for troubleshooting etcd clusters. It gathers a comprehensive set of diagnostic details from each cluster member. When run in online mode, it performs several checks, including:
+
+  * **Membership checks**: Verifies the cluster membership information.
+  * **Endpoint status**: Retrieves the status of each endpoint.
+  * **Serializable and linearizable reads**: Performs read operations to validate data consistency.
+  * **Metrics snapshot**: Collects a small snapshot of key metrics.
+
+For offline analysis, the `--offline` flag can be used to analyze an etcd data directory. This is useful for troubleshooting a non-operational cluster.
+
+#### **FLAGS**
+
+  * `--offline`: Enables offline analysis of an etcd data directory.
+  * `--data-dir`: The path to the etcd data directory for offline analysis.
+
+#### **EXAMPLES**
+
+##### **Online Analysis**
+
+To perform an online analysis of a running etcd cluster, you can use the following command. This will collect and analyze data from all specified endpoints.
+
+```bash
+etcdctl diagnosis --endpoints=https://10.0.1.10:2379,https://10.0.1.11:2379,https://10.0.1.12:2379 --cacert ./ca.crt --key ./etcd-diagnosis.key --cert ./etcd-diagnosis.crt
+```
+
+<details> <summary>Example output</summary>
+
+```json
+{
+	"input": {
+		"endpoints": [
+			"127.0.0.1:2379"
+		],
+		"useClusterEndpoints": true,
+		"dial-timeout": 2000000000,
+		"command-timeout": 5000000000,
+		"keep-alive-time": 2000000000,
+		"keep-alive-timeout": 5000000000,
+		"insecure": true,
+		"insecure-discovery": true,
+		"db-quota-bytes": 2147483648
+	},
+	"results": [
+		{
+			"name": "membershipChecker",
+			"summary": "Successful",
+			"memberList": {
+				"header": {
+					"cluster_id": 17237436991929493444,
+					"member_id": 9372538179322589801,
+					"raft_term": 2
+				},
+				"members": [
+					{
+						"ID": 9372538179322589801,
+						"name": "infra1",
+						"peerURLs": [
+							"http://127.0.0.1:12380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:2379"
+						]
+					},
+					{
+						"ID": 10501334649042878790,
+						"name": "infra2",
+						"peerURLs": [
+							"http://127.0.0.1:22380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:22379"
+						]
+					},
+					{
+						"ID": 18249187646912138824,
+						"name": "infra3",
+						"peerURLs": [
+							"http://127.0.0.1:32380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:32379"
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "epStatusChecker",
+			"summary": [
+				"Successful"
+			],
+			"epStatusList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 9372538179322589801,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 10501334649042878790,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 18249187646912138824,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				}
+			]
+		},
+		{
+			"name": "serializableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "686.5µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "1.129291ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.034625ms"
+				}
+			]
+		},
+		{
+			"name": "linearizableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "1.286333ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "890.417µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.257791ms"
+				}
+			]
+		},
+		{
+			"name": "metricsChecker",
+			"summary": [
+				"Successful"
+			],
+			"epMetricsList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "3.752625ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 5",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 7"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0001\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0004\"} 3",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0008\"} 52",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0016\"} 135",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0004\"} 4",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0008\"} 55",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0016\"} 136",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "3.257333ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 1",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 7"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0002\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0004\"} 3",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0008\"} 36",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0016\"} 123",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0008\"} 74",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0016\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "3.16275ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 3",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0002\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0008\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0016\"} 67",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0002\"} 1",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0008\"} 9",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0016\"} 124",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				}
+			]
+		}
+	]
+}
+```
+
+</details>
+
+<br/>
+
+##### **Offline Analysis**
+
+For offline analysis, you can specify the data directory using the `--data-dir` flag. This is useful for troubleshooting a cluster that is not currently running.
+
+```bash
+etcdctl diagnosis --offline --data-dir ~/tmp/etcd/data/
+```
+
+The output will provide a summary of key statistics from the offline data.
+
+```
+2025/05/23 16:58:37 etcd diagnosis performs offline analysis...
+All key stats:
+/registry/leases/kube-system/kube-controller-manager: 171
+/registry/leases/kube-system/kube-scheduler: 171
+/registry/masterleases/30.1.0.2: 36
+/registry/leases/kube-node-lease/a341653e-a558-4e2d-ac86-cd7d828341bc: 35
+/registry/leases/kube-node-lease/37ff8ff5-a3ab-454d-a1e7-a30ce20536f5: 35
+/registry/leases/kube-node-lease/535d6dce-f28e-4b53-aff5-5eec8fde2786: 34
+/registry/minions/a341653e-a558-4e2d-ac86-cd7d828341bc: 2
+/registry/minions/37ff8ff5-a3ab-454d-a1e7-a30ce20536f5: 2
+compact_rev_key: 2
+/registry/minions/535d6dce-f28e-4b53-aff5-5eec8fde2786: 2
+/registry/clusterrolebindings/metrics-server:system:auth-delegator: 1
+/registry/pods/vmware-system-csi/vsphere-csi-node-jjrtp: 1
+```
 
 ## Concurrency commands
 
