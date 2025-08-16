@@ -95,18 +95,6 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 	op := clientv3.OpWatch(key, opts...)
 	startRev := op.Rev()
 
-	if startRev != 0 {
-		if oldest := c.demux.PeekOldest(); oldest != 0 && startRev < oldest {
-			ch := make(chan clientv3.WatchResponse, 1)
-			ch <- clientv3.WatchResponse{
-				Canceled:        true,
-				CompactRevision: startRev,
-			}
-			close(ch)
-			return ch
-		}
-	}
-
 	pred, err := c.validateWatch(key, op)
 	if err != nil {
 		ch := make(chan clientv3.WatchResponse, 1)
@@ -132,6 +120,15 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 				return
 			case events, ok := <-w.eventQueue:
 				if !ok {
+					if resp, has := w.getCancelResponse(); has {
+						select {
+						case <-ctx.Done():
+							return
+						case <-c.internalCtx.Done():
+							return
+						case responseChan <- resp:
+						}
+					}
 					return
 				}
 				select {
