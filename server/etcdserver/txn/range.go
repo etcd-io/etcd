@@ -28,8 +28,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = traceutil.EnsureTrace(ctx, lg, "range")
+func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) (resp *pb.RangeResponse, err error) {
+	ctx, trace := traceutil.EnsureTrace(ctx, lg, "range")
 	defer func(start time.Time) {
 		success := err == nil
 		RangeSecObserve(success, time.Since(start))
@@ -37,7 +37,7 @@ func Range(ctx context.Context, lg *zap.Logger, kv mvcc.KV, r *pb.RangeRequest) 
 	txnRead := kv.Read(mvcc.ConcurrentReadTxMode, trace)
 	defer txnRead.End()
 	resp, err = executeRange(ctx, lg, txnRead, r)
-	return resp, trace, err
+	return resp, err
 }
 
 func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *pb.RangeRequest) (*pb.RangeResponse, error) {

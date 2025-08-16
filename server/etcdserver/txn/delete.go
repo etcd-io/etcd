@@ -25,15 +25,15 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = traceutil.EnsureTrace(ctx, lg, "delete_range",
+func DeleteRange(ctx context.Context, lg *zap.Logger, kv mvcc.KV, dr *pb.DeleteRangeRequest) (resp *pb.DeleteRangeResponse, err error) {
+	ctx, trace := traceutil.EnsureTrace(ctx, lg, "delete_range",
 		traceutil.Field{Key: "key", Value: string(dr.Key)},
 		traceutil.Field{Key: "range_end", Value: string(dr.RangeEnd)},
 	)
 	txnWrite := kv.Write(trace)
 	defer txnWrite.End()
 	resp, err = deleteRange(ctx, txnWrite, dr)
-	return resp, trace, err
+	return resp, err
 }
 
 func deleteRange(ctx context.Context, txnWrite mvcc.TxnWrite, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
