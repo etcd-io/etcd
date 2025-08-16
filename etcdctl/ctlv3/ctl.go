@@ -16,10 +16,12 @@
 package ctlv3
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
@@ -106,9 +108,13 @@ func init() {
 		command.NewCheckCommand(),
 		command.NewCompletionCommand(),
 		command.NewDowngradeCommand(),
+		command.NewOptionsCommand(rootCmd),
 	)
-
 	command.SetHelpCmdGroup(rootCmd)
+
+	hideAllPersistentFlags()
+	hideHelpFlag()
+	addOptionsPrompt()
 }
 
 func Start() error {
@@ -122,6 +128,27 @@ func MustStart() {
 		}
 		os.Exit(cobrautl.ExitError)
 	}
+}
+
+func hideAllPersistentFlags() {
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		rootCmd.PersistentFlags().MarkHidden(f.Name)
+	})
+}
+
+func hideHelpFlag() {
+	if rootCmd.Flags().Lookup("help") == nil {
+		rootCmd.Flags().BoolP("help", "h", false, "help for "+rootCmd.Name())
+	}
+	rootCmd.Flags().MarkHidden("help")
+}
+
+func addOptionsPrompt() {
+	defaultHelpFunc := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		defaultHelpFunc(cmd, args)
+		fmt.Fprintln(cmd.OutOrStdout(), `Use "etcdctl options" for a list of global command-line options (applies to all commands).`)
+	})
 }
 
 func init() {
