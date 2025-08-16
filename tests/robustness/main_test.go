@@ -124,7 +124,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	panicked = false
 }
 
-func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
+func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) []report.ClientReport {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	g := errgroup.Group{}
@@ -175,11 +175,19 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		t.Error(err)
 	}
 
+	reports := slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
+	totalStats := traffic.CalculateStats(reports, 0, time.Since(baseTime))
+
+	lg.Info("Completed scenario",
+		zap.Int("request", totalStats.Successes+totalStats.Failures),
+		zap.Int("events", totalStats.Events),
+	)
+
 	err = client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {
 		t.Error(err)
 	}
-	return slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
+	return reports
 }
 
 func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
