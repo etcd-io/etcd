@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"time"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -40,6 +41,26 @@ func isConnectedSince(transport rafthttp.Transporter, since time.Time, remote ty
 // members in the cluster since the given time.
 func isConnectedFullySince(transport rafthttp.Transporter, since time.Time, self types.ID, members []*membership.Member) bool {
 	return numConnectedSince(transport, since, self, members) == len(members)
+}
+
+// isTooManyRequest checks whether the gap between applied index and committed
+// index is too large. r *pb.InternalRaftRequest should read-only.
+func isTooManyRequest(ai, ci uint64, r *pb.InternalRaftRequest) bool {
+	// Critical request kinds include LeaseRevoke
+	isCritical := r != nil && r.LeaseRevoke != nil
+
+	// If the gap is larger than maxGapBetweenApplyAndCommitIndex, reject all normal request
+	if !isCritical && ci > ai+maxGapBetweenApplyAndCommitIndex {
+		return true
+	}
+
+	// Make an extra 10% gap buffer for critical requests, so thay can be applied
+	// during overload conditions.
+	if isCritical && ci-ai > maxGapBetweenApplyAndCommitIndex+500 {
+		return true
+	}
+
+	return false
 }
 
 // numConnectedSince counts how many members are connected to the local member
