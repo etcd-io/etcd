@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -1511,6 +1512,21 @@ func TestV3RangeRequest(t *testing.T) {
 					t.Errorf("#%d.%d: Range error: %v", i, j, err)
 					continue
 				}
+				streamRange, err := kvc.RangeStream(t.Context(), &req)
+				if err != nil {
+					t.Errorf("#%d.%d: RangeStream error: %v", i, j, err)
+					continue
+				}
+				streamResp, err := clientv3.RangeStreamToRangeResponse(streamRange)
+				if err != nil {
+					t.Errorf("#%d.%d: Reading stream error: %v", i, j, err)
+					continue
+				}
+				if diff := cmp.Diff(resp, streamResp); diff != "" {
+					t.Errorf("#%d.%d: StreamRange doesn't match Range: %s", i, j, diff)
+					continue
+				}
+
 				if len(resp.Kvs) != len(tt.wresps[j]) {
 					t.Errorf("#%d.%d: bad len(resp.Kvs). got = %d, want = %d, ", i, j, len(resp.Kvs), len(tt.wresps[j]))
 					continue
