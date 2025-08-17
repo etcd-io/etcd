@@ -27,7 +27,7 @@ type demux struct {
 	// activeWatchers & laggingWatchers hold the first revision the watcher still needs (nextRev).
 	activeWatchers  map[*watcher]int64
 	laggingWatchers map[*watcher]int64
-	history         ringBuffer[*clientv3.Event]
+	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
 }
 
@@ -45,7 +45,7 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 	return &demux{
 		activeWatchers:  make(map[*watcher]int64),
 		laggingWatchers: make(map[*watcher]int64),
-		history:         *newRingBuffer(historyWindowSize, func(ev *clientv3.Event) int64 { return ev.Kv.ModRevision }),
+		history:         *newRingBuffer(historyWindowSize, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision }),
 		resyncInterval:  resyncInterval,
 	}
 }
@@ -110,7 +110,19 @@ func (d *demux) Broadcast(events []*clientv3.Event) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	d.history.Append(events)
+	batchStart := 0
+	for end := 1; end < len(events); end++ {
+		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
+			if end > batchStart {
+				d.history.Append(events[batchStart:end])
+			}
+			batchStart = end
+		}
+	}
+	if batchStart < len(events) {
+		d.history.Append(events[batchStart:])
+	}
+
 	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
 	for w, nextRev := range d.activeWatchers {
@@ -119,19 +131,18 @@ func (d *demux) Broadcast(events []*clientv3.Event) {
 			delete(d.activeWatchers, w)
 			continue
 		}
-		start := len(events)
+		sendStart := len(events)
 		for i, ev := range events {
 			if ev.Kv.ModRevision >= nextRev {
-				start = i
+				sendStart = i
 				break
 			}
 		}
-
-		if start == len(events) {
+		if sendStart == len(events) {
 			continue
 		}
 
-		if !w.enqueueEvent(events[start:]) { // overflow → lagging
+		if !w.enqueueEvent(events[sendStart:]) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {
