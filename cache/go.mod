@@ -5,6 +5,7 @@ go 1.24
 toolchain go1.24.6
 
 require (
+	github.com/google/btree v1.1.3
 	github.com/google/go-cmp v0.7.0
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0

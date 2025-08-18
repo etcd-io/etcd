@@ -59,6 +59,9 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 	if cfg.HistoryWindowSize <= 0 {
 		return nil, fmt.Errorf("invalid HistoryWindowSize %d (must be > 0)", cfg.HistoryWindowSize)
 	}
+	if cfg.BTreeDegree < 2 {
+		return nil, fmt.Errorf("invalid BTreeDegree %d (must be >= 2)", cfg.BTreeDegree)
+	}
 
 	internalCtx, cancel := context.WithCancel(context.Background())
 
@@ -67,7 +70,7 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 		cfg:         cfg,
 		watcher:     client.Watcher,
 		kv:          client.KV,
-		store:       newStore(),
+		store:       newStore(cfg.BTreeDegree),
 		ready:       newReady(),
 		stop:        cancel,
 		internalCtx: internalCtx,

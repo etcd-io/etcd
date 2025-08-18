@@ -31,6 +31,8 @@ type Config struct {
 	MaxBackoff time.Duration
 	// GetTimeout is the timeout applied to the first Get() used to bootstrap the cache.
 	GetTimeout time.Duration
+	// BTreeDegree controls the degree (branching factor) of the in-memory B-tree store.
+	BTreeDegree int
 }
 
 // TODO: tune via performance/load tests.
@@ -42,6 +44,7 @@ func defaultConfig() Config {
 		InitialBackoff:       50 * time.Millisecond,
 		MaxBackoff:           2 * time.Second,
 		GetTimeout:           5 * time.Second,
+		BTreeDegree:          32,
 	}
 }
 
@@ -69,4 +72,8 @@ func WithMaxBackoff(d time.Duration) Option {
 
 func WithGetTimeout(d time.Duration) Option {
 	return func(c *Config) { c.GetTimeout = d }
+}
+
+func WithBTreeDegree(n int) Option {
+	return func(c *Config) { c.BTreeDegree = n }
 }
