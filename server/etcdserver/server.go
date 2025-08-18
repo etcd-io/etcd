@@ -1034,6 +1034,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
+	lg.Info("applySnapshot: opened snapshot backend")
+	// gofail: var applyAfterOpenSnapshot struct{}
 
 	// We need to set the backend to consistIndex before recovering the lessor,
 	// because lessor.Recover will commit the boltDB transaction, accordingly it
