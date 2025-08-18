@@ -315,29 +315,7 @@ func extractPattern(span *tracev1.Span, key string) (string, bool) {
 	if !found {
 		return "", false
 	}
-	if k == "/registry/health" || k == "compact_rev_key" {
-		return k, true
-	}
-	if !strings.HasPrefix(k, "/registry") {
-		return k, false
-	}
-	suffix := ""
-	if strings.HasSuffix(k, "/") {
-		suffix = "/"
-	}
-	switch strings.Count(strings.TrimRight(k, "/"), "/") {
-	case 1:
-		return "/registry" + suffix, true
-	case 2:
-		return "/registry/{resource}" + suffix, true
-	case 3:
-		return "/registry/{resource}/{namespace}" + suffix, true
-	case 4:
-		return "/registry/{resource}/{namespace}/{name}" + suffix, true
-	case 5:
-		return "/registry/{api-group}/{resource}/{namespace}/{name}" + suffix, true
-	}
-	return k, false
+	return pattern(k)
 }
 
 func columnsToArgs(span *tracev1.Span, cols []column) string {
