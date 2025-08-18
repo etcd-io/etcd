@@ -30,6 +30,9 @@ BENCHMARK_NAME="$1"
 ARGS="${*:2}"
 
 echo "Starting the etcd server..."
+
+# Create a directory for etcd data under /tmp/etcd
+mkdir -p /tmp/etcd
 DATA_DIR=$(mktemp -d /tmp/etcd/data-XXXXXX)
 ./bin/etcd --data-dir="$DATA_DIR" > /tmp/etcd.log 2>&1 &
 etcd_pid=$!
