@@ -16,6 +16,7 @@ package snapshot_test
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net/url"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
+	"go.etcd.io/etcd/pkg/v3/cpuutil"
 	"go.etcd.io/etcd/server/v3/embed"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -126,6 +128,9 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
+	if cpuutil.ByteOrder() == binary.BigEndian {
+		t.Skipf("skipping on big endian platforms since testdata/corrupted_backup.db is in little endian format")
+	}
 	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
 	integration2.BeforeTest(t)
 	_, err := os.Stat(dbPath)
