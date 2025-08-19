@@ -11,7 +11,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint v1.64.8
-	github.com/google/addlicense v1.1.1
+	github.com/google/addlicense v1.2.0
 	github.com/google/yamlfmt v0.17.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.1
 	go.etcd.io/gofail v0.2.0
