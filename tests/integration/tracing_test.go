@@ -99,8 +99,8 @@ func TestTracing(t *testing.T) {
 			name: "UnaryTxn",
 			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				_, err := cli.Txn(ctx).
-					If(clientv3.Compare(clientv3.ModRevision("key"), "=", 1)).
-					Then(clientv3.OpGet("key"), clientv3.OpGet("other_key")).
+					If(clientv3.Compare(clientv3.ModRevision("cmp_key"), "=", 1)).
+					Then(clientv3.OpPut("op_key", "val", clientv3.WithLease(1234)), clientv3.OpGet("other_key")).
 					Commit()
 				return err
 			},
@@ -109,7 +109,19 @@ func TestTracing(t *testing.T) {
 				Attributes: []*commonv1.KeyValue{
 					{
 						Key:   "compare_first_key",
-						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "cmp_key"}},
+					},
+					{
+						Key:   "success_first_key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "op_key"}},
+					},
+					{
+						Key:   "success_first_type",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "put"}},
+					},
+					{
+						Key:   "success_first_lease",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1234}},
 					},
 					{
 						Key:   "compare_len",
@@ -125,7 +137,7 @@ func TestTracing(t *testing.T) {
 					},
 					{
 						Key:   "read_only",
-						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
 					},
 				},
 			},
@@ -228,7 +240,7 @@ func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.C
 						}
 						if diff := cmp.Diff(wantSpan, gotSpan,
 							protocmp.Transform(),
-							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id"),
+							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id", "events"),
 						); diff != "" {
 							t.Errorf("Span mismatch (-want +got):\n%s", diff)
 						}

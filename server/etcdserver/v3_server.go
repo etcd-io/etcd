@@ -182,23 +182,15 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	return resp.(*pb.DeleteRangeResponse), nil
 }
 
-// firstCompareKey returns first non-empty key in the list of comparison operations.
-func firstCompareKey(c []*pb.Compare) string {
-	for _, op := range c {
-		key := string(op.GetKey())
-		if key != "" {
-			return key
-		}
-	}
-	return ""
-}
-
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	readOnly := txn.IsTxnReadonly(r)
 
 	var span trace.Span
 	ctx, span = traceutil.Tracer.Start(ctx, "txn", trace.WithAttributes(
 		attribute.String("compare_first_key", firstCompareKey(r.GetCompare())),
+		attribute.String("success_first_key", firstOpKey(r.GetSuccess())),
+		attribute.String("success_first_type", firstOpType(r.GetSuccess())),
+		attribute.Int64("success_first_lease", firstOpLease(r.GetSuccess())),
 		attribute.Int("compare_len", len(r.GetCompare())),
 		attribute.Int("success_len", len(r.GetSuccess())),
 		attribute.Int("failure_len", len(r.GetFailure())),
