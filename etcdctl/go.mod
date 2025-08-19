@@ -50,7 +50,7 @@ require (
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
-	go.etcd.io/bbolt v1.3.11 // indirect
+	go.etcd.io/bbolt v1.3.12 // indirect
 	go.etcd.io/etcd/raft/v3 v3.5.22 // indirect
 	go.etcd.io/etcd/server/v3 v3.5.22 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
