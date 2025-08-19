@@ -241,7 +241,11 @@ func (c *Cache) get(ctx context.Context) (*clientv3.GetResponse, error) {
 func (c *Cache) watch(rev int64) error {
 	readyOnce := sync.Once{}
 	for {
-		storeW := newWatcher(c.cfg.PerWatcherBufferSize, nil)
+		buf := c.cfg.PerWatcherBufferSize
+		if buf < 1 {
+			buf = 1
+		}
+		storeW := newWatcher(buf, nil)
 		c.demux.Register(storeW, rev)
 		applyErr := make(chan error, 1)
 		c.waitGroup.Add(1)
