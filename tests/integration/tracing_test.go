@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,6 +144,66 @@ func TestTracing(t *testing.T) {
 			},
 		},
 		{
+			name: "UnaryLeaseGrant",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Grant(ctx, 1_000_123)
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_grant",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "ttl",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1_000_123}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryLeaseRenew",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.KeepAliveOnce(ctx, 2345)
+				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
+					// errors.Is does not work accross gRPC bounduaries.
+					return nil
+				}
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_renew",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 2345}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryLeaseRevoke",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Revoke(ctx, 1234)
+				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
+					// errors.Is does not work accross gRPC bounduaries.
+					return nil
+				}
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_revoke",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1234}},
+					},
+				},
+			},
+		},
+		{
 			name: "StreamWatch",
 			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				// Create a context with a reasonable timeout
@@ -234,9 +295,17 @@ func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.C
 						if gotSpan.GetName() != wantSpan.GetName() {
 							continue
 						}
-						if len(wantSpan.GetAttributes()) == 0 && len(wantSpan.GetEvents()) == 0 {
+						if len(wantSpan.GetAttributes()) == 0 {
 							// Diff will compare only attributes and events when needed
 							return true
+						}
+						if gotSpan.GetName() == "lease_grant" {
+							// Ignore ID in lease grant which is not controlled by the client.
+							for _, attr := range gotSpan.GetAttributes() {
+								if attr.GetKey() == "id" {
+									attr.Value.Value.(*commonv1.AnyValue_IntValue).IntValue = 0
+								}
+							}
 						}
 						if diff := cmp.Diff(wantSpan, gotSpan,
 							protocmp.Transform(),
