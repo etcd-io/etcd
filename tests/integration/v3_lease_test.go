@@ -1142,7 +1142,7 @@ func acquireLeaseAndKey(clus *ClusterV3, key string) (int64, error) {
 		return 0, err
 	}
 	if lresp.Error != "" {
-		return 0, fmt.Errorf(lresp.Error)
+		return 0, errors.New(lresp.Error)
 	}
 	// attach to key
 	put := &pb.PutRequest{Key: []byte(key), Lease: lresp.ID}

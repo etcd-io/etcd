@@ -67,7 +67,7 @@ func errsToError(errs []error) error {
 	for i, err := range errs {
 		stringArr[i] = err.Error()
 	}
-	return fmt.Errorf(strings.Join(stringArr, ", "))
+	return fmt.Errorf("%s", strings.Join(stringArr, ", "))
 }
 
 func randBytes(size int) []byte {
