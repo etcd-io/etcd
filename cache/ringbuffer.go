@@ -14,8 +14,6 @@
 
 package cache
 
-import "fmt"
-
 type ringBuffer[T any] struct {
 	buffer []entry[T]
 	// head is the index immediately after the last non-empty entry in the buffer (i.e., the next write position).
@@ -25,13 +23,13 @@ type ringBuffer[T any] struct {
 
 type entry[T any] struct {
 	revision int64
-	items    []T
+	item     T
 }
 
 type (
 	KeyPredicate      = func([]byte) bool
 	RevisionOf[T any] func(T) int64
-	IterFunc[T any]   func(rev int64, items []T) bool
+	IterFunc[T any]   func(rev int64, item T) bool
 )
 
 func newRingBuffer[T any](capacity int, revisionOf RevisionOf[T]) *ringBuffer[T] {
@@ -42,29 +40,8 @@ func newRingBuffer[T any](capacity int, revisionOf RevisionOf[T]) *ringBuffer[T]
 	}
 }
 
-func (r *ringBuffer[T]) Append(items []T) {
-	start := 0
-	for end := 1; end < len(items); end++ {
-		if r.revisionOf(items[end]) != r.revisionOf(items[start]) {
-			r.append(entry[T]{
-				revision: r.revisionOf(items[start]),
-				items:    items[start:end],
-			})
-			start = end
-		}
-	}
-	if start < len(items) {
-		r.append(entry[T]{
-			revision: r.revisionOf(items[start]),
-			items:    items[start:],
-		})
-	}
-}
-
-func (r *ringBuffer[T]) append(entry entry[T]) {
-	if len(entry.items) == 0 {
-		return
-	}
+func (r *ringBuffer[T]) Append(item T) {
+	entry := entry[T]{revision: r.revisionOf(item), item: item}
 	if r.size == len(r.buffer) {
 		r.tail = (r.tail + 1) % len(r.buffer)
 	} else {
@@ -84,15 +61,11 @@ func (r *ringBuffer[T]) AscendGreaterOrEqual(pivot int64, iter IterFunc[T]) {
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
 		entry := r.buffer[i]
 
-		if entry.items == nil {
-			panic(fmt.Sprintf("ringBuffer.AscendGreaterOrEqual: unexpected nil at %d", i))
-		}
-
 		if entry.revision < pivot {
 			continue
 		}
 
-		if !iter(entry.revision, entry.items) {
+		if !iter(entry.revision, entry.item) {
 			return
 		}
 	}
@@ -107,15 +80,11 @@ func (r *ringBuffer[T]) AscendLessThan(pivot int64, iter IterFunc[T]) {
 	for n, i := 0, r.tail; n < r.size; n, i = n+1, (i+1)%len(r.buffer) {
 		entry := r.buffer[i]
 
-		if entry.items == nil {
-			panic(fmt.Sprintf("ringBuffer.AscendLessThan: unexpected nil at %d", i))
-		}
-
 		if entry.revision >= pivot {
 			return
 		}
 
-		if !iter(entry.revision, entry.items) {
+		if !iter(entry.revision, entry.item) {
 			return
 		}
 	}
@@ -130,15 +99,11 @@ func (r *ringBuffer[T]) DescendGreaterThan(pivot int64, iter IterFunc[T]) {
 	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
 		entry := r.buffer[i]
 
-		if entry.items == nil {
-			panic(fmt.Sprintf("ringBuffer.DescendGreaterThan: unexpected nil at %d", i))
-		}
-
 		if entry.revision <= pivot {
 			return
 		}
 
-		if !iter(entry.revision, entry.items) {
+		if !iter(entry.revision, entry.item) {
 			return
 		}
 	}
@@ -153,15 +118,11 @@ func (r *ringBuffer[T]) DescendLessOrEqual(pivot int64, iter IterFunc[T]) {
 	for n, i := 0, r.moduloIndex(r.head-1); n < r.size; n, i = n+1, r.moduloIndex(i-1) {
 		entry := r.buffer[i]
 
-		if entry.items == nil {
-			panic(fmt.Sprintf("ringBuffer.DescendLessOrEqual: unexpected nil at %d", i))
-		}
-
 		if entry.revision > pivot {
 			continue
 		}
 
-		if !iter(entry.revision, entry.items) {
+		if !iter(entry.revision, entry.item) {
 			return
 		}
 	}
