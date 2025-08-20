@@ -1,8 +1,6 @@
 module go.etcd.io/etcd/client/v3
 
-go 1.23.0
-
-toolchain go1.23.7
+go 1.24.4
 
 require (
 	github.com/dustin/go-humanize v1.0.0
