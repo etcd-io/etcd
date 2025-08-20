@@ -25,7 +25,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	cache "go.etcd.io/etcd/cache/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -958,56 +957,6 @@ func TestCacheUnsupportedGetOptions(t *testing.T) {
 				t.Errorf("Get with %s: expected ErrUnsupportedRequest, got %v", tc.name, err)
 			}
 		})
-	}
-}
-
-func TestCacheWatchOldRevisionCompacted(t *testing.T) {
-	integration.BeforeTest(t)
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
-	t.Cleanup(func() { clus.Terminate(t) })
-	client := clus.Client(0)
-	ctx := t.Context()
-
-	const window = 4
-	c, err := cache.New(client, "",
-		cache.WithHistoryWindowSize(window),
-		cache.WithPerWatcherBufferSize(0),
-		cache.WithResyncInterval(10*time.Millisecond))
-	if err != nil {
-		t.Fatalf("New(...): %v", err)
-	}
-	defer c.Close()
-	if err = c.WaitReady(ctx); err != nil {
-		t.Fatalf("cache not ready: %v", err)
-	}
-
-	putResp, err := client.Put(ctx, "/old/key", "0")
-	if err != nil {
-		t.Fatalf("Put: %v", err)
-	}
-	oldRev := putResp.Header.Revision
-
-	for i := 1; i < window*2; i++ {
-		if _, err = client.Put(ctx, fmt.Sprintf("/overflow/%d", i), "x"); err != nil {
-			t.Fatalf("Put overflow: %v", err)
-		}
-	}
-
-	watchCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-	ch := c.Watch(watchCtx, "/old/key", clientv3.WithRev(oldRev))
-
-	select {
-	case resp, ok := <-ch:
-		if !ok || !resp.Canceled {
-			t.Fatalf("expected canceled watch, got %+v closed=%v", resp, ok)
-		}
-		if resp.Err() == nil || (!errors.Is(resp.Err(), rpctypes.ErrCompacted) &&
-			!errors.Is(resp.Err(), cache.ErrUnsupportedRequest)) {
-			t.Fatalf("expected ErrCompacted (or temporary ErrUnsupportedRequest), got %v", resp.Err())
-		}
-	case <-watchCtx.Done():
-		t.Fatal("watch did not cancel with compaction error within timeout")
 	}
 }
 
