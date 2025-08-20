@@ -18,8 +18,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -400,6 +402,17 @@ func printableCallTable(callsByOperationName map[string]int) string {
 }
 
 func printableMatcherTable(cols []column, res map[row]int) string {
+	keys := slices.Collect(maps.Keys(res))
+	slices.SortFunc(keys, func(a, b row) int {
+		if a.pattern != b.pattern {
+			return strings.Compare(a.pattern, b.pattern)
+		}
+		if a.method != b.method {
+			return strings.Compare(a.method, b.method)
+		}
+		return strings.Compare(a.args, b.args)
+	})
+
 	buf := new(bytes.Buffer)
 	width := 2 + len(cols) + 2
 	alignment := make([]tw.Align, width)
@@ -425,7 +438,8 @@ func printableMatcherTable(cols []column, res map[row]int) string {
 	}
 
 	footer := make([]int, len(cols))
-	for r, callCount := range res {
+	for _, r := range keys {
+		callCount := res[r]
 		rowPrefix := make([]string, len(cols))
 		for i := range cols {
 			rowPrefix[i] = string(r.args[i])
