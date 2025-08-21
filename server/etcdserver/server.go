@@ -208,11 +208,11 @@ type Server interface {
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
 	// inflightSnapshots holds count the number of snapshots currently inflight.
-	inflightSnapshots atomic.Int64  // must use atomic operations to access; keep 64-bit aligned.
-	appliedIndex      atomic.Uint64 // must use atomic operations to access; keep 64-bit aligned.
-	committedIndex    atomic.Uint64 // must use atomic operations to access; keep 64-bit aligned.
-	term              atomic.Uint64 // must use atomic operations to access; keep 64-bit aligned.
-	lead              atomic.Uint64 // must use atomic operations to access; keep 64-bit aligned.
+	inflightSnapshots atomic.Int64
+	appliedIndex      atomic.Uint64
+	committedIndex    atomic.Uint64
+	term              atomic.Uint64
+	lead              atomic.Uint64
 
 	consistIndex cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
 	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
