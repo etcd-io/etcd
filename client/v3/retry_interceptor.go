@@ -353,11 +353,11 @@ func isContextError(err error) bool {
 func contextErrToGrpcErr(err error) error {
 	switch err {
 	case context.DeadlineExceeded:
-		return status.Errorf(codes.DeadlineExceeded, err.Error())
+		return status.Errorf(codes.DeadlineExceeded, "%v", err)
 	case context.Canceled:
-		return status.Errorf(codes.Canceled, err.Error())
+		return status.Errorf(codes.Canceled, "%v", err)
 	default:
-		return status.Errorf(codes.Unknown, err.Error())
+		return status.Errorf(codes.Unknown, "%v", err)
 	}
 }
 
