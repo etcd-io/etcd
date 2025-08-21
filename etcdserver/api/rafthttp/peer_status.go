@@ -67,7 +67,7 @@ func (s *peerStatus) deactivate(failure failureType, reason string) {
 		if s.lg != nil {
 			s.lg.Warn("peer became inactive (message send to peer failed)", zap.String("peer-id", s.id.String()), zap.Error(errors.New(msg)))
 		} else {
-			plog.Errorf(msg)
+			plog.Error(msg)
 			plog.Infof("peer %s became inactive (message send to peer failed)", s.id)
 		}
 		s.active = false
