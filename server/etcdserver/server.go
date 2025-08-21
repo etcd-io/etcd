@@ -208,11 +208,11 @@ type Server interface {
 // EtcdServer is the production implementation of the Server interface
 type EtcdServer struct {
 	// inflightSnapshots holds count the number of snapshots currently inflight.
-	inflightSnapshots int64  // must use atomic operations to access; keep 64-bit aligned.
-	appliedIndex      uint64 // must use atomic operations to access; keep 64-bit aligned.
-	committedIndex    uint64 // must use atomic operations to access; keep 64-bit aligned.
-	term              uint64 // must use atomic operations to access; keep 64-bit aligned.
-	lead              uint64 // must use atomic operations to access; keep 64-bit aligned.
+	inflightSnapshots atomic.Int64
+	appliedIndex      atomic.Uint64
+	committedIndex    atomic.Uint64
+	term              atomic.Uint64
+	lead              atomic.Uint64
 
 	consistIndex cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
 	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
@@ -1667,35 +1667,35 @@ func (s *EtcdServer) UpdateMember(ctx context.Context, memb membership.Member) (
 }
 
 func (s *EtcdServer) setCommittedIndex(v uint64) {
-	atomic.StoreUint64(&s.committedIndex, v)
+	s.committedIndex.Store(v)
 }
 
 func (s *EtcdServer) getCommittedIndex() uint64 {
-	return atomic.LoadUint64(&s.committedIndex)
+	return s.committedIndex.Load()
 }
 
 func (s *EtcdServer) setAppliedIndex(v uint64) {
-	atomic.StoreUint64(&s.appliedIndex, v)
+	s.appliedIndex.Store(v)
 }
 
 func (s *EtcdServer) getAppliedIndex() uint64 {
-	return atomic.LoadUint64(&s.appliedIndex)
+	return s.appliedIndex.Load()
 }
 
 func (s *EtcdServer) setTerm(v uint64) {
-	atomic.StoreUint64(&s.term, v)
+	s.term.Store(v)
 }
 
 func (s *EtcdServer) getTerm() uint64 {
-	return atomic.LoadUint64(&s.term)
+	return s.term.Load()
 }
 
 func (s *EtcdServer) setLead(v uint64) {
-	atomic.StoreUint64(&s.lead, v)
+	s.lead.Store(v)
 }
 
 func (s *EtcdServer) getLead() uint64 {
-	return atomic.LoadUint64(&s.lead)
+	return s.lead.Load()
 }
 
 func (s *EtcdServer) LeaderChangedNotify() <-chan struct{} {
@@ -1835,7 +1835,7 @@ func (s *EtcdServer) publishV3(timeout time.Duration) {
 }
 
 func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
-	atomic.AddInt64(&s.inflightSnapshots, 1)
+	s.inflightSnapshots.Add(1)
 
 	lg := s.Logger()
 	fields := []zap.Field{
@@ -1863,7 +1863,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 				}
 			}
 
-			atomic.AddInt64(&s.inflightSnapshots, -1)
+			s.inflightSnapshots.Add(-1)
 
 			lg.Info("sent merged snapshot", append(fields, zap.Duration("took", time.Since(now)))...)
 
@@ -2178,7 +2178,7 @@ func (s *EtcdServer) compactRaftLog(snapi uint64) {
 	// the snapshot sent to catch up. If we do not pause compaction, the log entries right after
 	// the snapshot sent might already be compacted. It happens when the snapshot takes long time
 	// to send and save. Pausing compaction avoids triggering a snapshot sending cycle.
-	if atomic.LoadInt64(&s.inflightSnapshots) != 0 {
+	if s.inflightSnapshots.Load() != 0 {
 		lg.Info("skip compaction since there is an inflight snapshot")
 		return
 	}
