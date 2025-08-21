@@ -112,7 +112,7 @@ func init() {
 	)
 	command.SetHelpCmdGroup(rootCmd)
 
-	hideAllPersistentFlags()
+	hideAllGlobalFlags()
 	hideHelpFlag()
 	addOptionsPrompt()
 }
@@ -130,7 +130,7 @@ func MustStart() {
 	}
 }
 
-func hideAllPersistentFlags() {
+func hideAllGlobalFlags() {
 	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
 		rootCmd.PersistentFlags().MarkHidden(f.Name)
 	})
