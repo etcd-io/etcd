@@ -34,3 +34,4 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### etcdctl
 
 - [Organize etcdctl commands](https://github.com/etcd-io/etcd/pull/20162) to make them more concise and easier to understand.
+- [Hide the global flags](https://github.com/etcd-io/etcd/pull/20493) to make the output of `etcdctl --help` looks cleaner and is consistent with kubectl.
