@@ -16,6 +16,7 @@ package snapshot
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/rand"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/embed"
+	"go.etcd.io/etcd/pkg/cpuutil"
 	"go.etcd.io/etcd/pkg/fileutil"
 	"go.etcd.io/etcd/pkg/testutil"
 
@@ -165,6 +167,9 @@ func TestSnapshotFilePermissions(t *testing.T) {
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
+	if cpuutil.ByteOrder() == binary.BigEndian {
+		t.Skipf("skipping on big endian platforms since testdata/corrupted_backup.db is in little endian format")
+	}
 	dbPath := "testdata/corrupted_backup.db"
 	if _, err := os.Stat(dbPath); err != nil {
 		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
