@@ -1,15 +1,15 @@
 module go.etcd.io/etcd/etcdctl/v3
 
-go 1.23.0
+go 1.24
 
-toolchain go1.23.12
+toolchain go1.24.6
 
 require (
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/cheggaaa/pb/v3 v3.1.6
 	github.com/dustin/go-humanize v1.0.1
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/etcd/api/v3 v3.6.4
