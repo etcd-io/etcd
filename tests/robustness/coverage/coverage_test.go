@@ -18,10 +18,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,8 +55,8 @@ type refOp struct {
 	keyAttrName string
 }
 
-type row struct {
-	method, pattern, args string
+type Row struct {
+	Method, Pattern, Args string
 }
 
 const notMatched byte = ' '
@@ -220,7 +218,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 			// new call pattern is found.
 			tracesWithNoMethod := make(map[string]bool)
 
-			callCounts := make(map[row]int)
+			callCounts := make(map[Row]int)
 			for _, span := range callsByOperationName[op] {
 				args := columnsToArgs(span, td.args)
 
@@ -236,7 +234,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 					tracesWithNoMethod[args] = true
 				}
 
-				callCounts[row{method, pattern, args}]++
+				callCounts[Row{method, pattern, args}]++
 			}
 
 			t.Logf("\n%s", printableMatcherTable(td.args, callCounts))
@@ -315,29 +313,7 @@ func extractPattern(span *tracev1.Span, key string) (string, bool) {
 	if !found {
 		return "", false
 	}
-	if k == "/registry/health" || k == "compact_rev_key" {
-		return k, true
-	}
-	if !strings.HasPrefix(k, "/registry") {
-		return k, false
-	}
-	suffix := ""
-	if strings.HasSuffix(k, "/") {
-		suffix = "/"
-	}
-	switch strings.Count(strings.TrimRight(k, "/"), "/") {
-	case 1:
-		return "/registry" + suffix, true
-	case 2:
-		return "/registry/{resource}" + suffix, true
-	case 3:
-		return "/registry/{resource}/{namespace}" + suffix, true
-	case 4:
-		return "/registry/{resource}/{namespace}/{name}" + suffix, true
-	case 5:
-		return "/registry/{api-group}/{resource}/{namespace}/{name}" + suffix, true
-	}
-	return k, false
+	return pattern(k)
 }
 
 func columnsToArgs(span *tracev1.Span, cols []column) string {
@@ -401,17 +377,8 @@ func printableCallTable(callsByOperationName map[string]int) string {
 	return buf.String()
 }
 
-func printableMatcherTable(cols []column, res map[row]int) string {
-	keys := slices.Collect(maps.Keys(res))
-	slices.SortFunc(keys, func(a, b row) int {
-		if a.pattern != b.pattern {
-			return strings.Compare(a.pattern, b.pattern)
-		}
-		if a.method != b.method {
-			return strings.Compare(a.method, b.method)
-		}
-		return strings.Compare(a.args, b.args)
-	})
+func printableMatcherTable(cols []column, res map[Row]int) string {
+	keys := sortPatternTable(res)
 
 	buf := new(bytes.Buffer)
 	width := 2 + len(cols) + 2
@@ -442,14 +409,14 @@ func printableMatcherTable(cols []column, res map[row]int) string {
 		callCount := res[r]
 		rowPrefix := make([]string, len(cols))
 		for i := range cols {
-			rowPrefix[i] = string(r.args[i])
-			if r.args[i] != notMatched {
+			rowPrefix[i] = string(r.Args[i])
+			if r.Args[i] != notMatched {
 				footer[i] += callCount
 			}
 		}
 
 		table.Append(append(
-			[]string{r.method, r.pattern},
+			[]string{r.Method, r.Pattern},
 			append(rowPrefix,
 				strconv.Itoa(callCount),
 				fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)),
