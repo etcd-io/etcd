@@ -119,7 +119,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 				return
 			case <-c.internalCtx.Done():
 				return
-			case events, ok := <-w.eventQueue:
+			case resp, ok := <-w.respCh:
 				if !ok {
 					if w.cancelResp != nil {
 						select {
@@ -135,7 +135,7 @@ func (c *Cache) Watch(ctx context.Context, key string, opts ...clientv3.OpOption
 					return
 				case <-c.internalCtx.Done():
 					return
-				case responseChan <- clientv3.WatchResponse{Events: events}:
+				case responseChan <- resp:
 				}
 			}
 		}
@@ -272,11 +272,17 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 		select {
 		case <-c.internalCtx.Done():
 			return nil
-		case events, ok := <-storeW.eventQueue:
+		case resp, ok := <-storeW.respCh:
 			if !ok {
 				return nil
 			}
-			if err := c.store.Apply(events); err != nil {
+			if resp.Canceled {
+				return nil
+			}
+			if len(resp.Events) == 0 {
+				continue
+			}
+			if err := c.store.Apply(resp.Events); err != nil {
 				return err
 			}
 		}

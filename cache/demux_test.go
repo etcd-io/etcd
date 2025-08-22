@@ -154,9 +154,15 @@ func readBatches(t *testing.T, w *watcher, n int) (revs []int64, sizes []int) {
 	timeout := time.After(2 * time.Second)
 	for len(revs) < n {
 		select {
-		case batch := <-w.eventQueue:
-			revs = append(revs, batch[0].Kv.ModRevision)
-			sizes = append(sizes, len(batch))
+		case resp := <-w.respCh:
+			if resp.Canceled {
+				t.Fatalf("unexpected canceled response in test: %v", resp.CancelReason)
+			}
+			if len(resp.Events) == 0 {
+				continue
+			}
+			revs = append(revs, resp.Events[0].Kv.ModRevision)
+			sizes = append(sizes, len(resp.Events))
 		case <-timeout:
 			t.Fatalf("timed out waiting for %d batches; got %d", n, len(revs))
 		}
