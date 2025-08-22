@@ -76,10 +76,6 @@ func TestReproduce18667(t *testing.T) {
 		// hasn't been resolved yet, so some members hold the wrong data
 		// "k2:foo". Once the issue is fixed, we should remove the if-else
 		// branch below, and all member should have consistent data k2:v2.
-		if i == 0 {
-			assert.Equal(t, "v2", string(resp.Kvs[0].Value))
-		} else {
-			assert.Equal(t, "foo", string(resp.Kvs[0].Value))
-		}
+		assert.Equal(t, "v2", string(resp.Kvs[0].Value))
 	}
 }
