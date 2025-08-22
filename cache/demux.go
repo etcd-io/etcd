@@ -151,7 +151,7 @@ func (d *demux) Broadcast(events []*clientv3.Event) {
 	}
 }
 
-// Purge is called when etcd compaction invalidates our cached history, so clients should resubscribe.
+// Purge stops all watchers and rebase history on watch errors
 func (d *demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -166,6 +166,21 @@ func (d *demux) Purge() {
 	d.laggingWatchers = make(map[*watcher]int64)
 }
 
+// Compact is called when etcd reports a compaction at compactRev to rebase history;
+// it keeps provably-too-old watchers for later cancellation, stops others, and clients should resubscribe.
+func (d *demux) Compact(compactRev int64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.history.RebaseHistory()
+
+	for w, next := range d.activeWatchers {
+		if next != 0 && next <= compactRev {
+			delete(d.activeWatchers, w)
+			d.laggingWatchers[w] = next
+		}
+	}
+}
+
 func (d *demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -177,7 +192,7 @@ func (d *demux) resyncLaggingWatchers() {
 
 	for w, nextRev := range d.laggingWatchers {
 		if nextRev < oldestRev {
-			w.Stop()
+			w.Compact(nextRev)
 			delete(d.laggingWatchers, w)
 			continue
 		}
@@ -199,10 +214,4 @@ func (d *demux) resyncLaggingWatchers() {
 			d.laggingWatchers[w] = nextRev
 		}
 	}
-}
-
-func (d *demux) PeekOldest() int64 {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.history.PeekOldest()
 }
