@@ -23,7 +23,7 @@ import (
 
 // watcher holds one client’s buffered stream of events.
 type watcher struct {
-	eventQueue chan []*clientv3.Event
+	respCh     chan clientv3.WatchResponse
 	cancelResp *clientv3.WatchResponse
 	keyPred    KeyPredicate
 	stopOnce   sync.Once
@@ -31,8 +31,8 @@ type watcher struct {
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 	return &watcher{
-		eventQueue: make(chan []*clientv3.Event, bufSize),
-		keyPred:    pred,
+		respCh:  make(chan clientv3.WatchResponse, bufSize),
+		keyPred: pred,
 	}
 }
 
@@ -52,7 +52,7 @@ func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
 		eventBatch = filtered
 	}
 	select {
-	case w.eventQueue <- eventBatch:
+	case w.respCh <- clientv3.WatchResponse{Events: eventBatch}:
 		return true
 	default:
 		return false
@@ -67,13 +67,13 @@ func (w *watcher) Compact(compactRev int64) {
 	}
 	w.stopOnce.Do(func() {
 		w.cancelResp = resp
-		close(w.eventQueue)
+		close(w.respCh)
 	})
 }
 
 // Stop closes the event channel atomically.
 func (w *watcher) Stop() {
 	w.stopOnce.Do(func() {
-		close(w.eventQueue)
+		close(w.respCh)
 	})
 }
