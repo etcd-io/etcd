@@ -19,7 +19,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"google.golang.org/grpc/metadata"
 	"io"
 	"log"
 	"math"
@@ -29,6 +28,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"google.golang.org/grpc/metadata"
 
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
@@ -440,10 +441,10 @@ func newClientCfg(lg *zap.Logger, eps []string) (*clientv3.Config, error) {
 func contextPropagationUnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
-		req interface{},
+		req any,
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
-	) (interface{}, error) {
+	) (any, error) {
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			ctx = metadata.NewOutgoingContext(ctx, md)
 		}
