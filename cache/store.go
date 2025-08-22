@@ -75,15 +75,16 @@ func (s *store) Apply(events []*clientv3.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, ev := range events {
-		if ev.Kv.ModRevision < s.latestRev {
-			return fmt.Errorf("cache: stale event batch (rev %d < latest %d)", ev.Kv.ModRevision, s.latestRev)
-		}
+	if err := validateRevisions(events, s.latestRev); err != nil {
+		return err
 	}
 
 	for _, ev := range events {
 		switch ev.Type {
 		case clientv3.EventTypeDelete:
+			if _, ok := s.kvs[string(ev.Kv.Key)]; !ok {
+				return fmt.Errorf("cache: delete non-existent key %s)", string(ev.Kv.Key))
+			}
 			delete(s.kvs, string(ev.Kv.Key))
 		case clientv3.EventTypePut:
 			s.kvs[string(ev.Kv.Key)] = ev.Kv
@@ -134,4 +135,20 @@ func (s *store) scanRange(startKey, endKey []byte) []*mvccpb.KeyValue {
 // isPrefixScan detects endKey=={0} semantics
 func isPrefixScan(endKey []byte) bool {
 	return len(endKey) == 1 && endKey[0] == 0
+}
+
+func validateRevisions(events []*clientv3.Event, latestRev int64) error {
+	if len(events) == 0 {
+		return nil
+	}
+	for _, ev := range events {
+		r := ev.Kv.ModRevision
+		if r < latestRev {
+			return fmt.Errorf("cache: stale event batch (rev %d < latest %d)", r, latestRev)
+		}
+		if r == latestRev {
+			return fmt.Errorf("cache: duplicate revision batch breaks atomic guarantee (rev %d == latest %d)", r, latestRev)
+		}
+	}
+	return nil
 }
