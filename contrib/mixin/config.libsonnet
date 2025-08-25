@@ -21,6 +21,6 @@
     // 2 : On Time Range Change (Will refresh Dashboards variables when time range will be changed)
     dashboard_var_refresh: 2,
     // clusterLabel is used to identify a cluster.
-    clusterLabel: 'job',
+    clusterLabel: 'cluster',
   },
 }
