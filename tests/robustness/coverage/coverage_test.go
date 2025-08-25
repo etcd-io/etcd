@@ -219,6 +219,7 @@ func testInterfaceUse(t *testing.T, filename string) {
 			tracesWithNoMethod := make(map[string]bool)
 
 			callCounts := make(map[Row]int)
+			contractCallCounts := make(map[Row]int)
 			for _, span := range callsByOperationName[op] {
 				args := columnsToArgs(span, td.args)
 
@@ -234,10 +235,14 @@ func testInterfaceUse(t *testing.T, filename string) {
 					tracesWithNoMethod[args] = true
 				}
 
+				_, cFound := contract(spansByID, span)
+				if cFound {
+					contractCallCounts[Row{method, pattern, args}]++
+				}
 				callCounts[Row{method, pattern, args}]++
 			}
 
-			t.Logf("\n%s", printableMatcherTable(td.args, callCounts))
+			t.Logf("\n%s", printableMatcherTable(td.args, callCounts, contractCallCounts))
 		})
 	}
 }
@@ -377,11 +382,11 @@ func printableCallTable(callsByOperationName map[string]int) string {
 	return buf.String()
 }
 
-func printableMatcherTable(cols []column, res map[Row]int) string {
+func printableMatcherTable(cols []column, res map[Row]int, contract map[Row]int) string {
 	keys := sortPatternTable(res)
 
 	buf := new(bytes.Buffer)
-	width := 2 + len(cols) + 2
+	width := 2 + len(cols) + 3
 	alignment := make([]tw.Align, width)
 	alignment[1] = tw.AlignLeft
 	cfgBuilder := tablewriter.NewConfigBuilder().
@@ -395,6 +400,7 @@ func printableMatcherTable(cols []column, res map[Row]int) string {
 	for i, col := range cols {
 		hdr[i+2] = col.name
 	}
+	hdr[len(hdr)-3] = "contract"
 	hdr[len(hdr)-2] = "calls"
 	hdr[len(hdr)-1] = "percent"
 	table.Header(hdr)
@@ -402,6 +408,10 @@ func printableMatcherTable(cols []column, res map[Row]int) string {
 	totalCalls := 0
 	for _, c := range res {
 		totalCalls += c
+	}
+	totalContractCalls := 0
+	for _, c := range contract {
+		totalContractCalls += c
 	}
 
 	footer := make([]int, len(cols))
@@ -418,6 +428,7 @@ func printableMatcherTable(cols []column, res map[Row]int) string {
 		table.Append(append(
 			[]string{r.Method, r.Pattern},
 			append(rowPrefix,
+				fmt.Sprintf("%.2f%%", float64(contract[r]*100)/float64(callCount)),
 				strconv.Itoa(callCount),
 				fmt.Sprintf("%.2f%%", float64(callCount*100)/float64(totalCalls)),
 			)...))
@@ -430,6 +441,7 @@ func printableMatcherTable(cols []column, res map[Row]int) string {
 	table.Footer(append([]string{"", ""},
 		append(
 			footerStr,
+			strconv.Itoa(totalContractCalls),
 			strconv.Itoa(totalCalls),
 			"100.00%",
 		)...))

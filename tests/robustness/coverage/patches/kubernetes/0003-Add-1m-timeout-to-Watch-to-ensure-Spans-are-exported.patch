@@ -1,0 +1,26 @@
+From 2a848f904aee8cff04d44fd14d2c17a2802f972b Mon Sep 17 00:00:00 2001
+From: Aleksander Mistewicz <amistewicz@google.com>
+Date: Fri, 22 Aug 2025 14:18:07 +0200
+Subject: [PATCH 3/4] Add 1m timeout to Watch to ensure Spans are exported
+
+Signed-off-by: Aleksander Mistewicz <amistewicz@google.com>
+---
+ vendor/go.etcd.io/etcd/client/v3/watch.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/vendor/go.etcd.io/etcd/client/v3/watch.go b/vendor/go.etcd.io/etcd/client/v3/watch.go
+index a46f98b8e28..ac820cabbb1 100644
+--- a/vendor/go.etcd.io/etcd/client/v3/watch.go
++++ b/vendor/go.etcd.io/etcd/client/v3/watch.go
+@@ -273,7 +273,7 @@ func (vc *valCtx) Done() <-chan struct{}       { return valCtxCh }
+ func (vc *valCtx) Err() error                  { return nil }
+ 
+ func (w *watcher) newWatcherGRPCStream(inctx context.Context) *watchGRPCStream {
+-	ctx, cancel := context.WithCancel(&valCtx{inctx})
++	ctx, cancel := context.WithTimeout(&valCtx{inctx}, time.Minute)
+ 	wgs := &watchGRPCStream{
+ 		owner:      w,
+ 		remote:     w.remote,
+-- 
+2.51.0.rc2.233.g662b1ed5c5-goog
+
