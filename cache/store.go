@@ -15,10 +15,10 @@
 package cache
 
 import (
-	"bytes"
 	"fmt"
-	"sort"
 	"sync"
+
+	"github.com/google/btree"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -28,12 +28,29 @@ var ErrNotReady = fmt.Errorf("cache: store not ready")
 
 type store struct {
 	mu        sync.RWMutex
-	kvs       map[string]*mvccpb.KeyValue
+	tree      *btree.BTree
+	degree    int
 	latestRev int64
 }
 
-func newStore() *store {
-	return &store{kvs: make(map[string]*mvccpb.KeyValue)}
+func newStore(degree int) *store {
+	return &store{
+		tree:   btree.New(degree),
+		degree: degree,
+	}
+}
+
+type kvItem struct {
+	key string
+	kv  *mvccpb.KeyValue
+}
+
+func newKVItem(kv *mvccpb.KeyValue) *kvItem {
+	return &kvItem{key: string(kv.Key), kv: kv}
+}
+
+func (a *kvItem) Less(b btree.Item) bool {
+	return a.key < b.(*kvItem).key
 }
 
 func (s *store) Get(startKey, endKey []byte) ([]*mvccpb.KeyValue, int64, error) {
@@ -47,16 +64,22 @@ func (s *store) Get(startKey, endKey []byte) ([]*mvccpb.KeyValue, int64, error) 
 	var out []*mvccpb.KeyValue
 	switch {
 	case len(endKey) == 0:
-		out = s.getSingle(startKey)
-	case isPrefixScan(endKey):
-		out = s.scanPrefix(startKey)
-	default:
-		out = s.scanRange(startKey, endKey)
-	}
+		if item := s.tree.Get(probeItemFromBytes(startKey)); item != nil {
+			out = append(out, item.(*kvItem).kv)
+		}
 
-	sort.Slice(out, func(i, j int) bool {
-		return bytes.Compare(out[i].Key, out[j].Key) < 0 // default: lexicographical, ascending‐by‐key sort
-	})
+	case isPrefixScan(endKey):
+		s.tree.AscendGreaterOrEqual(probeItemFromBytes(startKey), func(item btree.Item) bool {
+			out = append(out, item.(*kvItem).kv)
+			return true
+		})
+
+	default:
+		s.tree.AscendRange(probeItemFromBytes(startKey), probeItemFromBytes(endKey), func(item btree.Item) bool {
+			out = append(out, item.(*kvItem).kv)
+			return true
+		})
+	}
 	return out, s.latestRev, nil
 }
 
@@ -64,9 +87,9 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.kvs = make(map[string]*mvccpb.KeyValue, len(kvs))
+	s.tree = btree.New(s.degree)
 	for _, kv := range kvs {
-		s.kvs[string(kv.Key)] = kv
+		s.tree.ReplaceOrInsert(newKVItem(kv))
 	}
 	s.latestRev = rev
 }
@@ -82,12 +105,11 @@ func (s *store) Apply(events []*clientv3.Event) error {
 	for _, ev := range events {
 		switch ev.Type {
 		case clientv3.EventTypeDelete:
-			if _, ok := s.kvs[string(ev.Kv.Key)]; !ok {
-				return fmt.Errorf("cache: delete non-existent key %s)", string(ev.Kv.Key))
+			if removed := s.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
+				return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
 			}
-			delete(s.kvs, string(ev.Kv.Key))
 		case clientv3.EventTypePut:
-			s.kvs[string(ev.Kv.Key)] = ev.Kv
+			s.tree.ReplaceOrInsert(newKVItem(ev.Kv))
 		}
 		if ev.Kv.ModRevision > s.latestRev {
 			s.latestRev = ev.Kv.ModRevision
@@ -100,36 +122,6 @@ func (s *store) LatestRev() int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.latestRev
-}
-
-// getSingle fetches one key or nil
-func (s *store) getSingle(key []byte) []*mvccpb.KeyValue {
-	if kv, ok := s.kvs[string(key)]; ok {
-		return []*mvccpb.KeyValue{kv}
-	}
-	return nil
-}
-
-// scanPrefix returns all keys >= startKey
-func (s *store) scanPrefix(startKey []byte) []*mvccpb.KeyValue {
-	var res []*mvccpb.KeyValue
-	for _, kv := range s.kvs {
-		if bytes.Compare(kv.Key, startKey) >= 0 {
-			res = append(res, kv)
-		}
-	}
-	return res
-}
-
-// scanRange returns all keys in [startKey, endKey)
-func (s *store) scanRange(startKey, endKey []byte) []*mvccpb.KeyValue {
-	var res []*mvccpb.KeyValue
-	for _, kv := range s.kvs {
-		if bytes.Compare(kv.Key, startKey) >= 0 && bytes.Compare(kv.Key, endKey) < 0 {
-			res = append(res, kv)
-		}
-	}
-	return res
 }
 
 // isPrefixScan detects endKey=={0} semantics
@@ -152,3 +144,5 @@ func validateRevisions(events []*clientv3.Event, latestRev int64) error {
 	}
 	return nil
 }
+
+func probeItemFromBytes(b []byte) *kvItem { return &kvItem{key: string(b)} }
