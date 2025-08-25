@@ -33,6 +33,8 @@ type MockServer struct {
 	Network    string
 	Address    string
 	GRPCServer *grpc.Server
+	// Maintenance provides access to mock maintenance server state for tests.
+	Maintenance *mockMaintenanceServer
 }
 
 func (ms *MockServer) ResolverAddress() resolver.Address {
@@ -74,7 +76,8 @@ func StartMockServersOnNetwork(count int, network string) (ms *MockServers, err 
 func startMockServersTCP(count int) (ms *MockServers, err error) {
 	addrs := make([]string, 0, count)
 	for i := 0; i < count; i++ {
-		addrs = append(addrs, "localhost:0")
+		// Prefer explicit IPv4 loopback to avoid IPv6-only addresses like "[::]:port"
+		addrs = append(addrs, "127.0.0.1:0")
 	}
 	return startMockServers("tcp", addrs)
 }
@@ -133,6 +136,10 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	svr := grpc.NewServer()
 	pb.RegisterKVServer(svr, &mockKVServer{})
 	pb.RegisterLeaseServer(svr, &mockLeaseServer{})
+	// Initialize and register mock maintenance server
+	mtn := newMockMaintenanceServer()
+	pb.RegisterMaintenanceServer(svr, mtn)
+	ms.Servers[idx].Maintenance = mtn
 	ms.Servers[idx].GRPCServer = svr
 
 	ms.wg.Add(1)
@@ -211,4 +218,99 @@ func (s *mockLeaseServer) LeaseTimeToLive(context.Context, *pb.LeaseTimeToLiveRe
 
 func (s *mockLeaseServer) LeaseLeases(context.Context, *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	return &pb.LeaseLeasesResponse{}, nil
+}
+
+// mockMaintenanceServer implements pb.MaintenanceServer with minimal Alarm support.
+type mockMaintenanceServer struct {
+	pb.UnimplementedMaintenanceServer
+	mu sync.Mutex
+	// alarms indexed by memberID -> alarmType
+	alarms map[uint64]map[pb.AlarmType]struct{}
+}
+
+func newMockMaintenanceServer() *mockMaintenanceServer {
+	return &mockMaintenanceServer{
+		alarms: make(map[uint64]map[pb.AlarmType]struct{}),
+	}
+}
+
+// SetAlarms replaces the current alarms with the provided list.
+func (m *mockMaintenanceServer) SetAlarms(list []*pb.AlarmMember) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.alarms = make(map[uint64]map[pb.AlarmType]struct{})
+	for _, am := range list {
+		if am == nil {
+			continue
+		}
+		if _, ok := m.alarms[am.MemberID]; !ok {
+			m.alarms[am.MemberID] = make(map[pb.AlarmType]struct{})
+		}
+		m.alarms[am.MemberID][am.Alarm] = struct{}{}
+	}
+}
+
+// listAlarms returns a snapshot slice of current alarms.
+func (m *mockMaintenanceServer) listAlarms() []*pb.AlarmMember {
+	res := make([]*pb.AlarmMember, 0)
+	for mid, set := range m.alarms {
+		for at := range set {
+			am := &pb.AlarmMember{MemberID: mid, Alarm: at}
+			res = append(res, am)
+		}
+	}
+	return res
+}
+
+// Alarm supports GET and DEACTIVATE actions.
+func (m *mockMaintenanceServer) Alarm(ctx context.Context, req *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch req.GetAction() {
+	case pb.AlarmRequest_GET:
+		return &pb.AlarmResponse{Alarms: m.listAlarms()}, nil
+	case pb.AlarmRequest_DEACTIVATE:
+		// If MemberID==0 and Alarm==NONE, do nothing here. The client-side
+		// implementation expands it into multiple specific DEACTIVATE calls.
+		mid := req.GetMemberID()
+		at := req.GetAlarm()
+		var deactivated []*pb.AlarmMember
+		if mid == 0 || at == pb.AlarmType_NONE {
+			// Nothing to deactivate explicitly
+			return &pb.AlarmResponse{Alarms: deactivated}, nil
+		}
+		if set, ok := m.alarms[mid]; ok {
+			if _, ok2 := set[at]; ok2 {
+				delete(set, at)
+				deactivated = append(deactivated, &pb.AlarmMember{MemberID: mid, Alarm: at})
+				if len(set) == 0 {
+					delete(m.alarms, mid)
+				}
+			}
+		}
+		return &pb.AlarmResponse{Alarms: deactivated}, nil
+	default:
+		return &pb.AlarmResponse{}, nil
+	}
+}
+
+// SetMaintenanceAlarmsAt seeds alarms for a specific server index.
+func (ms *MockServers) SetMaintenanceAlarmsAt(idx int, list []*pb.AlarmMember) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	if idx < 0 || idx >= len(ms.Servers) || ms.Servers[idx] == nil || ms.Servers[idx].Maintenance == nil {
+		return
+	}
+	ms.Servers[idx].Maintenance.SetAlarms(list)
+}
+
+// SetMaintenanceAlarmsAll seeds alarms for all servers.
+func (ms *MockServers) SetMaintenanceAlarmsAll(list []*pb.AlarmMember) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+	for _, s := range ms.Servers {
+		if s != nil && s.Maintenance != nil {
+			s.Maintenance.SetAlarms(list)
+		}
+	}
 }
