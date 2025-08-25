@@ -24,7 +24,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 
 ### Dependencies
 
-- Compile binaries using [go 1.24.6](https://github.com/etcd-io/etcd/pull/20460)
+- Compile binaries using [go 1.25.0](https://github.com/etcd-io/etcd/pull/20522)
 - [Migrate the deprecated go-grpc-middleware v1 logging and tags libraries to v2 interceptors](https://github.com/etcd-io/etcd/pull/20420)
 
 ### Deprecations
