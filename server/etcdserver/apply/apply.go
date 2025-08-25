@@ -71,11 +71,11 @@ type applierV3 interface {
 	// delegates the actual execution to the applyFunc method.
 	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
 
-	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
-	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
-	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
-	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
+	Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, error)
+	Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error)
+	DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error)
+	Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, error)
+	Compaction(ctx context.Context, compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error)
 
 	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
 	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
@@ -142,37 +142,37 @@ func (a *applierV3backend) Apply(r *pb.InternalRaftRequest, shouldApplyV3 member
 	return applyFunc(r, shouldApplyV3)
 }
 
-func (a *applierV3backend) Put(p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	return mvcctxn.Put(context.TODO(), a.options.Logger, a.options.Lessor, a.options.KV, p)
+func (a *applierV3backend) Put(ctx context.Context, p *pb.PutRequest) (resp *pb.PutResponse, err error) {
+	return mvcctxn.Put(ctx, a.options.Logger, a.options.Lessor, a.options.KV, p)
 }
 
-func (a *applierV3backend) DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.DeleteRange(context.TODO(), a.options.Logger, a.options.KV, dr)
+func (a *applierV3backend) DeleteRange(ctx context.Context, dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {
+	return mvcctxn.DeleteRange(ctx, a.options.Logger, a.options.KV, dr)
 }
 
-func (a *applierV3backend) Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error) {
-	return mvcctxn.Range(context.TODO(), a.options.Logger, a.options.KV, r)
+func (a *applierV3backend) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeResponse, error) {
+	return mvcctxn.Range(ctx, a.options.Logger, a.options.KV, r)
 }
 
-func (a *applierV3backend) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	return mvcctxn.Txn(context.TODO(), a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
+func (a *applierV3backend) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
+	return mvcctxn.Txn(ctx, a.options.Logger, rt, a.options.TxnModeWriteWithSharedBuffer, a.options.KV, a.options.Lessor)
 }
 
-func (a *applierV3backend) Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error) {
+func (a *applierV3backend) Compaction(ctx context.Context, compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, error) {
 	resp := &pb.CompactionResponse{}
 	resp.Header = &pb.ResponseHeader{}
-	ctx, trace := traceutil.EnsureTrace(context.TODO(), a.options.Logger, "compact",
+	ctx, trace := traceutil.EnsureTrace(ctx, a.options.Logger, "compact",
 		traceutil.Field{Key: "revision", Value: compaction.Revision},
 	)
 
 	ch, err := a.options.KV.Compact(trace, compaction.Revision)
 	if err != nil {
-		return nil, ch, nil, err
+		return nil, ch, err
 	}
 	// get the current revision. which key to get is not important.
 	rr, _ := a.options.KV.Range(ctx, []byte("compaction"), nil, mvcc.RangeOptions{})
 	resp.Header.Revision = rr.Rev
-	return resp, ch, trace, err
+	return resp, ch, err
 }
 
 func (a *applierV3backend) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
@@ -239,15 +239,15 @@ type applierV3Capped struct {
 // with Puts so that the number of keys in the store is capped.
 func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
 
-func (a *applierV3Capped) Put(_ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	return nil, nil, errors.ErrNoSpace
+func (a *applierV3Capped) Put(_ context.Context, _ *pb.PutRequest) (*pb.PutResponse, error) {
+	return nil, errors.ErrNoSpace
 }
 
-func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *applierV3Capped) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	if a.q.Cost(r) > 0 {
-		return nil, nil, errors.ErrNoSpace
+		return nil, errors.ErrNoSpace
 	}
-	return a.applierV3.Txn(r)
+	return a.applierV3.Txn(ctx, r)
 }
 
 func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
@@ -431,22 +431,22 @@ func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Ba
 	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
 }
 
-func (a *quotaApplierV3) Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Put(ctx context.Context, p *pb.PutRequest) (*pb.PutResponse, error) {
 	ok := a.q.Available(p)
-	resp, trace, err := a.applierV3.Put(p)
+	resp, err := a.applierV3.Put(ctx, p)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
-	return resp, trace, err
+	return resp, err
 }
 
-func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
+func (a *quotaApplierV3) Txn(ctx context.Context, rt *pb.TxnRequest) (*pb.TxnResponse, error) {
 	ok := a.q.Available(rt)
-	resp, trace, err := a.applierV3.Txn(rt)
+	resp, err := a.applierV3.Txn(ctx, rt)
 	if err == nil && !ok {
 		err = errors.ErrNoSpace
 	}
-	return resp, trace, err
+	return resp, err
 }
 
 func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
