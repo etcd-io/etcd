@@ -1,0 +1,64 @@
+From 1a689e5bc18757ec1d9127b551585596cee5e679 Mon Sep 17 00:00:00 2001
+From: Aleksander Mistewicz <amistewicz@google.com>
+Date: Mon, 4 Aug 2025 15:56:48 +0200
+Subject: [PATCH 4/4] Configure cmd tests
+
+---
+ hack/lib/etcd.sh            | 6 ++++--
+ hack/make-rules/test-cmd.sh | 9 +++++++++
+ 2 files changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/hack/lib/etcd.sh b/hack/lib/etcd.sh
+index c6fc45a5fab..1f4fad6774d 100755
+--- a/hack/lib/etcd.sh
++++ b/hack/lib/etcd.sh
+@@ -17,6 +17,8 @@
+ # A set of helpers for starting/running etcd for tests
+ 
+ ETCD_VERSION=${ETCD_VERSION:-3.6.4}
++export PATH="${PATH}:/go/src/k8s.io/kubernetes/third_party/etcd"
++
+ ETCD_HOST=${ETCD_HOST:-127.0.0.1}
+ ETCD_PORT=${ETCD_PORT:-2379}
+ # This is intentionally not called ETCD_LOG_LEVEL:
+@@ -84,8 +86,8 @@ kube::etcd::start() {
+   else
+     ETCD_LOGFILE=${ETCD_LOGFILE:-"/dev/null"}
+   fi
+-  kube::log::info "etcd --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls http://${ETCD_HOST}:${ETCD_PORT} --log-level=${ETCD_LOGLEVEL} 2> \"${ETCD_LOGFILE}\" >/dev/null"
+-  etcd --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --log-level="${ETCD_LOGLEVEL}" 2> "${ETCD_LOGFILE}" >/dev/null &
++  kube::log::info "etcd --advertise-client-urls ${KUBE_INTEGRATION_ETCD_URL} --data-dir ${ETCD_DIR} --listen-client-urls http://${ETCD_HOST}:${ETCD_PORT} --log-level=${ETCD_LOGLEVEL} --enable-distributed-tracing --distributed-tracing-address=\"0.0.0.0:4317\" --distributed-tracing-service-name=\"etcd\" --distributed-tracing-sampling-rate=1000000 2> \"${ETCD_LOGFILE}\" >/dev/null"
++  etcd --advertise-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --data-dir "${ETCD_DIR}" --listen-client-urls "${KUBE_INTEGRATION_ETCD_URL}" --log-level="${ETCD_LOGLEVEL}" --enable-distributed-tracing --distributed-tracing-address="192.168.32.1:4317" --distributed-tracing-service-name="etcd" --distributed-tracing-sampling-rate=1000000 2> "${ETCD_LOGFILE}" >/dev/null &
+   ETCD_PID=$!
+ 
+   echo "Waiting for etcd to come up."
+diff --git a/hack/make-rules/test-cmd.sh b/hack/make-rules/test-cmd.sh
+index 7d9fb1db65c..179176533de 100755
+--- a/hack/make-rules/test-cmd.sh
++++ b/hack/make-rules/test-cmd.sh
+@@ -69,6 +69,14 @@ function run_kube_apiserver() {
+     VERSION_OVERRIDE="--version=$("${THIS_PLATFORM_BIN}/kube-apiserver" --version | awk '{print $2}')${CUSTOM_VERSION_SUFFIX:-}"
+   fi
+ 
++  cat <<EOF > "/tmp/kube-tracing-file"
++apiVersion: apiserver.config.k8s.io/v1beta1
++kind: TracingConfiguration
++# default value
++endpoint: 192.168.32.1:4317
++samplingRatePerMillion: 1000000
++EOF
++
+   "${THIS_PLATFORM_BIN}/kube-apiserver" \
+     ${VERSION_OVERRIDE:+"${VERSION_OVERRIDE}"} \
+     --bind-address="127.0.0.1" \
+@@ -84,6 +92,7 @@ function run_kube_apiserver() {
+     --service-account-issuer="https://kubernetes.default.svc" \
+     --service-account-signing-key-file="${SERVICE_ACCOUNT_KEY}" \
+     --storage-media-type="${KUBE_TEST_API_STORAGE_TYPE-}" \
++    --tracing-config-file="/tmp/kube-tracing-file" \
+     --cert-dir="${TMPDIR:-/tmp/}" \
+     --service-cluster-ip-range="10.0.0.0/24" \
+     --client-ca-file=hack/testdata/ca/ca.crt \
+-- 
+2.51.0.rc2.233.g662b1ed5c5-goog
+

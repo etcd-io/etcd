@@ -14,9 +14,25 @@ This information can be used to track the coverage of k8s-etcd contract.
 At first we will manually set up the cluster, run e2e tests, download traces and
 then execute the test.
 
+1. Customize and set the environment variables used by the code snippets below:
+
+```shell
+# Used for patches, building kind nodes, and running e2e tests.
+export KUBERNETES_REPO="$(go env GOPATH)/src/k8s.io/kubernetes"
+# Used when creating kind cluster and running e2e tests.
+export KUBECONFIG="${KUBERNETES_REPO}/kind-with-tracing-config"
+```
+
 1. Set up [KIND
 cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) with
 tracing exporting to [Jaeger](https://www.jaegertracing.io/)
+
+   1. Patch and build kubernetes images
+
+      ```shell
+      git -C "$KUBERNETES_REPO" apply --recount ${PWD}/patches/kubernetes/*
+      kind build node-image
+      ```
 
    1. Create docker network:
 
@@ -39,10 +55,12 @@ tracing exporting to [Jaeger](https://www.jaegertracing.io/)
         jaegertracing/jaeger:2.6.0 --set=extensions.jaeger_storage.backends.some_storage.memory.max_traces=20000000
       ```
 
-   1. Run `etcd`:
+   1. Run `etcd` (in root of `etcd` repository):
 
       ```shell
-      etcd --watch-progress-notify-interval=5s \
+      make build
+      cp bin/etcd "${KUBERNETES_REPO}/third_party/etcd/etcd"
+      bin/etcd --watch-progress-notify-interval=5s \
         --listen-client-urls http://192.168.32.1:2379 \
         --advertise-client-urls http://192.168.32.1:2379 \
         --enable-distributed-tracing \
@@ -55,22 +73,20 @@ tracing exporting to [Jaeger](https://www.jaegertracing.io/)
 cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#installation):
 
       ```shell
-      export KUBECONFIG="$(pwd)/kind-with-tracing-config"
-      export KIND_EXPERIMENTAL_DOCKER_NETWORK=kind-with-extrernal-etcd
-      kind create cluster --config kind-with-tracing.yaml --name kind-with-external-etcd
+      export KIND_EXPERIMENTAL_DOCKER_NETWORK=kind-with-external-etcd
+      kind create cluster --config kind-with-tracing.yaml --name kind-with-external-etcd --image kindest/node:latest
       ```
 
 1. Exercise Kubernetes API. For example, build and run Conformance tests from
 Kubernetes repository (this usually takes 30-40m or will time out after 1 hour):
 
 ```shell
-export KUBECONFIG="$(pwd)/kind-with-tracing-config"
-kind export kubeconfig --name kind-with-external-etcd
 make WHAT="test/e2e/e2e.test"
 ./_output/bin/e2e.test \
   -context kind-kind-with-external-etcd \
   -ginkgo.focus="\[sig-apps\].*Conformance" \
   -num-nodes 2
+build/run.sh make test-cmd
 ```
 
 1. Download traces and put them into `tests/robustness/coverage/testdata`
