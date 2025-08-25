@@ -1,8 +1,8 @@
 module go.etcd.io/etcd/tools/v3
 
-go 1.24
+go 1.25
 
-toolchain go1.24.6
+toolchain go1.25.0
 
 require (
 	github.com/alexfalkowski/gocovmerge v1.11.0
