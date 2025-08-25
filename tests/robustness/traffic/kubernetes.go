@@ -210,7 +210,8 @@ func (t kubernetesTraffic) Watch(ctx context.Context, c *client.RecordingClient,
 	// in the cluster:
 	// https://github.com/kubernetes/kubernetes/blob/2016fab3085562b4132e6d3774b6ded5ba9939fd/staging/src/k8s.io/apiserver/pkg/storage/etcd3/store.go#L872
 	watchCtx = clientv3.WithRequireLeader(watchCtx)
-	for e := range c.Watch(watchCtx, keyPrefix, revision, true, true, true) {
+	// TODO: Re-enable after cache implements progress notify or prevKV
+	for e := range c.Watch(watchCtx, keyPrefix, revision, true, false, false) {
 		s.Update(e)
 	}
 	limiter.Wait(ctx)
