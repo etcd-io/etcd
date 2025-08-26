@@ -17,6 +17,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"iter"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -70,6 +71,41 @@ func (k Client) List(ctx context.Context, prefix string, opts ListOptions) (resp
 	resp.Count = rangeResp.Count
 	resp.Revision = rangeResp.Header.Revision
 	return resp, nil
+}
+
+func (k Client) ListIter(ctx context.Context, prefix string, opts ListOptions) (iter.Seq[*mvccpb.KeyValue], func() error) {
+	var err error
+	return func(yield func(*mvccpb.KeyValue) bool) {
+			for err == nil {
+				var resp ListResponse
+				resp, err = k.List(ctx, prefix, opts)
+				if err != nil {
+					return
+				}
+				for i, kv := range resp.Kvs {
+					if !yield(kv) {
+						return
+					}
+					if i == len(resp.Kvs)-1 {
+						opts.Continue = string(kv.Key) + "\x00"
+					}
+					resp.Kvs[i] = nil
+				}
+				if opts.Revision == 0 {
+					opts.Revision = resp.Revision
+				}
+				hasMore := resp.Count > int64(len(resp.Kvs))
+				if !hasMore {
+					return
+				}
+				if len(resp.Kvs) == 0 {
+					err = fmt.Errorf("no results were found, but etcd indicated there were more values remaining")
+					return
+				}
+			}
+		}, func() error {
+			return err
+		}
 }
 
 func (k Client) Count(ctx context.Context, prefix string, _ CountOptions) (int64, error) {

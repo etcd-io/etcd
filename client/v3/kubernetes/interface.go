@@ -16,6 +16,7 @@ package kubernetes
 
 import (
 	"context"
+	"iter"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -40,6 +41,14 @@ type Interface interface {
 	// specified by it. When paginating, the Continue value should be set
 	// to the last observed key with "\x00" appended to it.
 	List(ctx context.Context, prefix string, opts ListOptions) (ListResponse, error)
+
+	// ListIter returns an iterator over key-value pairs with the specified prefix,
+	// ordered lexicographically by key.
+	//
+	// It seamlessly requests further pages and passes individual key-value pairs
+	// via the returned iterator. Instead of a direct error, it returns a function
+	// to get an error, which should be checked after completing the iteration.
+	ListIter(ctx context.Context, prefix string, opts ListOptions) (iter.Seq[*mvccpb.KeyValue], func() error)
 
 	// Count returns the number of keys with the specified prefix.
 	//
