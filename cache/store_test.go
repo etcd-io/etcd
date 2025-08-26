@@ -118,7 +118,7 @@ func TestStoreGet(t *testing.T) {
 	for _, tt := range tests {
 		test := tt
 		t.Run(test.name, func(t *testing.T) {
-			s := newStore()
+			s := newStore(8)
 			if test.initialKVs != nil {
 				s.Restore(test.initialKVs, test.initialRev)
 			}
@@ -276,7 +276,7 @@ func TestStoreApply(t *testing.T) {
 	for _, tt := range tests {
 		test := tt
 		t.Run(test.name, func(t *testing.T) {
-			s := newStore()
+			s := newStore(4)
 			s.Restore(test.initialKVs, test.initialRev)
 
 			var gotErr error
@@ -339,7 +339,7 @@ func TestStoreRestore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := newStore()
+			s := newStore(8)
 			for _, step := range tt.seq {
 				s.Restore(step.kvs, step.rev)
 			}
