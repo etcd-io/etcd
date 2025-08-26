@@ -61,9 +61,14 @@ type Row struct {
 
 const notMatched byte = ' '
 
-var referenceUsageOfEtcdAPI = map[string]refOp{
+type leaseRow struct {
+	SumUses int
+	SumTTL  int
+	Calls   int
+}
+
+var referenceUsageOfWatchAndKV = map[string]refOp{
 	"etcdserverpb.KV/Range": {
-		// All calls should go through etcd-k8s interface
 		args: []column{
 			{name: "limit", matcher: isLimitSet},
 			{name: "rangeEnd", matcher: isRangeEndSet},
@@ -114,7 +119,6 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 		},
 	},
 	"etcdserverpb.KV/Txn": {
-		// All calls should go through etcd-k8s interface
 		args: []column{
 			{name: "getOnFailure", matcher: keyIsEqualInt("failure_len", 1)},
 			{name: "readOnly", matcher: isReadOnly},
@@ -132,8 +136,6 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 		},
 	},
 	"etcdserverpb.KV/Compact": {
-		// Compaction should move to using internal Etcd mechanism
-		// Discussed in https://github.com/kubernetes/kubernetes/issues/80513
 		args: []column{
 			{name: "rev", matcher: isRevisionSet},
 			{name: "physical", matcher: boolAttrSet("is_physical")},
@@ -143,7 +145,6 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 		},
 	},
 	"etcdserverpb.Watch/Watch": {
-		// Not part of the contract interface (yet)
 		args: []column{
 			{name: "range_end", matcher: isRangeEndSet},
 			{name: "start_rev", matcher: intAttrSet("start_rev")},
@@ -155,12 +156,6 @@ var referenceUsageOfEtcdAPI = map[string]refOp{
 		methods: []method{
 			{name: "Watch", matcher: notMatcher(keyIsEqualStr("key", "compact_rev_key"))},
 		},
-	},
-	"etcdserverpb.Lease/LeaseGrant": {
-		// Used to manage masterleases and events
-	},
-	"etcdserverpb.Maintenance/Status": {
-		// Used to expose database size on apiserver's metrics endpoint
 	},
 }
 
@@ -195,25 +190,35 @@ func testInterfaceUse(t *testing.T, filename string) {
 	spansByID := spansMap(t, dump.Result.GetResourceSpans())
 	callsByOperationName, countsByGRPC := callsMap(spansByID)
 	t.Logf("\n%s", printableCallTable(countsByGRPC))
+	spansByLeaseID := leaseMap(callsByOperationName)
 
 	t.Run("only_expected_methods_were_called", func(t *testing.T) {
+		expectedEtcdMethodsCalled := map[string]bool{
+			// All calls should go through etcd-k8s interface
+			"etcdserverpb.KV/Range": true,
+			"etcdserverpb.KV/Txn":   true,
+			// Not part of the contract interface (yet)
+			"etcdserverpb.Watch/Watch": true,
+			// Compaction should move to using internal Etcd mechanism
+			// Discussed in https://github.com/kubernetes/kubernetes/issues/80513
+			"etcdserverpb.KV/Compact": true,
+			// Used to manage masterleases and events
+			"etcdserverpb.Lease/LeaseGrant": true,
+			// Used to expose database size on apiserver's metrics endpoint
+			"etcdserverpb.Maintenance/Status": true,
+		}
+
 		for opName, count := range countsByGRPC {
-			if _, ok := referenceUsageOfEtcdAPI[opName]; !ok {
+			if _, ok := expectedEtcdMethodsCalled[opName]; !ok {
 				t.Errorf("unexpected %d calls to method: %s", count, opName)
 			}
 		}
 	})
-
-	for op, td := range referenceUsageOfEtcdAPI {
+	for op, td := range referenceUsageOfWatchAndKV {
 		t.Run(op, func(t *testing.T) {
 			if _, ok := countsByGRPC[op]; !ok {
 				t.Fatalf("expected %q method to be called at least once", op)
 			}
-
-			if len(td.args) == 0 {
-				return
-			}
-
 			// tracesWithNoMethod ensures that we print error only once when a
 			// new call pattern is found.
 			tracesWithNoMethod := make(map[string]bool)
@@ -245,6 +250,40 @@ func testInterfaceUse(t *testing.T, filename string) {
 			t.Logf("\n%s", printableMatcherTable(td.args, callCounts, contractCallCounts))
 		})
 	}
+
+	t.Run("etcdserverpb.Lease/LeaseGrant", func(t *testing.T) {
+		op := "etcdserverpb.Lease/LeaseGrant"
+		if _, ok := countsByGRPC[op]; !ok {
+			t.Fatalf("expected %q method to be called at least once", op)
+		}
+		callCounts := make(map[string]leaseRow)
+		for _, span := range callsByOperationName[op] {
+			leaseID, lFound := intAttr(span, "id")
+			if !lFound {
+				t.Errorf("Lease without ID: %v", span)
+				continue
+			}
+			txns := spansByLeaseID[leaseID]
+
+			pattern, pFound := extractPatternFromTxns(txns)
+			if !pFound {
+				t.Errorf("New key pattern detected: %s", pattern)
+				continue
+			}
+			row := callCounts[pattern]
+			ttl, found := intAttr(span, "ttl")
+			if !found {
+				t.Errorf("Lease without TTL: %v", span)
+				continue
+			}
+			row.SumTTL += ttl
+			row.SumUses += len(txns)
+			row.Calls++
+			callCounts[pattern] = row
+		}
+
+		t.Logf("\n%s", printableLeaseTable(callCounts))
+	})
 }
 
 func callsMap(spansByID map[string]*tracev1.Span) (map[string][]*tracev1.Span, map[string]int) {
@@ -308,6 +347,46 @@ func spansMap(t *testing.T, traces []*tracev1.ResourceSpans) map[string]*tracev1
 		t.Logf("WARN: skipped %d spans without traces in apiserver", skipped)
 	}
 	return spansByID
+}
+
+func leaseMap(callsByOperationName map[string][]*tracev1.Span) map[int][]*tracev1.Span {
+	ret := make(map[int][]*tracev1.Span)
+	for _, leaseSpan := range callsByOperationName["etcdserverpb.Lease/LeaseGrant"] {
+		leaseID, lFound := intAttr(leaseSpan, "id")
+		if !lFound {
+			continue
+		}
+		ret[leaseID] = nil
+	}
+	for _, txnSpan := range callsByOperationName["etcdserverpb.KV/Txn"] {
+		leaseID, lFound := intAttr(txnSpan, "success_first_lease")
+		if !lFound {
+			continue
+		}
+		ret[leaseID] = append(ret[leaseID], txnSpan)
+	}
+	return ret
+}
+
+func extractPatternFromTxns(txns []*tracev1.Span) (string, bool) {
+	patterns := make(map[string]int)
+	for _, txn := range txns {
+		key, kFound := strAttr(txn, "success_first_key")
+		if kFound {
+			p, pFound := pattern(key)
+			if !pFound {
+				return key, false
+			}
+			patterns[p]++
+		}
+	}
+	if len(patterns) > 1 {
+		return "multiple key patterns", false
+	}
+	for p := range patterns {
+		return p, true
+	}
+	return "no pattern found", false
 }
 
 func extractPattern(span *tracev1.Span, key string) (string, bool) {
@@ -446,6 +525,37 @@ func printableMatcherTable(cols []column, res map[Row]int, contract map[Row]int)
 			"100.00%",
 		)...))
 
+	table.Render()
+	return buf.String()
+}
+
+func printableLeaseTable(callCounts map[string]leaseRow) string {
+	hdr := []string{"pattern", "avg uses", "avg ttl", "calls", "percent"}
+	buf := new(bytes.Buffer)
+	alignment := make([]tw.Align, len(hdr))
+	alignment[0] = tw.AlignLeft
+	cfgBuilder := tablewriter.NewConfigBuilder().
+		WithRowAlignment(tw.AlignRight).
+		Row().Alignment().WithPerColumn(alignment).Build()
+	table := tablewriter.NewTable(buf, tablewriter.WithConfig(cfgBuilder.Build()))
+	table.Header(hdr)
+
+	totalCalls := 0
+	for _, row := range callCounts {
+		totalCalls += row.Calls
+	}
+
+	for pattern, row := range callCounts {
+		table.Append(
+			pattern,
+			fmt.Sprintf("%.1f", float64(row.SumUses)/float64(row.Calls)),
+			fmt.Sprintf("%.1f", float64(row.SumTTL)/float64(row.Calls)),
+			strconv.Itoa(row.Calls),
+			fmt.Sprintf("%.2f%%", float64(row.Calls*100)/float64(totalCalls)),
+		)
+	}
+
+	table.Footer([]string{3: strconv.Itoa(totalCalls), 4: "100.00%"})
 	table.Render()
 	return buf.String()
 }
