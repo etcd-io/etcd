@@ -490,9 +490,9 @@ func TestCacheWithoutPrefixGet(t *testing.T) {
 		name                          string
 		initialEvents, followupEvents []*clientv3.Event
 	}{
-		{"empty cache", nil, TestGetEvents},
-		{"partial load", filterEvents(TestGetEvents, revLessThan(4)), filterEvents(TestGetEvents, revGreaterEqual(4))},
-		{"complete load", TestGetEvents, nil},
+		{"watch-early (no pre-events)", nil, TestGetEvents},
+		{"watch-mid (partial pre-events)", filterEvents(TestGetEvents, revLessThan(4)), filterEvents(TestGetEvents, revGreaterEqual(4))},
+		{"watch-late (all pre-events)", TestGetEvents, nil},
 	}
 
 	for _, tc := range tcs {
