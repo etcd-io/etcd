@@ -25,6 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	cache "go.etcd.io/etcd/cache/v3"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
@@ -531,19 +532,19 @@ func TestGet(t *testing.T) {
 func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvents, followupEvents []*clientv3.Event) {
 	ctx := t.Context()
 	t.Log("Setup")
-	lastRev := applyEvents(ctx, t, kv, initialEvents)
+	initialRev := applyEvents(ctx, t, kv, initialEvents)
 
 	reader := getReader()
 	if c, ok := reader.(*cache.Cache); ok {
-		if err := c.WaitForRevision(ctx, lastRev); err != nil {
-			t.Fatalf("cache never caught up to rev %d: %v", lastRev, err)
+		if err := c.WaitForRevision(ctx, initialRev); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", initialRev, err)
 		}
 	}
 
-	lastRev = applyEvents(ctx, t, kv, followupEvents)
+	followupRev := applyEvents(ctx, t, kv, followupEvents)
 	if c, ok := reader.(*cache.Cache); ok {
-		if err := c.WaitForRevision(ctx, lastRev); err != nil {
-			t.Fatalf("cache never caught up to rev %d: %v", lastRev, err)
+		if err := c.WaitForRevision(ctx, followupRev); err != nil {
+			t.Fatalf("cache never caught up to rev %d: %v", followupRev, err)
 		}
 	}
 
@@ -551,8 +552,14 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 	for _, tc := range getTestCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			op := clientv3.OpGet(tc.key, tc.opts...)
+			requestedRev := op.Rev()
 			resp, err := reader.Get(ctx, tc.key, tc.opts...)
 			if err != nil {
+				if _, ok := reader.(*cache.Cache); ok && requestedRev > 0 && requestedRev < initialRev && errors.Is(err, rpctypes.ErrCompacted) {
+					t.Logf("expected ErrCompacted: requestedRev=%d < initialCompleteRev=%d", requestedRev, initialRev)
+					return
+				}
 				t.Fatalf("Get %q failed: %v", tc.key, err)
 			}
 			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
@@ -666,9 +673,37 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:         "single key /foo/a at rev=2",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(2)},
+		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "single key /foo/a  at rev=7",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(7)},
+		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooA.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "single key /foo/a at rev=8",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(8)},
+		wantKVs:      []*mvccpb.KeyValue{Rev8PutFooA.Kv},
+		wantRevision: 8,
+	},
+	{
 		name:         "non-existing key",
 		key:          "/doesnotexist",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+		wantKVs:      nil,
+		wantRevision: 8,
+	},
+	{
+		name:         "non-existing key at rev=4",
+		key:          "/doesnotexist",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(4)},
 		wantKVs:      nil,
 		wantRevision: 8,
 	},
@@ -680,6 +715,27 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:         "prefix /foo at rev=5",
+		key:          "/foo",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(5)},
+		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv, Rev5PutFooD.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "prefix /foo/b at rev=4",
+		key:          "/foo/b",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(4)},
+		wantKVs:      []*mvccpb.KeyValue{Rev3PutFooB.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "prefix /foo/b at rev=7",
+		key:          "/foo/b",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(7)},
+		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv},
+		wantRevision: 8,
+	},
+	{
 		name:         "range [/foo/a, /foo/c)",
 		key:          "/foo/a",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
@@ -687,9 +743,23 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:         "range [/foo/a, /foo/d) at rev=5",
+		key:          "/foo/a",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/d"), clientv3.WithRev(5)},
+		wantKVs:      []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv},
+		wantRevision: 8,
+	},
+	{
 		name:         "fromKey /foo/b",
 		key:          "/foo/b",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
+		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
+		wantRevision: 8,
+	},
+	{
+		name:         "fromKey /foo/b at rev=7",
+		key:          "/foo/b",
+		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey(), clientv3.WithRev(7)},
 		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
 		wantRevision: 8,
 	},
@@ -945,7 +1015,6 @@ func TestCacheUnsupportedGetOptions(t *testing.T) {
 		{"WithMaxModRevision", []clientv3.OpOption{clientv3.WithMaxModRev(10)}},
 		{"WithMinCreateRevision", []clientv3.OpOption{clientv3.WithMinCreateRev(3)}},
 		{"WithMaxCreateRevision", []clientv3.OpOption{clientv3.WithMaxCreateRev(5)}},
-		{"WithRev", []clientv3.OpOption{clientv3.WithRev(123)}},
 		{"NoSerializable", nil},
 	}
 
