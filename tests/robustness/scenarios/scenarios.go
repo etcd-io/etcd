@@ -15,6 +15,7 @@
 package scenarios
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -99,6 +100,10 @@ func Exploratory(_ *testing.T) []TestScenario {
 		// Set low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
 		options.WithCompactionBatchLimit(10, 100, 1000),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
+	}
+
+	if addr := os.Getenv("TRACING_SERVER_ADDR"); addr != "" {
+		baseOptions = append(baseOptions, e2e.WithEnableDistributedTracing(addr))
 	}
 
 	if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {

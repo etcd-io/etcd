@@ -390,6 +390,15 @@ func WithExtensiveMetrics() EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.Metrics = "extensive" }
 }
 
+func WithEnableDistributedTracing(addr string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.EnableDistributedTracing = true
+		c.ServerConfig.DistributedTracingServiceName = "etcd"
+		c.ServerConfig.DistributedTracingAddress = addr
+		c.ServerConfig.DistributedTracingSamplingRatePerMillion = 1_000_000
+	}
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, tb testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -584,6 +593,14 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
+	}
+	if cfg.ServerConfig.EnableDistributedTracing {
+		args = append(args,
+			"--enable-distributed-tracing",
+			fmt.Sprintf("--distributed-tracing-address=%s", cfg.ServerConfig.DistributedTracingAddress),
+			fmt.Sprintf("--distributed-tracing-service-name=%s", cfg.ServerConfig.DistributedTracingServiceName),
+			fmt.Sprintf("--distributed-tracing-sampling-rate=%d", cfg.ServerConfig.DistributedTracingSamplingRatePerMillion),
+		)
 	}
 
 	var murl string
