@@ -102,6 +102,14 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 				),
 			},
 			{
+				name: "Keys",
+				matcher: andMatcher(
+					isKeysOnly,
+					isRangeEndSet,
+					notMatcher(orMatcher(isCountOnly, isLimitSet, isRevisionSet)),
+				),
+			},
+			{
 				name: "List",
 				matcher: andMatcher(
 					isRangeEndSet,
@@ -169,7 +177,13 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 		},
 		keyAttrName: "key",
 		methods: []method{
-			{name: "Watch", matcher: notMatcher(keyIsEqualStr("key", "compact_rev_key"))},
+			{name: "Compaction", matcher: keyIsEqualStr("key", "compact_rev_key")},
+			{name: "Watch", matcher: andMatcher(
+				isRangeEndSet,
+				intAttrSet("start_rev"),
+				boolAttrSet("prev_kv"),
+				notMatcher(boolAttrSet("fragment")),
+			)},
 		},
 	},
 }
