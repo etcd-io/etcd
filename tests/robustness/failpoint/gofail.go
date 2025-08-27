@@ -194,7 +194,7 @@ func (f killAndGofailSleep) Inject(ctx context.Context, t *testing.T, lg *zap.Lo
 	if err != nil {
 		return nil, err
 	}
-	// TODO: Check gofail status (https://github.com/etcd-io/gofail/pull/47) and wait for sleep to beis executed at least once.
+	// TODO: Check gofail status (https://github.com/etcd-io/gofail/pull/47) and wait for sleep to be executed at least once.
 	return nil, nil
 }
 

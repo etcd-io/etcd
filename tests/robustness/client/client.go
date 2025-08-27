@@ -30,9 +30,9 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-// RecordingClient provides a semi etcd client (different interface than
+// RecordingClient provides a semi-etcd client (different interface than
 // clientv3.Client) that records all the requests and responses made. Doesn't
-// allow for concurrent requests to confirm to model.AppendableHistory requirements.
+// allow for concurrent requests to conform to model.AppendableHistory requirements.
 type RecordingClient struct {
 	ID     int
 	client clientv3.Client
