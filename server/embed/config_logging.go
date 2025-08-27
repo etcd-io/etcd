@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"os"
 
@@ -32,6 +33,17 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
+
+// tlsConn is the minimal interface for mocking *tls.Conn for the TLS handshake failure handler.
+// Only used for testing as we cannot really chang the public interface using *tls.Conn.
+type tlsConn interface {
+	ConnectionState() tls.ConnectionState
+	RemoteAddr() net.Addr
+}
+
+// testingHandshakeFailureTLSConn is used to replace the real TLS conn when testing the TLS handshake failure handler.
+// Only used for testing.
+var testingHandshakeFailureTLSConn tlsConn
 
 // GetLogger returns the logger.
 func (cfg *Config) GetLogger() *zap.Logger {
@@ -166,7 +178,19 @@ func (cfg *Config) setupLogging() error {
 		}
 
 		logTLSHandshakeFailureFunc := func(msg string) func(conn *tls.Conn, err error) {
-			return func(conn *tls.Conn, err error) {
+			return func(c *tls.Conn, err error) {
+				// This is seriously ugly, but it's the only simply way to mock the connection for testing.
+				var conn tlsConn = c
+				if testingHandshakeFailureTLSConn != nil {
+					conn = testingHandshakeFailureTLSConn
+				}
+
+				// Log EOF errors on DEBUG not to spam logs too much.
+				log := cfg.logger.Warn
+				if errors.Is(err, io.EOF) {
+					log = cfg.logger.Debug
+				}
+
 				state := conn.ConnectionState()
 				remoteAddr := conn.RemoteAddr().String()
 				serverName := state.ServerName
@@ -176,7 +200,7 @@ func (cfg *Config) setupLogging() error {
 					for i := range cert.IPAddresses {
 						ips[i] = cert.IPAddresses[i].String()
 					}
-					cfg.logger.Warn(
+					log(
 						msg,
 						zap.String("remote-addr", remoteAddr),
 						zap.String("server-name", serverName),
@@ -185,7 +209,7 @@ func (cfg *Config) setupLogging() error {
 						zap.Error(err),
 					)
 				} else {
-					cfg.logger.Warn(
+					log(
 						msg,
 						zap.String("remote-addr", remoteAddr),
 						zap.String("server-name", serverName),
