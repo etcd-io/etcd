@@ -155,7 +155,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	if beforeFailpointStats.QPS() < profile.MinimalQPS {
 		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
 	}
-	// TODO: Validate QPS post failpoint injection to ensure the that we sufficiently cover period when cluster recovers.
+	// TODO: Validate QPS post failpoint injection to ensure that we sufficiently cover the period when the cluster recovers.
 	return reports
 }
 

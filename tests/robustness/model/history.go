@@ -28,13 +28,13 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
 
-// AppendableHistory allows to collect history of sequential operations.
+// AppendableHistory allows collecting the history of sequential operations.
 //
-// Ensures that operation history is compatible with porcupine library, by preventing concurrent requests sharing the
-// same stream id. For failed requests, we don't know their return time, so generate new stream id.
+// Ensures that the operation history is compatible with the porcupine library by preventing concurrent requests from sharing the
+// same stream id. For failed requests, we don't know their return time, so we generate a new stream id.
 //
 // Appending needs to be done in order of operation execution time (start, end time).
-// Operations time should be calculated as time.Since common base time to ensure that Go monotonic time is used.
+// Operation time should be calculated as time.Since a common base time to ensure that Go monotonic time is used.
 // More in https://github.com/golang/go/blob/96add980ad27faed627f26ef1ab09e8fe45d6bd1/src/time/time.go#L10.
 type AppendableHistory struct {
 	// streamID for the next operation. Used for porcupine.Operation.ClientId as porcupine assumes no concurrent requests.

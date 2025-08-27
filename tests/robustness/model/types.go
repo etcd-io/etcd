@@ -122,7 +122,7 @@ type DefragmentRequest struct{}
 // Possible response state information:
 // * Normal response. Client observed response. Only EtcdResponse is set.
 // * Persisted. Client didn't observe response, but we know it was persisted by etcd. Only Persisted is set
-// * Persisted with Revision. Client didn't observe response, but we know that it was persisted, and it's revision. Both Persisted and PersistedRevision is set.
+// * Persisted with Revision. Client didn't observe a response, but we know that it was persisted, and its revision. Both Persisted and PersistedRevision is set.
 // * Error response. Client observed error, but we don't know if it was persisted. Only Error is set.
 type MaybeEtcdResponse struct {
 	EtcdResponse

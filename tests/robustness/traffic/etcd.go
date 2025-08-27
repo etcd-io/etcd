@@ -363,7 +363,7 @@ func (c etcdTrafficClient) pickMultiTxnOps(keyStore *keyStore) (ops []clientv3.O
 		case model.DeleteOperation:
 			ops = append(ops, clientv3.OpDelete(key))
 		default:
-			panic("unsuported choice type")
+			panic("unsupported choice type")
 		}
 	}
 	return ops

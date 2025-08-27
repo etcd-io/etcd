@@ -17,11 +17,11 @@ package identity
 import "sync/atomic"
 
 type Provider interface {
-	// NewStreamID returns an integer starting from zero to make it render nicely by porcupine visualization.
+	// NewStreamID returns an integer starting from zero to make it render nicely by the porcupine visualization.
 	NewStreamID() int
-	// NewRequestID returns unique identification used to make write requests unique.
+	// NewRequestID returns a unique identification used to make write requests unique.
 	NewRequestID() int
-	// NewClientID returns unique identification for client and their reports.
+	// NewClientID returns a unique identification for client and their reports.
 	NewClientID() int
 }
 
