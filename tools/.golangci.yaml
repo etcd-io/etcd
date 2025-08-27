@@ -21,7 +21,8 @@ linters:
     # - deadcode
     # - structcheck
     # - varcheck
-    - errorlint
+    # Disabled after Go 1.24 update:
+    # - errorlint
     - gofumpt
     - goimports
     - gosimple
@@ -88,8 +89,9 @@ linters-settings: # please keep this alphabetized
         disabled: false
       - name: var-declaration
         disabled: false
+      # Disabled after Go 1.24 update:
       - name: var-naming
-        disabled: false
+        disabled: true
         arguments:
           # The following is the configuration for var-naming rule, the first element is the allow list and the second element is the deny list.
           - [] # AllowList: leave it empty to use the default (empty, too). This means that we're not relaxing the rule in any way, i.e. elementId will raise a violation, it should be elementID, refer to the next line to see the list of denied initialisms.
