@@ -102,6 +102,14 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 				),
 			},
 			{
+				name: "Keys",
+				matcher: andMatcher(
+					isKeysOnly,
+					isRangeEndSet,
+					notMatcher(orMatcher(isCountOnly, isLimitSet, isRevisionSet)),
+				),
+			},
+			{
 				name: "List",
 				matcher: andMatcher(
 					isRangeEndSet,
@@ -122,6 +130,7 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 		args: []column{
 			{name: "getOnFailure", matcher: keyIsEqualInt("failure_len", 1)},
 			{name: "readOnly", matcher: isReadOnly},
+			{name: "lease", matcher: intAttrSet("success_first_lease")},
 		},
 		keyAttrName: "compare_first_key",
 		methods: []method{
@@ -130,8 +139,22 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 				matcher: keyIsEqualStr("compare_first_key", "compact_rev_key"),
 			},
 			{
-				name:    "OptimisticPutOrDelete",
-				matcher: andMatcher(keyIsEqualInt("compare_len", 1), keyIsEqualInt("success_len", 1), notMatcher(isReadOnly)),
+				name: "OptimisticPut",
+				matcher: andMatcher(
+					keyIsEqualInt("compare_len", 1),
+					keyIsEqualInt("success_len", 1),
+					keyIsEqualStr("success_first_type", "put"),
+					notMatcher(isReadOnly),
+				),
+			},
+			{
+				name: "OptimisticDelete",
+				matcher: andMatcher(
+					keyIsEqualInt("compare_len", 1),
+					keyIsEqualInt("success_len", 1),
+					keyIsEqualStr("success_first_type", "delete_range"),
+					notMatcher(isReadOnly),
+				),
 			},
 		},
 	},
@@ -154,7 +177,13 @@ var referenceUsageOfWatchAndKV = map[string]refOp{
 		},
 		keyAttrName: "key",
 		methods: []method{
-			{name: "Watch", matcher: notMatcher(keyIsEqualStr("key", "compact_rev_key"))},
+			{name: "Compaction", matcher: keyIsEqualStr("key", "compact_rev_key")},
+			{name: "Watch", matcher: andMatcher(
+				isRangeEndSet,
+				intAttrSet("start_rev"),
+				boolAttrSet("prev_kv"),
+				notMatcher(boolAttrSet("fragment")),
+			)},
 		},
 	},
 }
