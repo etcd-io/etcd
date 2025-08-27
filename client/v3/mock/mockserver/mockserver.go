@@ -33,6 +33,8 @@ type MockServer struct {
 	Network    string
 	Address    string
 	GRPCServer *grpc.Server
+	// Maintenance provides a mocked Maintenance service for tests
+	Maintenance *mockMaintenanceServer
 }
 
 func (ms *MockServer) ResolverAddress() resolver.Address {
@@ -133,6 +135,8 @@ func (ms *MockServers) StartAt(idx int) (err error) {
 	svr := grpc.NewServer()
 	pb.RegisterKVServer(svr, &mockKVServer{})
 	pb.RegisterLeaseServer(svr, &mockLeaseServer{})
+	ms.Servers[idx].Maintenance = &mockMaintenanceServer{}
+	pb.RegisterMaintenanceServer(svr, ms.Servers[idx].Maintenance)
 	ms.Servers[idx].GRPCServer = svr
 
 	ms.wg.Add(1)
@@ -211,4 +215,84 @@ func (s *mockLeaseServer) LeaseTimeToLive(context.Context, *pb.LeaseTimeToLiveRe
 
 func (s *mockLeaseServer) LeaseLeases(context.Context, *pb.LeaseLeasesRequest) (*pb.LeaseLeasesResponse, error) {
 	return &pb.LeaseLeasesResponse{}, nil
+}
+
+// mockMaintenanceServer implements minimal MaintenanceServer to support Alarm RPC for tests
+type mockMaintenanceServer struct {
+	pb.UnimplementedMaintenanceServer
+	mu     sync.Mutex
+	alarms map[string]*pb.AlarmMember
+}
+
+func alarmKey(memberID uint64, alarm pb.AlarmType) string {
+	return fmt.Sprintf("%d-%d", memberID, alarm)
+}
+
+func (s *mockMaintenanceServer) Alarm(ctx context.Context, req *pb.AlarmRequest) (*pb.AlarmResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.alarms == nil {
+		s.alarms = make(map[string]*pb.AlarmMember)
+	}
+	resp := &pb.AlarmResponse{}
+	switch req.Action {
+	case pb.AlarmRequest_GET:
+		for _, v := range s.alarms {
+			resp.Alarms = append(resp.Alarms, v)
+		}
+	case pb.AlarmRequest_ACTIVATE:
+		if req.Alarm == pb.AlarmType_NONE {
+			return resp, nil
+		}
+		m := &pb.AlarmMember{MemberID: req.MemberID, Alarm: req.Alarm}
+		s.alarms[alarmKey(req.MemberID, req.Alarm)] = m
+		resp.Alarms = append(resp.Alarms, m)
+	case pb.AlarmRequest_DEACTIVATE:
+		if req.MemberID == 0 && req.Alarm == pb.AlarmType_NONE {
+			for k, v := range s.alarms {
+				resp.Alarms = append(resp.Alarms, v)
+				delete(s.alarms, k)
+			}
+			return resp, nil
+		}
+		k := alarmKey(req.MemberID, req.Alarm)
+		if v, ok := s.alarms[k]; ok {
+			resp.Alarms = append(resp.Alarms, v)
+			delete(s.alarms, k)
+		}
+	default:
+		// no-op
+	}
+	return resp, nil
+}
+
+// SetAlarms allows tests to preconfigure active alarms on a server
+func (ms *MockServer) SetAlarms(alarms []*pb.AlarmMember) {
+	if ms.Maintenance == nil {
+		ms.Maintenance = &mockMaintenanceServer{}
+	}
+	ms.Maintenance.mu.Lock()
+	defer ms.Maintenance.mu.Unlock()
+	ms.Maintenance.alarms = make(map[string]*pb.AlarmMember)
+	for _, a := range alarms {
+		if a == nil {
+			continue
+		}
+		ms.Maintenance.alarms[alarmKey(a.MemberID, a.Alarm)] = &pb.AlarmMember{MemberID: a.MemberID, Alarm: a.Alarm}
+	}
+}
+
+// GetAlarms returns a snapshot of current active alarms. Intended for tests.
+func (ms *MockServer) GetAlarms() []*pb.AlarmMember {
+	if ms.Maintenance == nil {
+		return nil
+	}
+	ms.Maintenance.mu.Lock()
+	defer ms.Maintenance.mu.Unlock()
+	out := make([]*pb.AlarmMember, 0, len(ms.Maintenance.alarms))
+	for _, v := range ms.Maintenance.alarms {
+		copy := *v
+		out = append(out, &copy)
+	}
+	return out
 }

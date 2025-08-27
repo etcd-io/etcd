@@ -20,6 +20,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bgentry/speakeasy"
@@ -71,6 +72,24 @@ type discoveryCfg struct {
 
 var display printer = &simplePrinter{}
 
+var setGRPCLoggerOnce sync.Once
+
+func initGRPCLogger(debug bool) {
+	setGRPCLoggerOnce.Do(func() {
+		if debug {
+			grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+			return
+		}
+		// WARNING logs contain important information like TLS misconfiguration, but spams
+		// too many routine connection disconnects to turn on by default.
+		// See https://github.com/etcd-io/etcd/pull/9623 for background
+		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
+	})
+}
+
+// InitGRPCLoggerForTesting allows tests to pre-initialize gRPC logger to avoid data races
+func InitGRPCLoggerForTesting(debug bool) { initGRPCLogger(debug) }
+
 func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
 	if err != nil {
@@ -110,16 +129,12 @@ func clientConfigFromCmd(cmd *cobra.Command) *clientv3.ConfigSpec {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	if debug {
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2WithVerbosity(os.Stderr, os.Stderr, os.Stderr, 4))
+		initGRPCLogger(true)
 		fs.VisitAll(func(f *pflag.Flag) {
 			fmt.Fprintf(os.Stderr, "%s=%v\n", flags.FlagToEnv("ETCDCTL", f.Name), f.Value)
 		})
 	} else {
-		// WARNING logs contain important information like TLS misconfirugation, but spams
-		// too many routine connection disconnects to turn on by default.
-		//
-		// See https://github.com/etcd-io/etcd/pull/9623 for background
-		grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, os.Stderr))
+		initGRPCLogger(false)
 	}
 
 	cfg := &clientv3.ConfigSpec{}
