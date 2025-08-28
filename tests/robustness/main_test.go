@@ -137,12 +137,6 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime := time.Now()
 	ids := identity.NewIDProvider()
-	revisionWatcher := make(chan int64, 100)
-	var rh revisionHistory
-	g.Go(func() error {
-		maintainRevisionHistory(ctx, t, &rh, revisionWatcher, clus.Procs, ids, baseTime)
-		return nil
-	})
 	g.Go(func() error {
 		defer close(failpointInjected)
 		// Give some time for traffic to reach qps target before injecting failpoint.
@@ -177,6 +171,13 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		endpoints := processEndpoints(clus)
 		err := client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, watchSet)
 		return err
+	})
+	revisionWatcher := make(chan int64, 100)
+	var rh revisionHistory
+	/* FIXME: use watchset */
+	g.Go(func() error {
+		maintainRevisionHistory(ctx, t, &rh, revisionWatcher, maxRevisionChan, clus.Procs, ids, baseTime)
+		return nil
 	})
 	err := g.Wait()
 	if err != nil {
@@ -220,7 +221,7 @@ func (rh *revisionHistory) Get() (min, max int64) {
 	return rh.minRevision, rh.maxRevision
 }
 
-func maintainRevisionHistory(ctx context.Context, t *testing.T, rh *revisionHistory, revisionWatcher <-chan int64, members []e2e.EtcdProcess, ids identity.Provider, baseTime time.Time) {
+func maintainRevisionHistory(ctx context.Context, t *testing.T, rh *revisionHistory, revisionWatcher <-chan int64 /* FIXME: having 2 consumers won't work */, maxRevisionChan <-chan int64, members []e2e.EtcdProcess, ids identity.Provider, baseTime time.Time) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -299,7 +300,6 @@ func createWatches(ctx context.Context, t *testing.T, rh *revisionHistory, membe
 		t.Errorf("failed to create watches: %v", err)
 	}
 }
-
 
 func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
 	return base - jitter + time.Duration(rand.Int63n(int64(jitter)*2))
