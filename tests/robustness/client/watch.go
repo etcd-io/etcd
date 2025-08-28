@@ -22,6 +22,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
@@ -121,4 +122,22 @@ resetWatch:
 			}
 		}
 	}
+}
+
+func (c *RecordingClient) WatchUntilRevision(ctx context.Context, key string, startRevision int64, targetRevision int64, withPrefix bool) (resp clientv3.WatchResponse, err error) {
+	// Using default values for withCreated and withDeleted as they are not exposed.
+	watch := c.Watch(ctx, key, startRevision, withPrefix, true, false)
+	for e := range watch {
+		if e.Err() != nil {
+			return e, e.Err()
+		}
+		if targetRevision > 0 {
+			for _, event := range e.Events {
+				if event.Kv.ModRevision >= targetRevision {
+					return e, nil
+				}
+			}
+		}
+	}
+	return resp, ctx.Err()
 }

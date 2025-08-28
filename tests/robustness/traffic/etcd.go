@@ -109,7 +109,7 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
+func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}, revisionWatcher chan<- int64) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -151,12 +151,27 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClie
 		}
 		if rev != 0 {
 			lastRev = rev
+			if isEtcdWrite(requestType) {
+				select {
+				case revisionWatcher <- rev:
+				default:
+				}
+			}
 		}
 		limiter.Wait(ctx)
 	}
 }
 
-func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
+func isEtcdWrite(requestType etcdRequestType) bool {
+	switch requestType {
+	case Put, LargePut, Delete, MultiOpTxn, PutWithLease, LeaseRevoke, CompareAndSet, Defragment:
+		return true
+	default:
+		return false
+	}
+}
+
+func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}, revisionWatcher chan<- int64) {
 	var lastRev int64 = 2
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
@@ -177,9 +192,19 @@ func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClie
 
 		// Range allows for both revision has been compacted and future revision errors
 		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
-		_, err = c.Compact(ctx, compactRev)
+		compactResp, err := c.Compact(ctx, compactRev)
 		if err != nil {
 			continue
+		}
+		select {
+		case revisionWatcher <- -compactRev:
+		default:
+		}
+		if compactResp != nil {
+			select {
+			case revisionWatcher <- compactResp.Header.Revision:
+			default:
+			}
 		}
 		lastRev = compactRev
 	}

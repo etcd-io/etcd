@@ -146,6 +146,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
 	keyStore := traffic.NewKeyStore(10, "key")
+	revisionWatcher := make(chan int64, 100)
 	for i := range profile.MemberClientCount {
 		c := connect(clientSet, []string{hosts[i%len(hosts)]})
 		wg.Add(1)
@@ -158,6 +159,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 				concurrencyLimiter,
 				keyStore,
 				finish,
+				revisionWatcher,
 			)
 		}(c)
 	}
@@ -173,6 +175,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 				concurrencyLimiter,
 				keyStore,
 				finish,
+				revisionWatcher,
 			)
 		}(c)
 	}
@@ -181,7 +184,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 	go func(c *client.RecordingClient) {
 		defer wg.Done()
 		defer c.Close()
-		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
+		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish, revisionWatcher)
 	}(compactClient)
 	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
 	for _, h := range hosts {

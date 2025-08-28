@@ -71,7 +71,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}, revisionWatcher chan<- int64) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -111,10 +111,16 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 					continue
 				}
 			}
-			err := t.Write(ctx, kc, ids, s, limiter, nonUniqueWriteLimiter)
+			rev, err := t.Write(ctx, kc, ids, s, limiter, nonUniqueWriteLimiter)
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
+			}
+			if rev != 0 {
+				select {
+				case revisionWatcher <- rev:
+				default:
+				}
 			}
 		}
 	})
@@ -149,19 +155,25 @@ func (t kubernetesTraffic) Read(ctx context.Context, kc kubernetes.Interface, s 
 	return revision, nil
 }
 
-func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, ids identity.Provider, s *storage, limiter *rate.Limiter, nonUniqueWriteLimiter ConcurrencyLimiter) (err error) {
+func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, ids identity.Provider, s *storage, limiter *rate.Limiter, nonUniqueWriteLimiter ConcurrencyLimiter) (rev int64, err error) {
 	writeCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
 	defer cancel()
 	count := s.Count()
 	if count < t.averageKeyCount/2 {
-		_, err = kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), 0, kubernetes.PutOptions{})
+		resp, err := kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), 0, kubernetes.PutOptions{})
+		if err == nil {
+			rev = resp.Revision
+		}
 	} else {
-		key, rev := s.PickRandom()
-		if rev == 0 {
-			return errors.New("storage empty")
+		key, baseRev := s.PickRandom()
+		if baseRev == 0 {
+			return 0, errors.New("storage empty")
 		}
 		if count > t.averageKeyCount*3/2 && nonUniqueWriteLimiter.Take() {
-			_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{GetOnFailure: true})
+			resp, err := kc.OptimisticDelete(writeCtx, key, baseRev, kubernetes.DeleteOptions{GetOnFailure: true})
+			if err == nil {
+				rev = resp.Revision
+			}
 			nonUniqueWriteLimiter.Return()
 		} else {
 			shouldReturn := false
@@ -173,11 +185,20 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, i
 			op := random.PickRandom(choices)
 			switch op {
 			case KubernetesDelete:
-				_, err = kc.OptimisticDelete(writeCtx, key, rev, kubernetes.DeleteOptions{GetOnFailure: true})
+				resp, err := kc.OptimisticDelete(writeCtx, key, baseRev, kubernetes.DeleteOptions{GetOnFailure: true})
+				if err == nil {
+					rev = resp.Revision
+				}
 			case KubernetesUpdate:
-				_, err = kc.OptimisticPut(writeCtx, key, []byte(fmt.Sprintf("%d", ids.NewRequestID())), rev, kubernetes.PutOptions{GetOnFailure: true})
+				resp, err := kc.OptimisticPut(writeCtx, key, []byte(fmt.Sprintf("%d", ids.NewRequestID())), baseRev, kubernetes.PutOptions{GetOnFailure: true})
+				if err == nil {
+					rev = resp.Revision
+				}
 			case KubernetesCreate:
-				_, err = kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), 0, kubernetes.PutOptions{})
+				resp, err := kc.OptimisticPut(writeCtx, t.generateKey(), []byte(fmt.Sprintf("%d", ids.NewRequestID())), 0, kubernetes.PutOptions{})
+				if err == nil {
+					rev = resp.Revision
+				}
 			default:
 				panic(fmt.Sprintf("invalid choice: %q", op))
 			}
@@ -187,10 +208,10 @@ func (t kubernetesTraffic) Write(ctx context.Context, kc kubernetes.Interface, i
 		}
 	}
 	if err != nil {
-		return err
+		return 0, err
 	}
 	limiter.Wait(ctx)
-	return nil
+	return rev, nil
 }
 
 func filterOutNonUniqueKubernetesWrites(choices []random.ChoiceWeight[KubernetesRequestType]) (resp []random.ChoiceWeight[KubernetesRequestType]) {
@@ -220,7 +241,7 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
-func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}, revisionWatcher chan<- int64) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
 	var compactTime int64
 	var rev int64
@@ -234,7 +255,7 @@ func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.Recordi
 			return
 		}
 
-		compactTime, rev, err = compact(ctx, c, compactTime, rev)
+		compactTime, rev, err = compact(ctx, c, compactTime, rev, revisionWatcher)
 		if err != nil {
 			continue
 		}
@@ -246,7 +267,7 @@ const (
 	compactRevKey = "compact_rev_key"
 )
 
-func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) (int64, int64, error) {
+func compact(ctx context.Context, client *client.RecordingClient, t, rev int64, revisionWatcher chan<- int64) (int64, int64, error) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L133-L162
 	resp, err := client.Txn(ctx).
 		If(clientv3.Compare(clientv3.Version(compactRevKey), "=", t)).
@@ -258,6 +279,10 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 	}
 
 	curRev := resp.Header.Revision
+	select {
+	case revisionWatcher <- curRev:
+	default:
+	}
 
 	if !resp.Succeeded {
 		curTime := resp.Responses[0].GetResponseRange().Kvs[0].Version
@@ -270,6 +295,10 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 	}
 	if _, err = client.Compact(ctx, rev); err != nil {
 		return curTime, curRev, err
+	}
+	select {
+	case revisionWatcher <- -rev:
+	default:
 	}
 	return curTime, curRev, nil
 }
