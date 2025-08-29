@@ -118,12 +118,12 @@ func TestStoreGet(t *testing.T) {
 	for _, tt := range tests {
 		test := tt
 		t.Run(test.name, func(t *testing.T) {
-			s := newStore(8)
+			s := newStore(8, 32)
 			if test.initialKVs != nil {
 				s.Restore(test.initialKVs, test.initialRev)
 			}
 
-			kvs, rev, err := s.Get(test.start, test.end)
+			kvs, rev, err := s.Get(test.start, test.end, 0)
 
 			if test.expectedErr != nil {
 				if !errors.Is(err, test.expectedErr) {
@@ -276,7 +276,7 @@ func TestStoreApply(t *testing.T) {
 	for _, tt := range tests {
 		test := tt
 		t.Run(test.name, func(t *testing.T) {
-			s := newStore(4)
+			s := newStore(4, 32)
 			s.Restore(test.initialKVs, test.initialRev)
 
 			var gotErr error
@@ -295,7 +295,7 @@ func TestStoreApply(t *testing.T) {
 			if latest := s.LatestRev(); latest != test.expectedLatestRev {
 				t.Fatalf("LatestRev=%d; want %d", latest, test.expectedLatestRev)
 			}
-			verifyStoreSnapshot(t, s, test.expectedSnapshot, test.expectedLatestRev)
+			verifyStoreSnapshot(t, s, test.expectedSnapshot, test.expectedLatestRev, 0)
 		})
 	}
 }
@@ -339,17 +339,73 @@ func TestStoreRestore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := newStore(8)
+			s := newStore(8, 32)
 			for _, step := range tt.seq {
 				s.Restore(step.kvs, step.rev)
 			}
 			if tt.expectedRev == 0 {
-				if _, _, err := s.Get([]byte("/"), []byte{0}); !errors.Is(err, ErrNotReady) {
+				if _, _, err := s.Get([]byte("/"), []byte{0}, 0); !errors.Is(err, ErrNotReady) {
 					t.Fatalf("Get after restore to rev=0 err=%v; want %v", err, ErrNotReady)
 				}
 				return
 			}
-			verifyStoreSnapshot(t, s, tt.expectedSnap, tt.expectedRev)
+			verifyStoreSnapshot(t, s, tt.expectedSnap, tt.expectedRev, 0)
+		})
+	}
+}
+
+func TestRestoreAppendCloneImmutability(t *testing.T) {
+	tests := []struct {
+		name               string
+		initialKVs         []*mvccpb.KeyValue
+		initialRev         int64
+		events             []*clientv3.Event
+		requestedRev       int64
+		expectedSnap       []*mvccpb.KeyValue
+		expectedLatestSnap []*mvccpb.KeyValue
+		expectedLatestRev  int64
+	}{
+		{
+			name:       "put_overwrites_key",
+			initialKVs: []*mvccpb.KeyValue{makeKV("/k", "v1", 5)},
+			initialRev: 5,
+			events:     []*clientv3.Event{makePutEvent("/k", "v2", 6)},
+
+			requestedRev:       5,
+			expectedSnap:       []*mvccpb.KeyValue{makeKV("/k", "v1", 5)},
+			expectedLatestSnap: []*mvccpb.KeyValue{makeKV("/k", "v2", 6)},
+			expectedLatestRev:  6,
+		},
+		{
+			name:       "delete_key",
+			initialKVs: []*mvccpb.KeyValue{makeKV("/k", "v1", 5)},
+			initialRev: 5,
+			events:     []*clientv3.Event{makeDelEvent("/k", 6)},
+
+			requestedRev:       5,
+			expectedSnap:       []*mvccpb.KeyValue{makeKV("/k", "v1", 5)},
+			expectedLatestSnap: nil,
+			expectedLatestRev:  6,
+		},
+	}
+
+	for _, tt := range tests {
+		test := tt
+		t.Run(test.name, func(t *testing.T) {
+			s := newStore(8, 32)
+			if test.initialKVs != nil {
+				s.Restore(test.initialKVs, test.initialRev)
+			}
+			if len(test.events) > 0 {
+				if err := s.Apply(test.events); err != nil {
+					t.Fatalf("Apply failed: %v", err)
+				}
+			}
+
+			if test.requestedRev != 0 {
+				verifyStoreSnapshot(t, s, test.expectedSnap, test.expectedLatestRev, test.requestedRev)
+			}
+			verifyStoreSnapshot(t, s, test.expectedLatestSnap, test.expectedLatestRev, test.expectedLatestRev)
 		})
 	}
 }
@@ -366,15 +422,16 @@ func makeDelEvent(key string, rev int64) *clientv3.Event {
 	return &clientv3.Event{Type: clientv3.EventTypeDelete, Kv: &mvccpb.KeyValue{Key: []byte(key), ModRevision: rev}}
 }
 
-func verifyStoreSnapshot(t *testing.T, s *store, want []*mvccpb.KeyValue, wantRev int64) {
-	kvs, rev, err := s.Get([]byte("/"), []byte{0})
+func verifyStoreSnapshot(t *testing.T, s *store, want []*mvccpb.KeyValue, wantRev int64, requestedRev int64) {
+	kvs, headerRev, err := s.Get([]byte("/"), []byte{0}, requestedRev)
 	if err != nil {
-		t.Fatalf("Get all keys: %v", err)
+		t.Fatalf("Get all keys (rev=%d): got error: %v", requestedRev, err)
 	}
-	if rev != wantRev {
-		t.Fatalf("snapshot revision=%d; want %d", rev, wantRev)
+	latestRev := s.LatestRev()
+	if headerRev != latestRev {
+		t.Fatalf("header rev=%d; want latest %d (requestedRev=%d)", latestRev, wantRev, requestedRev)
 	}
 	if diff := cmp.Diff(want, kvs); diff != "" {
-		t.Fatalf("snapshot mismatch (-want +got):\n%s", diff)
+		t.Fatalf("snapshot mismatch (requestedRev=%d) (-want +got):\n%s", requestedRev, diff)
 	}
 }

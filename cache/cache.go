@@ -70,7 +70,7 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 		cfg:         cfg,
 		watcher:     client.Watcher,
 		kv:          client.KV,
-		store:       newStore(cfg.BTreeDegree),
+		store:       newStore(cfg.BTreeDegree, cfg.HistoryWindowSize),
 		ready:       newReady(),
 		stop:        cancel,
 		internalCtx: internalCtx,
@@ -160,13 +160,15 @@ func (c *Cache) Get(ctx context.Context, key string, opts ...clientv3.OpOption) 
 
 	startKey := []byte(key)
 	endKey := op.RangeBytes()
-	kvs, rev, err := c.store.Get(startKey, endKey)
+	requestedRev := op.Rev()
+
+	kvs, latestRev, err := c.store.Get(startKey, endKey, requestedRev)
 	if err != nil {
 		return nil, err
 	}
 
 	return &clientv3.GetResponse{
-		Header: &pb.ResponseHeader{Revision: rev},
+		Header: &pb.ResponseHeader{Revision: latestRev},
 		Kvs:    kvs,
 		Count:  int64(len(kvs)),
 	}, nil
@@ -364,8 +366,6 @@ func (c *Cache) validateGet(key string, op clientv3.Op) (KeyPredicate, error) {
 	case op.MaxCreateRev() != 0:
 		return nil, fmt.Errorf("%w: MaxCreateRev(%d) not supported", ErrUnsupportedRequest, op.MaxCreateRev())
 	// cache now only serves serializable reads of the latest revision (rev == 0).
-	case op.Rev() != 0:
-		return nil, fmt.Errorf("%w: Rev(%d) not supported", ErrUnsupportedRequest, op.Rev())
 	case !op.IsSerializable():
 		return nil, fmt.Errorf("%w: non-serializable request", ErrUnsupportedRequest)
 	}
