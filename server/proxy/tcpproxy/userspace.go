@@ -55,21 +55,27 @@ type TCPProxy struct {
 	Listener        net.Listener
 	Endpoints       []*net.SRV
 	MonitorInterval time.Duration
-
-	donec chan struct{}
+	DialTimeout     time.Duration
 
 	mu        sync.Mutex // guards the following fields
+	donec     chan struct{}
 	remotes   []*remote
 	pickCount uint64 // for round robin
 }
 
 func (tp *TCPProxy) Run() error {
+	tp.mu.Lock()
 	tp.donec = make(chan struct{})
+	tp.mu.Unlock()
+
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
 	if tp.Logger == nil {
 		tp.Logger = zap.NewNop()
+	}
+	if tp.DialTimeout == 0 {
+		tp.DialTimeout = 10 * time.Second
 	}
 
 	eps := make([]string, 0, len(tp.Endpoints)) // for logging
@@ -149,6 +155,8 @@ func (tp *TCPProxy) pick() *remote {
 }
 
 func (tp *TCPProxy) serve(in net.Conn) {
+	defer in.Close()
+
 	var (
 		err error
 		out net.Conn
@@ -159,10 +167,9 @@ func (tp *TCPProxy) serve(in net.Conn) {
 		remote := tp.pick()
 		tp.mu.Unlock()
 		if remote == nil {
-			break
+			return
 		}
-		// TODO: add timeout
-		out, err = net.Dial("tcp", remote.addr)
+		out, err = net.DialTimeout("tcp", remote.addr, tp.DialTimeout)
 		if err == nil {
 			break
 		}
@@ -170,20 +177,9 @@ func (tp *TCPProxy) serve(in net.Conn) {
 		tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
 	}
 
-	if out == nil {
-		in.Close()
-		return
-	}
-
-	go func() {
-		io.Copy(in, out)
-		in.Close()
-		out.Close()
-	}()
-
+	defer out.Close()
+	go io.Copy(in, out)
 	io.Copy(out, in)
-	out.Close()
-	in.Close()
 }
 
 func (tp *TCPProxy) runMonitor() {
@@ -216,6 +212,18 @@ func (tp *TCPProxy) runMonitor() {
 func (tp *TCPProxy) Stop() {
 	// graceful shutdown?
 	// shutdown current connections?
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
+
+	if tp.donec == nil {
+		return // Never run.
+	}
+	select {
+	case <-tp.donec:
+		return // Already stopped.
+	default:
+	}
+
 	tp.Listener.Close()
 	close(tp.donec)
 }
