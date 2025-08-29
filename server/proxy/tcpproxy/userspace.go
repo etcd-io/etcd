@@ -60,7 +60,7 @@ type TCPProxy struct {
 
 	mu        sync.Mutex // guards the following fields
 	remotes   []*remote
-	pickCount int // for round robin
+	pickCount uint64 // for round robin
 }
 
 func (tp *TCPProxy) Run() error {
@@ -121,7 +121,7 @@ func (tp *TCPProxy) pick() *remote {
 			// In the presence of records containing weights greater
 			// than 0, records with weight 0 should have a very small
 			// chance of being selected.
-			r := unweighted[tp.pickCount%len(unweighted)]
+			r := unweighted[tp.pickCount%uint64(len(unweighted))]
 			tp.pickCount++
 			return r
 		}
@@ -138,7 +138,7 @@ func (tp *TCPProxy) pick() *remote {
 	}
 	if unweighted != nil {
 		for range tp.remotes {
-			picked := tp.remotes[tp.pickCount%len(tp.remotes)]
+			picked := tp.remotes[tp.pickCount%uint64(len(tp.remotes))]
 			tp.pickCount++
 			if picked.isActive() {
 				return picked
