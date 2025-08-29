@@ -18,6 +18,7 @@
       + g.dashboard.withVariables([
         v.datasource,
         v.cluster,
+        v.job,
       ])
       + g.dashboard.withPanels(
         [
