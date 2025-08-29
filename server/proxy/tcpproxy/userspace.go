@@ -20,22 +20,20 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type remote struct {
-	mu       sync.Mutex
 	srv      *net.SRV
 	addr     string
-	inactive bool
+	inactive atomic.Bool
 }
 
 func (r *remote) inactivate() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.inactive = true
+	r.inactive.Store(true)
 }
 
 func (r *remote) tryReactivate() error {
@@ -44,16 +42,12 @@ func (r *remote) tryReactivate() error {
 		return err
 	}
 	conn.Close()
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.inactive = false
+	r.inactive.Store(false)
 	return nil
 }
 
 func (r *remote) isActive() bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return !r.inactive
+	return !r.inactive.Load()
 }
 
 type TCPProxy struct {
