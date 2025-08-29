@@ -15,10 +15,10 @@
 package tcpproxy
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -72,9 +72,9 @@ func (tp *TCPProxy) Run() error {
 		tp.Logger = zap.NewNop()
 	}
 
-	var eps []string // for logging
+	eps := make([]string, 0, len(tp.Endpoints)) // for logging
 	for _, srv := range tp.Endpoints {
-		addr := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+		addr := net.JoinHostPort(srv.Target, strconv.Itoa(int(srv.Port)))
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 		eps = append(eps, addr)
 	}
@@ -129,7 +129,7 @@ func (tp *TCPProxy) pick() *remote {
 		// (inclusive), and select the RR whose running sum value is the
 		// first in the selected order
 		choose := rand.Intn(w)
-		for i := 0; i < len(weighted); i++ {
+		for i := range weighted {
 			choose -= int(weighted[i].srv.Weight)
 			if choose <= 0 {
 				return weighted[i]
@@ -137,7 +137,7 @@ func (tp *TCPProxy) pick() *remote {
 		}
 	}
 	if unweighted != nil {
-		for i := 0; i < len(tp.remotes); i++ {
+		for range tp.remotes {
 			picked := tp.remotes[tp.pickCount%len(tp.remotes)]
 			tp.pickCount++
 			if picked.isActive() {
