@@ -2,8 +2,6 @@ module go.etcd.io/etcd/etcdctl/v3
 
 go 1.25
 
-toolchain go1.25.0s
-
 require (
 	github.com/bgentry/speakeasy v0.2.0
 	github.com/cheggaaa/pb/v3 v3.1.7
