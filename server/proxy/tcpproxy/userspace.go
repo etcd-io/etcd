@@ -68,6 +68,9 @@ func (tp *TCPProxy) Run() error {
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
+	if tp.Logger == nil {
+		tp.Logger = zap.NewNop()
+	}
 
 	var eps []string // for logging
 	for _, srv := range tp.Endpoints {
@@ -75,9 +78,7 @@ func (tp *TCPProxy) Run() error {
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 		eps = append(eps, addr)
 	}
-	if tp.Logger != nil {
-		tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))
-	}
+	tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))
 
 	go tp.runMonitor()
 	for {
@@ -166,9 +167,7 @@ func (tp *TCPProxy) serve(in net.Conn) {
 			break
 		}
 		remote.inactivate()
-		if tp.Logger != nil {
-			tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-		}
+		tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
 	}
 
 	if out == nil {
@@ -198,13 +197,9 @@ func (tp *TCPProxy) runMonitor() {
 				}
 				go func(r *remote) {
 					if err := r.tryReactivate(); err != nil {
-						if tp.Logger != nil {
-							tp.Logger.Warn("failed to activate endpoint (stay inactive for another interval)", zap.String("address", r.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-						}
+						tp.Logger.Warn("failed to activate endpoint (stay inactive for another interval)", zap.String("address", r.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
 					} else {
-						if tp.Logger != nil {
-							tp.Logger.Info("activated", zap.String("address", r.addr))
-						}
+						tp.Logger.Info("activated", zap.String("address", r.addr))
 					}
 				}(rem)
 			}
