@@ -135,7 +135,7 @@ func testMetricDbSizeDefrag(t *testing.T, name string) {
 		}
 		retry++
 		if retry >= maxRetry {
-			t.Fatalf("%v", err)
+			t.Fatal(err)
 		}
 	}
 
