@@ -187,9 +187,12 @@ func (tp *TCPProxy) serve(in net.Conn) {
 }
 
 func (tp *TCPProxy) runMonitor() {
+	timer := time.NewTimer(tp.MonitorInterval)
+	defer timer.Stop()
 	for {
+		timer.Reset(tp.MonitorInterval)
 		select {
-		case <-time.After(tp.MonitorInterval):
+		case <-timer.C:
 			tp.mu.Lock()
 			for _, rem := range tp.remotes {
 				if rem.isActive() {
