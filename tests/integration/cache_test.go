@@ -555,6 +555,12 @@ func testGet(t *testing.T, kv clientv3.KV, getReader func() Getter, initialEvent
 			op := clientv3.OpGet(tc.key, tc.opts...)
 			requestedRev := op.Rev()
 			resp, err := reader.Get(ctx, tc.key, tc.opts...)
+			if tc.expectErr != nil {
+				if !errors.Is(err, tc.expectErr) {
+					t.Fatalf("expected %v for Get %q; got %v", tc.expectErr, tc.key, err)
+				}
+				return
+			}
 			if err != nil {
 				if _, ok := reader.(*cache.Cache); ok && requestedRev > 0 && requestedRev < initialRev && errors.Is(err, rpctypes.ErrCompacted) {
 					t.Logf("expected ErrCompacted: requestedRev=%d < initialCompleteRev=%d", requestedRev, initialRev)
@@ -662,6 +668,7 @@ type getTestCase struct {
 	opts         []clientv3.OpOption
 	wantKVs      []*mvccpb.KeyValue
 	wantRevision int64
+	expectErr    error
 }
 
 var getTestCases = []getTestCase{
@@ -694,6 +701,12 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:      "single key /foo/a at rev=9 (future), returns error",
+		key:       "/foo/a",
+		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(9)},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
 		name:         "non-existing key",
 		key:          "/doesnotexist",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable()},
@@ -706,6 +719,12 @@ var getTestCases = []getTestCase{
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(4)},
 		wantKVs:      nil,
 		wantRevision: 8,
+	},
+	{
+		name:      "non-existing key at rev=9 (future), returns error",
+		key:       "/doesnotexist",
+		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(9)},
+		expectErr: rpctypes.ErrFutureRev,
 	},
 	{
 		name:         "prefix /foo",
@@ -736,6 +755,13 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:      "prefix /foo at rev=9 (future), returns error",
+		key:       "/foo",
+		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(9)},
+		wantKVs:   []*mvccpb.KeyValue{Rev2PutFooA.Kv, Rev3PutFooB.Kv, Rev4PutFooC.Kv, Rev5PutFooD.Kv},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
 		name:         "range [/foo/a, /foo/c)",
 		key:          "/foo/a",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c")},
@@ -750,6 +776,12 @@ var getTestCases = []getTestCase{
 		wantRevision: 8,
 	},
 	{
+		name:      "range [/foo/a, /foo/c) at rev=9 (future), returns error",
+		key:       "/foo/a",
+		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/c"), clientv3.WithRev(9)},
+		expectErr: rpctypes.ErrFutureRev,
+	},
+	{
 		name:         "fromKey /foo/b",
 		key:          "/foo/b",
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
@@ -762,6 +794,12 @@ var getTestCases = []getTestCase{
 		opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey(), clientv3.WithRev(7)},
 		wantKVs:      []*mvccpb.KeyValue{Rev7TxnPutFooB.Kv, Rev4PutFooC.Kv},
 		wantRevision: 8,
+	},
+	{
+		name:      "fromKey /foo/b at rev=9 (future), returns error",
+		key:       "/foo/b",
+		opts:      []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey(), clientv3.WithRev(9)},
+		expectErr: rpctypes.ErrFutureRev,
 	},
 }
 
