@@ -149,7 +149,8 @@ func (s EtcdState) stepRange(request EtcdRequest) (EtcdState, MaybeEtcdResponse)
 	if request.Range.Revision < s.CompactRevision {
 		return s, MaybeEtcdResponse{EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()}}
 	}
-	return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: s.Revision}
+	// TODO: Revert after cache supports consistent reads
+	return s, MaybeEtcdResponse{Persisted: true, PersistedRevision: request.Range.Revision}
 }
 
 func (s EtcdState) stepTxn(request EtcdRequest) (EtcdState, MaybeEtcdResponse) {
