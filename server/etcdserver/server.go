@@ -1030,18 +1030,21 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	<-toApply.notifyc
 
 	// gofail: var applyBeforeOpenSnapshot struct{}
-	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.snapshot, s.beHooks)
+	snapPath, err := s.snapshotter.DBFilePath(toApply.snapshot.Metadata.Index)
+	err = s.be.ReopenFromSnapshotFile(snapPath, func(be backend.Backend) {
+		// We need to set the backend to consistIndex before recovering the lessor,
+		// because lessor.Recover will commit the boltDB transaction, accordingly it
+		// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
+		// Eventually the new consistent_index value coming from snapshot is overwritten
+		// by the old value.
+		s.consistIndex.SetBackend(be)
+		verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
+	})
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
 
-	// We need to set the backend to consistIndex before recovering the lessor,
-	// because lessor.Recover will commit the boltDB transaction, accordingly it
-	// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
-	// Eventually the new consistent_index value coming from snapshot is overwritten
-	// by the old value.
-	s.consistIndex.SetBackend(newbe)
-	verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
+	newbe := s.be
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1062,24 +1065,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	newbe.SetTxPostLockInsideApplyHook(s.getTxPostLockInsideApplyHook())
 
 	lg.Info("restored mvcc store", zap.Uint64("consistent-index", s.consistIndex.ConsistentIndex()))
-
-	// Closing old backend might block until all the txns
-	// on the backend are finished.
-	// We do not want to wait on closing the old backend.
-	s.bemu.Lock()
-	oldbe := s.be
-	go func() {
-		lg.Info("closing old backend file")
-		defer func() {
-			lg.Info("closed old backend file")
-		}()
-		if err := oldbe.Close(); err != nil {
-			lg.Panic("failed to close old backend", zap.Error(err))
-		}
-	}()
-
-	s.be = newbe
-	s.bemu.Unlock()
 
 	lg.Info("restoring alarm store")
 
