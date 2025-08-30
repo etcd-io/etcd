@@ -127,7 +127,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
+		wurl := fmt.Sprintf("http://localhost:2380%s/1", tt.endpoint())
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
