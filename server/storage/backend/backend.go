@@ -72,6 +72,8 @@ type Backend interface {
 
 	// SetTxPostLockInsideApplyHook sets a txPostLockInsideApplyHook.
 	SetTxPostLockInsideApplyHook(func())
+
+	ReopenFromSnapshotFile(snapPath string) (err error)
 }
 
 type Snapshot interface {
@@ -459,6 +461,68 @@ func (b *backend) Commits() int64 {
 	return atomic.LoadInt64(&b.commits)
 }
 
+func (b *backend) ReopenFromSnapshotFile(snapPath string) (err error) {
+	now := time.Now()
+	b.lg.Info("ReopenFromSnapshotFile", zap.String("be ptr", fmt.Sprintf("%p", b)))
+	defer b.lg.Info("ReopenFromSnapshotFile finished")
+
+	b.batchTx.LockOutsideApply()
+	defer b.batchTx.Unlock()
+
+	// lock database after lock tx to avoid deadlock.
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	// block concurrent read requests while resetting tx
+	b.readTx.Lock()
+	defer b.readTx.Unlock()
+
+	// Commit/stop and then reset current transactions (including the readTx)
+	b.batchTx.unsafeCommit(true)
+	b.batchTx.tx = nil
+
+	dbp := b.db.Path()
+	err = b.db.Close()
+	if err != nil {
+		b.lg.Fatal("failed to close database", zap.Error(err))
+	}
+
+	// rename to db
+	err = os.Rename(snapPath, dbp)
+	if err != nil {
+		b.lg.Fatal("failed to rename tmp database", zap.Error(err))
+	}
+
+	// open db
+	b.db, err = bolt.Open(dbp, 0o600, b.bopts)
+	if err != nil {
+		b.lg.Fatal("failed to open database", zap.String("path", dbp), zap.Error(err))
+	}
+	b.batchTx.tx = b.unsafeBegin(true)
+
+	b.readTx.reset()
+	b.readTx.tx = b.unsafeBegin(false)
+
+	size := b.readTx.tx.Size()
+	db := b.readTx.tx.DB()
+	atomic.StoreInt64(&b.size, size)
+	atomic.StoreInt64(&b.sizeInUse, size-(int64(db.Stats().FreePageN)*int64(db.Info().PageSize)))
+
+	took := time.Since(now)
+	size, sizeInUse := b.Size(), b.SizeInUse()
+	b.lg.Info(
+		"finished ReopenFromSnapshotFile",
+		zap.String("path", dbp),
+		zap.Int64("current-db-size-bytes", size),
+		zap.String("current-db-size", humanize.Bytes(uint64(size))),
+		zap.Int64("current-db-size-in-use-bytes", sizeInUse),
+		zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
+		zap.Duration("took", took),
+	)
+
+	return
+}
+
 func (b *backend) Defrag() error {
 	return b.defrag()
 }
@@ -468,6 +532,8 @@ func (b *backend) defrag() error {
 	now := time.Now()
 	isDefragActive.Set(1)
 	defer isDefragActive.Set(0)
+
+	b.lg.Info("defrag", zap.String("be ptr", fmt.Sprintf("%p", b)))
 
 	// TODO: make this non-blocking?
 	// lock batchTx to ensure nobody is using previous tx, and then
