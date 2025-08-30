@@ -29,8 +29,8 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = traceutil.EnsureTrace(ctx, lg, "transaction")
+func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWithSharedBuffer bool, kv mvcc.KV, lessor lease.Lessor) (txnResp *pb.TxnResponse, err error) {
+	ctx, trace := traceutil.EnsureTrace(ctx, lg, "transaction")
 	isWrite := !IsTxnReadonly(rt)
 	// When the transaction contains write operations, we use ReadTx instead of
 	// ConcurrentReadTx to avoid extra overhead of copying buffer.
@@ -54,7 +54,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 	_, err = checkTxn(trace, txnRead, rt, lessor, txnPath)
 	if err != nil {
 		txnRead.End()
-		return nil, nil, err
+		return nil, err
 	}
 	trace.Step("check requests")
 	// When executing mutable txnWrite ops, etcd must hold the txnWrite lock so
@@ -75,7 +75,7 @@ func Txn(ctx context.Context, lg *zap.Logger, rt *pb.TxnRequest, txnModeWriteWit
 		traceutil.Field{Key: "number_of_response", Value: len(txnResp.Responses)},
 		traceutil.Field{Key: "response_revision", Value: txnResp.Header.Revision},
 	)
-	return txnResp, trace, err
+	return txnResp, err
 }
 
 func txn(ctx context.Context, lg *zap.Logger, txnWrite mvcc.TxnWrite, rt *pb.TxnRequest, isWrite bool, txnPath []bool) (*pb.TxnResponse, error) {

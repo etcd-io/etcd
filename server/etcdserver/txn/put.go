@@ -26,22 +26,22 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, trace *traceutil.Trace, err error) {
-	ctx, trace = traceutil.EnsureTrace(ctx, lg, "put",
+func Put(ctx context.Context, lg *zap.Logger, lessor lease.Lessor, kv mvcc.KV, p *pb.PutRequest) (resp *pb.PutResponse, err error) {
+	ctx, trace := traceutil.EnsureTrace(ctx, lg, "put",
 		traceutil.Field{Key: "key", Value: string(p.Key)},
 		traceutil.Field{Key: "req_size", Value: p.Size()},
 	)
 	err = checkLease(lessor, p)
 	if err != nil {
-		return nil, trace, err
+		return nil, err
 	}
 	txnWrite := kv.Write(trace)
 	defer txnWrite.End()
 	prevKV, err := checkAndGetPrevKV(trace, txnWrite, p)
 	if err != nil {
-		return nil, trace, err
+		return nil, err
 	}
-	return put(ctx, txnWrite, p, prevKV), trace, nil
+	return put(ctx, txnWrite, p, prevKV), nil
 }
 
 func put(ctx context.Context, txnWrite mvcc.TxnWrite, p *pb.PutRequest, prevKV *mvcc.RangeResult) *pb.PutResponse {
