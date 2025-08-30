@@ -968,6 +968,13 @@ func (s *EtcdServer) Cleanup() {
 	}
 }
 
+func (s *EtcdServer) Defragment() (err error) {
+	s.bemu.Lock()
+	defer s.bemu.Unlock()
+	err = s.be.Defrag()
+	return
+}
+
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
