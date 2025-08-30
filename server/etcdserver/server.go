@@ -1030,24 +1030,21 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	<-toApply.notifyc
 
 	// gofail: var applyBeforeOpenSnapshot struct{}
-	s.bemu.Lock()
 	snapPath, err := s.snapshotter.DBFilePath(toApply.snapshot.Metadata.Index)
-	err = s.be.ReopenFromSnapshotFile(snapPath)
+	err = s.be.ReopenFromSnapshotFile(snapPath, func(be backend.Backend) {
+		// We need to set the backend to consistIndex before recovering the lessor,
+		// because lessor.Recover will commit the boltDB transaction, accordingly it
+		// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
+		// Eventually the new consistent_index value coming from snapshot is overwritten
+		// by the old value.
+		s.consistIndex.SetBackend(be)
+		verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
+	})
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
 
 	newbe := s.be
-
-	// We need to set the backend to consistIndex before recovering the lessor,
-	// because lessor.Recover will commit the boltDB transaction, accordingly it
-	// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
-	// Eventually the new consistent_index value coming from snapshot is overwritten
-	// by the old value.
-	s.consistIndex.SetBackend(newbe)
-	verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
-
-	s.bemu.Unlock()
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.

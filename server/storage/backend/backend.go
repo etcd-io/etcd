@@ -73,7 +73,7 @@ type Backend interface {
 	// SetTxPostLockInsideApplyHook sets a txPostLockInsideApplyHook.
 	SetTxPostLockInsideApplyHook(func())
 
-	ReopenFromSnapshotFile(snapPath string) (err error)
+	ReopenFromSnapshotFile(snapPath string, fn func(newbe Backend)) (err error)
 }
 
 type Snapshot interface {
@@ -461,7 +461,7 @@ func (b *backend) Commits() int64 {
 	return atomic.LoadInt64(&b.commits)
 }
 
-func (b *backend) ReopenFromSnapshotFile(snapPath string) (err error) {
+func (b *backend) ReopenFromSnapshotFile(snapPath string, fn func(be Backend)) (err error) {
 	now := time.Now()
 	b.lg.Info("ReopenFromSnapshotFile", zap.String("be ptr", fmt.Sprintf("%p", b)))
 	defer b.lg.Info("ReopenFromSnapshotFile finished")
@@ -474,8 +474,9 @@ func (b *backend) ReopenFromSnapshotFile(snapPath string) (err error) {
 	defer b.mu.Unlock()
 
 	// block concurrent read requests while resetting tx
-	b.readTx.Lock()
-	defer b.readTx.Unlock()
+	// deadlock with readTx usage in fn
+	//b.readTx.Lock()
+	//defer b.readTx.Unlock()
 
 	// Commit/stop and then reset current transactions (including the readTx)
 	b.batchTx.unsafeCommit(true)
@@ -520,6 +521,7 @@ func (b *backend) ReopenFromSnapshotFile(snapPath string) (err error) {
 		zap.Duration("took", took),
 	)
 
+	fn(b)
 	return
 }
 
