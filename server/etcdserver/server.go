@@ -968,6 +968,13 @@ func (s *EtcdServer) Cleanup() {
 	}
 }
 
+func (s *EtcdServer) Defragment() (err error) {
+	s.bemu.Lock()
+	defer s.bemu.Unlock()
+	err = s.be.Defrag()
+	return
+}
+
 func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
@@ -1029,6 +1036,9 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-toApply.notifyc
 
+	// protect the backend from concurrent defrag
+	s.bemu.Lock()
+
 	// gofail: var applyBeforeOpenSnapshot struct{}
 	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.snapshot, s.beHooks)
 	if err != nil {
@@ -1066,7 +1076,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// Closing old backend might block until all the txns
 	// on the backend are finished.
 	// We do not want to wait on closing the old backend.
-	s.bemu.Lock()
+	// s.bemu.Lock()
 	oldbe := s.be
 	go func() {
 		lg.Info("closing old backend file")
