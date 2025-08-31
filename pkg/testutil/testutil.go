@@ -53,7 +53,7 @@ func FatalStack(t *testing.T, s string) {
 	stackTrace := make([]byte, 1024*1024)
 	n := runtime.Stack(stackTrace, true)
 	t.Error(string(stackTrace[:n]))
-	t.Fatalf(s)
+	t.Fatal(s)
 }
 
 // ConditionFunc returns true when a condition is met.
