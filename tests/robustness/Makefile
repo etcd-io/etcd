@@ -86,7 +86,7 @@ install-gofail: $(GOPATH)/bin/gofail
 
 .PHONY: gofail-enable
 gofail-enable: $(GOPATH)/bin/gofail
-	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
+	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
 	cd $(REPOSITORY_ROOT)/server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd $(REPOSITORY_ROOT)/etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd $(REPOSITORY_ROOT)/etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
@@ -94,7 +94,7 @@ gofail-enable: $(GOPATH)/bin/gofail
 
 .PHONY: gofail-disable
 gofail-disable: $(GOPATH)/bin/gofail
-	$(GOPATH)/bin/gofail disable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
+	$(GOPATH)/bin/gofail disable server/etcdserver/ server/lease server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
 	cd $(REPOSITORY_ROOT)/server && go mod tidy
 	cd $(REPOSITORY_ROOT)/etcdutl && go mod tidy
 	cd $(REPOSITORY_ROOT)/etcdctl && go mod tidy
