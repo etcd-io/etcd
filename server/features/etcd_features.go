@@ -74,6 +74,11 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/17661
 	SetMemberLocalAddr featuregate.Feature = "SetMemberLocalAddr"
+	// FastLeaseKeepAlive enables lease renewal to skip waiting for the applied index.
+	// owner: @aaronjzhang
+	// beta: v3.6
+	// main PR: https://github.com/etcd-io/etcd/pull/20589
+	FastLeaseKeepAlive featuregate.Feature = "FastLeaseKeepAlive"
 )
 
 var (
@@ -85,7 +90,8 @@ var (
 		LeaseCheckpoint:              {Default: false, PreRelease: featuregate.Alpha},
 		LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
 		SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
-	}
+        FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
+    }
 	// ExperimentalFlagToFeatureMap is the map from the cmd line flags of experimental features
 	// to their corresponding feature gates.
 	// Deprecated: Only add existing experimental features here. DO NOT use for new features.
