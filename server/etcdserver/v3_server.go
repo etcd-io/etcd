@@ -353,8 +353,21 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		if !s.ensureLeadership() {
 			return -1, lease.ErrNotPrimary
 		}
-		if err := s.waitAppliedIndex(); err != nil {
-			return 0, err
+
+		// This change aims to mitigate the impact of "apply request took too long"
+		// while maintaining correctness:
+		// 	 1. If a lease is not found, it might be in the process of being applied.
+		//      We need to wait for the applied index to advance to confirm whether
+		//      the lease truly doesn't exist.
+		//   2. If a lease is found but in revoking state, the revoke request has
+		//      been committed but not yet applied. Even if we allow the current
+		//      renewal to proceed, it won't affect the eventual outcome since the
+		//      lease will still be properly revoked once the revoke request is applied.
+		le := s.lessor.Lookup(id)
+		if le == nil {
+			if err := s.waitAppliedIndex(); err != nil {
+				return 0, err
+			}
 		}
 
 		ttl, err := s.lessor.Renew(id)
