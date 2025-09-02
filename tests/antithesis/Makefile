@@ -75,3 +75,14 @@ validate-node-count:
 		echo "CFG_NODE_COUNT must be either 1 or 3 (got $(CFG_NODE_COUNT))"; \
 		exit 1; \
 	fi
+
+REQUIRED_K8S_TOOLS := kubectl kind
+
+.PHONY: check-k8s-tools
+check-k8s-tools:
+	@for tool in $(REQUIRED_K8S_TOOLS); do \
+		if ! command -v $$tool >/dev/null 2>&1; then \
+			echo "Error: '$$tool' is missing.  Please install it before continuing." >&2; \
+			exit 1; \
+		fi \
+	done
