@@ -42,6 +42,7 @@ var (
 	checkDatascalePrefix string
 	autoCompact          bool
 	autoDefrag           bool
+	verbose              bool
 )
 
 type checkPerfCfg struct {
@@ -130,6 +131,7 @@ func NewCheckPerfCommand() *cobra.Command {
 	cmd.Flags().StringVar(&checkPerfPrefix, "prefix", "/etcdctl-check-perf/", "The prefix for writing the performance check's keys.")
 	cmd.Flags().BoolVar(&autoCompact, "auto-compact", false, "Compact storage with last revision after test is finished.")
 	cmd.Flags().BoolVar(&autoDefrag, "auto-defrag", false, "Defragment storage after test is finished.")
+	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Print detailed performance report.")
 	cmd.RegisterFlagCompletionFunc("load", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"small", "medium", "large", "xLarge"}, cobra.ShellCompDirectiveDefault
 	})
@@ -216,10 +218,12 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 	}()
 
 	sc := r.Stats()
+	rc := r.Run()
 	wg.Wait()
 	close(r.Results())
 
 	s := <-sc
+	rp := <-rc
 
 	attemptCleanup(clients[0], autoCompact)
 
@@ -227,6 +231,10 @@ func newCheckPerfCommand(cmd *cobra.Command, args []string) {
 		for _, ep := range clients[0].Endpoints() {
 			defrag(clients[0], ep)
 		}
+	}
+
+	if verbose {
+		fmt.Print(rp)
 	}
 
 	ok = true
