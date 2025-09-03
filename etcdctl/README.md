@@ -1129,6 +1129,442 @@ DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 ./etcdctl downgrade cancel
 Downgrade cancel success, cluster version 3.5
 ```
+### DIAGNOSIS
+
+`etcdctl diagnosis [flags]` - Collects and analyzes troubleshooting data from a running etcd cluster.
+
+The `diagnosis` command gathers a concise set of diagnostic details from each cluster member by performing several checks, including:
+
+  * **Membership checks**: Verifies the cluster membership information.
+  * **Endpoint status**: Retrieves the status of each endpoint.
+  * **Serializable and linearizable reads**: Performs read operations to validate data consistency.
+  * **Metrics snapshot**: Collects a small snapshot of key metrics.
+
+#### Flags
+
+- `--cluster`: use all endpoints discovered from the cluster member list.
+- `--etcd-storage-quota-bytes`: expected etcd storage quota in bytes (value passed to etcd with `--quota-backend-bytes`).
+- `-o, --output`: optional file path to write the JSON report; by default the report is written to stdout. Logs are written to stderr.
+
+Global flags (like `--endpoints`, TLS, auth, and timeouts) are shared with other `etcdctl` commands. See `etcdctl options` for the full list.
+
+#### Examples
+
+To perform analysis of a running etcd cluster, you can use the following command. This will collect and analyze data from all specified endpoints.
+
+```bash
+etcdctl diagnosis --endpoints=https://10.0.1.10:2379,https://10.0.1.11:2379,https://10.0.1.12:2379 \
+  --cacert ./ca.crt --key ./etcd-diagnosis.key --cert ./etcd-diagnosis.crt
+
+# Use cluster-discovered endpoints
+etcdctl diagnosis --cluster
+
+# Write report to a file (logs still go to stderr)
+etcdctl diagnosis -o report.json
+```
+
+<details> <summary>Example output</summary>
+
+```json
+{
+	"input": {
+		"endpoints": [
+			"http://127.0.0.1:2379"
+		],
+		"useClusterEndpoints": true,
+		"dial-timeout": 2000000000,
+		"command-timeout": 5000000000,
+		"keep-alive-time": 2000000000,
+		"keep-alive-timeout": 5000000000,
+		"insecure": true,
+		"insecure-discovery": true,
+		"db-quota-bytes": 2147483648
+	},
+	"results": [
+		{
+			"name": "membershipChecker",
+			"memberList": {
+				"header": {
+					"cluster_id": 17237436991929493444,
+					"member_id": 9372538179322589801,
+					"raft_term": 2
+				},
+				"members": [
+					{
+						"ID": 9372538179322589801,
+						"name": "infra1",
+						"peerURLs": [
+							"http://127.0.0.1:12380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:2379"
+						]
+					},
+					{
+						"ID": 10501334649042878790,
+						"name": "infra2",
+						"peerURLs": [
+							"http://127.0.0.1:22380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:22379"
+						]
+					},
+					{
+						"ID": 18249187646912138824,
+						"name": "infra3",
+						"peerURLs": [
+							"http://127.0.0.1:32380"
+						],
+						"clientURLs": [
+							"http://127.0.0.1:32379"
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "epStatusChecker",
+			"summary": [
+				"Successful"
+			],
+			"epStatusList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 9372538179322589801,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 10501334649042878790,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"epStatus": {
+						"header": {
+							"cluster_id": 17237436991929493444,
+							"member_id": 18249187646912138824,
+							"revision": 1,
+							"raft_term": 2
+						},
+						"version": "3.5.9",
+						"dbSize": 98304,
+						"leader": 18249187646912138824,
+						"raftIndex": 8,
+						"raftTerm": 2,
+						"raftAppliedIndex": 8,
+						"dbSizeInUse": 98304
+					}
+				}
+			]
+		},
+		{
+			"name": "serializableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "686.5µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "1.129291ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.034625ms"
+				}
+			]
+		},
+		{
+			"name": "linearizableReadChecker",
+			"summary": "Successful",
+			"readResponses": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "1.286333ms"
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "890.417µs"
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "1.257791ms"
+				}
+			]
+		},
+		{
+			"name": "metricsChecker",
+			"summary": [
+				"Successful"
+			],
+			"epMetricsList": [
+				{
+					"endpoint": "http://127.0.0.1:2379",
+					"took": "3.752625ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 5",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 7"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0001\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0004\"} 3",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0008\"} 52",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0016\"} 135",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0004\"} 4",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0008\"} 55",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0016\"} 136",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:22379",
+					"took": "3.257333ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 1",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 6",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 7"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0002\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0004\"} 3",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0008\"} 36",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0016\"} 123",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0002\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0008\"} 74",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0016\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"fd422379fda50e48\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				},
+				{
+					"endpoint": "http://127.0.0.1:32379",
+					"took": "3.16275ms",
+					"epMetrics": {
+						"etcd_disk_backend_commit_duration_seconds_bucket": [
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.008\"} 0",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.016\"} 2",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.064\"} 7",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_backend_commit_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_disk_wal_fsync_duration_seconds_bucket": [
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.001\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.002\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.004\"} 0",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.008\"} 3",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.016\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.032\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.064\"} 7",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.128\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.256\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"0.512\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"1.024\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"2.048\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"4.096\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"8.192\"} 8",
+							"etcd_disk_wal_fsync_duration_seconds_bucket{le=\"+Inf\"} 8"
+						],
+						"etcd_network_peer_round_trip_time_seconds_bucket": [
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0002\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0008\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0016\"} 67",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"8211f1d0f64f3269\",le=\"+Inf\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0001\"} 0",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0002\"} 1",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0004\"} 2",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0008\"} 9",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0016\"} 124",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0032\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0064\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0128\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0256\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.0512\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.1024\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.2048\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.4096\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"0.8192\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"1.6384\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"3.2768\"} 138",
+							"etcd_network_peer_round_trip_time_seconds_bucket{To=\"91bc3c398fb3c146\",le=\"+Inf\"} 138"
+						],
+						"process_resident_memory_bytes": null
+					}
+				}
+			]
+		}
+	]
+}
+```
+
+</details>
 
 ## Concurrency commands
 
