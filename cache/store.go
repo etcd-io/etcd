@@ -59,11 +59,11 @@ func (a *kvItem) Less(b btree.Item) bool {
 }
 
 func (s *store) Get(startKey, endKey []byte, rev int64) ([]*mvccpb.KeyValue, int64, error) {
-	snapshot, latestRev, err := s.getSnapshot(rev)
+	snapshot, _, err := s.getSnapshot(rev)
 	if err != nil {
 		return nil, 0, err
 	}
-	return snapshot.Range(startKey, endKey), latestRev, nil
+	return snapshot.Range(startKey, endKey), rev, nil
 }
 
 func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
@@ -102,9 +102,12 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	defer s.mu.Unlock()
 
 	s.latest.tree = btree.New(s.degree)
+	// fmt.Printf("CACHE %p restore rev: %d\n", s, rev)
 	for _, kv := range kvs {
+		// fmt.Printf("CACHE %p restore key: %+v\n", s, kv)
 		s.latest.tree.ReplaceOrInsert(newKVItem(kv))
 	}
+
 	s.history.RebaseHistory()
 	s.latest.rev = rev
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
@@ -123,6 +126,7 @@ func (s *store) Apply(events []*clientv3.Event) error {
 
 		for i < len(events) && events[i].Kv.ModRevision == rev {
 			ev := events[i]
+			// fmt.Printf("CACHE %p apply event: %+v\n", s, ev)
 			switch ev.Type {
 			case clientv3.EventTypeDelete:
 				if removed := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
