@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -30,38 +31,10 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/client/pkg/v3/srv"
-	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 	"go.etcd.io/etcd/pkg/v3/flags"
 )
-
-// GlobalFlags are flags that defined globally
-// and are inherited to all sub-commands.
-type GlobalFlags struct {
-	Insecure              bool
-	InsecureSkipVerify    bool
-	InsecureDiscovery     bool
-	Endpoints             []string
-	DialTimeout           time.Duration
-	CommandTimeOut        time.Duration
-	KeepAliveTime         time.Duration
-	KeepAliveTimeout      time.Duration
-	MaxCallSendMsgSize    int
-	MaxCallRecvMsgSize    int
-	DNSClusterServiceName string
-
-	TLS transport.TLSInfo
-
-	OutputFormat string
-	IsHex        bool
-
-	User     string
-	Password string
-	Token    string
-
-	Debug bool
-}
 
 type discoveryCfg struct {
 	domain      string
@@ -70,6 +43,68 @@ type discoveryCfg struct {
 }
 
 var display printer = &simplePrinter{}
+
+var newClientFunc = clientv3.New
+
+func RegisterGlobalFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringSlice("endpoints", []string{"127.0.0.1:2379"}, "gRPC endpoints")
+	cmd.PersistentFlags().Bool("debug", false, "enable client-side debug logging")
+	cmd.PersistentFlags().StringP("write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
+	cmd.PersistentFlags().Bool("hex", false, "print byte strings as hex encoded strings")
+	cmd.PersistentFlags().Duration("dial-timeout", 2*time.Second, "dial timeout for client connections")
+	cmd.PersistentFlags().Duration("command-timeout", 5*time.Second, "timeout for short running command (excluding dial timeout)")
+	cmd.PersistentFlags().Duration("keepalive-time", 2*time.Second, "keepalive time for client connections")
+	cmd.PersistentFlags().Duration("keepalive-timeout", 6*time.Second, "keepalive timeout for client connections")
+	cmd.PersistentFlags().Int("max-request-bytes", 0, "client-side request send limit in bytes (if 0, it defaults to 2.0 MiB (2 * 1024 * 1024).)")
+	cmd.PersistentFlags().Int("max-recv-bytes", 0, "client-side response receive limit in bytes (if 0, it defaults to \"math.MaxInt32\")")
+	cmd.PersistentFlags().Bool("insecure-transport", true, "disable transport security for client connections")
+	cmd.PersistentFlags().Bool("insecure-discovery", true, "accept insecure SRV records describing cluster endpoints")
+	cmd.PersistentFlags().Bool("insecure-skip-tls-verify", false, "skip server certificate verification (CAUTION: this option should be enabled only for testing purposes)")
+	cmd.PersistentFlags().String("cert", "", "identify secure client using this TLS certificate file")
+	cmd.PersistentFlags().String("key", "", "identify secure client using this TLS key file")
+	cmd.PersistentFlags().String("cacert", "", "verify certificates of TLS-enabled secure servers using this CA bundle")
+	cmd.PersistentFlags().String("auth-jwt-token", "", "JWT token used for authentication (if this option is used, --user and --password should not be set)")
+	cmd.PersistentFlags().String("user", "", "username[:password] for authentication (prompt if password is not supplied)")
+	cmd.PersistentFlags().String("password", "", "password for authentication (if this option is used, --user option shouldn't include password)")
+	cmd.PersistentFlags().StringP("discovery-srv", "d", "", "domain name to query for SRV records describing cluster endpoints")
+	cmd.PersistentFlags().String("discovery-srv-name", "", "service name to query when using DNS discovery")
+}
+
+type ClientFactory func(clientv3.Config) (*clientv3.Client, error)
+
+type clientFactoryKey struct{}
+
+// WithClientFactory attaches a custom client factory to the provided context.
+// Tests can inject fakes without mutating the global client constructor.
+func WithClientFactory(ctx context.Context, factory ClientFactory) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if factory == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, clientFactoryKey{}, factory)
+}
+
+func WithClient(ctx context.Context, cli *clientv3.Client) context.Context {
+	if cli == nil {
+		return ctx
+	}
+	return WithClientFactory(ctx, func(clientv3.Config) (*clientv3.Client, error) {
+		return cli, nil
+	})
+}
+
+func clientFactoryFromCmd(cmd *cobra.Command) ClientFactory {
+	if cmd != nil {
+		if ctx := cmd.Context(); ctx != nil {
+			if factory, ok := ctx.Value(clientFactoryKey{}).(ClientFactory); ok && factory != nil {
+				return factory
+			}
+		}
+	}
+	return newClientFunc
+}
 
 func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
@@ -153,17 +188,21 @@ func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	cfg := clientConfigFromCmd(cmd)
-	return mustClient(cfg)
+	return mustClientWithFactory(cmd, cfg)
 }
 
 func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
+	return mustClientWithFactory(nil, cc)
+}
+
+func mustClientWithFactory(cmd *cobra.Command, cc *clientv3.ConfigSpec) *clientv3.Client {
 	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	client, err := clientv3.New(*cfg)
+	client, err := clientFactoryFromCmd(cmd)(*cfg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, err)
 	}
