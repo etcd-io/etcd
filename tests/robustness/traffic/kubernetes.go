@@ -15,6 +15,7 @@
 package traffic
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -42,7 +43,9 @@ var (
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
 		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
-			{Choice: KubernetesListStale, Weight: 20},
+			{Choice: KubernetesGet, Weight: 5},
+			{Choice: KubernetesGetStale, Weight: 5},
+			{Choice: KubernetesListStale, Weight: 10},
 			{Choice: KubernetesListAndWatch, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
@@ -59,7 +62,9 @@ var (
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
 		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
-			{Choice: KubernetesListStale, Weight: 20},
+			{Choice: KubernetesGet, Weight: 5},
+			{Choice: KubernetesGetStale, Weight: 5},
+			{Choice: KubernetesListStale, Weight: 10},
 			{Choice: KubernetesListAndWatch, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
@@ -134,6 +139,19 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
 	op := random.PickRandom(t.readChoices)
 	switch op {
+	case KubernetesGet:
+		key, unusedRev := s.PickRandom()
+		if unusedRev == 0 {
+			return errors.New("storage empty")
+		}
+		return t.Get(ctx, kc, s, limiter, key, 0)
+	case KubernetesGetStale:
+		key1, rev1 := s.PickRandom()
+		key2, rev2 := s.PickRandom()
+		if rev1 == 0 && rev2 == 0 {
+			return errors.New("storage empty")
+		}
+		return t.Get(ctx, kc, s, limiter, cmp.Or(key1, key2), cmp.Or(rev2, rev1))
 	case KubernetesListStale:
 		_, rev := s.PickRandom()
 		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
@@ -148,6 +166,12 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 	default:
 		panic(fmt.Sprintf("invalid choice: %q", op))
 	}
+}
+
+func (t kubernetesTraffic) Get(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, key string, rev int64) error {
+	_, err := kc.Get(ctx, key, kubernetes.GetOptions{Revision: rev})
+	limiter.Wait(ctx)
+	return err
 }
 
 func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int, revision int64) (rev int64, err error) {
@@ -308,6 +332,8 @@ const (
 	KubernetesDelete       KubernetesRequestType = "delete"
 	KubernetesUpdate       KubernetesRequestType = "update"
 	KubernetesCreate       KubernetesRequestType = "create"
+	KubernetesGet          KubernetesRequestType = "get"
+	KubernetesGetStale     KubernetesRequestType = "get_stale"
 	KubernetesListStale    KubernetesRequestType = "list_stale"
 	KubernetesListAndWatch KubernetesRequestType = "list_watch"
 )
