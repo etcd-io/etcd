@@ -41,6 +41,11 @@ var (
 		resource:        "pods",
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
+		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesListStale, Weight: 20},
+			{Choice: KubernetesListAndWatch, Weight: 80},
+		},
+		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesUpdate, Weight: 90},
 			{Choice: KubernetesDelete, Weight: 5},
@@ -53,6 +58,11 @@ var (
 		resource:        "pods",
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
+		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesListStale, Weight: 20},
+			{Choice: KubernetesListAndWatch, Weight: 80},
+		},
+		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesDelete, Weight: 40},
 			{Choice: KubernetesCreate, Weight: 60},
@@ -64,6 +74,7 @@ type kubernetesTraffic struct {
 	averageKeyCount int
 	resource        string
 	namespace       string
+	readChoices     []random.ChoiceWeight[KubernetesRequestType]
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
 }
 
@@ -76,7 +87,6 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
-	readLimit := t.averageKeyCount
 
 	g.Go(func() error {
 		for {
@@ -87,11 +97,10 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 				return nil
 			default:
 			}
-			rev, err := t.Read(ctx, kc, s, limiter, keyPrefix, readLimit)
+			err := t.Read(ctx, c, s, limiter, keyPrefix)
 			if err != nil {
 				continue
 			}
-			t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
 		}
 	})
 	g.Go(func() error {
@@ -106,7 +115,7 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 			}
 			// Avoid multiple failed writes in a row
 			if lastWriteFailed {
-				_, err := t.Read(ctx, kc, s, limiter, keyPrefix, 0)
+				_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
 				if err != nil {
 					continue
 				}
@@ -121,10 +130,29 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 	g.Wait()
 }
 
-func (t kubernetesTraffic) Read(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int) (rev int64, err error) {
+func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
+	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
+	op := random.PickRandom(t.readChoices)
+	switch op {
+	case KubernetesListStale:
+		_, rev := s.PickRandom()
+		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
+		return err
+	case KubernetesListAndWatch:
+		rev, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
+		if err != nil {
+			return err
+		}
+		t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
+		return nil
+	default:
+		panic(fmt.Sprintf("invalid choice: %q", op))
+	}
+}
+
+func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int, revision int64) (rev int64, err error) {
 	hasMore := true
 	var kvs []*mvccpb.KeyValue
-	var revision int64
 	var cont string
 
 	for hasMore {
@@ -277,9 +305,11 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 type KubernetesRequestType string
 
 const (
-	KubernetesDelete KubernetesRequestType = "delete"
-	KubernetesUpdate KubernetesRequestType = "update"
-	KubernetesCreate KubernetesRequestType = "create"
+	KubernetesDelete       KubernetesRequestType = "delete"
+	KubernetesUpdate       KubernetesRequestType = "update"
+	KubernetesCreate       KubernetesRequestType = "create"
+	KubernetesListStale    KubernetesRequestType = "list_stale"
+	KubernetesListAndWatch KubernetesRequestType = "list_watch"
 )
 
 type storage struct {
@@ -333,7 +363,11 @@ func (s *storage) Count() int {
 func (s *storage) PickRandom() (key string, rev int64) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	n := rand.Intn(len(s.keyRevision))
+	l := len(s.keyRevision)
+	if l == 0 {
+		return "", 0
+	}
+	n := rand.Intn(l)
 	i := 0
 	for k, v := range s.keyRevision {
 		if i == n {
