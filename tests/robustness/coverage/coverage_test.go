@@ -353,6 +353,9 @@ func spansMap(t *testing.T, traces []*tracev1.ResourceSpans) map[string]*tracev1
 			}
 		}
 	}
+	if len(inApiserver) == 0 {
+		t.Logf("WARN: no records of traces from the apiserver")
+	}
 
 	// Map traces by their span ID.
 	spansByID := make(map[string]*tracev1.Span)
@@ -360,7 +363,7 @@ func spansMap(t *testing.T, traces []*tracev1.ResourceSpans) map[string]*tracev1
 	for _, trace := range traces {
 		for _, scopeSpan := range trace.GetScopeSpans() {
 			for _, span := range scopeSpan.GetSpans() {
-				if !inApiserver[string(span.GetTraceId())] {
+				if len(inApiserver) > 0 && !inApiserver[string(span.GetTraceId())] {
 					skipped++
 					continue
 				}
