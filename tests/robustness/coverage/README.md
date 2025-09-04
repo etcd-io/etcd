@@ -80,39 +80,39 @@ cluster](https://kind.sigs.k8s.io/docs/user/quick-start/#installation):
 1. Exercise Kubernetes API. For example, build and run Conformance tests from
 Kubernetes repository (this usually takes 30-40m or will time out after 1 hour):
 
-```shell
-make WHAT="test/e2e/e2e.test"
-./_output/bin/e2e.test \
-  -context kind-kind-with-external-etcd \
-  -ginkgo.focus="\[sig-apps\].*Conformance" \
-  -num-nodes 2
-build/run.sh make test-cmd
-```
+   ```shell
+   make WHAT="test/e2e/e2e.test"
+   ./_output/bin/e2e.test \
+     -context kind-kind-with-external-etcd \
+     -ginkgo.focus="\[sig-apps\].*Conformance" \
+     -num-nodes 2
+   build/run.sh make test-cmd
+   ```
 
 1. Download traces and put them into `tests/robustness/coverage/testdata`
 directory in Etcd git repository:
 
-```shell
-curl -v --get --retry 10 --retry-connrefused -o testdata/demo_traces.json \
-  -H "Content-Type: application/json" \
-  --data-urlencode "query.start_time_min=$(date --date="5 days ago" -Ins)" \
-  --data-urlencode "query.start_time_max=$(date --date="2 minutes ago" -Ins)" \
-  --data-urlencode "query.service_name=etcd" \
-  "http://192.168.32.1:16686/api/v3/traces"
-```
+   ```shell
+   curl -v --get --retry 10 --retry-connrefused -o testdata/demo_traces.json \
+     -H "Content-Type: application/json" \
+     --data-urlencode "query.start_time_min=$(date --date="5 days ago" -Ins)" \
+     --data-urlencode "query.start_time_max=$(date --date="2 minutes ago" -Ins)" \
+     --data-urlencode "query.service_name=etcd" \
+     "http://192.168.32.1:16686/api/v3/traces"
+   ```
 
 1. Run Go test
 
-```shell
-go test -v -timeout 60s go.etcd.io/etcd/tests/v3/robustness/coverage
-```
+   ```shell
+   go test -v -timeout 60s go.etcd.io/etcd/tests/v3/robustness/coverage
+   ```
 
 1. Clean up the environment
 
-```shell
-kind delete cluster --name kind-with-external-etcd
-docker network rm kind-with-external-etcd
-```
+   ```shell
+   kind delete cluster --name kind-with-external-etcd
+   docker network rm kind-with-external-etcd
+   ```
 
 ### Manual trace collection from robustness tests
 
