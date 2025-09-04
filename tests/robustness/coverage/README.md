@@ -114,6 +114,46 @@ kind delete cluster --name kind-with-external-etcd
 docker network rm kind-with-external-etcd
 ```
 
+### Manual trace collection from robustness tests
+
+1. Run [Jaeger](https://www.jaegertracing.io/) container:
+
+   ```shell
+   docker run --rm --name jaeger \
+     -p 16686:16686 \
+     -p 4317:4317 \
+     jaegertracing/jaeger:2.6.0 --set=extensions.jaeger_storage.backends.some_storage.memory.max_traces=20000000
+   ```
+
+1. Run robustness tests. For example:
+
+   ```shell
+   env \
+     TRACING_SERVER_ADDR=localhost:4317 \
+     GO_TEST_FLAGS='--timeout 10m --count=1 -v --run "^TestRobustness.*/Kubernetes.*"' \
+     make test-robustness
+   ```
+
+1. Download traces and put them into `tests/robustness/coverage/testdata`
+directory in Etcd git repository:
+
+   ```shell
+   curl -v --get --retry 10 --retry-connrefused -o testdata/demo_traces.json \
+     -H "Content-Type: application/json" \
+     --data-urlencode "query.start_time_min=$(date --date="5 days ago" -Ins)" \
+     --data-urlencode "query.start_time_max=$(date -Ins)" \
+     --data-urlencode "query.service_name=etcd" \
+     "http://localhost:16686/api/v3/traces"
+   ```
+
+1. Run Go test
+
+   ```shell
+   go test -v -timeout 60s go.etcd.io/etcd/tests/v3/robustness/coverage
+   ```
+
+   It will show the coverage of Kubernetes-Etcd surface by robustness tests.:w
+
 ### Automated test execution
 
 Work on improving these tests is tracked in [#20182](https://github.com/etcd-io/etcd/issues/20182).
