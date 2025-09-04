@@ -110,6 +110,7 @@ Etcd provides strict serializability for KV operations and eventual consistency 
     * `EXPECT_DEBUG=true` - to get logs from the cluster.
     * `RESULTS_DIR` - to change the location where the results report will be saved.
     * `PERSIST_RESULTS` - to persist the results report of the test. By default this will not be persisted in the case of a successful run.
+    * `TRACING_SERVER_ADDR` - to export Open Telemetry traces from test runs to the collector running at given address, for example: `localhost:4317`
 
 ## Re-evaluate existing report
 
