@@ -363,8 +363,15 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		//      been committed but not yet applied. Even if we allow the current
 		//      renewal to proceed, it won't affect the eventual outcome since the
 		//      lease will still be properly revoked once the revoke request is applied.
-		le := s.lessor.Lookup(id)
-		if le == nil {
+
+		if s.fastLeaseKeepAlive {
+			le := s.lessor.Lookup(id)
+			if le == nil {
+				if err := s.waitAppliedIndex(); err != nil {
+					return 0, err
+				}
+			}
+		} else {
 			if err := s.waitAppliedIndex(); err != nil {
 				return 0, err
 			}
