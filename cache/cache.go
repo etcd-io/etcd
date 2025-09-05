@@ -186,7 +186,7 @@ func (c *Cache) WaitReady(ctx context.Context) error {
 
 func (c *Cache) WaitForRevision(ctx context.Context, rev int64) error {
 	for {
-		if c.store.LatestRev() >= rev {
+		if c.demux.LatestRev() >= rev {
 			return nil
 		}
 		select {
