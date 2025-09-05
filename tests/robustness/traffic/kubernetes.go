@@ -15,7 +15,6 @@
 package traffic
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -148,12 +147,8 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 		}
 		return t.Get(ctx, kc, s, limiter, key, 0)
 	case KubernetesGetStale:
-		key1, rev1 := s.PickRandom()
-		key2, rev2 := s.PickRandom()
-		if rev1 == 0 && rev2 == 0 {
-			return errors.New("storage empty")
-		}
-		return t.Get(ctx, kc, s, limiter, cmp.Or(key1, key2), cmp.Or(rev2, rev1))
+		key, rev := s.KeyWithUnrelatedRev()
+		return t.Get(ctx, kc, s, limiter, key, rev)
 	case KubernetesGetRev:
 		return t.Get(ctx, kc, s, limiter, "/registry/"+t.resource, 0)
 	case KubernetesListStale:
@@ -394,6 +389,10 @@ func (s *storage) Count() int {
 func (s *storage) PickRandom() (key string, rev int64) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
+	return s.pickRandomLocked()
+}
+
+func (s *storage) pickRandomLocked() (key string, rev int64) {
 	l := len(s.keyRevision)
 	if l == 0 {
 		return "", 0
@@ -407,4 +406,16 @@ func (s *storage) PickRandom() (key string, rev int64) {
 		i++
 	}
 	return "", 0
+}
+
+func (s *storage) KeyWithUnrelatedRev() (key string, rev int64) {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	l := len(s.keyRevision)
+	if l == 0 {
+		return "", 0
+	}
+	key, _ = s.pickRandomLocked()
+	_, rev = s.pickRandomLocked()
+	return key, rev
 }
