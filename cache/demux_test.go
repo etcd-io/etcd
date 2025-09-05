@@ -263,6 +263,7 @@ func TestBroadcastBatching(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := newDemux(16, 10*time.Millisecond)
 			w := newWatcher(len(tt.input)+1, nil)
+			d.Init(1)
 			d.Register(w, 0)
 
 			d.Broadcast(respWithEventRevs(tt.input...))
@@ -311,6 +312,7 @@ func TestSlowWatcherResync(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			d := newDemux(16, 10*time.Millisecond)
 			w := newWatcher(1, nil)
+			d.Init(1)
 			d.Register(w, 0)
 
 			d.Broadcast(respWithEventRevs(tt.input...))
