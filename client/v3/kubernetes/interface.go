@@ -42,13 +42,14 @@ type Interface interface {
 	// to the last observed key with "\x00" appended to it.
 	List(ctx context.Context, prefix string, opts ListOptions) (ListResponse, error)
 
-	// ListIter returns an iterator over key-value pairs with the specified prefix,
-	// ordered lexicographically by key.
+	// ListIter returns an iterator over key-value pairs with the specified
+	// prefix, ordered lexicographically by key.
 	//
-	// It seamlessly requests further pages and passes individual key-value pairs
-	// via the returned iterator. Instead of a direct error, it returns a function
-	// to get an error, which should be checked after completing the iteration.
-	ListIter(ctx context.Context, prefix string, opts ListOptions) (iter.Seq[*mvccpb.KeyValue], func() error)
+	// It seamlessly requests further pages and passes individual key-value
+	// pairs via the returned iterator. The provided Limit in ListOptions is the
+	// size of the page. The caller should check for error stored in
+	// ListResponseErr.Err before processing the key-pair.
+	ListIter(ctx context.Context, prefix string, opts ListOptions) iter.Seq2[*mvccpb.KeyValue, ListResponseErr]
 
 	// Count returns the number of keys with the specified prefix.
 	//
@@ -88,6 +89,11 @@ type ListOptions struct {
 	// It should be set to the last key from a previous ListResponse
 	// with "\x00" appended to it when paginating.
 	Continue string
+}
+
+type ListResponseErr struct {
+	ListResponse
+	Err error
 }
 
 // CountOptions is a placeholder for potential future options for the Count operation.
