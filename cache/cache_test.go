@@ -399,6 +399,130 @@ func TestValidateWatchRange(t *testing.T) {
 	}
 }
 
+func TestProgressNotifyUpdatesProgressRevOnly(t *testing.T) {
+	type tc struct {
+		name       string
+		initialRev int64
+		targetRev  int64
+	}
+
+	tests := []tc{
+		{
+			name:       "advance_to_initial_plus_one",
+			initialRev: 5,
+			targetRev:  6,
+		},
+		{
+			name:       "advance_to_future_revision",
+			initialRev: 5,
+			targetRev:  12,
+		},
+		{
+			name:       "progress_notify_large_jump",
+			initialRev: 5,
+			targetRev:  1000,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			initial := []*mvccpb.KeyValue{makeKV("/foo", "value", tt.initialRev)}
+			initialSnapshot := &clientv3.GetResponse{
+				Header: &pb.ResponseHeader{Revision: tt.initialRev},
+				Kvs:    initial,
+			}
+
+			mw := newMockWatcher(16)
+			fakeClient := &clientv3.Client{
+				Watcher: mw,
+				KV:      newKVStub(initialSnapshot),
+			}
+
+			cache, err := New(fakeClient, "")
+			if err != nil {
+				t.Fatalf("New cache: %v", err)
+			}
+			defer cache.Close()
+
+			mw.triggerCreatedNotify()
+			<-mw.registered
+
+			ctxReady, cancelReady := context.WithTimeout(t.Context(), time.Second)
+			if err := cache.WaitReady(ctxReady); err != nil {
+				t.Fatalf("cache did not become Ready(): %v", err)
+			}
+			cancelReady()
+
+			if initialProgressRev := cache.demux.ProgressRev(); initialProgressRev != 0 {
+				t.Fatalf("precondition: progressRev=%d; want 0", initialProgressRev)
+			}
+			if initialAppliedRev := cache.store.LatestRev(); initialAppliedRev != tt.initialRev {
+				t.Fatalf("precondition: latestRev=%d; want %d", initialAppliedRev, tt.initialRev)
+			}
+
+			mw.triggerProgressNotify(tt.targetRev)
+
+			ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+			defer cancel()
+			if err := cache.WaitForRevision(ctx, tt.targetRev); err != nil {
+				t.Fatalf("WaitForRevision error: %v", err)
+			}
+
+			if finalProgressRev := cache.demux.ProgressRev(); finalProgressRev != tt.targetRev {
+				t.Fatalf("progressRev=%d; want %d", finalProgressRev, tt.targetRev)
+			}
+			if finalAppliedRev := cache.store.LatestRev(); finalAppliedRev != tt.initialRev {
+				t.Fatalf("latestRev changed after progress-only notify: got %d; want %d", finalAppliedRev, tt.initialRev)
+			}
+			verifySnapshot(t, cache, []*mvccpb.KeyValue{
+				{Key: []byte("/foo"), Value: []byte("value"), ModRevision: tt.initialRev, CreateRevision: tt.initialRev, Version: 1},
+			})
+		})
+	}
+}
+
+func TestProgressNotifyNotBroadcastToClients(t *testing.T) {
+	firstSnapshot := &clientv3.GetResponse{
+		Header: &pb.ResponseHeader{Revision: 3},
+		Kvs:    []*mvccpb.KeyValue{makeKV("/p", "v", 3)},
+	}
+
+	mw := newMockWatcher(16)
+	fakeClient := &clientv3.Client{
+		Watcher: mw,
+		KV:      newKVStub(firstSnapshot),
+	}
+
+	cache, err := New(fakeClient, "")
+	if err != nil {
+		t.Fatalf("New cache: %v", err)
+	}
+	defer cache.Close()
+
+	mw.triggerCreatedNotify()
+	<-mw.registered
+
+	ctxReady, cancelReady := context.WithTimeout(t.Context(), time.Second)
+	if err := cache.WaitReady(ctxReady); err != nil {
+		t.Fatalf("cache did not become Ready(): %v", err)
+	}
+	cancelReady()
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	wch := cache.Watch(ctx, "", clientv3.WithPrefix())
+
+	mw.triggerProgressNotify(10)
+
+	select {
+	case resp := <-wch:
+		if !resp.IsProgressNotify() {
+			t.Fatalf("unexpected progress-only response broadcast to clients: %+v", resp)
+		}
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
 func TestCacheCompactionResync(t *testing.T) {
 	firstSnapshot := &clientv3.GetResponse{
 		Header: &pb.ResponseHeader{Revision: 5},
@@ -436,10 +560,25 @@ func TestCacheCompactionResync(t *testing.T) {
 		{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
 	})
 
+	mw.triggerProgressNotify(13)
+	{
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if waitErr := cache.WaitForRevision(ctx, 13); waitErr != nil {
+			t.Fatalf("WaitForRevision before compaction: %v", err)
+		}
+	}
+	if got := cache.demux.ProgressRev(); got != 13 {
+		t.Fatalf("progressRev before compaction=%d; want 13", got)
+	}
+
 	t.Log("Phase 2: simulate compaction")
 	mw.errorCompacted(10)
 
 	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
+	if got := cache.demux.ProgressRev(); got != 0 {
+		t.Fatalf("progressRev after compaction=%d; want 0", got)
+	}
 	start := time.Now()
 
 	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
@@ -459,6 +598,9 @@ func TestCacheCompactionResync(t *testing.T) {
 	mw.triggerCreatedNotify()
 	if err = cache.WaitReady(t.Context()); err != nil {
 		t.Fatalf("second WaitReady: %v", err)
+	}
+	if got := cache.demux.ProgressRev(); got != 0 {
+		t.Fatalf("progressRev after resync=%d; want 0", got)
 	}
 	elapsed := time.Since(start)
 	if elapsed > time.Second {
@@ -488,6 +630,17 @@ func TestCacheCompactionResync(t *testing.T) {
 		{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
 		{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
 	})
+	mw.triggerProgressNotify(25)
+	{
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if waitErr := cache.WaitForRevision(ctx, 25); waitErr != nil {
+			t.Fatalf("WaitForRevision after resync: %v", err)
+		}
+	}
+	if got := cache.demux.ProgressRev(); got != 25 {
+		t.Fatalf("progressRev after new progress notify=%d; want 25", got)
+	}
 }
 
 func waitUntil(t *testing.T, timeout, poll time.Duration, cond func() bool) {
@@ -510,6 +663,7 @@ type mockWatcher struct {
 	lastStartRev int64
 }
 
+// nolint:unparam // buf is usually 16 in tests but kept param for future configurability
 func newMockWatcher(buf int) *mockWatcher {
 	return &mockWatcher{
 		responses:  make(chan clientv3.WatchResponse, buf),
@@ -535,6 +689,12 @@ func (m *mockWatcher) Close() error {
 	m.closeOnce.Do(func() { close(m.responses) })
 	m.wg.Wait()
 	return nil
+}
+
+func (m *mockWatcher) triggerProgressNotify(rev int64) {
+	m.responses <- clientv3.WatchResponse{
+		Header: pb.ResponseHeader{Revision: rev},
+	}
 }
 
 func (m *mockWatcher) triggerCreatedNotify() { m.responses <- clientv3.WatchResponse{} }

@@ -189,6 +189,9 @@ func (c *Cache) WaitForRevision(ctx context.Context, rev int64) error {
 		if c.store.LatestRev() >= rev {
 			return nil
 		}
+		if c.demux.ProgressRev() >= rev {
+			return nil
+		}
 		select {
 		case <-time.After(10 * time.Millisecond):
 		case <-ctx.Done():
@@ -312,6 +315,10 @@ func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, r
 					c.demux.Purge()
 				}
 				return err
+			}
+			if resp.IsProgressNotify() {
+				c.demux.SetProgressRev(resp.Header.Revision)
+				continue
 			}
 			c.demux.Broadcast(resp.Events)
 		case err := <-applyErr:
