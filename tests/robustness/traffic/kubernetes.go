@@ -44,8 +44,9 @@ var (
 		// Please keep the sum of weights equal 100.
 		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesGet, Weight: 5},
-			{Choice: KubernetesGetStale, Weight: 5},
-			{Choice: KubernetesListStale, Weight: 10},
+			{Choice: KubernetesGetStale, Weight: 2},
+			{Choice: KubernetesGetRev, Weight: 8},
+			{Choice: KubernetesListStale, Weight: 5},
 			{Choice: KubernetesListAndWatch, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
@@ -63,8 +64,9 @@ var (
 		// Please keep the sum of weights equal 100.
 		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesGet, Weight: 5},
-			{Choice: KubernetesGetStale, Weight: 5},
-			{Choice: KubernetesListStale, Weight: 10},
+			{Choice: KubernetesGetStale, Weight: 2},
+			{Choice: KubernetesGetRev, Weight: 8},
+			{Choice: KubernetesListStale, Weight: 5},
 			{Choice: KubernetesListAndWatch, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
@@ -152,6 +154,8 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 			return errors.New("storage empty")
 		}
 		return t.Get(ctx, kc, s, limiter, cmp.Or(key1, key2), cmp.Or(rev2, rev1))
+	case KubernetesGetRev:
+		return t.Get(ctx, kc, s, limiter, "/registry/"+t.resource, 0)
 	case KubernetesListStale:
 		_, rev := s.PickRandom()
 		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
@@ -334,6 +338,7 @@ const (
 	KubernetesCreate       KubernetesRequestType = "create"
 	KubernetesGet          KubernetesRequestType = "get"
 	KubernetesGetStale     KubernetesRequestType = "get_stale"
+	KubernetesGetRev       KubernetesRequestType = "get_rev"
 	KubernetesListStale    KubernetesRequestType = "list_stale"
 	KubernetesListAndWatch KubernetesRequestType = "list_watch"
 )
