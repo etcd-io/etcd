@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -29,6 +30,7 @@ type demux struct {
 	laggingWatchers map[*watcher]int64
 	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
+	latestRev       int64
 }
 
 func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
@@ -102,19 +104,33 @@ func (d *demux) Unregister(w *watcher) {
 	w.Stop()
 }
 
-func (d *demux) Broadcast(resp clientv3.WatchResponse) {
-	events := resp.Events
-	if len(events) == 0 {
-		return
-	}
-
+func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.updateStoreLocked(events)
-	d.broadcastLocked(events)
+	err := validateRevisions(resp, d.latestRev)
+	if err != nil {
+		return err
+	}
+	d.updateStoreLocked(resp)
+	d.broadcastLocked(resp)
+	return nil
 }
 
-func (d *demux) updateStoreLocked(events []*clientv3.Event) {
+func (d *demux) LatestRev() int64 {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.latestRev
+}
+
+func (d *demux) updateStoreLocked(resp clientv3.WatchResponse) {
+	if resp.IsProgressNotify() {
+		d.latestRev = resp.Header.Revision
+		return
+	}
+	if len(resp.Events) == 0 {
+		return
+	}
+	events := resp.Events
 	batchStart := 0
 	for end := 1; end < len(events); end++ {
 		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
@@ -127,18 +143,38 @@ func (d *demux) updateStoreLocked(events []*clientv3.Event) {
 	if batchStart < len(events) {
 		d.history.Append(events[batchStart:])
 	}
+	lastRev := events[len(events)-1].Kv.ModRevision
+	if lastRev > d.latestRev {
+		d.latestRev = lastRev
+	}
 }
 
-func (d *demux) broadcastLocked(events []*clientv3.Event) {
-	firstRev := events[0].Kv.ModRevision
-	lastRev := events[len(events)-1].Kv.ModRevision
-
-	for w, nextRev := range d.activeWatchers {
-		if nextRev != 0 && firstRev > nextRev {
-			d.laggingWatchers[w] = nextRev
-			delete(d.activeWatchers, w)
-			continue
+func (d *demux) broadcastLocked(resp clientv3.WatchResponse) {
+	if resp.IsProgressNotify() {
+		for w, nextRev := range d.activeWatchers {
+			if nextRev >= resp.Header.Revision {
+				continue
+			}
+			if !w.enqueueResponse(clientv3.WatchResponse{
+				Header: etcdserverpb.ResponseHeader{
+					Revision: resp.Header.Revision,
+				},
+			}) { // overflow → lagging
+				d.laggingWatchers[w] = nextRev
+				delete(d.activeWatchers, w)
+			} else {
+				d.activeWatchers[w] = resp.Header.Revision + 1
+			}
 		}
+		return
+	}
+	if len(resp.Events) == 0 {
+		return
+	}
+
+	events := resp.Events
+	lastRev := events[len(events)-1].Kv.ModRevision
+	for w, nextRev := range d.activeWatchers {
 		sendStart := len(events)
 		for i, ev := range events {
 			if ev.Kv.ModRevision >= nextRev {
@@ -149,8 +185,9 @@ func (d *demux) broadcastLocked(events []*clientv3.Event) {
 		if sendStart == len(events) {
 			continue
 		}
-
-		if !w.enqueueEvent(events[sendStart:]) { // overflow → lagging
+		if !w.enqueueResponse(clientv3.WatchResponse{
+			Events: events[sendStart:],
+		}) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {
@@ -170,6 +207,7 @@ func (d *demux) Purge() {
 	for w := range d.laggingWatchers {
 		w.Stop()
 	}
+	d.latestRev = 0
 	d.activeWatchers = make(map[*watcher]int64)
 	d.laggingWatchers = make(map[*watcher]int64)
 }
@@ -180,6 +218,10 @@ func (d *demux) Compact(compactRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.history.RebaseHistory()
+
+	if compactRev > d.latestRev {
+		d.latestRev = 0
+	}
 
 	for w, next := range d.activeWatchers {
 		if next != 0 && next <= compactRev {
@@ -194,7 +236,8 @@ func (d *demux) resyncLaggingWatchers() {
 	defer d.mu.Unlock()
 
 	oldestRev := d.history.PeekOldest()
-	if oldestRev == 0 {
+	// We should be able to sync just on progress notification. Not sure about all edge cases here.
+	if oldestRev == 0 && d.latestRev == 0 {
 		return
 	}
 
@@ -207,13 +250,25 @@ func (d *demux) resyncLaggingWatchers() {
 		// TODO: re-enable key‐predicate in Filter when non‐zero startRev or performance tuning is needed
 		enqueueFailed := false
 		d.history.AscendGreaterOrEqual(nextRev, func(rev int64, eventBatch []*clientv3.Event) bool {
-			if !w.enqueueEvent(eventBatch) { // buffer overflow: watcher still lagging
+			if !w.enqueueResponse(clientv3.WatchResponse{
+				Events: eventBatch,
+			}) { // buffer overflow: watcher still lagging
 				enqueueFailed = true
 				return false
 			}
 			nextRev = rev + 1
 			return true
 		})
+		// Send progress to just resync.
+		if !enqueueFailed && d.latestRev > nextRev {
+			if w.enqueueResponse(clientv3.WatchResponse{
+				Header: etcdserverpb.ResponseHeader{Revision: d.latestRev},
+			}) {
+				nextRev = d.latestRev + 1
+			} else {
+				enqueueFailed = true
+			}
+		}
 
 		if !enqueueFailed {
 			delete(d.laggingWatchers, w)

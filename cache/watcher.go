@@ -38,10 +38,10 @@ func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 
 // true  -> events delivered (or filtered/duplicate)
 // false -> buffer full (caller should mark watcher “lagging”)
-func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
-	if w.keyPred != nil {
-		filtered := make([]*clientv3.Event, 0, len(eventBatch))
-		for _, event := range eventBatch {
+func (w *watcher) enqueueResponse(resp clientv3.WatchResponse) bool {
+	if !resp.IsProgressNotify() && w.keyPred != nil {
+		filtered := make([]*clientv3.Event, 0, len(resp.Events))
+		for _, event := range resp.Events {
 			if w.keyPred(event.Kv.Key) {
 				filtered = append(filtered, event)
 			}
@@ -49,10 +49,10 @@ func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
 		if len(filtered) == 0 {
 			return true
 		}
-		eventBatch = filtered
+		resp.Events = filtered
 	}
 	select {
-	case w.respCh <- clientv3.WatchResponse{Events: eventBatch}:
+	case w.respCh <- resp:
 		return true
 	default:
 		return false
