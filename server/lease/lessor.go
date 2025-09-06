@@ -442,6 +442,12 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 	}
 
 	le.mu.Lock()
+	// Re-check in case the lease was revoked immediately after the previous check
+	l = le.leaseMap[id]
+	if l == nil {
+		le.mu.Unlock()
+		return -1, ErrLeaseNotFound
+	}
 	l.refresh(0)
 	item := &LeaseWithTime{id: l.ID, time: l.expiry}
 	le.leaseExpiredNotifier.RegisterOrUpdate(item)
