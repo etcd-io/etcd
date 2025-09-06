@@ -1,0 +1,4 @@
+apiVersion: v2
+name: etcd-server
+version: 0.0.1
+description: etcd-server on antithesis

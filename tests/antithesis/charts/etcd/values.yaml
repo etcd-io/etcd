@@ -1,0 +1,8 @@
+namespace: "etcd-server"
+etcdservice: 
+  name: etcdsvc
+etcdserver:
+  replicaCount: 3
+  spec:
+    etcd:
+      image: etcd-server:latest

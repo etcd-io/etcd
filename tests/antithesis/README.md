@@ -1,5 +1,7 @@
 This directory enables integration of Antithesis with etcd. There are 4 containers running in this system: 3 that make up an etcd cluster (etcd0, etcd1, etcd2) and one that "[makes the system go](https://antithesis.com/docs/getting_started/basic_test_hookup/)" (client).
 
+# Running tests with docker compose
+
 ## Quickstart
 
 ### 1. Build and Tag the Docker Image
@@ -106,3 +108,27 @@ make antithesis-clean
 ## Troubleshooting
 
 - **Image Pull Errors**: If Docker can’t pull `etcd-client:latest`, make sure you built it locally (see the “Build and Tag” step) or push it to a registry that Compose can access.
+
+# Running Tests with Kubernetes (WIP)
+
+## Prerequisites
+
+Please make sure that you have the following tools installed on your local:
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
+- [kapp](https://carvel.dev/kapp/docs/v0.64.x/install)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start#installation)
+
+## Testing locally
+
+### Setting up the cluster
+
+```bash
+make antithesis-deploy-local-k8s-setup
+```
+
+### Tearing down the cluster
+
+```bash
+kind delete cluster --name kind
+```

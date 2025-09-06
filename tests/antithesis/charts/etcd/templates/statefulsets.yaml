@@ -1,0 +1,92 @@
+{{- $ns := .Values.namespace -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: {{ $ns }}
+spec:
+  selector:
+    matchLabels:
+      app: etcd
+  serviceName: {{ .Values.etcdservice.name }}
+  replicas: {{ .Values.etcdserver.replicaCount }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: etcd-server
+          image: {{ .Values.etcdserver.spec.etcd.image }}
+          imagePullPolicy: Never
+          env:
+            - name: ETCD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLIENT_PORT
+              value: "2379"
+            - name: PEER_PORT
+              value: "2380"
+            - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+              value: {{ printf "http://$(ETCD_NAME).etcdsvc.%s.svc.cluster.local:$(PEER_PORT)" $ns }}
+            - name: ETCD_LISTEN_PEER_URLS
+              value: "http://0.0.0.0:$(PEER_PORT)"
+            - name: ETCD_LISTEN_CLIENT_URLS
+              value: "http://0.0.0.0:$(CLIENT_PORT)"
+            - name: ETCD_ADVERTISE_CLIENT_URLS
+              value: "https://$(ETCD_NAME).etcd:$(CLIENT_PORT)"
+            - name: ETCD_INITIAL_CLUSTER_TOKEN
+              value: "etcd-cluster-1"
+            - name: ETCD_INITIAL_CLUSTER
+              value: "
+              {{- $loopCount := .Values.etcdserver.replicaCount | int -}}
+              {{- $values := list -}}
+              {{- range $i := until $loopCount -}}
+              {{- $values = append $values (printf "etcd-%d=http://etcd-%d.etcdsvc.%s.svc.cluster.local:$(PEER_PORT)" $i $i $ns )}}
+              {{- end -}}
+              {{- $values | join "," -}}
+              "
+            - name: ETCD_INITIAL_CLUSTER_STATE
+              value: "new"
+            - name: ETCD_DATA_DIR
+              value: "/var/etcd/data"
+            - name: ETCD_SNAPSHOT_CATCHUP_ENTRIES
+              value: "100"
+            - name: ETCD_SNAPSHOT_COUNT
+              value: "50"
+            - name: ETCD_COMPACTION_BATCH_LIMIT
+              value: "10"
+            - name: ETCD_VERIFY
+              value: "all"
+          ports:
+            - containerPort: 2379
+              name: client
+              protocol: TCP
+            - containerPort: 2380
+              name: peer
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: client
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: client
+            initialDelaySeconds: 60
+          volumeMounts:
+            - name: data
+              mountPath: /var/etcd/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 200Mi
