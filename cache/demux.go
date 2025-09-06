@@ -29,6 +29,7 @@ type demux struct {
 	laggingWatchers map[*watcher]int64
 	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
+	progressRev     int64 // highest revision from upstream progress notify to prove cache freshness
 }
 
 func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
@@ -151,11 +152,26 @@ func (d *demux) Broadcast(events []*clientv3.Event) {
 	}
 }
 
+func (d *demux) SetProgressRev(rev int64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if rev > d.progressRev {
+		d.progressRev = rev
+	}
+}
+
+func (d *demux) ProgressRev() int64 {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.progressRev
+}
+
 // Purge stops all watchers and rebase history on watch errors
 func (d *demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.history.RebaseHistory()
+	d.progressRev = 0
 	for w := range d.activeWatchers {
 		w.Stop()
 	}
@@ -172,6 +188,7 @@ func (d *demux) Compact(compactRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.history.RebaseHistory()
+	d.progressRev = 0
 
 	for w, next := range d.activeWatchers {
 		if next != 0 && next <= compactRev {
