@@ -28,7 +28,6 @@ import (
 	"go.uber.org/zap"
 
 	bolt "go.etcd.io/bbolt"
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 var (
@@ -464,7 +463,9 @@ func (b *backend) Defrag() error {
 }
 
 func (b *backend) defrag() error {
-	verify.Assert(b.lg != nil, "the logger should not be nil")
+	if b.lg == nil {
+		panic("the logger should not be nil")
+	}
 	now := time.Now()
 	isDefragActive.Set(1)
 	defer isDefragActive.Set(0)

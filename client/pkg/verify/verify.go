@@ -15,7 +15,6 @@
 package verify
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -78,12 +77,5 @@ type VerifyFunc func() (condition bool, details map[string]any)
 func verifier(condition bool, msg string, details map[string]any) {
 	if !condition {
 		panic(fmt.Sprintf("%s. details: %v.", msg, details))
-	}
-}
-
-// Assert will panic with a given formatted message if the given condition is false.
-func Assert(condition bool, msg string, v ...any) {
-	if !condition {
-		panic(fmt.Sprintf("assertion failed: "+msg, v...))
 	}
 }
