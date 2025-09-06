@@ -430,6 +430,8 @@ func (le *lessor) Renew(id LeaseID) (int64, error) {
 		}
 	}
 
+	// gofail: var beforeCheckpointInLeaseRenew struct{}
+
 	// Clear remaining TTL when we renew if it is set
 	// By applying a RAFT entry only when the remainingTTL is already set, we limit the number
 	// of RAFT entries written per lease to a max of 2 per checkpoint interval.
