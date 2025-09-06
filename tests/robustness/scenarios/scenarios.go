@@ -97,7 +97,7 @@ func Exploratory(_ *testing.T) []TestScenario {
 		options.WithSnapshotCount(50, 100, 1000),
 		options.WithSubsetOptions(randomizableOptions...),
 		e2e.WithGoFailEnabled(true),
-		// Set low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
+		// Set a low minimal compaction batch limit to allow for triggering multi batch compaction failpoints.
 		options.WithCompactionBatchLimit(10, 100, 1000),
 		e2e.WithWatchProcessNotifyInterval(100 * time.Millisecond),
 	}
@@ -140,7 +140,7 @@ func Exploratory(_ *testing.T) []TestScenario {
 	if e2e.BinPath.LazyFSAvailable() {
 		newScenarios := scenarios
 		for _, s := range scenarios {
-			// LazyFS increases the load on CPU, so we run it with more lightweight case.
+			// LazyFS increases the load on the CPU, so we run it with a more lightweight case.
 			if s.Profile.MinimalQPS <= 100 && s.Cluster.ClusterSize == 1 {
 				lazyfsCluster := s.Cluster
 				lazyfsCluster.LazyFSEnabled = true

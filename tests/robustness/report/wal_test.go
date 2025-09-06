@@ -42,7 +42,7 @@ func TestMergeMemberEntries(t *testing.T) {
 			expectErr: "no WAL entries matched",
 		},
 		{
-			name: "Error when one member cluster didn't observed index",
+			name: "Error when one member cluster didn't observe the index",
 			memberEntries: [][]raftpb.Entry{
 				{
 					raftpb.Entry{Index: 1, Data: []byte("a")},
@@ -157,7 +157,7 @@ func TestMergeMemberEntries(t *testing.T) {
 			},
 		},
 		{
-			name: "Success if members didn't observe whole history",
+			name: "Success if members didn't observe the whole history",
 			memberEntries: [][]raftpb.Entry{
 				{
 					raftpb.Entry{Index: 1, Data: []byte("a")},
