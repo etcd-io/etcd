@@ -149,11 +149,89 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.Successes), zap.Int("failures", duringFailpointStats.Failures), zap.Float64("successRate", duringFailpointStats.SuccessRate()), zap.Duration("period", duringFailpointStats.Period), zap.Float64("qps", duringFailpointStats.QPS()))
 	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.Successes), zap.Int("failures", afterFailpointStats.Failures), zap.Float64("successRate", afterFailpointStats.SuccessRate()), zap.Duration("period", afterFailpointStats.Period), zap.Float64("qps", afterFailpointStats.QPS()))
 
+	watchTotal := CalculateWatchStats(reports, startTime, endTime)
+	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
+
 	if beforeFailpointStats.QPS() < profile.MinimalQPS {
 		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
 	}
 	// TODO: Validate QPS post failpoint injection to ensure the that we sufficiently cover period when cluster recovers.
 	return reports
+}
+
+func CalculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
+	ws.Period = end - start
+	if ws.Period <= 0 {
+		return ws
+	}
+
+	for _, r := range reports {
+		for _, w := range r.Watch {
+			var (
+				firstInWindow       time.Duration
+				lastInWindow        time.Duration
+				haveInWindow        bool
+				noEventsYetInWindow = true
+				closedCounted       = false
+			)
+
+			for _, resp := range w.Responses {
+				if resp.Time < start || resp.Time > end {
+					continue
+				}
+				if !haveInWindow {
+					firstInWindow = resp.Time
+					haveInWindow = true
+				}
+				lastInWindow = resp.Time
+				if resp.IsProgressNotify {
+					ws.ProgressNotifies++
+				}
+				if len(resp.Events) > 0 {
+					ws.Events += len(resp.Events)
+					noEventsYetInWindow = false
+				}
+				if resp.Error != "" && noEventsYetInWindow && !closedCounted {
+					ws.ImmediateClosures++
+					closedCounted = true
+				}
+			}
+
+			if haveInWindow {
+				ws.Requests++
+				if lastInWindow > firstInWindow {
+					ws.SumDuration += lastInWindow - firstInWindow
+					ws.DurationsCount++
+				}
+			}
+		}
+	}
+
+	return ws
+}
+
+type watchStats struct {
+	Period            time.Duration
+	Requests          int
+	Events            int
+	ProgressNotifies  int
+	ImmediateClosures int
+	SumDuration       time.Duration
+	DurationsCount    int
+}
+
+func (ws *watchStats) AvgDuration() time.Duration {
+	if ws.DurationsCount == 0 {
+		return 0
+	}
+	return ws.SumDuration / time.Duration(ws.DurationsCount)
+}
+
+func (ws *watchStats) EventsQPS() float64 {
+	if ws.Period <= 0 {
+		return 0
+	}
+	return float64(ws.Events) / ws.Period.Seconds()
 }
 
 func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
