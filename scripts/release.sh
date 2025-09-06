@@ -252,11 +252,20 @@ main() {
   "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdctl" version | grep -q "etcdctl version: ${VERSION}" || true
   "./release/etcd-${RELEASE_VERSION}-$(go env GOOS)-amd64/etcdutl" version | grep -q "etcdutl version: ${VERSION}" || true
 
-  # Generate SHA256SUMS
+  # generate modern SBOM files
+  log_callout "generating modern SBOM files..."
+  if ./scripts/generate-modern-sbom.sh "${VERSION}" "./release"; then
+    log_success "modern SBOM files generated successfully"
+  else
+    log_error "failed to generate modern SBOM files. Aborting."
+    exit 1
+  fi
+
+  # Generate SHA256SUMS (including SBOM files)
   log_callout "Generating sha256sums of release artifacts."
   pushd ./release
   # shellcheck disable=SC2010
-  ls . | grep -E '\.tar.gz$|\.zip$' | xargs shasum -a 256 > ./SHA256SUMS
+  ls . | grep -E '\.tar.gz$|\.zip$|\.spdx\.json$|\.cdx\.json$' | xargs shasum -a 256 > ./SHA256SUMS
   popd
   if [ -s ./release/SHA256SUMS ]; then
     cat ./release/SHA256SUMS
@@ -274,6 +283,8 @@ main() {
     maybe_run gsutil -m cp ./release/SHA256SUMS "gs://etcd/${RELEASE_VERSION}/"
     maybe_run gsutil -m cp ./release/*.zip "gs://etcd/${RELEASE_VERSION}/"
     maybe_run gsutil -m cp ./release/*.tar.gz "gs://etcd/${RELEASE_VERSION}/"
+    maybe_run gsutil -m cp ./release/*.spdx.json "gs://etcd/${RELEASE_VERSION}/"
+    maybe_run gsutil -m cp ./release/*.cdx.json "gs://etcd/${RELEASE_VERSION}/"
     maybe_run gsutil -m acl ch -u allUsers:R -r "gs://etcd/${RELEASE_VERSION}/"
   fi
 
@@ -402,6 +413,10 @@ main() {
     maybe_run find ./release '(' -name '*.tar.gz' -o -name '*.zip' ')' -exec \
       gh --repo "${gh_repo}" release upload "${RELEASE_VERSION}" {} --clobber \;
     maybe_run gh --repo "${gh_repo}" release upload "${RELEASE_VERSION}" ./release/SHA256SUMS --clobber
+
+    # upload SBOM files
+    maybe_run find ./release '(' -name '*.spdx.json' -o -name '*.cdx.json' ')' -exec \
+      gh --repo "${gh_repo}" release upload "${RELEASE_VERSION}" {} --clobber \;
 
     release_url=$(gh --repo "${gh_repo}" release view "${RELEASE_VERSION}" --json url --jq '.url')
 
