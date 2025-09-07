@@ -17,7 +17,6 @@ package rafthttp
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -127,7 +126,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 		}
 		req := act[0].Params[0].(*http.Request)
 
-		wurl := fmt.Sprintf("http://localhost:2380" + tt.endpoint() + "/1")
+		wurl := "http://localhost:2380" + tt.endpoint() + "/1"
 		if req.URL.String() != wurl {
 			t.Errorf("#%d: url = %s, want %s", i, req.URL.String(), wurl)
 		}
