@@ -559,7 +559,7 @@ func TestStoreCompareAndSwapPrevIndexFailsIfNotMatch(t *testing.T) {
 func TestStoreWatchCreate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
-	var eidx uint64 = 0
+	var eidx uint64
 	w, _ := s.Watch("/foo", false, false, 0)
 	c := w.EventChan()
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
@@ -580,7 +580,7 @@ func TestStoreWatchCreate(t *testing.T) {
 func TestStoreWatchRecursiveCreate(t *testing.T) {
 	s := newTestStore(t)
 	defer s.Close()
-	var eidx uint64 = 0
+	var eidx uint64
 	w, err := s.Watch("/foo", true, false, 0)
 	testutil.AssertNil(t, err)
 	testutil.AssertEqual(t, w.StartIndex(), eidx)
