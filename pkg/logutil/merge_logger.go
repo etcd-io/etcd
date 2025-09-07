@@ -166,7 +166,7 @@ func (l *MergeLogger) merge(ln line) {
 	// release the lock before IO operation
 	l.mu.Unlock()
 	// print out the line at its first time
-	l.PackageLogger.Logf(ln.level, ln.str)
+	l.PackageLogger.Log(ln.level, ln.str)
 }
 
 func (l *MergeLogger) outputLoop() {
@@ -188,7 +188,7 @@ func (l *MergeLogger) outputLoop() {
 		l.mu.Unlock()
 
 		for _, o := range outputs {
-			l.PackageLogger.Logf(o.level, o.str)
+			l.PackageLogger.Log(o.level, o.str)
 		}
 	}
 }

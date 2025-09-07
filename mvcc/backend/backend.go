@@ -464,7 +464,7 @@ func (b *backend) defrag() error {
 	}
 	options.OpenFile = func(path string, i int, mode os.FileMode) (file *os.File, err error) {
 		// gofail: var defragOpenFileError string
-		// return nil, fmt.Errorf(defragOpenFileError)
+		// return nil, fmt.Errorf("%s", defragOpenFileError)
 		return temp, nil
 	}
 	tdbp := temp.Name()
@@ -584,7 +584,7 @@ func (b *backend) defrag() error {
 
 func defragdb(odb, tmpdb *bolt.DB, limit int) error {
 	// gofail: var defragdbFail string
-	// return fmt.Errorf(defragdbFail)
+	// return fmt.Errorf("%s", defragdbFail)
 
 	// open a tx on tmpdb for writes
 	tmptx, err := tmpdb.Begin(true)
