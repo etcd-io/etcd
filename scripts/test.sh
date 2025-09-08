@@ -447,11 +447,11 @@ function govet_shadow_pass {
 }
 
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --show-stats=false
 }
 
 function lint_fix_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix --show-stats=false
 }
 
 function license_header_per_module {

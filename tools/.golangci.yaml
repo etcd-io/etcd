@@ -1,44 +1,13 @@
 ---
-run:
-  timeout: 30m
-formatters:
-  enable:
-    - gci
-  settings: # please keep this alphabetized
-    gci:
-      sections:
-        - standard
-        - default
-        - prefix(go.etcd.io)
-issues:
-  max-same-issues: 0
-  # Excluding configuration per-path, per-linter, per-text and per-source
-  exclude-rules:
-    # exclude ineffassing linter for generated files for conversion
-    - path: conversion\.go
-      linters: [ineffassign]
-    - text: "S1000" # TODO: Fix me
-      linters:
-        - gosimple
-  exclude-files:
-    - ^zz_generated.*
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable: # please keep this alphabetized
-    # Don't use soon to deprecated[1] linters that lead to false
-    # https://github.com/golangci/golangci-lint/issues/1841
-    # - deadcode
-    # - structcheck
-    # - varcheck
     - errorlint
-    - gofumpt
-    - goimports
-    - gosimple
     - ineffassign
     - nakedret
     - revive
     - staticcheck
-    - stylecheck
     - testifylint
     - thelper
     - unconvert # Remove unnecessary type conversions
@@ -47,82 +16,134 @@ linters:
     - usestdlibvars
     - usetesting
     - whitespace
-linters-settings: # please keep this alphabetized
-  goimports:
-    local-prefixes: go.etcd.io # Put imports beginning with prefix after 3rd-party packages.
-  nakedret:
-    # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
-    max-func-lines: 5
-  revive:
-    confidence: 0.8
+  settings:
+    nakedret:
+      # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
+      max-func-lines: 5
+    revive:
+      confidence: 0.8
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: early-return
+          arguments:
+            - preserveScope
+        - name: error-return
+        - name: error-naming
+        - name: error-strings
+        - name: errorf
+        - name: if-return
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: superfluous-else
+          arguments:
+            - preserveScope
+        - name: time-naming
+        - name: unnecessary-stmt
+        - name: use-any
+        - name: var-declaration
+        - name: var-naming
+          arguments:
+            # The following is the configuration for var-naming rule, the first element is the allow list and the second element is the deny list.
+            - [] # AllowList: leave it empty to use the default (empty, too). This means that we're not relaxing the rule in any way, i.e. elementId will raise a violation, it should be elementID, refer to the next line to see the list of denied initialisms.
+            # DenyList: Add GRPC and WAL to strict the rule not allowing instances like Wal or Grpc. The default values are located at commonInitialisms, refer to: https://github.com/mgechev/revive/blob/v1.3.7/lint/utils.go#L93-L133.
+            - - GRPC
+              - WAL
+        - name: exported
+          disabled: true
+        - name: unexported-return
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
+        - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
+        - -QF1001 # TODO(fix) Apply De Morgan’s law
+        - -QF1002 # TODO(fix) Convert untagged switch to tagged switch
+        - -QF1003 # TODO(fix) Convert if/else-if chain to tagged switch
+        - -QF1004 # TODO(fix) Use strings.ReplaceAll instead of strings.Replace with n == -1
+        - -QF1006 # TODO(fix) Lift if+break into loop condition
+        - -QF1008 # TODO(fix) Omit embedded fields from selector expression
+        - -QF1009 # TODO(fix) Use time.Time.Equal instead of == operator
+        - -QF1012 # TODO(fix) Use fmt.Fprintf(x, ...) instead of x.Write(fmt.Sprintf(...))
+        - -ST1003 # TODO(fix) Poorly chosen identifier
+        - -ST1005 # TODO(fix) Drop unnecessary use of the blank identifier
+        - ST1019 # Importing the same package multiple times.
+    testifylint:
+      enable-all: true
+      formatter:
+        # Require f-assertions (e.g. assert.Equalf) if a message is passed to the assertion, even if
+        # there is no variable-length variables, i.e. require require.NoErrorf for both cases below:
+        # require.NoErrorf(t, err, "whatever message")
+        # require.NoErrorf(t, err, "whatever message: %v", v)
+        #
+        # Note from golang programming perspective, we still prefer non-f-functions (i.e. fmt.Print)
+        # to f-functions (i.e. fmt.Printf) when there is no variable-length parameters. It's accepted
+        # to always require f-functions for stretchr/testify, but not for golang standard lib.
+        # Also refer to https://github.com/etcd-io/etcd/pull/18741#issuecomment-2422395914
+        require-f-funcs: true
+    thelper:
+      test:
+        first: false
+        begin: false
+      fuzz:
+        first: false
+        begin: false
+      benchmark:
+        first: false
+        begin: false
+      tb:
+        first: false
+        begin: false
+    usetesting:
+      os-mkdir-temp: false
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: early-return
-        arguments:
-          - "preserveScope"
-      - name: error-return
-      - name: error-naming
-      - name: error-strings
-      - name: errorf
-      - name: if-return
-      - name: increment-decrement
-      - name: indent-error-flow
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: superfluous-else
-        arguments:
-          - "preserveScope"
-      - name: time-naming
-      - name: unnecessary-stmt
-      - name: use-any
-      - name: var-declaration
-      - name: var-naming
-        arguments:
-          # The following is the configuration for var-naming rule, the first element is the allow list and the second element is the deny list.
-          - [] # AllowList: leave it empty to use the default (empty, too). This means that we're not relaxing the rule in any way, i.e. elementId will raise a violation, it should be elementID, refer to the next line to see the list of denied initialisms.
-          - ["GRPC", "WAL"] # DenyList: Add GRPC and WAL to strict the rule not allowing instances like Wal or Grpc. The default values are located at commonInitialisms, refer to: https://github.com/mgechev/revive/blob/v1.3.7/lint/utils.go#L93-L133.
-      # TODO: enable the following rules
-      - name: exported
-        disabled: true
-      - name: unexported-return
-        disabled: true
-  staticcheck:
-    checks:
-      - all
-      - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
-      - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
-  stylecheck:
-    checks:
-      - ST1019 # Importing the same package multiple times.
-  testifylint:
-    enable-all: true
-    formatter:
-      # Require f-assertions (e.g. assert.Equalf) if a message is passed to the assertion, even if
-      # there is no variable-length variables, i.e. require require.NoErrorf for both cases below:
-      # require.NoErrorf(t, err, "whatever message")
-      # require.NoErrorf(t, err, "whatever message: %v", v)
-      #
-      # Note from golang programming perspective, we still prefer non-f-functions (i.e. fmt.Print)
-      # to f-functions (i.e. fmt.Printf) when there is no variable-length parameters. It's accepted
-      # to always require f-functions for stretchr/testify, but not for golang standard lib.
-      # Also refer to https://github.com/etcd-io/etcd/pull/18741#issuecomment-2422395914
-      require-f-funcs: true
-  thelper:
-    test:
-      first: false
-      begin: false
-    benchmark:
-      first: false
-      begin: false
-    tb:
-      first: false
-      begin: false
-    fuzz:
-      first: false
-      begin: false
-  usetesting:
-    os-mkdir-temp: false
+      - linters:
+          - ineffassign
+        path: conversion\.go
+      - linters:
+          - staticcheck
+        text: S1000
+      - linters:
+          - revive
+        text: 'var-naming: avoid meaningless package names'
+    paths:
+      - ^zz_generated.*
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings: # please keep this alphabetized
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(go.etcd.io)
+    goimports:
+      local-prefixes:
+        - go.etcd.io # Put imports beginning with prefix after 3rd-party packages.
+  exclusions:
+    generated: lax
+    paths:
+      - ^zz_generated.*
+      - third_party$
+      - builtin$
+      - examples$
