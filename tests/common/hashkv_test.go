@@ -183,7 +183,7 @@ func TestVerifyHashKVAfterCompactAndDefrag(t *testing.T) {
 			after, err := cc.HashKV(ctx, compactOnRev)
 			require.NoError(t, err)
 
-			require.Equal(t, len(before), len(after))
+			require.Len(t, before, len(after))
 			for i := range before {
 				assert.Equal(t, before[i].Hash, after[i].Hash)
 			}
