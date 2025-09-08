@@ -398,7 +398,8 @@ function markdown_marker_pass {
 }
 
 function govuln_pass {
-  run_for_modules run govulncheck -show verbose
+  local version=$(cd tools/mod && go list -m -f '{{.Version}}' golang.org/x/vuln)
+  run_for_modules run_go_tool "golang.org/x/vuln/cmd/govulncheck@${version}" -show verbose
 }
 
 function govet_pass {
