@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -164,4 +165,62 @@ func testLeaseRevokeIssue(t *testing.T, clusterSize int, connectToOneFollower bo
 	t.Log("Waiting for the keepAlive goroutine to exit")
 	close(stopC)
 	<-doneC
+}
+
+func TestLeaseRevokeDuringRenew(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	ctx := t.Context()
+
+	t.Log("Starting a new etcd cluster")
+
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:         1,
+		GoFailEnabled:       true,
+		GoFailClientTimeout: 40 * time.Second,
+	})
+	require.NoError(t, err)
+	defer func() {
+		require.NoErrorf(t, epc.Close(), "error closing etcd processes")
+	}()
+
+	eps := epc.Procs[0].EndpointsGRPC()
+	t.Logf("Creating two clients for lease operations: %v", eps)
+	clientForRenew, err := clientv3.New(clientv3.Config{Endpoints: eps, DialTimeout: 3 * time.Second})
+	require.NoError(t, err)
+	defer clientForRenew.Close()
+
+	clientForRevoke, err := clientv3.New(clientv3.Config{Endpoints: eps, DialTimeout: 3 * time.Second})
+	require.NoError(t, err)
+	defer clientForRevoke.Close()
+
+	t.Log("Creating a new lease")
+	leaseRsp, err := clientForRenew.Grant(ctx, 60)
+	require.NoError(t, err)
+
+	t.Log("Activate the 'beforeCheckpointInLeaseRenew' failpoint")
+	require.NoError(t, epc.Procs[0].Failpoints().SetupHTTP(ctx, "beforeCheckpointInLeaseRenew", `sleep("3s")`))
+
+	t.Logf("Starting a goroutine to keep alive the lease: %d", leaseRsp.ID)
+	doneC := make(chan struct{})
+	startC := make(chan struct{}, 1)
+	var renewError error
+	go func() {
+		defer close(doneC)
+		startC <- struct{}{}
+		_, renewError = clientForRenew.KeepAliveOnce(ctx, leaseRsp.ID)
+	}()
+
+	t.Log("Wait for the KeepAliveOnce goroutine to get started")
+	<-startC
+	time.Sleep(200 * time.Millisecond)
+
+	t.Logf("Revoke the lease: %d", leaseRsp.ID)
+	_, lerr := clientForRevoke.Revoke(ctx, leaseRsp.ID)
+	require.NoError(t, lerr)
+
+	t.Log("Waiting for the keepAlive goroutine to exit")
+	<-doneC
+
+	require.ErrorIs(t, rpctypes.ErrLeaseNotFound, renewError)
 }
