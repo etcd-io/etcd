@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/tools/rw-heatmaps/v3
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.6
 
@@ -22,5 +22,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 )

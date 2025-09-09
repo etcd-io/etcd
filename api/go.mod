@@ -1,6 +1,6 @@
 module go.etcd.io/etcd/api/v3
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.6
 
@@ -22,7 +22,7 @@ require (
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
