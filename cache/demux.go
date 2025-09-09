@@ -101,8 +101,8 @@ func (d *demux) Unregister(w *watcher) {
 	}()
 	w.Stop()
 }
-
-func (d *demux) Broadcast(events []*clientv3.Event) {
+func (d *demux) Broadcast(resp clientv3.WatchResponse) {
+	events := resp.Events
 	if len(events) == 0 {
 		return
 	}
