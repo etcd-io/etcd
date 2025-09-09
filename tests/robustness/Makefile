@@ -75,6 +75,13 @@ test-robustness-issue19179: /tmp/etcd-v3.5.17-failpoints/bin
 	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue19179 -count 200 -failfast --bin-dir=/tmp/etcd-v3.5.17-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+# Etcd API usage by Kubernetes
+
+.PHONY: k8s-coverage
+k8s-coverage:
+	$(TOPLEVEL_MAKE) build
+	@echo "Running k8s coverage script"
+	ETCD_REPO="$(REPOSITORY_ROOT)" "$(REPOSITORY_ROOT)/tests/robustness/coverage/collect_kind_traces.sh"
 
 # Failpoints
 
