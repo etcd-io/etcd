@@ -58,7 +58,7 @@ func TestBroadcastBatching(t *testing.T) {
 			w := newWatcher(len(tt.input)+1, nil)
 			d.Register(w, 0)
 
-			d.Broadcast(eventRevs(tt.input...))
+			d.Broadcast(respWithEventRevs(tt.input...))
 
 			gotRevs, gotSizes := readBatches(t, w, len(tt.wantRevs))
 
@@ -106,7 +106,7 @@ func TestSlowWatcherResync(t *testing.T) {
 			w := newWatcher(1, nil)
 			d.Register(w, 0)
 
-			d.Broadcast(eventRevs(tt.input...))
+			d.Broadcast(respWithEventRevs(tt.input...))
 
 			gotInitRevs, gotInitSizes := readBatches(t, w, len(tt.wantInitialRevs))
 			if diff := cmp.Diff(tt.wantInitialRevs, gotInitRevs); diff != "" {
@@ -133,7 +133,7 @@ func TestSlowWatcherResync(t *testing.T) {
 	}
 }
 
-func eventRevs(revs ...int64) []*clientv3.Event {
+func respWithEventRevs(revs ...int64) clientv3.WatchResponse {
 	events := make([]*clientv3.Event, 0, len(revs))
 	for _, r := range revs {
 		kv := &mvccpb.KeyValue{
@@ -146,7 +146,7 @@ func eventRevs(revs ...int64) []*clientv3.Event {
 			Kv:   kv,
 		})
 	}
-	return events
+	return clientv3.WatchResponse{Events: events}
 }
 
 func readBatches(t *testing.T, w *watcher, n int) (revs []int64, sizes []int) {

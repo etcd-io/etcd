@@ -313,7 +313,7 @@ func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, r
 				}
 				return err
 			}
-			c.demux.Broadcast(resp.Events)
+			c.demux.Broadcast(resp)
 		case err := <-applyErr:
 			c.ready.Reset()
 			c.demux.Purge()
