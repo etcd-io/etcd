@@ -194,9 +194,6 @@ endif
 
 .PHONY: run-govulncheck
 run-govulncheck:
-ifeq (, $(shell command -v govulncheck))
-	$(shell go install golang.org/x/vuln/cmd/govulncheck@latest)
-endif
 	PASSES="govuln" ./scripts/test.sh
 
 # Tools
