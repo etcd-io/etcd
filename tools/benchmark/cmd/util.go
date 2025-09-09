@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -29,43 +28,10 @@ import (
 )
 
 var (
-	// dialTotal counts the number of mustCreateConn calls so that endpoint
-	// connections can be handed out in round-robin order
-	dialTotal int
-
-	// leaderEps is a cache for holding endpoints of a leader node
-	leaderEps []string
-
 	// cache the username and password for multiple connections
 	globalUserName string
 	globalPassword string
 )
-
-func mustFindLeaderEndpoints(c *clientv3.Client) {
-	resp, lerr := c.MemberList(context.TODO())
-	if lerr != nil {
-		fmt.Fprintf(os.Stderr, "failed to get a member list: %s\n", lerr)
-		os.Exit(1)
-	}
-
-	leaderID := uint64(0)
-	for _, ep := range c.Endpoints() {
-		if sresp, serr := c.Status(context.TODO(), ep); serr == nil {
-			leaderID = sresp.Leader
-			break
-		}
-	}
-
-	for _, m := range resp.Members {
-		if m.ID == leaderID {
-			leaderEps = m.ClientURLs
-			return
-		}
-	}
-
-	fmt.Fprint(os.Stderr, "failed to find a leader endpoint\n")
-	os.Exit(1)
-}
 
 func getUsernamePassword(usernameFlag string) (string, string, error) {
 	if globalUserName != "" && globalPassword != "" {
@@ -88,14 +54,9 @@ func getUsernamePassword(usernameFlag string) (string, string, error) {
 }
 
 func mustCreateConn() *clientv3.Client {
-	connEndpoints := leaderEps
-	if len(connEndpoints) == 0 {
-		connEndpoints = []string{endpoints[dialTotal%len(endpoints)]}
-		dialTotal++
-	}
 	cfg := clientv3.Config{
 		AutoSyncInterval: autoSyncInterval,
-		Endpoints:        connEndpoints,
+		Endpoints:        endpoints,
 		DialTimeout:      dialTimeout,
 	}
 	if !tls.Empty() || tls.TrustedCAFile != "" {
@@ -118,12 +79,6 @@ func mustCreateConn() *clientv3.Client {
 	}
 
 	client, err := clientv3.New(cfg)
-	if targetLeader && len(leaderEps) == 0 {
-		mustFindLeaderEndpoints(client)
-		client.Close()
-		return mustCreateConn()
-	}
-
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 	if err != nil {
