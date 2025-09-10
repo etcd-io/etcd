@@ -436,10 +436,25 @@ func TestCacheCompactionResync(t *testing.T) {
 		{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
 	})
 
+	mw.triggerProgressNotify(13)
+	{
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if waitErr := cache.WaitForRevision(ctx, 13); waitErr != nil {
+			t.Fatalf("WaitForRevision before compaction: %v", err)
+		}
+	}
+	if got := cache.demux.LatestRev(); got != 13 {
+		t.Fatalf("latestRev before compaction=%d; want 13", got)
+	}
+
 	t.Log("Phase 2: simulate compaction")
 	mw.errorCompacted(10)
 
 	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
+	if got := cache.demux.LatestRev(); got != 0 {
+		t.Fatalf("latestRev after compaction=%d; want 0", got)
+	}
 	start := time.Now()
 
 	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
@@ -459,6 +474,9 @@ func TestCacheCompactionResync(t *testing.T) {
 	mw.triggerCreatedNotify()
 	if err = cache.WaitReady(t.Context()); err != nil {
 		t.Fatalf("second WaitReady: %v", err)
+	}
+	if got := cache.demux.LatestRev(); got != 0 {
+		t.Fatalf("latestRev after resync=%d; want 0", got)
 	}
 	elapsed := time.Since(start)
 	if elapsed > time.Second {
@@ -488,6 +506,17 @@ func TestCacheCompactionResync(t *testing.T) {
 		{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
 		{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
 	})
+	mw.triggerProgressNotify(25)
+	{
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+		defer cancel()
+		if waitErr := cache.WaitForRevision(ctx, 25); waitErr != nil {
+			t.Fatalf("WaitForRevision after resync: %v", err)
+		}
+	}
+	if got := cache.demux.LatestRev(); got != 25 {
+		t.Fatalf("latestRev after new progress notify=%d; want 25", got)
+	}
 }
 
 func waitUntil(t *testing.T, timeout, poll time.Duration, cond func() bool) {
@@ -535,6 +564,12 @@ func (m *mockWatcher) Close() error {
 	m.closeOnce.Do(func() { close(m.responses) })
 	m.wg.Wait()
 	return nil
+}
+
+func (m *mockWatcher) triggerProgressNotify(rev int64) {
+	m.responses <- clientv3.WatchResponse{
+		Header: pb.ResponseHeader{Revision: rev},
+	}
 }
 
 func (m *mockWatcher) triggerCreatedNotify() { m.responses <- clientv3.WatchResponse{} }

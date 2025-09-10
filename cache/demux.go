@@ -29,6 +29,7 @@ type demux struct {
 	laggingWatchers map[*watcher]int64
 	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
+	latestRev       int64
 }
 
 func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
@@ -101,7 +102,17 @@ func (d *demux) Unregister(w *watcher) {
 	}()
 	w.Stop()
 }
+
 func (d *demux) Broadcast(resp clientv3.WatchResponse) {
+	if resp.IsProgressNotify() {
+		d.mu.Lock()
+		if resp.Header.Revision > d.latestRev {
+			d.latestRev = resp.Header.Revision
+		}
+		d.mu.Unlock()
+		return
+	}
+
 	events := resp.Events
 	if len(events) == 0 {
 		return
@@ -125,6 +136,9 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) {
 
 	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
+	if lastRev > d.latestRev {
+		d.latestRev = lastRev
+	}
 	for w, nextRev := range d.activeWatchers {
 		if nextRev != 0 && firstRev > nextRev {
 			d.laggingWatchers[w] = nextRev
@@ -151,11 +165,18 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) {
 	}
 }
 
+func (d *demux) LatestRev() int64 {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.latestRev
+}
+
 // Purge stops all watchers and rebase history on watch errors
 func (d *demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.history.RebaseHistory()
+	d.latestRev = 0
 	for w := range d.activeWatchers {
 		w.Stop()
 	}
@@ -172,6 +193,7 @@ func (d *demux) Compact(compactRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.history.RebaseHistory()
+	d.latestRev = 0
 
 	for w, next := range d.activeWatchers {
 		if next != 0 && next <= compactRev {
