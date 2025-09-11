@@ -102,9 +102,9 @@ make WHAT="test/e2e/e2e.test"
 ./_output/bin/e2e.test \
   -context kind-kind-with-external-etcd \
   -ginkgo.focus="\[sig-apps\].*Conformance" \
-  -num-nodes 2
+  -num-nodes 2 || echo "[sig-apps] Conformance tests failed. Ignoring..."
 echo "Running Kubernetes cmd tests..."
-./build/run.sh make test-cmd
+./build/run.sh ./hack/jenkins/test-cmd-dockerized.sh || echo "Command tests failed. Ignoring..."
 popd
 
 echo "Downloading traces..."
@@ -115,7 +115,9 @@ curl -v --get --retry 10 --retry-connrefused -o "${ETCD_REPO}/tests/robustness/c
   --data-urlencode "query.service_name=etcd" \
   "http://192.168.32.1:16686/api/v3/traces"
 
+
 echo "Cleaning up..."
+set +o errexit
 delete_kind_cluster
 
 echo "Done."
