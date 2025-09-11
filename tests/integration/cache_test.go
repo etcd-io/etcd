@@ -803,97 +803,149 @@ var getTestCases = []getTestCase{
 	},
 }
 
-func TestCacheWithPrefixGet(t *testing.T) {
+func TestCacheWithPrefixGetInScope(t *testing.T) {
 	integration.BeforeTest(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	t.Cleanup(func() { clus.Terminate(t) })
-	client := clus.Client(0)
+	cli := clus.Client(0)
 
+	testWithPrefixGet(t, cli, func() Getter {
+		c, err := cache.New(cli, "/foo")
+		if err != nil {
+			t.Fatalf("cache.New: %v", err)
+		}
+		t.Cleanup(c.Close)
+		if err := c.WaitReady(t.Context()); err != nil {
+			t.Fatalf("cache.WaitReady: %v", err)
+		}
+		return c
+	})
+}
+
+func TestWithPrefixGet(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	cli := clus.Client(0)
+
+	testWithPrefixGet(t, cli, func() Getter { return cli.KV })
+}
+
+func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Getter) {
 	ctx := t.Context()
+	seedResp, err := cli.Put(ctx, "/foo/a", "val")
+	if err != nil {
+		t.Fatalf("seed put: %v", err)
+	}
+	seedRev := seedResp.Header.Revision
 
-	tests := []struct {
-		name        string
-		key         string
-		opts        []clientv3.OpOption
-		expectError bool
+	reader := getReader()
+
+	expectedFooA := &mvccpb.KeyValue{
+		Key:            []byte("/foo/a"),
+		Value:          []byte("val"),
+		CreateRevision: seedRev,
+		ModRevision:    seedRev,
+		Version:        1,
+	}
+
+	testCases := []struct {
+		name         string
+		key          string
+		opts         []clientv3.OpOption
+		wantKVs      []*mvccpb.KeyValue
+		wantRevision int64
 	}{
 		{
-			name:        "single key within prefix",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable()},
-			expectError: false,
+			name:         "single key within cache prefix",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: seedRev,
 		},
 		{
-			name:        "single key outside prefix returns error",
-			key:         "/bar/a",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable()},
-			expectError: true,
+			name:         "prefix query within cache prefix",
+			key:          "/foo",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: seedRev,
 		},
 		{
-			name:        "prefix() within cache prefix",
-			key:         "/foo",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
-			expectError: false,
-		},
-		{
-			name:        "prefix() outside cache prefix returns error",
-			key:         "/bar",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
-			expectError: true,
-		},
-		{
-			name:        "range within prefix",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
-			expectError: false,
-		},
-		{
-			name:        "range crosses cache prefix boundary returns error /foo/a",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/zzz")},
-			expectError: true,
-		},
-		{
-			name:        "fromKey not allowed when cache has prefix returns error /foo/a",
-			key:         "/foo/a",
-			opts:        []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
-			expectError: true,
+			name:         "range query within cache prefix",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: seedRev,
 		},
 	}
 
-	c, err := cache.New(client, "/foo")
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := reader.Get(ctx, tc.key, tc.opts...)
+			if err != nil {
+				t.Fatalf("Get(%q): %v", tc.key, err)
+			}
+
+			if diff := cmp.Diff(tc.wantKVs, resp.Kvs); diff != "" {
+				t.Errorf("unexpected KVs (-want +got):\n%s", diff)
+			}
+
+			if resp.Header.Revision != tc.wantRevision {
+				t.Errorf("Header.Revision=%d; want: %d", resp.Header.Revision, tc.wantRevision)
+			}
+		})
+	}
+}
+
+func TestCacheWithPrefixGetOutOfScope(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	cli := clus.Client(0)
+	c, err := cache.New(cli, "/foo")
 	if err != nil {
 		t.Fatalf("cache.New: %v", err)
 	}
 	defer c.Close()
-	if err = c.WaitReady(ctx); err != nil {
+	ctx := t.Context()
+	if err := c.WaitReady(ctx); err != nil {
 		t.Fatalf("cache.WaitReady: %v", err)
 	}
 
-	const testKey = "/foo/a"
-	putResp, err := client.Put(ctx, testKey, "val")
-	if err != nil {
-		t.Fatalf("client.Put(%q, \"val\") failed: %v", testKey, err)
-	}
-	if err := c.WaitForRevision(ctx, putResp.Header.Revision); err != nil {
-		t.Fatalf("cache never caught up to rev %d: %v", putResp.Header.Revision, err)
+	cases := []struct {
+		name string
+		key  string
+		opts []clientv3.OpOption
+	}{
+		{
+			name: "single key outside prefix",
+			key:  "/bar/a",
+			opts: []clientv3.OpOption{clientv3.WithSerializable()},
+		},
+		{
+			name: "prefix() outside cache prefix",
+			key:  "/bar",
+			opts: []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
+		},
+		{
+			name: "range crossing cache boundary",
+			key:  "/foo/a",
+			opts: []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/zzz")},
+		},
+		{
+			name: "fromKey disallowed with cache prefix",
+			key:  "/foo/a",
+			opts: []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithFromKey()},
+		},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			resp, err := c.Get(ctx, tc.key, tc.opts...)
-			if tc.expectError {
-				if !errors.Is(err, cache.ErrKeyRangeInvalid) {
-					t.Fatalf("expected ErrKeyRangeInvalid for Get %q, got: %v", tc.key, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("Get %q failed: %v", tc.key, err)
-			}
-			if len(resp.Kvs) == 0 {
-				t.Fatalf("Get %q returned no KVs, expected at least one", tc.key)
+			_, err := c.Get(ctx, tc.key, tc.opts...)
+			if !errors.Is(err, cache.ErrKeyRangeInvalid) {
+				t.Fatalf("expected ErrKeyRangeInvalid; got %v", err)
 			}
 		})
 	}
