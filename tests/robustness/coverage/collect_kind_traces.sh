@@ -108,7 +108,7 @@ echo "Running Kubernetes cmd tests..."
 popd
 
 echo "Downloading traces..."
-curl -v --get --retry 10 --retry-connrefused -o "${ETCD_REPO}/tests/robustness/coverage/testdata/traces-$(date -I).json" \
+curl -v --get --retry 10 --retry-connrefused -o "${ETCD_REPO}/tests/robustness/coverage/testdata/traces.json" \
   -H "Content-Type: application/json" \
   --data-urlencode "query.start_time_min=$(date --date="5 days ago" -Ins)" \
   --data-urlencode "query.start_time_max=$(date --date="2 minutes ago" -Ins)" \
