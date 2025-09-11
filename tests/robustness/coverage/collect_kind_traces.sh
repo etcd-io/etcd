@@ -63,7 +63,8 @@ trap "stop_jaeger" EXIT SIGINT
 echo "Building and starting etcd..."
 pushd "${ETCD_REPO}"
 mkdir -p "${KUBERNETES_REPO}/third_party/etcd"
-export DATA_DIR="$(mktemp -d)"
+DATA_DIR="$(mktemp -d -p "${DATA_DIR:-/tmp}")"
+export DATA_DIR
 cp "./bin/etcd" "${KUBERNETES_REPO}/third_party/etcd/etcd"
 "./bin/etcd" --watch-progress-notify-interval=5s \
   --data-dir "${DATA_DIR}" \
