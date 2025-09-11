@@ -63,7 +63,8 @@ trap "stop_jaeger" EXIT SIGINT
 echo "Building and starting etcd..."
 pushd "${ETCD_REPO}"
 mkdir -p "${KUBERNETES_REPO}/third_party/etcd"
-export DATA_DIR="$(mktemp -d)"
+DATA_DIR="$(mktemp -d -p "${DATA_DIR:-/tmp}")"
+export DATA_DIR
 cp "./bin/etcd" "${KUBERNETES_REPO}/third_party/etcd/etcd"
 "./bin/etcd" --watch-progress-notify-interval=5s \
   --data-dir "${DATA_DIR}" \
@@ -101,20 +102,22 @@ make WHAT="test/e2e/e2e.test"
 ./_output/bin/e2e.test \
   -context kind-kind-with-external-etcd \
   -ginkgo.focus="\[sig-apps\].*Conformance" \
-  -num-nodes 2
+  -num-nodes 2 || echo "[sig-apps] Conformance tests failed. Ignoring..."
 echo "Running Kubernetes cmd tests..."
-./build/run.sh make test-cmd
+./build/run.sh ./hack/jenkins/test-cmd-dockerized.sh || echo "Command tests failed. Ignoring..."
 popd
 
 echo "Downloading traces..."
-curl -v --get --retry 10 --retry-connrefused -o "${ETCD_REPO}/tests/robustness/coverage/testdata/traces-$(date -I).json" \
+curl -v --get --retry 10 --retry-connrefused -o "${ETCD_REPO}/tests/robustness/coverage/testdata/traces.json" \
   -H "Content-Type: application/json" \
   --data-urlencode "query.start_time_min=$(date --date="5 days ago" -Ins)" \
   --data-urlencode "query.start_time_max=$(date --date="2 minutes ago" -Ins)" \
   --data-urlencode "query.service_name=etcd" \
   "http://192.168.32.1:16686/api/v3/traces"
 
+
 echo "Cleaning up..."
+set +o errexit
 delete_kind_cluster
 
 echo "Done."
