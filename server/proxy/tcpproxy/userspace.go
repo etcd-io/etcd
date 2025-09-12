@@ -15,27 +15,25 @@
 package tcpproxy
 
 import (
-	"fmt"
 	"io"
 	"math/rand"
 	"net"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type remote struct {
-	mu       sync.Mutex
 	srv      *net.SRV
 	addr     string
-	inactive bool
+	inactive atomic.Bool
 }
 
 func (r *remote) inactivate() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.inactive = true
+	r.inactive.Store(true)
 }
 
 func (r *remote) tryReactivate() error {
@@ -44,16 +42,12 @@ func (r *remote) tryReactivate() error {
 		return err
 	}
 	conn.Close()
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.inactive = false
+	r.inactive.Store(false)
 	return nil
 }
 
 func (r *remote) isActive() bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return !r.inactive
+	return !r.inactive.Load()
 }
 
 type TCPProxy struct {
@@ -61,29 +55,36 @@ type TCPProxy struct {
 	Listener        net.Listener
 	Endpoints       []*net.SRV
 	MonitorInterval time.Duration
-
-	donec chan struct{}
+	DialTimeout     time.Duration
 
 	mu        sync.Mutex // guards the following fields
+	donec     chan struct{}
 	remotes   []*remote
-	pickCount int // for round robin
+	pickCount uint64 // for round robin
 }
 
 func (tp *TCPProxy) Run() error {
+	tp.mu.Lock()
 	tp.donec = make(chan struct{})
+	tp.mu.Unlock()
+
 	if tp.MonitorInterval == 0 {
 		tp.MonitorInterval = 5 * time.Minute
 	}
+	if tp.Logger == nil {
+		tp.Logger = zap.NewNop()
+	}
+	if tp.DialTimeout == 0 {
+		tp.DialTimeout = 10 * time.Second
+	}
 
-	var eps []string // for logging
+	eps := make([]string, 0, len(tp.Endpoints)) // for logging
 	for _, srv := range tp.Endpoints {
-		addr := net.JoinHostPort(srv.Target, fmt.Sprintf("%d", srv.Port))
+		addr := net.JoinHostPort(srv.Target, strconv.Itoa(int(srv.Port)))
 		tp.remotes = append(tp.remotes, &remote{srv: srv, addr: addr})
 		eps = append(eps, addr)
 	}
-	if tp.Logger != nil {
-		tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))
-	}
+	tp.Logger.Info("ready to proxy client requests", zap.Strings("endpoints", eps))
 
 	go tp.runMonitor()
 	for {
@@ -126,7 +127,7 @@ func (tp *TCPProxy) pick() *remote {
 			// In the presence of records containing weights greater
 			// than 0, records with weight 0 should have a very small
 			// chance of being selected.
-			r := unweighted[tp.pickCount%len(unweighted)]
+			r := unweighted[tp.pickCount%uint64(len(unweighted))]
 			tp.pickCount++
 			return r
 		}
@@ -134,7 +135,7 @@ func (tp *TCPProxy) pick() *remote {
 		// (inclusive), and select the RR whose running sum value is the
 		// first in the selected order
 		choose := rand.Intn(w)
-		for i := 0; i < len(weighted); i++ {
+		for i := range weighted {
 			choose -= int(weighted[i].srv.Weight)
 			if choose <= 0 {
 				return weighted[i]
@@ -142,8 +143,8 @@ func (tp *TCPProxy) pick() *remote {
 		}
 	}
 	if unweighted != nil {
-		for i := 0; i < len(tp.remotes); i++ {
-			picked := tp.remotes[tp.pickCount%len(tp.remotes)]
+		for range tp.remotes {
+			picked := tp.remotes[tp.pickCount%uint64(len(tp.remotes))]
 			tp.pickCount++
 			if picked.isActive() {
 				return picked
@@ -154,6 +155,8 @@ func (tp *TCPProxy) pick() *remote {
 }
 
 func (tp *TCPProxy) serve(in net.Conn) {
+	defer in.Close()
+
 	var (
 		err error
 		out net.Conn
@@ -164,39 +167,28 @@ func (tp *TCPProxy) serve(in net.Conn) {
 		remote := tp.pick()
 		tp.mu.Unlock()
 		if remote == nil {
-			break
+			return
 		}
-		// TODO: add timeout
-		out, err = net.Dial("tcp", remote.addr)
+		out, err = net.DialTimeout("tcp", remote.addr, tp.DialTimeout)
 		if err == nil {
 			break
 		}
 		remote.inactivate()
-		if tp.Logger != nil {
-			tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-		}
+		tp.Logger.Warn("deactivated endpoint", zap.String("address", remote.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
 	}
 
-	if out == nil {
-		in.Close()
-		return
-	}
-
-	go func() {
-		io.Copy(in, out)
-		in.Close()
-		out.Close()
-	}()
-
+	defer out.Close()
+	go io.Copy(in, out)
 	io.Copy(out, in)
-	out.Close()
-	in.Close()
 }
 
 func (tp *TCPProxy) runMonitor() {
+	timer := time.NewTimer(tp.MonitorInterval)
+	defer timer.Stop()
 	for {
+		timer.Reset(tp.MonitorInterval)
 		select {
-		case <-time.After(tp.MonitorInterval):
+		case <-timer.C:
 			tp.mu.Lock()
 			for _, rem := range tp.remotes {
 				if rem.isActive() {
@@ -204,13 +196,9 @@ func (tp *TCPProxy) runMonitor() {
 				}
 				go func(r *remote) {
 					if err := r.tryReactivate(); err != nil {
-						if tp.Logger != nil {
-							tp.Logger.Warn("failed to activate endpoint (stay inactive for another interval)", zap.String("address", r.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
-						}
+						tp.Logger.Warn("failed to activate endpoint (stay inactive for another interval)", zap.String("address", r.addr), zap.Duration("interval", tp.MonitorInterval), zap.Error(err))
 					} else {
-						if tp.Logger != nil {
-							tp.Logger.Info("activated", zap.String("address", r.addr))
-						}
+						tp.Logger.Info("activated", zap.String("address", r.addr))
 					}
 				}(rem)
 			}
@@ -224,6 +212,18 @@ func (tp *TCPProxy) runMonitor() {
 func (tp *TCPProxy) Stop() {
 	// graceful shutdown?
 	// shutdown current connections?
+	tp.mu.Lock()
+	defer tp.mu.Unlock()
+
+	if tp.donec == nil {
+		return // Never run.
+	}
+	select {
+	case <-tp.donec:
+		return // Already stopped.
+	default:
+	}
+
 	tp.Listener.Close()
 	close(tp.donec)
 }
