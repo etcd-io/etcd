@@ -101,6 +101,7 @@ func (d *demux) Unregister(w *watcher) {
 	}()
 	w.Stop()
 }
+
 func (d *demux) Broadcast(resp clientv3.WatchResponse) {
 	events := resp.Events
 	if len(events) == 0 {
@@ -109,7 +110,11 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) {
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.updateStoreLocked(events)
+	d.broadcastLocked(events)
+}
 
+func (d *demux) updateStoreLocked(events []*clientv3.Event) {
 	batchStart := 0
 	for end := 1; end < len(events); end++ {
 		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
@@ -122,9 +127,12 @@ func (d *demux) Broadcast(resp clientv3.WatchResponse) {
 	if batchStart < len(events) {
 		d.history.Append(events[batchStart:])
 	}
+}
 
+func (d *demux) broadcastLocked(events []*clientv3.Event) {
 	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
+
 	for w, nextRev := range d.activeWatchers {
 		if nextRev != 0 && firstRev > nextRev {
 			d.laggingWatchers[w] = nextRev
