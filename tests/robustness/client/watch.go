@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -43,14 +44,28 @@ func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []
 			return err
 		})
 	}
-
+	finish := make(chan struct{})
 	g.Go(func() error {
 		maxRevision := <-maxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
+		close(finish)
 		return nil
 	})
+
+	for _, endpoint := range endpoints {
+		g.Go(func() error {
+			c, err := clientSet.NewClient([]string{endpoint})
+			if err != nil {
+				return err
+			}
+			defer c.Close()
+			period := time.Millisecond
+			return openWatchEveryPeriod(ctx, lg, &g, c, period, finish)
+		})
+	}
+
 	return g.Wait()
 }
 
@@ -120,5 +135,34 @@ resetWatch:
 				}
 			}
 		}
+	}
+}
+
+func openWatchEveryPeriod(ctx context.Context, lg *zap.Logger, g *errgroup.Group, c *RecordingClient, period time.Duration, finish <-chan struct{}) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-finish:
+			return nil
+		case <-time.After(period):
+		}
+		g.Go(func() error {
+			watchCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			w := c.Watch(watchCtx, "", 0, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-finish:
+					return nil
+				case _, ok := <-w:
+					if !ok {
+						return nil
+					}
+				}
+			}
+		})
 	}
 }
