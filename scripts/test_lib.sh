@@ -300,7 +300,8 @@ function tool_exists {
   fi
 }
 
-# tool_get_bin [tool] - returns absolute path to a tool binary (or returns error)
+# tool_get_bin [tool] - returns absolute path to a tool binary (or returns error).
+# This function is only used to run commands that are managed by tools/mod.
 function tool_get_bin {
   local tool="$1"
   local pkg_part="$1"
