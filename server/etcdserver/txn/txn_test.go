@@ -228,7 +228,7 @@ func TestCheckTxn(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
+			_, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
 
 			gotErr := ""
 			if err != nil {
@@ -248,7 +248,7 @@ func TestCheckPut(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Put(ctx, zaptest.NewLogger(t), lessor, s, tc.op.GetRequestPut())
+			_, err := Put(ctx, zaptest.NewLogger(t), lessor, s, tc.op.GetRequestPut())
 
 			gotErr := ""
 			if err != nil {
@@ -268,7 +268,7 @@ func TestCheckRange(t *testing.T) {
 
 			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
-			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
+			_, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
 
 			gotErr := ""
 			if err != nil {
@@ -333,7 +333,7 @@ func TestReadonlyTxnError(t *testing.T) {
 		},
 	}
 
-	_, _, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
+	_, err := Txn(ctx, zaptest.NewLogger(t), txn, false, s, &lease.FakeLessor{})
 	if err == nil || !strings.Contains(err.Error(), "applyTxn: failed Range: rangeKeys: context cancelled: context canceled") {
 		t.Fatalf("Expected context canceled error, got %v", err)
 	}
