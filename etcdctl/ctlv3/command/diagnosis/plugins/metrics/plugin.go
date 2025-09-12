@@ -1,3 +1,17 @@
+// Copyright 2025 The etcd Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package metrics
 
 import (
@@ -14,8 +28,8 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 
-	"go.etcd.io/etcd/etcdctl/v3/diagnosis/engine/intf"
-	"go.etcd.io/etcd/etcdctl/v3/diagnosis/plugins/common"
+	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/engine/intf"
+	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/plugins/common"
 )
 
 var metricsNames = []string{
@@ -82,7 +96,7 @@ func (ck *metricsChecker) Diagnose() (result any) {
 		chkResult.EpMetricsList[i].Endpoint = ep
 
 		startTs := time.Now()
-		allMetrics, err := fetchMetrics(ck.Cfg, ep)
+		allMetrics, err := fetchMetrics(ck.Cfg, ep, ck.CommandTimeout)
 		chkResult.EpMetricsList[i].Took = time.Since(startTs).String()
 		if err != nil {
 			appendSummary(&chkResult, "Failed to get endpoint metrics from %q: %v", ep, err)
@@ -122,7 +136,7 @@ func appendSummary(chkResult *checkResult, format string, v ...any) {
 	chkResult.Summary = append(chkResult.Summary, errMsg)
 }
 
-func fetchMetrics(cfg *clientv3.ConfigSpec, ep string) ([]string, error) {
+func fetchMetrics(cfg *clientv3.ConfigSpec, ep string, timeout time.Duration) ([]string, error) {
 	if !strings.HasPrefix(ep, "http://") && !strings.HasPrefix(ep, "https://") {
 		ep = "http://" + ep
 	}
@@ -131,7 +145,7 @@ func fetchMetrics(cfg *clientv3.ConfigSpec, ep string) ([]string, error) {
 		return nil, fmt.Errorf("failed to join metrics url path: %w", err)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: timeout}
 	if strings.HasPrefix(urlPath, "https://") && cfg.Secure != nil {
 		cert, err := tls.LoadX509KeyPair(cfg.Secure.Cert, cfg.Secure.Key)
 		if err != nil {
