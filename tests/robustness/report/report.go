@@ -43,7 +43,7 @@ func (r *TestReport) Report(path string) error {
 	}
 	for server, dataPath := range r.ServersDataPath {
 		serverReportPath := filepath.Join(path, fmt.Sprintf("server-%s", server))
-		r.Logger.Info("Saving member data directory", zap.String("member", server), zap.String("path", serverReportPath))
+		r.Logger.Info("Saving member data dir", zap.String("member", server), zap.String("data-dir", dataPath), zap.String("path", serverReportPath))
 		if err := os.CopyFS(serverReportPath, os.DirFS(dataPath)); err != nil {
 			return err
 		}
