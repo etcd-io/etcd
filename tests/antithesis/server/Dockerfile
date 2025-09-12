@@ -33,11 +33,6 @@ RUN go mod tidy
 # compile etcd server with instrumentor
 RUN mkdir /etcd_instrumented
 RUN `go env GOPATH`/bin/antithesis-go-instrumentor /etcd /etcd_instrumented
-RUN rm -rf /etcd
-RUN mkdir -p /symbols
-RUN cp -r /etcd_instrumented/symbols/* /symbols
-
-EXPOSE 2379 2380
 
 WORKDIR /etcd_instrumented/customer
 
@@ -56,5 +51,8 @@ RUN CGO_ENABLED=1 make build
 
 FROM ubuntu:24.04
 COPY --from=build /etcd_instrumented/ /etcd
+# Move symbols to /symbols directory https://antithesis.com/docs/instrumentation/#symbolization
+RUN mv  /etcd/symbols /symbols
 
+EXPOSE 2379 2380
 CMD ["/etcd/customer/bin/etcd"]
