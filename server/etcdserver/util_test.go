@@ -19,8 +19,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
 
+	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
@@ -109,4 +111,56 @@ type testStringerFunc func() string
 
 func (s testStringerFunc) String() string {
 	return s()
+}
+
+func TestExceedsRequestLimit(t *testing.T) {
+	tests := []struct {
+		name           string
+		ci             uint64
+		ai             uint64
+		expectedResult bool
+		req            *pb.InternalRaftRequest
+	}{
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex,
+			ai:             1,
+			expectedResult: false,
+			req:            nil,
+			name:           "Test nil InternalRaftRequest",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex,
+			ai:             1,
+			expectedResult: false,
+			req:            &pb.InternalRaftRequest{},
+			name:           "Test non-critical request and gap is not larger than maxGapBetweenApplyAndCommitIndex",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: true,
+			req:            &pb.InternalRaftRequest{},
+			name:           "Test non-critical request and gap is larger than maxGapBetweenApplyAndCommitIndex",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1,
+			ai:             1,
+			expectedResult: false,
+			req:            &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			name:           "Test critical request and gap is larger than maxGapBetweenApplyAndCommitIndex",
+		},
+		{
+			ci:             1 + maxGapBetweenApplyAndCommitIndex + 1 + maxGapBetweenApplyAndCommitIndex/10,
+			ai:             1,
+			expectedResult: true,
+			req:            &pb.InternalRaftRequest{LeaseRevoke: &pb.LeaseRevokeRequest{}},
+			name:           "Test critical request and gap is larger than 110% maxGapBetweenApplyAndCommitIndex",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expectedResult, exceedsRequestLimit(tc.ai, tc.ci, tc.req))
+		})
+	}
 }
