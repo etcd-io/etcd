@@ -35,7 +35,7 @@ func TestDataReports(t *testing.T) {
 	files, err := os.ReadDir(testdataPath)
 	require.NoError(t, err)
 	for _, file := range files {
-		if file.Name() == ".gitignore" {
+		if !file.IsDir() {
 			continue
 		}
 		t.Run(file.Name(), func(t *testing.T) {
