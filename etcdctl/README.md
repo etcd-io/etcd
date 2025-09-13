@@ -1164,7 +1164,7 @@ etcdctl diagnosis -o report.json
 ```
 
 
-Example output: see [diagnosis/examples/etcd_diagnosis_report.json](diagnosis/examples/etcd_diagnosis_report.json)
+Example output: see [ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json](ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json)
 
 
 ## Concurrency commands
