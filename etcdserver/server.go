@@ -1301,6 +1301,14 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	// wait for raftNode to persist snapshot onto the disk
 	<-apply.notifyc
 
+	bemuUnlocked := false
+	s.bemu.Lock()
+	defer func() {
+		if !bemuUnlocked {
+			s.bemu.Unlock()
+		}
+	}()
+
 	// gofail: var applyBeforeOpenSnapshot struct{}
 	newbe, err := openSnapshotBackend(s.Cfg, s.snapshotter, apply.snapshot)
 	if err != nil {
@@ -1310,6 +1318,12 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			plog.Panic(err)
 		}
 	}
+	if lg != nil {
+		lg.Info("applySnapshot: opened snapshot backend")
+	} else {
+		plog.Info("applySnapshot: opened snapshot backend")
+	}
+	// gofail: var applyAfterOpenSnapshot struct{}
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1350,11 +1364,14 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 		plog.Info("finished restoring mvcc store")
 	}
 
+	oldbe := s.be
+	s.be = newbe
+	s.bemu.Unlock()
+	bemuUnlocked = true
+
 	// Closing old backend might block until all the txns
 	// on the backend are finished.
 	// We do not want to wait on closing the old backend.
-	s.bemu.Lock()
-	oldbe := s.be
 	go func() {
 		if lg != nil {
 			lg.Info("closing old backend file")
@@ -1376,9 +1393,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 			}
 		}
 	}()
-
-	s.be = newbe
-	s.bemu.Unlock()
 
 	if lg != nil {
 		lg.Info("restoring alarm store")
@@ -2773,6 +2787,12 @@ func (s *EtcdServer) Backend() backend.Backend {
 	s.bemu.Lock()
 	defer s.bemu.Unlock()
 	return s.be
+}
+
+func (s *EtcdServer) Defragment() error {
+	s.bemu.Lock()
+	defer s.bemu.Unlock()
+	return s.be.Defrag()
 }
 
 func (s *EtcdServer) AuthStore() auth.AuthStore { return s.authStore }
