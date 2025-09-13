@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"go.etcd.io/etcd/pkg/expect"
@@ -49,6 +50,8 @@ type etcdProcess interface {
 	Restart() error
 	Stop() error
 	Close() error
+	Pause() error
+	Resume() error
 	WithStopSignal(sig os.Signal) os.Signal
 	Config() *etcdServerProcessConfig
 
@@ -233,6 +236,14 @@ func (ep *etcdServerProcess) IsRunning() bool {
 
 func (ep *etcdServerProcess) Etcdctl(connType clientConnType, isAutoTLS, v2 bool) *Etcdctl {
 	return NewEtcdctl(ep.EndpointsV3(), connType, isAutoTLS, v2)
+}
+
+func (ep *etcdServerProcess) Pause() error {
+	return ep.proc.Signal(syscall.SIGSTOP)
+}
+
+func (ep *etcdServerProcess) Resume() error {
+	return ep.proc.Signal(syscall.SIGCONT)
 }
 
 type BinaryFailpoints struct {
