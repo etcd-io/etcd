@@ -70,7 +70,7 @@ func TestIssue20271(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	t.Log("Step 4: Restarting the first two members to change term and trigger new leader to send snapshot file to the third member.")
+	t.Log("Step 4: Restarting the first two members to re-connect to the paused member, so the inflight messages will be dropped. This will trigger new leader to send snapshot file to the third member.")
 	for _, proc := range epc.Procs[:2] {
 		require.NoError(t, proc.Restart(ctx))
 	}
