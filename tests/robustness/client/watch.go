@@ -69,10 +69,10 @@ resetWatch:
 	for {
 		if closing {
 			if maxRevision == 0 {
-				return errors.New("Client didn't collect all events, max revision not set")
+				return errors.New("client didn't collect all events, max revision not set")
 			}
 			if lastRevision < maxRevision {
-				return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+				return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
 			}
 			return nil
 		}
