@@ -2,7 +2,7 @@ module go.etcd.io/etcd/tools/v3
 
 go 1.24
 
-toolchain go1.24.6
+toolchain go1.24.7
 
 require (
 	github.com/alexkohler/nakedret v1.0.0
