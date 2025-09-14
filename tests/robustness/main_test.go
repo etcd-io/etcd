@@ -101,8 +101,8 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	defer func() {
 		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
 		shouldReport := t.Failed() || panicked || persistResults
-		path := testResultsDirectory(t)
 		if shouldReport {
+			path := testResultsDirectory(t)
 			if err := r.Report(path); err != nil {
 				t.Error(err)
 			}
