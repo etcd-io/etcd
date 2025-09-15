@@ -29,7 +29,7 @@ docker images | grep etcd-client
 
 It should show something like:
 
-```
+```bash
 etcd-client        latest    <IMAGE_ID>    <DATE>
 ```
 
@@ -45,7 +45,7 @@ The command uses the etcd client and server images built from step 1.
 
 The client will continuously check the health of the etcd nodes and print logs similar to:
 
-```
+```bash
 [+] Running 4/4
  ✔ Container etcd0   Created                                                                                                                                                 0.0s 
  ✔ Container etcd2   Created                                                                                                                                                 0.0s 
