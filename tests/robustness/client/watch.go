@@ -25,27 +25,35 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, clientSet *ClientSet) error {
+type CollectClusterWatchEventsParam struct {
+	Lg              *zap.Logger
+	Endpoints       []string
+	MaxRevisionChan <-chan int64
+	Cfg             WatchConfig
+	ClientSet       *ClientSet
+}
+
+func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
 	var g errgroup.Group
-	reports := make([]report.ClientReport, len(endpoints))
-	memberMaxRevisionChans := make([]chan int64, len(endpoints))
-	for i, endpoint := range endpoints {
+	reports := make([]report.ClientReport, len(param.Endpoints))
+	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
+	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		g.Go(func() error {
-			c, err := clientSet.NewClient([]string{endpoint})
+			c, err := param.ClientSet.NewClient([]string{endpoint})
 			if err != nil {
 				return err
 			}
 			defer c.Close()
-			err = watchUntilRevision(ctx, lg, c, memberMaxRevisionChan, cfg)
+			err = watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 			reports[i] = c.Report()
 			return err
 		})
 	}
 
 	g.Go(func() error {
-		maxRevision := <-maxRevisionChan
+		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}

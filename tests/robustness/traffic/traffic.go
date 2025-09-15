@@ -84,7 +84,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
+			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     lm,
+				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
+				KeyStore:                           keyStore,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	for range profile.ClusterClientCount {
@@ -96,7 +104,15 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
+			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     lm,
+				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
+				KeyStore:                           keyStore,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	if !profile.ForbidCompaction {
@@ -114,7 +130,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				compactionPeriod = profile.CompactPeriod
 			}
 
-			traffic.RunCompactLoop(ctx, c, compactionPeriod, finish)
+			traffic.RunCompactLoop(ctx, RunCompactLoopParam{
+				Client: c,
+				Period: compactionPeriod,
+				Finish: finish,
+			})
 		}(c)
 	}
 	var fr *report.FailpointInjection
@@ -287,9 +307,25 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	return p
 }
 
+type RunTrafficLoopParam struct {
+	Client                             *client.RecordingClient
+	QPSLimiter                         *rate.Limiter
+	IDs                                identity.Provider
+	LeaseIDStorage                     identity.LeaseIDStorage
+	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
+	KeyStore                           *keyStore
+	Finish                             <-chan struct{}
+}
+
+type RunCompactLoopParam struct {
+	Client *client.RecordingClient
+	Period time.Duration
+	Finish <-chan struct{}
+}
+
 type Traffic interface {
-	RunTrafficLoop(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{})
-	RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{})
+	RunTrafficLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
 }
 
