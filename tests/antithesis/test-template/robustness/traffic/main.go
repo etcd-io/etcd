@@ -65,6 +65,19 @@ func main() {
 	cfg := common.MakeConfig(NodeCount)
 
 	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
+
+	// override paths if environment variables are set
+	h, rp, d := common.PathsFromEnv()
+	if len(h) > 0 {
+		hosts = h
+	}
+	if rp != "" {
+		reportPath = rp
+	}
+	if len(d) > 0 {
+		etcdetcdDataPaths = d
+	}
+
 	if *local {
 		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
 	}

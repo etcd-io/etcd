@@ -45,6 +45,16 @@ func main() {
 	cfg := common.MakeConfig(NodeCount)
 
 	_, reportPath, dirs := common.DefaultPaths(cfg)
+
+	// override paths if environment variables are set
+	_, rp, d := common.PathsFromEnv()
+	if rp != "" {
+		reportPath = rp
+	}
+	if len(d) > 0 {
+		dirs = d
+	}
+
 	if *local {
 		_, reportPath, dirs = common.LocalPaths(cfg)
 	}

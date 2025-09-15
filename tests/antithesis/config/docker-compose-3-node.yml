@@ -9,9 +9,9 @@ services:
     group_add:
       - '${GROUP_ID:-root}'
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
       - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report
     command:
       - /bin/sh
@@ -45,7 +45,7 @@ services:
     ports:
       - 12379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}0:/var/etcd/data
 
   etcd1:
     image: 'etcd-server:${IMAGE_TAG:-latest}'
@@ -72,7 +72,7 @@ services:
     ports:
       - 22379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}1:/var/etcd/data
 
   etcd2:
     image: 'etcd-server:${IMAGE_TAG:-latest}'
@@ -99,7 +99,7 @@ services:
     ports:
       - 32379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}2:/var/etcd/data
 
   client:
     image: 'etcd-client:${IMAGE_TAG:-latest}'
@@ -114,7 +114,7 @@ services:
       etcd2:
         condition: service_started
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_LOCAL_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
       - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report
