@@ -308,5 +308,24 @@ func Regression(t *testing.T) []TestScenario {
 		),
 	})
 
+	scenarios = append(scenarios, TestScenario{
+		Name:      "issue20221",
+		Profile:   traffic.HighTrafficProfile.WithoutCompaction().WithContinuousWatchCreationInterval(10 * time.Millisecond).WithContinuousWatchCreationRevisionOffset(100),
+		Failpoint: failpoint.RaftAfterSaveSnapPanic,
+		// Failpoint: failpoint.RaftBeforeApplySnapPanic,
+		// Failpoint: failpoint.RaftAfterApplySnapPanic,
+		// Failpoint: failpoint.RaftAfterWALReleasePanic,
+		Traffic: traffic.Kubernetes,
+		Cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(3),
+			e2e.WithCompactionBatchLimit(10),
+			e2e.WithSnapshotCount(50),
+			e2e.WithSnapshotCatchUpEntries(100),
+			e2e.WithGoFailEnabled(true),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+		),
+	})
+
 	return scenarios
 }
