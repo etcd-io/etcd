@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -151,6 +152,7 @@ func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingC
 	for {
 		select {
 		case <-ctx.Done():
+			os.Exit(1)
 			return ctx.Err()
 		case <-finish:
 			return nil

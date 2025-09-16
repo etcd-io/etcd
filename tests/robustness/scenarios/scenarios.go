@@ -309,10 +309,10 @@ func Regression(t *testing.T) []TestScenario {
 	})
 
 	scenarios = append(scenarios, TestScenario{
-		Name:      "issue20221",
-		Profile:   traffic.HighTrafficProfile.WithoutCompaction().WithContinuousWatchCreationInterval(10 * time.Millisecond).WithContinuousWatchCreationRevisionOffset(100),
-		Failpoint: failpoint.RaftAfterSaveSnapPanic,
-		// Failpoint: failpoint.RaftBeforeApplySnapPanic,
+		Name:    "issue20221",
+		Profile: traffic.HighTrafficProfile.WithoutCompaction().WithBackgroundWatchConfigInterval(5 * time.Millisecond).WithBackgroundWatchConfigRevisionOffset(5),
+		// Failpoint: failpoint.RaftAfterSaveSnapPanic,
+		Failpoint: failpoint.RaftBeforeApplySnapPanic,
 		// Failpoint: failpoint.RaftAfterApplySnapPanic,
 		// Failpoint: failpoint.RaftAfterWALReleasePanic,
 		Traffic: traffic.Kubernetes,

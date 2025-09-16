@@ -82,7 +82,7 @@ test-robustness-issue20573: /tmp/etcd-v3.6.4-failpoints/bin
 
 .PHONY: test-robustness-issue20221
 test-robustness-issue20221: /tmp/etcd-866bc0717c0b56579514c7363f3f47f6cd4109c6-failpoints/bin
-	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/issue20221 -count 200 -failfast --bin-dir=/tmp/etcd-866bc0717c0b56579514c7363f3f47f6cd4109c6-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
+	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/issue20221 -count 200 -failfast -timeout 10h --bin-dir=/tmp/etcd-866bc0717c0b56579514c7363f3f47f6cd4109c6-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
 # Etcd API usage by Kubernetes
