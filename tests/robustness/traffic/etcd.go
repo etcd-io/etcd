@@ -109,23 +109,23 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
+func (t etcdTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
 	client := etcdTrafficClient{
 		etcdTraffic:  t,
-		keyStore:     keyStore,
-		client:       c,
-		limiter:      limiter,
-		idProvider:   ids,
-		leaseStorage: lm,
+		keyStore:     p.KeyStore,
+		client:       p.Client,
+		limiter:      p.QPSLimiter,
+		idProvider:   p.IDs,
+		leaseStorage: p.LeaseIDStorage,
 	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-finish:
+		case <-p.Finish:
 			return
 		default:
 		}
@@ -134,7 +134,7 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClie
 		// Avoid multiple failed writes in a row
 		if lastOperationSucceeded {
 			choices := t.requests
-			if shouldReturn = nonUniqueWriteLimiter.Take(); !shouldReturn {
+			if shouldReturn = p.NonUniqueRequestConcurrencyLimiter.Take(); !shouldReturn {
 				choices = filterOutNonUniqueEtcdWrites(choices)
 			}
 			requestType = random.PickRandom(choices)
@@ -143,7 +143,7 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClie
 		}
 		rev, err := client.Request(ctx, requestType, lastRev)
 		if shouldReturn {
-			nonUniqueWriteLimiter.Return()
+			p.NonUniqueRequestConcurrencyLimiter.Return()
 		}
 		lastOperationSucceeded = err == nil
 		if err != nil {
@@ -152,24 +152,24 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClie
 		if rev != 0 {
 			lastRev = rev
 		}
-		limiter.Wait(ctx)
+		p.QPSLimiter.Wait(ctx)
 	}
 }
 
-func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{}) {
+func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
 	var lastRev int64 = 2
-	ticker := time.NewTicker(period)
+	ticker := time.NewTicker(param.Period)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-finish:
+		case <-param.Finish:
 			return
 		case <-ticker.C:
 		}
 		statusCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
-		resp, err := c.Status(statusCtx, c.Endpoints()[0])
+		resp, err := param.Client.Status(statusCtx, param.Client.Endpoints()[0])
 		cancel()
 		if err != nil {
 			continue
@@ -177,7 +177,7 @@ func (t etcdTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClie
 
 		// Range allows for both revision has been compacted and future revision errors
 		compactRev := random.RandRange(lastRev, resp.Header.Revision+5)
-		_, err = c.Compact(ctx, compactRev)
+		_, err = param.Client.Compact(ctx, compactRev)
 		if err != nil {
 			continue
 		}

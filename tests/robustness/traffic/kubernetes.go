@@ -88,8 +88,8 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
-	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
+func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
+	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
@@ -99,11 +99,11 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-finish:
+			case <-p.Finish:
 				return nil
 			default:
 			}
-			err := t.Read(ctx, c, s, limiter, keyPrefix)
+			err := t.Read(ctx, p.Client, s, p.QPSLimiter, keyPrefix)
 			if err != nil {
 				continue
 			}
@@ -115,18 +115,18 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-finish:
+			case <-p.Finish:
 				return nil
 			default:
 			}
 			// Avoid multiple failed writes in a row
 			if lastWriteFailed {
-				_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
+				_, err := t.List(ctx, kc, s, p.QPSLimiter, keyPrefix, t.averageKeyCount, 0)
 				if err != nil {
 					continue
 				}
 			}
-			err := t.Write(ctx, kc, ids, s, limiter, nonUniqueWriteLimiter)
+			err := t.Write(ctx, kc, p.IDs, s, p.QPSLimiter, p.NonUniqueRequestConcurrencyLimiter)
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
@@ -271,21 +271,21 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
-func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
 	var compactTime int64
 	var rev int64
 	var err error
 	for {
 		select {
-		case <-time.After(interval):
+		case <-time.After(param.Period):
 		case <-ctx.Done():
 			return
-		case <-finish:
+		case <-param.Finish:
 			return
 		}
 
-		compactTime, rev, err = compact(ctx, c, compactTime, rev)
+		compactTime, rev, err = compact(ctx, param.Client, compactTime, rev)
 		if err != nil {
 			continue
 		}

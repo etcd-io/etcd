@@ -120,7 +120,13 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	watchSet := client.NewSet(ids, baseTime)
 	defer watchSet.Close()
 	g.Go(func() error {
-		err := client.CollectClusterWatchEvents(ctx, lg, hosts, maxRevisionChan, watchConfig, watchSet)
+		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
+			Lg:              lg,
+			Endpoints:       hosts,
+			MaxRevisionChan: maxRevisionChan,
+			Cfg:             watchConfig,
+			ClientSet:       watchSet,
+		})
 		return err
 	})
 	if err := g.Wait(); err != nil {
@@ -152,13 +158,15 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, c, limiter,
-				clientSet.IdentityProvider(),
-				storage,
-				concurrencyLimiter,
-				keyStore,
-				finish,
-			)
+			tf.RunTrafficLoop(ctx, traffic.RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     storage,
+				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
+				KeyStore:                           keyStore,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	for range profile.ClusterClientCount {
@@ -167,13 +175,15 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, c, limiter,
-				clientSet.IdentityProvider(),
-				storage,
-				concurrencyLimiter,
-				keyStore,
-				finish,
-			)
+			tf.RunTrafficLoop(ctx, traffic.RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     storage,
+				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
+				KeyStore:                           keyStore,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	wg.Add(1)
@@ -181,7 +191,11 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 	go func(c *client.RecordingClient) {
 		defer wg.Done()
 		defer c.Close()
-		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
+		tf.RunCompactLoop(ctx, traffic.RunCompactLoopParam{
+			Client: c,
+			Period: traffic.DefaultCompactionPeriod,
+			Finish: finish,
+		})
 	}(compactClient)
 	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
 	for _, h := range hosts {
