@@ -101,3 +101,55 @@ spec:
         resources:
           requests:
             storage: 200Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  labels:
+    app: client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      containers:
+        - name: etcd-client
+          image: etcd-client:latest
+          command: ["/opt/antithesis/entrypoint/entrypoint"]
+          imagePullPolicy: Never
+          env:
+            - name: ETCD_ROBUSTNESS_SERVER_ENDPOINTS
+              value: "etcd-0.etcd.default.svc.cluster.local:2379,etcd-1.etcd.default.svc.cluster.local:2379,etcd-2.etcd.default.svc.cluster.local:2379"
+            - name: ETCD_ROBUSTNESS_DATA_PATHS
+              value: "/var/etcddata-0,/var/etcddata-1,/var/etcddata-2"
+            - name: ETCD_ROBUSTNESS_REPORT_PATH
+              value: "/var/report/"
+          volumeMounts:
+            - name: etcd-0
+              mountPath: /var/etcddata-0
+            - name: etcd-1
+              mountPath: /var/etcddata-1
+            - name: etcd-2
+              mountPath: /var/etcddata-2
+            - name: report
+              mountPath: /var/report/
+      volumes:
+        - name: etcd-0
+          persistentVolumeClaim:
+            claimName: data-etcd-0
+        - name: etcd-1
+          persistentVolumeClaim:
+            claimName: data-etcd-1
+        - name: etcd-2
+          persistentVolumeClaim:
+            claimName: data-etcd-2
+        - name: report
+          hostPath:
+            path: /var/report/
+            type: DirectoryOrCreate
