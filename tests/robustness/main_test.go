@@ -168,11 +168,12 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	g.Go(func() error {
 		endpoints := processEndpoints(clus)
 		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
-			Lg:              lg,
-			Endpoints:       endpoints,
-			MaxRevisionChan: maxRevisionChan,
-			Cfg:             s.Watch,
-			ClientSet:       watchSet,
+			Lg:                    lg,
+			Endpoints:             endpoints,
+			MaxRevisionChan:       maxRevisionChan,
+			Cfg:                   s.Watch,
+			ClientSet:             watchSet,
+			BackgroundWatchConfig: s.Profile.BackgroundWatchConfig,
 		})
 		return err
 	})
