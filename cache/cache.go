@@ -281,13 +281,7 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 			if !ok {
 				return nil
 			}
-			if resp.Canceled {
-				return nil
-			}
-			if len(resp.Events) == 0 {
-				continue
-			}
-			if err := c.store.Apply(resp.Events); err != nil {
+			if err := c.store.Apply(resp); err != nil {
 				return err
 			}
 		}
@@ -313,7 +307,10 @@ func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, r
 				}
 				return err
 			}
-			c.demux.Broadcast(resp)
+			err := c.demux.Broadcast(resp)
+			if err != nil {
+				return err
+			}
 		case err := <-applyErr:
 			c.ready.Reset()
 			c.demux.Purge()
