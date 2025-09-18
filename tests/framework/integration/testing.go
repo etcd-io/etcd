@@ -21,7 +21,6 @@ import (
 	grpclogsettable "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zapcore"
-	"go.uber.org/zap/zapgrpc"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
@@ -126,7 +125,6 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 		revertFunc()
 	})
 
-	grpcLogger.Set(zapgrpc.NewLogger(zaptest.NewLogger(t).Named("grpc")))
 	insideTestContext = true
 
 	os.Chdir(t.TempDir())

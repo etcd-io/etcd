@@ -24,7 +24,10 @@ import (
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
 
+	etcdserverpb "go.etcd.io/etcd/api/v3/etcdserverpb"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
 )
@@ -43,6 +46,7 @@ var (
 	rangeConsistency string
 	rangeLimit       int64
 	rangeCountOnly   bool
+	rangeStream      bool
 )
 
 func init() {
@@ -52,6 +56,7 @@ func init() {
 	rangeCmd.Flags().StringVar(&rangeConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")
 	rangeCmd.Flags().Int64Var(&rangeLimit, "limit", 0, "Maximum number of results to return from range request (0 is no limit)")
 	rangeCmd.Flags().BoolVar(&rangeCountOnly, "count-only", false, "Only returns the count of keys")
+	rangeCmd.Flags().BoolVar(&rangeStream, "stream", false, "Stream")
 }
 
 func rangeFunc(cmd *cobra.Command, args []string) {
@@ -80,22 +85,48 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 	}
 	limit := rate.NewLimiter(rate.Limit(rangeRate), 1)
 
-	requests := make(chan v3.Op, totalClients)
+	requests := make(chan struct{}, totalClients)
 	clients := mustCreateClients(totalClients, totalConns)
 
 	bar = pb.New(rangeTotal)
 	bar.Start()
 
 	r := newReport(cmd.Name())
+	request := &etcdserverpb.RangeRequest{
+		Key:       []byte(k),
+		RangeEnd:  []byte(end),
+		Limit:     rangeLimit,
+		CountOnly: rangeCountOnly,
+	}
+	if rangeConsistency == "s" {
+		request.Serializable = true
+	}
+	callOpts := []grpc.CallOption{
+		grpc.WaitForReady(true),
+		grpc.MaxCallSendMsgSize(2 * 1024 * 1024),
+		grpc.MaxCallRecvMsgSize(math.MaxInt32),
+	}
 	for i := range clients {
 		wg.Add(1)
 		go func(c *v3.Client) {
 			defer wg.Done()
-			for op := range requests {
+			kv := etcdserverpb.NewKVClient(c.ActiveConnection())
+			for range requests {
 				limit.Wait(context.Background())
-
 				st := time.Now()
-				_, err := c.Do(context.Background(), op)
+				var err error
+				if rangeStream {
+					var stream etcdserverpb.KV_RangeStreamClient
+					stream, err = kv.RangeStream(context.Background(), request, callOpts...)
+					if err != nil {
+						r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
+						bar.Increment()
+						continue
+					}
+					_, err = clientv3.RangeStreamToRangeResponse(stream)
+				} else {
+					_, err = kv.Range(context.Background(), request, callOpts...)
+				}
 				r.Results() <- report.Result{Err: err, Start: st, End: time.Now()}
 				bar.Increment()
 			}
@@ -104,15 +135,7 @@ func rangeFunc(cmd *cobra.Command, args []string) {
 
 	go func() {
 		for i := 0; i < rangeTotal; i++ {
-			opts := []v3.OpOption{v3.WithRange(end), v3.WithLimit(rangeLimit)}
-			if rangeCountOnly {
-				opts = append(opts, v3.WithCountOnly())
-			}
-			if rangeConsistency == "s" {
-				opts = append(opts, v3.WithSerializable())
-			}
-			op := v3.OpGet(k, opts...)
-			requests <- op
+			requests <- struct{}{}
 		}
 		close(requests)
 	}()
