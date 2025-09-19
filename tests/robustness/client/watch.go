@@ -48,7 +48,6 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 			if err != nil {
 				return err
 			}
-			defer c.Close()
 			err = watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 			reports[i] = c.Report()
 			return err
@@ -71,7 +70,6 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 				if err != nil {
 					return err
 				}
-				defer c.Close()
 				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
 			})
 		}
