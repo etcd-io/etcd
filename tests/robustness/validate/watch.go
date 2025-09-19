@@ -16,10 +16,11 @@ package validate
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -76,15 +77,15 @@ func validateWatchError(lg *zap.Logger, cfg Config, reports []report.ClientRepor
 		if err != nil {
 			return err
 		}
+		err = validateIsCreate(lg, replay, r)
+		if err != nil {
+			return err
+		}
 		err = validateReliable(lg, replay, r)
 		if err != nil {
 			return err
 		}
 		err = validatePrevKV(lg, replay, r)
-		if err != nil {
-			return err
-		}
-		err = validateIsCreate(lg, replay, r)
 		if err != nil {
 			return err
 		}
@@ -216,8 +217,10 @@ func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 				gotEvents = append(gotEvents, event.PersistedEvent)
 			}
 		}
-		if diff := cmp.Diff(wantEvents, gotEvents, cmpopts.IgnoreFields(model.PersistedEvent{}, "IsCreate")); diff != "" {
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
+		if !reflect.DeepEqual(wantEvents, gotEvents) {
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID))
+			// Directly print to console to avoid escaping newline.
+			fmt.Print(cmp.Diff(wantEvents, gotEvents))
 			err = errBrokeReliable
 		}
 	}
