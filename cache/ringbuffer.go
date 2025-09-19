@@ -42,13 +42,17 @@ func newRingBuffer[T any](capacity int, revisionOf RevisionOf[T]) *ringBuffer[T]
 
 func (r *ringBuffer[T]) Append(item T) {
 	entry := entry[T]{revision: r.revisionOf(item), item: item}
-	if r.size == len(r.buffer) {
+	if r.full() {
 		r.tail = (r.tail + 1) % len(r.buffer)
 	} else {
 		r.size++
 	}
 	r.buffer[r.head] = entry
 	r.head = (r.head + 1) % len(r.buffer)
+}
+
+func (r *ringBuffer[T]) full() bool {
+	return r.size == len(r.buffer)
 }
 
 // AscendGreaterOrEqual iterates through entries in ascending order starting from the first entry with revision >= pivot.

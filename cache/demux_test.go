@@ -24,6 +24,213 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
+func TestInit(t *testing.T) {
+	type want struct {
+		min         int64
+		max         int64
+		historyRevs []int64
+	}
+	tests := []struct {
+		name         string
+		capacity     int
+		initRev      int64
+		eventRevs    []int64
+		shouldReinit bool
+		reinitRev    int64
+		want         want
+	}{
+		{
+			name:         "first init sets only min",
+			capacity:     8,
+			initRev:      5,
+			eventRevs:    nil,
+			shouldReinit: false,
+			want:         want{min: 5, max: 0, historyRevs: nil},
+		},
+		{
+			name:         "init on empty demux with events",
+			capacity:     8,
+			initRev:      5,
+			eventRevs:    []int64{7, 9, 13},
+			shouldReinit: false,
+			want:         want{min: 5, max: 13, historyRevs: []int64{7, 9, 13}},
+		},
+		{
+			name:         "continuation at max+1 preserves range and history",
+			capacity:     8,
+			initRev:      10,
+			eventRevs:    []int64{13, 15, 21},
+			shouldReinit: true,
+			reinitRev:    22,
+			want:         want{min: 10, max: 21, historyRevs: []int64{13, 15, 21}},
+		},
+		{
+			name:         "gap from max triggers purge and clears history",
+			capacity:     8,
+			initRev:      10,
+			eventRevs:    []int64{13, 15, 21},
+			shouldReinit: true,
+			reinitRev:    30,
+			want:         want{min: 30, max: 0, historyRevs: nil},
+		},
+		{
+			name:         "idempotent reinit at same revision clears history",
+			capacity:     8,
+			initRev:      7,
+			eventRevs:    []int64{8, 9, 10},
+			shouldReinit: true,
+			reinitRev:    7,
+			want:         want{min: 7, max: 0, historyRevs: nil},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			d := newDemux(tt.capacity, 10*time.Millisecond)
+
+			d.Init(tt.initRev)
+
+			if len(tt.eventRevs) > 0 {
+				if err := d.Broadcast(respWithEventRevs(tt.eventRevs...)); err != nil {
+					t.Fatalf("Broadcast(%v) failed: %v", tt.eventRevs, err)
+				}
+			}
+
+			if tt.shouldReinit {
+				d.Init(tt.reinitRev)
+			}
+
+			if d.minRev != tt.want.min || d.maxRev != tt.want.max {
+				t.Fatalf("revision range: got(min=%d, max=%d), want(min=%d, max=%d)",
+					d.minRev, d.maxRev, tt.want.min, tt.want.max)
+			}
+
+			var actualHistoryRevs []int64
+			d.history.AscendGreaterOrEqual(0, func(rev int64, events []*clientv3.Event) bool {
+				actualHistoryRevs = append(actualHistoryRevs, rev)
+				return true
+			})
+
+			if diff := cmp.Diff(tt.want.historyRevs, actualHistoryRevs); diff != "" {
+				t.Fatalf("history validation failed (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestBroadcast(t *testing.T) {
+	type want struct {
+		min         int64
+		max         int64
+		shouldError bool
+	}
+
+	tests := []struct {
+		name         string
+		capacity     int
+		initRev      int64
+		initialRevs  []int64
+		followupRevs []int64
+		want         want
+	}{
+		{
+			name:        "history not full",
+			capacity:    2,
+			initRev:     1,
+			initialRevs: []int64{2},
+			want:        want{min: 1, max: 2, shouldError: false},
+		},
+		{
+			name:        "history at exact capacity",
+			capacity:    2,
+			initRev:     1,
+			initialRevs: []int64{2, 3},
+			want:        want{min: 1, max: 3, shouldError: false},
+		},
+		{
+			name:        "history overflow with eviction",
+			capacity:    2,
+			initRev:     1,
+			initialRevs: []int64{2, 3, 4},
+			want:        want{min: 3, max: 4, shouldError: false},
+		},
+		{
+			name:        "history overflow not continuous",
+			capacity:    2,
+			initRev:     2,
+			initialRevs: []int64{4, 8, 16},
+			want:        want{min: 5, max: 16, shouldError: false},
+		},
+		{
+			name:        "empty broadcast is no-op",
+			capacity:    8,
+			initRev:     10,
+			initialRevs: []int64{},
+			want:        want{min: 10, max: 0, shouldError: false},
+		},
+		{
+			name:         "revisions below maxRev are rejected",
+			capacity:     8,
+			initRev:      4,
+			initialRevs:  []int64{5, 6},
+			followupRevs: []int64{4},
+			want:         want{shouldError: true},
+		},
+		{
+			name:         "revisions equal to maxRev are rejected",
+			capacity:     8,
+			initRev:      4,
+			initialRevs:  []int64{5, 6},
+			followupRevs: []int64{6},
+			want:         want{shouldError: true},
+		},
+		{
+			name:         "revisions above maxRev are accepted",
+			capacity:     8,
+			initRev:      4,
+			initialRevs:  []int64{5, 6},
+			followupRevs: []int64{9, 14, 17},
+			want:         want{min: 4, max: 17, shouldError: false},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			d := newDemux(tt.capacity, 10*time.Millisecond)
+			d.Init(tt.initRev)
+
+			if len(tt.initialRevs) > 0 {
+				if err := d.Broadcast(respWithEventRevs(tt.initialRevs...)); err != nil {
+					t.Fatalf("unexpected error broadcasting initial revisions %v: %v", tt.initialRevs, err)
+				}
+			}
+
+			if len(tt.followupRevs) > 0 {
+				err := d.Broadcast(respWithEventRevs(tt.followupRevs...))
+
+				if tt.want.shouldError {
+					if err == nil {
+						t.Errorf("expected error for revisions %v after maxRev %d; got nil",
+							tt.followupRevs, tt.initialRevs[len(tt.initialRevs)-1])
+					}
+					return
+				}
+				if err != nil {
+					t.Errorf("unexpected error for valid revisions %v: %v", tt.followupRevs, err)
+					return
+				}
+			}
+
+			if d.minRev != tt.want.min || d.maxRev != tt.want.max {
+				t.Fatalf("revision range: got(min=%d, max=%d), want(min=%d, max=%d)",
+					d.minRev, d.maxRev, tt.want.min, tt.want.max)
+			}
+		})
+	}
+}
+
 func TestBroadcastBatching(t *testing.T) {
 	tests := []struct {
 		name      string
