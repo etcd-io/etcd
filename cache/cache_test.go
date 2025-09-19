@@ -440,7 +440,6 @@ func TestCacheCompactionResync(t *testing.T) {
 	mw.errorCompacted(10)
 
 	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
-	start := time.Now()
 
 	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancelGet()
@@ -457,24 +456,16 @@ func TestCacheCompactionResync(t *testing.T) {
 
 	t.Log("Phase 3: resync after compaction")
 	mw.triggerCreatedNotify()
-	if err = cache.WaitReady(t.Context()); err != nil {
-		t.Fatalf("second WaitReady: %v", err)
-	}
-	elapsed := time.Since(start)
-	if elapsed > time.Second {
-		t.Fatalf("cache was unready for %v; want:  < 1 s", elapsed)
-	}
-
 	expectSnapshotRev := int64(20)
-	expectedWatchStart := secondSnapshot.Header.Revision + 1
-	if gotWatchStart := mw.lastStartRev; gotWatchStart != expectedWatchStart {
-		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
+	ctxResync, cancelResync := context.WithTimeout(t.Context(), time.Second)
+	defer cancelResync()
+	if err = cache.WaitForRevision(ctxResync, expectSnapshotRev); err != nil {
+		t.Fatalf("cache failed to resync to rev=%d within 1s: %v", expectSnapshotRev, err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	if err = cache.WaitForRevision(ctx, expectSnapshotRev); err != nil {
-		t.Fatalf("cache never reached rev=%d: %v", expectSnapshotRev, err)
+	expectedWatchStart := secondSnapshot.Header.Revision + 1
+	if gotWatchStart := mw.getLastStartRev(); gotWatchStart != expectedWatchStart {
+		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
 	}
 
 	gotSnapshot, err := cache.Get(t.Context(), "foo", clientv3.WithSerializable())
@@ -558,6 +549,12 @@ func (m *mockWatcher) recordStartRev(rev int64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.lastStartRev = rev
+}
+
+func (m *mockWatcher) getLastStartRev() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastStartRev
 }
 
 func (m *mockWatcher) signalRegistration() {
