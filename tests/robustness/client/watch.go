@@ -99,6 +99,9 @@ resetWatch:
 			return nil
 		}
 		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
+		if watch == nil {
+			return nil
+		}
 		for {
 			select {
 			case revision, ok := <-maxRevisionChan:
@@ -157,6 +160,9 @@ func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingC
 		g.Go(func() error {
 			resp, err := c.Get(ctx, "/key")
 			if err != nil {
+				if errors.Is(err, errClientIsClosed) {
+					return nil
+				}
 				return err
 			}
 			rev := resp.Header.Revision + backgroundWatchConfig.RevisionOffset
@@ -164,6 +170,9 @@ func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingC
 			watchCtx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			w := c.Watch(watchCtx, "", rev, true, true, true)
+			if w == nil {
+				return nil
+			}
 			for {
 				select {
 				case <-ctx.Done():
