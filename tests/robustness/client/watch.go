@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"go.uber.org/zap"
@@ -48,7 +49,6 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 			if err != nil {
 				return err
 			}
-			defer c.Close()
 			err = watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 			reports[i] = c.Report()
 			return err
@@ -71,7 +71,6 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 				if err != nil {
 					return err
 				}
-				defer c.Close()
 				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
 			})
 		}
@@ -153,6 +152,7 @@ func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingC
 	for {
 		select {
 		case <-ctx.Done():
+			os.Exit(1)
 			return ctx.Err()
 		case <-finish:
 			return nil
