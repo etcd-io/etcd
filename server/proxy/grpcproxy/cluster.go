@@ -143,7 +143,7 @@ func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
 	defer cp.umu.RUnlock()
 	mbs := make([]*pb.Member, 0, len(cp.umap))
 	for _, upt := range cp.umap {
-		m, err := decodeMeta(fmt.Sprint(upt.Metadata))
+		m, err := decodeMeta(fmt.Sprint())
 		if err != nil {
 			return nil, err
 		}
