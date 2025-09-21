@@ -4,7 +4,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.5 (TBA)
+## v3.6.6 (TBA)
+
+---
+
+## v3.6.5 (2025-09-19)
 
 ### etcd server
 
