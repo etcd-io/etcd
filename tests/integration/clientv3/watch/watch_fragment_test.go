@@ -14,7 +14,7 @@
 
 //go:build !cluster_proxy
 
-package clientv3test
+package watch
 
 import (
 	"fmt"
