@@ -24,10 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
-	"go.etcd.io/etcd/client/v3"
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3rpc"
 	"go.etcd.io/etcd/tests/v3/integration"
 	"google.golang.org/grpc/metadata"
@@ -1212,5 +1213,79 @@ func testWatchClose(t *testing.T, wctx *watchctx) {
 	wresp, ok := <-wch
 	if ok {
 		t.Fatalf("read wch got %v; expected closed channel", wresp)
+	}
+}
+
+func TestWatch(t *testing.T) {
+	integration.BeforeTest(t)
+	clus := integration.NewClusterV3(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	tcs := []struct {
+		name       string
+		key        string
+		opts       []clientv3.OpOption
+		wantError  error
+		wantEvents []*clientv3.Event
+	}{
+		{
+			name:      "Watch with negative revision",
+			key:       "/",
+			opts:      []clientv3.OpOption{clientv3.WithRev(-1)},
+			wantError: rpctypes.ErrCompacted,
+		},
+		{
+			name: "Watch with zero revision",
+			key:  "/",
+			opts: []clientv3.OpOption{clientv3.WithRev(0)},
+		},
+		{
+			name: "Watch with positive revision",
+			key:  "/",
+			opts: []clientv3.OpOption{clientv3.WithRev(1)},
+		},
+	}
+	ctx := t.Context()
+
+	t.Log("Open watches")
+	watches := make([]clientv3.WatchChan, len(tcs))
+	for i, tc := range tcs {
+		watchCtx, cancel := context.WithTimeout(ctx, time.Second)
+		defer cancel()
+		watches[i] = client.Watch(watchCtx, tc.key, tc.opts...)
+	}
+
+	t.Log("Validate")
+	for i, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := collectEvents(ctx, watches[i])
+			if tc.wantError == nil {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tc.wantError.Error())
+			}
+		})
+	}
+}
+
+func collectEvents(ctx context.Context, watch clientv3.WatchChan) (events []*clientv3.Event, err error) {
+	for {
+		select {
+		case resp, ok := <-watch:
+			if !ok {
+				return events, nil
+			}
+			err := resp.Err()
+			if err != nil {
+				return events, err
+			}
+			events = append(events, resp.Events...)
+		case <-ctx.Done():
+			return events, ctx.Err()
+		// Watch resync interval * 1.5
+		case <-time.After(150 * time.Millisecond):
+			return events, nil
+		}
 	}
 }
