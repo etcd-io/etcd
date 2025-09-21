@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package clientv3test
+package watch
 
 import (
 	"context"
@@ -27,7 +27,9 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	mvccpb "go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -499,7 +501,7 @@ func TestWatchCompactRevision(t *testing.T) {
 	}
 }
 
-func TestWatchWithProgressNotify(t *testing.T)        { testWatchWithProgressNotify(t, true) }
+func TestWatchWithProgressNotify2(t *testing.T)       { testWatchWithProgressNotify(t, true) }
 func TestWatchWithProgressNotifyNoEvent(t *testing.T) { testWatchWithProgressNotify(t, false) }
 
 func testWatchWithProgressNotify(t *testing.T, watchOnPut bool) {
@@ -739,6 +741,21 @@ func TestWatchErrConnClosed(t *testing.T) {
 		t.Fatal("wc.Watch took too long")
 	case <-donec:
 	}
+}
+
+func IsCanceled(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) {
+		return true
+	}
+	ev, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+	code := ev.Code()
+	return code == codes.Canceled
 }
 
 func TestWatchAfterClose(t *testing.T) {
