@@ -24,7 +24,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/tests/v3/robustness/options"
-	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
 type CollectClusterWatchEventsParam struct {
@@ -38,7 +37,6 @@ type CollectClusterWatchEventsParam struct {
 
 func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
 	var g errgroup.Group
-	reports := make([]report.ClientReport, len(param.Endpoints))
 	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
 	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
@@ -49,9 +47,7 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 				return err
 			}
 			defer c.Close()
-			err = watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
-			reports[i] = c.Report()
-			return err
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 		})
 	}
 	finish := make(chan struct{})
