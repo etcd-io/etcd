@@ -8,7 +8,7 @@ require (
 	github.com/GoogleCloudPlatform/testgrid v0.0.173
 	github.com/google/go-github/v60 v60.0.0
 	github.com/spf13/cobra v1.10.1
-	google.golang.org/protobuf v1.36.8
+	google.golang.org/protobuf v1.36.9
 )
 
 require (
