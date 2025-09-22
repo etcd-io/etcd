@@ -75,6 +75,13 @@ test-robustness-issue19179: /tmp/etcd-v3.5.17-failpoints/bin
 	GO_TEST_FLAGS='-v -run=TestRobustnessRegression/Issue19179 -count 200 -failfast --bin-dir=/tmp/etcd-v3.5.17-failpoints/bin' $(TOPLEVEL_MAKE) test-robustness && \
 	  echo "Failed to reproduce" || echo "Successful reproduction"
 
+# Etcd API usage by Kubernetes
+
+.PHONY: k8s-coverage
+k8s-coverage:
+	$(TOPLEVEL_MAKE) build
+	@echo "Running k8s coverage script"
+	ETCD_REPO="$(REPOSITORY_ROOT)" "$(REPOSITORY_ROOT)/tests/robustness/coverage/collect_kind_traces.sh"
 
 # Failpoints
 
@@ -86,7 +93,7 @@ install-gofail: $(GOPATH)/bin/gofail
 
 .PHONY: gofail-enable
 gofail-enable: $(GOPATH)/bin/gofail
-	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/
+	$(GOPATH)/bin/gofail enable server/etcdserver/ server/lease server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
 	cd $(REPOSITORY_ROOT)/server && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd $(REPOSITORY_ROOT)/etcdutl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
 	cd $(REPOSITORY_ROOT)/etcdctl && go get go.etcd.io/gofail@${GOFAIL_VERSION}
@@ -94,7 +101,7 @@ gofail-enable: $(GOPATH)/bin/gofail
 
 .PHONY: gofail-disable
 gofail-disable: $(GOPATH)/bin/gofail
-	$(GOPATH)/bin/gofail disable server/etcdserver/ server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/
+	$(GOPATH)/bin/gofail disable server/etcdserver/ server/lease server/lease/leasehttp server/storage/backend/ server/storage/mvcc/ server/storage/wal/ server/etcdserver/api/v3rpc/ server/etcdserver/api/membership/ server/etcdserver/api/rafthttp/
 	cd $(REPOSITORY_ROOT)/server && go mod tidy
 	cd $(REPOSITORY_ROOT)/etcdutl && go mod tidy
 	cd $(REPOSITORY_ROOT)/etcdctl && go mod tidy

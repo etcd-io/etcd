@@ -1,7 +1,7 @@
-ARG GO_VERSION=1.24.5
+ARG GO_VERSION=1.25.1
 ARG ARCH=amd64
 
-FROM golang:$GO_VERSION
+FROM golang:$GO_VERSION AS build
 
 # cloning etcd
 ARG REF=main
@@ -33,13 +33,7 @@ RUN go mod tidy
 # compile etcd server with instrumentor
 RUN mkdir /etcd_instrumented
 RUN `go env GOPATH`/bin/antithesis-go-instrumentor /etcd /etcd_instrumented
-RUN rm -rf /etcd
-RUN mkdir -p /symbols
-RUN cp -r /etcd_instrumented/symbols/* /symbols
 
-EXPOSE 2379 2380
-
-# start etcd server
 WORKDIR /etcd_instrumented/customer
 
 # Some previous versions hardcode CGO_ENABLED=0
@@ -54,4 +48,11 @@ RUN for d in server etcdutl etcdctl; do (cd ${d} && go mod tidy || true); done
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
 RUN CGO_ENABLED=1 make build
-CMD ["./bin/etcd"]
+
+FROM ubuntu:24.04
+COPY --from=build /etcd_instrumented/ /etcd
+# Move symbols to /symbols directory https://antithesis.com/docs/instrumentation/#symbolization
+RUN mv  /etcd/symbols /symbols
+
+EXPOSE 2379 2380
+CMD ["/etcd/customer/bin/etcd"]

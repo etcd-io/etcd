@@ -1617,12 +1617,11 @@ func TestWaitAppliedIndex(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &EtcdServer{
-				appliedIndex:   tc.appliedIndex,
-				committedIndex: tc.committedIndex,
-				stopping:       make(chan struct{}, 1),
-				applyWait:      wait.NewTimeList(),
+				stopping:  make(chan struct{}, 1),
+				applyWait: wait.NewTimeList(),
 			}
-
+			s.appliedIndex.Store(tc.appliedIndex)
+			s.committedIndex.Store(tc.committedIndex)
 			if tc.action != nil {
 				go tc.action(s)
 			}

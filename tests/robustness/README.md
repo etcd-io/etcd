@@ -11,10 +11,10 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 | Correctness / Consistency issue                                              | Report     | Introduced in     | Discovered by   | Reproducible by robustness test                   | Command                             |
 | -----------------------------------------------------------------            | ---------- | ----------------- | --------------- | ------------------------------------------------- | ----------------------------------- |
 | Inconsistent revision caused by crash during high load [#13766]              | Mar 2022   | v3.5              | User            | Yes, report preceded robustness tests             | `make test-robustness-issue13766`   |
-| Single node cluster can loose a write on crash [#14370]                      | Aug 2022   | v3.4 or earlier   | User            | Yes, report preceded robustness tests             | `make test-robustness-issue14370`   |
+| Single node cluster can lose a write on crash [#14370]                       | Aug 2022   | v3.4 or earlier   | User            | Yes, report preceded robustness tests             | `make test-robustness-issue14370`   |
 | Enabling auth can lead to inconsistency [#14571]                             | Oct 2022   | v3.4 or earlier   | User            | No, authorization is not covered.                 |                                     |
 | Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022   | v3.5              | Robustness      | Yes, after covering defragmentation.              | `make test-robustness-issue14685`   |
-| Watch progress notification not synced with steam [#15220]                   | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   | `make test-robustness-issue15220`   |
+| Watch progress notification not synced with stream [#15220]                  | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   | `make test-robustness-issue15220`   |
 | Watch traveling back in time after network partition [#15271]                | Feb 2023   | v3.4 or earlier   | Robustness      | Yes, after covering network partitions            | `make test-robustness-issue15271`   |
 | Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024   | main branch       | Robustness      | Yes, prevented regression in v3.6                 |                                     |
 | Watch events lost during stream starvation [#17529]                          | Mar 2024   | v3.4 or earlier   | User            | Yes, after covering of slow watch                 | `make test-robustness-issue17529`   |
@@ -110,6 +110,7 @@ Etcd provides strict serializability for KV operations and eventual consistency 
     * `EXPECT_DEBUG=true` - to get logs from the cluster.
     * `RESULTS_DIR` - to change the location where the results report will be saved.
     * `PERSIST_RESULTS` - to persist the results report of the test. By default this will not be persisted in the case of a successful run.
+    * `TRACING_SERVER_ADDR` - to export Open Telemetry traces from test runs to the collector running at given address, for example: `localhost:4317`
 
 ## Re-evaluate existing report
 

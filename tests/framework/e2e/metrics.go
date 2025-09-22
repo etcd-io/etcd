@@ -21,6 +21,7 @@ import (
 
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 )
 
 func GetMetrics(metricsURL string) (map[string]*dto.MetricFamily, error) {
@@ -36,6 +37,6 @@ func GetMetrics(metricsURL string) (map[string]*dto.MetricFamily, error) {
 		return nil, err
 	}
 
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	return parser.TextToMetricFamilies(bytes.NewReader(data))
 }

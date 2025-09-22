@@ -20,6 +20,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -30,7 +31,7 @@ type Metrics struct {
 }
 
 type Labels struct {
-	Metric string `json:"Metric"`
+	Operation string `json:"Operation"`
 }
 
 type DataItem struct {
@@ -44,7 +45,7 @@ type perfdashFormattedReport struct {
 	DataItems []DataItem `json:"dataItems"`
 }
 
-func (r *report) writePerfDashReport(reportName string) {
+func (r *report) writePerfDashReport(benchmarkOp string) {
 	pcls, data := Percentiles(r.stats.Lats)
 	pclsData := make(map[float64]float64)
 	for i := 0; i < len(pcls); i++ {
@@ -61,7 +62,7 @@ func (r *report) writePerfDashReport(reportName string) {
 				},
 				Unit: "ms",
 				Labels: Labels{
-					Metric: "APIResponsiveness",
+					Operation: strings.ToUpper(benchmarkOp),
 				},
 			},
 		},
@@ -73,7 +74,7 @@ func (r *report) writePerfDashReport(reportName string) {
 		artifactsDir = "./_artifacts"
 	}
 
-	fileName := fmt.Sprintf("etcd_perf_%s_%s.json", reportName, time.Now().UTC().Format(time.RFC3339))
+	fileName := fmt.Sprintf("EtcdAPI_benchmark_%s.json", time.Now().UTC().Format(time.RFC3339))
 	err := os.MkdirAll(artifactsDir, 0o755)
 	if err != nil {
 		fmt.Println("Error creating artifacts directory:", err)

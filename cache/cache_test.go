@@ -16,6 +16,7 @@ package cache
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -191,7 +192,7 @@ func TestCacheWatchAtomicOrderedDelivery(t *testing.T) {
 			mw := newMockWatcher(16)
 			fakeClient := &clientv3.Client{
 				Watcher: mw,
-				KV:      &kvStub{},
+				KV:      newKVStub(),
 			}
 			cache, err := New(fakeClient, "")
 			if err != nil {
@@ -398,35 +399,115 @@ func TestValidateWatchRange(t *testing.T) {
 	}
 }
 
+func TestCacheCompactionResync(t *testing.T) {
+	firstSnapshot := &clientv3.GetResponse{
+		Header: &pb.ResponseHeader{Revision: 5},
+		Kvs: []*mvccpb.KeyValue{
+			{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
+			{Key: []byte("bar"), Value: []byte("old_bar"), ModRevision: 3, CreateRevision: 3, Version: 1},
+		},
+	}
+	secondSnapshot := &clientv3.GetResponse{
+		Header: &pb.ResponseHeader{Revision: 20},
+		Kvs: []*mvccpb.KeyValue{
+			{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
+			{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
+		},
+	}
+	fakeClient := &clientv3.Client{
+		Watcher: newMockWatcher(16),
+		KV:      newKVStub(firstSnapshot, secondSnapshot),
+	}
+	cache, err := New(fakeClient, "")
+	if err != nil {
+		t.Fatalf("New cache: %v", err)
+	}
+	defer cache.Close()
+	mw := fakeClient.Watcher.(*mockWatcher)
+
+	t.Log("Phase 1: initial getWatch bootstrap")
+	mw.triggerCreatedNotify()
+	<-mw.registered
+	if err = cache.WaitReady(t.Context()); err != nil {
+		t.Fatalf("initial WaitReady: %v", err)
+	}
+	verifySnapshot(t, cache, []*mvccpb.KeyValue{
+		{Key: []byte("bar"), Value: []byte("old_bar"), ModRevision: 3, CreateRevision: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
+	})
+
+	t.Log("Phase 2: simulate compaction")
+	mw.errorCompacted(10)
+
+	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
+	start := time.Now()
+
+	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
+	defer cancelGet()
+	snapshot, err := cache.Get(ctxGet, "foo", clientv3.WithSerializable())
+	if err != nil {
+		t.Fatalf("expected Get() to serve from cached snapshot after compaction, got %v", err)
+	}
+	if got := snapshot.Header.Revision; got != firstSnapshot.Header.Revision {
+		t.Fatalf("expected cached revision %d after compaction, got %d", firstSnapshot.Header.Revision, got)
+	}
+	if string(snapshot.Kvs[0].Value) != "old_value" {
+		t.Fatalf("expected cached value 'old_value' during compaction, got %q", string(snapshot.Kvs[0].Value))
+	}
+
+	t.Log("Phase 3: resync after compaction")
+	mw.triggerCreatedNotify()
+	if err = cache.WaitReady(t.Context()); err != nil {
+		t.Fatalf("second WaitReady: %v", err)
+	}
+	elapsed := time.Since(start)
+	if elapsed > time.Second {
+		t.Fatalf("cache was unready for %v; want:  < 1 s", elapsed)
+	}
+
+	expectSnapshotRev := int64(20)
+	expectedWatchStart := secondSnapshot.Header.Revision + 1
+	if gotWatchStart := mw.lastStartRev; gotWatchStart != expectedWatchStart {
+		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err = cache.WaitForRevision(ctx, expectSnapshotRev); err != nil {
+		t.Fatalf("cache never reached rev=%d: %v", expectSnapshotRev, err)
+	}
+
+	gotSnapshot, err := cache.Get(t.Context(), "foo", clientv3.WithSerializable())
+	if err != nil {
+		t.Fatalf("Get after resync: %v", err)
+	}
+	if gotSnapshot.Header.Revision != expectSnapshotRev {
+		t.Errorf("unexpected Snapshot revision: got=%d, want=%d", gotSnapshot.Header.Revision, expectSnapshotRev)
+	}
+	verifySnapshot(t, cache, []*mvccpb.KeyValue{
+		{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
+		{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
+	})
+}
+
+func waitUntil(t *testing.T, timeout, poll time.Duration, cond func() bool) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return
+		}
+		time.Sleep(poll)
+	}
+	t.Fatalf("condition not satisfied within %s", timeout)
+}
+
 type mockWatcher struct {
-	responses  chan clientv3.WatchResponse
-	registered chan struct{}
-}
-
-type kvStub struct{}
-
-func (kvStub) Get(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.GetResponse, error) {
-	return &clientv3.GetResponse{Header: &pb.ResponseHeader{Revision: 0}}, nil
-}
-
-func (kvStub) Put(ctx context.Context, key, val string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
-	return nil, nil
-}
-
-func (kvStub) Delete(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
-	return nil, nil
-}
-
-func (kvStub) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
-	return nil, nil
-}
-
-func (kvStub) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
-	return clientv3.OpResponse{}, nil
-}
-
-func (kvStub) Txn(ctx context.Context) clientv3.Txn {
-	return nil
+	responses    chan clientv3.WatchResponse
+	registered   chan struct{}
+	closeOnce    sync.Once
+	wg           sync.WaitGroup
+	mu           sync.Mutex
+	lastStartRev int64
 }
 
 func newMockWatcher(buf int) *mockWatcher {
@@ -436,18 +517,120 @@ func newMockWatcher(buf int) *mockWatcher {
 	}
 }
 
-func (m *mockWatcher) Watch(_ context.Context, _ string, _ ...clientv3.OpOption) clientv3.WatchChan {
-	select { // prevent “close of closed channel” on re-watch
-	case <-m.registered:
-	default:
-		close(m.registered)
-	}
-	return m.responses
+func (m *mockWatcher) Watch(ctx context.Context, _ string, opts ...clientv3.OpOption) clientv3.WatchChan {
+	rev := m.extractRev(opts)
+	m.recordStartRev(rev)
+
+	m.signalRegistration()
+
+	out := make(chan clientv3.WatchResponse)
+	m.wg.Add(1)
+	go m.streamResponses(ctx, out)
+	return out
 }
 
 func (m *mockWatcher) RequestProgress(_ context.Context) error { return nil }
 
-func (m *mockWatcher) Close() error { close(m.responses); return nil }
+func (m *mockWatcher) Close() error {
+	m.closeOnce.Do(func() { close(m.responses) })
+	m.wg.Wait()
+	return nil
+}
+
+func (m *mockWatcher) triggerCreatedNotify() { m.responses <- clientv3.WatchResponse{} }
+
+func (m *mockWatcher) errorCompacted(compRev int64) {
+	m.responses <- clientv3.WatchResponse{
+		Canceled:        true,
+		CompactRevision: compRev,
+	}
+}
+
+func (m *mockWatcher) extractRev(opts []clientv3.OpOption) int64 {
+	var op clientv3.Op
+	for _, o := range opts {
+		o(&op)
+	}
+	return op.Rev()
+}
+
+func (m *mockWatcher) recordStartRev(rev int64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lastStartRev = rev
+}
+
+func (m *mockWatcher) signalRegistration() {
+	select {
+	case <-m.registered:
+	default:
+		close(m.registered)
+	}
+}
+
+func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.WatchResponse) {
+	defer func() {
+		close(out)
+		m.wg.Done()
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case resp, ok := <-m.responses:
+			if !ok {
+				return
+			}
+			out <- resp
+			if resp.Canceled {
+				return
+			}
+		}
+	}
+}
+
+type kvStub struct {
+	queued      []*clientv3.GetResponse
+	defaultResp *clientv3.GetResponse
+}
+
+func newKVStub(resps ...*clientv3.GetResponse) *kvStub {
+	queue := append([]*clientv3.GetResponse(nil), resps...)
+	return &kvStub{
+		queued:      queue,
+		defaultResp: &clientv3.GetResponse{Header: &pb.ResponseHeader{Revision: 0}},
+	}
+}
+
+func (s *kvStub) Get(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+	if len(s.queued) > 0 {
+		next := s.queued[0]
+		s.queued = s.queued[1:]
+		return next, nil
+	}
+	return s.defaultResp, nil
+}
+
+func (s *kvStub) Put(ctx context.Context, key, val string, _ ...clientv3.OpOption) (*clientv3.PutResponse, error) {
+	return nil, nil
+}
+
+func (s *kvStub) Delete(ctx context.Context, key string, _ ...clientv3.OpOption) (*clientv3.DeleteResponse, error) {
+	return nil, nil
+}
+
+func (s *kvStub) Compact(ctx context.Context, rev int64, _ ...clientv3.CompactOption) (*clientv3.CompactResponse, error) {
+	return nil, nil
+}
+
+func (s *kvStub) Do(ctx context.Context, op clientv3.Op) (clientv3.OpResponse, error) {
+	return clientv3.OpResponse{}, nil
+}
+
+func (s *kvStub) Txn(ctx context.Context) clientv3.Txn {
+	return nil
+}
 
 func event(eventType mvccpb.Event_EventType, key string, rev int64) *clientv3.Event {
 	return &clientv3.Event{
@@ -489,5 +672,16 @@ func collectAndAssertAtomicEvents(ctx context.Context, t *testing.T, watchCh cli
 				return events
 			}
 		}
+	}
+}
+
+func verifySnapshot(t *testing.T, cache *Cache, want []*mvccpb.KeyValue) {
+	resp, err := cache.Get(t.Context(), "", clientv3.WithPrefix(), clientv3.WithSerializable())
+	if err != nil {
+		t.Fatalf("Get all keys: %v", err)
+	}
+
+	if diff := cmp.Diff(want, resp.Kvs); diff != "" {
+		t.Fatalf("cache snapshot mismatch (-want +got):\n%s", diff)
 	}
 }

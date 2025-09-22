@@ -27,7 +27,7 @@ type demux struct {
 	// activeWatchers & laggingWatchers hold the first revision the watcher still needs (nextRev).
 	activeWatchers  map[*watcher]int64
 	laggingWatchers map[*watcher]int64
-	history         *ringBuffer
+	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
 }
 
@@ -45,7 +45,7 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 	return &demux{
 		activeWatchers:  make(map[*watcher]int64),
 		laggingWatchers: make(map[*watcher]int64),
-		history:         newRingBuffer(historyWindowSize),
+		history:         *newRingBuffer(historyWindowSize, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision }),
 		resyncInterval:  resyncInterval,
 	}
 }
@@ -71,13 +71,17 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 	defer d.mu.Unlock()
 
 	latestRev := d.history.PeekLatest()
+	if latestRev == 0 {
+		if startingRev == 0 {
+			d.activeWatchers[w] = 0
+		} else {
+			d.laggingWatchers[w] = startingRev
+		}
+		return
+	}
 
 	// Special case: 0 means “newest”.
 	if startingRev == 0 {
-		if latestRev == 0 {
-			d.activeWatchers[w] = 0
-			return
-		}
 		startingRev = latestRev + 1
 	}
 
@@ -98,31 +102,55 @@ func (d *demux) Unregister(w *watcher) {
 	w.Stop()
 }
 
-func (d *demux) Broadcast(events []*clientv3.Event) {
+func (d *demux) Broadcast(resp clientv3.WatchResponse) {
+	events := resp.Events
 	if len(events) == 0 {
 		return
 	}
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.updateStoreLocked(events)
+	d.broadcastLocked(events)
+}
 
-	d.history.Append(events)
+func (d *demux) updateStoreLocked(events []*clientv3.Event) {
+	batchStart := 0
+	for end := 1; end < len(events); end++ {
+		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
+			if end > batchStart {
+				d.history.Append(events[batchStart:end])
+			}
+			batchStart = end
+		}
+	}
+	if batchStart < len(events) {
+		d.history.Append(events[batchStart:])
+	}
+}
 
+func (d *demux) broadcastLocked(events []*clientv3.Event) {
+	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
+
 	for w, nextRev := range d.activeWatchers {
-		start := len(events)
+		if nextRev != 0 && firstRev > nextRev {
+			d.laggingWatchers[w] = nextRev
+			delete(d.activeWatchers, w)
+			continue
+		}
+		sendStart := len(events)
 		for i, ev := range events {
 			if ev.Kv.ModRevision >= nextRev {
-				start = i
+				sendStart = i
 				break
 			}
 		}
-
-		if start == len(events) {
+		if sendStart == len(events) {
 			continue
 		}
 
-		if !w.enqueueEvent(events[start:]) { // overflow → lagging
+		if !w.enqueueEvent(events[sendStart:]) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {
@@ -131,7 +159,7 @@ func (d *demux) Broadcast(events []*clientv3.Event) {
 	}
 }
 
-// Purge is called when etcd compaction invalidates our cached history, so clients should resubscribe.
+// Purge stops all watchers and rebase history on watch errors
 func (d *demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -146,28 +174,46 @@ func (d *demux) Purge() {
 	d.laggingWatchers = make(map[*watcher]int64)
 }
 
+// Compact is called when etcd reports a compaction at compactRev to rebase history;
+// it keeps provably-too-old watchers for later cancellation, stops others, and clients should resubscribe.
+func (d *demux) Compact(compactRev int64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.history.RebaseHistory()
+
+	for w, next := range d.activeWatchers {
+		if next != 0 && next <= compactRev {
+			delete(d.activeWatchers, w)
+			d.laggingWatchers[w] = next
+		}
+	}
+}
+
 func (d *demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
 	oldestRev := d.history.PeekOldest()
+	if oldestRev == 0 {
+		return
+	}
+
 	for w, nextRev := range d.laggingWatchers {
-		if oldestRev != 0 && nextRev < oldestRev {
-			w.Stop()
+		if nextRev < oldestRev {
+			w.Compact(nextRev)
 			delete(d.laggingWatchers, w)
 			continue
 		}
 		// TODO: re-enable key‐predicate in Filter when non‐zero startRev or performance tuning is needed
-		missed := d.history.Filter(nextRev)
-
 		enqueueFailed := false
-		for _, eventBatch := range missed {
+		d.history.AscendGreaterOrEqual(nextRev, func(rev int64, eventBatch []*clientv3.Event) bool {
 			if !w.enqueueEvent(eventBatch) { // buffer overflow: watcher still lagging
 				enqueueFailed = true
-				break
+				return false
 			}
-			nextRev = eventBatch[0].Kv.ModRevision + 1
-		}
+			nextRev = rev + 1
+			return true
+		})
 
 		if !enqueueFailed {
 			delete(d.laggingWatchers, w)
@@ -176,10 +222,4 @@ func (d *demux) resyncLaggingWatchers() {
 			d.laggingWatchers[w] = nextRev
 		}
 	}
-}
-
-func (d *demux) PeekOldest() int64 {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	return d.history.PeekOldest()
 }

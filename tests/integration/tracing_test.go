@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -99,8 +100,8 @@ func TestTracing(t *testing.T) {
 			name: "UnaryTxn",
 			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				_, err := cli.Txn(ctx).
-					If(clientv3.Compare(clientv3.ModRevision("key"), "=", 1)).
-					Then(clientv3.OpGet("key"), clientv3.OpGet("other_key")).
+					If(clientv3.Compare(clientv3.ModRevision("cmp_key"), "=", 1)).
+					Then(clientv3.OpPut("op_key", "val", clientv3.WithLease(1234)), clientv3.OpGet("other_key")).
 					Commit()
 				return err
 			},
@@ -109,7 +110,19 @@ func TestTracing(t *testing.T) {
 				Attributes: []*commonv1.KeyValue{
 					{
 						Key:   "compare_first_key",
-						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "key"}},
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "cmp_key"}},
+					},
+					{
+						Key:   "success_first_key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "op_key"}},
+					},
+					{
+						Key:   "success_first_type",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "put"}},
+					},
+					{
+						Key:   "success_first_lease",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1234}},
 					},
 					{
 						Key:   "compare_len",
@@ -125,7 +138,67 @@ func TestTracing(t *testing.T) {
 					},
 					{
 						Key:   "read_only",
-						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryLeaseGrant",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Grant(ctx, 1_000_123)
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_grant",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 0}},
+					},
+					{
+						Key:   "ttl",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1_000_123}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryLeaseRenew",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.KeepAliveOnce(ctx, 2345)
+				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
+					// errors.Is does not work accross gRPC bounduaries.
+					return nil
+				}
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_renew",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 2345}},
+					},
+				},
+			},
+		},
+		{
+			name: "UnaryLeaseRevoke",
+			rpc: func(ctx context.Context, cli *clientv3.Client) error {
+				_, err := cli.Revoke(ctx, 1234)
+				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
+					// errors.Is does not work accross gRPC bounduaries.
+					return nil
+				}
+				return err
+			},
+			wantSpan: &v1.Span{
+				Name: "lease_revoke",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "id",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1234}},
 					},
 				},
 			},
@@ -138,7 +211,7 @@ func TestTracing(t *testing.T) {
 				defer cancel()
 
 				// Create a watch channel
-				watchChan := cli.Watch(ctx, "watch-key")
+				watchChan := cli.Watch(ctx, "watch-key", clientv3.WithProgressNotify(), clientv3.WithRev(1))
 
 				// Put a value to trigger the watch
 				_, err := cli.Put(ctx, "watch-key", "watch-value")
@@ -155,8 +228,33 @@ func TestTracing(t *testing.T) {
 				}
 			},
 			wantSpan: &v1.Span{
-				Name: "etcdserverpb.Watch/Watch",
-				// Attributes are set outside Etcd in otelgrpc, so they are ignored here.
+				Name: "watch",
+				Attributes: []*commonv1.KeyValue{
+					{
+						Key:   "key",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: "watch-key"}},
+					},
+					{
+						Key:   "range_end",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_StringValue{StringValue: ""}},
+					},
+					{
+						Key:   "start_rev",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_IntValue{IntValue: 1}},
+					},
+					{
+						Key:   "progress_notify",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: true}},
+					},
+					{
+						Key:   "prev_kv",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+					{
+						Key:   "fragment",
+						Value: &commonv1.AnyValue{Value: &commonv1.AnyValue_BoolValue{BoolValue: false}},
+					},
+				},
 			},
 		},
 	} {
@@ -197,13 +295,21 @@ func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.C
 						if gotSpan.GetName() != wantSpan.GetName() {
 							continue
 						}
-						if len(wantSpan.GetAttributes()) == 0 && len(wantSpan.GetEvents()) == 0 {
+						if len(wantSpan.GetAttributes()) == 0 {
 							// Diff will compare only attributes and events when needed
 							return true
 						}
+						if gotSpan.GetName() == "lease_grant" {
+							// Ignore ID in lease grant which is not controlled by the client.
+							for _, attr := range gotSpan.GetAttributes() {
+								if attr.GetKey() == "id" {
+									attr.Value.Value.(*commonv1.AnyValue_IntValue).IntValue = 0
+								}
+							}
+						}
 						if diff := cmp.Diff(wantSpan, gotSpan,
 							protocmp.Transform(),
-							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id"),
+							protocmp.IgnoreFields(&v1.Span{}, "end_time_unix_nano", "flags", "kind", "parent_span_id", "span_id", "start_time_unix_nano", "status", "trace_id", "events"),
 						); diff != "" {
 							t.Errorf("Span mismatch (-want +got):\n%s", diff)
 						}

@@ -75,8 +75,6 @@ func watchLatencyFunc(cmd *cobra.Command, _ []string) {
 	eventTimes := make([][]time.Time, len(wchs))
 
 	for i, wch := range wchs {
-		wch := wch
-		i := i
 		eventTimes[i] = make([]time.Time, watchLPutTotal)
 		wg.Add(1)
 		go func() {

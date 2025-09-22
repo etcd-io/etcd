@@ -1,0 +1,81 @@
+From 135c75d2689318dd47b7778b8f87902e75178d52 Mon Sep 17 00:00:00 2001
+From: Aleksander Mistewicz <amistewicz@google.com>
+Date: Wed, 13 Aug 2025 13:45:20 +0200
+Subject: [PATCH 1/4] Add Open Telemetry trace event when passing through
+ contract interface
+
+Signed-off-by: Aleksander Mistewicz <amistewicz@google.com>
+---
+ .../etcd/client/v3/kubernetes/client.go       | 21 +++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go b/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go
+index 11f2a456447..0efab3711d7 100644
+--- a/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go
++++ b/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go
+@@ -21,6 +21,8 @@ import (
+ 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
+ 	"go.etcd.io/etcd/api/v3/mvccpb"
+ 	clientv3 "go.etcd.io/etcd/client/v3"
++	"go.opentelemetry.io/otel/attribute"
++	"go.opentelemetry.io/otel/trace"
+ )
+ 
+ // New creates Client from config.
+@@ -45,6 +47,10 @@ type Client struct {
+ var _ Interface = (*Client)(nil)
+ 
+ func (k Client) Get(ctx context.Context, key string, opts GetOptions) (resp GetResponse, err error) {
++	trace.SpanFromContext(ctx).AddEvent("contract.Get", trace.WithAttributes(
++		attribute.String("key", key),
++		attribute.Int64("rev", opts.Revision),
++	))
+ 	rangeResp, err := k.KV.Get(ctx, key, clientv3.WithRev(opts.Revision), clientv3.WithLimit(1))
+ 	if err != nil {
+ 		return resp, err
+@@ -57,6 +63,10 @@ func (k Client) Get(ctx context.Context, key string, opts GetOptions) (resp GetR
+ }
+ 
+ func (k Client) List(ctx context.Context, prefix string, opts ListOptions) (resp ListResponse, err error) {
++	trace.SpanFromContext(ctx).AddEvent("contract.List", trace.WithAttributes(
++		attribute.String("prefix", prefix),
++		attribute.Int64("rev", opts.Revision),
++	))
+ 	rangeStart := prefix
+ 	if opts.Continue != "" {
+ 		rangeStart = opts.Continue
+@@ -73,6 +83,9 @@ func (k Client) List(ctx context.Context, prefix string, opts ListOptions) (resp
+ }
+ 
+ func (k Client) Count(ctx context.Context, prefix string, _ CountOptions) (int64, error) {
++	trace.SpanFromContext(ctx).AddEvent("contract.Count", trace.WithAttributes(
++		attribute.String("prefix", prefix),
++	))
+ 	resp, err := k.KV.Get(ctx, prefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+ 	if err != nil {
+ 		return 0, err
+@@ -81,6 +94,10 @@ func (k Client) Count(ctx context.Context, prefix string, _ CountOptions) (int64
+ }
+ 
+ func (k Client) OptimisticPut(ctx context.Context, key string, value []byte, expectedRevision int64, opts PutOptions) (resp PutResponse, err error) {
++	trace.SpanFromContext(ctx).AddEvent("contract.OptimisticPut", trace.WithAttributes(
++		attribute.String("key", key),
++		attribute.Int64("expected_rev", expectedRevision),
++	))
+ 	txn := k.KV.Txn(ctx).If(
+ 		clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision),
+ 	).Then(
+@@ -107,6 +124,10 @@ func (k Client) OptimisticPut(ctx context.Context, key string, value []byte, exp
+ }
+ 
+ func (k Client) OptimisticDelete(ctx context.Context, key string, expectedRevision int64, opts DeleteOptions) (resp DeleteResponse, err error) {
++	trace.SpanFromContext(ctx).AddEvent("contract.OptimisticDelete", trace.WithAttributes(
++		attribute.String("key", key),
++		attribute.Int64("expected_rev", expectedRevision),
++	))
+ 	txn := k.KV.Txn(ctx).If(
+ 		clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision),
+ 	).Then(
+-- 
+2.51.0.rc2.233.g662b1ed5c5-goog
+

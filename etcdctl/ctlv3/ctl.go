@@ -16,14 +16,14 @@
 package ctlv3
 
 import (
+	"fmt"
 	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
-	"go.etcd.io/etcd/etcdctl/v3/util"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
 )
 
@@ -76,6 +76,14 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.TLS.ServerName, "discovery-srv", "d", "", "domain name to query for SRV records describing cluster endpoints")
 	rootCmd.PersistentFlags().StringVarP(&globalFlags.DNSClusterServiceName, "discovery-srv-name", "", "", "service name to query when using DNS discovery")
 
+	rootCmd.AddGroup(
+		command.NewKVGroup(),
+		command.NewClusterMaintenanceGroup(),
+		command.NewConcurrencyGroup(),
+		command.NewAuthenticationGroup(),
+		command.NewUtilityGroup(),
+	)
+
 	rootCmd.AddCommand(
 		command.NewGetCommand(),
 		command.NewPutCommand(),
@@ -100,17 +108,16 @@ func init() {
 		command.NewCheckCommand(),
 		command.NewCompletionCommand(),
 		command.NewDowngradeCommand(),
+		command.NewOptionsCommand(rootCmd),
 	)
-}
+	command.SetHelpCmdGroup(rootCmd)
 
-func usageFunc(c *cobra.Command) error {
-	return util.UsageFunc(c, version.Version, version.APIVersion)
+	hideAllGlobalFlags()
+	hideHelpFlag()
+	addOptionsPrompt()
 }
 
 func Start() error {
-	rootCmd.SetUsageFunc(usageFunc)
-	// Make help just show the usage
-	rootCmd.SetHelpTemplate(`{{.UsageString}}`)
 	return rootCmd.Execute()
 }
 
@@ -121,6 +128,27 @@ func MustStart() {
 		}
 		os.Exit(cobrautl.ExitError)
 	}
+}
+
+func hideAllGlobalFlags() {
+	rootCmd.PersistentFlags().VisitAll(func(f *pflag.Flag) {
+		rootCmd.PersistentFlags().MarkHidden(f.Name)
+	})
+}
+
+func hideHelpFlag() {
+	if rootCmd.Flags().Lookup("help") == nil {
+		rootCmd.Flags().BoolP("help", "h", false, "help for "+rootCmd.Name())
+	}
+	rootCmd.Flags().MarkHidden("help")
+}
+
+func addOptionsPrompt() {
+	defaultHelpFunc := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		defaultHelpFunc(cmd, args)
+		fmt.Fprintln(cmd.OutOrStdout(), `Use "etcdctl options" for a list of global command-line options (applies to all commands).`)
+	})
 }
 
 func init() {

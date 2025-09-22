@@ -91,7 +91,7 @@ func (t triggerCompact) Available(config e2e.EtcdProcessClusterConfig, _ e2e.Etc
 	if profile.ForbidCompaction {
 		return false
 	}
-	// Since introduction of compaction into traffic, injecting compaction failpoints started interfeering with peer proxy.
+	// Since the introduction of compaction into traffic, injecting compaction failpoints started interfering with the peer proxy.
 	// TODO: Re-enable the peer proxy for compact failpoints when we confirm the root cause.
 	if config.PeerProxy {
 		return false

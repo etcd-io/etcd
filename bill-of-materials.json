@@ -216,7 +216,7 @@
 		]
 	},
 	{
-		"project": "github.com/grpc-ecosystem/go-grpc-middleware",
+		"project": "github.com/grpc-ecosystem/go-grpc-middleware/logging/settable",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -580,7 +580,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -589,7 +589,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -598,7 +598,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -607,7 +607,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -616,7 +616,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -625,7 +625,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -634,7 +634,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -706,7 +706,7 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sys/unix",
+		"project": "golang.org/x/sys",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",

@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -189,7 +190,7 @@ func fetchMetrics(t *testing.T, endpoint string, httpVersion string, connType e2
 	}
 	respData := string(rawData)
 
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	_, err = parser.TextToMetricFamilies(strings.NewReader(strings.ReplaceAll(respData, "\r\n", "\n")))
 	return err
 }

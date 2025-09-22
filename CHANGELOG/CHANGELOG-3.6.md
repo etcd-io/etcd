@@ -4,11 +4,23 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.5 (TBA)
+## v3.6.6 (TBA)
+
+---
+
+## v3.6.5 (2025-09-19)
 
 ### etcd server
 
 - [Remove the flag `--experimental-snapshot-catch-up-entries` from `etcd --help` output](https://github.com/etcd-io/etcd/pull/20422)
+- Fix [etcd repeatedly log the error "cannot detect storage schema version: missing confstate information"](https://github.com/etcd-io/etcd/pull/20496)
+- Fix [etcd may return success for leaseRenew request even when the lease is revoked](https://github.com/etcd-io/etcd/pull/20615)
+- Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20650)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.7](https://github.com/etcd-io/etcd/pull/20664).
+- [Bump bbolt to v1.4.3](https://github.com/etcd-io/etcd/pull/20513).
 
 ---
 

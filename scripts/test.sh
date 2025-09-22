@@ -398,6 +398,7 @@ function markdown_marker_pass {
 }
 
 function govuln_pass {
+  run go install golang.org/x/vuln/cmd/govulncheck@latest
   run_for_modules run govulncheck -show verbose
 }
 
@@ -447,11 +448,11 @@ function govet_shadow_pass {
 }
 
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --show-stats=false
 }
 
 function lint_fix_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
+  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix --show-stats=false
 }
 
 function license_header_per_module {

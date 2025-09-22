@@ -18,39 +18,61 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 
-	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/options"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, clientSet *ClientSet) error {
+type CollectClusterWatchEventsParam struct {
+	Lg              *zap.Logger
+	Endpoints       []string
+	MaxRevisionChan <-chan int64
+	Cfg             WatchConfig
+	ClientSet       *ClientSet
+	options.BackgroundWatchConfig
+}
+
+func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
 	var g errgroup.Group
-	reports := make([]report.ClientReport, len(endpoints))
-	memberMaxRevisionChans := make([]chan int64, len(endpoints))
-	for i, endpoint := range endpoints {
+	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
+	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		g.Go(func() error {
-			c, err := clientSet.NewClient([]string{endpoint})
+			c, err := param.ClientSet.NewClient([]string{endpoint})
 			if err != nil {
 				return err
 			}
 			defer c.Close()
-			err = watchUntilRevision(ctx, lg, c, memberMaxRevisionChan, cfg)
-			reports[i] = c.Report()
-			return err
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 		})
 	}
-
+	finish := make(chan struct{})
 	g.Go(func() error {
-		maxRevision := <-maxRevisionChan
+		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
+		close(finish)
 		return nil
 	})
+
+	if param.BackgroundWatchConfig.Interval > 0 {
+		for _, endpoint := range param.Endpoints {
+			g.Go(func() error {
+				c, err := param.ClientSet.NewClient([]string{endpoint})
+				if err != nil {
+					return err
+				}
+				defer c.Close()
+				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
+			})
+		}
+	}
+
 	return g.Wait()
 }
 
@@ -58,7 +80,7 @@ type WatchConfig struct {
 	RequestProgress bool
 }
 
-// watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
+// watchUntilRevision watches all changes until context is canceled, it has observed the revision provided via maxRevisionChan or maxRevisionChan was closed.
 func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
@@ -69,10 +91,10 @@ resetWatch:
 	for {
 		if closing {
 			if maxRevision == 0 {
-				return errors.New("Client didn't collect all events, max revision not set")
+				return errors.New("client didn't collect all events, max revision not set")
 			}
 			if lastRevision < maxRevision {
-				return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+				return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
 			}
 			return nil
 		}
@@ -120,5 +142,40 @@ resetWatch:
 				}
 			}
 		}
+	}
+}
+
+func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingClient, backgroundWatchConfig options.BackgroundWatchConfig, finish <-chan struct{}) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-finish:
+			return nil
+		case <-time.After(backgroundWatchConfig.Interval):
+		}
+		g.Go(func() error {
+			resp, err := c.Get(ctx, "/key")
+			if err != nil {
+				return err
+			}
+			rev := resp.Header.Revision + backgroundWatchConfig.RevisionOffset
+
+			watchCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			w := c.Watch(watchCtx, "", rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-finish:
+					return nil
+				case _, ok := <-w:
+					if !ok {
+						return nil
+					}
+				}
+			}
+		})
 	}
 }

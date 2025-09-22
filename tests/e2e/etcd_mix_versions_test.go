@@ -192,7 +192,7 @@ func assertKVHash(t *testing.T, epc *e2e.EtcdProcessCluster) {
 		}
 		for i := 1; i < clusterSize; i++ {
 			if hashKvs[0].Header.Revision != hashKvs[i].Header.Revision {
-				t.Logf("Got different revisions, [%d, %d]", hashKvs[0].Header.Revision, hashKvs[1].Header.Revision)
+				t.Logf("Got different revisions, [%d, %d]", hashKvs[0].Header.Revision, hashKvs[i].Header.Revision)
 				return false
 			}
 

@@ -182,23 +182,15 @@ func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) 
 	return resp.(*pb.DeleteRangeResponse), nil
 }
 
-// firstCompareKey returns first non-empty key in the list of comparison operations.
-func firstCompareKey(c []*pb.Compare) string {
-	for _, op := range c {
-		key := string(op.GetKey())
-		if key != "" {
-			return key
-		}
-	}
-	return ""
-}
-
 func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse, error) {
 	readOnly := txn.IsTxnReadonly(r)
 
 	var span trace.Span
 	ctx, span = traceutil.Tracer.Start(ctx, "txn", trace.WithAttributes(
 		attribute.String("compare_first_key", firstCompareKey(r.GetCompare())),
+		attribute.String("success_first_key", firstOpKey(r.GetSuccess())),
+		attribute.String("success_first_type", firstOpType(r.GetSuccess())),
+		attribute.Int64("success_first_lease", firstOpLease(r.GetSuccess())),
 		attribute.Int("compare_len", len(r.GetCompare())),
 		attribute.Int("success_len", len(r.GetSuccess())),
 		attribute.Int("failure_len", len(r.GetFailure())),
@@ -303,6 +295,13 @@ func (s *EtcdServer) LeaseGrant(ctx context.Context, r *pb.LeaseGrantRequest) (*
 		// only use positive int64 id's
 		r.ID = int64(s.reqIDGen.Next() & ((1 << 63) - 1))
 	}
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "lease_grant", trace.WithAttributes(
+		attribute.Int64("id", r.ID),
+		attribute.Int64("ttl", r.GetTTL()),
+	))
+	defer span.End()
+
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseGrant: r})
 	if err != nil {
 		return nil, err
@@ -323,6 +322,12 @@ func (s *EtcdServer) waitAppliedIndex() error {
 }
 
 func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error) {
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "lease_revoke", trace.WithAttributes(
+		attribute.Int64("id", r.GetID()),
+	))
+	defer span.End()
+
 	resp, err := s.raftRequestOnce(ctx, pb.InternalRaftRequest{LeaseRevoke: r})
 	if err != nil {
 		return nil, err
@@ -331,6 +336,12 @@ func (s *EtcdServer) LeaseRevoke(ctx context.Context, r *pb.LeaseRevokeRequest) 
 }
 
 func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, error) {
+	var span trace.Span
+	ctx, span = traceutil.Tracer.Start(ctx, "lease_renew", trace.WithAttributes(
+		attribute.Int64("id", int64(id)),
+	))
+	defer span.End()
+
 	if s.isLeader() {
 		// If s.isLeader() returns true, but we fail to ensure the current
 		// member's leadership, there are a couple of possibilities:

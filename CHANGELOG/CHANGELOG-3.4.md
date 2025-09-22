@@ -11,10 +11,12 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [mvcc: avoid double decrement of watcher gauge on close/cancel race](https://github.com/etcd-io/etcd/pull/20065)
 - Fix [Watch on future revision returns old events or notifications](https://github.com/etcd-io/etcd/pull/20291)
 - Improve [help message for --quota-backend-bytes](https://github.com/etcd-io/etcd/pull/20379)
+- Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20659)
 
 ### Dependencies
 
-- Compile binaries using [go 1.23.11](https://github.com/etcd-io/etcd/pull/20322).
+- Compile binaries using [go 1.24.7](https://github.com/etcd-io/etcd/pull/20618).
+- [Bump bbolt to v1.3.12](https://github.com/etcd-io/etcd/pull/20515).
 
 ---
 

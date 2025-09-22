@@ -28,17 +28,17 @@ import (
 )
 
 // DeterministicModel assumes a deterministic execution of etcd requests. All
-// requests that client called were executed and persisted by etcd. This
+// requests that the client called were executed and persisted by etcd. This
 // assumption is good for simulating etcd behavior (aka writing a fake), but not
 // for validating correctness as requests might be lost or interrupted. It
-// requires perfect knowledge of what happened to request which is not possible
+// requires perfect knowledge of what happened to a request, which is not possible
 // in real systems.
 //
-// Model can still respond with error or partial response.
+// Model can still respond with an error or partial response.
 //   - Error for etcd known errors, like future revision or compacted revision.
-//   - Incomplete response when requests is correct, but model doesn't have all
-//     to provide a full response. For example stale reads as model doesn't store
-//     whole change history as real etcd does.
+//   - Incomplete response when the request is correct, but the model doesn't have all
+//     the data to provide a full response. For example, stale reads as the model doesn't store
+//     the whole change history as real etcd does.
 var DeterministicModel = porcupine.Model{
 	Init: func() any {
 		return freshEtcdState()

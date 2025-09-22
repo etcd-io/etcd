@@ -71,13 +71,13 @@ func prepareAndCategorizeOperations(reports []report.ClientReport) (linearizable
 			if isSerializable(request, response) {
 				serializable = append(serializable, op)
 			}
-			// Operation that will not be linearized need to be added separetly to visualization.
+			// Operations that will not be linearized need to be added separately to the visualization.
 			if !isLinearizable(request, response) {
 				forVisualization = append(forVisualization, op)
 				continue
 			}
 			// For linearization, we set the return time of failed requests to MaxInt64.
-			// Failed requests can still be persisted, however we don't know when request has taken effect.
+			// Failed requests can still be persisted, however we don't know when the request has taken effect.
 			if response.Error != "" {
 				op.Return = math.MaxInt64
 			}

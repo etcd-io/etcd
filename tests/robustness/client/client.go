@@ -30,9 +30,9 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-// RecordingClient provides a semi etcd client (different interface than
+// RecordingClient provides a semi-etcd client (different interface than
 // clientv3.Client) that records all the requests and responses made. Doesn't
-// allow for concurrent requests to confirm to model.AppendableHistory requirements.
+// allow for concurrent requests to conform to model.AppendableHistory requirements.
 type RecordingClient struct {
 	ID     int
 	client clientv3.Client
@@ -306,10 +306,11 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 	}
 	respCh := make(chan clientv3.WatchResponse)
 
+	responses := []model.WatchResponse{}
 	c.watchMux.Lock()
 	c.watchOperations = append(c.watchOperations, model.WatchOperation{
 		Request:   request,
-		Responses: []model.WatchResponse{},
+		Responses: responses,
 	})
 	index := len(c.watchOperations) - 1
 	c.watchMux.Unlock()
@@ -317,7 +318,10 @@ func (c *RecordingClient) watch(ctx context.Context, request model.WatchRequest)
 	go func() {
 		defer close(respCh)
 		for r := range c.client.Watch(ctx, request.Key, ops...) {
-			c.watchOperations[index].Responses = append(c.watchOperations[index].Responses, ToWatchResponse(r, c.baseTime))
+			responses = append(responses, ToWatchResponse(r, c.baseTime))
+			c.watchMux.Lock()
+			c.watchOperations[index].Responses = responses
+			c.watchMux.Unlock()
 			select {
 			case respCh <- r:
 			case <-ctx.Done():

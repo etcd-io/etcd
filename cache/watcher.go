@@ -15,24 +15,24 @@
 package cache
 
 import (
-	"sync/atomic"
+	"sync"
 
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 // watcher holds one client’s buffered stream of events.
 type watcher struct {
-	eventQueue chan []*clientv3.Event
+	respCh     chan clientv3.WatchResponse
+	cancelResp *clientv3.WatchResponse
 	keyPred    KeyPredicate
-	stopped    int32
-	done       chan struct{} // closed together with Stop()
+	stopOnce   sync.Once
 }
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 	return &watcher{
-		eventQueue: make(chan []*clientv3.Event, bufSize),
-		keyPred:    pred,
-		done:       make(chan struct{}),
+		respCh:  make(chan clientv3.WatchResponse, bufSize),
+		keyPred: pred,
 	}
 }
 
@@ -52,19 +52,28 @@ func (w *watcher) enqueueEvent(eventBatch []*clientv3.Event) bool {
 		eventBatch = filtered
 	}
 	select {
-	case w.eventQueue <- eventBatch:
+	case w.respCh <- clientv3.WatchResponse{Events: eventBatch}:
 		return true
 	default:
 		return false
 	}
 }
 
-// Stop closes the event channel atomically.
-func (w *watcher) Stop() {
-	if atomic.CompareAndSwapInt32(&w.stopped, 0, 1) {
-		close(w.eventQueue)
-		close(w.done)
+func (w *watcher) Compact(compactRev int64) {
+	resp := &clientv3.WatchResponse{
+		Canceled:        true,
+		CompactRevision: compactRev,
+		CancelReason:    rpctypes.ErrCompacted.Error(),
 	}
+	w.stopOnce.Do(func() {
+		w.cancelResp = resp
+		close(w.respCh)
+	})
 }
 
-func (w *watcher) Done() <-chan struct{} { return w.done }
+// Stop closes the event channel atomically.
+func (w *watcher) Stop() {
+	w.stopOnce.Do(func() {
+		close(w.respCh)
+	})
+}

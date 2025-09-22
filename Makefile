@@ -8,6 +8,20 @@ include $(REPOSITORY_ROOT)/tests/robustness/Makefile
 build:
 	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
 
+.PHONY: install-benchmark
+install-benchmark: build
+ifeq (, $(shell command -v benchmark))
+	@echo "Installing etcd benchmark tool..."
+	go install -v ./tools/benchmark
+else
+	@echo "benchmark tool already installed..."
+endif
+
+.PHONY: bench-put
+bench-put: build install-benchmark
+	@echo "Running benchmark: put $(ARGS)"
+	./scripts/benchmark_test.sh put $(ARGS)
+
 PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 
 .PHONY: build-all
@@ -149,7 +163,7 @@ verify-genproto:
 
 .PHONY: verify-yamllint
 verify-yamllint:
-ifeq (, $(shell which yamllint))
+ifeq (, $(shell command -v yamllint))
 	@echo "Installing yamllint..."
 	tmpdir=$$(mktemp -d); \
 	trap "rm -rf $$tmpdir" EXIT; \
@@ -173,16 +187,13 @@ YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.co
 
 .PHONY: fix-yamllint
 fix-yamllint:
-ifeq (, $(shell which yamlfmt))
+ifeq (, $(shell command -v yamlfmt))
 	$(shell go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION))
 endif
 	yamlfmt -conf tools/.yamlfmt .
 
 .PHONY: run-govulncheck
 run-govulncheck:
-ifeq (, $(shell which govulncheck))
-	$(shell go install golang.org/x/vuln/cmd/govulncheck@latest)
-endif
 	PASSES="govuln" ./scripts/test.sh
 
 # Tools

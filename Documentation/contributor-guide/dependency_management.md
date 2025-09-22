@@ -125,7 +125,13 @@ execute it for 3.4.
 
 ## Golang versions
 
-The etcd project aims to maintain a development branch that is on the latest [Go version](https://go.dev/dl), ideally, this will align with the Go version in use for Kubernetes project development. For an example of how to update etcd to a new minor release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16393> and the linked pull requests.
+For all libraries that exist as independent subprojects (e.g., bbolt, raft, gofail), we should always stick
+to the oldest supported Go minor version for all branches, including main. It's up to the users of these
+libraries to choose which [Go version](https://go.dev/dl) they want to use in their own projects.
+
+For other subprojects that produce binaries or images (e.g. etcd, etcd-operator, auger), the main
+branches should use the latest Go minor version for development, while stable releases should use the
+latest patch of the previous supported Go minor version to ensure stability.
 
 Suggested steps for performing a minor version upgrade for the etcd development branch:
 

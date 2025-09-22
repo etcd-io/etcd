@@ -15,90 +15,126 @@
 package cache
 
 import (
-	"bytes"
 	"fmt"
-	"sort"
 	"sync"
 
+	"github.com/google/btree"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-var ErrNotInitialized = fmt.Errorf("cache: store not initialized")
+var ErrNotReady = fmt.Errorf("cache: store not ready")
 
+// The store keeps a bounded history of snapshots using ringBuffer so that
+// reads at historical revisions can be served until they fall out of the window.
 type store struct {
-	mu        sync.RWMutex
-	kvs       map[string]*mvccpb.KeyValue
-	latestRev int64
+	mu      sync.RWMutex
+	degree  int
+	latest  snapshot              // latest is the mutable working snapshot
+	history ringBuffer[*snapshot] // history stores immutable cloned snapshots
 }
 
-func newStore() *store {
-	return &store{kvs: make(map[string]*mvccpb.KeyValue)}
+func newStore(degree int, historyCapacity int) *store {
+	tree := btree.New(degree)
+	return &store{
+		degree:  degree,
+		latest:  snapshot{rev: 0, tree: tree},
+		history: *newRingBuffer(historyCapacity, func(s *snapshot) int64 { return s.rev }),
+	}
 }
 
-func (s *store) Get(startKey, endKey []byte) ([]*mvccpb.KeyValue, int64, error) {
+type kvItem struct {
+	key string
+	kv  *mvccpb.KeyValue
+}
+
+func newKVItem(kv *mvccpb.KeyValue) *kvItem {
+	return &kvItem{key: string(kv.Key), kv: kv}
+}
+
+func (a *kvItem) Less(b btree.Item) bool {
+	return a.key < b.(*kvItem).key
+}
+
+func (s *store) Get(startKey, endKey []byte, rev int64) ([]*mvccpb.KeyValue, int64, error) {
+	snapshot, latestRev, err := s.getSnapshot(rev)
+	if err != nil {
+		return nil, 0, err
+	}
+	return snapshot.Range(startKey, endKey), latestRev, nil
+}
+
+func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if s.latestRev == 0 {
-		return nil, 0, ErrNotInitialized
+	if s.latest.rev == 0 {
+		return nil, 0, ErrNotReady
+	}
+	if rev < 0 {
+		return nil, 0, fmt.Errorf("invalid revision: %d", rev)
+	}
+	if rev == 0 {
+		rev = s.latest.rev
+	}
+	if rev > s.latest.rev {
+		return nil, 0, rpctypes.ErrFutureRev
+	}
+	oldestRev := s.history.PeekOldest()
+	if rev < oldestRev {
+		return nil, 0, rpctypes.ErrCompacted
 	}
 
-	var out []*mvccpb.KeyValue
-	switch {
-	case len(endKey) == 0:
-		out = s.getSingle(startKey)
-	case isPrefixScan(endKey):
-		out = s.scanPrefix(startKey)
-	default:
-		out = s.scanRange(startKey, endKey)
-	}
-
-	sort.Slice(out, func(i, j int) bool {
-		return bytes.Compare(out[i].Key, out[j].Key) < 0 // default: lexicographical, ascending‐by‐key sort
+	var targetSnapshot *snapshot
+	s.history.AscendGreaterOrEqual(rev, func(rev int64, snap *snapshot) bool {
+		targetSnapshot = snap
+		return false
 	})
-	return out, s.latestRev, nil
+
+	return targetSnapshot, s.latest.rev, nil
 }
 
+// Restore replaces state with the bootstrap snapshot and resets history.
 func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.kvs = make(map[string]*mvccpb.KeyValue, len(kvs))
+	s.latest.tree = btree.New(s.degree)
 	for _, kv := range kvs {
-		s.kvs[string(kv.Key)] = kv
+		s.latest.tree.ReplaceOrInsert(newKVItem(kv))
 	}
-	s.latestRev = rev
-}
-
-// Reset purges all in-memory state when the upstream watch stream reports compaction.
-func (s *store) Reset() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.kvs = make(map[string]*mvccpb.KeyValue)
-	s.latestRev = 0
+	s.history.RebaseHistory()
+	s.latest.rev = rev
+	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 }
 
 func (s *store) Apply(events []*clientv3.Event) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, ev := range events {
-		if ev.Kv.ModRevision < s.latestRev {
-			return fmt.Errorf("cache: stale event batch (rev %d < latest %d)", ev.Kv.ModRevision, s.latestRev)
-		}
+	if err := validateRevisions(events, s.latest.rev); err != nil {
+		return err
 	}
 
-	for _, ev := range events {
-		switch ev.Type {
-		case clientv3.EventTypeDelete:
-			delete(s.kvs, string(ev.Kv.Key))
-		case clientv3.EventTypePut:
-			s.kvs[string(ev.Kv.Key)] = ev.Kv
+	for i := 0; i < len(events); {
+		rev := events[i].Kv.ModRevision
+
+		for i < len(events) && events[i].Kv.ModRevision == rev {
+			ev := events[i]
+			switch ev.Type {
+			case clientv3.EventTypeDelete:
+				if removed := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
+					return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
+				}
+			case clientv3.EventTypePut:
+				s.latest.tree.ReplaceOrInsert(newKVItem(ev.Kv))
+			}
+			i++
 		}
-		if ev.Kv.ModRevision > s.latestRev {
-			s.latestRev = ev.Kv.ModRevision
-		}
+		s.latest.rev = rev
+		s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 	}
 	return nil
 }
@@ -106,40 +142,21 @@ func (s *store) Apply(events []*clientv3.Event) error {
 func (s *store) LatestRev() int64 {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.latestRev
+	return s.latest.rev
 }
 
-// getSingle fetches one key or nil
-func (s *store) getSingle(key []byte) []*mvccpb.KeyValue {
-	if kv, ok := s.kvs[string(key)]; ok {
-		return []*mvccpb.KeyValue{kv}
+func validateRevisions(events []*clientv3.Event, latestRev int64) error {
+	if len(events) == 0 {
+		return nil
+	}
+	for _, ev := range events {
+		r := ev.Kv.ModRevision
+		if r < latestRev {
+			return fmt.Errorf("cache: stale event batch (rev %d < latest %d)", r, latestRev)
+		}
+		if r == latestRev {
+			return fmt.Errorf("cache: duplicate revision batch breaks atomic guarantee (rev %d == latest %d)", r, latestRev)
+		}
 	}
 	return nil
-}
-
-// scanPrefix returns all keys >= startKey
-func (s *store) scanPrefix(startKey []byte) []*mvccpb.KeyValue {
-	var res []*mvccpb.KeyValue
-	for _, kv := range s.kvs {
-		if bytes.Compare(kv.Key, startKey) >= 0 {
-			res = append(res, kv)
-		}
-	}
-	return res
-}
-
-// scanRange returns all keys in [startKey, endKey)
-func (s *store) scanRange(startKey, endKey []byte) []*mvccpb.KeyValue {
-	var res []*mvccpb.KeyValue
-	for _, kv := range s.kvs {
-		if bytes.Compare(kv.Key, startKey) >= 0 && bytes.Compare(kv.Key, endKey) < 0 {
-			res = append(res, kv)
-		}
-	}
-	return res
-}
-
-// isPrefixScan detects endKey=={0} semantics
-func isPrefixScan(endKey []byte) bool {
-	return len(endKey) == 1 && endKey[0] == 0
 }

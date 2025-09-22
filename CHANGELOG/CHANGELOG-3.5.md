@@ -4,7 +4,21 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.23 (TBA)
+## v3.5.24 (TBA)
+
+---
+
+## v3.5.23 (2025-09-19)
+
+### etcd server
+
+- Fix [etcd may return success for leaseRenew request even when the lease is revoked](https://github.com/etcd-io/etcd/pull/20616)
+- Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20653)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.7](https://github.com/etcd-io/etcd/pull/20665).
+- [Bump bbolt to v1.3.12](https://github.com/etcd-io/etcd/pull/20514).
 
 ---
 

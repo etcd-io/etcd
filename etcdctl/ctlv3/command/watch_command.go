@@ -47,9 +47,10 @@ var (
 // NewWatchCommand returns the cobra command for "watch".
 func NewWatchCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "watch [options] [key or prefix] [range_end] [--] [exec-command arg1 arg2 ...]",
-		Short: "Watches events stream on keys or prefixes",
-		Run:   watchCommandFunc,
+		Use:     "watch [options] [key or prefix] [range_end] [--] [exec-command arg1 arg2 ...]",
+		Short:   "Watches events stream on keys or prefixes",
+		Run:     watchCommandFunc,
+		GroupID: groupKVID,
 	}
 
 	cmd.Flags().BoolVarP(&watchInteractive, "interactive", "i", false, "Interactive mode")

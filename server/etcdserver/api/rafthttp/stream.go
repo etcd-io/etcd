@@ -498,7 +498,7 @@ func (cr *streamReader) decodeLoop(rc io.ReadCloser, t streamType) error {
 			return err
 		}
 
-		// gofail-go: var raftDropHeartbeat struct{}
+		// gofail: var raftDropHeartbeat struct{}
 		// continue labelRaftDropHeartbeat
 		receivedBytes.WithLabelValues(types.ID(m.From).String()).Add(float64(m.Size()))
 

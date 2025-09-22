@@ -101,8 +101,8 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	defer func() {
 		_, persistResults := os.LookupEnv("PERSIST_RESULTS")
 		shouldReport := t.Failed() || panicked || persistResults
-		path := testResultsDirectory(t)
 		if shouldReport {
+			path := testResultsDirectory(t)
 			if err := r.Report(path); err != nil {
 				t.Error(err)
 			}
@@ -167,7 +167,14 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	defer watchSet.Close()
 	g.Go(func() error {
 		endpoints := processEndpoints(clus)
-		err := client.CollectClusterWatchEvents(ctx, lg, endpoints, maxRevisionChan, s.Watch, watchSet)
+		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
+			Lg:                    lg,
+			Endpoints:             endpoints,
+			MaxRevisionChan:       maxRevisionChan,
+			Cfg:                   s.Watch,
+			ClientSet:             watchSet,
+			BackgroundWatchConfig: s.Profile.BackgroundWatchConfig,
+		})
 		return err
 	})
 	err := g.Wait()
