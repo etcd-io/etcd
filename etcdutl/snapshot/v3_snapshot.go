@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -72,8 +73,11 @@ type Manager interface {
 }
 
 // NewV3 returns a new snapshot Manager for v3.x snapshot.
-func NewV3(lg *zap.Logger) Manager {
-	return &v3Manager{lg: lg}
+func NewV3(lg *zap.Logger, timeout time.Duration) Manager {
+	return &v3Manager{
+		lg:      lg,
+		timeout: timeout,
+	}
 }
 
 type v3Manager struct {
@@ -87,6 +91,10 @@ type v3Manager struct {
 
 	skipHashCheck   bool
 	initialMmapSize uint64
+
+	// Timeout is the amount of time to wait to obtain a file lock.
+	// When set to zero it will wait indefinitely.
+	timeout time.Duration
 }
 
 // hasChecksum returns "true" if the file size "n"
@@ -119,9 +127,9 @@ func (s *v3Manager) Status(dbPath string) (ds Status, err error) {
 		return ds, err
 	}
 
-	db, err := bolt.Open(dbPath, 0o400, &bolt.Options{ReadOnly: true})
+	db, err := bolt.Open(dbPath, 0o400, &bolt.Options{ReadOnly: true, Timeout: s.timeout})
 	if err != nil {
-		return ds, err
+		return ds, fmt.Errorf("failed to open database: %s, err: %w", dbPath, err)
 	}
 	defer db.Close()
 

@@ -56,7 +56,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = pURLs, pURLs
 	cfg.InitialCluster = fmt.Sprintf("%s=%s", cfg.Name, pURLs[0].String())
 
-	sp := snapshot.NewV3(zaptest.NewLogger(t))
+	sp := snapshot.NewV3(zaptest.NewLogger(t), time.Duration(0))
 	pss := make([]string, 0, len(pURLs))
 	for _, p := range pURLs {
 		pss = append(pss, p.String())
@@ -136,7 +136,7 @@ func TestCorruptedBackupFileCheck(t *testing.T) {
 	_, err := os.Stat(dbPath)
 	require.NoErrorf(t, err, "test file [%s] does not exist: %v", dbPath, err)
 
-	sp := snapshot.NewV3(zaptest.NewLogger(t))
+	sp := snapshot.NewV3(zaptest.NewLogger(t), time.Duration(0))
 	_, err = sp.Status(dbPath)
 	expectedErrKeywords := "snapshot file integrity check failed"
 	/* example error message:
@@ -193,7 +193,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 		require.NoError(t, err)
 	}
 
-	sp := snapshot.NewV3(zaptest.NewLogger(t))
+	sp := snapshot.NewV3(zaptest.NewLogger(t), time.Duration(0))
 	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
 	_, err = sp.Save(t.Context(), ccfg, dpPath)
 	require.NoError(t, err)
@@ -226,7 +226,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 		cfg.InitialCluster = ics
 
 		sp := snapshot.NewV3(
-			zaptest.NewLogger(t, zaptest.Level(zapcore.InfoLevel)).Named(cfg.Name).Named("sm"))
+			zaptest.NewLogger(t, zaptest.Level(zapcore.InfoLevel)).Named(cfg.Name).Named("sm"), time.Duration(0))
 
 		err := sp.Restore(snapshot.RestoreConfig{
 			SnapshotPath:        dbPath,
