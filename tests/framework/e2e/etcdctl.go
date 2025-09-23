@@ -745,3 +745,53 @@ func (ctl *EtcdctlV3) Watch(ctx context.Context, key string, opts config.WatchOp
 
 	return ch
 }
+
+// MakeMirror starts an etcdctl make-mirror worker in the background.
+// It mirrors from ctl's current endpoints (source cluster) to the first destination endpoint.
+// The process is terminated when the provided context is canceled.
+func (ctl *EtcdctlV3) MakeMirror(ctx context.Context, destEndpoints []string, opts config.MakeMirrorOptions) error {
+	if len(destEndpoints) == 0 {
+		return fmt.Errorf("destination endpoints required")
+	}
+
+	args := ctl.cmdArgs()
+	args = append(args, "make-mirror")
+	if opts.Prefix != "" {
+		args = append(args, "--prefix", opts.Prefix)
+	}
+	if opts.Rev != 0 {
+		args = append(args, "--rev", fmt.Sprint(opts.Rev))
+	}
+	if opts.DestPrefix != "" {
+		args = append(args, "--dest-prefix", opts.DestPrefix)
+	}
+	if opts.NoDestPrefix {
+		args = append(args, "--no-dest-prefix")
+	}
+
+	if opts.DestCert != "" {
+		args = append(args, "--dest-cert", opts.DestCert)
+	}
+	if opts.DestKey != "" {
+		args = append(args, "--dest-key", opts.DestKey)
+	}
+	if opts.DestCACert != "" {
+		args = append(args, "--dest-cacert", opts.DestCACert)
+	}
+	if !opts.DestInsecureTransport {
+		// Bool flags in cobra must be provided as --flag=false, not as separate args.
+		args = append(args, "--dest-insecure-transport=false")
+	}
+	args = append(args, destEndpoints[0])
+
+	cmd, err := SpawnCmd(args, nil)
+	if err != nil {
+		return err
+	}
+	defer cmd.Stop()
+
+	// Wait until context is cancelled or its timeout is reached.
+	<-ctx.Done()
+
+	return nil
+}

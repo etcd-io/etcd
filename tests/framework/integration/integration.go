@@ -19,13 +19,17 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"go.uber.org/zap"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/mirror"
 	etcdctlcmd "go.etcd.io/etcd/etcdctl/v3/ctlv3/command"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
@@ -455,6 +459,85 @@ func (c integrationClient) Watch(ctx context.Context, key string, opts config.Wa
 	}
 
 	return c.Client.Watch(ctx, key, opOpts...)
+}
+
+func (c integrationClient) MakeMirror(ctx context.Context, destEndpoints []string, opts config.MakeMirrorOptions) error {
+	if len(destEndpoints) == 0 {
+		return fmt.Errorf("destination endpoints required")
+	}
+	// Destination client
+	dc, err := newClientV3(clientv3.Config{Endpoints: destEndpoints, DialTimeout: 5 * time.Second})
+	if err != nil {
+		return err
+	}
+	defer dc.Close()
+	return makeMirror(ctx, c.Client, dc, opts)
+}
+
+// makeMirror copies keys from src to dest and continues mirroring updates.
+// Semantics mirror etcdctl make-mirror.
+func makeMirror(ctx context.Context, src *clientv3.Client, dest *clientv3.Client, opts config.MakeMirrorOptions) error {
+
+	destPrefix := opts.DestPrefix
+	if opts.NoDestPrefix && len(destPrefix) > 0 {
+		return fmt.Errorf("`--dest-prefix` and `--no-dest-prefix` cannot be set at the same time, choose one")
+	}
+
+	startRev := opts.Rev - 1
+	if startRev < 0 {
+		startRev = 0
+	}
+
+	s := mirror.NewSyncer(src, opts.Prefix, startRev)
+
+	if startRev == 0 {
+		rc, errc := s.SyncBase(ctx)
+
+		if !opts.NoDestPrefix && len(destPrefix) == 0 {
+			destPrefix = opts.Prefix
+		}
+		for r := range rc {
+			for _, kv := range r.Kvs {
+				key := string(kv.Key)
+				if opts.NoDestPrefix {
+					key = strings.TrimPrefix(key, opts.Prefix)
+				} else if destPrefix != "" && opts.Prefix != "" {
+					key = destPrefix + strings.TrimPrefix(key, opts.Prefix)
+				}
+				if _, err := dest.Put(ctx, key, string(kv.Value)); err != nil {
+					return err
+				}
+			}
+		}
+		if err := <-errc; err != nil {
+			return err
+		}
+	}
+	wc := s.SyncUpdates(ctx)
+	for wr := range wc {
+		if wr.CompactRevision != 0 {
+			return rpctypes.ErrCompacted
+		}
+		for _, ev := range wr.Events {
+			key := string(ev.Kv.Key)
+			if opts.NoDestPrefix {
+				key = strings.TrimPrefix(key, opts.Prefix)
+			} else if opts.DestPrefix != "" && opts.Prefix != "" {
+				key = opts.DestPrefix + strings.TrimPrefix(key, opts.Prefix)
+			}
+			switch ev.Type {
+			case mvccpb.PUT:
+				if _, err := dest.Put(ctx, key, string(ev.Kv.Value)); err != nil {
+					return err
+				}
+			case mvccpb.DELETE:
+				if _, err := dest.Delete(ctx, key); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (c integrationClient) MemberAdd(ctx context.Context, _ string, peerAddrs []string) (*clientv3.MemberAddResponse, error) {

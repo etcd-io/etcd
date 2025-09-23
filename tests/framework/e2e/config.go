@@ -43,6 +43,9 @@ type ClusterContext struct {
 	Version ClusterVersion
 	EnvVars map[string]string
 	UseUnix bool
+	// BasePort allows overriding the starting TCP port for the cluster.
+	// If zero, the default EtcdProcessBasePort is used.
+	BasePort int
 }
 
 var experimentalFlags = map[string]struct{}{
