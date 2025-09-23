@@ -242,7 +242,13 @@ func verifyConsistentHashKVAcrossAllMembers(t *testing.T, cc intf.Client, hashKV
 	require.NotEqual(t, 0, resp[0].Hash)
 	t.Logf("One Hash value is %d", resp[0].Hash)
 
-	for i := 1; i < len(resp); i++ {
-		assert.Equal(t, resp[0].Hash, resp[i].Hash)
-	}
+	assert.Eventually(t, func() bool {
+		for i := 1; i < len(resp); i++ {
+			if resp[i].Hash != resp[0].Hash {
+				t.Logf("There is a chance that the physical compaction is not yet completed on the followers: Leader hash=%d, Follower hash=%d", resp[0].Hash, resp[i].Hash)
+				return false
+			}
+		}
+		return true
+	}, 3*time.Second, 100*time.Millisecond)
 }
