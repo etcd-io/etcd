@@ -25,13 +25,13 @@ import (
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/client/v3/mirror"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestMirrorSync(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.Client(0)
@@ -69,9 +69,9 @@ func TestMirrorSync(t *testing.T) {
 }
 
 func TestMirrorSyncBase(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	cluster := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer cluster.Terminate(t)
 
 	cli := cluster.Client(0)

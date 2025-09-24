@@ -27,14 +27,14 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 func TestFailover(t *testing.T) {
 	cases := []struct {
 		name     string
-		testFunc func(*testing.T, *tls.Config, *integration2.Cluster) (*clientv3.Client, error)
+		testFunc func(*testing.T, *tls.Config, *integration.Cluster) (*clientv3.Client, error)
 	}{
 		{
 			name:     "create client before the first server down",
@@ -49,14 +49,14 @@ func TestFailover(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Starting test [%s]", tc.name)
-			integration2.BeforeTest(t)
+			integration.BeforeTest(t)
 
 			// Launch an etcd cluster with 3 members
 			t.Logf("Launching an etcd cluster with 3 members [%s]", tc.name)
-			clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ClientTLS: &integration2.TestTLSInfo})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 			defer clus.Terminate(t)
 
-			cc, err := integration2.TestTLSInfo.ClientConfig()
+			cc, err := integration.TestTLSInfo.ClientConfig()
 			require.NoError(t, err)
 			// Create an etcd client before or after first server down
 			t.Logf("Creating an etcd client [%s]", tc.name)
@@ -75,7 +75,7 @@ func TestFailover(t *testing.T) {
 	}
 }
 
-func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
+func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
 	cli, err := createClient(t, cc, clus)
 	if err != nil {
 		return nil, err
@@ -84,13 +84,13 @@ func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integratio
 	return cli, nil
 }
 
-func createClientAfterServerDown(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
+func createClientAfterServerDown(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
 	clus.Members[0].Close()
 	return createClient(t, cc, clus)
 }
 
-func createClient(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
-	cli, err := integration2.NewClient(t, clientv3.Config{
+func createClient(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
+	cli, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   clus.Endpoints(),
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},

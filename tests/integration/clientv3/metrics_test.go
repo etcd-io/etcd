@@ -34,11 +34,11 @@ import (
 
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestV3ClientMetrics(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	var (
 		addr = "localhost:27989"
@@ -72,7 +72,7 @@ func TestV3ClientMetrics(t *testing.T) {
 
 	url := "unix://" + addr + "/metrics"
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	clientMetrics := grpcprom.NewClientMetrics()
@@ -85,7 +85,7 @@ func TestV3ClientMetrics(t *testing.T) {
 			grpc.WithStreamInterceptor(clientMetrics.StreamClientInterceptor()),
 		},
 	}
-	cli, cerr := integration2.NewClient(t, cfg)
+	cli, cerr := integration.NewClient(t, cfg)
 	require.NoError(t, cerr)
 	defer cli.Close()
 

@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	framework "go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/integration"
 )
 
@@ -31,7 +31,7 @@ const (
 )
 
 var lazyCluster = integration.NewLazyClusterWithConfig(
-	integration2.ClusterConfig{
+	framework.ClusterConfig{
 		Size:                        3,
 		WatchProgressNotifyInterval: 200 * time.Millisecond,
 		DisableStrictReconfigCheck:  true,

@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // MustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
@@ -108,7 +108,7 @@ func IsUnavailable(err error) bool {
 
 // populateDataIntoCluster populates the key-value pairs into cluster and the
 // key will be named by testing.T.Name()-index.
-func populateDataIntoCluster(t *testing.T, cluster *integration2.Cluster, numKeys int, valueSize int) {
+func populateDataIntoCluster(t *testing.T, cluster *integration.Cluster, numKeys int, valueSize int) {
 	ctx := t.Context()
 
 	for i := 0; i < numKeys; i++ {
