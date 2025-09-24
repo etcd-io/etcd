@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [Watch on future revision returns old events or notifications](https://github.com/etcd-io/etcd/pull/20291)
 - Improve [help message for --quota-backend-bytes](https://github.com/etcd-io/etcd/pull/20379)
 - Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20659)
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20711)
 
 ### Dependencies
 
