@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ## v3.5.24 (TBA)
 
+### etcd server
+
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20709)
+
 ---
 
 ## v3.5.23 (2025-09-19)
