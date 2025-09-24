@@ -27,8 +27,12 @@ type demux struct {
 	// activeWatchers & laggingWatchers hold the first revision the watcher still needs (nextRev).
 	activeWatchers  map[*watcher]int64
 	laggingWatchers map[*watcher]int64
-	history         ringBuffer[[]*clientv3.Event]
 	resyncInterval  time.Duration
+	// Range of revisions maintained for demux operations, inclusive. Broader than history as event revision is not contious.
+	// maxRev tracks highest seen revision; minRev sets watcher compaction threshold (updated to evictedRev+1 on history overflow)
+	minRev, maxRev int64
+	// History stores events within [minRev, maxRev].
+	history ringBuffer[[]*clientv3.Event]
 }
 
 func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
@@ -70,8 +74,7 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	latestRev := d.history.PeekLatest()
-	if latestRev == 0 {
+	if d.maxRev == 0 {
 		if startingRev == 0 {
 			d.activeWatchers[w] = 0
 		} else {
@@ -82,10 +85,10 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 
 	// Special case: 0 means “newest”.
 	if startingRev == 0 {
-		startingRev = latestRev + 1
+		startingRev = d.maxRev + 1
 	}
 
-	if startingRev <= latestRev {
+	if startingRev <= d.maxRev {
 		d.laggingWatchers[w] = startingRev
 	} else {
 		d.activeWatchers[w] = startingRev
@@ -102,16 +105,44 @@ func (d *demux) Unregister(w *watcher) {
 	w.Stop()
 }
 
-func (d *demux) Broadcast(resp clientv3.WatchResponse) {
+func (d *demux) Init(minRev int64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.minRev == 0 {
+		// Watch started for empty demux
+		d.minRev = minRev
+		return
+	}
+	if d.maxRev == 0 {
+		// Watch started on initialized demux that never got any event.
+		d.purge()
+		d.minRev = minRev
+		return
+	}
+	if minRev == d.maxRev+1 {
+		// Watch continuing from last revision it observed.
+		return
+	}
+	// Watch opened on revision mismatching dmux last observed revision.
+	d.purge()
+	d.minRev = minRev
+}
+
+func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
 	events := resp.Events
 	if len(events) == 0 {
-		return
+		return nil
 	}
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	err := validateRevisions(events, d.maxRev)
+	if err != nil {
+		return err
+	}
 	d.updateStoreLocked(events)
 	d.broadcastLocked(events)
+	return nil
 }
 
 func (d *demux) updateStoreLocked(events []*clientv3.Event) {
@@ -119,14 +150,21 @@ func (d *demux) updateStoreLocked(events []*clientv3.Event) {
 	for end := 1; end < len(events); end++ {
 		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
 			if end > batchStart {
+				if end+1 == len(events) && d.history.full() {
+					d.minRev = d.history.PeekOldest() + 1
+				}
 				d.history.Append(events[batchStart:end])
 			}
 			batchStart = end
 		}
 	}
 	if batchStart < len(events) {
+		if d.history.full() {
+			d.minRev = d.history.PeekOldest() + 1
+		}
 		d.history.Append(events[batchStart:])
 	}
+	d.maxRev = events[len(events)-1].Kv.ModRevision
 }
 
 func (d *demux) broadcastLocked(events []*clientv3.Event) {
@@ -163,6 +201,12 @@ func (d *demux) broadcastLocked(events []*clientv3.Event) {
 func (d *demux) Purge() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.purge()
+}
+
+func (d *demux) purge() {
+	d.maxRev = 0
+	d.minRev = 0
 	d.history.RebaseHistory()
 	for w := range d.activeWatchers {
 		w.Stop()
@@ -179,27 +223,19 @@ func (d *demux) Purge() {
 func (d *demux) Compact(compactRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.history.RebaseHistory()
-
-	for w, next := range d.activeWatchers {
-		if next != 0 && next <= compactRev {
-			delete(d.activeWatchers, w)
-			d.laggingWatchers[w] = next
-		}
-	}
+	d.purge()
 }
 
 func (d *demux) resyncLaggingWatchers() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	oldestRev := d.history.PeekOldest()
-	if oldestRev == 0 {
+	if d.minRev == 0 {
 		return
 	}
 
 	for w, nextRev := range d.laggingWatchers {
-		if nextRev < oldestRev {
+		if nextRev < d.minRev {
 			w.Compact(nextRev)
 			delete(d.laggingWatchers, w)
 			continue

@@ -23,7 +23,6 @@ import (
 	"time"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -254,16 +253,7 @@ func (c *Cache) watch(rev int64) error {
 			close(applyErr)
 		}()
 
-		watchCh := c.watcher.Watch(
-			c.internalCtx,
-			c.prefix,
-			clientv3.WithPrefix(),
-			clientv3.WithRev(rev),
-			clientv3.WithProgressNotify(),
-			clientv3.WithCreatedNotify(),
-		)
-
-		err := c.watchEvents(watchCh, applyErr, &readyOnce)
+		err := c.watchEvents(rev, applyErr, &readyOnce)
 		c.demux.Unregister(storeW)
 
 		if err != nil {
@@ -294,7 +284,15 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 	}
 }
 
-func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, readyOnce *sync.Once) error {
+func (c *Cache) watchEvents(rev int64, applyErr <-chan error, readyOnce *sync.Once) error {
+	watchCh := c.watcher.Watch(
+		c.internalCtx,
+		c.prefix,
+		clientv3.WithPrefix(),
+		clientv3.WithRev(rev),
+		clientv3.WithProgressNotify(),
+		clientv3.WithCreatedNotify(),
+	)
 	for {
 		select {
 		case <-c.internalCtx.Done():
@@ -303,20 +301,21 @@ func (c *Cache) watchEvents(watchCh clientv3.WatchChan, applyErr <-chan error, r
 			if !ok {
 				return nil
 			}
-			readyOnce.Do(func() { c.ready.Set() })
+			readyOnce.Do(func() {
+				c.demux.Init(rev)
+				c.ready.Set()
+			})
 			if err := resp.Err(); err != nil {
 				c.ready.Reset()
-				if errors.Is(err, rpctypes.ErrCompacted) || resp.CompactRevision > 0 {
-					c.demux.Compact(resp.CompactRevision)
-				} else {
-					c.demux.Purge()
-				}
 				return err
 			}
-			c.demux.Broadcast(resp)
+			err := c.demux.Broadcast(resp)
+			if err != nil {
+				c.ready.Reset()
+				return err
+			}
 		case err := <-applyErr:
 			c.ready.Reset()
-			c.demux.Purge()
 			return err
 		}
 	}
