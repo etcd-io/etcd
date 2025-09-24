@@ -35,7 +35,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/embed"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -154,7 +154,7 @@ func testEmbedEtcdGracefulStop(t *testing.T, secure bool) {
 		clientCfg.TLS, err = testTLSInfo.ClientConfig()
 		require.NoError(t, err)
 	}
-	cli, err := integration2.NewClient(t, clientCfg)
+	cli, err := integration.NewClient(t, clientCfg)
 	require.NoError(t, err)
 	defer cli.Close()
 
@@ -218,7 +218,7 @@ func TestEmbedEtcdAutoCompactionRetentionRetained(t *testing.T) {
 }
 
 func TestEmbedEtcdStopDuringBootstrapping(t *testing.T) {
-	integration2.BeforeTest(t, integration2.WithFailpoint("beforePublishing", `sleep("2s")`))
+	integration.BeforeTest(t, integration.WithFailpoint("beforePublishing", `sleep("2s")`))
 
 	done := make(chan struct{})
 	go func() {

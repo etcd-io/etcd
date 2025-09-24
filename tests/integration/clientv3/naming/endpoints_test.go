@@ -23,13 +23,13 @@ import (
 
 	etcd "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestEndpointManager(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")
@@ -83,9 +83,9 @@ func TestEndpointManager(t *testing.T) {
 // correctly with multiple hosts and correctly receive multiple
 // updates in a single revision.
 func TestEndpointManagerAtomicity(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	c := clus.RandClient()
@@ -118,9 +118,9 @@ func TestEndpointManagerAtomicity(t *testing.T) {
 }
 
 func TestEndpointManagerCRUD(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.RandClient(), "foo")

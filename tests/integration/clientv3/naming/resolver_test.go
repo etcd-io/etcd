@@ -29,7 +29,7 @@ import (
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"go.etcd.io/etcd/client/v3/naming/resolver"
 	"go.etcd.io/etcd/pkg/v3/grpctesting"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
@@ -48,7 +48,7 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 	defer s2.Stop()
 
 	// Create new cluster with endpoint manager with two endpoints
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	em, err := endpoints.NewManager(clus.Client(0), "foo")
@@ -126,7 +126,7 @@ func testEtcdGRPCResolver(t *testing.T, lbPolicy string) {
 
 // TestEtcdGrpcResolverPickFirst mimics scenarios described in grpc_naming.md doc.
 func TestEtcdGrpcResolverPickFirst(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	// Pick first is the default load balancer policy for grpc-go
 	testEtcdGRPCResolver(t, "pick_first")
@@ -134,14 +134,14 @@ func TestEtcdGrpcResolverPickFirst(t *testing.T) {
 
 // TestEtcdGrpcResolverRoundRobin mimics scenarios described in grpc_naming.md doc.
 func TestEtcdGrpcResolverRoundRobin(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	// Round robin is a common alternative for more production oriented scenarios
 	testEtcdGRPCResolver(t, "round_robin")
 }
 
 func TestEtcdEndpointManager(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	s1PayloadBody := []byte{'1'}
 	s1 := grpctesting.NewDummyStubServer(s1PayloadBody)
@@ -155,7 +155,7 @@ func TestEtcdEndpointManager(t *testing.T) {
 	require.NoError(t, err)
 	defer s2.Stop()
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	// Check if any endpoint with the same prefix "foo" will not break the logic with multiple endpoints
