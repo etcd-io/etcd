@@ -16,10 +16,8 @@ package cmd
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -31,6 +29,7 @@ import (
 
 	v3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/report"
+	"go.etcd.io/etcd/pkg/v3/stringutil"
 )
 
 // putCmd represents the put command
@@ -83,7 +82,6 @@ func putFunc(cmd *cobra.Command, _ []string) {
 	}
 	limit := rate.NewLimiter(rate.Limit(putRate), 1)
 	clients := mustCreateClients(totalClients, totalConns)
-	k, v := make([]byte, keySize), string(mustRandBytes(valSize))
 
 	bar = pb.New(putTotal)
 	bar.Start()
@@ -106,12 +104,7 @@ func putFunc(cmd *cobra.Command, _ []string) {
 
 	go func() {
 		for i := 0; i < putTotal; i++ {
-			if seqKeys {
-				binary.PutVarint(k, int64(i%keySpaceSize))
-			} else {
-				binary.PutVarint(k, int64(rand.Intn(keySpaceSize)))
-			}
-			requests <- v3.OpPut(string(k), v)
+			requests <- v3.OpPut(stringutil.RandString(uint(keySize)), stringutil.RandString(uint(valSize)))
 		}
 		close(requests)
 	}()

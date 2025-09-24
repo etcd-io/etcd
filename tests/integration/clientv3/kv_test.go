@@ -35,6 +35,7 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
@@ -217,20 +218,41 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 
 func TestKVRange(t *testing.T) {
 	integration2.BeforeTest(t)
-
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
-
-	kv := clus.RandClient()
-	ctx := t.Context()
+	client := clus.RandClient()
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
-		if _, err := kv.Put(ctx, key, ""); err != nil {
+		if _, err := client.Put(t.Context(), key, ""); err != nil {
 			t.Fatalf("#%d: couldn't put %q (%v)", i, key, err)
 		}
 	}
-	resp, err := kv.Get(ctx, keySet[0])
+	t.Run("Unary", func(t *testing.T) {
+		testKVRange(t, client.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVRange(t, StreamToUnary(client.KV))
+	})
+}
+
+type GetFunc func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error)
+
+func StreamToUnary(kv clientv3.KV) GetFunc {
+	return func(ctx context.Context, key string, opts ...clientv3.OpOption) (*clientv3.GetResponse, error) {
+		stream, err := kv.GetStream(ctx, key, opts...)
+		if err != nil {
+			return nil, err
+		}
+		return clientv3.GetStreamToGetResponse(stream)
+	}
+}
+
+func testKVRange(t *testing.T, get GetFunc) {
+	ctx := t.Context()
+
+	resp, err := get(ctx, "", clientv3.WithPrefix())
 	if err != nil {
 		t.Fatalf("couldn't get key (%v)", err)
 	}
@@ -263,7 +285,7 @@ func TestKVRange(t *testing.T) {
 	for i, tt := range tests {
 		opts := []clientv3.OpOption{clientv3.WithRange(tt.end), clientv3.WithRev(tt.rev)}
 		opts = append(opts, tt.opts...)
-		resp, err := kv.Get(ctx, tt.begin, opts...)
+		resp, err := get(ctx, tt.begin, opts...)
 		if err != nil {
 			t.Fatalf("#%d: couldn't range (%v)", i, err)
 		}
@@ -277,6 +299,7 @@ func TestKVRange(t *testing.T) {
 }
 
 func TestKVGetErrConnClosed(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -284,13 +307,23 @@ func TestKVGetErrConnClosed(t *testing.T) {
 
 	cli := clus.Client(0)
 
-	donec := make(chan struct{})
 	require.NoError(t, cli.Close())
 	clus.TakeClient(0)
 
+	t.Run("Unary", func(t *testing.T) {
+		testKVGetErrConnClosed(t, cli.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVGetErrConnClosed(t, StreamToUnary(cli.KV))
+	})
+}
+
+func testKVGetErrConnClosed(t *testing.T, get GetFunc) {
+	donec := make(chan struct{})
 	go func() {
 		defer close(donec)
-		_, err := cli.Get(t.Context(), "foo")
+		_, err := get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -304,6 +337,7 @@ func TestKVGetErrConnClosed(t *testing.T) {
 }
 
 func TestKVNewAfterClose(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -313,9 +347,19 @@ func TestKVNewAfterClose(t *testing.T) {
 	clus.TakeClient(0)
 	require.NoError(t, cli.Close())
 
+	t.Run("Unary", func(t *testing.T) {
+		testKVNewAfterClose(t, cli.Get)
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVNewAfterClose(t, StreamToUnary(cli.KV))
+	})
+}
+
+func testKVNewAfterClose(t *testing.T, get GetFunc) {
 	donec := make(chan struct{})
 	go func() {
-		_, err := cli.Get(t.Context(), "foo")
+		_, err := get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
@@ -479,12 +523,22 @@ func TestKVGetRetry(t *testing.T) {
 	_, err := kv.Put(ctx, "foo", "bar")
 	require.NoError(t, err)
 
-	clus.Members[fIdx].Stop(t)
+	t.Run("Unary", func(t *testing.T) {
+		testKVGetRetry(t, kv.Get, clus.Members[fIdx])
+	})
+
+	t.Run("Stream", func(t *testing.T) {
+		testKVGetRetry(t, StreamToUnary(kv), clus.Members[fIdx])
+	})
+}
+
+func testKVGetRetry(t *testing.T, get GetFunc, member *integration.Member) {
+	member.Stop(t)
 
 	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(ctx, "foo")
+		gresp, gerr := get(t.Context(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -504,8 +558,8 @@ func TestKVGetRetry(t *testing.T) {
 	}()
 
 	time.Sleep(100 * time.Millisecond)
-	clus.Members[fIdx].Restart(t)
-	clus.Members[fIdx].WaitOK(t)
+	member.Restart(t)
+	member.WaitOK(t)
 
 	select {
 	case <-time.After(20 * time.Second):
@@ -516,6 +570,7 @@ func TestKVGetRetry(t *testing.T) {
 
 // TestKVPutFailGetRetry ensures a get will retry following a failed put.
 func TestKVPutFailGetRetry(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
@@ -556,6 +611,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 // TestKVGetCancel tests that a context cancel on a Get terminates as expected.
 func TestKVGetCancel(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -579,6 +635,7 @@ func TestKVGetCancel(t *testing.T) {
 
 // TestKVGetStoppedServerAndClose ensures closing after a failed Get works.
 func TestKVGetStoppedServerAndClose(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 
 	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
@@ -661,6 +718,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 
 // TestKVLargeRequests tests various client/server side request limits.
 func TestKVLargeRequests(t *testing.T) {
+	// TODO
 	integration2.BeforeTest(t)
 	tests := []struct {
 		// make sure that "MaxCallSendMsgSize" < server-side default send/recv limit
