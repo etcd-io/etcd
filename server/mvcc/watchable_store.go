@@ -354,6 +354,10 @@ func (s *watchableStore) syncWatchers() int {
 	compactionRev := s.store.compactMainRev
 
 	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
+	if minRev < 0 {
+		s.store.lg.Warn("Unexpected negative revision range start", zap.Int64("minRev", minRev))
+		minRev = 0
+	}
 	minBytes, maxBytes := newRevBytes(), newRevBytes()
 	revToBytes(revision{main: minRev}, minBytes)
 	revToBytes(revision{main: curRev + 1}, maxBytes)
