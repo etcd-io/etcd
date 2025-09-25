@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -209,18 +210,11 @@ func TestBroadcast(t *testing.T) {
 
 			if len(tt.followupRevs) > 0 {
 				err := d.Broadcast(respWithEventRevs(tt.followupRevs...))
-
 				if tt.want.shouldError {
-					if err == nil {
-						t.Errorf("expected error for revisions %v after maxRev %d; got nil",
-							tt.followupRevs, tt.initialRevs[len(tt.initialRevs)-1])
-					}
+					require.Error(t, err)
 					return
 				}
-				if err != nil {
-					t.Errorf("unexpected error for valid revisions %v: %v", tt.followupRevs, err)
-					return
-				}
+				require.NoError(t, err)
 			}
 
 			if d.minRev != tt.want.min || d.maxRev != tt.want.max {
