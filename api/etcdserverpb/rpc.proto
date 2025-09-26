@@ -345,7 +345,7 @@ service Auth {
     };
   }
 
-  // UserGrant grants a role to a specified user.
+  // UserGrantRole grants a role to a specified user.
   rpc UserGrantRole(AuthUserGrantRoleRequest) returns (AuthUserGrantRoleResponse) {
       option (google.api.http) = {
         post: "/v3/auth/user/grant"
