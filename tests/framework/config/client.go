@@ -38,6 +38,7 @@ type GetOptions struct {
 	Order        clientv3.SortOrder
 	SortBy       clientv3.SortTarget
 	Timeout      time.Duration
+	KeysOnly     bool
 }
 
 type PutOptions struct {
