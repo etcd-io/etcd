@@ -76,9 +76,7 @@ func watchLatencyFunc(cmd *cobra.Command, _ []string) {
 
 	for i, wch := range wchs {
 		eventTimes[i] = make([]time.Time, watchLPutTotal)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			eventCount := 0
 			for eventCount < watchLPutTotal {
 				resp := <-wch
@@ -88,7 +86,7 @@ func watchLatencyFunc(cmd *cobra.Command, _ []string) {
 					bar.Increment()
 				}
 			}
-		}()
+		})
 	}
 
 	putReport := newReport(cmd.Name() + "-put")
