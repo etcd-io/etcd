@@ -573,7 +573,7 @@ func TestLeaseTimeToLiveLeaseNotFound(t *testing.T) {
 	require.NotNilf(t, lresp, "expected lresp not to be nil")
 	require.NotNilf(t, lresp.ResponseHeader, "expected ResponseHeader not to be nil")
 	require.Equalf(t, lresp.ID, resp.ID, "expected Lease ID %v, but got %v", resp.ID, lresp.ID)
-	require.Equalf(t, lresp.TTL, int64(-1), "expected TTL %v, but got %v", lresp.TTL, lresp.TTL)
+	require.Equalf(t, int64(-1), lresp.TTL, "expected TTL %v, but got %v", int64(-1), lresp.TTL)
 }
 
 func TestLeaseLeases(t *testing.T) {
