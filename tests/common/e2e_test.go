@@ -67,7 +67,8 @@ func e2eClusterTestCases() []testCase {
 		},
 	}
 
-	if minimalE2eEnabled() {
+	// NOTE: First, manually enable the minimal e2e tests to check how much time it saves.
+	if true {
 		return minimalTestCases
 	}
 
