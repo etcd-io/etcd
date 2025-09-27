@@ -37,7 +37,8 @@ func getAuthTokenFromClient(ctx context.Context) string {
 func withClientAuthToken(ctx, ctxWithToken context.Context) context.Context {
 	token := getAuthTokenFromClient(ctxWithToken)
 	if token != "" {
-		ctx = context.WithValue(ctx, rpctypes.TokenFieldNameGRPCKey{}, token)
+		md := metadata.Pairs(rpctypes.TokenFieldNameGRPC, token)
+		return metadata.NewOutgoingContext(ctx, md)
 	}
 	return ctx
 }
