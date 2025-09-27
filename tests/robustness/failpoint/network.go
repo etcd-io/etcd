@@ -139,6 +139,7 @@ func waitTillSnapshot(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+	time.Sleep(1 * time.Second)
 	return nil
 }
 
