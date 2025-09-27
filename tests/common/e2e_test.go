@@ -17,6 +17,10 @@
 package common
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/tests/v3/framework"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -28,49 +32,70 @@ func init() {
 	clusterTestCases = e2eClusterTestCases
 }
 
+const (
+	// minimalE2eEnabledEnvVarName is for reducing e2e test matrix, leading to faster CI runtimes in some cases(e.g., presubmits).
+	// See https://github.com/etcd-io/etcd/issues/18983 for background.
+	minimalE2eEnabledEnvVarName = "E2E_TEST_MINIMAL"
+)
+
+func minimalE2eEnabled() bool {
+	v, ok := os.LookupEnv(minimalE2eEnabledEnvVarName)
+	if !ok {
+		return false
+	}
+	parsed, err := strconv.ParseBool(v)
+	if err != nil {
+		fmt.Printf("Invalid %s value %q: %v\n", minimalE2eEnabledEnvVarName, v, err)
+		return false
+	}
+	return parsed
+}
+
 func e2eClusterTestCases() []testCase {
-	tcs := []testCase{
+	minimalTestCases := []testCase{
 		{
 			name:   "NoTLS",
 			config: config.ClusterConfig{ClusterSize: 1},
 		},
 		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
-		},
-		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+			name:   "PeerTLS and ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS, ClientTLS: config.ManualTLS},
 		},
 	}
 
-	if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
-		tcs = append(tcs, testCase{
-			name: "MinorityLastVersion",
-			config: config.ClusterConfig{
-				ClusterSize: 3,
-				ClusterContext: &e2e.ClusterContext{
-					Version: e2e.MinorityLastVersion,
-				},
-			},
-		}, testCase{
-			name: "QuorumLastVersion",
-			config: config.ClusterConfig{
-				ClusterSize: 3,
-				ClusterContext: &e2e.ClusterContext{
-					Version: e2e.QuorumLastVersion,
-				},
-			},
-		})
+	if minimalE2eEnabled() {
+		return minimalTestCases
 	}
+
+	tcs := append(minimalTestCases,
+		testCase{
+			name:   "PeerAutoTLS and ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS, ClientTLS: config.AutoTLS},
+		},
+	)
+
+	if fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
+		tcs = append(tcs,
+			testCase{
+				name: "MinorityLastVersion",
+				config: config.ClusterConfig{
+					ClusterSize: 3,
+					ClusterContext: &e2e.ClusterContext{
+						Version: e2e.MinorityLastVersion,
+					},
+				},
+			},
+			testCase{
+				name: "QuorumLastVersion",
+				config: config.ClusterConfig{
+					ClusterSize: 3,
+					ClusterContext: &e2e.ClusterContext{
+						Version: e2e.QuorumLastVersion,
+					},
+				},
+			})
+	}
+
 	return tcs
 }
 
