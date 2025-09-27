@@ -3,6 +3,7 @@ version: "2"
 linters:
   default: none
   enable: # please keep this alphabetized
+    - depguard # Implement forbidden dependencies
     - errorlint
     - ineffassign
     - nakedret
@@ -17,6 +18,67 @@ linters:
     - usetesting
     - whitespace
   settings:
+    depguard:
+      rules:
+        api:
+          list-mode: lax
+          files:
+            # Check files inside the api module/directory, but skip the server/etcdserver/api
+            # directory. Note that this is configured this way as depguard doesn't support relative
+            # paths.
+            # > Should always prefix a file glob with **/ as files are matched against absolute
+            # > paths.
+            # Refer to: https://github.com/OpenPeeDeeP/depguard?tab=readme-ov-file#config
+            # Could be simplified if they resolve issue: https://github.com/OpenPeeDeeP/depguard/issues/54
+            - '**/api/**/*.go'
+            - '!**/server/etcdserver/api/**/*.go'
+          deny:
+            - pkg: go.etcd.io/etcd/api/v3$
+            - pkg: go.etcd.io/etcd/pkg/v3
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
+        client:
+          list-mode: lax
+          files:
+            - "**/client/v3/**/*.go"
+          deny:
+            - pkg: go.etcd.io/etcd/pkg/v3
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
+        etcdctl:
+          list-mode: lax
+          files:
+            - "**/etcdctl/**/*.go"
+          deny:
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
+        etcdutl:
+          list-mode: lax
+          files:
+            - "**/etcdutl/**/*.go"
+          deny:
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
+        server:
+          list-mode: lax
+          files:
+            - "**/server/**/*.go"
+          deny:
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
+        pkg:
+          list-mode: lax
+          files:
+            # Check files inside the pkg module/directory, but skip the pkg directories inside
+            # client and the tools/rw-heatmaps modules. Note that this is configured this way as
+            # depguard doesn't support relative paths.
+            - "**/pkg/**/*.go"
+            - "!**/client/pkg/**/*.go"
+            - "!**/tools/rw-heatmaps/pkg/**/*.go"
+          deny:
+            - pkg: go.etcd.io/etcd/api/v3
+            - pkg: go.etcd.io/etcd/v3
+            - pkg: go.etcd.io/tests/v3
     nakedret:
       # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
       max-func-lines: 5
