@@ -19,6 +19,7 @@ package common
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -34,8 +35,12 @@ const (
 	localetcd2 = "127.0.0.1:32379"
 	// used by default when running the client locally
 	defaultetcdLocalDataPath = "/tmp/etcddata%d"
-	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
+	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_LOCAL_DATA_PATH"
 	localReportPath          = "report"
+
+	serverEndpointEnv = "ETCD_ROBUSTNESS_SERVER_ENDPOINTS"
+	dataPathEnv       = "ETCD_ROBUSTNESS_DATA_PATHS"
+	reportPathEnv     = "ETCD_ROBUSTNESS_REPORT_PATH"
 )
 
 func DefaultPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[string]string) {
@@ -63,4 +68,26 @@ func etcdDataPaths(dir string, amount int) map[string]string {
 		dataPaths[fmt.Sprintf("etcd%d", i)] = fmt.Sprintf(dir, i)
 	}
 	return dataPaths
+}
+
+func PathsFromEnv() (hosts []string, reportPath string, dataPaths map[string]string) {
+	if h, ok := os.LookupEnv(serverEndpointEnv); ok {
+		hosts = strings.Split(h, ",")
+	}
+	var data []string
+	if d, ok := os.LookupEnv(dataPathEnv); ok {
+		data = strings.Split(d, ",")
+	}
+
+	if len(hosts) != len(data) {
+		panic("The number of endpoints and data paths must be equal")
+	}
+
+	dataPaths = make(map[string]string)
+	for i := range hosts {
+		dataPaths[hosts[i]] = data[i]
+	}
+	reportPath = os.Getenv(reportPathEnv)
+
+	return hosts, reportPath, dataPaths
 }

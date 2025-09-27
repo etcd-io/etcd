@@ -151,6 +151,33 @@ If you use something other than `kind`, please make sure the images are accessib
 kubectl apply -f ./config/manifests
 ```
 
+#### 4. Run the driver(s)
+
+First, locate your client pod, which should be named with prefix client when you execute `kubectl get pods`.
+
+```bash
+> kubectl get pods
+NAME                      READY   STATUS    RESTARTS   AGE
+client-6b9885f69b-dcndw   1/1     Running   0          10m
+etcd-0                    1/1     Running   0          10m
+etcd-1                    1/1     Running   0          10m
+etcd-2                    1/1     Running   0          10m
+```
+
+With the pod name, you can execute the traffic and validation commands:
+
+```bash
+# Traffic generation
+kubectl exec -it client-6b9885f69b-dcndw -- /opt/antithesis/test/v1/robustness/single_driver_traffic
+
+# Collecting results and compiling the reports
+kubectl exec -it client-6b9885f69b-dcndw -- /opt/antithesis/test/v1/robustness/finally_validation
+```
+
+##### Making changes and retests
+
+If you make changes to the client or server, you will have to rebuild the images and load them into the cluster again. You can use the same commands as in step 2. Once that the images are loaded, you can delete the existing pods to force kubernetes to create new ones with the updated images:
+
 ### Tearing down the cluster
 
 ```bash
