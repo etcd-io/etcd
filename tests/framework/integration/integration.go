@@ -212,6 +212,9 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	if o.CountOnly {
 		clientOpts = append(clientOpts, clientv3.WithCountOnly())
 	}
+	if o.KeysOnly {
+		clientOpts = append(clientOpts, clientv3.WithKeysOnly())
+	}
 	if o.SortBy != clientv3.SortByKey || o.Order != clientv3.SortNone {
 		clientOpts = append(clientOpts, clientv3.WithSort(o.SortBy, o.Order))
 	}
