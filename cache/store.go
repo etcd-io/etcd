@@ -15,6 +15,7 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -92,6 +93,10 @@ func (s *store) getSnapshot(rev int64) (*snapshot, int64, error) {
 		targetSnapshot = snap
 		return false
 	})
+	// If s.history < rev < s.latest.rev serve latest.
+	if targetSnapshot == nil {
+		targetSnapshot = &s.latest
+	}
 
 	return targetSnapshot, s.latest.rev, nil
 }
@@ -110,14 +115,36 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.history.Append(newClonedSnapshot(rev, s.latest.tree))
 }
 
-func (s *store) Apply(events []*clientv3.Event) error {
+func (s *store) Apply(resp clientv3.WatchResponse) error {
+	if resp.Canceled {
+		return errors.New("canceled")
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	if err := validateRevisions(events, s.latest.rev); err != nil {
+	if err := validateRevisions(resp, s.latest.rev); err != nil {
 		return err
 	}
 
+	switch {
+	case resp.IsProgressNotify():
+		s.applyProgressNotifyLocked(resp.Header.Revision)
+		return nil
+	case len(resp.Events) != 0:
+		return s.applyEventsLocked(resp.Events)
+	default:
+		return nil
+	}
+}
+
+func (s *store) applyProgressNotifyLocked(revision int64) {
+	if s.latest.rev == 0 {
+		return
+	}
+	s.latest.rev = revision
+}
+
+func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 	for i := 0; i < len(events); {
 		rev := events[i].Kv.ModRevision
 
@@ -145,7 +172,14 @@ func (s *store) LatestRev() int64 {
 	return s.latest.rev
 }
 
-func validateRevisions(events []*clientv3.Event, latestRev int64) error {
+func validateRevisions(resp clientv3.WatchResponse, latestRev int64) error {
+	if resp.IsProgressNotify() {
+		if resp.Header.Revision < latestRev {
+			return fmt.Errorf("cache: progress notification out of order (progress %d < latest %d)", resp.Header.Revision, latestRev)
+		}
+		return nil
+	}
+	events := resp.Events
 	if len(events) == 0 {
 		return nil
 	}

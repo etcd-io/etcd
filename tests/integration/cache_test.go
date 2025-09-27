@@ -841,6 +841,25 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	reader := getReader()
 
+	var latestRev int64
+	for i := 0; i < 5; i++ {
+		r, err := cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
+		if err != nil {
+			t.Fatalf("advance put: %v", err)
+		}
+		latestRev = r.Header.Revision
+	}
+
+	if err := cli.RequestProgress(ctx); err != nil {
+		t.Fatalf("RequestProgress: %v", err)
+	}
+
+	if c, ok := reader.(*cache.Cache); ok {
+		if err := c.WaitForRevision(ctx, latestRev); err != nil {
+			t.Fatalf("cache didn’t observe progress to rev %d: %v", latestRev, err)
+		}
+	}
+
 	expectedFooA := &mvccpb.KeyValue{
 		Key:            []byte("/foo/a"),
 		Value:          []byte("val"),
@@ -861,21 +880,42 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 			key:          "/foo/a",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "single key within cache prefix at latest/progress rev",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 		{
 			name:         "prefix query within cache prefix",
 			key:          "/foo",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "prefix query within cache prefix at latest/progress rev",
+			key:          "/foo",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 		{
 			name:         "range query within cache prefix",
 			key:          "/foo/a",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "range query within cache prefix at latest/progress rev",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/z"), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 	}
 
