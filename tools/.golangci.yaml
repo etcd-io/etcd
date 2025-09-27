@@ -3,6 +3,7 @@ version: "2"
 linters:
   default: none
   enable: # please keep this alphabetized
+    - depguard # Implement forbidden dependencies
     - errorlint
     - ineffassign
     - nakedret
@@ -17,6 +18,47 @@ linters:
     - usetesting
     - whitespace
   settings:
+    depguard:
+      rules:
+        api:
+          list-mode: lax
+          files:
+          - '**/api/**/*.go'
+          - '!**/server/etcdserver/api/**/*.go'
+          deny:
+          - pkg: go.etcd.io/etcd/api/v3$
+          - pkg: go.etcd.io/etcd/pkg/v3
+          - pkg: go.etcd.io/etcd/v3
+          - pkg: go.etcd.io/tests/v3
+          - pkg: go.etcd.io/v3
+        client:
+          list-mode: lax
+          files:
+            - "**/client/v3/**/*.go"
+          deny:
+          - pkg: go.etcd.io/etcd/pkg/v3
+          - pkg: go.etcd.io/etcd/v3
+          - pkg: go.etcd.io/tests/v3
+        cli-and-server:
+          list-mode: lax
+          files:
+            - "**/etcdctl/**/*.go"
+            - "**/etcdutl/**/*.go"
+            - "**/server/**/*.go"
+            - "!**/tests/antithesis/server/**/*.go"
+          deny:
+          - pkg: go.etcd.io/etcd/v3
+          - pkg: go.etcd.io/tests/v3
+        pkg:
+          list-mode: lax
+          files:
+            - "**/pkg/**/*.go"
+            - "!**/client/pkg/**/*.go"
+            - "!**/tools/rw-heatmaps/pkg/**/*.go"
+          deny:
+          - pkg: go.etcd.io/etcd/api/v3
+          - pkg: go.etcd.io/etcd/v3
+          - pkg: go.etcd.io/tests/v3
     nakedret:
       # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
       max-func-lines: 5
