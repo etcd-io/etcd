@@ -35,3 +35,9 @@ hack/tls-setup/certs
 /tools/benchmark/benchmark
 /out
 /etcd-dump-logs
+
+# SBOM files
+sbom.spdx.json
+sbom.cdx.json
+*.spdx.json
+*.cdx.json
