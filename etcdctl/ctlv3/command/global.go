@@ -71,6 +71,8 @@ type discoveryCfg struct {
 
 var display printer = &simplePrinter{}
 
+var newClientFunc = clientv3.New
+
 func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
 	if err != nil {
@@ -163,7 +165,7 @@ func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	client, err := clientv3.New(*cfg)
+	client, err := newClientFunc(*cfg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, err)
 	}
