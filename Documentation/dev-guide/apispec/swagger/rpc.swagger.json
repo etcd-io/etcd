@@ -495,7 +495,7 @@
     },
     "/v3/auth/user/grant": {
       "post": {
-        "summary": "UserGrant grants a role to a specified user.",
+        "summary": "UserGrantRole grants a role to a specified user.",
         "operationId": "Auth_UserGrantRole",
         "responses": {
           "200": {
