@@ -254,7 +254,7 @@ func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 	}
 	if c != nil {
 		w.callOpts = c.callOpts
-		w.lg = c.lg
+		w.lg = c.GetLogger()
 	}
 	return w
 }
