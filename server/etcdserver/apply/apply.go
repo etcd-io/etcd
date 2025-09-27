@@ -25,7 +25,9 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
+	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
@@ -38,11 +40,64 @@ import (
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
+	"go.etcd.io/raft/v3/raftpb"
 )
 
-const (
-	v3Version = "v3"
-)
+func Apply(lg *zap.Logger, e *raftpb.Entry, uberApply UberApplier, w wait.Wait, shouldApplyV3 membership.ShouldApplyV3) (ar *Result, id uint64) {
+	var raftReq pb.InternalRaftRequest
+	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
+		var r pb.Request
+		rp := &r
+		pbutil.MustUnmarshal(rp, e.Data)
+		lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
+		raftReq = v2ToV3Request(lg, (*RequestV2)(rp))
+	}
+	lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
+
+	if raftReq.V2 != nil {
+		req := (*RequestV2)(raftReq.V2)
+		raftReq = v2ToV3Request(lg, req)
+	}
+
+	id = raftReq.ID
+	if id == 0 {
+		if raftReq.Header == nil {
+			lg.Panic("applyEntryNormal, could not find a header")
+		}
+		id = raftReq.Header.ID
+	}
+
+	needResult := w.IsRegistered(id)
+	if needResult || !noSideEffect(&raftReq) {
+		if !needResult && raftReq.Txn != nil {
+			removeNeedlessRangeReqs(raftReq.Txn)
+		}
+		return uberApply.Apply(&raftReq, shouldApplyV3), id
+	}
+	return nil, id
+}
+
+func noSideEffect(r *pb.InternalRaftRequest) bool {
+	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
+}
+
+func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
+	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
+		j := 0
+		for i := 0; i < len(ops); i++ {
+			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
+				continue
+			}
+			ops[j] = ops[i]
+			j++
+		}
+
+		return ops[:j]
+	}
+
+	txn.Success = f(txn.Success)
+	txn.Failure = f(txn.Failure)
+}
 
 // RaftStatusGetter represents etcd server and Raft progress.
 type RaftStatusGetter interface {
