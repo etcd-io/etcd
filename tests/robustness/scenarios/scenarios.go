@@ -261,6 +261,7 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithGoFailEnabled(true),
 		),
 	})
+
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue18089",
 		Profile:   traffic.LowTraffic.WithCompactionPeriod(100 * time.Millisecond), // Use frequent compaction for high reproduce rate
@@ -271,6 +272,7 @@ func Regression(t *testing.T) []TestScenario {
 			e2e.WithGoFailEnabled(true),
 		),
 	})
+
 	if v.Compare(version.V3_5) >= 0 {
 		opts := []e2e.EPClusterOption{
 			e2e.WithSnapshotCount(100),
@@ -280,6 +282,7 @@ func Regression(t *testing.T) []TestScenario {
 		if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
 			opts = append(opts, e2e.WithSnapshotCatchUpEntries(100))
 		}
+
 		scenarios = append(scenarios, TestScenario{
 			Name:      "Issue15271",
 			Failpoint: failpoint.BlackholeUntilSnapshot,
@@ -288,5 +291,22 @@ func Regression(t *testing.T) []TestScenario {
 			Cluster:   *e2e.NewConfig(opts...),
 		})
 	}
+
+	scenarios = append(scenarios, TestScenario{
+		Name:      "issue20693",
+		Profile:   traffic.HighTrafficProfile.WithoutCompaction().WithBackgroundWatchConfigInterval(10 * time.Millisecond).WithBackgroundWatchConfigRevisionOffset(-10),
+		Failpoint: failpoint.RaftAfterSaveSnapPanic,
+		Traffic:   traffic.Kubernetes,
+		Cluster: *e2e.NewConfig(
+			e2e.WithClusterSize(3),
+			e2e.WithCompactionBatchLimit(10),
+			e2e.WithSnapshotCount(50),
+			e2e.WithSnapshotCatchUpEntries(100),
+			e2e.WithGoFailEnabled(true),
+			e2e.WithPeerProxy(true),
+			e2e.WithIsPeerTLS(true),
+		),
+	})
+
 	return scenarios
 }
