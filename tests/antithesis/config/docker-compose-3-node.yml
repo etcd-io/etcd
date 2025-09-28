@@ -9,9 +9,9 @@ services:
     group_add:
       - '${GROUP_ID:-root}'
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}2:/var/etcddata2
       - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report
     command:
       - /bin/sh
@@ -45,7 +45,7 @@ services:
     ports:
       - 12379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}0:/var/etcd/data
 
   etcd1:
     image: 'etcd-server:${IMAGE_TAG:-latest}'
@@ -72,7 +72,7 @@ services:
     ports:
       - 22379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}1:/var/etcd/data
 
   etcd2:
     image: 'etcd-server:${IMAGE_TAG:-latest}'
@@ -99,13 +99,17 @@ services:
     ports:
       - 32379:2379
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcd/data
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}2:/var/etcd/data
 
   client:
     image: 'etcd-client:${IMAGE_TAG:-latest}'
     container_name: client
     entrypoint: ["/opt/antithesis/entrypoint/entrypoint"]
     user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    environment:
+      ETCD_ROBUSTNESS_ENDPOINTS: "etcd0:2379,etcd1:2379,etcd2:2379"
+      ETCD_ROBUSTNESS_DATA_PATHS: "/var/etcddata0,/var/etcddata1,/var/etcddata2"
+      ETCD_ROBUSTNESS_REPORT_PATH: "/var/report"
     depends_on:
       etcd0:
         condition: service_started
@@ -114,7 +118,7 @@ services:
       etcd2:
         condition: service_started
     volumes:
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}0:/var/etcddata0
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}1:/var/etcddata1
-      - ${ETCD_ROBUSTNESS_DATA_PATH:-/tmp/etcddata}2:/var/etcddata2
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}0:/var/etcddata0
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}1:/var/etcddata1
+      - ${ETCD_ROBUSTNESS_PATH_PREFIX:-/tmp/etcddata}2:/var/etcddata2
       - ${ETCD_ROBUSTNESS_REPORT_PATH:-/tmp/etcdreport}:/var/report

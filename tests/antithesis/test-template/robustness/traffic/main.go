@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"math/rand/v2"
 	"os"
 	"slices"
@@ -55,19 +54,10 @@ var (
 		traffic.EtcdPutDeleteLease,
 		traffic.Kubernetes,
 	}
-	NodeCount = "3"
 )
 
 func main() {
-	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
-	flag.Parse()
-
-	cfg := common.MakeConfig(NodeCount)
-
-	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
-	if *local {
-		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
-	}
+	hosts, dataPaths, reportPath := common.GetPaths()
 
 	ctx := context.Background()
 	baseTime := time.Now()
@@ -80,7 +70,7 @@ func main() {
 	choice := rand.IntN(len(traffics))
 	tf := traffics[choice]
 	lg.Info("Traffic", zap.String("Type", trafficNames[choice]))
-	r := report.TestReport{Logger: lg, ServersDataPath: etcdetcdDataPaths, Traffic: &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()}}
+	r := report.TestReport{Logger: lg, ServersDataPath: dataPaths, Traffic: &report.TrafficDetail{ExpectUniqueRevision: tf.ExpectUniqueRevision()}}
 	defer func() {
 		if err = r.Report(reportPath); err != nil {
 			lg.Error("Failed to save traffic generation report", zap.Error(err))
