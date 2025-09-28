@@ -25,7 +25,7 @@ import (
 	testpb "google.golang.org/grpc/interop/grpc_testing"
 )
 
-// StubServer is borrowed from the interal package of grpc-go.
+// StubServer is borrowed from the internal package of grpc-go.
 // See https://github.com/grpc/grpc-go/blob/master/internal/stubserver/stubserver.go
 // Since it cannot be imported directly, we have to copy and paste it here,
 // and useless code for our testing is removed.

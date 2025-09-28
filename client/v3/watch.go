@@ -896,7 +896,7 @@ func (w *watchGRPCStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	w.resuming = resuming
 	w.substreams = make(map[int64]*watcherStream)
 
-	// connect to grpc stream while accepting watcher cancelation
+	// connect to grpc stream while accepting watcher cancellation
 	stopc := make(chan struct{})
 	donec := w.waitCancelSubstreams(stopc)
 	wc, err := w.openWatchClient()

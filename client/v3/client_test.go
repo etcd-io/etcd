@@ -353,7 +353,7 @@ func TestNewWithOnlyJWT(t *testing.T) {
 	}
 
 	if tok, ok := meta[rpctypes.TokenFieldNameGRPC]; !ok {
-		t.Error("Token was not successfuly set in the auth bundle")
+		t.Error("Token was not successfully set in the auth bundle")
 	} else if tok != "foo" {
 		t.Errorf("Incorrect token set in auth bundle, got '%s', expected 'foo'", tok)
 	}

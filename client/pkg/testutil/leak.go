@@ -112,7 +112,7 @@ func RegisterLeakDetection(t TB) {
 // It will detect common goroutine leaks, retrying in case there are goroutines
 // not synchronously torn down, and fail the test if any goroutines are stuck.
 func afterTest(t TB) {
-	// If test-failed the leaked goroutines list is hidding the real
+	// If the test fails, the leaked goroutines list may hide the real
 	// source of problem.
 	if !t.Failed() {
 		if err := CheckAfterTest(1 * time.Second); err != nil {
