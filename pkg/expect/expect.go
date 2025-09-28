@@ -198,7 +198,7 @@ func (ep *ExpectProcess) ExpectFunc(ctx context.Context, f func(string) bool) (s
 	}
 
 	select {
-	// NOTE: we wait readCloseCh for ep.read() to complete draining the log before acquring the lock.
+	// NOTE: we wait readCloseCh for ep.read() to complete draining the log before acquiring the lock.
 	case <-ep.readCloseCh:
 	case <-ctx.Done():
 		return "", fmt.Errorf("context done before to found matching log")

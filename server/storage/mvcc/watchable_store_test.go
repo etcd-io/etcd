@@ -613,7 +613,7 @@ func testWatchRestore(t *testing.T, delayBeforeRestore, delayAfterRestore time.D
 			},
 		},
 		{
-			name:          "revsion before first write",
+			name:          "revision before first write",
 			startRevision: 1,
 			wantEvents: []mvccpb.Event{
 				{Type: mvccpb.PUT, Kv: &mvccpb.KeyValue{Key: testKey, Value: testValue, CreateRevision: 2, ModRevision: 2, Version: 1}},
