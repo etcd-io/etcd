@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package raft
 
 import (
 	"bytes"
@@ -67,7 +67,7 @@ func TestNewRaftLogger(t *testing.T) {
 	if !bytes.Contains(data, []byte("etcd-logutil-2")) {
 		t.Fatalf("can't find data in log %q", string(data))
 	}
-	if !bytes.Contains(data, []byte("zap_raft_test.go:")) {
+	if !bytes.Contains(data, []byte("raft/logger_test.go:")) {
 		t.Fatalf("unexpected caller; %q", string(data))
 	}
 }

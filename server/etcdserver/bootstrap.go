@@ -41,6 +41,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	servererrors "go.etcd.io/etcd/server/v3/etcdserver/errors"
+	serverraft "go.etcd.io/etcd/server/v3/etcdserver/raft"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -493,7 +494,7 @@ func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluste
 	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
-		config:    raftConfig(cfg, uint64(member.ID), s),
+		config:    serverraft.NewConfig(cfg, uint64(member.ID), s),
 		peers:     peers,
 		storage:   s,
 	}
@@ -504,45 +505,9 @@ func bootstrapRaftFromWAL(cfg config.ServerConfig, bwal *bootstrappedWAL) *boots
 	return &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
-		config:    raftConfig(cfg, uint64(bwal.meta.nodeID), s),
+		config:    serverraft.NewConfig(cfg, uint64(bwal.meta.nodeID), s),
 		storage:   s,
 	}
-}
-
-func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
-	return &raft.Config{
-		ID:              id,
-		ElectionTick:    cfg.ElectionTicks,
-		HeartbeatTick:   1,
-		Storage:         s,
-		MaxSizePerMsg:   maxSizePerMsg,
-		MaxInflightMsgs: maxInflightMsgs,
-		CheckQuorum:     true,
-		PreVote:         cfg.PreVote,
-		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
-	}
-}
-
-func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL, cl *membership.RaftCluster) *raftNode {
-	var n raft.Node
-	if len(b.peers) == 0 {
-		n = raft.RestartNode(b.config)
-	} else {
-		n = raft.StartNode(b.config, b.peers)
-	}
-	raftStatusMu.Lock()
-	raftStatus = n.Status
-	raftStatusMu.Unlock()
-	return newRaftNode(
-		raftNodeConfig{
-			lg:          b.lg,
-			isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
-			Node:        n,
-			heartbeat:   b.heartbeat,
-			raftStorage: b.storage,
-			storage:     serverstorage.NewStorage(b.lg, wal, ss),
-		},
-	)
 }
 
 func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot, ci cindex.ConsistentIndexer) *bootstrappedWAL {

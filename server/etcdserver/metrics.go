@@ -26,24 +26,6 @@ import (
 )
 
 var (
-	hasLeader = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "has_leader",
-		Help:      "Whether or not a leader exists. 1 is existence, 0 is not.",
-	})
-	isLeader = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "is_leader",
-		Help:      "Whether or not this member is a leader. 1 if is, 0 otherwise.",
-	})
-	leaderChanges = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "leader_changes_seen_total",
-		Help:      "The number of leader changes seen.",
-	})
 	learnerPromoteFailed = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "etcd",
@@ -59,23 +41,11 @@ var (
 		Name:      "learner_promote_successes",
 		Help:      "The total number of successful learner promotions while this member is leader.",
 	})
-	heartbeatSendFailures = prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "heartbeat_send_failures_total",
-		Help:      "The total number of leader heartbeat send failures (likely overloaded from slow disk).",
-	})
 	applySnapshotInProgress = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
 		Subsystem: "server",
 		Name:      "snapshot_apply_in_progress_total",
 		Help:      "1 if the server is applying the incoming snapshot. 0 if none.",
-	})
-	proposalsCommitted = prometheus.NewGauge(prometheus.GaugeOpts{
-		Namespace: "etcd",
-		Subsystem: "server",
-		Name:      "proposals_committed_total",
-		Help:      "The total number of consensus proposals committed.",
 	})
 	proposalsApplied = prometheus.NewGauge(prometheus.GaugeOpts{
 		Namespace: "etcd",
@@ -162,20 +132,13 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(hasLeader)
-	prometheus.MustRegister(isLeader)
-	prometheus.MustRegister(leaderChanges)
-	prometheus.MustRegister(heartbeatSendFailures)
 	prometheus.MustRegister(applySnapshotInProgress)
-	prometheus.MustRegister(proposalsCommitted)
 	prometheus.MustRegister(proposalsApplied)
 	prometheus.MustRegister(proposalsPending)
 	prometheus.MustRegister(proposalsFailed)
 	prometheus.MustRegister(slowReadIndex)
 	prometheus.MustRegister(readIndexFailed)
 	prometheus.MustRegister(leaseExpired)
-	prometheus.MustRegister(currentVersion)
-	prometheus.MustRegister(currentGoVersion)
 	prometheus.MustRegister(serverID)
 	prometheus.MustRegister(serverFeatureEnabled)
 	prometheus.MustRegister(learnerPromoteSucceed)

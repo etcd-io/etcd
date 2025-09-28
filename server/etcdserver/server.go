@@ -62,6 +62,7 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	serverraft "go.etcd.io/etcd/server/v3/etcdserver/raft"
 	serverversion "go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
@@ -92,10 +93,6 @@ const (
 	HealthInterval = 5 * time.Second
 
 	purgeFileInterval = 30 * time.Second
-
-	// max number of in-flight snapshot messages etcdserver allows to have
-	// This number is more than enough for most clusters with 5 machines.
-	maxInFlightMsgSnap = 16
 
 	releaseDelayAfterSnapshot = 30 * time.Second
 
@@ -215,7 +212,7 @@ type EtcdServer struct {
 	lead              atomic.Uint64
 
 	consistIndex cindex.ConsistentIndexer // consistIndex is used to get/set/save consistentIndex
-	r            raftNode                 // uses 64-bit atomics; keep 64-bit aligned.
+	r            serverraft.Node          // uses 64-bit atomics; keep 64-bit aligned.
 
 	readych chan struct{}
 	Cfg     config.ServerConfig
@@ -326,7 +323,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		errorc:                make(chan error, 1),
 		v2store:               b.storage.st,
 		snapshotter:           b.ss,
-		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
+		r:                     *serverraft.StartNode(b.raft.lg, b.raft.heartbeat, b.raft.peers, b.raft.config, b.raft.storage, b.ss, b.storage.wal.w, b.cluster.cl),
 		memberID:              b.cluster.nodeID,
 		attributes:            membership.Attributes{Name: cfg.Name, ClientURLs: cfg.ClientURLs.StringSlice()},
 		cluster:               b.cluster.cl,
@@ -444,7 +441,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			tr.AddPeer(m.ID, m.PeerURLs)
 		}
 	}
-	srv.r.transport = tr
+	srv.r.Transport = tr
 
 	return srv, nil
 }
@@ -484,7 +481,7 @@ func (s *EtcdServer) adjustTicks() {
 			zap.Int("election-ticks", s.Cfg.ElectionTicks),
 			zap.String("election-timeout", tickToDur(s.Cfg.ElectionTicks, s.Cfg.TickMs)),
 		)
-		s.r.advanceTicks(ticks)
+		s.r.AdvanceTicks(ticks)
 		return
 	}
 
@@ -509,7 +506,7 @@ func (s *EtcdServer) adjustTicks() {
 			return
 		}
 
-		peerN := s.r.transport.ActivePeers()
+		peerN := s.r.Transport.ActivePeers()
 		if peerN > 1 {
 			// multi-node received peer connection reports
 			// adjust ticks, in case slow leader message receive
@@ -525,7 +522,7 @@ func (s *EtcdServer) adjustTicks() {
 				zap.Int("active-remote-members", peerN),
 			)
 
-			s.r.advanceTicks(ticks)
+			s.r.AdvanceTicks(ticks)
 			return
 		}
 	}
@@ -654,7 +651,7 @@ func (s *EtcdServer) LeaseHandler() http.Handler {
 	return leasehttp.NewHandler(s.lessor, s.ApplyWait)
 }
 
-func (s *EtcdServer) RaftHandler() http.Handler { return s.r.transport.Handler() }
+func (s *EtcdServer) RaftHandler() http.Handler { return s.r.Transport.Handler() }
 
 type ServerPeerV2 interface {
 	ServerPeer
@@ -750,20 +747,10 @@ type etcdProgress struct {
 	appliedi            uint64
 }
 
-// raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
-// and helps decouple state machine logic from Raft algorithms.
-// TODO: add a state machine interface to toApply the commit entries and do snapshot/recover
-type raftReadyHandler struct {
-	getLead              func() (lead uint64)
-	updateLead           func(lead uint64)
-	updateLeadership     func(newLeader bool)
-	updateCommittedIndex func(uint64)
-}
-
 func (s *EtcdServer) run() {
 	lg := s.Logger()
 
-	sn, err := s.r.raftStorage.Snapshot()
+	sn, err := s.r.RaftStorage.Snapshot()
 	if err != nil {
 		lg.Panic("failed to get snapshot from Raft storage", zap.Error(err))
 	}
@@ -771,10 +758,10 @@ func (s *EtcdServer) run() {
 	// asynchronously accept toApply packets, dispatch progress in-order
 	sched := schedule.NewFIFOScheduler(lg)
 
-	rh := &raftReadyHandler{
-		getLead:    func() (lead uint64) { return s.getLead() },
-		updateLead: func(lead uint64) { s.setLead(lead) },
-		updateLeadership: func(newLeader bool) {
+	rh := &serverraft.ReadyHandler{
+		GetLead:    func() (lead uint64) { return s.getLead() },
+		UpdateLead: func(lead uint64) { s.setLead(lead) },
+		UpdateLeadership: func(newLeader bool) {
 			if !s.isLeader() {
 				if s.lessor != nil {
 					s.lessor.Demote()
@@ -802,14 +789,14 @@ func (s *EtcdServer) run() {
 				s.stats.BecomeLeader()
 			}
 		},
-		updateCommittedIndex: func(ci uint64) {
+		UpdateCommittedIndex: func(ci uint64) {
 			cci := s.getCommittedIndex()
 			if ci > cci {
 				s.setCommittedIndex(ci)
 			}
 		},
 	}
-	s.r.start(rh)
+	s.r.Start(rh)
 
 	ep := etcdProgress{
 		confState:           sn.Metadata.ConfState,
@@ -831,7 +818,7 @@ func (s *EtcdServer) run() {
 
 		// must stop raft after scheduler-- etcdserver can leak rafthttp pipelines
 		// by adding a peer after raft stops the transport
-		s.r.stop()
+		s.r.Stop()
 
 		s.Cleanup()
 
@@ -845,7 +832,7 @@ func (s *EtcdServer) run() {
 
 	for {
 		select {
-		case ap := <-s.r.apply():
+		case ap := <-s.r.Apply():
 			f := schedule.NewJob("server_applyAll", func(context.Context) { s.applyAll(&ep, &ap) })
 			sched.Schedule(f)
 		case leases := <-expiredLeaseC:
@@ -911,7 +898,7 @@ func (s *EtcdServer) revokeExpiredLeases(leases []*lease.Lease) {
 // heartbeat message (ticks). It returns false if no heartbeat has been
 // received within 3 * tickMs.
 func (s *EtcdServer) isActive() bool {
-	latestTickTs := s.r.getLatestTickTs()
+	latestTickTs := s.r.GetLatestTickTs()
 	threshold := 3 * time.Duration(s.Cfg.TickMs) * time.Millisecond
 	return latestTickTs.Add(threshold).After(time.Now())
 }
@@ -922,7 +909,7 @@ func (s *EtcdServer) ensureLeadership() bool {
 
 	if s.isActive() {
 		lg.Debug("The member is active, skip checking leadership",
-			zap.Time("latestTickTs", s.r.getLatestTickTs()),
+			zap.Time("latestTickTs", s.r.GetLatestTickTs()),
 			zap.Time("now", time.Now()))
 		return true
 	}
@@ -974,7 +961,7 @@ func (s *EtcdServer) Defragment() error {
 	return s.be.Defrag()
 }
 
-func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
+func (s *EtcdServer) applyAll(ep *etcdProgress, apply *serverraft.ToApply) {
 	s.applySnapshot(ep, apply)
 	s.applyEntries(ep, apply)
 	backend.VerifyBackendConsistency(s.Backend(), s.Logger(), true, schema.AllBuckets...)
@@ -985,20 +972,20 @@ func (s *EtcdServer) applyAll(ep *etcdProgress, apply *toApply) {
 	// wait for the raft routine to finish the disk writes before triggering a
 	// snapshot. or applied index might be greater than the last index in raft
 	// storage, since the raft routine might be slower than toApply routine.
-	<-apply.notifyc
+	<-apply.Notifyc
 
 	s.snapshotIfNeededAndCompactRaftLog(ep)
 	select {
 	// snapshot requested via send()
-	case m := <-s.r.msgSnapC:
+	case m := <-s.r.MsgSnapC:
 		merged := s.createMergedSnapshotMessage(m, ep.appliedt, ep.appliedi, ep.confState)
 		s.sendMergedSnap(merged)
 	default:
 	}
 }
 
-func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
-	if raft.IsEmptySnap(toApply.snapshot) {
+func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *serverraft.ToApply) {
+	if raft.IsEmptySnap(toApply.Snapshot) {
 		return
 	}
 	applySnapshotInProgress.Inc()
@@ -1008,32 +995,32 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		"applying snapshot",
 		zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 		zap.Uint64("current-applied-index", ep.appliedi),
-		zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
-		zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
+		zap.Uint64("incoming-leader-snapshot-index", toApply.Snapshot.Metadata.Index),
+		zap.Uint64("incoming-leader-snapshot-term", toApply.Snapshot.Metadata.Term),
 	)
 	defer func() {
 		lg.Info(
 			"applied snapshot",
 			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", toApply.Snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", toApply.Snapshot.Metadata.Term),
 		)
 		applySnapshotInProgress.Dec()
 	}()
 
-	if toApply.snapshot.Metadata.Index <= ep.appliedi {
+	if toApply.Snapshot.Metadata.Index <= ep.appliedi {
 		lg.Panic(
 			"unexpected leader snapshot from outdated index",
 			zap.Uint64("current-snapshot-index", ep.diskSnapshotIndex),
 			zap.Uint64("current-applied-index", ep.appliedi),
-			zap.Uint64("incoming-leader-snapshot-index", toApply.snapshot.Metadata.Index),
-			zap.Uint64("incoming-leader-snapshot-term", toApply.snapshot.Metadata.Term),
+			zap.Uint64("incoming-leader-snapshot-index", toApply.Snapshot.Metadata.Index),
+			zap.Uint64("incoming-leader-snapshot-term", toApply.Snapshot.Metadata.Term),
 		)
 	}
 
 	// wait for raftNode to persist snapshot onto the disk
-	<-toApply.notifyc
+	<-toApply.Notifyc
 
 	bemuUnlocked := false
 	s.bemu.Lock()
@@ -1044,7 +1031,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	}()
 
 	// gofail: var applyBeforeOpenSnapshot struct{}
-	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.snapshot, s.beHooks)
+	newbe, err := serverstorage.OpenSnapshotBackend(s.Cfg, s.snapshotter, toApply.Snapshot, s.beHooks)
 	if err != nil {
 		lg.Panic("failed to open snapshot backend", zap.Error(err))
 	}
@@ -1057,7 +1044,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	// Eventually the new consistent_index value coming from snapshot is overwritten
 	// by the old value.
 	s.consistIndex.SetBackend(newbe)
-	verifySnapshotIndex(toApply.snapshot, s.consistIndex.ConsistentIndex())
+	verifySnapshotIndex(toApply.Snapshot, s.consistIndex.ConsistentIndex())
 
 	// always recover lessor before kv. When we recover the mvcc.KV it will reattach keys to its leases.
 	// If we recover mvcc.KV first, it will attach the keys to the wrong lessor before it recovers.
@@ -1114,7 +1101,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	}
 
 	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
+	if err := s.v2store.Recovery(toApply.Snapshot.Data); err != nil {
 		lg.Panic("failed to restore v2 store", zap.Error(err))
 	}
 
@@ -1134,7 +1121,7 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 	lg.Info("removing old peers from network")
 
 	// recover raft transport
-	s.r.transport.RemoveAllPeers()
+	s.r.Transport.RemoveAllPeers()
 
 	lg.Info("removed old peers from network")
 	lg.Info("adding peers from new cluster configuration")
@@ -1143,16 +1130,16 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 		if m.ID == s.MemberID() {
 			continue
 		}
-		s.r.transport.AddPeer(m.ID, m.PeerURLs)
+		s.r.Transport.AddPeer(m.ID, m.PeerURLs)
 	}
 
 	lg.Info("added peers from new cluster configuration")
 
-	ep.appliedt = toApply.snapshot.Metadata.Term
-	ep.appliedi = toApply.snapshot.Metadata.Index
+	ep.appliedt = toApply.Snapshot.Metadata.Term
+	ep.appliedi = toApply.Snapshot.Metadata.Index
 	ep.diskSnapshotIndex = ep.appliedi
 	ep.memorySnapshotIndex = ep.appliedi
-	ep.confState = toApply.snapshot.Metadata.ConfState
+	ep.confState = toApply.Snapshot.Metadata.ConfState
 
 	// As backends and implementations like alarmsStore changed, we need
 	// to re-bootstrap Appliers.
@@ -1198,11 +1185,11 @@ func verifyConsistentIndexIsLatest(snapshot raftpb.Snapshot, cindex uint64) {
 	})
 }
 
-func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
-	if len(apply.entries) == 0 {
+func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *serverraft.ToApply) {
+	if len(apply.Entries) == 0 {
 		return
 	}
-	firsti := apply.entries[0].Index
+	firsti := apply.Entries[0].Index
 	if firsti > ep.appliedi+1 {
 		lg := s.Logger()
 		lg.Panic(
@@ -1212,14 +1199,14 @@ func (s *EtcdServer) applyEntries(ep *etcdProgress, apply *toApply) {
 		)
 	}
 	var ents []raftpb.Entry
-	if ep.appliedi+1-firsti < uint64(len(apply.entries)) {
-		ents = apply.entries[ep.appliedi+1-firsti:]
+	if ep.appliedi+1-firsti < uint64(len(apply.Entries)) {
+		ents = apply.Entries[ep.appliedi+1-firsti:]
 	}
 	if len(ents) == 0 {
 		return
 	}
 	var shouldstop bool
-	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.raftAdvancedC); shouldstop {
+	if ep.appliedt, ep.appliedi, shouldstop = s.apply(ents, &ep.confState, apply.RaftAdvancedC); shouldstop {
 		go s.stopWithDelay(10*100*time.Millisecond, fmt.Errorf("the member has been permanently removed from the cluster"))
 	}
 }
@@ -1314,7 +1301,7 @@ func (s *EtcdServer) TryTransferLeadershipOnShutdown() error {
 		return nil
 	}
 
-	transferee, ok := longestConnected(s.r.transport, s.cluster.VotingMemberIDs())
+	transferee, ok := longestConnected(s.r.Transport, s.cluster.VotingMemberIDs())
 	if !ok {
 		return errors.ErrUnhealthy
 	}
@@ -1440,7 +1427,7 @@ func (s *EtcdServer) mayAddMember(memb membership.Member) error {
 		return errors.ErrNotEnoughStartedMembers
 	}
 
-	if !isConnectedFullySince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberID(), s.cluster.VotingMembers()) {
+	if !isConnectedFullySince(s.r.Transport, time.Now().Add(-HealthInterval), s.MemberID(), s.cluster.VotingMembers()) {
 		lg.Warn(
 			"rejecting member add request; local member has not been connected to all peers, reconfigure breaks active quorum",
 			zap.String("local-member-id", s.MemberID().String()),
@@ -1644,13 +1631,13 @@ func (s *EtcdServer) mayRemoveMember(id types.ID) error {
 	}
 
 	// downed member is safe to remove since it's not part of the active quorum
-	if t := s.r.transport.ActiveSince(id); id != s.MemberID() && t.IsZero() {
+	if t := s.r.Transport.ActiveSince(id); id != s.MemberID() && t.IsZero() {
 		return nil
 	}
 
 	// protect quorum if some members are down
 	m := s.cluster.VotingMembers()
-	active := numConnectedSince(s.r.transport, time.Now().Add(-HealthInterval), s.MemberID(), m)
+	active := numConnectedSince(s.r.Transport, time.Now().Add(-HealthInterval), s.MemberID(), m)
 	if (active - 1) < 1+((len(m)-1)/2) {
 		lg.Warn(
 			"rejecting member remove request; local member has not been connected to all peers, reconfigure breaks active quorum",
@@ -1862,7 +1849,7 @@ func (s *EtcdServer) sendMergedSnap(merged snap.Message) {
 	}
 
 	now := time.Now()
-	s.r.transport.SendSnapshot(merged)
+	s.r.Transport.SendSnapshot(merged)
 	lg.Info("sending merged snapshot", fields...)
 
 	s.GoAttach(func() {
@@ -2097,7 +2084,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 			s.cluster.AddMember(&confChangeContext.Member, shouldApplyV3)
 
 			if confChangeContext.Member.ID != s.MemberID() {
-				s.r.transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
+				s.r.Transport.AddPeer(confChangeContext.Member.ID, confChangeContext.PeerURLs)
 			}
 		}
 
@@ -2107,7 +2094,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		if id == s.MemberID() {
 			return true, nil
 		}
-		s.r.transport.RemovePeer(id)
+		s.r.Transport.RemovePeer(id)
 
 	case raftpb.ConfChangeUpdateNode:
 		m := new(membership.Member)
@@ -2123,7 +2110,7 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		}
 		s.cluster.UpdateRaftAttributes(m.ID, m.RaftAttributes, shouldApplyV3)
 		if m.ID != s.MemberID() {
-			s.r.transport.UpdatePeer(m.ID, m.PeerURLs)
+			s.r.Transport.UpdatePeer(m.ID, m.PeerURLs)
 		}
 	}
 	return false, nil
@@ -2156,7 +2143,7 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 	}
 
 	// For backward compatibility, generate v2 snapshot from v3 state.
-	snap, err := s.r.raftStorage.CreateSnapshot(ep.appliedi, &ep.confState, d)
+	snap, err := s.r.RaftStorage.CreateSnapshot(ep.appliedi, &ep.confState, d)
 	if err != nil {
 		// the snapshot was done asynchronously with the progress of raft.
 		// raft might have already got a newer snapshot.
@@ -2171,11 +2158,11 @@ func (s *EtcdServer) snapshot(ep *etcdProgress, toDisk bool) {
 
 	if toDisk {
 		// SaveSnap saves the snapshot to file and appends the corresponding WAL entry.
-		if err = s.r.storage.SaveSnap(snap); err != nil {
+		if err = s.r.Storage.SaveSnap(snap); err != nil {
 			lg.Panic("failed to save snapshot", zap.Error(err))
 		}
 		ep.diskSnapshotIndex = ep.appliedi
-		if err = s.r.storage.Release(snap); err != nil {
+		if err = s.r.Storage.Release(snap); err != nil {
 			lg.Panic("failed to release wal", zap.Error(err))
 		}
 
@@ -2204,7 +2191,7 @@ func (s *EtcdServer) compactRaftLog(snapi uint64) {
 	if snapi > s.Cfg.SnapshotCatchUpEntries {
 		compacti = snapi - s.Cfg.SnapshotCatchUpEntries
 	}
-	err := s.r.raftStorage.Compact(compacti)
+	err := s.r.RaftStorage.Compact(compacti)
 	if err != nil {
 		// the compaction was done asynchronously with the progress of raft.
 		// raft log might already been compact.
@@ -2221,7 +2208,7 @@ func (s *EtcdServer) compactRaftLog(snapi uint64) {
 
 // CutPeer drops messages to the specified peer.
 func (s *EtcdServer) CutPeer(id types.ID) {
-	tr, ok := s.r.transport.(*rafthttp.Transport)
+	tr, ok := s.r.Transport.(*rafthttp.Transport)
 	if ok {
 		tr.CutPeer(id)
 	}
@@ -2229,15 +2216,15 @@ func (s *EtcdServer) CutPeer(id types.ID) {
 
 // MendPeer recovers the message dropping behavior of the given peer.
 func (s *EtcdServer) MendPeer(id types.ID) {
-	tr, ok := s.r.transport.(*rafthttp.Transport)
+	tr, ok := s.r.Transport.(*rafthttp.Transport)
 	if ok {
 		tr.MendPeer(id)
 	}
 }
 
-func (s *EtcdServer) PauseSending() { s.r.pauseSending() }
+func (s *EtcdServer) PauseSending() { s.r.PauseSending() }
 
-func (s *EtcdServer) ResumeSending() { s.r.resumeSending() }
+func (s *EtcdServer) ResumeSending() { s.r.ResumeSending() }
 
 func (s *EtcdServer) ClusterVersion() *semver.Version {
 	if s.cluster == nil {
@@ -2424,11 +2411,11 @@ func (s *EtcdServer) parseProposeCtxErr(err error, start time.Time) error {
 		case types.ID(raft.None):
 			// TODO: return error to specify it happens because the cluster does not have leader now
 		case s.MemberID():
-			if !isConnectedToQuorumSince(s.r.transport, start, s.MemberID(), s.cluster.Members()) {
+			if !isConnectedToQuorumSince(s.r.Transport, start, s.MemberID(), s.cluster.Members()) {
 				return errors.ErrTimeoutDueToConnectionLost
 			}
 		default:
-			if !isConnectedSince(s.r.transport, start, lead) {
+			if !isConnectedSince(s.r.Transport, start, lead) {
 				return errors.ErrTimeoutDueToConnectionLost
 			}
 		}
