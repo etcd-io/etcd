@@ -1,4 +1,4 @@
-// Copyright 2016 The etcd Authors
+// Copyright 2025 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,10 +16,8 @@ package apply
 
 import (
 	"context"
-	"time"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/gogo/protobuf/proto"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -29,104 +27,11 @@ import (
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
-	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
-	"go.etcd.io/etcd/server/v3/etcdserver/errors"
 	mvcctxn "go.etcd.io/etcd/server/v3/etcdserver/txn"
 	"go.etcd.io/etcd/server/v3/etcdserver/version"
 	"go.etcd.io/etcd/server/v3/lease"
-	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
-
-const (
-	v3Version = "v3"
-)
-
-// RaftStatusGetter represents etcd server and Raft progress.
-type RaftStatusGetter interface {
-	MemberID() types.ID
-	Leader() types.ID
-	CommittedIndex() uint64
-	AppliedIndex() uint64
-	Term() uint64
-}
-
-type Result struct {
-	Resp proto.Message
-	Err  error
-	// Physc signals the physical effect of the request has completed in addition
-	// to being logically reflected by the node. Currently, only used for
-	// Compaction requests.
-	Physc <-chan struct{}
-	Trace *traceutil.Trace
-}
-
-type applyFunc func(*pb.InternalRaftRequest, membership.ShouldApplyV3) *Result
-
-// applierV3 is the interface for processing V3 raft messages
-type applierV3 interface {
-	// Apply executes the generic portion of application logic for the current applier, but
-	// delegates the actual execution to the applyFunc method.
-	Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3, applyFunc applyFunc) *Result
-
-	Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error)
-	Range(r *pb.RangeRequest) (*pb.RangeResponse, *traceutil.Trace, error)
-	DeleteRange(dr *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, *traceutil.Trace, error)
-	Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error)
-	Compaction(compaction *pb.CompactionRequest) (*pb.CompactionResponse, <-chan struct{}, *traceutil.Trace, error)
-
-	LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error)
-	LeaseRevoke(lc *pb.LeaseRevokeRequest) (*pb.LeaseRevokeResponse, error)
-
-	LeaseCheckpoint(lc *pb.LeaseCheckpointRequest) (*pb.LeaseCheckpointResponse, error)
-
-	Alarm(*pb.AlarmRequest) (*pb.AlarmResponse, error)
-
-	Authenticate(r *pb.InternalAuthenticateRequest) (*pb.AuthenticateResponse, error)
-
-	AuthEnable() (*pb.AuthEnableResponse, error)
-	AuthDisable() (*pb.AuthDisableResponse, error)
-	AuthStatus() (*pb.AuthStatusResponse, error)
-
-	UserAdd(ua *pb.AuthUserAddRequest) (*pb.AuthUserAddResponse, error)
-	UserDelete(ua *pb.AuthUserDeleteRequest) (*pb.AuthUserDeleteResponse, error)
-	UserChangePassword(ua *pb.AuthUserChangePasswordRequest) (*pb.AuthUserChangePasswordResponse, error)
-	UserGrantRole(ua *pb.AuthUserGrantRoleRequest) (*pb.AuthUserGrantRoleResponse, error)
-	UserGet(ua *pb.AuthUserGetRequest) (*pb.AuthUserGetResponse, error)
-	UserRevokeRole(ua *pb.AuthUserRevokeRoleRequest) (*pb.AuthUserRevokeRoleResponse, error)
-	RoleAdd(ua *pb.AuthRoleAddRequest) (*pb.AuthRoleAddResponse, error)
-	RoleGrantPermission(ua *pb.AuthRoleGrantPermissionRequest) (*pb.AuthRoleGrantPermissionResponse, error)
-	RoleGet(ua *pb.AuthRoleGetRequest) (*pb.AuthRoleGetResponse, error)
-	RoleRevokePermission(ua *pb.AuthRoleRevokePermissionRequest) (*pb.AuthRoleRevokePermissionResponse, error)
-	RoleDelete(ua *pb.AuthRoleDeleteRequest) (*pb.AuthRoleDeleteResponse, error)
-	UserList(ua *pb.AuthUserListRequest) (*pb.AuthUserListResponse, error)
-	RoleList(ua *pb.AuthRoleListRequest) (*pb.AuthRoleListResponse, error)
-	ClusterVersionSet(r *membershippb.ClusterVersionSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	ClusterMemberAttrSet(r *membershippb.ClusterMemberAttrSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-	DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequest, shouldApplyV3 membership.ShouldApplyV3)
-}
-
-type ApplierOptions struct {
-	Logger                       *zap.Logger
-	KV                           mvcc.KV
-	AlarmStore                   *v3alarm.AlarmStore
-	AuthStore                    auth.AuthStore
-	Lessor                       lease.Lessor
-	Cluster                      *membership.RaftCluster
-	RaftStatus                   RaftStatusGetter
-	SnapshotServer               SnapshotServer
-	ConsistentIndex              cindex.ConsistentIndexer
-	TxnModeWriteWithSharedBuffer bool
-	Backend                      backend.Backend
-	QuotaBackendBytesCfg         int64
-	WarningApplyDuration         time.Duration
-}
-
-type SnapshotServer interface {
-	ForceSnapshot()
-}
 
 type applierV3backend struct {
 	options ApplierOptions
@@ -228,30 +133,6 @@ func (a *applierV3backend) Alarm(ar *pb.AlarmRequest) (*pb.AlarmResponse, error)
 		return nil, nil
 	}
 	return resp, nil
-}
-
-type applierV3Capped struct {
-	applierV3
-	q serverstorage.BackendQuota
-}
-
-// newApplierV3Capped creates an applyV3 that will reject Puts and transactions
-// with Puts so that the number of keys in the store is capped.
-func newApplierV3Capped(base applierV3) applierV3 { return &applierV3Capped{applierV3: base} }
-
-func (a *applierV3Capped) Put(_ *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	return nil, nil, errors.ErrNoSpace
-}
-
-func (a *applierV3Capped) Txn(r *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	if a.q.Cost(r) > 0 {
-		return nil, nil, errors.ErrNoSpace
-	}
-	return a.applierV3.Txn(r)
-}
-
-func (a *applierV3Capped) LeaseGrant(_ *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	return nil, errors.ErrNoSpace
 }
 
 func (a *applierV3backend) AuthEnable() (*pb.AuthEnableResponse, error) {
@@ -420,42 +301,6 @@ func (a *applierV3backend) DowngradeInfoSet(r *membershippb.DowngradeInfoSetRequ
 		d = version.DowngradeInfo{Enabled: true, TargetVersion: r.Ver}
 	}
 	a.options.Cluster.SetDowngradeInfo(&d, shouldApplyV3)
-}
-
-type quotaApplierV3 struct {
-	applierV3
-	q serverstorage.Quota
-}
-
-func newQuotaApplierV3(lg *zap.Logger, quotaBackendBytesCfg int64, be backend.Backend, app applierV3) applierV3 {
-	return &quotaApplierV3{app, serverstorage.NewBackendQuota(lg, quotaBackendBytesCfg, be, "v3-applier")}
-}
-
-func (a *quotaApplierV3) Put(p *pb.PutRequest) (*pb.PutResponse, *traceutil.Trace, error) {
-	ok := a.q.Available(p)
-	resp, trace, err := a.applierV3.Put(p)
-	if err == nil && !ok {
-		err = errors.ErrNoSpace
-	}
-	return resp, trace, err
-}
-
-func (a *quotaApplierV3) Txn(rt *pb.TxnRequest) (*pb.TxnResponse, *traceutil.Trace, error) {
-	ok := a.q.Available(rt)
-	resp, trace, err := a.applierV3.Txn(rt)
-	if err == nil && !ok {
-		err = errors.ErrNoSpace
-	}
-	return resp, trace, err
-}
-
-func (a *quotaApplierV3) LeaseGrant(lc *pb.LeaseGrantRequest) (*pb.LeaseGrantResponse, error) {
-	ok := a.q.Available(lc)
-	resp, err := a.applierV3.LeaseGrant(lc)
-	if err == nil && !ok {
-		err = errors.ErrNoSpace
-	}
-	return resp, err
 }
 
 func (a *applierV3backend) newHeader() *pb.ResponseHeader {
