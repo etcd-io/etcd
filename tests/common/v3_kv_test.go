@@ -25,8 +25,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
-// TestKV_PutTimeout migrates TestCtlV3PutTimeout from e2e to integration framework
-// Original e2e test: func TestCtlV3PutTimeout(t *testing.T) { testCtl(t, putTest, withDefaultDialTimeout()) }
 func TestKV_PutTimeout(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
