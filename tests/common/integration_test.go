@@ -34,20 +34,12 @@ func integrationClusterTestCases() []testCase {
 			config: config.ClusterConfig{ClusterSize: 1},
 		},
 		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+			name:   "PeerTLS and ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS, ClientTLS: config.ManualTLS},
 		},
 		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+			name:   "PeerAutoTLS and ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS, ClientTLS: config.AutoTLS},
 		},
 	}
 }
