@@ -25,13 +25,21 @@ if ! [[ "$0" =~ scripts/genproto.sh ]]; then
   exit 255
 fi
 
+if [ -z "${OS:-}" ]; then
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+fi
+
 # Set SED variable
 if LANG=C sed --help 2>&1 | grep -q GNU; then
   SED="sed"
 elif command -v gsed &>/dev/null; then
   SED="gsed"
+elif [ "$OS" == "darwin" ]; then
+  echo "You are on Mac, running: brew install gnu-sed"
+  brew install gnu-sed
+  SED="/opt/homebrew/opt/gnu-sed/libexec/gnubin/sed"
 else
-  echo "Failed to find GNU sed as sed or gsed. If you are on Mac: brew install gnu-sed." >&2
+  echo "Failed to find GNU sed as sed or gsed." >&2
   exit 1
 fi
 
@@ -51,11 +59,16 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
       ;;
   esac
 
-  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-${file}.zip"
-  echo "Running on ${arch}."
+  protoc_download_file="protoc-3.20.3-linux-${file}.zip"
+  if [ "$OS" == "darwin" ]; then
+    # protoc-3.20.3 does not have pre-built binaries for darwin_arm64. Thanks to Rosetta, we could use x86_64 binary.
+    protoc_download_file="protoc-3.20.3-osx-x86_64.zip"
+  fi
+  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/${protoc_download_file}"
+  echo "Running on ${OS} ${arch}. Downloading ${protoc_download_file}"
   mkdir -p bin
-  wget ${download_url} && unzip -p protoc-3.20.3-linux-${file}.zip bin/protoc > tmpFile && mv tmpFile bin/protoc 
-  rm protoc-3.20.3-linux-${file}.zip
+  wget ${download_url} && unzip -p ${protoc_download_file} bin/protoc > tmpFile && mv tmpFile bin/protoc
+  rm ${protoc_download_file}
   chmod +x bin/protoc
   PATH=$PATH:$(pwd)/bin
   export PATH
