@@ -99,7 +99,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions
+	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard
 
 .PHONY: fix
 fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
@@ -232,6 +232,10 @@ clean:
 .PHONY: verify-go-versions
 verify-go-versions:
 	./scripts/verify_go_versions.sh
+
+.PHONY: verify-gomodguard
+verify-gomodguard:
+	PASSES="gomodguard" ./scripts/test.sh
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
