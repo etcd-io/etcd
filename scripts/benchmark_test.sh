@@ -13,53 +13,100 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script runs a benchmark on a locally started etcd server
+# This utility script helps to set up the test environment for benchmark tests and runs the provided tests sequentially.
 
 set -euo pipefail
 
 source ./scripts/test_lib.sh
 
-COMMON_BENCHMARK_FLAGS="--report-perfdash"
+declare -A BENCHMARK_FLAGS
+BENCHMARKS_TO_RUN=()
+COMMON_BENCHMARK_FLAGS=(--report-perfdash)
 
-if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <benchmark-name> [tester args...]"
-  exit 1
-fi
+parse_args() {
+  for arg in "$@"; do
+    if [[ "$arg" == *:* ]]; then
+      key="${arg%%:*}"
+      value="${arg#*:}"
+      BENCHMARKS_TO_RUN+=("$key")
+      BENCHMARK_FLAGS["$key"]="$value"
+    else
+      BENCHMARKS_TO_RUN+=("$arg")
+      BENCHMARK_FLAGS["$arg"]=""
+    fi
+  done
 
-BENCHMARK_NAME="$1"
-ARGS="${*:2}"
-
-echo "Starting the etcd server..."
-
-# Create a directory for etcd data under /tmp/etcd
-mkdir -p /tmp/etcd
-DATA_DIR=$(mktemp -d /tmp/etcd/data-XXXXXX)
-./bin/etcd --data-dir="$DATA_DIR" > /tmp/etcd.log 2>&1 &
-etcd_pid=$!
-
-trap 'log_warning -e "Stopping etcd server - PID $etcd_pid";
-      kill $etcd_pid 2>/dev/null;
-      rm -rf $DATA_DIR;
-      log_success "Deleted the contents from $DATA_DIR related to benchmark test"' EXIT
-
-# Wait until etcd becomes healthy
-for retry in {1..10}; do
-  if ./bin/etcdctl endpoint health --cluster> /dev/null 2>&1; then
-    log_success -e "\\netcd is healthy"
-    break
-  fi
-  log_warning -e "\\nWaiting for etcd to be healthy..."
-  sleep 1
-  if [[ $retry -eq 10 ]]; then
-    log_error -e "\\nFailed to confirm etcd health after $retry attempts. Check /tmp/etcd.log for more information"
+  if [ ${#BENCHMARKS_TO_RUN[@]} -eq 0 ]; then
+    log_error "Usage: ./benchmark_test.sh 'benchmark-operation:\"test_arguments\"'"
+    log_error "Example: ./benchmark_test.sh 'put:\"--clients=1000\" range:\"--conns=100\"'"
     exit 1
   fi
-done
+}
 
-log_success -e "etcd process is running with PID $etcd_pid"
+start_etcd() {
+  log_callout "Setup: Starting the etcd server..."
+  # Create a directory for etcd data under /tmp/etcd
+  mkdir -p /tmp/etcd
+  DATA_DIR=$(mktemp -d /tmp/etcd/data-XXXXXX)
+  ARTIFACTS_DIR="${ARTIFACTS:-./_artifacts}"
+  mkdir -p "$ARTIFACTS_DIR"
+  ETCD_LOG_FILE="${ARTIFACTS_DIR}/etcd-${bench}-$(date +%Y%m%d-%H%M%S).log"
+  log_callout -e "Setup: etcd log file path set to $ETCD_LOG_FILE. DATA_DIR set to $DATA_DIR"
+  ./bin/etcd --data-dir="$DATA_DIR" > "${ETCD_LOG_FILE}" 2>&1 &
+  ETCD_PID=$!
+  RETRY=0
+  MAX_RETRY_ATTEMPTS=10
 
-log_callout -e "\\nPerforming benchmark $BENCHMARK_NAME with arguments: $ARGS"
-read -r -a TESTER_OPTIONS <<< "$ARGS"
-log_callout "Running: benchmark $BENCHMARK_NAME ${TESTER_OPTIONS[*]} $COMMON_BENCHMARK_FLAGS"
-benchmark "$BENCHMARK_NAME" "${TESTER_OPTIONS[@]}" $COMMON_BENCHMARK_FLAGS
-log_callout "Completed: benchmark $BENCHMARK_NAME ${TESTER_OPTIONS[*]} $COMMON_BENCHMARK_FLAGS"
+  # Set up the trap to handle errors/interrupts which leads to cleaning up of the DATADIR and stopping the etcd server.
+  trap 'stop_and_cleanup_etcd' EXIT
+
+  # Poll until etcd is healthy
+  until curl -fs http://127.0.0.1:2379/health | grep -q '"health":"true"'; do
+    RETRY=$((RETRY + 1))
+    if [[ $RETRY -gt $MAX_RETRY_ATTEMPTS ]]; then
+      log_error -e "Setup: Failed to confirm etcd health after $MAX_RETRY_ATTEMPTS attempts."
+      exit 1
+    fi
+    log_warning -e "Setup: Waiting for etcd to be healthy... (retry: $RETRY/$MAX_RETRY_ATTEMPTS)"
+    sleep 1
+  done
+  log_success -e "Setup: etcd is healthy and running on pid $ETCD_PID"
+}
+
+stop_and_cleanup_etcd() {
+  trap - EXIT
+  log_warning -e "Cleanup: Stopping etcd server - PID $ETCD_PID"
+  kill "$ETCD_PID" 2>/dev/null || true
+  rm -rf "$DATA_DIR"
+  log_success "Cleanup: Deleted the DATA_DIR contents from $DATA_DIR related to benchmark test"
+}
+
+run_benchmark() {
+  local bench=$1
+  local args="${BENCHMARK_FLAGS[$bench]:-}"
+
+  if [[ -z "$args" ]]; then
+    log_callout -e "\\nPerforming benchmark $bench with default arguments"
+    benchmark "$bench" "${COMMON_BENCHMARK_FLAGS[@]}"
+  else
+    log_callout -e "\\nPerforming benchmark $bench with arguments: $args"
+    read -r -a TESTER_OPTIONS <<< "$args"
+
+    printf "Running: benchmark %s %s %s\n" \
+      "$bench" "${TESTER_OPTIONS[*]}" "${COMMON_BENCHMARK_FLAGS[*]}"
+
+    benchmark "$bench" "${TESTER_OPTIONS[@]}" "${COMMON_BENCHMARK_FLAGS[@]}"
+  fi
+}
+
+main() {
+  parse_args "$@"
+
+  for bench in "${BENCHMARKS_TO_RUN[@]}"; do
+    start_etcd
+    run_benchmark "$bench"
+    stop_and_cleanup_etcd
+  done
+}
+
+main "$@"
