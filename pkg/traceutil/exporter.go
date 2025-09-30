@@ -63,8 +63,8 @@ func logSpan(s trace.ReadOnlySpan) (string, []zap.Field) {
 		return a.Time.Compare(b.Time)
 	})
 	for _, event := range events {
-		step := fmt.Sprintf("%s %s [+%dms]",
-			event.Name, writeAttrs(event.Attributes), event.Time.Sub(start).Milliseconds())
+		step := fmt.Sprintf("%s %s [+%.3fms]",
+			event.Name, writeAttrs(event.Attributes), float64(event.Time.Sub(start).Microseconds())/1_000)
 		steps = append(steps, step)
 	}
 	msg := fmt.Sprintf("trace[%s] %s", s.SpanContext().SpanID().String(), s.Name())

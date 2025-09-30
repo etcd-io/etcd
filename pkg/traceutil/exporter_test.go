@@ -66,7 +66,7 @@ func TestLogSpan(t *testing.T) {
 				zap.Duration("duration", duration),
 				zap.Time("start", startTime),
 				zap.Time("end", endTime),
-				zap.Strings("steps", []string{"event1 {key3:value3; } [+1000ms]", "event2 {key4:value4; } [+2000ms]"}),
+				zap.Strings("steps", []string{"event1 {key3:value3; } [+1000.000ms]", "event2 {key4:value4; } [+2000.000ms]"}),
 				zap.Int("step_count", 2),
 			},
 		},
