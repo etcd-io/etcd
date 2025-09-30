@@ -152,6 +152,11 @@ func (c *Client) shouldRefreshToken(err error, callOpts *options) bool {
 		return c.authTokenBundle != nil // equal to c.Username != "" && c.Password != ""
 	}
 
+	if c.Token != "" {
+		// do not try to refresh the token as it is set by user
+		return false
+	}
+
 	return callOpts.retryAuth &&
 		(errors.Is(rpctypes.Error(err), rpctypes.ErrInvalidAuthToken) || errors.Is(rpctypes.Error(err), rpctypes.ErrAuthOldRevision))
 }
