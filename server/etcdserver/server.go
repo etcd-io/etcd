@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"path"
-	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -119,7 +117,6 @@ var (
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
-	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
 
 func init() {
@@ -1947,7 +1944,6 @@ func (s *EtcdServer) apply(
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.ShouldApplyV3) {
-	var ar *apply.Result
 	if shouldApplyV3 {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
@@ -1972,36 +1968,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		return
 	}
 
-	var raftReq pb.InternalRaftRequest
-	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
-		var r pb.Request
-		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
-		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		raftReq = v2ToV3Request(s.lg, (*RequestV2)(rp))
-	}
-	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
-
-	if raftReq.V2 != nil {
-		req := (*RequestV2)(raftReq.V2)
-		raftReq = v2ToV3Request(s.lg, req)
-	}
-
-	id := raftReq.ID
-	if id == 0 {
-		if raftReq.Header == nil {
-			s.lg.Panic("applyEntryNormal, could not find a header")
-		}
-		id = raftReq.Header.ID
-	}
-
-	needResult := s.w.IsRegistered(id)
-	if needResult || !noSideEffect(&raftReq) {
-		if !needResult && raftReq.Txn != nil {
-			removeNeedlessRangeReqs(raftReq.Txn)
-		}
-		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
-	}
+	ar, id := apply.Apply(s.lg, e, s.uberApply, s.w, shouldApplyV3)
 
 	// do not re-toApply applied entries.
 	if !shouldApplyV3 {
@@ -2034,28 +2001,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		s.raftRequest(s.ctx, pb.InternalRaftRequest{Alarm: a})
 		s.w.Trigger(id, ar)
 	})
-}
-
-func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
-}
-
-func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
-	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
-		j := 0
-		for i := 0; i < len(ops); i++ {
-			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
-				continue
-			}
-			ops[j] = ops[i]
-			j++
-		}
-
-		return ops[:j]
-	}
-
-	txn.Success = f(txn.Success)
-	txn.Failure = f(txn.Failure)
 }
 
 // applyConfChange applies a ConfChange to the server. It is only
