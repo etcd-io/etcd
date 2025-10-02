@@ -271,13 +271,7 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 			if !ok {
 				return nil
 			}
-			if resp.Canceled {
-				return nil
-			}
-			if len(resp.Events) == 0 {
-				continue
-			}
-			if err := c.store.Apply(resp.Events); err != nil {
+			if err := c.store.Apply(resp); err != nil {
 				return err
 			}
 		}

@@ -16,9 +16,11 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
@@ -108,6 +110,9 @@ func (d *demux) Unregister(w *watcher) {
 func (d *demux) Init(minRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if minRev == 0 {
+		return
+	}
 	if d.minRev == 0 {
 		// Watch started for empty demux
 		d.minRev = minRev
@@ -129,23 +134,35 @@ func (d *demux) Init(minRev int64) {
 }
 
 func (d *demux) Broadcast(resp clientv3.WatchResponse) error {
-	events := resp.Events
-	if len(events) == 0 {
-		return nil
-	}
-
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	err := validateRevisions(events, d.maxRev)
+	if d.minRev == 0 {
+		return errors.New("demux: not initialized")
+	}
+	err := validateRevisions(resp, d.maxRev)
 	if err != nil {
 		return err
 	}
-	d.updateStoreLocked(events)
-	d.broadcastLocked(events)
+	d.updateStoreLocked(resp)
+	d.broadcastLocked(resp)
 	return nil
 }
 
-func (d *demux) updateStoreLocked(events []*clientv3.Event) {
+func (d *demux) LatestRev() int64 {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.maxRev
+}
+
+func (d *demux) updateStoreLocked(resp clientv3.WatchResponse) {
+	if resp.IsProgressNotify() {
+		d.maxRev = resp.Header.Revision
+		return
+	}
+	if len(resp.Events) == 0 {
+		return
+	}
+	events := resp.Events
 	batchStart := 0
 	for end := 1; end < len(events); end++ {
 		if events[end].Kv.ModRevision != events[batchStart].Kv.ModRevision {
@@ -167,7 +184,33 @@ func (d *demux) updateStoreLocked(events []*clientv3.Event) {
 	d.maxRev = events[len(events)-1].Kv.ModRevision
 }
 
-func (d *demux) broadcastLocked(events []*clientv3.Event) {
+func (d *demux) broadcastLocked(resp clientv3.WatchResponse) {
+	switch {
+	case resp.IsProgressNotify():
+		d.broadcastProgressLocked(resp.Header.Revision)
+	case len(resp.Events) != 0:
+		d.broadcastEventsLocked(resp.Events)
+	default:
+	}
+}
+
+func (d *demux) broadcastProgressLocked(progressRev int64) {
+	for w, nextRev := range d.activeWatchers {
+		if nextRev >= progressRev {
+			continue
+		}
+		resp := clientv3.WatchResponse{
+			Header: etcdserverpb.ResponseHeader{
+				Revision: progressRev,
+			},
+		}
+		if w.enqueueResponse(resp) {
+			d.activeWatchers[w] = progressRev + 1
+		}
+	}
+}
+
+func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 	firstRev := events[0].Kv.ModRevision
 	lastRev := events[len(events)-1].Kv.ModRevision
 
@@ -177,6 +220,7 @@ func (d *demux) broadcastLocked(events []*clientv3.Event) {
 			delete(d.activeWatchers, w)
 			continue
 		}
+
 		sendStart := len(events)
 		for i, ev := range events {
 			if ev.Kv.ModRevision >= nextRev {
@@ -184,11 +228,14 @@ func (d *demux) broadcastLocked(events []*clientv3.Event) {
 				break
 			}
 		}
+
 		if sendStart == len(events) {
 			continue
 		}
 
-		if !w.enqueueEvent(events[sendStart:]) { // overflow → lagging
+		if !w.enqueueResponse(clientv3.WatchResponse{
+			Events: events[sendStart:],
+		}) { // overflow → lagging
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {
@@ -241,17 +288,26 @@ func (d *demux) resyncLaggingWatchers() {
 			continue
 		}
 		// TODO: re-enable key‐predicate in Filter when non‐zero startRev or performance tuning is needed
-		enqueueFailed := false
+		resyncSuccess := true
 		d.history.AscendGreaterOrEqual(nextRev, func(rev int64, eventBatch []*clientv3.Event) bool {
-			if !w.enqueueEvent(eventBatch) { // buffer overflow: watcher still lagging
-				enqueueFailed = true
+			resp := clientv3.WatchResponse{
+				Events: eventBatch,
+			}
+			if !w.enqueueResponse(resp) { // buffer overflow: watcher still lagging
+				resyncSuccess = false
 				return false
 			}
 			nextRev = rev + 1
 			return true
 		})
-
-		if !enqueueFailed {
+		// Send progress to just resync.
+		if resyncSuccess {
+			resp := clientv3.WatchResponse{
+				Header: etcdserverpb.ResponseHeader{Revision: d.maxRev},
+			}
+			if d.maxRev > nextRev && w.enqueueResponse(resp) {
+				nextRev = d.maxRev + 1
+			}
 			delete(d.laggingWatchers, w)
 			d.activeWatchers[w] = nextRev
 		} else {
