@@ -155,6 +155,7 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	trafficSet := client.NewSet(ids, baseTime)
 	defer trafficSet.Close()
 	maxRevisionChan := make(chan int64, 1)
+	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		operationReport := traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, trafficSet)
@@ -165,30 +166,31 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	})
 	watchSet := client.NewSet(ids, baseTime)
 	defer watchSet.Close()
-	// g.Go(func() error {
-	// 	endpoints := processEndpoints(clus)
-	// 	err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
-	// 		Lg:                    lg,
-	// 		Endpoints:             endpoints,
-	// 		MaxRevisionChan:       maxRevisionChan,
-	// 		Cfg:                   s.Watch,
-	// 		ClientSet:             watchSet,
-	// 		BackgroundWatchConfig: s.Profile.BackgroundWatchConfig,
-	// 	})
-	// 	return err
-	// })
+	g.Go(func() error {
+		endpoints := processEndpoints(clus)
+		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
+			Lg:                    lg,
+			Endpoints:             endpoints,
+			MaxRevisionChan:       maxRevisionChan,
+			Cfg:                   s.Watch,
+			ClientSet:             watchSet,
+			BackgroundWatchConfig: s.Profile.BackgroundWatchConfig,
+		})
+		return err
+	})
 	err := g.Wait()
+	endTime := time.Since(baseTime)
 	if err != nil {
 		t.Error(err)
 	}
 
 	reports := slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
-	totalStats := traffic.CalculateStats(reports, 0, time.Since(baseTime))
 
-	lg.Info("Completed scenario",
-		zap.Int("request", totalStats.Successes+totalStats.Failures),
-		zap.Int("events", totalStats.Events),
-	)
+	totalStats := traffic.CalculateStats(reports, startTime, endTime)
+	lg.Info("Reporting complete traffic", zap.Int("successes", totalStats.Successes), zap.Int("failures", totalStats.Failures), zap.Float64("successRate", totalStats.SuccessRate()), zap.Duration("period", totalStats.Period), zap.Float64("qps", totalStats.QPS()))
+
+	watchTotal := traffic.CalculateWatchStats(reports, startTime, endTime)
+	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
 
 	err = client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {

@@ -106,10 +106,9 @@ resetWatch:
 			if maxRevision == 0 {
 				return errors.New("client didn't collect all events, max revision not set")
 			}
-			// TODO: Restore after cache implements progress notifies
-			// if lastRevision < maxRevision {
-			// 	return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
-			// }
+			if lastRevision < maxRevision {
+				return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+			}
 			return nil
 		default:
 		}

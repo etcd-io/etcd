@@ -69,10 +69,29 @@ func NewRecordingClient(endpoints []string, ids identity.Provider, baseTime time
 	if err != nil {
 		return nil, err
 	}
-	cc.Watcher = &cacheWatcher{
+	stop := make(chan struct{})
+	watcher := &cacheWatcher{
 		Cache:   c,
 		Watcher: cc.Watcher,
+		stop:    stop,
 	}
+	watcher.wg.Add(1)
+	go func() {
+		defer watcher.wg.Done()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(time.Millisecond * 100):
+				err := cc.RequestProgress(context.Background())
+				if err != nil {
+					fmt.Printf("Got error %v\n", err)
+				}
+			}
+		}
+	}()
+	cc.Watcher = watcher
+
 	cc.KV = &cacheKV{
 		Cache: c,
 		KV:    cc.KV,
@@ -97,6 +116,9 @@ func (ckv *cacheKV) Get(ctx context.Context, key string, opts ...clientv3.OpOpti
 type cacheWatcher struct {
 	Cache   *cache.Cache
 	Watcher clientv3.Watcher
+	once    sync.Once
+	stop    chan struct{}
+	wg      sync.WaitGroup
 }
 
 func (cw *cacheWatcher) Watch(ctx context.Context, key string, opts ...clientv3.OpOption) clientv3.WatchChan {
@@ -108,6 +130,10 @@ func (cw *cacheWatcher) RequestProgress(ctx context.Context) error {
 }
 
 func (cw *cacheWatcher) Close() error {
+	cw.once.Do(func() {
+		close(cw.stop)
+		cw.wg.Wait()
+	})
 	cw.Cache.Close()
 	return cw.Watcher.Close()
 }
