@@ -120,10 +120,10 @@ depend on to make decisions in the best interest of the project in a consistent 
   - Existing maintainers vote will privately and respond to the email with either acceptance or feedback for suggested improvement.
 - With your membership approved you are expected to:
   - Open a PR and add an entry to the [OWNERS] file
-  - Subscribe to <etcd-maintainers@googlegroups.com> and <etcd-maintainers-private@googlegroups.com>
-  - Request to join [etcd-maintainer teams of etcd organization of GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
+  - Request to be added to the <etcd-maintainers@googlegroups.com> and <etcd-maintainers-private@googlegroups.com> mailing lists
+  - Request to join [etcd-maintainer teams of the etcd-io organization in GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
   - Request to join the private slack channel for etcd maintainers on [kubernetes slack](http://slack.kubernetes.io/)
-  - Request access to etcd-development GCP project where we publish releases
+  - Request access to `etcd-development` GCP project where we publish releases
   - Request access to passwords shared between maintainers
   - Request cncf service desk access by emailing <projects@cncf.io>
   - Raise cncf service desk ticket to be addded to [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory)
@@ -146,8 +146,7 @@ depend on to make decisions in the best interest of the project in a consistent 
 Life priorities, interests, and passions can change. Maintainers can retire and
 move to [emeritus maintainers]. If a maintainer needs to step down, they should
 inform other maintainers and, if possible, help find someone to pick up the related
-work. At the very least, ensure the related work can be continued. Afterward,
-they can remove themselves from the list of existing maintainers.
+work. At the very least, ensure the related work can be continued.
 
 If a maintainer has not been performing their duties for 12 months,
 they can be removed by other maintainers. In that case, the inactive maintainer will
@@ -156,6 +155,14 @@ removed. If an emeritus maintainer wants to regain an active role, they can do
 so by renewing their contributions. Active maintainers should welcome such a move.
 Retiring other maintainers or regaining the status should require the approval
 of at least two active maintainers.
+
+Retiring maintainers must:
+
+- Open a PR and move to emeritus approvers in the [OWNERS] file
+- Open a PR to be removed from the [etcd-maintainer teams of the etcd-io organization in GitHub](https://github.com/orgs/etcd-io/teams/maintainers-etcd)
+- Remove their access to `etcd-development` GCP project where we publish releases
+- Raise cncf service desk ticket to be removed as a [cncf-etcd-maintainers mailing list](https://lists.cncf.io/g/cncf-etcd-maintainers/directory) admin
+- Request to be removed as a member of the [etcd-maintainers](https://groups.google.com/g/etcd-maintainers) and [etcd-maintainers-private](https://groups.google.com/g/etcd-maintainers-private) Google groups
 
 ## Acknowledgements
 
