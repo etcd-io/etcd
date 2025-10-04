@@ -16,8 +16,6 @@ package ioutil
 
 import (
 	"io"
-
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 var defaultBufferBytes = 128 * 1024
@@ -43,7 +41,9 @@ type PageWriter struct {
 // NewPageWriter creates a new PageWriter. pageBytes is the number of bytes
 // to write per page. pageOffset is the starting offset of io.Writer.
 func NewPageWriter(w io.Writer, pageBytes, pageOffset int) *PageWriter {
-	verify.Assert(pageBytes > 0, "invalid pageBytes (%d) value, it must be greater than 0", pageBytes)
+	if pageBytes <= 0 {
+		panic("invalid pageBytes value, it must be greater than 0")
+	}
 	return &PageWriter{
 		w:                 w,
 		pageOffset:        pageOffset,

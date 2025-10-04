@@ -23,8 +23,6 @@ import (
 	"syscall"
 
 	"go.uber.org/zap"
-
-	"go.etcd.io/etcd/client/pkg/v3/verify"
 )
 
 // InterruptHandler is a function that is called on receiving a
@@ -48,7 +46,9 @@ func RegisterInterruptHandler(h InterruptHandler) {
 
 // HandleInterrupts calls the handler functions on receiving a SIGINT or SIGTERM.
 func HandleInterrupts(lg *zap.Logger) {
-	verify.Assert(lg != nil, "the logger should not be nil")
+	if lg == nil {
+		panic("the logger should not be nil")
+	}
 	notifier := make(chan os.Signal, 1)
 	signal.Notify(notifier, syscall.SIGINT, syscall.SIGTERM)
 
