@@ -942,7 +942,7 @@ func (s *EtcdServer) requestCurrentIndex(leaderChangedNotifier <-chan struct{}, 
 
 	for {
 		select {
-		case rs := <-s.r.readStateC:
+		case rs := <-s.r.ReadStateC:
 			requestIDBytes := uint64ToBigEndianBytes(requestID)
 			gotOwnResponse := bytes.Equal(rs.RequestCtx, requestIDBytes)
 			if !gotOwnResponse {
