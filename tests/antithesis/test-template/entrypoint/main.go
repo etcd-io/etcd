@@ -36,12 +36,23 @@ var NodeCount = "3"
 func CheckHealth() bool {
 	cfg := common.MakeConfig(NodeCount)
 
+	var hosts []string
 	nodeOptions := []string{"etcd0", "etcd1", "etcd2"}[:cfg.NodeCount]
+	for _, n := range nodeOptions {
+		hosts = append(hosts, fmt.Sprintf("%s:2379", n))
+	}
+
+	// override hosts if environment variable is set
+	h, _, _ := common.PathsFromEnv()
+	if len(h) > 0 {
+		hosts = h
+	}
 
 	// iterate over each node and check health
-	for _, node := range nodeOptions {
+	for _, node := range hosts {
+		fmt.Printf("Client [entrypoint]: checking connection with %s\n", node)
 		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{fmt.Sprintf("http://%s:2379", node)},
+			Endpoints:   []string{node},
 			DialTimeout: 5 * time.Second,
 		})
 		if err != nil {
