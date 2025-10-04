@@ -53,6 +53,7 @@ var allFailpoints = []Failpoint{
 	RaftAfterSaveSleep,
 	ApplyBeforeOpenSnapshot,
 	SleepBeforeSendWatchResponse,
+	RaftDropHeartbeat,
 }
 
 func PickRandom(clus *e2e.EtcdProcessCluster, profile traffic.Profile) (Failpoint, error) {
