@@ -30,22 +30,18 @@ import (
 // Sleep duration
 const SLEEP = 10
 
-var NodeCount = "3"
-
 // CheckHealth checks health of all etcd nodes
 func CheckHealth() bool {
-	cfg := common.MakeConfig(NodeCount)
-
-	nodeOptions := []string{"etcd0", "etcd1", "etcd2"}[:cfg.NodeCount]
+	hosts, _, _ := common.GetPaths()
 
 	// iterate over each node and check health
-	for _, node := range nodeOptions {
+	for _, host := range hosts {
 		cli, err := clientv3.New(clientv3.Config{
-			Endpoints:   []string{fmt.Sprintf("http://%s:2379", node)},
+			Endpoints:   []string{fmt.Sprintf("http://%s", host)},
 			DialTimeout: 5 * time.Second,
 		})
 		if err != nil {
-			fmt.Printf("Client [entrypoint]: connection failed with %s\n", node)
+			fmt.Printf("Client [entrypoint]: connection failed with %s\n", host)
 			fmt.Printf("Client [entrypoint]: error: %v\n", err)
 			return false
 		}
@@ -60,12 +56,12 @@ func CheckHealth() bool {
 		// fetch the key setting-up to confirm that the node is available
 		_, err = cli.Get(context.Background(), "setting-up")
 		if err != nil {
-			fmt.Printf("Client [entrypoint]: connection failed with %s\n", node)
+			fmt.Printf("Client [entrypoint]: connection failed with %s\n", host)
 			fmt.Printf("Client [entrypoint]: error: %v\n", err)
 			return false
 		}
 
-		fmt.Printf("Client [entrypoint]: connection successful with %s\n", node)
+		fmt.Printf("Client [entrypoint]: connection successful with %s\n", host)
 	}
 
 	return true

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"flag"
 	"maps"
 	"os"
 	"path/filepath"
@@ -36,18 +35,8 @@ const (
 	reportFileName = "history.html"
 )
 
-var NodeCount = "3"
-
 func main() {
-	local := flag.Bool("local", false, "run finally locally and connect to etcd instances via localhost")
-	flag.Parse()
-
-	cfg := common.MakeConfig(NodeCount)
-
-	_, reportPath, dirs := common.DefaultPaths(cfg)
-	if *local {
-		_, reportPath, dirs = common.LocalPaths(cfg)
-	}
+	_, dataPaths, reportPath := common.GetPaths()
 
 	lg, err := zap.NewProduction()
 	if err != nil {
@@ -60,7 +49,7 @@ func main() {
 		panic(err)
 	}
 
-	result := validateReports(lg, dirs, reports, tf)
+	result := validateReports(lg, dataPaths, reports, tf)
 	if err := result.Linearization.Visualize(lg, filepath.Join(reportPath, reportFileName)); err != nil {
 		panic(err)
 	}

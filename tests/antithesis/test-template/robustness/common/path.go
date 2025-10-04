@@ -19,48 +19,52 @@ package common
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
-	defaultetcd0 = "etcd0:2379"
-	defaultetcd1 = "etcd1:2379"
-	defaultetcd2 = "etcd2:2379"
-	// mounted by the client in docker compose
-	defaultetcdDataPath = "/var/etcddata%d"
-	defaultReportPath   = "/var/report/"
-
-	localetcd0 = "127.0.0.1:12379"
-	localetcd1 = "127.0.0.1:22379"
-	localetcd2 = "127.0.0.1:32379"
-	// used by default when running the client locally
-	defaultetcdLocalDataPath = "/tmp/etcddata%d"
-	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
-	localReportPath          = "report"
+	EtcdEndpointsEnv = "ETCD_ROBUSTNESS_ENDPOINTS"
+	EtcdDataPathEnv  = "ETCD_ROBUSTNESS_DATA_PATHS"
+	ReportPathEnv    = "ETCD_ROBUSTNESS_REPORT_PATH"
 )
 
-func DefaultPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[string]string) {
-	hosts = []string{defaultetcd0, defaultetcd1, defaultetcd2}[:cfg.NodeCount]
-	reportPath = defaultReportPath
-	dataPaths = etcdDataPaths(defaultetcdDataPath, cfg.NodeCount)
-	return hosts, reportPath, dataPaths
-}
+func GetPaths() ([]string, map[string]string, string) {
+	endpointsEnv := validateEnvVar(EtcdEndpointsEnv)
+	dataPathEnv := validateEnvVar(EtcdDataPathEnv)
+	reportPath := validateEnvVar(ReportPathEnv)
 
-func LocalPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[string]string) {
-	hosts = []string{localetcd0, localetcd1, localetcd2}[:cfg.NodeCount]
-	reportPath = localReportPath
-	etcdDataPath := defaultetcdLocalDataPath
-	envPath := os.Getenv(localetcdDataPathEnv)
-	if envPath != "" {
-		etcdDataPath = envPath + "%d"
+	etcdEndpoints := strings.Split(endpointsEnv, ",")
+	paths := strings.Split(dataPathEnv, ",")
+
+	if len(paths) != len(etcdEndpoints) {
+		panic(fmt.Sprintf("number of etcd endpoints (%d) and data paths (%d) do not match", len(etcdEndpoints), len(paths)))
 	}
-	dataPaths = etcdDataPaths(etcdDataPath, cfg.NodeCount)
-	return hosts, reportPath, dataPaths
-}
 
-func etcdDataPaths(dir string, amount int) map[string]string {
+	for i, endpoint := range etcdEndpoints {
+		if strings.TrimSpace(endpoint) == "" {
+			panic(fmt.Sprintf("etcd endpoint at index %d is empty", i))
+		}
+		if strings.TrimSpace(paths[i]) == "" {
+			panic(fmt.Sprintf("data path at index %d is empty", i))
+		}
+		// Trim whitespace from endpoints and paths
+		etcdEndpoints[i] = strings.TrimSpace(endpoint)
+		paths[i] = strings.TrimSpace(paths[i])
+	}
+
+	// Build the data paths map
 	dataPaths := make(map[string]string)
-	for i := range amount {
-		dataPaths[fmt.Sprintf("etcd%d", i)] = fmt.Sprintf(dir, i)
+	for i, etcd := range etcdEndpoints {
+		dataPaths[etcd] = paths[i]
 	}
-	return dataPaths
+
+	return etcdEndpoints, dataPaths, reportPath
+}
+
+func validateEnvVar(envName string) string {
+	value := os.Getenv(envName)
+	if value == "" {
+		panic(fmt.Sprintf("required environment variable %s is not set", envName))
+	}
+	return value
 }
