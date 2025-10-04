@@ -63,9 +63,8 @@ func (m *endpointManager) Update(ctx context.Context, updates []*UpdateWithOpts)
 		switch update.Op {
 		case Add:
 			internalUpdate := &internal.Update{
-				Op:       internal.Add,
-				Addr:     update.Endpoint.Addr,
-				Metadata: update.Endpoint.Metadata,
+				Op:   internal.Add,
+				Addr: update.Endpoint.Addr,
 			}
 
 			var v []byte
@@ -109,7 +108,7 @@ func (m *endpointManager) NewWatchChannel(ctx context.Context) (WatchChannel, er
 		up := &Update{
 			Op:       Add,
 			Key:      string(kv.Key),
-			Endpoint: Endpoint{Addr: iup.Addr, Metadata: iup.Metadata},
+			Endpoint: Endpoint{Addr: iup.Addr},
 		}
 		initUpdates = append(initUpdates, up)
 	}
@@ -162,7 +161,7 @@ func (m *endpointManager) watch(ctx context.Context, rev int64, upch chan []*Upd
 				default:
 					continue
 				}
-				up := &Update{Op: op, Key: string(e.Kv.Key), Endpoint: Endpoint{Addr: iup.Addr, Metadata: iup.Metadata}}
+				up := &Update{Op: op, Key: string(e.Kv.Key), Endpoint: Endpoint{Addr: iup.Addr}}
 				deltaUps = append(deltaUps, up)
 			}
 			if len(deltaUps) > 0 {
@@ -186,7 +185,7 @@ func (m *endpointManager) List(ctx context.Context) (Key2EndpointMap, error) {
 			continue
 		}
 
-		eps[string(kv.Key)] = Endpoint{Addr: iup.Addr, Metadata: iup.Metadata}
+		eps[string(kv.Key)] = Endpoint{Addr: iup.Addr}
 	}
 	return eps, nil
 }
