@@ -146,6 +146,11 @@ func (c *Client) streamClientInterceptor(optFuncs ...retryOption) grpc.StreamCli
 // shouldRefreshToken checks whether there's a need to refresh the token based on the error and callOptions,
 // and returns a boolean value.
 func (c *Client) shouldRefreshToken(err error, callOpts *options) bool {
+	if c.Token != "" {
+		// do not try to refresh the token as it is set by user
+		return false
+	}
+
 	if errors.Is(rpctypes.Error(err), rpctypes.ErrUserEmpty) {
 		// refresh the token when username, password is present but the server returns ErrUserEmpty
 		// which is possible when the client token is cleared somehow
