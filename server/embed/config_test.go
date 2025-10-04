@@ -111,6 +111,7 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.LeaseCheckpoint:              false,
 				features.LeaseCheckpointPersist:       false,
+				features.FastLeaseKeepAlive:           false,
 			},
 		},
 		{
@@ -166,6 +167,14 @@ func TestConfigFileFeatureGates(t *testing.T) {
 				features.TxnModeWriteWithSharedBuffer: true,
 				features.LeaseCheckpoint:              true,
 				features.LeaseCheckpointPersist:       true,
+			},
+		},
+		{
+			name:                   "can set feature gate FastLeaseKeepAlive to true from feature gate flag",
+			serverFeatureGatesJSON: "FastLeaseKeepAlive=true",
+			expectedFeatures: map[featuregate.Feature]bool{
+				features.TxnModeWriteWithSharedBuffer: true,
+				features.FastLeaseKeepAlive:           true,
 			},
 		},
 	}
@@ -894,6 +903,36 @@ func TestDiscoveryCfg(t *testing.T) {
 			err := cfg.Validate()
 
 			require.Equal(t, tc.wantErr, err != nil)
+		})
+	}
+}
+
+func TestFastLeaseKeepAliveValidate(t *testing.T) {
+	tcs := []struct {
+		name               string
+		serverFeatureGates string
+		expectError        bool
+	}{
+		{
+			name: "Default config should pass",
+		},
+		{
+			name:               "Enabling FastLeaseKeepAlive should pass",
+			serverFeatureGates: "FastLeaseKeepAlive=true",
+		},
+		{
+			name:               "Disabling FastLeaseKeepAlive should pass",
+			serverFeatureGates: "FastLeaseKeepAlive=false",
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := *NewConfig()
+			cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(tc.serverFeatureGates)
+			err := cfg.Validate()
+			if (err != nil) != tc.expectError {
+				t.Errorf("config.Validate() = %q, expected error: %v", err, tc.expectError)
+			}
 		})
 	}
 }
