@@ -17,7 +17,6 @@ package grpcproxy
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 
@@ -138,18 +137,14 @@ func (cp *clusterProxy) MemberUpdate(ctx context.Context, r *pb.MemberUpdateRequ
 	return cp.clus.MemberUpdate(ctx, r)
 }
 
-func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
+func (cp *clusterProxy) membersFromUpdates() []*pb.Member {
 	cp.umu.RLock()
 	defer cp.umu.RUnlock()
 	mbs := make([]*pb.Member, 0, len(cp.umap))
 	for _, upt := range cp.umap {
-		m, err := decodeMeta(fmt.Sprint())
-		if err != nil {
-			return nil, err
-		}
-		mbs = append(mbs, &pb.Member{Name: m.Name, ClientURLs: []string{upt.Addr}})
+		mbs = append(mbs, &pb.Member{Name: "", ClientURLs: []string{upt.Addr}})
 	}
-	return mbs, nil
+	return mbs
 }
 
 // MemberList wraps member list API with following rules:
@@ -160,10 +155,7 @@ func (cp *clusterProxy) membersFromUpdates() ([]*pb.Member, error) {
 func (cp *clusterProxy) MemberList(ctx context.Context, r *pb.MemberListRequest) (*pb.MemberListResponse, error) {
 	if cp.advaddr != "" {
 		if cp.prefix != "" {
-			mbs, err := cp.membersFromUpdates()
-			if err != nil {
-				return nil, err
-			}
+			mbs := cp.membersFromUpdates()
 			if len(mbs) > 0 {
 				return &pb.MemberListResponse{Members: mbs}, nil
 			}
