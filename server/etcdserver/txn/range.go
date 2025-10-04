@@ -67,7 +67,10 @@ func executeRange(ctx context.Context, lg *zap.Logger, txnRead mvcc.TxnRead, r *
 
 func rangeLimit(r *pb.RangeRequest) int64 {
 	limit := r.Limit
-	if r.SortOrder != pb.RangeRequest_NONE ||
+	// If the requested sort is anything other than sort by key in ascending order (the default order used by the backend),
+	// we need to fetch everything and sort it in memory.
+	if r.SortOrder != pb.RangeRequest_NONE &&
+		!(r.SortOrder == pb.RangeRequest_ASCEND && r.SortTarget == pb.RangeRequest_KEY) ||
 		r.MinModRevision != 0 || r.MaxModRevision != 0 ||
 		r.MinCreateRevision != 0 || r.MaxCreateRevision != 0 {
 		// fetch everything; sort and truncate afterwards
