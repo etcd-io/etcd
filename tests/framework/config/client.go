@@ -82,3 +82,14 @@ type WatchOptions struct {
 	Revision int64
 	RangeEnd string
 }
+
+type MakeMirrorOptions struct {
+	Prefix                string
+	Rev                   int64
+	DestPrefix            string
+	NoDestPrefix          bool
+	DestCACert            string
+	DestCert              string
+	DestKey               string
+	DestInsecureTransport bool
+}
