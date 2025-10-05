@@ -56,3 +56,7 @@ func WithTCPClient() config.ClusterOption {
 func WithUnixClient() config.ClusterOption {
 	return func(c *config.ClusterConfig) {}
 }
+
+func WithBasePort(port int) config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
+}
