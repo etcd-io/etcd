@@ -120,5 +120,37 @@ func WithUnixClient() config.ClusterOption {
 }
 
 func WithTCPClient() config.ClusterOption {
-	return e2e.WithTCPClient()
+	return func(c *config.ClusterConfig) {
+		ctx := ensureE2EClusterContext(c)
+		ctx.UseUnix = false
+		c.ClusterContext = ctx
+	}
+}
+
+func WithBasePort(port int) config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureE2EClusterContext(c)
+		ctx.BasePort = port
+		c.ClusterContext = ctx
+	}
+}
+
+func ensureE2EClusterContext(c *config.ClusterConfig) *e2e.ClusterContext {
+	ctx, _ := c.ClusterContext.(*e2e.ClusterContext)
+	if ctx == nil {
+		ctx = &e2e.ClusterContext{}
+	}
+	return ctx
+}
+
+func configureMirrorDestTLS(mm *config.MakeMirrorOptions, tls config.TLSConfig) {
+	switch tls {
+	case config.ManualTLS:
+		mm.DestCert = e2e.CertPath
+		mm.DestKey = e2e.PrivateKeyPath
+		mm.DestCACert = e2e.CaPath
+		mm.DestInsecureTransport = false
+	default:
+		mm.DestInsecureTransport = true
+	}
 }
