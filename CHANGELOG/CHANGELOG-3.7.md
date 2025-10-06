@@ -17,6 +17,10 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Add Support for Unix Socket endpoints](https://github.com/etcd-io/etcd/pull/19760)
 - [Improves performance of lease and user/role operations (up to 2x) by updating `(*readView) Rev()` to use `SharedBufReadTxMode`](https://github.com/etcd-io/etcd/pull/20411)
 
+### Package `clientv3`
+
+- Allow setting JWT directly by users, see https://github.com/etcd-io/etcd/pull/16803 and https://github.com/etcd-io/etcd/pull/20747.
+
 ### Package `pkg`
 
 - [Optimize find performance by splitting intervals with the same left endpoint by their right endpoints](https://github.com/etcd-io/etcd/pull/19768)
