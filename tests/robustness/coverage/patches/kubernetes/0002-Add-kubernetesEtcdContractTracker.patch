@@ -1,4 +1,4 @@
-From 84706912128912a37bfaf47ecf550463fadb805e Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Aleksander Mistewicz <amistewicz@google.com>
 Date: Mon, 18 Aug 2025 12:32:16 +0200
 Subject: [PATCH 2/4] Add kubernetesEtcdContractTracker
@@ -9,11 +9,6 @@ spans. TracerProvider needs to be passed to the contract tracker to
 ensure that all spans will be correctly exported.
 
 Signed-off-by: Aleksander Mistewicz <amistewicz@google.com>
----
- .../etcd3/kubernetes_contract_tracker.go      | 73 +++++++++++++++++++
- .../storage/storagebackend/factory/etcd3.go   | 10 ++-
- 2 files changed, 82 insertions(+), 1 deletion(-)
- create mode 100644 staging/src/k8s.io/apiserver/pkg/storage/etcd3/kubernetes_contract_tracker.go
 
 diff --git a/staging/src/k8s.io/apiserver/pkg/storage/etcd3/kubernetes_contract_tracker.go b/staging/src/k8s.io/apiserver/pkg/storage/etcd3/kubernetes_contract_tracker.go
 new file mode 100644
@@ -95,7 +90,7 @@ index 00000000000..c16eecb20fa
 +	return k.Interface.OptimisticDelete(ctx, key, expectedRevision, opts)
 +}
 diff --git a/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go b/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
-index c8ee0a12887..8f7f19d78d5 100644
+index 53fc9f97a70..8870369d471 100644
 --- a/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 +++ b/staging/src/k8s.io/apiserver/pkg/storage/storagebackend/factory/etcd3.go
 @@ -351,8 +351,16 @@ var newETCD3Client = func(c storagebackend.TransportConfig) (*kubernetes.Client,
@@ -116,6 +111,3 @@ index c8ee0a12887..8f7f19d78d5 100644
  }
  
  type runningCompactor struct {
--- 
-2.51.0.rc2.233.g662b1ed5c5-goog
-
