@@ -16,7 +16,7 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
 	github.com/jonboulle/clockwork v0.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
@@ -40,9 +40,9 @@ require (
 	golang.org/x/crypto v0.42.0
 	golang.org/x/net v0.44.0
 	golang.org/x/time v0.13.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5
+	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4
 	google.golang.org/grpc v1.75.1
-	google.golang.org/protobuf v1.36.9
+	google.golang.org/protobuf v1.36.10
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -72,7 +72,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251006185510-65f7160b3a87 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
