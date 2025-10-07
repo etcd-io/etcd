@@ -71,7 +71,7 @@ There are the following modules:
 5. To trigger actions across all modules (e.g. auto-format all files), please
    use/expand the following script:
    ```shell script
-   % ./scripts/fix.sh
+   % make fix
    ```
 
 ### Future
