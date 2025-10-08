@@ -2,7 +2,7 @@ module go.etcd.io/etcd/server/v3
 
 go 1.24
 
-toolchain go1.24.7
+toolchain go1.24.8
 
 require (
 	github.com/coreos/go-semver v0.3.0
