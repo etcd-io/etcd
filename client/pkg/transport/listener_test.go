@@ -674,3 +674,60 @@ func TestNewListenerWithACRLFile(t *testing.T) {
 		})
 	}
 }
+
+func TestContainsPort(t *testing.T) {
+	tests := []struct {
+		host string
+		want bool
+	}{
+		{"localhost:80", true},
+		{"127.0.0.1:8080", true},
+		{"[::1]:443", true},
+		{"[2001:db8::1]:8443", true},
+		{"localhost", false},
+		{"2001:db8::1:443", false},
+		{"[::1]", false},
+		{"host:", true},
+	}
+	for _, test := range tests {
+		got := containsPort(test.host)
+		if got != test.want {
+			t.Errorf("containsPort(%q) = %v, want %v", test.host, got, test.want)
+		}
+	}
+}
+
+func TestSplitHostPort(t *testing.T) {
+	tests := []struct {
+		host       string
+		expectHost string
+		expectPort string
+		expectErr  error
+	}{
+		{"localhost:80", "localhost", "80", nil},
+		{"127.0.0.1:8080", "127.0.0.1", "8080", nil},
+		{"[::1]:443", "::1", "443", nil},
+		{"[2001:db8::1]:8443", "2001:db8::1", "8443", nil},
+		{"localhost", "localhost", "", nil},
+		{"2001:db8::1:443", "", "", &net.AddrError{Err: "too many colons in address", Addr: "2001:db8::1:443:"}},
+		{"[::1]", "::1", "", nil},
+		{"host:", "host", "", nil},
+	}
+
+	for _, test := range tests {
+		h, p, err := splitHostPort(test.host)
+		if (err != nil) != (test.expectErr != nil) {
+			t.Fatalf("expected error: %v, got: %v", test.expectErr, err)
+		}
+		if err != nil && err.Error() != test.expectErr.Error() {
+			t.Errorf("expected error: %v, got: %v", test.expectErr, err)
+		}
+
+		if h != test.expectHost {
+			t.Errorf("expected host: %s, got: %s", test.expectHost, h)
+		}
+		if p != test.expectPort {
+			t.Errorf("expected port: %s, got: %s", test.expectPort, p)
+		}
+	}
+}

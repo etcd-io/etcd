@@ -286,7 +286,7 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	)
 
 	for _, host := range hosts {
-		h, _, _ := net.SplitHostPort(host)
+		h, _, _ := splitHostPort(host)
 		if ip := net.ParseIP(h); ip != nil {
 			tmpl.IPAddresses = append(tmpl.IPAddresses, ip)
 		} else {
@@ -343,6 +343,34 @@ func SelfCert(lg *zap.Logger, dirpath string, hosts []string, selfSignedCertVali
 	keyOut.Close()
 	info.Logger.Info("created key file", zap.String("path", keyPath))
 	return SelfCert(lg, dirpath, hosts, selfSignedCertValidity)
+}
+
+func splitHostPort(host string) (string, string, error) {
+	if !containsPort(host) {
+		host = host + ":"
+	}
+	return net.SplitHostPort(host)
+}
+
+func containsPort(hostport string) bool {
+	if hostport == "" {
+		return false
+	}
+
+	if hostport[0] == '[' {
+		end := strings.IndexByte(hostport, ']')
+		return len(hostport) > end+1 && hostport[end+1] == ':'
+	}
+
+	colon := strings.LastIndexByte(hostport, ':')
+	if colon < 0 {
+		return false
+	}
+
+	if strings.Contains(hostport[:colon], ":") {
+		return false
+	}
+	return true
 }
 
 // baseConfig is called on initial TLS handshake start.
