@@ -4,6 +4,7 @@ linters:
   default: none
   enable: # please keep this alphabetized
     - errorlint
+    - gomodguard
     - ineffassign
     - nakedret
     - revive
@@ -17,6 +18,13 @@ linters:
     - usetesting
     - whitespace
   settings:
+    gomodguard:
+      blocked:
+        modules:
+          - go.etcd.io/etcd:
+              reason: "Forbidden dependency"
+          - go.etcd.io/etcd/client/v2:
+              reason: "Forbidden dependency"
     nakedret:
       # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
       max-func-lines: 5

@@ -99,8 +99,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-govet verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard \
-	verify-go-workspace
+	verify-govet-shadow verify-markdown-marker verify-go-versions verify-go-workspace
 
 .PHONY: fix
 fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive update-go-workspace

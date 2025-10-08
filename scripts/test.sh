@@ -545,18 +545,6 @@ function bom_pass {
   rm bom-now.json.tmp
 }
 
-function gomodguard_for_module {
-  if [ ! -f .gomodguard.yaml ]; then
-    # Nothing to validate, return.
-    return
-  fi
-  run_go_tool github.com/ryancurrah/gomodguard/cmd/gomodguard
-}
-
-function gomodguard_pass {
-  run_for_modules gomodguard_for_module
-}
-
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_deps_of_module() {
