@@ -57,7 +57,7 @@ cd ${ETCD_ROOT_DIR}/etcdctl
 go get github.com/spf13/cobra@v1.7.0
 go mod tidy
 cd ..
-./scripts/fix.sh
+make fix # This will update the bill of materials, Go modules and workspace, etc.
 ```
 
 Execute the same steps for all other modules. When you finish bumping the dependency for all modules, then commit the change,
@@ -120,7 +120,7 @@ and everyone is welcome to participate; you just need to register your name in t
 
 Usually, we don't proactively bump dependencies for stable releases unless there are any CVEs or bugs that affect etcd.
 
-If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh` in release-3.4, so no need to
+If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh`/`make fix` in release-3.4, so no need to
 execute it for 3.4.
 
 ## Golang versions
