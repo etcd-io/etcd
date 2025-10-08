@@ -55,6 +55,15 @@ func TestCtlV3MemberAdd(t *testing.T)          { testCtl(t, memberAddTest) }
 func TestCtlV3MemberAddAsLearner(t *testing.T) { testCtl(t, memberAddAsLearnerTest) }
 
 func TestCtlV3MemberUpdate(t *testing.T) { testCtl(t, memberUpdateTest) }
+
+func TestCtlV3MemberPromoteWithAuthFromLeader(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(false), withTestTimeout(30*time.Second))
+}
+
+func TestCtlV3MemberPromoteWithAuthFromFollower(t *testing.T) {
+	testCtl(t, memberPromoteWithAuth(true), withTestTimeout(30*time.Second))
+}
+
 func TestCtlV3MemberUpdateNoTLS(t *testing.T) {
 	testCtl(t, memberUpdateTest, withCfg(*e2e.NewConfigNoTLS()))
 }
@@ -270,6 +279,61 @@ func memberAddTest(cx ctlCtx) {
 func memberAddAsLearnerTest(cx ctlCtx) {
 	peerURL := fmt.Sprintf("http://localhost:%d", e2e.EtcdProcessBasePort+11)
 	require.NoError(cx.t, ctlV3MemberAdd(cx, peerURL, true))
+}
+
+func memberPromoteWithAuth(fromFollower bool) func(cx ctlCtx) {
+	return func(cx ctlCtx) {
+		ctx := context.Background()
+
+		require.NoError(cx.t, authEnable(cx))
+		cx.user, cx.pass = "root", "root"
+
+		// Add a regular member
+		_, err := cx.epc.StartNewProc(ctx, nil, cx.t, false, e2e.WithAuth("root", "root"))
+		require.NoError(cx.t, err)
+
+		var learnerID uint64
+		var addErr error
+		for {
+			// Add a learner once the cluster is healthy
+			learnerID, addErr = cx.epc.StartNewProc(ctx, nil, cx.t, true, e2e.WithAuth("root", "root"))
+			if addErr != nil {
+				if strings.Contains(addErr.Error(), "etcdserver: unhealthy cluster") {
+					time.Sleep(1 * time.Second)
+					continue
+				}
+			}
+			break
+		}
+		require.NoError(cx.t, addErr)
+
+		var leaderIdx int
+		var followerIdx int
+
+		// Determine the index of the leader and the follower
+		for idx, proc := range cx.epc.Procs[:2] {
+			status, err := proc.Etcdctl(e2e.WithAuth("root", "root")).Status(ctx)
+			require.NoError(cx.t, err)
+
+			if status[0].Header.MemberId == status[0].Leader {
+				leaderIdx = idx
+			} else {
+				followerIdx = idx
+			}
+		}
+
+		if fromFollower {
+			_, err = cx.epc.Procs[followerIdx].
+				Etcdctl(e2e.WithAuth("root", "root")).
+				MemberPromote(ctx, learnerID)
+		} else {
+			_, err = cx.epc.Procs[leaderIdx].
+				Etcdctl(e2e.WithAuth("root", "root")).
+				MemberPromote(ctx, learnerID)
+		}
+
+		require.NoError(cx.t, err)
+	}
 }
 
 func ctlV3MemberAdd(cx ctlCtx, peerURL string, isLearner bool) error {
