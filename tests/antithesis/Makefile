@@ -1,3 +1,4 @@
+ANTITHESIS_ROOT :=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
@@ -16,7 +17,13 @@ antithesis-build-client-docker-image: validate-node-count
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
+	# Use the Workspace Go version from the go directive. This is the base image
+	# later in the Dockerfile, we'll set the correct toolchain.
+	docker build \
+		--build-arg GO_IMAGE_TAG=$(shell go work edit -json | jq .Go) \
+		--build-arg REF=$(REF) \
+		--tag etcd-server:latest \
+		$(ANTITHESIS_ROOT)/server/
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4
