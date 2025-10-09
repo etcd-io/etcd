@@ -10,10 +10,14 @@ CFG_NODE_COUNT ?= 3
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image: validate-node-count
+	# This is a release image using go build without our tooling. Using the
+	# version defined in .go-version is the correct image tag.
 	docker build \
-		--build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
+		--build-arg GO_IMAGE_TAG=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
 		--build-arg CFG_NODE_COUNT=$(CFG_NODE_COUNT) \
-		-f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
+		--file $(ANTITHESIS_ROOT)/test-template/Dockerfile \
+		--tag etcd-client:latest \
+		$(REPOSITORY_ROOT)
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
