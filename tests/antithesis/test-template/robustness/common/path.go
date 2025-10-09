@@ -34,7 +34,7 @@ const (
 	localetcd2 = "127.0.0.1:32379"
 	// used by default when running the client locally
 	defaultetcdLocalDataPath = "/tmp/etcddata%d"
-	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH"
+	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH_PREFIX"
 	localReportPath          = "report"
 )
 
