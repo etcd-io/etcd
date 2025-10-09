@@ -35,6 +35,11 @@ RUN mkdir /etcd_instrumented
 RUN `go env GOPATH`/bin/antithesis-go-instrumentor /etcd /etcd_instrumented
 
 WORKDIR /etcd_instrumented/customer
+RUN go mod edit -go=$(\
+      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Go": "/) {print $4}' \
+    ) && go mod edit -toolchain=$(\
+      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Toolchain": "/) {print $4}' \
+    )
 
 # Some previous versions hardcode CGO_ENABLED=0
 RUN find . -type f -exec sed -i 's/CGO_ENABLED=0/CGO_ENABLED=${CGO_ENABLED}/' {} +
@@ -44,7 +49,16 @@ RUN go install github.com/myitcv/gobin@v0.0.14
 RUN if [ -d "vendor" ]; then go mod vendor; fi
 
 # The instrumentation adds code and packages. Need go mod tidy for all modules before building
-RUN for d in server etcdutl etcdctl; do (cd ${d} && go mod tidy || true); done
+RUN for d in server etcdutl etcdctl; do \
+    (cd ${d} && \
+    go mod tidy && \
+    go mod edit -go=$(\
+      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Go": "/) {print $4}' \
+    ) \
+    && go mod edit -toolchain=$(\
+      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Toolchain": "/) {print $4}' \
+    ) || true); done
+
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
 RUN CGO_ENABLED=1 make build
