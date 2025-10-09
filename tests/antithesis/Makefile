@@ -5,13 +5,19 @@ ARCH ?= $(shell go env GOARCH)
 REF = main
 IMAGE_TAG = latest
 
+# Node count for docker-compose file selection only
 CFG_NODE_COUNT ?= 3
 
+# Default environment variables (mainly for local development)
+ETCD_ROBUSTNESS_ENDPOINTS ?= 127.0.0.1:12379,127.0.0.1:22379,127.0.0.1:32379
+ETCD_ROBUSTNESS_DATA_PATHS ?= /tmp/etcddata0,/tmp/etcddata1,/tmp/etcddata2
+ETCD_ROBUSTNESS_REPORT_PATH ?= ./report
+ETCD_ROBUSTNESS_PATH_PREFIX ?= /tmp/etcddata
+
 .PHONY: antithesis-build-client-docker-image
-antithesis-build-client-docker-image: validate-node-count
+antithesis-build-client-docker-image:
 	docker build \
 		--build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
-		--build-arg CFG_NODE_COUNT=$(CFG_NODE_COUNT) \
 		-f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
 
 .PHONY: antithesis-build-etcd-image
@@ -55,19 +61,31 @@ antithesis-run-container-validation: validate-node-count
 	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
 		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml exec client /opt/antithesis/test/v1/robustness/finally_validation
 
+LOCAL_ENV_VARS = export ETCD_ROBUSTNESS_ENDPOINTS=$(ETCD_ROBUSTNESS_ENDPOINTS) && \
+	export ETCD_ROBUSTNESS_DATA_PATHS=$(ETCD_ROBUSTNESS_DATA_PATHS) && \
+	export ETCD_ROBUSTNESS_REPORT_PATH=$(ETCD_ROBUSTNESS_REPORT_PATH)
+
 .PHONY: antithesis-run-local-traffic
 antithesis-run-local-traffic:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/traffic/main.go --local
+	$(LOCAL_ENV_VARS) && \
+		go run --race ./test-template/robustness/traffic/main.go
 
 .PHONY: antithesis-run-local-validation
 antithesis-run-local-validation:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/finally/main.go --local
+	$(LOCAL_ENV_VARS) && \
+		go run --race ./test-template/robustness/finally/main.go
 
 .PHONY: antithesis-clean
 antithesis-clean: validate-node-count
 	export USER_ID=$(USER_ID) && export GROUP_ID=$(GROUP_ID) && \
 		docker compose -f config/docker-compose-$(CFG_NODE_COUNT)-node.yml down --remove-orphans
-	rm -rf /tmp/etcddata0 /tmp/etcddata1 /tmp/etcddata2 /tmp/etcdreport
+	@echo "Cleaning data paths: $(ETCD_ROBUSTNESS_DATA_PATHS)"
+	@echo "Cleaning report path: $(ETCD_ROBUSTNESS_REPORT_PATH)"
+	@for path in $$(echo "$(ETCD_ROBUSTNESS_DATA_PATHS)" | tr ',' ' '); do \
+		echo "Removing: $$path"; \
+		rm -rf "$$path"; \
+	done
+	rm -rf "$(ETCD_ROBUSTNESS_REPORT_PATH)"
 
 .PHONY: validate-node-count
 validate-node-count:
