@@ -1,3 +1,4 @@
+ANTITHESIS_ROOT :=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
@@ -9,14 +10,24 @@ CFG_NODE_COUNT ?= 3
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image: validate-node-count
+	# This is a release image using go build without our tooling. Using the
+	# version defined in .go-version is the correct image tag.
 	docker build \
-		--build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
+		--build-arg GO_IMAGE_TAG=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
 		--build-arg CFG_NODE_COUNT=$(CFG_NODE_COUNT) \
-		-f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
+		--file $(ANTITHESIS_ROOT)/test-template/Dockerfile \
+		--tag etcd-client:latest \
+		$(REPOSITORY_ROOT)
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
+	# Use the Workspace Go version from the go directive. This is the base image
+	# later in the Dockerfile, we'll set the correct toolchain.
+	docker build \
+		--build-arg GO_IMAGE_TAG=$(shell go work edit -json | jq .Go) \
+		--build-arg REF=$(REF) \
+		--tag etcd-server:latest \
+		$(ANTITHESIS_ROOT)/server/
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4

@@ -1,11 +1,12 @@
-ARG GO_VERSION=1.25.1
 ARG ARCH=amd64
+ARG GO_IMAGE_TAG
 
-FROM golang:$GO_VERSION AS build
+FROM golang:$GO_IMAGE_TAG AS build
 
 # cloning etcd
 ARG REF=main
 RUN git clone --depth=1 https://github.com/etcd-io/etcd.git --branch=${REF} /etcd
+RUN go env -w GOTOOLCHAIN="go$(cat .go-version)"
 
 # inject assertions in place of gofail
 WORKDIR /etcd/server
@@ -35,11 +36,6 @@ RUN mkdir /etcd_instrumented
 RUN `go env GOPATH`/bin/antithesis-go-instrumentor /etcd /etcd_instrumented
 
 WORKDIR /etcd_instrumented/customer
-RUN go mod edit -go=$(\
-      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Go": "/) {print $4}' \
-    ) && go mod edit -toolchain=$(\
-      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Toolchain": "/) {print $4}' \
-    )
 
 # Some previous versions hardcode CGO_ENABLED=0
 RUN find . -type f -exec sed -i 's/CGO_ENABLED=0/CGO_ENABLED=${CGO_ENABLED}/' {} +
@@ -50,14 +46,8 @@ RUN if [ -d "vendor" ]; then go mod vendor; fi
 
 # The instrumentation adds code and packages. Need go mod tidy for all modules before building
 RUN for d in server etcdutl etcdctl; do \
-    (cd ${d} && \
-    go mod tidy && \
-    go mod edit -go=$(\
-      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Go": "/) {print $4}' \
-    ) \
-    && go mod edit -toolchain=$(\
-      cd /etcd && go mod edit -json | awk -F'"' 'match($0, /"Toolchain": "/) {print $4}' \
-    ) || true); done
+      (cd ${d} && go mod tidy || true); \
+    done
 
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
