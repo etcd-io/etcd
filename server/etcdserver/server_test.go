@@ -61,6 +61,7 @@ import (
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
+	serverraft "go.etcd.io/etcd/server/v3/etcdserver/raft"
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
@@ -90,12 +91,12 @@ func TestApplyRepeat(t *testing.T) {
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: 1234}, true)
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     mockstorage.NewStorageRecorder(""),
-		transport:   newNopTransporter(),
+		RaftStorage: raft.NewMemoryStorage(),
+		Storage:     mockstorage.NewStorageRecorder(""),
+		Transport:   newNopTransporter(),
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -341,14 +342,14 @@ func newServer(t *testing.T, recorder *nodeRecorder) *EtcdServer {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
-		r:            *newRaftNode(raftNodeConfig{lg: lg, Node: recorder}),
+		r:            *serverraft.NewNodeFromConfig(serverraft.Config{Lg: lg, Node: recorder}),
 		cluster:      membership.NewCluster(lg),
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.cluster.SetBackend(schema.NewMembershipBackend(lg, be))
 	srv.cluster.SetStore(v2store.New())
 	srv.beHooks = serverstorage.NewBackendHooks(lg, srv.consistIndex)
-	srv.r.transport = newNopTransporter()
+	srv.r.Transport = newNopTransporter()
 	srv.w = mockwait.NewNop()
 	return srv
 }
@@ -427,7 +428,7 @@ func TestApplyConfChangeError(t *testing.T) {
 		srv := &EtcdServer{
 			lgMu:    new(sync.RWMutex),
 			lg:      zaptest.NewLogger(t),
-			r:       *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
+			r:       *serverraft.NewNodeFromConfig(serverraft.Config{Lg: zaptest.NewLogger(t), Node: n}),
 			cluster: cl,
 		}
 		_, err := srv.applyConfChange(tt.cc, nil, true)
@@ -459,10 +460,10 @@ func TestApplyConfChangeShouldStop(t *testing.T) {
 	for i := 1; i <= 3; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
-	r := newRaftNode(raftNodeConfig{
-		lg:        zaptest.NewLogger(t),
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
-		transport: newNopTransporter(),
+		Transport: newNopTransporter(),
 	})
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
@@ -522,7 +523,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
-	defer srv.r.raftNodeConfig.Stop()
+	defer srv.r.Config.Stop()
 
 	// create EntryConfChange entry
 	now := time.Now()
@@ -561,7 +562,7 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	assert.Equal(t, consistIndex, rindex)
 }
 
-func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *raftNode {
+func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *serverraft.Node {
 	storage := raft.NewMemoryStorage()
 	storage.SetHardState(raftpb.HardState{Commit: 0, Term: 0})
 	if snap != nil {
@@ -579,10 +580,10 @@ func realisticRaftNode(lg *zap.Logger, id uint64, snap *raftpb.Snapshot) *raftNo
 		MaxInflightMsgs: 256,
 	}
 	n := raft.RestartNode(c)
-	r := newRaftNode(raftNodeConfig{
-		lg:        lg,
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:        lg,
 		Node:      n,
-		transport: newNopTransporter(),
+		Transport: newNopTransporter(),
 	})
 	return r
 }
@@ -600,10 +601,10 @@ func TestApplyMultiConfChangeShouldStop(t *testing.T) {
 	for i := 1; i <= 5; i++ {
 		cl.AddMember(&membership.Member{ID: types.ID(i)}, true)
 	}
-	r := newRaftNode(raftNodeConfig{
-		lg:        lg,
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:        lg,
 		Node:      newNodeNop(),
-		transport: newNopTransporter(),
+		Transport: newNopTransporter(),
 	})
 	ci := cindex.NewFakeConsistentIndex(0)
 	srv := &EtcdServer{
@@ -651,11 +652,11 @@ func TestSnapshotDisk(t *testing.T) {
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
 		Node:        newNodeNop(),
-		raftStorage: s,
-		storage:     p,
+		RaftStorage: s,
+		Storage:     p,
 	})
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -702,11 +703,11 @@ func TestSnapshotMemory(t *testing.T) {
 	s.Append([]raftpb.Entry{{Index: 1}})
 	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
 		Node:        newNodeNop(),
-		raftStorage: s,
-		storage:     p,
+		RaftStorage: s,
+		Storage:     p,
 	})
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -765,13 +766,13 @@ func TestSnapshotOrdering(t *testing.T) {
 	rs := raft.NewMemoryStorage()
 	p := mockstorage.NewStorageRecorderStream(testdir)
 	tr, snapDoneC := newSnapTransporter(lg, snapdir)
-	r := newRaftNode(raftNodeConfig{
-		lg:          lg,
-		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          lg,
+		IsIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
 		Node:        n,
-		transport:   tr,
-		storage:     p,
-		raftStorage: rs,
+		Transport:   tr,
+		Storage:     p,
+		RaftStorage: rs,
 	})
 	ci := cindex.NewConsistentIndex(be)
 	cfg := config.ServerConfig{
@@ -861,13 +862,13 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 
 	rs := raft.NewMemoryStorage()
 	tr, snapDoneC := newSnapTransporter(lg, testdir)
-	r := newRaftNode(raftNodeConfig{
-		lg:          lg,
-		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          lg,
+		IsIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
 		Node:        n,
-		transport:   tr,
-		storage:     mockstorage.NewStorageRecorder(testdir),
-		raftStorage: rs,
+		Transport:   tr,
+		Storage:     mockstorage.NewStorageRecorder(testdir),
+		RaftStorage: rs,
 	})
 	ci := cindex.NewConsistentIndex(be)
 	s := &EtcdServer{
@@ -963,12 +964,12 @@ func TestAddMember(t *testing.T) {
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
-	r := newRaftNode(raftNodeConfig{
-		lg:          lg,
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     mockstorage.NewStorageRecorder(""),
-		transport:   newNopTransporter(),
+		RaftStorage: raft.NewMemoryStorage(),
+		Storage:     mockstorage.NewStorageRecorder(""),
+		Transport:   newNopTransporter(),
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1024,7 +1025,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 			},
 		},
 	})
-	defer r.raftNodeConfig.Stop()
+	defer r.Config.Stop()
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
@@ -1068,12 +1069,12 @@ func TestRemoveMember(t *testing.T) {
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: 1234}, true)
-	r := newRaftNode(raftNodeConfig{
-		lg:          lg,
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     mockstorage.NewStorageRecorder(""),
-		transport:   newNopTransporter(),
+		RaftStorage: raft.NewMemoryStorage(),
+		Storage:     mockstorage.NewStorageRecorder(""),
+		Transport:   newNopTransporter(),
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1116,12 +1117,12 @@ func TestUpdateMember(t *testing.T) {
 	cl.SetStore(st)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
-	r := newRaftNode(raftNodeConfig{
-		lg:          lg,
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          lg,
 		Node:        n,
-		raftStorage: raft.NewMemoryStorage(),
-		storage:     mockstorage.NewStorageRecorder(""),
-		transport:   newNopTransporter(),
+		RaftStorage: raft.NewMemoryStorage(),
+		Storage:     mockstorage.NewStorageRecorder(""),
+		Transport:   newNopTransporter(),
 	})
 	s := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
@@ -1169,7 +1170,7 @@ func TestPublishV3(t *testing.T) {
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
 		memberID:   1,
-		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
+		r:          *serverraft.NewNodeFromConfig(serverraft.Config{Lg: lg, Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
 		w:          w,
@@ -1201,10 +1202,10 @@ func TestPublishV3(t *testing.T) {
 // TestPublishV3Stopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
-	r := newRaftNode(raftNodeConfig{
-		lg:        zaptest.NewLogger(t),
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
-		transport: newNopTransporter(),
+		Transport: newNopTransporter(),
 	})
 	srv := &EtcdServer{
 		lgMu:     new(sync.RWMutex),
@@ -1239,7 +1240,7 @@ func TestPublishV3Retry(t *testing.T) {
 		readych:    make(chan struct{}),
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
 		memberID:   1,
-		r:          *newRaftNode(raftNodeConfig{lg: lg, Node: n}),
+		r:          *serverraft.NewNodeFromConfig(serverraft.Config{Lg: lg, Node: n}),
 		w:          mockwait.NewNop(),
 		stopping:   make(chan struct{}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
@@ -1289,7 +1290,7 @@ func TestUpdateVersionV3(t *testing.T) {
 		lg:         zaptest.NewLogger(t),
 		memberID:   1,
 		Cfg:        config.ServerConfig{Logger: lg, TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries, MaxRequestBytes: 1000},
-		r:          *newRaftNode(raftNodeConfig{lg: zaptest.NewLogger(t), Node: n}),
+		r:          *serverraft.NewNodeFromConfig(serverraft.Config{Lg: zaptest.NewLogger(t), Node: n}),
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://node1.com"}},
 		cluster:    &membership.RaftCluster{},
 		w:          w,
@@ -1559,27 +1560,6 @@ func (s *snapTransporter) SendSnapshot(m snap.Message) {
 	s.snapDoneC <- m
 }
 
-type sendMsgAppRespTransporter struct {
-	nopTransporter
-	sendC chan int
-}
-
-func newSendMsgAppRespTransporter() (rafthttp.Transporter, <-chan int) {
-	ch := make(chan int, 1)
-	tr := &sendMsgAppRespTransporter{sendC: ch}
-	return tr, ch
-}
-
-func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
-	var send int
-	for _, msg := range m {
-		if msg.To != 0 {
-			send++
-		}
-	}
-	s.sendC <- send
-}
-
 func TestWaitAppliedIndex(t *testing.T) {
 	cases := []struct {
 		name           string
@@ -1667,9 +1647,9 @@ func TestIsActive(t *testing.T) {
 			Cfg: config.ServerConfig{
 				TickMs: tc.tickMs,
 			},
-			r: raftNode{
-				tickMu:       new(sync.RWMutex),
-				latestTickTs: time.Now().Add(-tc.durationSinceLastTick),
+			r: serverraft.Node{
+				TickMu:       new(sync.RWMutex),
+				LatestTickTs: time.Now().Add(-tc.durationSinceLastTick),
 			},
 		}
 
@@ -1702,4 +1682,151 @@ func TestAddFeatureGateMetrics(t *testing.T) {
 	`
 	err := ptestutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(expected), "etcd_server_feature_enabled")
 	require.NoErrorf(t, err, "unexpected metric collection result: \n%s", err)
+}
+
+func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
+	n := newNopReadyNode()
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
+		Node:        n,
+		Storage:     mockstorage.NewStorageRecorder(""),
+		RaftStorage: raft.NewMemoryStorage(),
+		Transport:   newNopTransporter(),
+	})
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
+	srv.r.Start(nil)
+	n.readyc <- raft.Ready{}
+
+	stop := func() {
+		srv.r.Stopped <- struct{}{}
+		select {
+		case <-srv.r.Done:
+		case <-time.After(time.Second):
+			t.Fatalf("failed to stop raft loop")
+		}
+	}
+
+	select {
+	case <-srv.r.Applyc:
+	case <-time.After(time.Second):
+		stop()
+		t.Fatalf("failed to receive toApply struct")
+	}
+
+	stop()
+}
+
+// TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
+func TestConfigChangeBlocksApply(t *testing.T) {
+	n := newNopReadyNode()
+
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
+		Node:        n,
+		Storage:     mockstorage.NewStorageRecorder(""),
+		RaftStorage: raft.NewMemoryStorage(),
+		Transport:   newNopTransporter(),
+	})
+	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
+
+	srv.r.Start(&serverraft.ReadyHandler{
+		GetLead:          func() uint64 { return 0 },
+		UpdateLead:       func(uint64) {},
+		UpdateLeadership: func(bool) {},
+	})
+	defer srv.r.Stop()
+
+	n.readyc <- raft.Ready{
+		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
+		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
+	}
+	ap := <-srv.r.Applyc
+
+	continueC := make(chan struct{})
+	go func() {
+		n.readyc <- raft.Ready{}
+		<-srv.r.Applyc
+		close(continueC)
+	}()
+
+	select {
+	case <-continueC:
+		t.Fatalf("unexpected execution: raft routine should block waiting for toApply")
+	case <-time.After(time.Second):
+	}
+
+	// finish toApply, unblock raft routine
+	<-ap.Notifyc
+
+	select {
+	case <-ap.RaftAdvancedC:
+		t.Log("recevied raft advance notification")
+	}
+
+	select {
+	case <-continueC:
+	case <-time.After(time.Second):
+		t.Fatalf("unexpected blocking on execution")
+	}
+}
+
+func TestProcessDuplicatedAppRespMessage(t *testing.T) {
+	n := newNopReadyNode()
+	cl := membership.NewCluster(zaptest.NewLogger(t))
+
+	rs := raft.NewMemoryStorage()
+	p := mockstorage.NewStorageRecorder("")
+	tr, sendc := newSendMsgAppRespTransporter()
+	r := serverraft.NewNodeFromConfig(serverraft.Config{
+		Lg:          zaptest.NewLogger(t),
+		IsIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+		Node:        n,
+		Transport:   tr,
+		Storage:     p,
+		RaftStorage: rs,
+	})
+
+	s := &EtcdServer{
+		lgMu:    new(sync.RWMutex),
+		lg:      zaptest.NewLogger(t),
+		r:       *r,
+		cluster: cl,
+	}
+
+	s.start()
+	defer s.Stop()
+
+	lead := uint64(1)
+
+	n.readyc <- raft.Ready{Messages: []raftpb.Message{
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 1},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 2},
+		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 3},
+	}}
+
+	got, want := <-sendc, 1
+	if got != want {
+		t.Errorf("count = %d, want %d", got, want)
+	}
+}
+
+type sendMsgAppRespTransporter struct {
+	nopTransporter
+	sendC chan int
+}
+
+func newSendMsgAppRespTransporter() (rafthttp.Transporter, <-chan int) {
+	ch := make(chan int, 1)
+	tr := &sendMsgAppRespTransporter{sendC: ch}
+	return tr, ch
+}
+
+func (s *sendMsgAppRespTransporter) Send(m []raftpb.Message) {
+	var send int
+	for _, msg := range m {
+		if msg.To != 0 {
+			send++
+		}
+	}
+	s.sendC <- send
 }

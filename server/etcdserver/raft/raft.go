@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package raft
 
 import (
 	"expvar"
@@ -24,9 +24,14 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/contention"
+	"go.etcd.io/etcd/server/v3/config"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
+	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/raft/v3"
 	"go.etcd.io/raft/v3/raftpb"
 )
@@ -38,6 +43,9 @@ const (
 	// Never overflow the rafthttp buffer, which is 4096.
 	// TODO: a better const?
 	maxInflightMsgs = 4096 / 8
+	// max number of in-flight snapshot messages etcdserver allows to have
+	// This number is more than enough for most clusters with 5 machines.
+	maxInFlightMsgSnap = 16
 )
 
 var (
@@ -62,67 +70,113 @@ func init() {
 	}))
 }
 
-// toApply contains entries, snapshot to be applied. Once
-// an toApply is consumed, the entries will be persisted to
-// raft storage concurrently; the application must read
-// notifyc before assuming the raft messages are stable.
-type toApply struct {
-	entries  []raftpb.Entry
-	snapshot raftpb.Snapshot
-	// notifyc synchronizes etcd server applies with the raft node
-	notifyc chan struct{}
-	// raftAdvancedC notifies EtcdServer.apply that
-	// 'raftLog.applied' has advanced by r.Advance
-	// it should be used only when entries contain raftpb.EntryConfChange
-	raftAdvancedC <-chan struct{}
+// raftReadyHandler contains a set of EtcdServer operations to be called by raftNode,
+// and helps decouple state machine logic from Raft algorithms.
+// TODO: add a state machine interface to toApply the commit entries and do snapshot/recover
+type ReadyHandler struct {
+	GetLead              func() (lead uint64)
+	UpdateLead           func(lead uint64)
+	UpdateLeadership     func(newLeader bool)
+	UpdateCommittedIndex func(uint64)
 }
 
-type raftNode struct {
+func NewConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
+	return &raft.Config{
+		ID:              id,
+		ElectionTick:    cfg.ElectionTicks,
+		HeartbeatTick:   1,
+		Storage:         s,
+		MaxSizePerMsg:   maxSizePerMsg,
+		MaxInflightMsgs: maxInflightMsgs,
+		CheckQuorum:     true,
+		PreVote:         cfg.PreVote,
+		Logger:          NewRaftLoggerZap(cfg.Logger.Named("raft")),
+	}
+}
+
+// ToApply contains entries, snapshot to be applied. Once
+// an ToApply is consumed, the entries will be persisted to
+// raft storage concurrently; the application must read
+// notifyc before assuming the raft messages are stable.
+type ToApply struct {
+	Entries  []raftpb.Entry
+	Snapshot raftpb.Snapshot
+	// Notifyc synchronizes etcd server applies with the raft node
+	Notifyc chan struct{}
+	// RaftAdvancedC notifies EtcdServer.apply that
+	// 'raftLog.applied' has advanced by r.Advance
+	// it should be used only when entries contain raftpb.EntryConfChange
+	RaftAdvancedC <-chan struct{}
+}
+
+type Node struct {
 	lg *zap.Logger
 
-	tickMu *sync.RWMutex
+	TickMu *sync.RWMutex
 	// timestamp of the latest tick
-	latestTickTs time.Time
-	raftNodeConfig
+	LatestTickTs time.Time
+	Config
 
 	// a chan to send/receive snapshot
-	msgSnapC chan raftpb.Message
+	MsgSnapC chan raftpb.Message
 
 	// a chan to send out apply
-	applyc chan toApply
+	Applyc chan ToApply
 
 	// a chan to send out readState
-	readStateC chan raft.ReadState
+	ReadStateC chan raft.ReadState
 
 	// utility
 	ticker *time.Ticker
 	// contention detectors for raft heartbeat message
 	td *contention.TimeoutDetector
 
-	stopped chan struct{}
-	done    chan struct{}
+	Stopped chan struct{}
+	Done    chan struct{}
 }
 
-type raftNodeConfig struct {
-	lg *zap.Logger
+type Config struct {
+	Lg *zap.Logger
 
 	// to check if msg receiver is removed from cluster
-	isIDRemoved func(id uint64) bool
+	IsIDRemoved func(id uint64) bool
 	raft.Node
-	raftStorage *raft.MemoryStorage
-	storage     serverstorage.Storage
-	heartbeat   time.Duration // for logging
-	// transport specifies the transport to send and receive msgs to members.
+	RaftStorage *raft.MemoryStorage
+	Storage     serverstorage.Storage
+	Heartbeat   time.Duration // for logging
+	// Transport specifies the Transport to send and receive msgs to members.
 	// Sending messages MUST NOT block. It is okay to drop messages, since
 	// clients should timeout and reissue their messages.
-	// If transport is nil, server will panic.
-	transport rafthttp.Transporter
+	// If Transport is nil, server will panic.
+	Transport rafthttp.Transporter
 }
 
-func newRaftNode(cfg raftNodeConfig) *raftNode {
+func StartNode(lg *zap.Logger, heartbeat time.Duration, peers []raft.Peer, config *raft.Config, storage *raft.MemoryStorage, ss *snap.Snapshotter, wal *wal.WAL, cl *membership.RaftCluster) *Node {
+	var n raft.Node
+	if len(peers) == 0 {
+		n = raft.RestartNode(config)
+	} else {
+		n = raft.StartNode(config, peers)
+	}
+	raftStatusMu.Lock()
+	raftStatus = n.Status
+	raftStatusMu.Unlock()
+	return NewNodeFromConfig(
+		Config{
+			Lg:          lg,
+			IsIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
+			Node:        n,
+			Heartbeat:   heartbeat,
+			RaftStorage: storage,
+			Storage:     serverstorage.NewStorage(lg, wal, ss),
+		},
+	)
+}
+
+func NewNodeFromConfig(cfg Config) *Node {
 	var lg raft.Logger
-	if cfg.lg != nil {
-		lg = NewRaftLoggerZap(cfg.lg)
+	if cfg.Lg != nil {
+		lg = NewRaftLoggerZap(cfg.Lg)
 	} else {
 		lcfg := logutil.DefaultZapLoggerConfig
 		var err error
@@ -132,45 +186,45 @@ func newRaftNode(cfg raftNodeConfig) *raftNode {
 		}
 	}
 	raft.SetLogger(lg)
-	r := &raftNode{
-		lg:             cfg.lg,
-		tickMu:         new(sync.RWMutex),
-		raftNodeConfig: cfg,
-		latestTickTs:   time.Now(),
+	r := &Node{
+		lg:           cfg.Lg,
+		TickMu:       new(sync.RWMutex),
+		Config:       cfg,
+		LatestTickTs: time.Now(),
 		// set up contention detectors for raft heartbeat message.
 		// expect to send a heartbeat within 2 heartbeat intervals.
-		td:         contention.NewTimeoutDetector(2 * cfg.heartbeat),
-		readStateC: make(chan raft.ReadState, 1),
-		msgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
-		applyc:     make(chan toApply),
-		stopped:    make(chan struct{}),
-		done:       make(chan struct{}),
+		td:         contention.NewTimeoutDetector(2 * cfg.Heartbeat),
+		ReadStateC: make(chan raft.ReadState, 1),
+		MsgSnapC:   make(chan raftpb.Message, maxInFlightMsgSnap),
+		Applyc:     make(chan ToApply),
+		Stopped:    make(chan struct{}),
+		Done:       make(chan struct{}),
 	}
-	if r.heartbeat == 0 {
+	if r.Heartbeat == 0 {
 		r.ticker = &time.Ticker{}
 	} else {
-		r.ticker = time.NewTicker(r.heartbeat)
+		r.ticker = time.NewTicker(r.Heartbeat)
 	}
 	return r
 }
 
 // raft.Node does not have locks in Raft package
-func (r *raftNode) tick() {
-	r.tickMu.Lock()
+func (r *Node) tick() {
+	r.TickMu.Lock()
 	r.Tick()
-	r.latestTickTs = time.Now()
-	r.tickMu.Unlock()
+	r.LatestTickTs = time.Now()
+	r.TickMu.Unlock()
 }
 
-func (r *raftNode) getLatestTickTs() time.Time {
-	r.tickMu.RLock()
-	defer r.tickMu.RUnlock()
-	return r.latestTickTs
+func (r *Node) GetLatestTickTs() time.Time {
+	r.TickMu.RLock()
+	defer r.TickMu.RUnlock()
+	return r.LatestTickTs
 }
 
-// start prepares and starts raftNode in a new goroutine. It is no longer safe
+// Start prepares and starts raftNode in a new goroutine. It is no longer safe
 // to modify the fields after it has been started.
-func (r *raftNode) start(rh *raftReadyHandler) {
+func (r *Node) Start(rh *ReadyHandler) {
 	internalTimeout := time.Second
 
 	go func() {
@@ -183,7 +237,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				r.tick()
 			case rd := <-r.Ready():
 				if rd.SoftState != nil {
-					newLeader := rd.SoftState.Lead != raft.None && rh.getLead() != rd.SoftState.Lead
+					newLeader := rd.SoftState.Lead != raft.None && rh.GetLead() != rd.SoftState.Lead
 					if newLeader {
 						leaderChanges.Inc()
 					}
@@ -194,41 +248,41 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						hasLeader.Set(1)
 					}
 
-					rh.updateLead(rd.SoftState.Lead)
+					rh.UpdateLead(rd.SoftState.Lead)
 					islead = rd.RaftState == raft.StateLeader
 					if islead {
 						isLeader.Set(1)
 					} else {
 						isLeader.Set(0)
 					}
-					rh.updateLeadership(newLeader)
+					rh.UpdateLeadership(newLeader)
 					r.td.Reset()
 				}
 
 				if len(rd.ReadStates) != 0 {
 					select {
-					case r.readStateC <- rd.ReadStates[len(rd.ReadStates)-1]:
+					case r.ReadStateC <- rd.ReadStates[len(rd.ReadStates)-1]:
 					case <-time.After(internalTimeout):
 						r.lg.Warn("timed out sending read state", zap.Duration("timeout", internalTimeout))
-					case <-r.stopped:
+					case <-r.Stopped:
 						return
 					}
 				}
 
 				notifyc := make(chan struct{}, 1)
 				raftAdvancedC := make(chan struct{}, 1)
-				ap := toApply{
-					entries:       rd.CommittedEntries,
-					snapshot:      rd.Snapshot,
-					notifyc:       notifyc,
-					raftAdvancedC: raftAdvancedC,
+				ap := ToApply{
+					Entries:       rd.CommittedEntries,
+					Snapshot:      rd.Snapshot,
+					Notifyc:       notifyc,
+					RaftAdvancedC: raftAdvancedC,
 				}
 
 				updateCommittedIndex(&ap, rh)
 
 				select {
-				case r.applyc <- ap:
-				case <-r.stopped:
+				case r.Applyc <- ap:
+				case <-r.Stopped:
 					return
 				}
 
@@ -237,21 +291,21 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 				// For more details, check raft thesis 10.2.1
 				if islead {
 					// gofail: var raftBeforeLeaderSend struct{}
-					r.transport.Send(r.processMessages(rd.Messages))
+					r.Transport.Send(r.processMessages(rd.Messages))
 				}
 
 				// Must save the snapshot file and WAL snapshot entry before saving any other entries or hardstate to
 				// ensure that recovery after a snapshot restore is possible.
 				if !raft.IsEmptySnap(rd.Snapshot) {
 					// gofail: var raftBeforeSaveSnap struct{}
-					if err := r.storage.SaveSnap(rd.Snapshot); err != nil {
+					if err := r.Storage.SaveSnap(rd.Snapshot); err != nil {
 						r.lg.Fatal("failed to save Raft snapshot", zap.Error(err))
 					}
 					// gofail: var raftAfterSaveSnap struct{}
 				}
 
 				// gofail: var raftBeforeSave struct{}
-				if err := r.storage.Save(rd.HardState, rd.Entries); err != nil {
+				if err := r.Storage.Save(rd.HardState, rd.Entries); err != nil {
 					r.lg.Fatal("failed to save Raft hard state and entries", zap.Error(err))
 				}
 				if !raft.IsEmptyHardState(rd.HardState) {
@@ -264,7 +318,7 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// old data from the WAL. Otherwise could get an error like:
 					// panic: tocommit(107) is out of range [lastIndex(84)]. Was the raft log corrupted, truncated, or lost?
 					// See https://github.com/etcd-io/etcd/issues/10219 for more details.
-					if err := r.storage.Sync(); err != nil {
+					if err := r.Storage.Sync(); err != nil {
 						r.lg.Fatal("failed to sync Raft snapshot", zap.Error(err))
 					}
 
@@ -272,17 +326,17 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					notifyc <- struct{}{}
 
 					// gofail: var raftBeforeApplySnap struct{}
-					r.raftStorage.ApplySnapshot(rd.Snapshot)
+					r.RaftStorage.ApplySnapshot(rd.Snapshot)
 					r.lg.Info("applied incoming Raft snapshot", zap.Uint64("snapshot-index", rd.Snapshot.Metadata.Index))
 					// gofail: var raftAfterApplySnap struct{}
 
-					if err := r.storage.Release(rd.Snapshot); err != nil {
+					if err := r.Storage.Release(rd.Snapshot); err != nil {
 						r.lg.Fatal("failed to release Raft wal", zap.Error(err))
 					}
 					// gofail: var raftAfterWALRelease struct{}
 				}
 
-				r.raftStorage.Append(rd.Entries)
+				r.RaftStorage.Append(rd.Entries)
 
 				confChanged := false
 				for _, ent := range rd.CommittedEntries {
@@ -313,13 +367,13 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 						// (assume notifyc has cap of 1)
 						select {
 						case notifyc <- struct{}{}:
-						case <-r.stopped:
+						case <-r.Stopped:
 							return
 						}
 					}
 
 					// gofail: var raftBeforeFollowerSend struct{}
-					r.transport.Send(msgs)
+					r.Transport.Send(msgs)
 				} else {
 					// leader already processed 'MsgSnap' and signaled
 					notifyc <- struct{}{}
@@ -332,30 +386,30 @@ func (r *raftNode) start(rh *raftReadyHandler) {
 					// notify etcdserver that raft has already been notified or advanced.
 					raftAdvancedC <- struct{}{}
 				}
-			case <-r.stopped:
+			case <-r.Stopped:
 				return
 			}
 		}
 	}()
 }
 
-func updateCommittedIndex(ap *toApply, rh *raftReadyHandler) {
+func updateCommittedIndex(ap *ToApply, rh *ReadyHandler) {
 	var ci uint64
-	if len(ap.entries) != 0 {
-		ci = ap.entries[len(ap.entries)-1].Index
+	if len(ap.Entries) != 0 {
+		ci = ap.Entries[len(ap.Entries)-1].Index
 	}
-	if ap.snapshot.Metadata.Index > ci {
-		ci = ap.snapshot.Metadata.Index
+	if ap.Snapshot.Metadata.Index > ci {
+		ci = ap.Snapshot.Metadata.Index
 	}
 	if ci != 0 {
-		rh.updateCommittedIndex(ci)
+		rh.UpdateCommittedIndex(ci)
 	}
 }
 
-func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
+func (r *Node) processMessages(ms []raftpb.Message) []raftpb.Message {
 	sentAppResp := false
 	for i := len(ms) - 1; i >= 0; i-- {
-		if r.isIDRemoved(ms[i].To) {
+		if r.IsIDRemoved(ms[i].To) {
 			ms[i].To = 0
 			continue
 		}
@@ -374,7 +428,7 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 			// So we need to redirect the msgSnap to etcd server main loop for merging in the
 			// current store snapshot and KV snapshot.
 			select {
-			case r.msgSnapC <- ms[i]:
+			case r.MsgSnapC <- ms[i]:
 			default:
 				// drop msgSnap if the inflight chan if full.
 			}
@@ -387,8 +441,8 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 				r.lg.Warn(
 					"leader failed to send out heartbeat on time; took too long, leader is overloaded likely from slow disk",
 					zap.String("to", fmt.Sprintf("%x", ms[i].To)),
-					zap.Duration("heartbeat-interval", r.heartbeat),
-					zap.Duration("expected-duration", 2*r.heartbeat),
+					zap.Duration("heartbeat-interval", r.Heartbeat),
+					zap.Duration("expected-duration", 2*r.Heartbeat),
 					zap.Duration("exceeded-duration", exceed),
 				)
 				heartbeatSendFailures.Inc()
@@ -398,40 +452,40 @@ func (r *raftNode) processMessages(ms []raftpb.Message) []raftpb.Message {
 	return ms
 }
 
-func (r *raftNode) apply() chan toApply {
-	return r.applyc
+func (r *Node) Apply() chan ToApply {
+	return r.Applyc
 }
 
-func (r *raftNode) stop() {
+func (r *Node) Stop() {
 	select {
-	case r.stopped <- struct{}{}:
+	case r.Stopped <- struct{}{}:
 		// Not already stopped, so trigger it
-	case <-r.done:
+	case <-r.Done:
 		// Has already been stopped - no need to do anything
 		return
 	}
 	// Block until the stop has been acknowledged by start()
-	<-r.done
+	<-r.Done
 }
 
-func (r *raftNode) onStop() {
-	r.Stop()
+func (r *Node) onStop() {
+	r.Config.Stop()
 	r.ticker.Stop()
-	r.transport.Stop()
-	if err := r.storage.Close(); err != nil {
+	r.Transport.Stop()
+	if err := r.Storage.Close(); err != nil {
 		r.lg.Panic("failed to close Raft storage", zap.Error(err))
 	}
-	close(r.done)
+	close(r.Done)
 }
 
 // for testing
-func (r *raftNode) pauseSending() {
-	p := r.transport.(rafthttp.Pausable)
+func (r *Node) PauseSending() {
+	p := r.Transport.(rafthttp.Pausable)
 	p.Pause()
 }
 
-func (r *raftNode) resumeSending() {
-	p := r.transport.(rafthttp.Pausable)
+func (r *Node) ResumeSending() {
+	p := r.Transport.(rafthttp.Pausable)
 	p.Resume()
 }
 
@@ -439,7 +493,7 @@ func (r *raftNode) resumeSending() {
 // This can be used for fast-forwarding election
 // ticks in multi data-center deployments, thus
 // speeding up election process.
-func (r *raftNode) advanceTicks(ticks int) {
+func (r *Node) AdvanceTicks(ticks int) {
 	for i := 0; i < ticks; i++ {
 		r.tick()
 	}
