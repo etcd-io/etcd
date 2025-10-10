@@ -56,6 +56,7 @@ func New(
 	lg *zap.Logger,
 	mode string,
 	retention time.Duration,
+	interval time.Duration,
 	rg RevGetter,
 	c Compactable,
 ) (Compactor, error) {
@@ -64,9 +65,9 @@ func New(
 	}
 	switch mode {
 	case ModePeriodic:
-		return newPeriodic(lg, clockwork.NewRealClock(), retention, rg, c), nil
+		return newPeriodic(lg, clockwork.NewRealClock(), retention, interval, rg, c), nil
 	case ModeRevision:
-		return newRevision(lg, clockwork.NewRealClock(), int64(retention), rg, c), nil
+		return newRevision(lg, clockwork.NewRealClock(), int64(retention), interval, rg, c), nil
 	default:
 		return nil, fmt.Errorf("unsupported compaction mode %s", mode)
 	}
