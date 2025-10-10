@@ -394,49 +394,72 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 }
 
 func TestMaintenanceStatus(t *testing.T) {
-	integration.BeforeTest(t)
-
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, QuotaBackendBytes: storage.DefaultQuotaBytes})
-	defer clus.Terminate(t)
-
-	t.Logf("Waiting for leader...")
-	clus.WaitLeader(t)
-	t.Logf("Leader established.")
-
-	eps := make([]string, 3)
-	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCURL
+	testCases := []struct {
+		name          string
+		quotaCfg      int64
+		expectedQuota int64
+	}{
+		{
+			name:          "0 quota",
+			quotaCfg:      0,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "default quota",
+			quotaCfg:      storage.DefaultQuotaBytes,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "customized quota",
+			quotaCfg:      300010002000,
+			expectedQuota: 300010002000,
+		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			integration.BeforeTest(t)
 
-	t.Logf("Creating client...")
-	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
-	require.NoError(t, err)
-	defer cli.Close()
-	t.Logf("Creating client [DONE]")
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, QuotaBackendBytes: tc.quotaCfg})
+			defer clus.Terminate(t)
 
-	prevID, leaderFound := uint64(0), false
-	for i := 0; i < 3; i++ {
-		resp, err := cli.Status(t.Context(), eps[i])
-		require.NoError(t, err)
-		t.Logf("Response from %v: %v", i, resp)
-		if resp.DbSizeQuota != storage.DefaultQuotaBytes {
-			t.Errorf("unexpected backend default quota returned: %d, expected %d", resp.DbSizeQuota, storage.DefaultQuotaBytes)
-		}
-		if prevID == 0 {
-			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
-			continue
-		}
-		if prevID == resp.Header.MemberId {
-			t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
-		}
-		if leaderFound && resp.Header.MemberId == resp.Leader {
-			t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
-		}
-		if !leaderFound {
-			leaderFound = resp.Header.MemberId == resp.Leader
-		}
-	}
-	if !leaderFound {
-		t.Fatal("no leader found")
+			t.Logf("Waiting for leader...")
+			clus.WaitLeader(t)
+			t.Logf("Leader established.")
+
+			eps := make([]string, 3)
+			for i := 0; i < 3; i++ {
+				eps[i] = clus.Members[i].GRPCURL
+			}
+
+			t.Logf("Creating client...")
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+			require.NoError(t, err)
+			defer cli.Close()
+			t.Logf("Creating client [DONE]")
+
+			prevID, leaderFound := uint64(0), false
+			for i := 0; i < 3; i++ {
+				resp, err := cli.Status(t.Context(), eps[i])
+				require.NoError(t, err)
+				t.Logf("Response from %v: %v", i, resp)
+				require.Equal(t, tc.expectedQuota, resp.DbSizeQuota)
+				if prevID == 0 {
+					prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
+					continue
+				}
+				if prevID == resp.Header.MemberId {
+					t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
+				}
+				if leaderFound && resp.Header.MemberId == resp.Leader {
+					t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
+				}
+				if !leaderFound {
+					leaderFound = resp.Header.MemberId == resp.Leader
+				}
+			}
+			if !leaderFound {
+				t.Fatal("no leader found")
+			}
+		})
 	}
 }
