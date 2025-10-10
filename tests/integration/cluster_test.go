@@ -25,12 +25,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/concurrency"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 func init() {
@@ -525,4 +528,38 @@ func TestConcurrentMoveLeader(t *testing.T) {
 	_, err = c.Members[0].Client.MemberRemove(t.Context(), removeID)
 	require.NoError(t, err)
 	<-done
+}
+
+// TestCreationTimeout checks that the option WithCreationTimeout
+// sets a timeout for the creation of new sessions in case the cluster
+// shuts down
+func TestCreationTimeout(t *testing.T) {
+	integration.BeforeTest(t)
+
+	// create new cluster
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	defer clus.Terminate(t)
+
+	// create new client
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: clus.Client(0).Endpoints(), Username: "user1", Password: "123"})
+	if err != nil {
+		clus.Terminate(t)
+		t.Fatal(err)
+	}
+	defer cli.Close()
+
+	// ensure the connection is established.
+	clientv3test.MustWaitPinReady(t, cli)
+
+	// terminating the cluster
+	clus.Terminate(t)
+
+	// override the grpc logger
+	logOb := integration.ClientGRPCLoggerObserver(t)
+
+	_, err = concurrency.NewSession(cli, concurrency.WithCreationTimeout(3000*time.Millisecond))
+	assert.Equal(t, err, context.DeadlineExceeded)
+
+	_, err = logOb.Expect(t.Context(), "Subchannel Connectivity change to TRANSIENT_FAILURE", 3)
+	assert.NoError(t, err)
 }
