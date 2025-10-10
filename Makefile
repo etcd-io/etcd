@@ -17,10 +17,36 @@ else
 	@echo "benchmark tool already installed..."
 endif
 
-.PHONY: bench-put
-bench-put: build install-benchmark
-	@echo "Running benchmark: put $(ARGS)"
-	./scripts/benchmark_test.sh put $(ARGS)
+.PHONY: bench-lease-keepalive bench-put bench-txn-mixed bench-watch-latency bench-watch bench-range-key
+## ----------------------------------------------------------------------------
+## etcd Benchmark Operations
+## Run the corresponding operation with the relevant arguments set through ARGS, after setting up an etcd server to bench against.
+## Eg. make bench-put ARGS="--clients=100 --conns=10"
+## Targets:
+##   bench-lease-keepalive:     Run the benchmark lease-keepalive operation with optional ARGS.
+bench-lease-keepalive: TEST := lease-keepalive
+##   bench-put:                 Run the benchmark put operation with optional ARGS.
+bench-put: TEST := put
+##   bench-txn-mixed:           Run the benchmark txn-mixed operation with optional ARGS.
+bench-txn-mixed: TEST := txn-mixed
+##   bench-watch-latency:       Run the benchmark watch-latency operation with optional ARGS.
+bench-watch-latency: TEST := watch-latency
+##   bench-watch:               Run the benchmark watch operation with optional ARGS.
+bench-watch: TEST := watch
+##   bench-range-key:           Run the benchmark range-key operation with optional ARGS.
+bench-range-key: TEST := range
+bench-range-key: ARGS := key
+
+bench-lease-keepalive bench-put bench-txn-mixed bench-watch-latency bench-watch bench-range-key: build install-benchmark
+	@echo "Running benchmark: $(TEST) $(ARGS)"
+	./scripts/benchmark_test.sh "$(TEST):$(ARGS)"
+
+##   bench:                     Run a custom benchmark with TEST_ARGS which can be a combination of tests with arguments.
+##                              Eg. make bench TEST_ARGS='put:"--clients=1000" range:"key --conns=10"'
+## ----------------------------------------------------------------------------
+.PHONY: bench
+bench: build install-benchmark
+	./scripts/benchmark_test.sh $(TEST_ARGS)
 
 PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 
@@ -253,3 +279,7 @@ markdown-diff-lint:
 .PHONY: update-go-workspace
 update-go-workspace:
 	./scripts/update_go_workspace.sh
+
+.PHONY: help
+help:
+	@sed -ne '/@sed/!s/## //p' $(MAKEFILE_LIST)
