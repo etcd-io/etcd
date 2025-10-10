@@ -40,7 +40,7 @@ import (
 func TestSnapshotStatus(t *testing.T) {
 	dbpath := createDB(t, insertKeys(t, 10, 100))
 
-	status, err := NewV3(zap.NewNop()).Status(dbpath)
+	status, err := NewV3(zap.NewNop(), time.Duration(0)).Status(dbpath)
 	require.NoError(t, err)
 
 	assert.Equal(t, uint32(0xe7a6e44b), status.Hash)
@@ -65,7 +65,7 @@ func TestSnapshotStatusCorruptRevision(t *testing.T) {
 	require.NoError(t, err)
 	db.Close()
 
-	_, err = NewV3(zap.NewNop()).Status(dbpath)
+	_, err = NewV3(zap.NewNop(), time.Duration(0)).Status(dbpath)
 	require.ErrorContains(t, err, "invalid revision length")
 }
 
@@ -89,7 +89,7 @@ func TestSnapshotStatusNegativeRevisionMain(t *testing.T) {
 	require.NoError(t, err)
 	db.Close()
 
-	_, err = NewV3(zap.NewNop()).Status(dbpath)
+	_, err = NewV3(zap.NewNop(), time.Duration(0)).Status(dbpath)
 	require.ErrorContains(t, err, "negative revision")
 }
 
@@ -113,7 +113,7 @@ func TestSnapshotStatusNegativeRevisionSub(t *testing.T) {
 	require.NoError(t, err)
 	db.Close()
 
-	_, err = NewV3(zap.NewNop()).Status(dbpath)
+	_, err = NewV3(zap.NewNop(), time.Duration(0)).Status(dbpath)
 	require.ErrorContains(t, err, "negative revision")
 }
 
@@ -209,7 +209,7 @@ func TestSnapshotStatusTotalKey(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dbpath := createDB(t, tc.prepare)
 
-			status, err := NewV3(zap.NewNop()).Status(dbpath)
+			status, err := NewV3(zap.NewNop(), time.Duration(0)).Status(dbpath)
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expected, status.TotalKey)

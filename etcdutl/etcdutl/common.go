@@ -16,6 +16,7 @@ package etcdutl
 
 import (
 	"errors"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -28,6 +29,9 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
+
+// FlockTimeout is the duration to wait to obtain a file lock on db file.
+var FlockTimeout time.Duration
 
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig
