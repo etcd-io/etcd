@@ -112,8 +112,7 @@ func convertToGRPCEndpoint(ups map[string]*endpoints.Update) []gresolver.Endpoin
 		ep := gresolver.Endpoint{
 			Addresses: []gresolver.Address{
 				{
-					Addr:     up.Endpoint.Addr,
-					Metadata: up.Endpoint.Metadata,
+					Addr: up.Endpoint.Addr,
 				},
 			},
 		}
