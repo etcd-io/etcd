@@ -126,6 +126,24 @@ function modules_for_bom() {
   done
 }
 
+# returns all workspace modules in relative Go format.
+function workspace_relative_modules() {
+  go work edit -json | jq -r '.Use[].DiskPath + "/..."'
+}
+
+#  run_for_all_workspace_modules [cmd]
+#  run given command across all workspace modules
+#  (unless the set is limited using ${PKG} or / ${USERMOD})
+function run_for_all_workspace_modules {
+  local pkg="${PKG:-./...}"
+  if [ -z "${USERMOD:-}" ]; then
+    # shellcheck disable=SC2046
+    run "$@" $(workspace_relative_modules)
+  else
+    run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
+  fi
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
