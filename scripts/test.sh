@@ -448,7 +448,7 @@ function govet_shadow_pass {
 }
 
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --show-stats=false
+  run_for_all_workspace_modules generic_checker golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --show-stats=false
 }
 
 function lint_fix_pass {
