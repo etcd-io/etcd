@@ -207,7 +207,7 @@ func startGRPCProxy(cmd *cobra.Command, args []string) {
 	// Please see https://github.com/etcd-io/etcd/issues/11970#issuecomment-687875315  for more context.
 	tlsInfo := newTLS(grpcProxyListenCA, grpcProxyListenCert, grpcProxyListenKey, false)
 	if tlsInfo == nil && grpcProxyListenAutoTLS {
-		host := []string{"https://" + grpcProxyListenAddr}
+		host := []string{grpcProxyListenAddr}
 		dir := filepath.Join(grpcProxyDataDir, "fixtures", "proxy")
 		autoTLS, err := transport.SelfCert(lg, dir, host, selfSignedCertValidity)
 		if err != nil {
