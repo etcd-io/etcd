@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/go-semver/semver"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 )
 
 type ClusterVersion string
@@ -43,6 +44,42 @@ type ClusterContext struct {
 	Version ClusterVersion
 	EnvVars map[string]string
 	UseUnix bool
+}
+
+func WithHTTP2Debug() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureE2EClusterContext(c)
+		if ctx.EnvVars == nil {
+			ctx.EnvVars = map[string]string{}
+		}
+		// Enable debug mode to get logs with http2 headers (including authority)
+		ctx.EnvVars["GODEBUG"] = "http2debug=2"
+		c.ClusterContext = ctx
+	}
+}
+
+func WithUnixClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureE2EClusterContext(c)
+		ctx.UseUnix = true
+		c.ClusterContext = ctx
+	}
+}
+
+func WithTCPClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureE2EClusterContext(c)
+		ctx.UseUnix = false
+		c.ClusterContext = ctx
+	}
+}
+
+func ensureE2EClusterContext(c *config.ClusterConfig) *ClusterContext {
+	ctx, _ := c.ClusterContext.(*ClusterContext)
+	if ctx == nil {
+		ctx = &ClusterContext{}
+	}
+	return ctx
 }
 
 var experimentalFlags = map[string]struct{}{
