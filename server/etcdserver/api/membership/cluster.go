@@ -744,6 +744,28 @@ func membersFromBackend(lg *zap.Logger, be backend.Backend) (map[types.ID]*Membe
 	return mustReadMembersFromBackend(lg, be)
 }
 
+func SyncLearnerPromotionIfNeeded(lg *zap.Logger, be backend.Backend, st v2store.Store) error {
+	v2Members, _ := membersFromStore(lg, st)
+	v3Members, _ := membersFromBackend(lg, be)
+
+	for id, v3Member := range v3Members {
+		v2Member, ok := v2Members[id]
+		if !ok {
+			return fmt.Errorf("detected member only in v3store but missing in v2store, member: %+v", *v3Member)
+		}
+
+		if !v2Member.IsLearner && v3Member.IsLearner {
+			syncedV3Member := v3Member.Clone()
+			syncedV3Member.IsLearner = false
+			lg.Warn("Syncing member in v3store", zap.String("member", fmt.Sprintf("%+v", *syncedV3Member)))
+			if err := unsafeSaveMemberToBackend(lg, be, syncedV3Member); err != nil {
+				return fmt.Errorf("failed to save synced member to backend, member: %+v, error:%w", *syncedV3Member, err)
+			}
+		}
+	}
+	return nil
+}
+
 func clusterVersionFromStore(lg *zap.Logger, st v2store.Store) *semver.Version {
 	e, err := st.Get(path.Join(storePrefix, "version"), false, false)
 	if err != nil {
