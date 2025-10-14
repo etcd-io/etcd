@@ -106,6 +106,10 @@ services:
     container_name: client
     entrypoint: ["/opt/antithesis/entrypoint/entrypoint"]
     user: "${USER_ID:-root}:${GROUP_ID:-root}"
+    environment:
+      ETCD_ROBUSTNESS_ENDPOINTS: "etcd0:2379,etcd1:2379,etcd2:2379"
+      ETCD_ROBUSTNESS_DATA_PATHS: "/var/etcddata0,/var/etcddata1,/var/etcddata2"
+      ETCD_ROBUSTNESS_REPORT_PATH: "/var/report"
     depends_on:
       etcd0:
         condition: service_started

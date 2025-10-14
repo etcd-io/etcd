@@ -44,7 +44,7 @@ func main() {
 
 	cfg := common.MakeConfig(NodeCount)
 
-	_, reportPath, dirs := common.DefaultPaths(cfg)
+	_, reportPath, dirs := common.GetPaths(cfg)
 	if *local {
 		_, reportPath, dirs = common.LocalPaths(cfg)
 	}

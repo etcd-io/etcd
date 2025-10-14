@@ -69,7 +69,7 @@ func main() {
 
 	cfg := common.MakeConfig(NodeCount)
 
-	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
+	hosts, reportPath, etcdetcdDataPaths := common.GetPaths(cfg)
 	if *local {
 		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
 	}
