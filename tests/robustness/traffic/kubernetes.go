@@ -46,7 +46,7 @@ var (
 			{Choice: KubernetesGetStale, Weight: 2},
 			{Choice: KubernetesGetRev, Weight: 8},
 			{Choice: KubernetesListStale, Weight: 5},
-			{Choice: KubernetesListAndWatch, Weight: 80},
+			{Choice: KubernetesList, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
@@ -66,7 +66,7 @@ var (
 			{Choice: KubernetesGetStale, Weight: 2},
 			{Choice: KubernetesGetRev, Weight: 8},
 			{Choice: KubernetesListStale, Weight: 5},
-			{Choice: KubernetesListAndWatch, Weight: 80},
+			{Choice: KubernetesList, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
@@ -88,7 +88,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -136,6 +136,23 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopP
 	g.Wait()
 }
 
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunTrafficLoopParam) {
+	s := newStorage()
+	keyPrefix := "/registry/" + t.resource + "/"
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		default:
+		}
+		_, rev := s.PickRandom()
+		t.Watch(ctx, p.Client, s, p.QPSLimiter, keyPrefix, rev)
+	}
+}
+
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
 	op := random.PickRandom(t.readChoices)
@@ -155,12 +172,11 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 		_, rev := s.PickRandom()
 		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
 		return err
-	case KubernetesListAndWatch:
-		rev, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
+	case KubernetesList:
+		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
 		if err != nil {
 			return err
 		}
-		t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
 		return nil
 	default:
 		panic(fmt.Sprintf("invalid choice: %q", op))
@@ -328,14 +344,14 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 type KubernetesRequestType string
 
 const (
-	KubernetesDelete       KubernetesRequestType = "delete"
-	KubernetesUpdate       KubernetesRequestType = "update"
-	KubernetesCreate       KubernetesRequestType = "create"
-	KubernetesGet          KubernetesRequestType = "get"
-	KubernetesGetStale     KubernetesRequestType = "get_stale"
-	KubernetesGetRev       KubernetesRequestType = "get_rev"
-	KubernetesListStale    KubernetesRequestType = "list_stale"
-	KubernetesListAndWatch KubernetesRequestType = "list_watch"
+	KubernetesDelete    KubernetesRequestType = "delete"
+	KubernetesUpdate    KubernetesRequestType = "update"
+	KubernetesCreate    KubernetesRequestType = "create"
+	KubernetesGet       KubernetesRequestType = "get"
+	KubernetesGetStale  KubernetesRequestType = "get_stale"
+	KubernetesGetRev    KubernetesRequestType = "get_rev"
+	KubernetesListStale KubernetesRequestType = "list_stale"
+	KubernetesList      KubernetesRequestType = "list"
 )
 
 type storage struct {

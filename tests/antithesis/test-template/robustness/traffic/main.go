@@ -154,7 +154,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, traffic.RunTrafficLoopParam{
+			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
@@ -171,7 +171,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, traffic.RunTrafficLoopParam{
+			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),

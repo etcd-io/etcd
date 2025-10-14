@@ -85,7 +85,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
@@ -105,7 +105,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
@@ -336,7 +336,8 @@ type RunCompactLoopParam struct {
 }
 
 type Traffic interface {
-	RunTrafficLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunWatchLoop(ctx context.Context, param RunTrafficLoopParam)
 	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
 }
