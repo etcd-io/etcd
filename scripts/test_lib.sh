@@ -32,12 +32,6 @@ set_root_dir
 
 ####   Discovery of files/packages within a go module #####
 
-# go_srcs_in_module
-# returns list of all not-generated go sources in the current (dir) module.
-function go_srcs_in_module {
-  go list -f "{{with \$c:=.}}{{range \$f:=\$c.GoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.TestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.XTestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{end}}" ./... | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
-}
-
 # pkgs_in_module [optional:package_pattern]
 # returns list of all packages in the current (dir) module.
 # if the package_pattern is given, its being resolved.
@@ -146,6 +140,25 @@ function run_for_all_workspace_modules {
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
+}
+
+# Receives a reference to an array variable, an returns all the Go source code files in the workspace.
+function load_all_workspace_go_source_files {
+  local -n go_source_files=$1
+  local modules=()
+  load_workspace_relative_modules modules
+
+  # shellcheck disable=SC2016
+  # Intentionally define the template with singlequotes, so Go template does the variable expansion.
+  local template=\
+'{{with $c := .}}'\
+'{{range $f := $c.GoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.TestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.XTestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{end}}'
+  while IFS= read -r line; do go_source_files+=("$line"); done < <(
+    go list -f "${template}" "${modules[@]}" | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
+  )
 }
 
 #  run_for_modules [cmd]
