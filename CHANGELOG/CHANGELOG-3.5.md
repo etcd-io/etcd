@@ -11,6 +11,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20709)
 - [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20751)
 
+### Dependencies
+
+- Compile binaries using [go 1.24.9](https://github.com/etcd-io/etcd/pull/20806).
+
 ---
 
 ## v3.5.23 (2025-09-19)
