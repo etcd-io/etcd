@@ -1350,6 +1350,21 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 	lg.Info("applySnapshot: opened snapshot backend")
 	// gofail: var applyAfterOpenSnapshot struct{}
 
+	lg.Info("restoring v2 store")
+	if err := s.v2store.Recovery(apply.snapshot.Data); err != nil {
+		lg.Panic("failed to restore v2 store", zap.Error(err))
+	}
+
+	if err := assertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
+		lg.Panic("illegal v2store content", zap.Error(err))
+	}
+
+	lg.Info("restored v2 store")
+
+	if err = membership.SyncLearnerPromotionIfNeeded(lg, newbe, s.v2store); err != nil {
+		lg.Error("Failed to sync learner promotion for v3store", zap.Error(err))
+	}
+
 	// We need to set the backend to consistIndex before recovering the lessor,
 	// because lessor.Recover will commit the boltDB transaction, accordingly it
 	// will get the old consistent_index persisted into the db in OnPreCommitUnsafe.
@@ -1409,17 +1424,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 		lg.Info("restored auth store")
 	}
-
-	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(apply.snapshot.Data); err != nil {
-		lg.Panic("failed to restore v2 store", zap.Error(err))
-	}
-
-	if err := assertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
-		lg.Panic("illegal v2store content", zap.Error(err))
-	}
-
-	lg.Info("restored v2 store")
 
 	s.cluster.SetBackend(newbe)
 

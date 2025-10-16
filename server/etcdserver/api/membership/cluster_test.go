@@ -24,6 +24,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	betesting "go.etcd.io/etcd/server/v3/mvcc/backend/testing"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
@@ -277,6 +278,179 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 		if !reflect.DeepEqual(lcl.MemberIDs(), tt.wids) {
 			t.Errorf("#%d: ids = %v, want %v", i, lcl.MemberIDs(), tt.wids)
 		}
+	}
+}
+
+// TestSyncLearnerPromotionIfNeeded verified that etcd can automatically
+// correct member's IsLearner attribute in v3store based on v2store when
+// applying a snapshot.
+// See https://github.com/etcd-io/etcd/issues/20793
+func TestSyncLearnerPromotionIfNeeded(t *testing.T) {
+	members := []*Member{
+		{
+			ID:             types.ID(1),
+			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://10.200.6.180:2380"}},
+			Attributes:     Attributes{Name: "foo", ClientURLs: []string{"http://10.200.6.180:2379"}},
+		},
+		{
+			ID:             types.ID(2),
+			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://10.200.6.181:2380"}},
+			Attributes:     Attributes{Name: "foo", ClientURLs: []string{"http://10.200.6.181:2379"}},
+		},
+		{
+			ID:             types.ID(3),
+			RaftAttributes: RaftAttributes{PeerURLs: []string{"http://10.200.6.182:2380"}},
+			Attributes:     Attributes{Name: "foo", ClientURLs: []string{"http://10.200.6.182:2379"}},
+		},
+	}
+
+	genMember := func(m *Member, isLearner bool, attr *Attributes) *Member {
+		newMember := m.Clone()
+		newMember.IsLearner = isLearner
+		if attr != nil {
+			newMember.Attributes = *attr
+		}
+		return newMember
+	}
+
+	testCases := []struct {
+		name                  string
+		v2Members             []*Member
+		v3Members             []*Member
+		expectedSyncedMembers map[types.ID]*Member
+	}{
+		{
+			name: "no learners in both v2store and v3store",
+			v2Members: []*Member{
+				genMember(members[0], false, nil),
+				genMember(members[1], false, nil),
+				genMember(members[2], false, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				genMember(members[1], false, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				members[1].ID: genMember(members[1], false, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				members[2].ID: genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+		},
+		{
+			name: "all learners in both v2store and v3store",
+			v2Members: []*Member{
+				genMember(members[0], true, nil),
+				genMember(members[1], true, nil),
+				genMember(members[2], true, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], true, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], true, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				members[1].ID: genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				members[2].ID: genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+		},
+		{
+			name: "no learners in v2store, all learners in v3store",
+			v2Members: []*Member{
+				genMember(members[0], false, nil),
+				genMember(members[1], false, nil),
+				genMember(members[2], false, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], true, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.170:2380"}}),
+				genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.171:2380"}}),
+				genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.172:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.170:2380"}}),
+				members[1].ID: genMember(members[1], false, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.171:2380"}}),
+				members[2].ID: genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.172:2380"}}),
+			},
+		},
+		{
+			name: "all learners in v2store, no learners in v3store",
+			v2Members: []*Member{
+				genMember(members[0], true, nil),
+				genMember(members[1], true, nil),
+				genMember(members[2], true, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				genMember(members[1], false, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.190:2380"}}),
+				members[1].ID: genMember(members[1], false, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.191:2380"}}),
+				members[2].ID: genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.192:2380"}}),
+			},
+		},
+		{
+			name: "same learners in v2store and v3store",
+			v2Members: []*Member{
+				genMember(members[0], false, nil),
+				genMember(members[1], true, nil),
+				genMember(members[2], true, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.160:2380"}}),
+				genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.161:2380"}}),
+				genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.162:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.160:2380"}}),
+				members[1].ID: genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.161:2380"}}),
+				members[2].ID: genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.162:2380"}}),
+			},
+		},
+		{
+			name: "different learners in v2store and v3store",
+			v2Members: []*Member{
+				genMember(members[0], true, nil),
+				genMember(members[1], true, nil),
+				genMember(members[2], false, nil),
+			},
+			v3Members: []*Member{
+				genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.160:2380"}}),
+				genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.161:2380"}}),
+				genMember(members[2], true, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.162:2380"}}),
+			},
+			expectedSyncedMembers: map[types.ID]*Member{
+				members[0].ID: genMember(members[0], false, &Attributes{Name: "foo1", ClientURLs: []string{"http://10.200.6.160:2380"}}),
+				members[1].ID: genMember(members[1], true, &Attributes{Name: "foo2", ClientURLs: []string{"http://10.200.6.161:2380"}}),
+				members[2].ID: genMember(members[2], false, &Attributes{Name: "foo3", ClientURLs: []string{"http://10.200.6.162:2380"}}),
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			lg := zaptest.NewLogger(t)
+
+			st := v2store.New()
+			for _, m := range tc.v2Members {
+				mustSaveMemberToStore(lg, st, m)
+			}
+
+			be, _ := betesting.NewDefaultTmpBackend(t)
+			mustCreateBackendBuckets(be)
+			defer be.Close()
+
+			for _, m := range tc.v3Members {
+				require.NoError(t, unsafeSaveMemberToBackend(lg, be, m))
+			}
+
+			require.NoError(t, SyncLearnerPromotionIfNeeded(lg, be, st))
+
+			syncedMembers, _ := membersFromBackend(lg, be)
+			require.Equal(t, tc.expectedSyncedMembers, syncedMembers)
+		})
 	}
 }
 
