@@ -99,7 +99,7 @@ fuzz:
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
 	verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard \
+	verify-markdown-marker verify-go-versions verify-gomodguard \
 	verify-go-workspace
 
 .PHONY: fix
@@ -171,10 +171,6 @@ else
 	@echo "yamllint already installed..."
 	yamllint --config-file tools/.yamllint .
 endif
-
-.PHONY: verify-govet-shadow
-verify-govet-shadow:
-	PASSES="govet_shadow" ./scripts/test.sh
 
 .PHONY: verify-markdown-marker
 verify-markdown-marker:

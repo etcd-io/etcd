@@ -18,6 +18,9 @@ linters:
     - usetesting
     - whitespace
   settings:
+    govet:
+      enable:
+        - shadow
     nakedret:
       # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
       max-func-lines: 5

@@ -402,47 +402,6 @@ function govuln_pass {
   run_for_modules run govulncheck -show verbose
 }
 
-function govet_shadow_per_package {
-  local shadow
-  shadow=$1
-
-  # skip grpc_gateway packages because
-  #
-  # stderr: etcdserverpb/gw/rpc.pb.gw.go:2100:3: declaration of "ctx" shadows declaration at line 2005
-  local skip_pkgs=(
-    "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb/gw"
-  )
-
-  local pkgs=()
-  while IFS= read -r line; do
-    local in_skip_pkgs="false"
-
-    for pkg in "${skip_pkgs[@]}"; do
-      if [ "${pkg}" == "${line}" ]; then
-        in_skip_pkgs="true"
-        break
-      fi
-    done
-
-    if [ "${in_skip_pkgs}" == "true" ]; then
-      continue
-    fi
-
-    pkgs+=("${line}")
-  done < <(go list ./...)
-
-  run go vet -all -vettool="${shadow}" "${pkgs[@]}"
-}
-
-function govet_shadow_pass {
-  local shadow
-  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
-
-  run_for_modules generic_checker govet_shadow_per_package "${shadow}"
-}
-
 function lint_pass {
   run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
