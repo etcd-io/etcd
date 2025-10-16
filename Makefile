@@ -97,7 +97,7 @@ fuzz:
 # Static analysis
 .PHONY: verify
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
-	verify-govet verify-license-header verify-mod-tidy \
+	verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard \
 	verify-go-workspace
@@ -137,10 +137,6 @@ verify-shellcheck:
 .PHONY: verify-goword
 verify-goword:
 	PASSES="goword" ./scripts/test.sh
-
-.PHONY: verify-govet
-verify-govet:
-	PASSES="govet" ./scripts/test.sh
 
 .PHONY: verify-license-header
 verify-license-header:

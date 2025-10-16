@@ -4,6 +4,7 @@ linters:
   default: none
   enable: # please keep this alphabetized
     - errorlint
+    - govet
     - ineffassign
     - nakedret
     - revive

@@ -402,10 +402,6 @@ function govuln_pass {
   run_for_modules run govulncheck -show verbose
 }
 
-function govet_pass {
-  run_for_modules generic_checker run go vet
-}
-
 function govet_shadow_per_package {
   local shadow
   shadow=$1
