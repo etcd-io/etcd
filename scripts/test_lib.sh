@@ -148,6 +148,25 @@ function run_for_all_workspace_modules {
   fi
 }
 
+# Receives a reference to an array variable, an returns all the Go source code files in the workspace.
+function load_all_workspace_go_source_files {
+  local -n go_source_files=$1
+  local modules=()
+  load_workspace_relative_modules modules
+
+  # shellcheck disable=SC2016
+  # Intentionally define the template with singlequotes, so Go template does the variable expansion.
+  local template=\
+'{{with $c := .}}'\
+'{{range $f := $c.GoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.TestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.XTestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{end}}'
+  while IFS= read -r line; do go_source_files+=("$line"); done < <(
+    go list -f "${template}" "${modules[@]}" | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
+  )
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
