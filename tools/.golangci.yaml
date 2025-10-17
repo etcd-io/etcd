@@ -6,6 +6,7 @@ linters:
     - errorlint
     - govet
     - ineffassign
+    - misspell
     - nakedret
     - revive
     - staticcheck
