@@ -97,9 +97,9 @@ fuzz:
 # Static analysis
 .PHONY: verify
 verify: verify-gofmt verify-bom verify-lint verify-dep verify-shellcheck verify-goword \
-	verify-govet verify-license-header verify-mod-tidy \
+	verify-license-header verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
-	verify-govet-shadow verify-markdown-marker verify-go-versions verify-gomodguard \
+	verify-markdown-marker verify-go-versions verify-gomodguard \
 	verify-go-workspace
 
 .PHONY: fix
@@ -138,10 +138,6 @@ verify-shellcheck:
 verify-goword:
 	PASSES="goword" ./scripts/test.sh
 
-.PHONY: verify-govet
-verify-govet:
-	PASSES="govet" ./scripts/test.sh
-
 .PHONY: verify-license-header
 verify-license-header:
 	PASSES="license_header" ./scripts/test.sh
@@ -175,10 +171,6 @@ else
 	@echo "yamllint already installed..."
 	yamllint --config-file tools/.yamllint .
 endif
-
-.PHONY: verify-govet-shadow
-verify-govet-shadow:
-	PASSES="govet_shadow" ./scripts/test.sh
 
 .PHONY: verify-markdown-marker
 verify-markdown-marker:
