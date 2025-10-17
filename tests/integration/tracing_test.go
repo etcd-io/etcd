@@ -168,7 +168,7 @@ func TestTracing(t *testing.T) {
 			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				_, err := cli.KeepAliveOnce(ctx, 2345)
 				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
-					// errors.Is does not work accross gRPC bounduaries.
+					// errors.Is does not work across gRPC bounduaries.
 					return nil
 				}
 				return err
@@ -188,7 +188,7 @@ func TestTracing(t *testing.T) {
 			rpc: func(ctx context.Context, cli *clientv3.Client) error {
 				_, err := cli.Revoke(ctx, 1234)
 				if err != nil && strings.Contains(err.Error(), "requested lease not found") {
-					// errors.Is does not work accross gRPC bounduaries.
+					// errors.Is does not work across gRPC bounduaries.
 					return nil
 				}
 				return err
@@ -329,7 +329,7 @@ func testRPCTracing(t *testing.T, wantSpan *v1.Span, clientAction func(context.C
 	cfg.EnableDistributedTracing = true
 	cfg.DistributedTracingAddress = listener.Addr().String()
 	cfg.DistributedTracingServiceName = "integration-test-tracing"
-	cfg.DistributedTracingSamplingRatePerMillion = 100 // overriden later in the test
+	cfg.DistributedTracingSamplingRatePerMillion = 100 // overridden later in the test
 
 	// start an etcd instance with tracing enabled
 	etcdSrv, err := embed.StartEtcd(cfg)
