@@ -31,7 +31,7 @@ func scanKeys(dbPath string, startRev int64) error {
 	for pageID := uint64(2); pageID < hwm; {
 		p, _, err := readPage(dbPath, pgSize, pageID)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Reading page %d failed: %v. Continuting...\n", pageID, err)
+			fmt.Fprintf(os.Stderr, "Reading page %d failed: %v. Continuing...\n", pageID, err)
 			pageID++
 			continue
 		}

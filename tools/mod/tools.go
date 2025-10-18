@@ -23,7 +23,6 @@ package tools
 import (
 	_ "github.com/alexfalkowski/gocovmerge"
 	_ "github.com/appscodelabs/license-bill-of-materials"
-	_ "github.com/chzchzchz/goword"
 	_ "github.com/cloudflare/cfssl/cmd/cfssl"
 	_ "github.com/cloudflare/cfssl/cmd/cfssljson"
 	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"

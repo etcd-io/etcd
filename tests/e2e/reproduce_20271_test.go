@@ -90,7 +90,7 @@ to override boltdb file. So, for the following changes, the third member will co
 		require.NoError(t, err)
 	}
 
-	t.Log("Step 7: Restart the third member. It recovers from the new boltdb file. Therefore, data writen in Step 6 is lost.")
+	t.Log("Step 7: Restart the third member. It recovers from the new boltdb file. Therefore, data written in Step 6 is lost.")
 	require.NoError(t, epc.Procs[2].Restart(ctx))
 
 	t.Log("Step 8: Check hashkv of each member")
