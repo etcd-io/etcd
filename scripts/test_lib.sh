@@ -126,9 +126,12 @@ function modules_for_bom() {
   done
 }
 
-# returns all workspace modules in relative Go format.
-function workspace_relative_modules() {
-  go work edit -json | jq -r '.Use[].DiskPath + "/..."'
+# Receives a reference to an array variable, and returns the workspace relative modules.
+function load_workspace_relative_modules() {
+  local -n relative_modules=$1
+  while IFS= read -r line; do relative_modules+=("$line"); done < <(
+    go work edit -json | jq -r '.Use[].DiskPath + "/..."'
+  )
 }
 
 #  run_for_all_workspace_modules [cmd]
@@ -137,11 +140,31 @@ function workspace_relative_modules() {
 function run_for_all_workspace_modules {
   local pkg="${PKG:-./...}"
   if [ -z "${USERMOD:-}" ]; then
-    # shellcheck disable=SC2046
-    run "$@" $(workspace_relative_modules)
+    local modules=()
+    load_workspace_relative_modules modules
+    run "$@" "${modules[@]}"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
+}
+
+# Receives a reference to an array variable, an returns all the Go source code files in the workspace.
+function load_all_workspace_go_source_files {
+  local -n go_source_files=$1
+  local modules=()
+  load_workspace_relative_modules modules
+
+  # shellcheck disable=SC2016
+  # Intentionally define the template with singlequotes, so Go template does the variable expansion.
+  local template=\
+'{{with $c := .}}'\
+'{{range $f := $c.GoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.TestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{range $f := $c.XTestGoFiles}}{{$c.Dir}}/{{$f}}{{"\n"}}{{end}}'\
+'{{end}}'
+  while IFS= read -r line; do go_source_files+=("$line"); done < <(
+    go list -f "${template}" "${modules[@]}" | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
+  )
 }
 
 #  run_for_modules [cmd]
