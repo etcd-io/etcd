@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package raft
 
 import (
+	"context"
 	"encoding/json"
 	"expvar"
+	"net/http"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
 	"go.uber.org/zap/zaptest"
 
+	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/raft/v3"
@@ -175,132 +179,6 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 	}
 }
 
-func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
-	n := newNopReadyNode()
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
-		Node:        n,
-		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
-		transport:   newNopTransporter(),
-	})
-	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
-	srv.r.start(nil)
-	n.readyc <- raft.Ready{}
-
-	stop := func() {
-		srv.r.stopped <- struct{}{}
-		select {
-		case <-srv.r.done:
-		case <-time.After(time.Second):
-			t.Fatalf("failed to stop raft loop")
-		}
-	}
-
-	select {
-	case <-srv.r.applyc:
-	case <-time.After(time.Second):
-		stop()
-		t.Fatalf("failed to receive toApply struct")
-	}
-
-	stop()
-}
-
-// TestConfigChangeBlocksApply ensures toApply blocks if committed entries contain config-change.
-func TestConfigChangeBlocksApply(t *testing.T) {
-	n := newNopReadyNode()
-
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
-		Node:        n,
-		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
-		transport:   newNopTransporter(),
-	})
-	srv := &EtcdServer{lgMu: new(sync.RWMutex), lg: zaptest.NewLogger(t), r: *r}
-
-	srv.r.start(&raftReadyHandler{
-		getLead:          func() uint64 { return 0 },
-		updateLead:       func(uint64) {},
-		updateLeadership: func(bool) {},
-	})
-	defer srv.r.stop()
-
-	n.readyc <- raft.Ready{
-		SoftState:        &raft.SoftState{RaftState: raft.StateFollower},
-		CommittedEntries: []raftpb.Entry{{Type: raftpb.EntryConfChange}},
-	}
-	ap := <-srv.r.applyc
-
-	continueC := make(chan struct{})
-	go func() {
-		n.readyc <- raft.Ready{}
-		<-srv.r.applyc
-		close(continueC)
-	}()
-
-	select {
-	case <-continueC:
-		t.Fatalf("unexpected execution: raft routine should block waiting for toApply")
-	case <-time.After(time.Second):
-	}
-
-	// finish toApply, unblock raft routine
-	<-ap.notifyc
-
-	select {
-	case <-ap.raftAdvancedC:
-		t.Log("recevied raft advance notification")
-	}
-
-	select {
-	case <-continueC:
-	case <-time.After(time.Second):
-		t.Fatalf("unexpected blocking on execution")
-	}
-}
-
-func TestProcessDuplicatedAppRespMessage(t *testing.T) {
-	n := newNopReadyNode()
-	cl := membership.NewCluster(zaptest.NewLogger(t))
-
-	rs := raft.NewMemoryStorage()
-	p := mockstorage.NewStorageRecorder("")
-	tr, sendc := newSendMsgAppRespTransporter()
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
-		isIDRemoved: func(id uint64) bool { return cl.IsIDRemoved(types.ID(id)) },
-		Node:        n,
-		transport:   tr,
-		storage:     p,
-		raftStorage: rs,
-	})
-
-	s := &EtcdServer{
-		lgMu:    new(sync.RWMutex),
-		lg:      zaptest.NewLogger(t),
-		r:       *r,
-		cluster: cl,
-	}
-
-	s.start()
-	defer s.Stop()
-
-	lead := uint64(1)
-
-	n.readyc <- raft.Ready{Messages: []raftpb.Message{
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 1},
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 2},
-		{Type: raftpb.MsgAppResp, From: 2, To: lead, Term: 1, Index: 3},
-	}}
-
-	got, want := <-sendc, 1
-	if got != want {
-		t.Errorf("count = %d, want %d", got, want)
-	}
-}
-
 // TestExpvarWithNoRaftStatus to test that none of the expvars that get added during init panic.
 // This matters if another package imports etcdserver, doesn't use it, but does use expvars.
 func TestExpvarWithNoRaftStatus(t *testing.T) {
@@ -316,19 +194,19 @@ func TestExpvarWithNoRaftStatus(t *testing.T) {
 
 func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 	n := newNopReadyNode()
-	r := newRaftNode(raftNodeConfig{
-		lg:          zaptest.NewLogger(t),
+	r := NewNodeFromConfig(Config{
+		Lg:          zaptest.NewLogger(t),
 		Node:        n,
-		storage:     mockstorage.NewStorageRecorder(""),
-		raftStorage: raft.NewMemoryStorage(),
-		transport:   newNopTransporter(),
+		Storage:     mockstorage.NewStorageRecorder(""),
+		RaftStorage: raft.NewMemoryStorage(),
+		Transport:   newNopTransporter(),
 	})
-	r.start(&raftReadyHandler{})
+	r.Start(&ReadyHandler{})
 
 	for i := 0; i < 2; i++ {
 		stopped := make(chan struct{})
 		go func() {
-			r.stop()
+			r.Stop()
 			close(stopped)
 		}()
 
@@ -339,3 +217,86 @@ func TestStopRaftNodeMoreThanOnce(t *testing.T) {
 		}
 	}
 }
+
+type nodeRecorder struct{ testutil.Recorder }
+
+func newNodeRecorder() *nodeRecorder { return &nodeRecorder{&testutil.RecorderBuffered{}} }
+
+func (n *nodeRecorder) Tick() { n.Record(testutil.Action{Name: "Tick"}) }
+func (n *nodeRecorder) Campaign(ctx context.Context) error {
+	n.Record(testutil.Action{Name: "Campaign"})
+	return nil
+}
+
+func (n *nodeRecorder) Propose(ctx context.Context, data []byte) error {
+	n.Record(testutil.Action{Name: "Propose", Params: []any{data}})
+	return nil
+}
+
+func (n *nodeRecorder) ProposeConfChange(ctx context.Context, conf raftpb.ConfChangeI) error {
+	n.Record(testutil.Action{Name: "ProposeConfChange"})
+	return nil
+}
+
+func (n *nodeRecorder) Step(ctx context.Context, msg raftpb.Message) error {
+	n.Record(testutil.Action{Name: "Step"})
+	return nil
+}
+func (n *nodeRecorder) Status() raft.Status                                             { return raft.Status{} }
+func (n *nodeRecorder) Ready() <-chan raft.Ready                                        { return nil }
+func (n *nodeRecorder) TransferLeadership(ctx context.Context, lead, transferee uint64) {}
+func (n *nodeRecorder) ReadIndex(ctx context.Context, rctx []byte) error                { return nil }
+func (n *nodeRecorder) Advance()                                                        {}
+func (n *nodeRecorder) ApplyConfChange(conf raftpb.ConfChangeI) *raftpb.ConfState {
+	n.Record(testutil.Action{Name: "ApplyConfChange", Params: []any{conf}})
+	return &raftpb.ConfState{}
+}
+
+func (n *nodeRecorder) Stop() {
+	n.Record(testutil.Action{Name: "Stop"})
+}
+
+func (n *nodeRecorder) ReportUnreachable(id uint64) {}
+
+func (n *nodeRecorder) ReportSnapshot(id uint64, status raft.SnapshotStatus) {}
+
+func (n *nodeRecorder) Compact(index uint64, nodes []uint64, d []byte) {
+	n.Record(testutil.Action{Name: "Compact"})
+}
+
+func (n *nodeRecorder) ForgetLeader(ctx context.Context) error {
+	return nil
+}
+
+// readyNode is a nodeRecorder with a user-writeable ready channel
+type readyNode struct {
+	nodeRecorder
+	readyc chan raft.Ready
+}
+
+func newNopReadyNode() *readyNode {
+	return &readyNode{*newNodeRecorder(), make(chan raft.Ready, 1)}
+}
+
+func (n *readyNode) Ready() <-chan raft.Ready { return n.readyc }
+
+type nopTransporter struct{}
+
+func newNopTransporter() rafthttp.Transporter {
+	return &nopTransporter{}
+}
+
+func (s *nopTransporter) Start() error                        { return nil }
+func (s *nopTransporter) Handler() http.Handler               { return nil }
+func (s *nopTransporter) Send(m []raftpb.Message)             {}
+func (s *nopTransporter) SendSnapshot(m snap.Message)         {}
+func (s *nopTransporter) AddRemote(id types.ID, us []string)  {}
+func (s *nopTransporter) AddPeer(id types.ID, us []string)    {}
+func (s *nopTransporter) RemovePeer(id types.ID)              {}
+func (s *nopTransporter) RemoveAllPeers()                     {}
+func (s *nopTransporter) UpdatePeer(id types.ID, us []string) {}
+func (s *nopTransporter) ActiveSince(id types.ID) time.Time   { return time.Time{} }
+func (s *nopTransporter) ActivePeers() int                    { return 0 }
+func (s *nopTransporter) Stop()                               {}
+func (s *nopTransporter) Pause()                              {}
+func (s *nopTransporter) Resume()                             {}
