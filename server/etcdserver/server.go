@@ -293,6 +293,9 @@ type EtcdServer struct {
 	// TODO: Replace with flush db in v3.7 assuming v3.6 bootstraps from db file.
 	forceDiskSnapshot bool
 	corruptionChecker CorruptionChecker
+
+	// whether to ignore wait applied index when renewing an existed leases
+	fastLeaseKeepAlive bool
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
@@ -335,6 +338,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		consistIndex:          b.storage.backend.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
+		fastLeaseKeepAlive:    cfg.ServerFeatureGate.Enabled(features.FastLeaseKeepAlive),
 	}
 
 	addFeatureGateMetrics(cfg.ServerFeatureGate, serverFeatureEnabled)
