@@ -54,9 +54,7 @@ type HashKV struct {
 }
 
 func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
-	cfg := backend.DefaultBackendConfig(zap.NewNop())
-	cfg.Path = dbPath
-	b := backend.New(cfg)
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
 	st := mvcc.NewStore(zap.NewNop(), b, nil, mvcc.StoreConfig{})
 	hst := mvcc.NewHashStorage(zap.NewNop(), st)
 

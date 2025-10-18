@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -36,8 +35,6 @@ import (
 )
 
 var (
-	// TODO: add this configure to top level etcdutl command
-	flockTimeout        time.Duration
 	iterateBucketLimit  uint64
 	iterateBucketDecode bool
 )
@@ -50,9 +47,6 @@ func NewListBucketCommand() *cobra.Command {
 		Run:   listBucketCommandFunc,
 	}
 
-	// TODO: add this flag to top level etctutl command
-	cmd.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
-
 	return cmd
 }
 
@@ -64,8 +58,6 @@ func NewIterateBucketCommand() *cobra.Command {
 		Run:   iterateBucketCommandFunc,
 	}
 
-	// TODO: add this flag to top level etctutl command
-	cmd.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
 	cmd.PersistentFlags().Uint64Var(&iterateBucketLimit, "limit", 0, "max number of key-value pairs to iterate (0 to iterate all)")
 	cmd.PersistentFlags().BoolVar(&iterateBucketDecode, "decode", false, "true to decode Protocol Buffer encoded data")
 
@@ -79,9 +71,6 @@ func NewHashCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run:   getHashCommandFunc,
 	}
-
-	// TODO: add this flag to top level etctutl command
-	cmd.PersistentFlags().DurationVar(&flockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
 
 	return cmd
 }
@@ -107,7 +96,7 @@ func listBucketCommandFunc(_ *cobra.Command, args []string) {
 }
 
 func getBuckets(dbPath string) (buckets []string, err error) {
-	db, derr := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: flockTimeout})
+	db, derr := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: FlockTimeout})
 	if derr != nil {
 		return nil, fmt.Errorf("failed to open bolt DB %w", derr)
 	}
@@ -218,7 +207,7 @@ func metaDecoder(k, v []byte) {
 }
 
 func iterateBucket(dbPath, bucket string, limit uint64, decode bool) (err error) {
-	db, err := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: flockTimeout})
+	db, err := bolt.Open(dbPath, 0o600, &bolt.Options{Timeout: FlockTimeout})
 	if err != nil {
 		return fmt.Errorf("failed to open bolt DB %w", err)
 	}
@@ -271,6 +260,6 @@ func getHashCommandFunc(_ *cobra.Command, args []string) {
 }
 
 func getHash(dbPath string) (hash uint32, err error) {
-	b := backend.NewDefaultBackend(zap.NewNop(), dbPath)
+	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
 	return b.Hash(schema.DefaultIgnores)
 }
