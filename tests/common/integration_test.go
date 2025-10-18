@@ -57,29 +57,13 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 }
 
 func WithHTTP2Debug() config.ClusterOption {
-	return func(c *config.ClusterConfig) {}
+	return integration.WithHTTP2Debug()
 }
 
 func WithUnixClient() config.ClusterOption {
-	return func(c *config.ClusterConfig) {
-		ctx := ensureIntegrationClusterContext(c)
-		ctx.UseUnix = true
-		c.ClusterContext = ctx
-	}
+	return integration.WithUnixClient()
 }
 
 func WithTCPClient() config.ClusterOption {
-	return func(c *config.ClusterConfig) {
-		ctx := ensureIntegrationClusterContext(c)
-		ctx.UseUnix = false
-		c.ClusterContext = ctx
-	}
-}
-
-func ensureIntegrationClusterContext(c *config.ClusterConfig) *integration.ClusterContext {
-	ctx, _ := c.ClusterContext.(*integration.ClusterContext)
-	if ctx == nil {
-		ctx = &integration.ClusterContext{}
-	}
-	return ctx
+	return integration.WithTCPClient()
 }
