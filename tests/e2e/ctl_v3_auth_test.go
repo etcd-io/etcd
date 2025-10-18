@@ -58,6 +58,18 @@ func authEnable(cx ctlCtx) error {
 	return nil
 }
 
+func authStatus(cx ctlCtx) error {
+	cmdArgs := append(cx.PrefixArgs(), "auth", "status")
+
+	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
+	if err != nil {
+		return err
+	}
+	defer proc.Close()
+
+	return err
+}
+
 func ctlV3AuthEnable(cx ctlCtx) error {
 	cmdArgs := append(cx.PrefixArgs(), "auth", "enable")
 	return e2e.SpawnWithExpectWithEnv(cmdArgs, cx.envMap, expect.ExpectedResponse{Value: "Authentication Enabled"})
@@ -185,6 +197,7 @@ func authTestFromKeyPerm(cx ctlCtx) {
 }
 
 func authTestWatch(cx ctlCtx) {
+	require.NoError(cx.t, authStatus(cx))
 	require.NoError(cx.t, authEnable(cx))
 
 	cx.user, cx.pass = "root", "root"
