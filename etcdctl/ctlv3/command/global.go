@@ -15,6 +15,7 @@
 package command
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -70,6 +71,44 @@ type discoveryCfg struct {
 }
 
 var display printer = &simplePrinter{}
+
+var newClientFunc = clientv3.New
+
+type ClientFactory func(clientv3.Config) (*clientv3.Client, error)
+
+type clientFactoryKey struct{}
+
+// WithClientFactory attaches a custom client factory to the provided context.
+// Tests can inject fakes without mutating the global client constructor.
+func WithClientFactory(ctx context.Context, factory ClientFactory) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if factory == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, clientFactoryKey{}, factory)
+}
+
+func WithClient(ctx context.Context, cli *clientv3.Client) context.Context {
+	if cli == nil {
+		return ctx
+	}
+	return WithClientFactory(ctx, func(clientv3.Config) (*clientv3.Client, error) {
+		return cli, nil
+	})
+}
+
+func clientFactoryFromCmd(cmd *cobra.Command) ClientFactory {
+	if cmd != nil {
+		if ctx := cmd.Context(); ctx != nil {
+			if factory, ok := ctx.Value(clientFactoryKey{}).(ClientFactory); ok && factory != nil {
+				return factory
+			}
+		}
+	}
+	return newClientFunc
+}
 
 func initDisplayFromCmd(cmd *cobra.Command) {
 	isHex, err := cmd.Flags().GetBool("hex")
@@ -153,17 +192,21 @@ func mustClientCfgFromCmd(cmd *cobra.Command) *clientv3.Config {
 
 func mustClientFromCmd(cmd *cobra.Command) *clientv3.Client {
 	cfg := clientConfigFromCmd(cmd)
-	return mustClient(cfg)
+	return mustClientWithFactory(cmd, cfg)
 }
 
 func mustClient(cc *clientv3.ConfigSpec) *clientv3.Client {
+	return mustClientWithFactory(nil, cc)
+}
+
+func mustClientWithFactory(cmd *cobra.Command, cc *clientv3.ConfigSpec) *clientv3.Client {
 	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
 	cfg, err := clientv3.NewClientConfig(cc, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, err)
 	}
 
-	client, err := clientv3.New(*cfg)
+	client, err := clientFactoryFromCmd(cmd)(*cfg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitBadConnection, err)
 	}
