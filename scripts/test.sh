@@ -70,7 +70,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
   exec > >(tee -a "${OUTPUT_FILE}") 2>&1
 fi
 
-PASSES=${PASSES:-"gofmt bom dep build unit"}
+PASSES=${PASSES:-"bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
@@ -421,15 +421,6 @@ function license_header_pass {
   run_for_modules generic_checker license_header_per_module
 }
 
-function go_fmt_for_package {
-  # We utilize 'go fmt' to find all files suitable for formatting,
-  # but reuse full power gofmt to perform just RO check.
-  go fmt -n "$1" | sed 's| -w | -d |g' | sh
-}
-
-function gofmt_pass {
-  run_for_modules generic_checker go_fmt_for_package
-}
 
 function bom_pass {
   log_callout "Checking bill of materials..."
