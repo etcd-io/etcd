@@ -142,6 +142,35 @@ function run_for_all_workspace_modules {
   fi
 }
 
+# run_for_workspace_modules [cmd]
+# run given command in each individual workspace module
+# (unless the set is limited using ${PKG} or / ${USERMOD})
+function run_for_workspace_modules {
+  local keep_going_module=${KEEP_GOING_MODULE:-false}
+  local fail_mod=false
+  local pkg="${PKG:-./...}"
+
+  if [ -z "${USERMOD:-}" ]; then
+    local _modules=()
+    load_workspace_relative_modules _modules
+    for module in "${_modules[@]}"; do
+      if ! run_for_module "${module%...}" "$@"; then
+        if [ "$keep_going_module" = false ]; then
+          log_error "There was a Failure in module ${module}, aborting..."
+          return 1
+        fi
+        log_error "There was a Failure in module ${module}, keep going..."
+        fail_mod=true
+      fi
+    done
+    if [ "$fail_mod" = true ]; then
+      return 1
+    fi
+  else
+    run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
+  fi
+}
+
 #  run_for_modules [cmd]
 #  run given command across all modules and packages
 #  (unless the set is limited using ${PKG} or / ${USERMOD})
