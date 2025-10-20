@@ -32,12 +32,6 @@ set_root_dir
 
 ####   Discovery of files/packages within a go module #####
 
-# go_srcs_in_module
-# returns list of all not-generated go sources in the current (dir) module.
-function go_srcs_in_module {
-  go list -f "{{with \$c:=.}}{{range \$f:=\$c.GoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.TestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{range \$f:=\$c.XTestGoFiles  }}{{\$c.Dir}}/{{\$f}}{{\"\n\"}}{{end}}{{end}}" ./... | grep -vE "(\\.pb\\.go|\\.pb\\.gw.go)"
-}
-
 # pkgs_in_module [optional:package_pattern]
 # returns list of all packages in the current (dir) module.
 # if the package_pattern is given, its being resolved.

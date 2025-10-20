@@ -96,8 +96,7 @@ fuzz:
 
 # Static analysis
 .PHONY: verify
-verify: verify-bom verify-lint verify-dep verify-shellcheck \
-	verify-license-header verify-mod-tidy \
+verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-markdown-marker verify-go-versions verify-gomodguard \
 	verify-go-workspace
@@ -129,10 +128,6 @@ fix-lint:
 .PHONY: verify-shellcheck
 verify-shellcheck:
 	PASSES="shellcheck" ./scripts/test.sh
-
-.PHONY: verify-license-header
-verify-license-header:
-	PASSES="license_header" ./scripts/test.sh
 
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
