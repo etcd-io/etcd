@@ -114,11 +114,6 @@ function modules() {
   echo "${modules[@]}"
 }
 
-function modules_for_bom() {
-  for m in $(modules); do
-    echo -n "${m}/... "
-  done
-
 # Receives a reference to an array variable, and returns the workspace relative modules.
 function load_workspace_relative_modules() {
   local -n _relative_modules=$1
