@@ -112,37 +112,13 @@ func WithEndpoints(endpoints []string) config.ClientOption {
 }
 
 func WithHTTP2Debug() config.ClusterOption {
-	return func(c *config.ClusterConfig) {
-		ctx := ensureE2EClusterContext(c)
-		if ctx.EnvVars == nil {
-			ctx.EnvVars = map[string]string{}
-		}
-		// Enable debug mode to get logs with http2 headers (including authority)
-		ctx.EnvVars["GODEBUG"] = "http2debug=2"
-		c.ClusterContext = ctx
-	}
+	return e2e.WithHTTP2Debug()
 }
 
 func WithUnixClient() config.ClusterOption {
-	return func(c *config.ClusterConfig) {
-		ctx := ensureE2EClusterContext(c)
-		ctx.UseUnix = true
-		c.ClusterContext = ctx
-	}
+	return e2e.WithUnixClient()
 }
 
 func WithTCPClient() config.ClusterOption {
-	return func(c *config.ClusterConfig) {
-		ctx := ensureE2EClusterContext(c)
-		ctx.UseUnix = false
-		c.ClusterContext = ctx
-	}
-}
-
-func ensureE2EClusterContext(c *config.ClusterConfig) *e2e.ClusterContext {
-	ctx, _ := c.ClusterContext.(*e2e.ClusterContext)
-	if ctx == nil {
-		ctx = &e2e.ClusterContext{}
-	}
-	return ctx
+	return e2e.WithTCPClient()
 }

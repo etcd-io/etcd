@@ -14,6 +14,36 @@
 
 package integration
 
+import "go.etcd.io/etcd/tests/v3/framework/config"
+
 type ClusterContext struct {
 	UseUnix bool
+}
+
+func WithHTTP2Debug() config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
+}
+
+func WithUnixClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureIntegrationClusterContext(c)
+		ctx.UseUnix = true
+		c.ClusterContext = ctx
+	}
+}
+
+func WithTCPClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {
+		ctx := ensureIntegrationClusterContext(c)
+		ctx.UseUnix = false
+		c.ClusterContext = ctx
+	}
+}
+
+func ensureIntegrationClusterContext(c *config.ClusterConfig) *ClusterContext {
+	ctx, _ := c.ClusterContext.(*ClusterContext)
+	if ctx == nil {
+		ctx = &ClusterContext{}
+	}
+	return ctx
 }
