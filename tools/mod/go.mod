@@ -10,7 +10,7 @@ require (
 	github.com/cloudflare/cfssl v1.6.5
 	github.com/gogo/protobuf v1.3.2
 	github.com/golangci/golangci-lint/v2 v2.5.0
-	github.com/google/yamlfmt v0.17.2
+	github.com/google/yamlfmt v0.19.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
 	github.com/ryancurrah/gomodguard v1.4.1
 	go.etcd.io/gofail v0.2.0
