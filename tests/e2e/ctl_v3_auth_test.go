@@ -44,6 +44,19 @@ func TestCtlV3AuthSnapshotJWT(t *testing.T) {
 	testCtl(t, authTestSnapshot, withCfg(*e2e.NewConfigJWT()))
 }
 
+func TestCtlV3GetAuthStatus(t *testing.T) { testCtl(t, authTestGetAuthStatus) }
+
+func ctlV3AuthStatus(cx ctlCtx, expected string) error {
+	cmd := append(cx.PrefixArgs(), "auth", "status")
+	return e2e.SpawnWithExpectWithEnv(cmd, cx.envMap, expect.ExpectedResponse{Value: expected})
+}
+
+func authTestGetAuthStatus(cx ctlCtx) {
+	require.NoError(cx.t, ctlV3AuthStatus(cx, "Authentication Status: false"))
+	require.NoError(cx.t, authEnable(cx))
+	require.NoError(cx.t, ctlV3AuthStatus(cx, "Authentication Status: true"))
+}
+
 func authEnable(cx ctlCtx) error {
 	// create root user with root role
 	if err := ctlV3User(cx, []string{"add", "root", "--interactive=false"}, "User root created", []string{"root"}); err != nil {
