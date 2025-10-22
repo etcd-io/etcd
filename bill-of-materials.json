@@ -72,6 +72,15 @@
 		]
 	},
 	{
+		"project": "github.com/clipperhouse/uax29/v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/coreos/go-semver/semver",
 		"licenses": [
 			{
@@ -302,6 +311,15 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9794238683127572
+			}
+		]
+	},
+	{
+		"project": "github.com/olekukonko/cat",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
 			}
 		]
 	},
