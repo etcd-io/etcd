@@ -1,0 +1,37 @@
+---
+# This workflow checks that Go modules are kept clean and up-to-date.
+# It ensures go.mod and go.sum files don't contain unnecessary entries.
+name: "Dependency Hygiene"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions: read-all
+
+jobs:
+  dependency-hygiene:
+    name: Check dependency hygiene
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      
+      - name: Set up Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version: '1.25'
+      
+      - name: Check if go.mod/go.sum are clean
+        run: |
+          go mod tidy
+          if ! git diff --exit-code go.mod go.sum; then
+            echo "go.mod or go.sum contains unnecessary entries. Run 'go mod tidy' and commit."
+            git diff go.mod go.sum
+            exit 1
+          fi
