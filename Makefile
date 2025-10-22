@@ -102,8 +102,9 @@ verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-go-workspace
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive update-go-workspace
+fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
 	./scripts/fix.sh
+	$(MAKE) update-go-workspace
 
 .PHONY: verify-bom
 verify-bom:
