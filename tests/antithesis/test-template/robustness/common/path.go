@@ -30,14 +30,6 @@ const (
 	defaultetcdDataPath = "/var/etcddata%d"
 	defaultReportPath   = "/var/report/"
 
-	localetcd0 = "127.0.0.1:12379"
-	localetcd1 = "127.0.0.1:22379"
-	localetcd2 = "127.0.0.1:32379"
-	// used by default when running the client locally
-	defaultetcdLocalDataPath = "/tmp/etcddata%d"
-	localetcdDataPathEnv     = "ETCD_ROBUSTNESS_DATA_PATH_PREFIX"
-	localReportPath          = "report"
-
 	endpointsEnv  = "ETCD_ROBUSTNESS_ENDPOINTS"
 	dataPathsEnv  = "ETCD_ROBUSTNESS_DATA_PATHS"
 	reportPathEnv = "ETCD_ROBUSTNESS_REPORT_PATH"
@@ -83,18 +75,6 @@ func defaultPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map
 	hosts = []string{defaultetcd0, defaultetcd1, defaultetcd2}[:cfg.NodeCount]
 	reportPath = defaultReportPath
 	dataPaths = etcdDataPaths(defaultetcdDataPath, cfg.NodeCount)
-	return hosts, reportPath, dataPaths
-}
-
-func LocalPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[string]string) {
-	hosts = []string{localetcd0, localetcd1, localetcd2}[:cfg.NodeCount]
-	reportPath = localReportPath
-	etcdDataPath := defaultetcdLocalDataPath
-	envPath := os.Getenv(localetcdDataPathEnv)
-	if envPath != "" {
-		etcdDataPath = envPath + "%d"
-	}
-	dataPaths = etcdDataPaths(etcdDataPath, cfg.NodeCount)
 	return hosts, reportPath, dataPaths
 }
 

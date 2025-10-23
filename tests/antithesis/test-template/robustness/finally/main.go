@@ -17,7 +17,6 @@
 package main
 
 import (
-	"flag"
 	"maps"
 	"os"
 	"path/filepath"
@@ -39,15 +38,8 @@ const (
 var NodeCount = "3"
 
 func main() {
-	local := flag.Bool("local", false, "run finally locally and connect to etcd instances via localhost")
-	flag.Parse()
-
 	cfg := common.MakeConfig(NodeCount)
-
 	_, reportPath, dirs := common.GetPaths(cfg)
-	if *local {
-		_, reportPath, dirs = common.LocalPaths(cfg)
-	}
 
 	lg, err := zap.NewProduction()
 	if err != nil {
