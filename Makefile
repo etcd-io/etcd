@@ -12,7 +12,7 @@
 
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="-v" ./build
+	GO_BUILD_FLAGS="-v -buildvcs=false" ./build
 	./bin/etcd --version
 	./bin/etcdctl version
 
