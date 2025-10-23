@@ -164,14 +164,9 @@ endif
 verify-markdown-marker:
 	PASSES="markdown_marker" ./scripts/test.sh
 
-YAMLFMT_VERSION = $(shell cd tools/mod && go list -m -f '{{.Version}}' github.com/google/yamlfmt)
-
 .PHONY: fix-yamllint
 fix-yamllint:
-ifeq (, $(shell command -v yamlfmt))
-	$(shell go install github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_VERSION))
-endif
-	yamlfmt -conf tools/.yamlfmt .
+	./scripts/fix/yamllint.sh
 
 .PHONY: run-govulncheck
 run-govulncheck:
