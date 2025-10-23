@@ -102,9 +102,9 @@ verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-go-workspace
 
 .PHONY: fix
-fix: fix-bom fix-lint fix-yamllint sync-toolchain-directive
+fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
+	update-go-workspace
 	./scripts/fix.sh
-	$(MAKE) update-go-workspace
 
 .PHONY: verify-bom
 verify-bom:
@@ -133,6 +133,10 @@ verify-shellcheck:
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
 	PASSES="mod_tidy" ./scripts/test.sh
+
+.PHONY: fix-mod-tidy
+fix-mod-tidy:
+	PASSES="mod_tidy_fix" ./scripts/test.sh
 
 .PHONY: verify-shellws
 verify-shellws:
