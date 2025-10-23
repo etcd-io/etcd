@@ -68,11 +68,13 @@ antithesis-run-container-validation: validate-node-count
 
 .PHONY: antithesis-run-local-traffic
 antithesis-run-local-traffic:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/traffic/main.go --local
+	export ETCD_ROBUSTNESS_DATA_PATHS=/tmp/etcddata0,/tmp/etcddata1,/tmp/etcddata2 && export ETCD_ROBUSTNESS_REPORT_PATH=report && export ETCD_ROBUSTNESS_ENDPOINTS=127.0.0.1:12379,127.0.0.1:22379,127.0.0.1:32379 && \
+		go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/traffic/main.go
 
 .PHONY: antithesis-run-local-validation
 antithesis-run-local-validation:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/finally/main.go --local
+	export ETCD_ROBUSTNESS_DATA_PATHS=/tmp/etcddata0,/tmp/etcddata1,/tmp/etcddata2 && export ETCD_ROBUSTNESS_REPORT_PATH=report && export ETCD_ROBUSTNESS_ENDPOINTS=127.0.0.1:12379,127.0.0.1:22379,127.0.0.1:32379 && \
+		go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/finally/main.go
 
 .PHONY: antithesis-clean
 antithesis-clean: validate-node-count
