@@ -114,18 +114,25 @@ function modules() {
   echo "${modules[@]}"
 }
 
-function modules_for_bom() {
-  for m in $(modules); do
-    echo -n "${m}/... "
-  done
-}
-
 # Receives a reference to an array variable, and returns the workspace relative modules.
 function load_workspace_relative_modules() {
   local -n _relative_modules=$1
   while IFS= read -r line; do _relative_modules+=("$line"); done < <(
     go work edit -json | jq -r '.Use[].DiskPath + "/..."'
   )
+}
+
+# Receives a reference to an array variable, and returns the workspace relative modules, not
+# including the tools, as they are not considered to be added to the bill for materials.
+function load_workspace_relative_modules_for_bom() {
+  local -n relative_modules_for_bom=$1
+  local modules=()
+  load_workspace_relative_modules modules
+  for module in "${modules[@]}"; do
+    if [[ ! "${module}" =~ ^./tools ]]; then
+      relative_modules_for_bom+=("${module}")
+    fi
+  done
 }
 
 #  run_for_all_workspace_modules [cmd]

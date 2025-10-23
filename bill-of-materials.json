@@ -477,6 +477,15 @@
 		]
 	},
 	{
+		"project": "go.etcd.io/etcd/cache/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 0.9988925802879292
+			}
+		]
+	},
+	{
 		"project": "go.etcd.io/etcd/client/pkg/v3",
 		"licenses": [
 			{

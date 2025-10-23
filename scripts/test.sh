@@ -412,9 +412,8 @@ function lint_fix_pass {
 
 function bom_pass {
   log_callout "Checking bill of materials..."
-  # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  # shellcheck disable=SC2207
-  modules=($(modules_for_bom))
+  local _bom_modules=()
+  load_workspace_relative_modules_for_bom _bom_modules
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
@@ -423,15 +422,15 @@ function bom_pass {
   # Intentionally run the command once first, so it fetches dependencies. The exit code on the first
   # run in a just cloned repository is always dirty.
   GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
-    --override-file ./bill-of-materials.override.json "${modules[@]}" &> /dev/null
+    --override-file ./bill-of-materials.override.json "${_bom_modules[@]}" &>/dev/null
 
   # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
   # results in certain dependencies being excluded from the BOM file, such as procfs.
   # For more info, https://github.com/etcd-io/etcd/issues/19665
   output=$(GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
-    "${modules[@]}")
-  code="$?"
+    "${_bom_modules[@]}")
+  local code="$?"
 
   run cp go.sum.tmp go.sum || return 2
   run cp go.mod.tmp go.mod || return 2
