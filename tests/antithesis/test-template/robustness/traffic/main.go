@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"math/rand/v2"
 	"os"
 	"slices"
@@ -64,15 +63,7 @@ var (
 )
 
 func main() {
-	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
-	flag.Parse()
-
-	cfg := common.MakeConfig(NodeCount)
-
-	hosts, reportPath, etcdetcdDataPaths := common.GetPaths(cfg)
-	if *local {
-		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
-	}
+	hosts, reportPath, etcdetcdDataPaths := common.GetPaths()
 
 	ctx := context.Background()
 	baseTime := time.Now()
