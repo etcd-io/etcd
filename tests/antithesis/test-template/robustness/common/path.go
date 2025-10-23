@@ -71,6 +71,40 @@ func GetPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[str
 	return hosts, reportPath, dataPaths
 }
 
+func GetPathsFromEnv() (hosts []string, reportPath string, dataPaths map[string]string) {
+	envDataPathsStr := os.Getenv(dataPathsEnv)
+	envReportPath := os.Getenv(reportPathEnv)
+	envEndpointsStr := os.Getenv(endpointsEnv)
+
+	if envEndpointsStr == "" {
+		panic(fmt.Sprintf("No endpoints specified in %s", endpointsEnv))
+	}
+	hosts = strings.Split(envEndpointsStr, ",")
+	for i, host := range hosts {
+		hosts[i] = strings.TrimSpace(host)
+	}
+
+	if envReportPath == "" {
+		panic(fmt.Sprintf("No report path specified in %s", reportPathEnv))
+	}
+	reportPath = envReportPath
+
+	if envDataPathsStr == "" {
+		panic(fmt.Sprintf("No data paths specified in %s", dataPathsEnv))
+	}
+
+	envDataPaths := strings.Split(envDataPathsStr, ",")
+	if len(envDataPaths) != len(hosts) {
+		panic(fmt.Sprintf("Mismatched number of endpoints and data paths: %d endpoints, %d data paths", len(hosts), len(envDataPaths)))
+	}
+
+	dataPaths = make(map[string]string)
+	for i, endpoint := range hosts {
+		dataPaths[endpoint] = strings.TrimSpace(envDataPaths[i])
+	}
+	return hosts, reportPath, dataPaths
+}
+
 func defaultPaths(cfg *Config) (hosts []string, reportPath string, dataPaths map[string]string) {
 	hosts = []string{defaultetcd0, defaultetcd1, defaultetcd2}[:cfg.NodeCount]
 	reportPath = defaultReportPath

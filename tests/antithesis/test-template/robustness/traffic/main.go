@@ -63,8 +63,7 @@ var (
 )
 
 func main() {
-	cfg := common.MakeConfig(NodeCount)
-	hosts, reportPath, etcdetcdDataPaths := common.GetPaths(cfg)
+	hosts, reportPath, etcdetcdDataPaths := common.GetPathsFromEnv()
 
 	ctx := context.Background()
 	baseTime := time.Now()

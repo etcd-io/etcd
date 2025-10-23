@@ -38,8 +38,7 @@ const (
 var NodeCount = "3"
 
 func main() {
-	cfg := common.MakeConfig(NodeCount)
-	_, reportPath, dirs := common.GetPaths(cfg)
+	_, reportPath, dirs := common.GetPathsFromEnv()
 
 	lg, err := zap.NewProduction()
 	if err != nil {

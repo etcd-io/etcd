@@ -34,8 +34,7 @@ var NodeCount = "3"
 
 // CheckHealth checks health of all etcd nodes
 func CheckHealth() bool {
-	cfg := common.MakeConfig(NodeCount)
-	hosts, _, _ := common.GetPaths(cfg)
+	hosts, _, _ := common.GetPathsFromEnv()
 
 	// iterate over each host and check health
 	for _, host := range hosts {
