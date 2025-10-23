@@ -460,6 +460,10 @@ function gomodguard_pass {
   run_for_modules gomodguard_for_module
 }
 
+function yamllint_fix_pass {
+  run_go_tool github.com/google/yamlfmt/cmd/yamlfmt -conf "${ETCD_ROOT_DIR}/tools/.yamlfmt" .
+}
+
 ######## VARIOUS CHECKERS ######################################################
 
 function dump_deps_of_module() {
