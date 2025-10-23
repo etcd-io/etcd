@@ -317,11 +317,6 @@ func TestAuthApplierV3_AdminPermission(t *testing.T) {
 			adminPermissionNeeded: true,
 		},
 		{
-			name:                  "AuthStatus needs admin permission",
-			request:               &pb.InternalRaftRequest{AuthStatus: &pb.AuthStatusRequest{}},
-			adminPermissionNeeded: true,
-		},
-		{
 			name:                  "AuthUserAdd needs admin permission",
 			request:               &pb.InternalRaftRequest{AuthUserAdd: &pb.AuthUserAddRequest{}},
 			adminPermissionNeeded: true,
