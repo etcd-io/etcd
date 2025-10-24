@@ -74,7 +74,7 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/17661
 	SetMemberLocalAddr featuregate.Feature = "SetMemberLocalAddr"
-	// FastLeaseKeepAlive enables skipping wait applied index when renewing an existed lease.
+	// FastLeaseKeepAlive enables lease renewal to skip waiting for the applied index.
 	// owner: @aaronjzhang
 	// alpha: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20589
