@@ -911,28 +911,29 @@ func TestFastLeaseKeepAliveValidate(t *testing.T) {
 	tcs := []struct {
 		name               string
 		serverFeatureGates string
-		expectError        bool
+		expectEnabled      bool
 	}{
 		{
-			name: "Default config should pass",
+			name:          "Default config should pass",
+			expectEnabled: false,
 		},
 		{
 			name:               "Enabling FastLeaseKeepAlive should pass",
 			serverFeatureGates: "FastLeaseKeepAlive=true",
+			expectEnabled:      true,
 		},
 		{
 			name:               "Disabling FastLeaseKeepAlive should pass",
 			serverFeatureGates: "FastLeaseKeepAlive=false",
+			expectEnabled:      false,
 		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := *NewConfig()
 			cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).Set(tc.serverFeatureGates)
-			err := cfg.Validate()
-			if (err != nil) != tc.expectError {
-				t.Errorf("config.Validate() = %q, expected error: %v", err, tc.expectError)
-			}
+			require.NoError(t, cfg.Validate())
+			require.Equal(t, tc.expectEnabled, cfg.ServerFeatureGate.Enabled(features.FastLeaseKeepAlive))
 		})
 	}
 }
