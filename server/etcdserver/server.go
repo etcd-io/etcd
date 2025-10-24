@@ -293,7 +293,6 @@ type EtcdServer struct {
 	// TODO: Replace with flush db in v3.7 assuming v3.6 bootstraps from db file.
 	forceDiskSnapshot bool
 	corruptionChecker CorruptionChecker
-
 }
 
 // NewServer creates a new EtcdServer from the supplied configuration. The
