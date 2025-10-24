@@ -63,7 +63,7 @@ var (
 )
 
 func main() {
-	hosts, reportPath, etcdetcdDataPaths := common.GetPathsFromEnv()
+	hosts, reportPath, etcdetcdDataPaths := common.GetPaths()
 
 	ctx := context.Background()
 	baseTime := time.Now()

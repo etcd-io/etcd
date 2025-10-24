@@ -38,7 +38,7 @@ const (
 var NodeCount = "3"
 
 func main() {
-	_, reportPath, dirs := common.GetPathsFromEnv()
+	_, reportPath, dirs := common.GetPaths()
 
 	lg, err := zap.NewProduction()
 	if err != nil {
