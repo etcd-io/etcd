@@ -123,7 +123,7 @@ verify-lint: install-golangci-lint
 	PASSES="lint" ./scripts/test.sh
 
 .PHONY: fix-lint
-fix-lint:
+fix-lint: install-golangci-lint
 	PASSES="lint_fix" ./scripts/test.sh
 
 .PHONY: verify-shellcheck
