@@ -364,7 +364,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		//      renewal to proceed, it won't affect the eventual outcome since the
 		//      lease will still be properly revoked once the revoke request is applied.
 
-		if s.fastLeaseKeepAlive {
+		if s.FeatureEnabled(features.FastLeaseKeepAlive) {
 			le := s.lessor.Lookup(id)
 			if le == nil {
 				if err := s.waitAppliedIndex(); err != nil {
