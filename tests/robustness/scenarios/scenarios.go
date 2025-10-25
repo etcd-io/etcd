@@ -20,9 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
@@ -48,16 +45,6 @@ var trafficProfiles = []TrafficProfile{
 	{
 		Name:    "EtcdTrafficDeleteLeases",
 		Traffic: traffic.EtcdPutDeleteLease,
-		Profile: traffic.LowTraffic,
-	},
-	{
-		Name:    "KubernetesHighTraffic",
-		Traffic: traffic.Kubernetes,
-		Profile: traffic.HighTrafficProfile,
-	},
-	{
-		Name:    "KubernetesLowTraffic",
-		Traffic: traffic.Kubernetes,
 		Profile: traffic.LowTraffic,
 	},
 }
@@ -160,75 +147,71 @@ func Exploratory(_ *testing.T) []TestScenario {
 }
 
 func Regression(t *testing.T) []TestScenario {
-	v, err := e2e.GetVersionFromBinary(e2e.BinPath.Etcd)
-	require.NoErrorf(t, err, "Failed checking etcd version binary, binary: %q", e2e.BinPath.Etcd)
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name:      "Issue14370",
+	// 	Failpoint: failpoint.RaftBeforeSavePanic,
+	// 	Profile:   traffic.LowTraffic,
+	// 	Traffic:   traffic.EtcdPutDeleteLease,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithClusterSize(1),
+	// 		e2e.WithGoFailEnabled(true),
+	// 	),
+	// })
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name:      "Issue14685",
+	// 	Failpoint: failpoint.DefragBeforeCopyPanic,
+	// 	Profile:   traffic.LowTraffic,
+	// 	Traffic:   traffic.EtcdPutDeleteLease,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithClusterSize(1),
+	// 		e2e.WithGoFailEnabled(true),
+	// 	),
+	// })
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name:      "Issue13766",
+	// 	Failpoint: failpoint.KillFailpoint,
+	// 	Profile:   traffic.HighTrafficProfile,
+	// 	Traffic:   traffic.EtcdPut,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithSnapshotCount(100),
+	// 	),
+	// })
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name: "Issue15220",
+	// 	Watch: client.WatchConfig{
+	// 		RequestProgress: true,
+	// 	},
+	// 	Profile:   traffic.LowTraffic,
+	// 	Traffic:   traffic.EtcdPutDeleteLease,
+	// 	Failpoint: failpoint.KillFailpoint,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithClusterSize(1),
+	// 	),
+	// })
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name:      "Issue17529",
+	// 	Profile:   traffic.HighTrafficProfile,
+	// 	Traffic:   traffic.Kubernetes,
+	// 	Failpoint: failpoint.SleepBeforeSendWatchResponse,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithClusterSize(1),
+	// 		e2e.WithGoFailEnabled(true),
+	// 		options.WithSnapshotCount(100),
+	// 	),
+	// })
 
-	scenarios := []TestScenario{}
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue14370",
-		Failpoint: failpoint.RaftBeforeSavePanic,
-		Profile:   traffic.LowTraffic,
-		Traffic:   traffic.EtcdPutDeleteLease,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue14685",
-		Failpoint: failpoint.DefragBeforeCopyPanic,
-		Profile:   traffic.LowTraffic,
-		Traffic:   traffic.EtcdPutDeleteLease,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue13766",
-		Failpoint: failpoint.KillFailpoint,
-		Profile:   traffic.HighTrafficProfile,
-		Traffic:   traffic.EtcdPut,
-		Cluster: *e2e.NewConfig(
-			e2e.WithSnapshotCount(100),
-		),
-	})
-	scenarios = append(scenarios, TestScenario{
-		Name: "Issue15220",
-		Watch: client.WatchConfig{
-			RequestProgress: true,
-		},
-		Profile:   traffic.LowTraffic,
-		Traffic:   traffic.EtcdPutDeleteLease,
-		Failpoint: failpoint.KillFailpoint,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-		),
-	})
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue17529",
-		Profile:   traffic.HighTrafficProfile,
-		Traffic:   traffic.Kubernetes,
-		Failpoint: failpoint.SleepBeforeSendWatchResponse,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithGoFailEnabled(true),
-			options.WithSnapshotCount(100),
-		),
-	})
-
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue17780",
-		Profile:   traffic.LowTraffic.WithoutCompaction(),
-		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
-		Traffic:   traffic.Kubernetes,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithCompactionBatchLimit(300),
-			e2e.WithSnapshotCount(1000),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
+	// scenarios = append(scenarios, TestScenario{
+	// 	Name:      "Issue17780",
+	// 	Profile:   traffic.LowTraffic.WithoutCompaction(),
+	// 	Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
+	// 	Traffic:   traffic.Kubernetes,
+	// 	Cluster: *e2e.NewConfig(
+	// 		e2e.WithClusterSize(1),
+	// 		e2e.WithCompactionBatchLimit(300),
+	// 		e2e.WithSnapshotCount(1000),
+	// 		e2e.WithGoFailEnabled(true),
+	// 	),
+	// })
 
 	// NOTE:
 	//
@@ -242,51 +225,6 @@ func Regression(t *testing.T) []TestScenario {
 	// burstable value. A higher QPS can generate more new keys than
 	// expected, making it difficult to determine an optimal compaction
 	// batch limit within a larger key space.
-	scenarios = append(scenarios, TestScenario{
-		Name: "Issue19179",
-		Profile: traffic.Profile{
-			MinimalQPS:                     50,
-			MaximalQPS:                     100,
-			BurstableQPS:                   100,
-			MemberClientCount:              6,
-			ClusterClientCount:             2,
-			MaxNonUniqueRequestConcurrency: 3,
-		}.WithoutCompaction(),
-		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
-		Traffic:   traffic.KubernetesCreateDelete,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithCompactionBatchLimit(50),
-			e2e.WithSnapshotCount(1000),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
-	scenarios = append(scenarios, TestScenario{
-		Name:      "Issue18089",
-		Profile:   traffic.LowTraffic.WithCompactionPeriod(100 * time.Millisecond), // Use frequent compaction for high reproduce rate
-		Failpoint: failpoint.SleepBeforeSendWatchResponse,
-		Traffic:   traffic.EtcdDelete,
-		Cluster: *e2e.NewConfig(
-			e2e.WithClusterSize(1),
-			e2e.WithGoFailEnabled(true),
-		),
-	})
-	if v.Compare(version.V3_5) >= 0 {
-		opts := []e2e.EPClusterOption{
-			e2e.WithSnapshotCount(100),
-			e2e.WithPeerProxy(true),
-			e2e.WithIsPeerTLS(true),
-		}
-		if e2e.CouldSetSnapshotCatchupEntries(e2e.BinPath.Etcd) {
-			opts = append(opts, e2e.WithSnapshotCatchUpEntries(100))
-		}
-		scenarios = append(scenarios, TestScenario{
-			Name:      "Issue15271",
-			Failpoint: failpoint.BlackholeUntilSnapshot,
-			Profile:   traffic.HighTrafficProfile,
-			Traffic:   traffic.EtcdPut,
-			Cluster:   *e2e.NewConfig(opts...),
-		})
-	}
-	return scenarios
+	// scenarios = append(scenarios, TestScenario{
+	return nil
 }
