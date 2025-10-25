@@ -38,8 +38,10 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/stringutil"
+	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
 
 func newClient(t *testing.T, entpoints []string, cfg e2e.ClientConfig) *clientv3.Client {
@@ -87,7 +89,7 @@ func tlsInfo(tb testing.TB, cfg e2e.ClientConfig) (*transport.TLSInfo, error) {
 	}
 }
 
-func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error {
+func FillEtcdWithData(ctx context.Context, c interfaces.Client, dbSize int) error {
 	g := errgroup.Group{}
 	concurrency := 10
 	keyCount := 100
@@ -97,8 +99,7 @@ func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error
 		i := i
 		g.Go(func() error {
 			for j := 0; j < keysPerRoutine; j++ {
-				_, err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(uint(valueSize)))
-				if err != nil {
+				if err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(uint(valueSize)), config.PutOptions{}); err != nil {
 					return err
 				}
 			}
