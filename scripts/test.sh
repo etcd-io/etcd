@@ -466,44 +466,43 @@ function gomodguard_pass {
 
 ######## VARIOUS CHECKERS ######################################################
 
-function dump_deps_of_module() {
+function dump_module_deps() {
+  local json_mod
+  json_mod=$(run go mod edit -json)
+
   local module
-  if ! module=$(run go mod edit -json | jq -r .Module.Path); then
+  if ! module=$(echo "${json_mod}" | jq -r .Module.Path); then
     return 255
   fi
+
   local require
-  require=$(run go mod edit -json | jq -r '.Require')
+  require=$(echo "${json_mod}" | jq -r '.Require')
   if [ "$require" == "null" ]; then
     return 0
   fi
+
   echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
 function dep_pass {
   local all_dependencies
-  local tools_mod_dependencies
-  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
-  # tools/mod is a special case. It is a module that is not included in the
-  # module list from test_lib.sh. However, we need to ensure that the
-  # dependency versions match the rest of the project. Therefore, explicitly
-  # execute the command for tools/mod, and append its dependencies to the list.
-  tools_mod_dependencies=$(run_for_module "tools/mod" dump_deps_of_module "./...") || return 2
-  all_dependencies="${all_dependencies}"$'\n'"${tools_mod_dependencies}"
+  all_dependencies=$(run_for_workspace_modules dump_module_deps | sort) || return 2
 
   local duplicates
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
 
-  for dup in ${duplicates}; do
-    log_error "FAIL: inconsistent versions for dependency: ${dup}"
-    echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
-  done
   if [[ -n "${duplicates}" ]]; then
+    for dup in ${duplicates}; do
+      log_error "FAIL: inconsistent versions for dependency: ${dup}"
+      echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
+    done
+
     log_error "FAIL: inconsistent dependencies"
     return 2
-  else
-    log_success "SUCCESS: dependencies are consistent across modules"
   fi
+
+  log_success "SUCCESS: dependencies are consistent across modules"
 }
 
 function release_pass {
