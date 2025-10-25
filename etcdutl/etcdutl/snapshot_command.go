@@ -97,7 +97,7 @@ func SnapshotStatusCommandFunc(cmd *cobra.Command, args []string) {
 	printer := initPrinterFromCmd(cmd)
 
 	lg := GetLogger()
-	sp := snapshot.NewV3(lg)
+	sp := snapshot.NewV3(lg, FlockTimeout)
 	ds, err := sp.Status(args[0])
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
@@ -143,7 +143,7 @@ func SnapshotRestoreCommandFunc(restoreCluster string,
 	}
 
 	lg := GetLogger()
-	sp := snapshot.NewV3(lg)
+	sp := snapshot.NewV3(lg, FlockTimeout)
 
 	if err := sp.Restore(snapshot.RestoreConfig{
 		SnapshotPath:        args[0],
