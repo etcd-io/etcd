@@ -65,7 +65,7 @@ func TestLeasingPutGet(t *testing.T) {
 		t.Errorf("expected key=%q, got key=%q", "abc", resp.Kvs[0].Key)
 	}
 	if string(resp.Kvs[0].Value) != "def" {
-		t.Errorf("expected value=%q, got value=%q", "bar", resp.Kvs[0].Value)
+		t.Errorf("expected value=%q, got value=%q", "def", resp.Kvs[0].Value)
 	}
 
 	_, err = lKV3.Get(t.Context(), "abc")
@@ -80,7 +80,7 @@ func TestLeasingPutGet(t *testing.T) {
 	}
 
 	if string(resp.Kvs[0].Value) != "ghi" {
-		t.Errorf("expected value=%q, got value=%q", "bar", resp.Kvs[0].Value)
+		t.Errorf("expected value=%q, got value=%q", "ghi", resp.Kvs[0].Value)
 	}
 }
 
