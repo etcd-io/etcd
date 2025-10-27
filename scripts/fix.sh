@@ -18,18 +18,8 @@ set -euo pipefail
 source ./scripts/test_lib.sh
 source ./scripts/updatebom.sh
 
-function bash_ws_fix {
-  TAB=$'\t'
-
-  log_callout "Fixing whitespaces in the bash scripts"
-  # Makes sure all bash scripts do use '  ' (double space) for indention. 
-  log_cmd "find ./ -name '*.sh' -print0 | xargs -0 sed -i.bak 's|${TAB}|  |g'"
-  find ./ -name '*.sh' -print0 | xargs -0 sed -i.bak "s|${TAB}|  |g"
-  find ./ -name '*.sh.bak' -print0 | xargs -0 rm
-}
 
 log_callout -e "\\nFixing etcd code for you...\n"
 
-bash_ws_fix || exit 2
 
 log_success -e "\\nSUCCESS: etcd code is fixed :)"
