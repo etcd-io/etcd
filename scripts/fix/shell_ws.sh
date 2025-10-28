@@ -13,23 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Fixes whitespaces in bash scripts.
 set -euo pipefail
 
-source ./scripts/test_lib.sh
-source ./scripts/updatebom.sh
+ETCD_ROOT_DIR=${ETCD_ROOT_DIR:-$(git rev-parse --show-toplevel)}
+source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
 
-function bash_ws_fix {
-  TAB=$'\t'
+function main {
+  local TAB=$'\t'
 
-  log_callout "Fixing whitespaces in the bash scripts"
-  # Makes sure all bash scripts do use '  ' (double space) for indention. 
-  log_cmd "find ./ -name '*.sh' -print0 | xargs -0 sed -i.bak 's|${TAB}|  |g'"
-  find ./ -name '*.sh' -print0 | xargs -0 sed -i.bak "s|${TAB}|  |g"
-  find ./ -name '*.sh.bak' -print0 | xargs -0 rm
+  log_callout "Fixing whitespaces in bash scripts"
+  # Makes sure all bash scripts do use '  ' (double space) for indention.
+  run find "${ETCD_ROOT_DIR}" -name '*.sh' -exec sed -i.bak "s|${TAB}|  |g" {} \;
+  run find "${ETCD_ROOT_DIR}" -name '*.sh.bak' -delete
 }
 
-log_callout -e "\\nFixing etcd code for you...\n"
-
-bash_ws_fix || exit 2
-
-log_success -e "\\nSUCCESS: etcd code is fixed :)"
+# only run when called directly, not sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  main
+fi
