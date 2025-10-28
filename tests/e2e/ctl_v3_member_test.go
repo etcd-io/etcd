@@ -285,18 +285,15 @@ func memberPromoteWithAuth(fromFollower bool) func(cx ctlCtx) {
 	return func(cx ctlCtx) {
 		ctx := context.Background()
 
-		require.NoError(cx.t, authEnable(cx))
-		cx.user, cx.pass = "root", "root"
-
 		// Add a regular member
-		_, err := cx.epc.StartNewProc(ctx, nil, cx.t, false, e2e.WithAuth("root", "root"))
+		_, err := cx.epc.StartNewProc(ctx, nil, cx.t, false)
 		require.NoError(cx.t, err)
 
 		var learnerID uint64
 		var addErr error
 		for {
 			// Add a learner once the cluster is healthy
-			learnerID, addErr = cx.epc.StartNewProc(ctx, nil, cx.t, true, e2e.WithAuth("root", "root"))
+			learnerID, addErr = cx.epc.StartNewProc(ctx, nil, cx.t, true)
 			if addErr != nil {
 				if strings.Contains(addErr.Error(), "etcdserver: unhealthy cluster") {
 					time.Sleep(1 * time.Second)
@@ -307,20 +304,11 @@ func memberPromoteWithAuth(fromFollower bool) func(cx ctlCtx) {
 		}
 		require.NoError(cx.t, addErr)
 
-		var leaderIdx int
-		var followerIdx int
+		leaderIdx := cx.epc.WaitLeader(cx.t)
+		followerIdx := (leaderIdx + 1) % len(cx.epc.Procs)
 
-		// Determine the index of the leader and the follower
-		for idx, proc := range cx.epc.Procs[:2] {
-			status, err := proc.Etcdctl(e2e.WithAuth("root", "root")).Status(ctx)
-			require.NoError(cx.t, err)
-
-			if status[0].Header.MemberId == status[0].Leader {
-				leaderIdx = idx
-			} else {
-				followerIdx = idx
-			}
-		}
+		require.NoError(cx.t, authEnable(cx))
+		cx.user, cx.pass = "root", "root"
 
 		if fromFollower {
 			_, err = cx.epc.Procs[followerIdx].
