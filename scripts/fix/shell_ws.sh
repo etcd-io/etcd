@@ -24,9 +24,8 @@ function main {
 
   log_callout "Fixing whitespaces in bash scripts"
   # Makes sure all bash scripts do use '  ' (double space) for indention.
-  log_cmd "find "${ETCD_ROOT_DIR}" -name '*.sh' -exec sed -i.bak 's|${TAB}|  |g' {} \;"
-  find "${ETCD_ROOT_DIR}" -name '*.sh' -exec sed -i.bak "s|${TAB}|  |g" {} \;
-  find "${ETCD_ROOT_DIR}" -name '*.sh.bak' -delete
+  run find "${ETCD_ROOT_DIR}" -name '*.sh' -exec sed -i.bak "s|${TAB}|  |g" {} \;
+  run find "${ETCD_ROOT_DIR}" -name '*.sh.bak' -delete
 }
 
 # only run when called directly, not sourced

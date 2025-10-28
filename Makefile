@@ -104,7 +104,6 @@ verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 .PHONY: fix
 fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
 	update-go-workspace fix-shell-ws
-	./scripts/fix.sh
 
 .PHONY: verify-bom
 verify-bom:
