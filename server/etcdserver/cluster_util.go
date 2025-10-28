@@ -310,8 +310,14 @@ func promoteMemberHTTP(ctx context.Context, url string, id uint64, peerRt http.R
 
 	// add the auth token via HTTP header if present in gRPC metadata
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		if ts := md.Get(rpctypes.TokenFieldNameGRPC); len(ts) > 0 {
-			req.Header.Set("Authorization", ts[0])
+		ts, ok := md[rpctypes.TokenFieldNameGRPC]
+		if !ok {
+			ts, ok = md[rpctypes.TokenFieldNameSwagger]
+		}
+
+		if ok && len(ts) > 0 {
+			token := ts[0]
+			req.Header.Set("Authorization", token)
 		}
 	}
 
