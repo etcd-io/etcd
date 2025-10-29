@@ -27,7 +27,7 @@ jobs:
       - name: Build etcd-server and etcd-client images
         run: |
           make -C tests/antithesis antithesis-build-etcd-image
-          make -C tests/antithesis antithesis-build-client-docker-image CFG_NODE_COUNT=${{ matrix.node-count }}
+          make -C tests/antithesis antithesis-build-client-docker-image
 
       - name: Run docker-compose up
         working-directory: ./tests/antithesis

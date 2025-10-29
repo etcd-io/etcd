@@ -28,10 +28,6 @@ on:
         description: 'Additional email notification recipient (separate with ;)'
         required: true
         type: string
-      cfg_node_count:
-        description: 'Number of nodes in the etcd cluster'
-        required: false
-        type: int
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -44,8 +40,6 @@ jobs:
   build-and-push-and-test:
     runs-on: ubuntu-latest
     environment: Antithesis
-    env:
-      CFG_NODE_COUNT: ${{ inputs.cfg_node_count || 3 }}
     steps:
       - name: Checkout the code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0

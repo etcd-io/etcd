@@ -35,8 +35,6 @@ const (
 	reportFileName = "history.html"
 )
 
-var NodeCount = "3"
-
 func main() {
 	_, reportPath, dirs := common.GetPaths()
 
