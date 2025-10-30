@@ -37,6 +37,22 @@ func WithAuth(userName, password string) config.ClientOption {
 	return func(any) {}
 }
 
+func WithAuthToken(token string) config.ClientOption {
+	return func(any) {}
+}
+
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return func(any) {}
+}
+
+func WithHTTP2Debug() config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
+}
+
+func WithTCPClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
+}
+
+func WithUnixClient() config.ClusterOption {
+	return func(c *config.ClusterConfig) {}
 }

@@ -16,7 +16,6 @@ package proxy
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -613,7 +612,7 @@ func send(t *testing.T, data []byte, scheme, addr string, tlsInfo transport.TLSI
 	if !tlsInfo.Empty() {
 		tp, terr := transport.NewTransport(tlsInfo, 3*time.Second)
 		require.NoError(t, terr)
-		out, err = tp.DialContext(context.Background(), scheme, addr)
+		out, err = tp.DialContext(t.Context(), scheme, addr)
 	} else {
 		out, err = net.Dial(scheme, addr)
 	}

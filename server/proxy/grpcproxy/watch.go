@@ -235,6 +235,17 @@ func (wps *watchProxyStream) recvLoop() error {
 		case *pb.WatchRequest_CreateRequest:
 			cr := uv.CreateRequest
 
+			if cr.StartRevision < 0 {
+				wps.watchCh <- &pb.WatchResponse{
+					Header:       &pb.ResponseHeader{},
+					WatchId:      clientv3.InvalidWatchID,
+					Created:      true,
+					Canceled:     true,
+					CancelReason: rpctypes.ErrCompacted.Error(),
+				}
+				continue
+			}
+
 			if err := wps.checkPermissionForWatch(cr.Key, cr.RangeEnd); err != nil {
 				wps.watchCh <- &pb.WatchResponse{
 					Header:       &pb.ResponseHeader{},

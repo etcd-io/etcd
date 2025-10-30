@@ -226,7 +226,7 @@ func TestCheckTxn(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s, lessor := setup(t, tc.setup)
 
-			ctx, cancel := context.WithCancel(context.TODO())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			_, _, err := Txn(ctx, zaptest.NewLogger(t), tc.txn, false, s, lessor)
 
@@ -246,7 +246,7 @@ func TestCheckPut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s, lessor := setup(t, tc.setup)
 
-			ctx, cancel := context.WithCancel(context.TODO())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			_, _, err := Put(ctx, zaptest.NewLogger(t), lessor, s, tc.op.GetRequestPut())
 
@@ -266,7 +266,7 @@ func TestCheckRange(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s, _ := setup(t, tc.setup)
 
-			ctx, cancel := context.WithCancel(context.TODO())
+			ctx, cancel := context.WithCancel(t.Context())
 			defer cancel()
 			_, _, err := Range(ctx, zaptest.NewLogger(t), s, tc.op.GetRequestRange())
 
@@ -314,7 +314,7 @@ func TestReadonlyTxnError(t *testing.T) {
 	defer s.Close()
 
 	// setup cancelled context
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	// put some data to prevent early termination in rangeKeys
@@ -345,7 +345,7 @@ func TestWriteTxnPanicWithoutApply(t *testing.T) {
 	defer s.Close()
 
 	// setup cancelled context
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	// write txn that puts some data and then fails in range due to cancelled context

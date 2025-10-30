@@ -496,7 +496,7 @@ func TestRegisterSelf(t *testing.T) {
 			}
 
 			if err := d.registerSelf(tc.expectedRegValue); err != nil {
-				t.Errorf("Error occuring on register member self: %v", err)
+				t.Errorf("Error occurring on register member self: %v", err)
 			}
 
 			if fkv.retries != 0 {

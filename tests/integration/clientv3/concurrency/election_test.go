@@ -21,15 +21,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestResumeElection(t *testing.T) {
 	const prefix = "/resume-election/"
 
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -45,20 +47,16 @@ func TestResumeElection(t *testing.T) {
 	e := concurrency.NewElection(s, prefix)
 
 	// entire test should never take more than 10 seconds
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second*10)
 	defer cancel()
 
 	// become leader
-	if err = e.Campaign(ctx, "candidate1"); err != nil {
-		t.Fatalf("Campaign() returned non nil err: %s", err)
-	}
+	require.NoErrorf(t, e.Campaign(ctx, "candidate1"), "Campaign() returned non nil err")
 
 	// get the leadership details of the current election
 	var leader *clientv3.GetResponse
 	leader, err = e.Leader(ctx)
-	if err != nil {
-		t.Fatalf("Leader() returned non nil err: %s", err)
-	}
+	require.NoErrorf(t, err, "Leader() returned non nil err")
 
 	// Recreate the election
 	e = concurrency.ResumeElection(s, prefix,
@@ -86,19 +84,13 @@ func TestResumeElection(t *testing.T) {
 	// put some random data to generate a change event, this put should be
 	// ignored by Observe() because it is not under the election prefix.
 	_, err = cli.Put(ctx, "foo", "bar")
-	if err != nil {
-		t.Fatalf("Put('foo') returned non nil err: %s", err)
-	}
+	require.NoErrorf(t, err, "Put('foo') returned non nil err")
 
 	// resign as leader
-	if err := e.Resign(ctx); err != nil {
-		t.Fatalf("Resign() returned non nil err: %s", err)
-	}
+	require.NoErrorf(t, e.Resign(ctx), "Resign() returned non nil err")
 
 	// elect a different candidate
-	if err := e.Campaign(ctx, "candidate2"); err != nil {
-		t.Fatalf("Campaign() returned non nil err: %s", err)
-	}
+	require.NoErrorf(t, e.Campaign(ctx, "candidate2"), "Campaign() returned non nil err")
 
 	// wait for observed leader change
 	resp := <-respChan

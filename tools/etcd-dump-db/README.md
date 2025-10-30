@@ -2,6 +2,9 @@
 
 `etcd-dump-db` inspects etcd db files.
 
+> ⚠️ **Deprecated**: This tool has been deprecated.
+> Please use [etcdutl](https://github.com/etcd-io/etcd/tree/main/etcdutl) instead.
+
 ## Installation
 
 Install the tool by running the following command from the etcd source directory.

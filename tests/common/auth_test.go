@@ -33,6 +33,9 @@ var (
 	tokenTTL         = time.Second * 3
 	defaultAuthToken = fmt.Sprintf("jwt,pub-key=%s,priv-key=%s,sign-method=RS256,ttl=%s",
 		mustAbsPath("../fixtures/server.crt"), mustAbsPath("../fixtures/server.key.insecure"), tokenTTL)
+	defaultKeyPath    = mustAbsPath("../fixtures/server.key.insecure")
+	verifyJWTOnlyAuth = fmt.Sprintf("jwt,pub-key=%s,sign-method=RS256,ttl=%s",
+		mustAbsPath("../fixtures/server.crt"), tokenTTL)
 )
 
 const (
@@ -45,7 +48,7 @@ const (
 
 func TestAuthEnable(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -57,7 +60,7 @@ func TestAuthEnable(t *testing.T) {
 
 func TestAuthDisable(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -87,7 +90,7 @@ func TestAuthDisable(t *testing.T) {
 
 func TestAuthGracefulDisable(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -137,7 +140,7 @@ func TestAuthGracefulDisable(t *testing.T) {
 
 func TestAuthStatus(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -157,7 +160,7 @@ func TestAuthStatus(t *testing.T) {
 
 func TestAuthRoleUpdate(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -197,7 +200,7 @@ func TestAuthRoleUpdate(t *testing.T) {
 
 func TestAuthUserDeleteDuringOps(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -228,7 +231,7 @@ func TestAuthUserDeleteDuringOps(t *testing.T) {
 
 func TestAuthRoleRevokeDuringOps(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -285,7 +288,7 @@ func TestAuthRoleRevokeDuringOps(t *testing.T) {
 
 func TestAuthWriteKey(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -375,7 +378,7 @@ func TestAuthTxn(t *testing.T) {
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			testRunner.BeforeTest(t)
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.cfg))
 			defer clus.Close()
@@ -421,7 +424,7 @@ func TestAuthTxn(t *testing.T) {
 
 func TestAuthPrefixPerm(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -455,7 +458,7 @@ func TestAuthPrefixPerm(t *testing.T) {
 
 func TestAuthLeaseKeepAlive(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -481,7 +484,7 @@ func TestAuthLeaseKeepAlive(t *testing.T) {
 
 func TestAuthRevokeWithDelete(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -512,7 +515,7 @@ func TestAuthRevokeWithDelete(t *testing.T) {
 
 func TestAuthLeaseTimeToLiveExpired(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -550,7 +553,7 @@ func TestAuthLeaseGrantLeases(t *testing.T) {
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
@@ -575,7 +578,7 @@ func TestAuthLeaseGrantLeases(t *testing.T) {
 
 func TestAuthMemberAdd(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -593,7 +596,7 @@ func TestAuthMemberAdd(t *testing.T) {
 
 func TestAuthMemberRemove(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clusterSize := 3
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: clusterSize}))
@@ -633,7 +636,7 @@ func TestAuthMemberRemove(t *testing.T) {
 
 func TestAuthTestInvalidMgmt(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -650,7 +653,7 @@ func TestAuthTestInvalidMgmt(t *testing.T) {
 
 func TestAuthLeaseRevoke(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -674,7 +677,7 @@ func TestAuthLeaseRevoke(t *testing.T) {
 
 func TestAuthRoleGet(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -700,7 +703,7 @@ func TestAuthRoleGet(t *testing.T) {
 
 func TestAuthUserGet(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -726,7 +729,7 @@ func TestAuthUserGet(t *testing.T) {
 
 func TestAuthRoleList(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1}))
 	defer clus.Close()
@@ -743,7 +746,7 @@ func TestAuthRoleList(t *testing.T) {
 
 func TestAuthJWTExpire(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
 	defer clus.Close()
@@ -762,10 +765,29 @@ func TestAuthJWTExpire(t *testing.T) {
 	})
 }
 
+func TestAuthJWTOnly(t *testing.T) {
+	testRunner.BeforeTest(t)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: verifyJWTOnlyAuth}))
+	defer clus.Close()
+	cc := testutils.MustClient(clus.Client())
+	testutils.ExecuteUntil(ctx, t, func() {
+		authRev, err := setupAuthAndGetRevision(cc, []authRole{testRole}, []authUser{rootUser, testUser})
+		require.NoErrorf(t, err, "failed to enable auth")
+
+		token, err := createSignedJWT(defaultKeyPath, "RS256", testUserName, authRev)
+		require.NoErrorf(t, err, "failed to create test user JWT")
+
+		testUserAuthClient := testutils.MustClient(clus.Client(WithAuthToken(token)))
+		require.NoError(t, testUserAuthClient.Put(ctx, "foo", "bar", config.PutOptions{}))
+	})
+}
+
 // TestAuthRevisionConsistency ensures auth revision is the same after member restarts
 func TestAuthRevisionConsistency(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
 	defer clus.Close()
@@ -801,7 +823,7 @@ func TestAuthRevisionConsistency(t *testing.T) {
 // TestAuthTestCacheReload ensures permissions are persisted and will be reloaded after member restarts
 func TestAuthTestCacheReload(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
 	defer clus.Close()
@@ -826,7 +848,7 @@ func TestAuthTestCacheReload(t *testing.T) {
 // TestAuthLeaseTimeToLive gated lease time to live with RBAC control
 func TestAuthLeaseTimeToLive(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(config.ClusterConfig{ClusterSize: 1, AuthToken: defaultAuthToken}))
 	defer clus.Close()

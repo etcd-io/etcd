@@ -59,7 +59,8 @@ put key2 "some extra key"
 ---
 
 Refer to https://github.com/etcd-io/etcd/blob/main/etcdctl/README.md#txn-options.`,
-		Run: txnCommandFunc,
+		Run:     txnCommandFunc,
+		GroupID: groupKVID,
 	}
 	cmd.Flags().BoolVarP(&txnInteractive, "interactive", "i", false, "Input transaction in interactive mode")
 	return cmd
@@ -150,16 +151,19 @@ func parseRequestUnion(line string) (*clientv3.Op, error) {
 	opc := make(chan clientv3.Op, 1)
 
 	put := NewPutCommand()
+	put.GroupID = ""
 	put.Run = func(cmd *cobra.Command, args []string) {
 		key, value, opts := getPutOp(args)
 		opc <- clientv3.OpPut(key, value, opts...)
 	}
 	get := NewGetCommand()
+	get.GroupID = ""
 	get.Run = func(cmd *cobra.Command, args []string) {
 		key, opts := getGetOp(args)
 		opc <- clientv3.OpGet(key, opts...)
 	}
 	del := NewDelCommand()
+	del.GroupID = ""
 	del.Run = func(cmd *cobra.Command, args []string) {
 		key, opts := getDelOp(args)
 		opc <- clientv3.OpDelete(key, opts...)

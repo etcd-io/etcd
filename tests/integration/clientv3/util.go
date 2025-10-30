@@ -26,14 +26,14 @@ import (
 	"google.golang.org/grpc/status"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // MustWaitPinReady waits up to 3-second until connection is up (pin endpoint).
 // Fatal on time-out.
 func MustWaitPinReady(t *testing.T, cli *clientv3.Client) {
 	// TODO: decrease timeout after balancer rewrite!!!
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	_, err := cli.Get(ctx, "foo")
 	cancel()
 	if err != nil {
@@ -108,8 +108,8 @@ func IsUnavailable(err error) bool {
 
 // populateDataIntoCluster populates the key-value pairs into cluster and the
 // key will be named by testing.T.Name()-index.
-func populateDataIntoCluster(t *testing.T, cluster *integration2.Cluster, numKeys int, valueSize int) {
-	ctx := context.Background()
+func populateDataIntoCluster(t *testing.T, cluster *integration.Cluster, numKeys int, valueSize int) {
+	ctx := t.Context()
 
 	for i := 0; i < numKeys; i++ {
 		_, err := cluster.RandClient().Put(ctx,

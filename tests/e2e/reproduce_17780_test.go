@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -34,7 +33,7 @@ func TestReproduce17780(t *testing.T) {
 
 	compactionBatchLimit := 10
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	clus, cerr := e2e.NewEtcdProcessCluster(ctx, t,
 		e2e.WithClusterSize(3),
 		e2e.WithGoFailEnabled(true),

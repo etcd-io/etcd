@@ -32,7 +32,7 @@ func TestLogObserver_Timeout(t *testing.T) {
 	logger := zap.New(logCore)
 	logger.Info(t.Name())
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	_, err := logOb.Expect(ctx, "unknown", 1)
 	cancel()
 	require.ErrorIs(t, err, context.DeadlineExceeded)
@@ -45,7 +45,7 @@ func TestLogObserver_Expect(t *testing.T) {
 
 	logger := zap.New(logCore)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	resCh := make(chan []string, 1)

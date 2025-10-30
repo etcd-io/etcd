@@ -133,7 +133,8 @@ func TestPersistLoadClientReports(t *testing.T) {
 		},
 	}
 	path := t.TempDir()
-	persistClientReports(t, zaptest.NewLogger(t), path, reports)
+	err := persistClientReports(zaptest.NewLogger(t), path, reports)
+	require.NoError(t, err)
 	got, err := LoadClientReports(path)
 	require.NoError(t, err)
 	if diff := cmp.Diff(reports, got, cmpopts.EquateEmpty()); diff != "" {

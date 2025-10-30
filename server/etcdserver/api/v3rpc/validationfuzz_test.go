@@ -168,7 +168,7 @@ func execTransaction(t *testing.T, req *pb.RequestOp) {
 	defer s.Close()
 
 	// setup cancelled context
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	request := &pb.TxnRequest{

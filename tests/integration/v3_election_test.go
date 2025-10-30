@@ -57,7 +57,7 @@ func TestElectionWait(t *testing.T) {
 				}
 				b := concurrency.NewElection(session, "test-election")
 
-				cctx, cancel := context.WithCancel(context.TODO())
+				cctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 				s, ok := <-b.Observe(cctx)
 				if !ok {
@@ -83,7 +83,7 @@ func TestElectionWait(t *testing.T) {
 
 			e := concurrency.NewElection(session, "test-election")
 			ev := fmt.Sprintf("electval-%v", time.Now().UnixNano())
-			if err := e.Campaign(context.TODO(), ev); err != nil {
+			if err := e.Campaign(t.Context(), ev); err != nil {
 				t.Errorf("failed volunteer (%v)", err)
 			}
 			// wait for followers to accept leadership
@@ -94,7 +94,7 @@ func TestElectionWait(t *testing.T) {
 				}
 			}
 			// let next leader take over
-			if err := e.Resign(context.TODO()); err != nil {
+			if err := e.Resign(t.Context()); err != nil {
 				t.Errorf("failed resign (%v)", err)
 			}
 			// tell followers to start listening for next leader
@@ -116,7 +116,7 @@ func TestElectionFailover(t *testing.T) {
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
-	cctx, cancel := context.WithCancel(context.TODO())
+	cctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	ss := make([]*concurrency.Session, 3)
@@ -132,42 +132,33 @@ func TestElectionFailover(t *testing.T) {
 
 	// first leader (elected)
 	e := concurrency.NewElection(ss[0], "test-election")
-	if err := e.Campaign(context.TODO(), "foo"); err != nil {
-		t.Fatalf("failed volunteer (%v)", err)
-	}
+	err := e.Campaign(t.Context(), "foo")
+	require.NoErrorf(t, err, "failed volunteer")
 
 	// check first leader
 	resp, ok := <-e.Observe(cctx)
-	if !ok {
-		t.Fatalf("could not wait for first election; channel closed")
-	}
+	require.Truef(t, ok, "could not wait for first election; channel closed")
 	s := string(resp.Kvs[0].Value)
-	if s != "foo" {
-		t.Fatalf("wrong election result. got %s, wanted foo", s)
-	}
+	require.Equalf(t, "foo", s, "wrong election result. got %s, wanted foo", s)
 
 	// next leader
 	electedErrC := make(chan error, 1)
 	go func() {
 		ee := concurrency.NewElection(ss[1], "test-election")
-		eer := ee.Campaign(context.TODO(), "bar")
+		eer := ee.Campaign(t.Context(), "bar")
 		electedErrC <- eer // If eer != nil, the test will fail by calling t.Fatal(eer)
 	}()
 
 	// invoke leader failover
-	err := ss[0].Close()
+	err = ss[0].Close()
 	require.NoError(t, err)
 
 	// check new leader
 	e = concurrency.NewElection(ss[2], "test-election")
 	resp, ok = <-e.Observe(cctx)
-	if !ok {
-		t.Fatalf("could not wait for second election; channel closed")
-	}
+	require.Truef(t, ok, "could not wait for second election; channel closed")
 	s = string(resp.Kvs[0].Value)
-	if s != "bar" {
-		t.Fatalf("wrong election result. got %s, wanted bar", s)
-	}
+	require.Equalf(t, "bar", s, "wrong election result. got %s, wanted bar", s)
 
 	// leader must ack election (otherwise, Campaign may see closed conn)
 	eer := <-electedErrC
@@ -189,13 +180,13 @@ func TestElectionSessionRecampaign(t *testing.T) {
 	defer session.Orphan()
 
 	e := concurrency.NewElection(session, "test-elect")
-	err = e.Campaign(context.TODO(), "abc")
+	err = e.Campaign(t.Context(), "abc")
 	require.NoError(t, err)
 	e2 := concurrency.NewElection(session, "test-elect")
-	err = e2.Campaign(context.TODO(), "def")
+	err = e2.Campaign(t.Context(), "def")
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	if resp := <-e.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
 		t.Fatalf("expected value=%q, got response %v", "def", resp)
@@ -212,12 +203,12 @@ func TestElectionOnPrefixOfExistingKey(t *testing.T) {
 	defer clus.Terminate(t)
 
 	cli := clus.RandClient()
-	_, err := cli.Put(context.TODO(), "testa", "value")
+	_, err := cli.Put(t.Context(), "testa", "value")
 	require.NoError(t, err)
 	s, serr := concurrency.NewSession(cli)
 	require.NoError(t, serr)
 	e := concurrency.NewElection(s, "test")
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	err = e.Campaign(ctx, "abc")
 	cancel()
 	// after 5 seconds, deadlock results in
@@ -238,13 +229,13 @@ func TestElectionOnSessionRestart(t *testing.T) {
 	require.NoError(t, err)
 
 	e := concurrency.NewElection(session, "test-elect")
-	require.NoError(t, e.Campaign(context.TODO(), "abc"))
+	require.NoError(t, e.Campaign(t.Context(), "abc"))
 
 	// ensure leader is not lost to waiter on fail-over
 	waitSession, werr := concurrency.NewSession(cli)
 	require.NoError(t, werr)
 	defer waitSession.Orphan()
-	waitCtx, waitCancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	waitCtx, waitCancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer waitCancel()
 	go concurrency.NewElection(waitSession, "test-elect").Campaign(waitCtx, "123")
 
@@ -254,9 +245,9 @@ func TestElectionOnSessionRestart(t *testing.T) {
 	defer newSession.Orphan()
 
 	newElection := concurrency.NewElection(newSession, "test-elect")
-	require.NoError(t, newElection.Campaign(context.TODO(), "def"))
+	require.NoError(t, newElection.Campaign(t.Context(), "def"))
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	if resp := <-newElection.Observe(ctx); len(resp.Kvs) == 0 || string(resp.Kvs[0].Value) != "def" {
 		t.Errorf("expected value=%q, got response %v", "def", resp)
@@ -277,20 +268,18 @@ func TestElectionObserveCompacted(t *testing.T) {
 	defer session.Orphan()
 
 	e := concurrency.NewElection(session, "test-elect")
-	require.NoError(t, e.Campaign(context.TODO(), "abc"))
+	require.NoError(t, e.Campaign(t.Context(), "abc"))
 
-	presp, perr := cli.Put(context.TODO(), "foo", "bar")
+	presp, perr := cli.Put(t.Context(), "foo", "bar")
 	require.NoError(t, perr)
-	_, cerr := cli.Compact(context.TODO(), presp.Header.Revision)
+	_, cerr := cli.Compact(t.Context(), presp.Header.Revision)
 	require.NoError(t, cerr)
 
-	v, ok := <-e.Observe(context.TODO())
+	v, ok := <-e.Observe(t.Context())
 	if !ok {
 		t.Fatal("failed to observe on compacted revision")
 	}
-	if string(v.Kvs[0].Value) != "abc" {
-		t.Fatalf(`expected leader value "abc", got %q`, string(v.Kvs[0].Value))
-	}
+	require.Equalf(t, "abc", string(v.Kvs[0].Value), `expected leader value "abc", got %q`, string(v.Kvs[0].Value))
 }
 
 // TestElectionWithAuthEnabled verifies the election interface when auth is enabled.
@@ -379,7 +368,7 @@ func TestElectionWithAuthEnabled(t *testing.T) {
 			s.Orphan()
 
 			e := concurrency.NewElection(s, campaign.pfx)
-			eerr := e.Campaign(context.Background(), "whatever")
+			eerr := e.Campaign(t.Context(), "whatever")
 			if eerr != nil {
 				errC <- fmt.Errorf("[Campaign] %s: %w", campaign.name, eerr)
 			}

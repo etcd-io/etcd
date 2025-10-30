@@ -72,7 +72,7 @@ func TestStreamKeyFromCtx(t *testing.T) {
 	}{
 		{
 			name: "multiple keys",
-			ctx: metadata.NewOutgoingContext(context.Background(), metadata.MD{
+			ctx: metadata.NewOutgoingContext(t.Context(), metadata.MD{
 				"key1": []string{"value1"},
 				"key2": []string{"value2a", "value2b"},
 			}),
@@ -80,19 +80,19 @@ func TestStreamKeyFromCtx(t *testing.T) {
 		},
 		{
 			name:     "no keys",
-			ctx:      metadata.NewOutgoingContext(context.Background(), metadata.MD{}),
+			ctx:      metadata.NewOutgoingContext(t.Context(), metadata.MD{}),
 			expected: "map[]",
 		},
 		{
 			name: "only one key",
-			ctx: metadata.NewOutgoingContext(context.Background(), metadata.MD{
+			ctx: metadata.NewOutgoingContext(t.Context(), metadata.MD{
 				"key1": []string{"value1", "value1a"},
 			}),
 			expected: "map[key1:[value1 value1a]]",
 		},
 		{
 			name:     "no metadata",
-			ctx:      context.Background(),
+			ctx:      t.Context(),
 			expected: "",
 		},
 	}

@@ -78,6 +78,7 @@ PowerShell:
 				cmd.Root().GenPowerShellCompletionWithDesc(os.Stdout)
 			}
 		},
+		GroupID: groupUtilityID,
 	}
 
 	return cmd

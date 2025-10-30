@@ -27,14 +27,14 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	clientv3test "go.etcd.io/etcd/tests/v3/integration/clientv3"
 )
 
 func TestFailover(t *testing.T) {
 	cases := []struct {
 		name     string
-		testFunc func(*testing.T, *tls.Config, *integration2.Cluster) (*clientv3.Client, error)
+		testFunc func(*testing.T, *tls.Config, *integration.Cluster) (*clientv3.Client, error)
 	}{
 		{
 			name:     "create client before the first server down",
@@ -49,21 +49,19 @@ func TestFailover(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("Starting test [%s]", tc.name)
-			integration2.BeforeTest(t)
+			integration.BeforeTest(t)
 
 			// Launch an etcd cluster with 3 members
 			t.Logf("Launching an etcd cluster with 3 members [%s]", tc.name)
-			clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, ClientTLS: &integration2.TestTLSInfo})
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, ClientTLS: &integration.TestTLSInfo})
 			defer clus.Terminate(t)
 
-			cc, err := integration2.TestTLSInfo.ClientConfig()
+			cc, err := integration.TestTLSInfo.ClientConfig()
 			require.NoError(t, err)
 			// Create an etcd client before or after first server down
 			t.Logf("Creating an etcd client [%s]", tc.name)
 			cli, err := tc.testFunc(t, cc, clus)
-			if err != nil {
-				t.Fatalf("Failed to create client: %v", err)
-			}
+			require.NoErrorf(t, err, "Failed to create client")
 			defer cli.Close()
 
 			// Sanity test
@@ -77,7 +75,7 @@ func TestFailover(t *testing.T) {
 	}
 }
 
-func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
+func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
 	cli, err := createClient(t, cc, clus)
 	if err != nil {
 		return nil, err
@@ -86,13 +84,13 @@ func createClientBeforeServerDown(t *testing.T, cc *tls.Config, clus *integratio
 	return cli, nil
 }
 
-func createClientAfterServerDown(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
+func createClientAfterServerDown(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
 	clus.Members[0].Close()
 	return createClient(t, cc, clus)
 }
 
-func createClient(t *testing.T, cc *tls.Config, clus *integration2.Cluster) (*clientv3.Client, error) {
-	cli, err := integration2.NewClient(t, clientv3.Config{
+func createClient(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*clientv3.Client, error) {
+	cli, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   clus.Endpoints(),
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
@@ -110,7 +108,7 @@ func putWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 		// put data test
 		err := func() error {
 			t.Log("Sanity test, putting data")
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 
 			if _, putErr := cli.Put(ctx, key, val); putErr != nil {
@@ -135,19 +133,15 @@ func getWithRetries(t *testing.T, cli *clientv3.Client, key, val string, retryCo
 		// get data test
 		err := func() error {
 			t.Log("Sanity test, getting data")
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
 			resp, getErr := cli.Get(ctx, key)
 			if getErr != nil {
 				t.Logf("Failed to get key (%v)", getErr)
 				return getErr
 			}
-			if len(resp.Kvs) != 1 {
-				t.Fatalf("Expected 1 key, got %d", len(resp.Kvs))
-			}
-			if !bytes.Equal([]byte(val), resp.Kvs[0].Value) {
-				t.Fatalf("Unexpected value, expected: %s, got: %s", val, resp.Kvs[0].Value)
-			}
+			require.Lenf(t, resp.Kvs, 1, "Expected 1 key, got %d", len(resp.Kvs))
+			require.Truef(t, bytes.Equal([]byte(val), resp.Kvs[0].Value), "Unexpected value, expected: %s, got: %s", val, resp.Kvs[0].Value)
 			return nil
 		}()
 		if err != nil {

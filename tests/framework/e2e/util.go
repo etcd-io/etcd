@@ -150,8 +150,8 @@ func ToTLS(s string) string {
 	return s
 }
 
-func SkipInShortMode(t testing.TB) {
-	testutil.SkipTestIfShortMode(t, "e2e tests are not running in --short mode")
+func SkipInShortMode(tb testing.TB) {
+	testutil.SkipTestIfShortMode(tb, "e2e tests are not running in --short mode")
 }
 
 func mergeEnvVariables(envVars map[string]string) []string {

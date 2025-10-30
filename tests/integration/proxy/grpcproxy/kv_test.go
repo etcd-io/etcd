@@ -15,7 +15,6 @@
 package grpcproxy
 
 import (
-	"context"
 	"net"
 	"testing"
 	"time"
@@ -26,13 +25,13 @@ import (
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/proxy/grpcproxy"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestKVProxyRange(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kvts := newKVProxyServer([]string{clus.Members[0].GRPCURL}, t)
@@ -43,14 +42,10 @@ func TestKVProxyRange(t *testing.T) {
 		Endpoints:   []string{kvts.l.Addr().String()},
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration2.NewClient(t, cfg)
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
-	_, err = client.Get(context.Background(), "foo")
-	if err != nil {
-		t.Fatalf("err = %v, want nil", err)
-	}
+	client, err := integration.NewClient(t, cfg)
+	require.NoErrorf(t, err, "err = %v, want nil", err)
+	_, err = client.Get(t.Context(), "foo")
+	require.NoErrorf(t, err, "err = %v, want nil", err)
 	client.Close()
 }
 
@@ -72,7 +67,7 @@ func newKVProxyServer(endpoints []string, t *testing.T) *kvproxyTestServer {
 		Endpoints:   endpoints,
 		DialTimeout: 5 * time.Second,
 	}
-	client, err := integration2.NewClient(t, cfg)
+	client, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 
 	kvp, _ := grpcproxy.NewKvProxy(client)

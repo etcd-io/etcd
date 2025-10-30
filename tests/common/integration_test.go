@@ -34,20 +34,12 @@ func integrationClusterTestCases() []testCase {
 			config: config.ClusterConfig{ClusterSize: 1},
 		},
 		{
-			name:   "PeerTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS},
+			name:   "PeerTLS and ClientTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS, ClientTLS: config.ManualTLS},
 		},
 		{
-			name:   "PeerAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS},
-		},
-		{
-			name:   "ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.ManualTLS},
-		},
-		{
-			name:   "ClientAutoTLS",
-			config: config.ClusterConfig{ClusterSize: 1, ClientTLS: config.AutoTLS},
+			name:   "PeerAutoTLS and ClientAutoTLS",
+			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.AutoTLS, ClientTLS: config.AutoTLS},
 		},
 	}
 }
@@ -56,6 +48,22 @@ func WithAuth(userName, password string) config.ClientOption {
 	return integration.WithAuth(userName, password)
 }
 
+func WithAuthToken(token string) config.ClientOption {
+	return integration.WithAuthToken(token)
+}
+
 func WithEndpoints(endpoints []string) config.ClientOption {
 	return integration.WithEndpoints(endpoints)
+}
+
+func WithHTTP2Debug() config.ClusterOption {
+	return integration.WithHTTP2Debug()
+}
+
+func WithUnixClient() config.ClusterOption {
+	return integration.WithUnixClient()
+}
+
+func WithTCPClient() config.ClusterOption {
+	return integration.WithTCPClient()
 }

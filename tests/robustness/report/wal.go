@@ -20,9 +20,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
-	"github.com/google/go-cmp/cmp"
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
@@ -46,7 +46,7 @@ func LoadClusterPersistedRequests(lg *zap.Logger, path string) ([]model.EtcdRequ
 			dataDirs = append(dataDirs, filepath.Join(path, file.Name()))
 		}
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
 func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) ([]model.EtcdRequest, error) {
@@ -54,53 +54,125 @@ func PersistedRequestsCluster(lg *zap.Logger, cluster *e2e.EtcdProcessCluster) (
 	for _, proc := range cluster.Procs {
 		dataDirs = append(dataDirs, memberDataDir(proc))
 	}
-	return PersistedRequestsDirs(lg, dataDirs)
+	return PersistedRequests(lg, dataDirs)
 }
 
-func PersistedRequestsDirs(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
-	persistedRequests := []model.EtcdRequest{}
-	// Allow failure in minority of etcd cluster.
-	// 0 failures in 1 node cluster, 1 failure in 3 node cluster
-	allowedFailures := len(dataDirs) / 2
-	for _, dir := range dataDirs {
-		memberRequests, err := requestsPersistedInWAL(lg, dir)
+func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, error) {
+	if len(dataDirs) == 0 {
+		return nil, errors.New("no data dirs")
+	}
+	entriesPersistedInWAL := make([][]raftpb.Entry, len(dataDirs))
+	for i, dir := range dataDirs {
+		_, entries, err := ReadWAL(lg, dir)
 		if err != nil {
-			if allowedFailures < 1 {
-				return nil, err
-			}
-			allowedFailures--
+			lg.Error("Failed to read WAL", zap.Error(err), zap.String("data-dir", dir))
+		}
+		entriesPersistedInWAL[i] = entries
+	}
+	entries, err := mergeMembersEntries(entriesPersistedInWAL)
+	if err != nil {
+		return nil, err
+	}
+	persistedRequests := make([]model.EtcdRequest, 0, len(entries))
+	for _, e := range entries {
+		if e.Type != raftpb.EntryNormal {
 			continue
 		}
-		minLength := min(len(persistedRequests), len(memberRequests))
-		if diff := cmp.Diff(memberRequests[:minLength], persistedRequests[:minLength]); diff != "" {
-			return nil, fmt.Errorf("unexpected differences between wal entries, diff:\n%s", diff)
+		request, err := parseEntryNormal(e)
+		if err != nil {
+			return nil, err
 		}
-		if len(memberRequests) > len(persistedRequests) {
-			persistedRequests = memberRequests
+		if request != nil {
+			persistedRequests = append(persistedRequests, *request)
 		}
 	}
 	return persistedRequests, nil
 }
 
-func requestsPersistedInWAL(lg *zap.Logger, dataDir string) ([]model.EtcdRequest, error) {
-	_, ents, err := ReadWAL(lg, dataDir)
-	if err != nil {
-		return nil, err
-	}
-	requests := make([]model.EtcdRequest, 0, len(ents))
-	for _, ent := range ents {
-		if ent.Type != raftpb.EntryNormal || len(ent.Data) == 0 {
-			continue
-		}
-		request, err := parseEntryNormal(ent)
-		if err != nil {
-			return nil, err
-		}
-		if request != nil {
-			requests = append(requests, *request)
+func mergeMembersEntries(memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error) {
+	for _, entries := range memberEntries {
+		var lastIndex uint64
+		for _, e := range entries {
+			if e.Index <= lastIndex {
+				return nil, fmt.Errorf("raft index should increase, got: %d, previous: %d", e.Index, lastIndex)
+			}
+			lastIndex = e.Index
 		}
 	}
-	return requests, nil
+	memberIndices := make([]int, len(memberEntries))
+	mergedHistory := []raftpb.Entry{}
+	var raftIndex uint64
+	for {
+		// Find entry with raftIndex.
+		raftIndex++
+		entriesLeft := false
+		for i, entries := range memberEntries {
+			memberIndex := memberIndices[i]
+			for memberIndex < len(entries) && entries[memberIndex].Index < raftIndex {
+				memberIndex++
+			}
+			if memberIndex < len(entries) {
+				entriesLeft = true
+			}
+			memberIndices[i] = memberIndex
+		}
+		if !entriesLeft {
+			break
+		}
+		// Entries collects votes from matching entries.
+		votes := make([]int, len(memberEntries))
+		for i := 0; i < len(memberEntries); i++ {
+			if len(memberEntries[i]) <= memberIndices[i] {
+				continue
+			}
+			entry1 := memberEntries[i][memberIndices[i]]
+			if entry1.Index != raftIndex {
+				continue
+			}
+			for j := i; j < len(memberEntries); j++ {
+				if i == j {
+					votes[i]++
+					continue
+				}
+				if len(memberEntries[j]) <= memberIndices[j] {
+					continue
+				}
+				entry2 := memberEntries[j][memberIndices[j]]
+				if entry2.Index != raftIndex {
+					continue
+				}
+				if reflect.DeepEqual(entry1, entry2) {
+					votes[i]++
+					votes[j]++
+				}
+			}
+		}
+		// Select entry with most votes
+		topVotes := 0
+		for _, vote := range votes {
+			if vote > topVotes {
+				topVotes = vote
+			}
+		}
+		if topVotes == 0 {
+			return nil, fmt.Errorf("no entry for raft index %d", raftIndex)
+		}
+		var entryWithMostVotes *raftpb.Entry
+		for i, vote := range votes {
+			if vote != topVotes {
+				continue
+			}
+			if entryWithMostVotes != nil && !reflect.DeepEqual(*entryWithMostVotes, memberEntries[i][memberIndices[i]]) {
+				return nil, fmt.Errorf("mismatching entries on raft index %d", raftIndex)
+			}
+			entryWithMostVotes = &memberEntries[i][memberIndices[i]]
+		}
+		mergedHistory = append(mergedHistory, *entryWithMostVotes)
+	}
+	if len(mergedHistory) == 0 {
+		return nil, errors.New("no WAL entries matched")
+	}
+	return mergedHistory, nil
 }
 
 func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
@@ -114,9 +186,12 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 		_, state, ents, err = w.ReadAll()
 		w.Close()
 		if err != nil {
-			if errors.Is(err, wal.ErrSnapshotNotFound) || errors.Is(err, wal.ErrSliceOutOfRange) {
+			if errors.Is(err, wal.ErrSnapshotNotFound) {
 				lg.Info("Error occurred when reading WAL entries", zap.Error(err))
 				return state, ents, nil
+			}
+			if errors.Is(err, wal.ErrSliceOutOfRange) {
+				return state, nil, fmt.Errorf("failed to read WAL, err: %w", err)
 			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {
@@ -135,6 +210,9 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 
 func parseEntryNormal(ent raftpb.Entry) (*model.EtcdRequest, error) {
 	var raftReq pb.InternalRaftRequest
+	if len(ent.Data) == 0 {
+		return nil, nil
+	}
 	if err := raftReq.Unmarshal(ent.Data); err != nil {
 		var r pb.Request
 		isV2Entry := pbutil.MaybeUnmarshal(&r, ent.Data)

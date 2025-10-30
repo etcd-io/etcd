@@ -25,8 +25,8 @@ var internalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type ClusterOptions []e2e.EPClusterOption
 
-// WithClusterOptionGroups takes an array of EPClusterOption arrays, and randomly picks one EPClusterOption array when constructing the config.
-// This function is mainly used to group strongly coupled config options together, so that we can dynamically test different groups of options.
+// WithClusterOptionGroups takes an array of EPClusterOption arrays and randomly picks one EPClusterOption array when constructing the config.
+// This function is mainly used to group strongly coupled config options together so that we can dynamically test different groups of options.
 func WithClusterOptionGroups(input ...ClusterOptions) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
 		optsPicked := input[internalRand.Intn(len(input))]
@@ -36,10 +36,10 @@ func WithClusterOptionGroups(input ...ClusterOptions) e2e.EPClusterOption {
 	}
 }
 
-// WithSubsetOptions randomly select a subset of input options, and apply the subset to the cluster config.
+// WithSubsetOptions randomly selects a subset of input options and applies the subset to the cluster config.
 func WithSubsetOptions(input ...e2e.EPClusterOption) e2e.EPClusterOption {
 	return func(c *e2e.EtcdProcessClusterConfig) {
-		// selects random subsetLen (0 to len(input)) elements from the input array.
+		// selects a random subsetLen (0 to len(input)) elements from the input array.
 		subsetLen := internalRand.Intn(len(input) + 1)
 		perm := internalRand.Perm(len(input))
 		for i := 0; i < subsetLen; i++ {

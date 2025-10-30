@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -28,7 +27,7 @@ import (
 func TestWarningApplyDuration(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
+	epc, err := e2e.NewEtcdProcessCluster(t.Context(), t,
 		e2e.WithClusterSize(1),
 		e2e.WithWarningUnaryRequestDuration(time.Microsecond),
 	)
@@ -42,49 +41,9 @@ func TestWarningApplyDuration(t *testing.T) {
 	})
 
 	cc := epc.Etcdctl()
-	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
+	err = cc.Put(t.Context(), "foo", "bar", config.PutOptions{})
 	require.NoErrorf(t, err, "error on put")
 
 	// verify warning
 	e2e.AssertProcessLogs(t, epc.Procs[0], "request stats")
-}
-
-// TestExperimentalWarningApplyDuration tests the experimental warning apply duration
-// TODO: this test is a duplicate of TestWarningApplyDuration except it uses --experimental-warning-unary-request-duration
-// Remove this test after --experimental-warning-unary-request-duration flag is removed.
-func TestExperimentalWarningApplyDuration(t *testing.T) {
-	e2e.BeforeTest(t)
-
-	epc, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
-		e2e.WithClusterSize(1),
-		e2e.WithExperimentalWarningUnaryRequestDuration(time.Microsecond),
-	)
-	if err != nil {
-		t.Fatalf("could not start etcd process cluster (%v)", err)
-	}
-	t.Cleanup(func() {
-		if errC := epc.Close(); errC != nil {
-			t.Fatalf("error closing etcd processes (%v)", errC)
-		}
-	})
-
-	cc := epc.Etcdctl()
-	err = cc.Put(context.TODO(), "foo", "bar", config.PutOptions{})
-	require.NoErrorf(t, err, "error on put")
-
-	// verify warning
-	e2e.AssertProcessLogs(t, epc.Procs[0], "request stats")
-}
-
-func TestBothWarningApplyDurationFlagsFail(t *testing.T) {
-	e2e.BeforeTest(t)
-
-	_, err := e2e.NewEtcdProcessCluster(context.TODO(), t,
-		e2e.WithClusterSize(1),
-		e2e.WithWarningUnaryRequestDuration(time.Second),
-		e2e.WithExperimentalWarningUnaryRequestDuration(time.Second),
-	)
-	if err == nil {
-		t.Fatal("Expected process to fail")
-	}
 }

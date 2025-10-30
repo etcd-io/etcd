@@ -41,11 +41,11 @@ func (e integrationRunner) TestMain(m *testing.M) {
 	testutil.MustTestMainWithLeakDetection(m)
 }
 
-func (e integrationRunner) BeforeTest(t testing.TB) {
-	BeforeTest(t)
+func (e integrationRunner) BeforeTest(tb testing.TB) {
+	BeforeTest(tb)
 }
 
-func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ...config.ClusterOption) intf.Cluster {
+func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config.ClusterOption) intf.Cluster {
 	var err error
 	cfg := config.NewClusterConfig(opts...)
 	integrationCfg := ClusterConfig{
@@ -55,27 +55,35 @@ func (e integrationRunner) NewCluster(ctx context.Context, t testing.TB, opts ..
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
 	}
-	integrationCfg.ClientTLS, err = tlsInfo(t, cfg.ClientTLS)
+	integrationCfg.ClientTLS, err = tlsInfo(tb, cfg.ClientTLS)
 	if err != nil {
-		t.Fatalf("ClientTLS: %s", err)
+		tb.Fatalf("ClientTLS: %s", err)
 	}
-	integrationCfg.PeerTLS, err = tlsInfo(t, cfg.PeerTLS)
+	integrationCfg.PeerTLS, err = tlsInfo(tb, cfg.PeerTLS)
 	if err != nil {
-		t.Fatalf("PeerTLS: %s", err)
+		tb.Fatalf("PeerTLS: %s", err)
 	}
+
+	if cfg.ClusterContext != nil {
+		if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
+			integrationCfg.UseTCP = !ctx.UseUnix
+			integrationCfg.UseIP = !ctx.UseUnix
+		}
+	}
+
 	return &integrationCluster{
-		Cluster: NewCluster(t, &integrationCfg),
-		t:       t,
+		Cluster: NewCluster(tb, &integrationCfg),
+		t:       tb,
 		ctx:     ctx,
 	}
 }
 
-func tlsInfo(t testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
+func tlsInfo(tb testing.TB, cfg config.TLSConfig) (*transport.TLSInfo, error) {
 	switch cfg {
 	case config.NoTLS:
 		return nil, nil
 	case config.AutoTLS:
-		tls, err := transport.SelfCert(zap.NewNop(), t.TempDir(), []string{"localhost"}, 1)
+		tls, err := transport.SelfCert(zap.NewNop(), tb.TempDir(), []string{"localhost"}, 1)
 		if err != nil {
 			return nil, fmt.Errorf("failed to generate cert: %w", err)
 		}
@@ -98,6 +106,48 @@ func (c *integrationCluster) Members() (ms []intf.Member) {
 		ms = append(ms, integrationMember{Member: m, t: c.t})
 	}
 	return ms
+}
+
+func (c *integrationCluster) TemplateEndpoints(tb testing.TB, pattern string) []string {
+	tb.Helper()
+	var endpoints []string
+	for _, m := range c.Cluster.Members {
+		ent := pattern
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", m.GRPCPortNumber())
+		ent = strings.ReplaceAll(ent, "${MEMBER_NAME}", m.Name)
+		endpoints = append(endpoints, ent)
+	}
+	return endpoints
+}
+
+func templateAuthority(tb testing.TB, pattern string, m *Member) string {
+	tb.Helper()
+	authority := pattern
+	authority = strings.ReplaceAll(authority, "${MEMBER_PORT}", m.GRPCPortNumber())
+	authority = strings.ReplaceAll(authority, "${MEMBER_NAME}", m.Name)
+	return authority
+}
+
+func (c *integrationCluster) AssertAuthority(tb testing.TB, expectedAuthorityPattern string) {
+	tb.Helper()
+	const filterMethod = "/etcdserverpb.KV/Put"
+	for _, m := range c.Cluster.Members {
+		expectedAuthority := templateAuthority(tb, expectedAuthorityPattern, m)
+		requestsFound := 0
+		for _, r := range m.RecordedRequests() {
+			if r.FullMethod != filterMethod {
+				continue
+			}
+			if r.Authority == expectedAuthority {
+				requestsFound++
+			} else {
+				tb.Errorf("Got unexpected authority header, member %q, request %q, got %q, expected %q", m.Name, r.FullMethod, r.Authority, expectedAuthority)
+			}
+		}
+		if requestsFound == 0 {
+			tb.Errorf("Expect at least one request with matched authority header value was recorded by the server intercepter on member %s but got 0", m.Name)
+		}
+	}
 }
 
 type integrationMember struct {

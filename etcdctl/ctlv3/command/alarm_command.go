@@ -26,8 +26,10 @@ import (
 // NewAlarmCommand returns the cobra command for "alarm".
 func NewAlarmCommand() *cobra.Command {
 	ac := &cobra.Command{
-		Use:   "alarm <subcommand>",
-		Short: "Alarm related commands",
+		Use:     "alarm <subcommand>",
+		Short:   "Alarm related commands. Use `etcdctl alarm --help` to see subcommands",
+		Long:    "Alarm related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	ac.AddCommand(NewAlarmDisarmCommand())

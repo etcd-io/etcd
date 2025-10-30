@@ -60,7 +60,7 @@ func init() {
 	watchLatencyCmd.Flags().IntVar(&watchLValueSize, "val-size", 32, "Value size of watch response")
 }
 
-func watchLatencyFunc(_ *cobra.Command, _ []string) {
+func watchLatencyFunc(cmd *cobra.Command, _ []string) {
 	key := string(mustRandBytes(watchLKeySize))
 	value := string(mustRandBytes(watchLValueSize))
 	wchs := setupWatchChannels(key)
@@ -75,12 +75,8 @@ func watchLatencyFunc(_ *cobra.Command, _ []string) {
 	eventTimes := make([][]time.Time, len(wchs))
 
 	for i, wch := range wchs {
-		wch := wch
-		i := i
 		eventTimes[i] = make([]time.Time, watchLPutTotal)
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			eventCount := 0
 			for eventCount < watchLPutTotal {
 				resp := <-wch
@@ -90,12 +86,12 @@ func watchLatencyFunc(_ *cobra.Command, _ []string) {
 					bar.Increment()
 				}
 			}
-		}()
+		})
 	}
 
-	putReport := newReport()
+	putReport := newReport(cmd.Name() + "-put")
 	putReportResults := putReport.Run()
-	watchReport := newReport()
+	watchReport := newReport(cmd.Name() + "-watch")
 	watchReportResults := watchReport.Run()
 	for i := 0; i < watchLPutTotal; i++ {
 		// limit key put as per reqRate

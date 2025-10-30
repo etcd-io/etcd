@@ -28,27 +28,30 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 )
 
-// AppendableHistory allows to collect history of sequential operations.
+// AppendableHistory allows collecting the history of sequential operations.
 //
-// Ensures that operation history is compatible with porcupine library, by preventing concurrent requests sharing the
-// same stream id. For failed requests, we don't know their return time, so generate new stream id.
+// Ensures that the operation history is compatible with the porcupine library by preventing concurrent requests from sharing the
+// same stream id. For failed requests, we don't know their return time, so we generate a new stream id.
 //
 // Appending needs to be done in order of operation execution time (start, end time).
-// Operations time should be calculated as time.Since common base time to ensure that Go monotonic time is used.
+// Operation time should be calculated as time.Since a common base time to ensure that Go monotonic time is used.
 // More in https://github.com/golang/go/blob/96add980ad27faed627f26ef1ab09e8fe45d6bd1/src/time/time.go#L10.
 type AppendableHistory struct {
 	// streamID for the next operation. Used for porcupine.Operation.ClientId as porcupine assumes no concurrent requests.
 	streamID int
 	// If needed a new streamId is requested from idProvider.
 	idProvider identity.Provider
+	// lastOperation holds the last operation of each stream.
+	lastOperation map[int]*porcupine.Operation
 
 	History
 }
 
 func NewAppendableHistory(ids identity.Provider) *AppendableHistory {
 	return &AppendableHistory{
-		streamID:   ids.NewStreamID(),
-		idProvider: ids,
+		streamID:      ids.NewStreamID(),
+		idProvider:    ids,
+		lastOperation: make(map[int]*porcupine.Operation),
 		History: History{
 			operations: []porcupine.Operation{},
 		},
@@ -168,6 +171,12 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, cl
 	h.appendSuccessful(request, start, end, txnResponse(results, resp.Succeeded, revision))
 }
 
+func (h *AppendableHistory) appendClientError(request EtcdRequest, start, end time.Duration, err error) {
+	h.appendSuccessful(request, start, end, MaybeEtcdResponse{
+		EtcdResponse: EtcdResponse{ClientError: err.Error()},
+	})
+}
+
 func (h *AppendableHistory) appendSuccessful(request EtcdRequest, start, end time.Duration, response MaybeEtcdResponse) {
 	op := porcupine.Operation{
 		ClientId: h.streamID,
@@ -256,28 +265,24 @@ func (h *AppendableHistory) AppendDefragment(start, end time.Duration, resp *cli
 		h.appendFailed(request, start, end, err)
 		return
 	}
-	var revision int64
-	if resp != nil && resp.Header != nil {
-		revision = resp.Header.Revision
-	}
-	h.appendSuccessful(request, start, end, defragmentResponse(revision))
+	h.appendSuccessful(request, start, end, defragmentResponse())
 }
 
 func (h *AppendableHistory) AppendCompact(rev int64, start, end time.Duration, resp *clientv3.CompactResponse, err error) {
 	request := compactRequest(rev)
 	if err != nil {
 		if strings.Contains(err.Error(), mvcc.ErrCompacted.Error()) {
-			h.appendSuccessful(request, start, end, MaybeEtcdResponse{
-				EtcdResponse: EtcdResponse{ClientError: mvcc.ErrCompacted.Error()},
-			})
+			h.appendClientError(request, start, end, mvcc.ErrCompacted)
+			return
+		}
+		if strings.Contains(err.Error(), mvcc.ErrFutureRev.Error()) {
+			h.appendClientError(request, start, end, mvcc.ErrFutureRev)
 			return
 		}
 		h.appendFailed(request, start, end, err)
 		return
 	}
-	// Set fake revision as compaction returns non-linearizable revision.
-	// TODO: Model non-linearizable response revision in model.
-	h.appendSuccessful(request, start, end, compactResponse(-1))
+	h.appendSuccessful(request, start, end, compactResponse())
 }
 
 func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Duration, err error) {
@@ -290,8 +295,6 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 	}
 	isRead := request.IsRead()
 	if !isRead {
-		// Failed writes can still be persisted, setting -1 for now as don't know when request has took effect.
-		op.Return = -1
 		// Operations of single client needs to be sequential.
 		// As we don't know return time of failed operations, all new writes need to be done with new stream id.
 		h.streamID = h.idProvider.NewStreamID()
@@ -300,11 +303,11 @@ func (h *AppendableHistory) appendFailed(request EtcdRequest, start, end time.Du
 }
 
 func (h *AppendableHistory) append(op porcupine.Operation) {
-	if op.Return != -1 && op.Call >= op.Return {
+	if op.Call >= op.Return {
 		panic(fmt.Sprintf("Invalid operation, call(%d) >= return(%d)", op.Call, op.Return))
 	}
-	if len(h.operations) > 0 {
-		prev := h.operations[len(h.operations)-1]
+
+	if prev, ok := h.lastOperation[op.ClientId]; ok {
 		if op.Call <= prev.Call {
 			panic(fmt.Sprintf("Out of order append, new.call(%d) <= prev.call(%d)", op.Call, prev.Call))
 		}
@@ -312,6 +315,8 @@ func (h *AppendableHistory) append(op porcupine.Operation) {
 			panic(fmt.Sprintf("Overlapping operations, new.call(%d) <= prev.return(%d)", op.Call, prev.Return))
 		}
 	}
+	h.lastOperation[op.ClientId] = &op
+
 	h.operations = append(h.operations, op)
 }
 
@@ -466,16 +471,16 @@ func defragmentRequest() EtcdRequest {
 	return EtcdRequest{Type: Defragment, Defragment: &DefragmentRequest{}}
 }
 
-func defragmentResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: revision}}
+func defragmentResponse() MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Defragment: &DefragmentResponse{}, Revision: RevisionForNonLinearizableResponse}}
 }
 
 func compactRequest(rev int64) EtcdRequest {
 	return EtcdRequest{Type: Compact, Compact: &CompactRequest{Revision: rev}}
 }
 
-func compactResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: revision}}
+func compactResponse() MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Compact: &CompactResponse{}, Revision: RevisionForNonLinearizableResponse}}
 }
 
 type History struct {
@@ -488,34 +493,8 @@ func (h History) Len() int {
 
 func (h History) Operations() []porcupine.Operation {
 	operations := make([]porcupine.Operation, 0, len(h.operations))
-	maxTime := h.lastObservedTime()
-	for _, op := range h.operations {
-		// Failed requests don't have a known return time.
-		if op.Return == -1 {
-			// Simulate Infinity by using last observed time.
-			op.Return = maxTime + time.Second.Nanoseconds()
-		}
-		operations = append(operations, op)
-	}
-	return operations
-}
 
-func (h History) lastObservedTime() int64 {
-	var maxTime int64
-	for _, op := range h.operations {
-		if op.Return == -1 {
-			// Collect call time from failed operations
-			if op.Call > maxTime {
-				maxTime = op.Call
-			}
-		} else {
-			// Collect return time from successful operations
-			if op.Return > maxTime {
-				maxTime = op.Return
-			}
-		}
-	}
-	return maxTime
+	return append(operations, h.operations...)
 }
 
 func (h History) MaxRevision() int64 {

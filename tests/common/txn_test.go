@@ -59,7 +59,7 @@ func TestTxnSucc(t *testing.T) {
 	}
 	for _, cfg := range clusterTestCases() {
 		t.Run(cfg.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg.config))
 			defer clus.Close()
@@ -99,7 +99,7 @@ func TestTxnFail(t *testing.T) {
 	}
 	for _, cfg := range clusterTestCases() {
 		t.Run(cfg.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg.config))
 			defer clus.Close()

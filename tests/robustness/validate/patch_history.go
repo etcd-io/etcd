@@ -16,6 +16,7 @@ package validate
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/anishathalye/porcupine"
 
@@ -23,28 +24,12 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func patchLinearizableOperations(reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
-	allOperations := relevantOperations(reports)
+func patchLinearizableOperations(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
 	putRevision := putRevision(reports)
-	putReturnTime := putReturnTime(allOperations, reports, persistedRequests)
-	clientPutCount := countClientPuts(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
-	return patchOperations(allOperations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
-}
-
-func relevantOperations(reports []report.ClientReport) []porcupine.Operation {
-	var ops []porcupine.Operation
-	for _, r := range reports {
-		for _, op := range r.KeyValue {
-			request := op.Input.(model.EtcdRequest)
-			resp := op.Output.(model.MaybeEtcdResponse)
-			// Remove failed read requests as they are not relevant for linearization.
-			if resp.Error == "" || !request.IsRead() {
-				ops = append(ops, op)
-			}
-		}
-	}
-	return ops
+	clientPutCount := countClientPuts(reports)
+	putReturnTime := uniquePutReturnTime(operations, persistedRequests, clientPutCount)
+	return patchOperations(operations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
 }
 
 func putRevision(reports []report.ClientReport) map[keyValue]int64 {
@@ -155,7 +140,7 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, clientRequestCount map[k
 	return false
 }
 
-func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) map[keyValue]int64 {
+func uniquePutReturnTime(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest, clientPutCount map[keyValue]int64) map[keyValue]int64 {
 	earliestReturnTime := map[keyValue]int64{}
 	var lastReturnTime int64
 	for _, op := range allOperations {
@@ -167,6 +152,9 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 					continue
 				}
 				kv := keyValue{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
+				if count := clientPutCount[kv]; count > 1 {
+					continue
+				}
 				if returnTime, ok := earliestReturnTime[kv]; !ok || returnTime > op.Return {
 					earliestReturnTime[kv] = op.Return
 				}
@@ -176,6 +164,7 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
 		case model.Compact:
+		case model.Defragment:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}
@@ -184,36 +173,21 @@ func putReturnTime(allOperations []porcupine.Operation, reports []report.ClientR
 		}
 	}
 
-	for _, client := range reports {
-		for _, watch := range client.Watch {
-			for _, resp := range watch.Responses {
-				for _, event := range resp.Events {
-					switch event.Type {
-					case model.RangeOperation:
-					case model.PutOperation:
-						kv := keyValue{Key: event.Key, Value: event.Value}
-						if t, ok := earliestReturnTime[kv]; !ok || t > resp.Time.Nanoseconds() {
-							earliestReturnTime[kv] = resp.Time.Nanoseconds()
-						}
-					case model.DeleteOperation:
-					default:
-						panic(fmt.Sprintf("unknown event type %q", event.Type))
-					}
-				}
-			}
-		}
-	}
-
 	for i := len(persistedRequests) - 1; i >= 0; i-- {
 		request := persistedRequests[i]
 		switch request.Type {
 		case model.Txn:
-			lastReturnTime--
+			if lastReturnTime != math.MaxInt64 {
+				lastReturnTime--
+			}
 			for _, op := range request.Txn.OperationsOnSuccess {
 				if op.Type != model.PutOperation {
 					continue
 				}
 				kv := keyValue{Key: op.Put.Key, Value: op.Put.Value}
+				if count := clientPutCount[kv]; count > 1 {
+					continue
+				}
 				returnTime, ok := earliestReturnTime[kv]
 				if ok {
 					lastReturnTime = min(returnTime, lastReturnTime)

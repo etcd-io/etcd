@@ -196,6 +196,7 @@ func (p *fieldsPrinter) EndpointStatus(eps []epStatus) {
 		fmt.Printf("\"StorageVersion\" : %q\n", ep.Resp.StorageVersion)
 		fmt.Println(`"DBSize" :`, ep.Resp.DbSize)
 		fmt.Println(`"DBSizeInUse" :`, ep.Resp.DbSizeInUse)
+		fmt.Println(`"DBSizeQuota" :`, ep.Resp.DbSizeQuota)
 		fmt.Println(`"Leader" :`, ep.Resp.Leader)
 		fmt.Println(`"IsLearner" :`, ep.Resp.IsLearner)
 		fmt.Println(`"RaftIndex" :`, ep.Resp.RaftIndex)

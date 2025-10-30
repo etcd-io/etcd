@@ -27,9 +27,10 @@ import (
 // NewDefragCommand returns the cobra command for "Defrag".
 func NewDefragCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "defrag",
-		Short: "Defragments the storage of the etcd members with given endpoints",
-		Run:   defragCommandFunc,
+		Use:     "defrag",
+		Short:   "Defragments the storage of the etcd members with given endpoints",
+		Run:     defragCommandFunc,
+		GroupID: groupClusterMaintenanceID,
 	}
 	cmd.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
 	return cmd

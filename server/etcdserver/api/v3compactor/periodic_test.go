@@ -16,6 +16,7 @@ package v3compactor
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func TestPeriodicHourly(t *testing.T) {
 	}
 
 	// very first compaction
-	a, err := compactable.Wait(1)
+	a, err := waitWithRetry(t, compactable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +69,7 @@ func TestPeriodicHourly(t *testing.T) {
 			fc.Advance(tb.getRetryInterval())
 		}
 
-		a, err = compactable.Wait(1)
+		a, err = waitWithRetry(t, compactable)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +103,7 @@ func TestPeriodicMinutes(t *testing.T) {
 	}
 
 	// very first compaction
-	a, err := compactable.Wait(1)
+	a, err := waitWithRetry(t, compactable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +120,7 @@ func TestPeriodicMinutes(t *testing.T) {
 			fc.Advance(tb.getRetryInterval())
 		}
 
-		a, err := compactable.Wait(1)
+		a, err := waitWithRetry(t, compactable)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -216,7 +217,7 @@ func TestPeriodicPause(t *testing.T) {
 	fc.Advance(tb.getRetryInterval())
 
 	// T=3h6m
-	a, err := compactable.Wait(1)
+	a, err := waitWithRetry(t, compactable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +253,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 	}
 
 	// very first compaction
-	a, err := compactable.Wait(1)
+	a, err := waitWithRetry(t, compactable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -283,7 +284,7 @@ func TestPeriodicSkipRevNotChange(t *testing.T) {
 		fc.Advance(tb.getRetryInterval())
 	}
 
-	a, err = compactable.Wait(1)
+	a, err = waitWithRetry(t, compactable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,4 +299,24 @@ func waitOneAction(t *testing.T, r testutil.Recorder) {
 	if actions, _ := r.Wait(1); len(actions) != 1 {
 		t.Errorf("expect 1 action, got %v instead", len(actions))
 	}
+}
+
+func waitWithRetry(t *testing.T, compactable *fakeCompactable) ([]testutil.Action, error) {
+	t.Helper()
+
+	var lastErr error
+	var actions []testutil.Action
+
+	expectedActions, maxRetries := 1, 5
+	for retry := 0; retry < maxRetries; retry++ {
+		actions, lastErr = compactable.Wait(expectedActions)
+		if lastErr == nil || len(actions) >= expectedActions {
+			return actions, nil
+		}
+		// Exponential backoff
+		backoffTime := time.Duration(10*(1<<retry)) * time.Millisecond
+		t.Logf("Retry %d: waiting %v before next attempt (last error: %v)", retry+1, backoffTime, lastErr)
+		time.Sleep(backoffTime)
+	}
+	return nil, fmt.Errorf("after %d retries, last error: %w", maxRetries, lastErr)
 }

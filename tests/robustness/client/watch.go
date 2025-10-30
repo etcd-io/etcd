@@ -16,87 +16,108 @@ package client
 
 import (
 	"context"
-	"sync"
-	"testing"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
-	"go.etcd.io/etcd/tests/v3/framework/e2e"
-	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/report"
+	"go.etcd.io/etcd/tests/v3/robustness/options"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, maxRevisionChan <-chan int64, cfg WatchConfig, baseTime time.Time, ids identity.Provider) []report.ClientReport {
-	mux := sync.Mutex{}
-	var wg sync.WaitGroup
-	reports := make([]report.ClientReport, len(clus.Procs))
-	memberMaxRevisionChans := make([]chan int64, len(clus.Procs))
-	for i, member := range clus.Procs {
-		c, err := NewRecordingClient(member.EndpointsGRPC(), ids, baseTime)
-		require.NoError(t, err)
+type CollectClusterWatchEventsParam struct {
+	Lg              *zap.Logger
+	Endpoints       []string
+	MaxRevisionChan <-chan int64
+	Cfg             WatchConfig
+	ClientSet       *ClientSet
+	options.BackgroundWatchConfig
+}
+
+func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
+	var g errgroup.Group
+	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
+	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
-		wg.Add(1)
-		go func(i int, c *RecordingClient) {
-			defer wg.Done()
+		g.Go(func() error {
+			c, err := param.ClientSet.NewClient([]string{endpoint})
+			if err != nil {
+				return err
+			}
 			defer c.Close()
-			watchUntilRevision(ctx, t, c, memberMaxRevisionChan, cfg)
-			mux.Lock()
-			reports[i] = c.Report()
-			mux.Unlock()
-		}(i, c)
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
+		})
 	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		maxRevision := <-maxRevisionChan
+	finish := make(chan struct{})
+	g.Go(func() error {
+		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
-	}()
-	wg.Wait()
-	return reports
+		close(finish)
+		return nil
+	})
+
+	if param.BackgroundWatchConfig.Interval > 0 {
+		for _, endpoint := range param.Endpoints {
+			g.Go(func() error {
+				c, err := param.ClientSet.NewClient([]string{endpoint})
+				if err != nil {
+					return err
+				}
+				defer c.Close()
+				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
+			})
+		}
+	}
+
+	return g.Wait()
 }
 
 type WatchConfig struct {
 	RequestProgress bool
 }
 
-// watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
-func watchUntilRevision(ctx context.Context, t *testing.T, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) {
+// watchUntilRevision watches all changes until context is canceled, it has observed the revision provided via maxRevisionChan or maxRevisionChan was closed.
+func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
+	var closing bool
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 resetWatch:
 	for {
+		if closing {
+			if maxRevision == 0 {
+				return errors.New("client didn't collect all events, max revision not set")
+			}
+			if lastRevision < maxRevision {
+				return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+			}
+			return nil
+		}
 		watch := c.Watch(ctx, "", lastRevision+1, true, true, false)
 		for {
 			select {
-			case <-ctx.Done():
-				if maxRevision == 0 {
-					t.Errorf("Client didn't collect all events, max revision not set")
-				}
-				if lastRevision < maxRevision {
-					t.Errorf("Client didn't collect all events, revision got %d, expected: %d", lastRevision, maxRevision)
-				}
-				return
 			case revision, ok := <-maxRevisionChan:
 				if ok {
 					maxRevision = revision
 					if lastRevision >= maxRevision {
+						closing = true
 						cancel()
 					}
 				} else {
 					// Only cancel if maxRevision was never set.
 					if maxRevision == 0 {
+						closing = true
 						cancel()
 					}
 				}
 			case resp, ok := <-watch:
 				if !ok {
-					t.Logf("Watch channel closed")
+					lg.Info("Watch channel closed")
 					continue resetWatch
 				}
 				if cfg.RequestProgress {
@@ -110,12 +131,13 @@ resetWatch:
 						}
 						continue resetWatch
 					}
-					t.Errorf("Watch stream received error, err %v", resp.Err())
+					return fmt.Errorf("watch stream received error: %w", resp.Err())
 				}
 				if len(resp.Events) > 0 {
 					lastRevision = resp.Events[len(resp.Events)-1].Kv.ModRevision
 				}
 				if maxRevision != 0 && lastRevision >= maxRevision {
+					closing = true
 					cancel()
 				}
 			}
@@ -123,20 +145,37 @@ resetWatch:
 	}
 }
 
-func ValidateGotAtLeastOneProgressNotify(t *testing.T, reports []report.ClientReport, expectProgressNotify bool) {
-	gotProgressNotify := false
-external:
-	for _, r := range reports {
-		for _, op := range r.Watch {
-			for _, resp := range op.Responses {
-				if resp.IsProgressNotify {
-					gotProgressNotify = true
-					break external
+func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingClient, backgroundWatchConfig options.BackgroundWatchConfig, finish <-chan struct{}) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-finish:
+			return nil
+		case <-time.After(backgroundWatchConfig.Interval):
+		}
+		g.Go(func() error {
+			resp, err := c.Get(ctx, "/key")
+			if err != nil {
+				return err
+			}
+			rev := resp.Header.Revision + backgroundWatchConfig.RevisionOffset
+
+			watchCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			w := c.Watch(watchCtx, "", rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-finish:
+					return nil
+				case _, ok := <-w:
+					if !ok {
+						return nil
+					}
 				}
 			}
-		}
-	}
-	if gotProgressNotify != expectProgressNotify {
-		t.Errorf("Progress notify does not match, expect: %v, got: %v", expectProgressNotify, gotProgressNotify)
+		})
 	}
 }

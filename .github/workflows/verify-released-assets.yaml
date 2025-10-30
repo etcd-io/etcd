@@ -1,0 +1,44 @@
+---
+name: Verify released binary assets
+permissions: read-all
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  verify-assets:
+    name: Verify released binary assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify binary assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          mkdir github-assets
+          pushd github-assets
+          gh --repo "${REPOSITORY}" release download "${RELEASE}"
+
+          test_assets() {
+            if [ "$(wc -l <SHA256SUMS)" != "$(find . -name 'etcd-*' | wc -l)" ]; then
+              echo "::error:: Invalid number of assets"
+              exit 1
+            fi
+            sha256sum -c SHA256SUMS
+          }
+          test_assets
+          popd
+
+          mkdir google-assets
+          for file in github-assets/*; do
+            file=$(basename "${file}")
+            echo "Downloading ${file} from Google..."
+            curl "https://storage.googleapis.com/etcd/${RELEASE}/${file}" \
+            --fail \
+            -o "google-assets/${file}"
+          done
+          pushd google-assets
+
+          test_assets

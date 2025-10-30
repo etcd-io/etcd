@@ -41,8 +41,10 @@ type Result struct {
 func (res *Result) Duration() time.Duration { return res.End.Sub(res.Start) }
 
 type report struct {
-	results   chan Result
-	precision string
+	generatePerfReport bool
+	benchmarkOp        string
+	precision          string
+	results            chan Result
 
 	stats Stats
 	sps   *secondPoints
@@ -81,19 +83,23 @@ type Report interface {
 	Stats() <-chan Stats
 }
 
-func NewReport(precision string) Report { return newReport(precision) }
+func NewReport(precision, benchmarkOp string, generatePerfReport bool) Report {
+	return newReport(precision, benchmarkOp, generatePerfReport)
+}
 
-func newReport(precision string) *report {
+func newReport(precision, benchmarkOp string, generatePerfReport bool) *report {
 	r := &report{
-		results:   make(chan Result, 16),
-		precision: precision,
+		results:            make(chan Result, 16),
+		precision:          precision,
+		generatePerfReport: generatePerfReport,
+		benchmarkOp:        benchmarkOp,
 	}
 	r.stats.ErrorDist = make(map[string]int)
 	return r
 }
 
-func NewReportSample(precision string) Report {
-	r := NewReport(precision).(*report)
+func NewReportSample(precision, benchmarkOp string, generatePerfReport bool) Report {
+	r := NewReport(precision, benchmarkOp, generatePerfReport).(*report)
 	r.sps = newSecondPoints()
 	return r
 }
@@ -105,6 +111,9 @@ func (r *report) Run() <-chan string {
 	go func() {
 		defer close(donec)
 		r.processResults()
+		if r.generatePerfReport {
+			r.writePerfDashReport(r.benchmarkOp)
+		}
 		donec <- r.String()
 	}()
 	return donec
@@ -155,8 +164,8 @@ func (r *report) sec2str(sec float64) string { return fmt.Sprintf(r.precision+" 
 
 type reportRate struct{ *report }
 
-func NewReportRate(precision string) Report {
-	return &reportRate{NewReport(precision).(*report)}
+func NewReportRate(precision, benchmarkOp string, generatePerfReport bool) Report {
+	return &reportRate{NewReport(precision, benchmarkOp, generatePerfReport).(*report)}
 }
 
 func (r *reportRate) String() string {

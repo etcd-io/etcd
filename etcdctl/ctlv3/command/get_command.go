@@ -44,9 +44,10 @@ var (
 // NewGetCommand returns the cobra command for "get".
 func NewGetCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get [options] <key> [range_end]",
-		Short: "Gets the key or a range of keys",
-		Run:   getCommandFunc,
+		Use:     "get [options] <key> [range_end]",
+		Short:   "Gets the key or a range of keys",
+		Run:     getCommandFunc,
+		GroupID: groupKVID,
 	}
 
 	cmd.Flags().StringVar(&getConsistency, "consistency", "l", "Linearizable(l) or Serializable(s)")

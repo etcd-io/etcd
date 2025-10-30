@@ -15,7 +15,6 @@
 package rafthttp
 
 import (
-	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -116,7 +115,7 @@ func TestStreamReaderDialRequest(t *testing.T) {
 			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1), ID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			ctx:    context.Background(),
+			ctx:    t.Context(),
 		}
 		sr.dial(tt)
 
@@ -171,7 +170,7 @@ func TestStreamReaderDialResult(t *testing.T) {
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
 			errorc: make(chan error, 1),
-			ctx:    context.Background(),
+			ctx:    t.Context(),
 		}
 
 		_, err := sr.dial(streamTypeMessage)
@@ -253,7 +252,7 @@ func TestStreamReaderDialDetectUnsupport(t *testing.T) {
 			peerID: types.ID(2),
 			tr:     &Transport{streamRt: tr, ClusterID: types.ID(1)},
 			picker: mustNewURLPicker(t, []string{"http://localhost:2380"}),
-			ctx:    context.Background(),
+			ctx:    t.Context(),
 		}
 
 		_, err := sr.dial(typ)

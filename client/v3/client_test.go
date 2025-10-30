@@ -196,18 +196,18 @@ func TestBackoffJitterFraction(t *testing.T) {
 
 func TestIsHaltErr(t *testing.T) {
 	assert.Truef(t,
-		isHaltErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		isHaltErr(t.Context(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should be unavailable error",
 	)
 	assert.Falsef(t,
-		isHaltErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		isHaltErr(t.Context(), rpctypes.ErrGRPCStopped),
 		`error "%v" should not be halt error`, rpctypes.ErrGRPCStopped,
 	)
 	assert.Falsef(t,
-		isHaltErr(context.TODO(), rpctypes.ErrGRPCNoLeader),
+		isHaltErr(t.Context(), rpctypes.ErrGRPCNoLeader),
 		`error "%v" should not be halt error`, rpctypes.ErrGRPCNoLeader,
 	)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	assert.Falsef(t,
 		isHaltErr(ctx, nil),
 		"no error and active context should be halt error",
@@ -221,18 +221,18 @@ func TestIsHaltErr(t *testing.T) {
 
 func TestIsUnavailableErr(t *testing.T) {
 	assert.Falsef(t,
-		isUnavailableErr(context.TODO(), errors.New("etcdserver: some etcdserver error")),
+		isUnavailableErr(t.Context(), errors.New("etcdserver: some etcdserver error")),
 		"error created by errors.New should not be unavailable error",
 	)
 	assert.Truef(t,
-		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCStopped),
+		isUnavailableErr(t.Context(), rpctypes.ErrGRPCStopped),
 		`error "%v" should be unavailable error`, rpctypes.ErrGRPCStopped,
 	)
 	assert.Falsef(t,
-		isUnavailableErr(context.TODO(), rpctypes.ErrGRPCNotCapable),
+		isUnavailableErr(t.Context(), rpctypes.ErrGRPCNotCapable),
 		"error %v should not be unavailable error", rpctypes.ErrGRPCNotCapable,
 	)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	assert.Falsef(t,
 		isUnavailableErr(ctx, nil),
 		"no error and active context should not be unavailable error",
@@ -245,7 +245,7 @@ func TestIsUnavailableErr(t *testing.T) {
 }
 
 func TestCloseCtxClient(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c := NewCtxClient(ctx)
 	err := c.Close()
 	// Close returns ctx.toErr, a nil error means an open Done channel
@@ -255,7 +255,7 @@ func TestCloseCtxClient(t *testing.T) {
 }
 
 func TestWithLogger(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	c := NewCtxClient(ctx)
 	if c.lg == nil {
 		t.Errorf("unexpected nil in *zap.Logger")
@@ -268,7 +268,7 @@ func TestWithLogger(t *testing.T) {
 }
 
 func TestZapWithLogger(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	lg := zap.NewNop()
 	c := NewCtxClient(ctx, WithZapLogger(lg))
 
@@ -317,6 +317,75 @@ func TestAuthTokenBundleNoOverwrite(t *testing.T) {
 	}
 }
 
+func TestNewWithOnlyJWT(t *testing.T) {
+	// This call in particular changes working directory to the tmp dir of
+	// the test. The `etcd-auth-test:1` can be created in local directory,
+	// not exceeding the longest allowed path on OsX.
+	testutil.BeforeTest(t)
+
+	// Create a mock AuthServer to handle Authenticate RPCs.
+	lis, err := net.Listen("unix", "etcd-auth-test:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lis.Close()
+	addr := "unix://" + lis.Addr().String()
+	srv := grpc.NewServer()
+	// Having a token removes the need to ever call Authenticate on the
+	// server. If that happens then this will cause a connection failure.
+	etcdserverpb.RegisterAuthServer(srv, mockFailingAuthServer{})
+	go srv.Serve(lis)
+	defer srv.Stop()
+
+	c, err := NewClient(t, Config{
+		DialTimeout: 5 * time.Second,
+		Endpoints:   []string{addr},
+		Token:       "foo",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+
+	meta, err := c.authTokenBundle.PerRPCCredentials().GetRequestMetadata(t.Context(), "")
+	if err != nil {
+		t.Errorf("Error building request metadata: %s", err)
+	}
+
+	if tok, ok := meta[rpctypes.TokenFieldNameGRPC]; !ok {
+		t.Error("Token was not successfully set in the auth bundle")
+	} else if tok != "foo" {
+		t.Errorf("Incorrect token set in auth bundle, got '%s', expected 'foo'", tok)
+	}
+}
+
+func TestNewOnlyJWTExclusivity(t *testing.T) {
+	testutil.BeforeTest(t)
+
+	// Create a mock AuthServer to handle Authenticate RPCs.
+	lis, err := net.Listen("unix", "etcd-auth-test:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lis.Close()
+	addr := "unix://" + lis.Addr().String()
+	srv := grpc.NewServer()
+	// Having a token removes the need to ever call Authenticate on the
+	// server. If that happens then this will cause a connection failure.
+	etcdserverpb.RegisterAuthServer(srv, mockFailingAuthServer{})
+	go srv.Serve(lis)
+	defer srv.Stop()
+
+	_, err = NewClient(t, Config{
+		DialTimeout: 5 * time.Second,
+		Endpoints:   []string{addr},
+		Token:       "foo",
+		Username:    "user",
+		Password:    "pass",
+	})
+	require.ErrorIs(t, ErrMutuallyExclusiveCfg, err)
+}
+
 func TestSyncFiltersMembers(t *testing.T) {
 	c, _ := NewClient(t, Config{Endpoints: []string{"http://254.0.0.1:12345"}})
 	defer c.Close()
@@ -327,7 +396,7 @@ func TestSyncFiltersMembers(t *testing.T) {
 			{ID: 2, Name: "isStartedAndNotLearner", ClientURLs: []string{"http://254.0.0.3:12345"}, IsLearner: false},
 		},
 	}
-	c.Sync(context.Background())
+	c.Sync(t.Context())
 
 	endpoints := c.Endpoints()
 	if len(endpoints) != 1 || endpoints[0] != "http://254.0.0.3:12345" {
@@ -421,7 +490,7 @@ func TestClientRejectOldCluster(t *testing.T) {
 				endpointToVersion[tt.endpoints[j]] = tt.versions[j]
 			}
 			c := &Client{
-				ctx:       context.Background(),
+				ctx:       t.Context(),
 				endpoints: tt.endpoints,
 				epMu:      new(sync.RWMutex),
 				Maintenance: &mockMaintenance{
@@ -474,6 +543,14 @@ func (mm mockMaintenance) MoveLeader(ctx context.Context, transfereeID uint64) (
 
 func (mm mockMaintenance) Downgrade(ctx context.Context, action DowngradeAction, version string) (*DowngradeResponse, error) {
 	return nil, nil
+}
+
+type mockFailingAuthServer struct {
+	*etcdserverpb.UnimplementedAuthServer
+}
+
+func (mockFailingAuthServer) Authenticate(context.Context, *etcdserverpb.AuthenticateRequest) (*etcdserverpb.AuthenticateResponse, error) {
+	return nil, errors.New("this auth server always fails")
 }
 
 type mockAuthServer struct {

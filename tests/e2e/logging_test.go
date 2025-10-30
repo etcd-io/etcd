@@ -15,7 +15,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -41,7 +40,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -54,7 +53,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -71,7 +70,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -86,7 +85,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 		{
@@ -101,7 +100,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 				"setting up serving from embedded etcd failed.": true,
 				// See https://github.com/etcd-io/etcd/pull/19040#issuecomment-2539173800
 				// TODO: Remove with etcd 3.7
-				"cannot detect storage schema version: missing confstate information": true,
+				"cannot detect storage schema version: missing term information": true,
 			},
 		},
 	}
@@ -109,7 +108,7 @@ func TestNoErrorLogsDuringNormalOperations(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			e2e.BeforeTest(t)
-			ctx := context.TODO()
+			ctx := t.Context()
 
 			epc, err := e2e.NewEtcdProcessCluster(ctx, t, tc.options...)
 			require.NoError(t, err)

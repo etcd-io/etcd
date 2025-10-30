@@ -37,7 +37,6 @@ import (
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3discovery"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
@@ -87,7 +86,8 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		if err = fileutil.IsDirWriteable(cfg.WALDir()); err != nil {
 			return nil, fmt.Errorf("cannot write to WAL directory: %w", err)
 		}
-		bwal = bootstrapWALFromSnapshot(cfg, backend.snapshot)
+		cfg.Logger.Info("Bootstrapping WAL from snapshot")
+		bwal = bootstrapWALFromSnapshot(cfg, backend.snapshot, backend.ci)
 	}
 
 	cfg.Logger.Info("bootstrapping cluster")
@@ -261,8 +261,8 @@ func maybeDefragBackend(cfg config.ServerConfig, be backend.Backend) error {
 			zap.String("current-db-size", humanize.Bytes(uint64(size))),
 			zap.Int64("current-db-size-in-use-bytes", sizeInUse),
 			zap.String("current-db-size-in-use", humanize.Bytes(uint64(sizeInUse))),
-			zap.Uint("experimental-bootstrap-defrag-threshold-bytes", thresholdBytes),
-			zap.String("experimental-bootstrap-defrag-threshold", humanize.Bytes(uint64(thresholdBytes))),
+			zap.Uint("bootstrap-defrag-threshold-bytes", thresholdBytes),
+			zap.String("bootstrap-defrag-threshold", humanize.Bytes(uint64(thresholdBytes))),
 		)
 		return nil
 	}
@@ -331,14 +331,8 @@ func bootstrapNewClusterNoWAL(cfg config.ServerConfig, prt http.RoundTripper) (*
 		return nil, fmt.Errorf("member %s has already been bootstrapped", m.ID)
 	}
 	if cfg.ShouldDiscover() {
-		var str string
-		if cfg.DiscoveryURL != "" {
-			cfg.Logger.Warn("V2 discovery is deprecated!")
-			str, err = v2discovery.JoinCluster(cfg.Logger, cfg.DiscoveryURL, cfg.DiscoveryProxy, m.ID, cfg.InitialPeerURLsMap.String())
-		} else {
-			cfg.Logger.Info("Bootstrapping cluster using v3 discovery.")
-			str, err = v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
-		}
+		cfg.Logger.Info("Bootstrapping cluster using v3 discovery.")
+		str, err := v3discovery.JoinCluster(cfg.Logger, &cfg.DiscoveryCfg, m.ID, cfg.InitialPeerURLsMap.String())
 		if err != nil {
 			return nil, &servererrors.DiscoveryError{Op: "join", Err: err}
 		}
@@ -551,7 +545,7 @@ func (b *bootstrappedRaft) newRaftNode(ss *snap.Snapshotter, wal *wal.WAL, cl *m
 	)
 }
 
-func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot) *bootstrappedWAL {
+func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot, ci cindex.ConsistentIndexer) *bootstrappedWAL {
 	wal, st, ents, snap, meta := openWALFromSnapshot(cfg, snapshot)
 	bwal := &bootstrappedWAL{
 		lg:       cfg.Logger,
@@ -564,6 +558,19 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 	}
 
 	if cfg.ForceNewCluster {
+		consistentIndex := ci.ConsistentIndex()
+		oldCommitIndex := bwal.st.Commit
+		// If only `HardState.Commit` increases, HardState won't be persisted
+		// to disk, even though the committed entries might have already been
+		// applied. This can result in consistent_index > CommitIndex.
+		//
+		// When restarting etcd with `--force-new-cluster`, all uncommitted
+		// entries are dropped. To avoid losing entries that were actually
+		// committed, we reset Commit to max(HardState.Commit, consistent_index).
+		//
+		// See: https://github.com/etcd-io/raft/pull/300 for more details.
+		bwal.st.Commit = max(oldCommitIndex, consistentIndex)
+
 		// discard the previously uncommitted entries
 		bwal.ents = bwal.CommitedEntries()
 		entries := bwal.NewConfigChangeEntries()
@@ -573,6 +580,7 @@ func bootstrapWALFromSnapshot(cfg config.ServerConfig, snapshot *raftpb.Snapshot
 			"forcing restart member",
 			zap.String("cluster-id", meta.clusterID.String()),
 			zap.String("local-member-id", meta.nodeID.String()),
+			zap.Uint64("wal-commit-index", oldCommitIndex),
 			zap.Uint64("commit-index", bwal.st.Commit),
 		)
 	} else {

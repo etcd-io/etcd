@@ -26,7 +26,7 @@ if [[ -z ${GITHUB_USER:-} ]]; then
   exit 1
 fi
 
-if ! which hub > /dev/null; then
+if ! command -v hub > /dev/null; then
   echo "Can't find 'hub' tool in PATH, please install from https://github.com/github/hub"
   exit 1
 fi

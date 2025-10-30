@@ -1,5 +1,4 @@
-etcdutl
-========
+# etcdutl
 
 `etcdutl` is a command line administration utility for [etcd][etcd].
 
@@ -8,7 +7,7 @@ For operations over a network, please use `etcdctl`.
 
 ### DEFRAG [options]
 
-DEFRAG directly defragments an etcd data directory while etcd is not running. 
+DEFRAG directly defragments an etcd data directory while etcd is not running.
 When an etcd member reclaims storage space from deleted and compacted keys, the space is kept in a free list and the database file remains the same size. By defragmenting the database, the etcd member releases this free space back to the file system.
 
 In order to defrag a live etcd instances over the network, please use `etcdctl defrag` instead.
@@ -35,7 +34,6 @@ To defragment a data directory directly, use the `--data-dir` flag:
 #### Remarks
 
 DEFRAG returns a zero exit code only if it succeeded in defragmenting all given endpoints.
-
 
 ### SNAPSHOT RESTORE [options] \<filename\>
 
@@ -174,6 +172,74 @@ Prints etcd version and API version.
 # API version: 3.1
 ```
 
+### LIST-BUCKET [options] \<data dir or db file path\>
+
+`list-bucket` prints all bucket names.
+
+#### Flags
+
+- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
+
+##### Examples for LIST-BUCKET
+
+```bash
+
+$ ./etcdutl list-bucket ~/tmp/etcd/default.etcd/member/snap/db
+alarm
+auth
+authRoles
+authUsers
+cluster
+key
+lease
+members
+members_removed
+meta
+```
+
+### ITERATE-BUCKET [options] \<data dir or db file path\> \<bucket name\>
+
+`iterate-bucket` lists key-value pairs in a given bucket in reverse order.
+
+#### Flags for ITERATE-BUCKET
+
+- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
+- limit -- Max number of key-value pairs to iterate (0 to iterate all).
+- decode -- true to decode Protocol Buffer encoded data.
+
+##### Examples for ITERATE-BUCKET
+
+```bash
+
+# with `--decode` option
+$ ./etcdutl iterate-bucket ~/tmp/etcd/default.etcd/member/snap/db key --decode
+rev={Revision:{Main:4 Sub:0} tombstone:false}, value=[key "k1" | val "v3" | created 2 | mod 4 | ver 3]
+rev={Revision:{Main:3 Sub:0} tombstone:false}, value=[key "k1" | val "v2" | created 2 | mod 3 | ver 2]
+rev={Revision:{Main:2 Sub:0} tombstone:false}, value=[key "k1" | val "v1" | created 2 | mod 2 | ver 1]
+
+# without `--decode` option
+$ ./etcdutl iterate-bucket ~/tmp/etcd/default.etcd/member/snap/db key
+key="\x00\x00\x00\x00\x00\x00\x00\x04_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x04 \x03*\x02v3"
+key="\x00\x00\x00\x00\x00\x00\x00\x03_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x03 \x02*\x02v2"
+key="\x00\x00\x00\x00\x00\x00\x00\x02_\x00\x00\x00\x00\x00\x00\x00\x00", value="\n\x02k1\x10\x02\x18\x02 \x01*\x02v1"
+```
+
+### HASH [options] \<data dir or db file path\>
+
+`hash` prints the hash of the db file.
+
+#### Flags for HASH
+
+- timeout -- Time to wait to obtain a file lock on db file, 0 to block indefinitely.
+
+##### Examples for HASH
+
+```bash
+
+$ ./etcdutl hash ~/tmp/etcd/default.etcd/member/snap/db
+db path: /Users/wachao/tmp/etcd/default.etcd/member/snap/db
+Hash: 4031086527
+```
 
 ## Exit codes
 

@@ -22,9 +22,9 @@ import (
 	"strings"
 	"time"
 
-	"go.etcd.io/etcd/client/pkg/v3/transport"
-
 	"go.uber.org/zap"
+
+	"go.etcd.io/etcd/client/pkg/v3/transport"
 )
 
 func fetchMetrics(ep string) (lines []string, err error) {

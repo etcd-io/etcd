@@ -107,7 +107,11 @@ func (cp *clusterProxy) monitor(wa endpoints.WatchChannel) {
 		case <-cp.ctx.Done():
 			cp.lg.Info("watching endpoints interrupted", zap.Error(cp.ctx.Err()))
 			return
-		case updates := <-wa:
+		case updates, ok := <-wa:
+			if !ok {
+				cp.lg.Info("endpoints watch channel closed")
+				return
+			}
 			cp.umu.Lock()
 			for _, up := range updates {
 				switch up.Op {

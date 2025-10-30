@@ -17,14 +17,14 @@ package model
 import "time"
 
 type WatchOperation struct {
-	Request   WatchRequest
-	Responses []WatchResponse
+	Request   WatchRequest    `json:",omitempty"`
+	Responses []WatchResponse `json:",omitempty"`
 }
 
 type WatchResponse struct {
-	Events           []WatchEvent
-	IsProgressNotify bool
-	Revision         int64
-	Time             time.Duration
-	Error            string
+	Events           []WatchEvent  `json:",omitempty"`
+	IsProgressNotify bool          `json:",omitempty"`
+	Revision         int64         `json:",omitempty"`
+	Time             time.Duration `json:",omitempty"`
+	Error            string        `json:",omitempty"`
 }

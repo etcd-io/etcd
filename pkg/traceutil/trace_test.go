@@ -38,12 +38,12 @@ func TestGet(t *testing.T) {
 	}{
 		{
 			name:        "When the context does not have trace",
-			inputCtx:    context.TODO(),
+			inputCtx:    t.Context(),
 			outputTrace: TODO(),
 		},
 		{
 			name:        "When the context has trace",
-			inputCtx:    context.WithValue(context.Background(), TraceKey{}, traceForTest),
+			inputCtx:    context.WithValue(t.Context(), TraceKey{}, traceForTest),
 			outputTrace: traceForTest,
 		},
 	}
@@ -73,7 +73,7 @@ func TestCreate(t *testing.T) {
 		}
 	)
 
-	trace := New(op, nil, fields[0], fields[1])
+	_, trace := EnsureTrace(t.Context(), nil, op, fields[0], fields[1])
 	assert.Equalf(t, trace.operation, op, "Expected %v; Got %v", op, trace.operation)
 	for i, f := range trace.fields {
 		assert.Equalf(t, f.Key, fields[i].Key, "Expected %v; Got %v", fields[i].Key, f.Key)

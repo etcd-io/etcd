@@ -100,22 +100,26 @@ func (r *resolver) watch() {
 				}
 			}
 
-			addrs := convertToGRPCAddress(allUps)
-			r.cc.UpdateState(gresolver.State{Addresses: addrs})
+			eps := convertToGRPCEndpoint(allUps)
+			r.cc.UpdateState(gresolver.State{Endpoints: eps})
 		}
 	}
 }
 
-func convertToGRPCAddress(ups map[string]*endpoints.Update) []gresolver.Address {
-	var addrs []gresolver.Address
+func convertToGRPCEndpoint(ups map[string]*endpoints.Update) []gresolver.Endpoint {
+	var eps []gresolver.Endpoint
 	for _, up := range ups {
-		addr := gresolver.Address{
-			Addr:     up.Endpoint.Addr,
-			Metadata: up.Endpoint.Metadata,
+		ep := gresolver.Endpoint{
+			Addresses: []gresolver.Address{
+				{
+					Addr:     up.Endpoint.Addr,
+					Metadata: up.Endpoint.Metadata,
+				},
+			},
 		}
-		addrs = append(addrs, addr)
+		eps = append(eps, ep)
 	}
-	return addrs
+	return eps
 }
 
 // ResolveNow is a no-op here.

@@ -95,13 +95,13 @@ func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
 		cfg.Client = tc.client
 		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
+			clus, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsGRPC(), tc.client)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
+			require.NoError(t, fillEtcdWithData(t.Context(), c, tc.dbSizeBytes))
 
-			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
+			ctx, cancel := context.WithTimeout(t.Context(), watchTestDuration)
 			defer cancel()
 			g := errgroup.Group{}
 			continuouslyExecuteGetAll(ctx, t, &g, c)
@@ -120,13 +120,13 @@ func TestWatchDelayForManualProgressNotification(t *testing.T) {
 		cfg.Client = tc.client
 		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
+			clus, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsGRPC(), tc.client)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
+			require.NoError(t, fillEtcdWithData(t.Context(), c, tc.dbSizeBytes))
 
-			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
+			ctx, cancel := context.WithTimeout(t.Context(), watchTestDuration)
 			defer cancel()
 			g := errgroup.Group{}
 			continuouslyExecuteGetAll(ctx, t, &g, c)
@@ -157,13 +157,13 @@ func TestWatchDelayForEvent(t *testing.T) {
 		cfg.Client = tc.client
 		cfg.ClientHTTPSeparate = tc.clientHTTPSeparate
 		t.Run(tc.name, func(t *testing.T) {
-			clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
+			clus, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 			require.NoError(t, err)
 			defer clus.Close()
 			c := newClient(t, clus.EndpointsGRPC(), tc.client)
-			require.NoError(t, fillEtcdWithData(context.Background(), c, tc.dbSizeBytes))
+			require.NoError(t, fillEtcdWithData(t.Context(), c, tc.dbSizeBytes))
 
-			ctx, cancel := context.WithTimeout(context.Background(), watchTestDuration)
+			ctx, cancel := context.WithTimeout(t.Context(), watchTestDuration)
 			defer cancel()
 			g := errgroup.Group{}
 			g.Go(func() error {
@@ -270,14 +270,14 @@ func TestDeleteEventDrop_Issue18089(t *testing.T) {
 	cfg := e2e.DefaultConfig()
 	cfg.ClusterSize = 1
 	cfg.Client = e2e.ClientConfig{ConnectionType: e2e.ClientTLS}
-	clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg))
+	clus, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg))
 	require.NoError(t, err)
 	defer clus.Close()
 
 	c := newClient(t, clus.EndpointsGRPC(), cfg.Client)
 	defer c.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	const (
 		key = "k"
 		v2  = "v2"
@@ -345,14 +345,14 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 	e2e.BeforeTest(t)
 	cfg := e2e.DefaultConfig()
 	cfg.Client = e2e.ClientConfig{ConnectionType: e2e.ClientTLS}
-	clus, err := e2e.NewEtcdProcessCluster(context.Background(), t, e2e.WithConfig(cfg), e2e.WithClusterSize(1))
+	clus, err := e2e.NewEtcdProcessCluster(t.Context(), t, e2e.WithConfig(cfg), e2e.WithClusterSize(1))
 	require.NoError(t, err)
 	defer clus.Close()
 
 	c := newClient(t, clus.EndpointsGRPC(), cfg.Client)
 	defer c.Close()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	key := "foo"
 	totalRev := 100
 
@@ -494,11 +494,11 @@ func testStartWatcherFromCompactedRevision(t *testing.T, performCompactOnTombsto
 func TestResumeCompactionOnTombstone(t *testing.T) {
 	e2e.BeforeTest(t)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	compactBatchLimit := 5
 
 	cfg := e2e.DefaultConfig()
-	clus, err := e2e.NewEtcdProcessCluster(context.Background(),
+	clus, err := e2e.NewEtcdProcessCluster(t.Context(),
 		t,
 		e2e.WithConfig(cfg),
 		e2e.WithClusterSize(1),

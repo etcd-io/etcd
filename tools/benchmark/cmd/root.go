@@ -53,8 +53,9 @@ var (
 
 	dialTimeout time.Duration
 
-	targetLeader     bool
 	autoSyncInterval time.Duration
+
+	generatePerfReport bool
 )
 
 func init() {
@@ -72,6 +73,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVar(&user, "user", "", "provide username[:password] and prompt if password is not supplied.")
 	RootCmd.PersistentFlags().DurationVar(&dialTimeout, "dial-timeout", 0, "dial timeout for client connections")
 
-	RootCmd.PersistentFlags().BoolVar(&targetLeader, "target-leader", false, "connect only to the leader node")
 	RootCmd.PersistentFlags().DurationVar(&autoSyncInterval, "auto-sync-interval", time.Duration(0), "AutoSyncInterval is the interval to update endpoints with its latest members")
+
+	RootCmd.PersistentFlags().BoolVar(&generatePerfReport, "report-perfdash", false, "Generate benchmark report in perfdash format")
 }

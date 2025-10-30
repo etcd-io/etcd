@@ -1,0 +1,27 @@
+---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+featureGates:
+  "APIServerTracing": true
+nodes:
+  - role: control-plane
+    extraMounts:
+      - hostPath: apiserver-shared-conf
+        containerPath: /apiserver-shared-conf
+        readOnly: true
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        etcd:
+          external:
+            endpoints:
+              - http://192.168.32.1:2379
+        apiServer:
+            extraArgs:
+              tracing-config-file: "/apiserver-shared-conf/tracing.yaml"
+            extraVolumes:
+              - name: tracing
+                hostPath: "/apiserver-shared-conf"
+                mountPath: "/apiserver-shared-conf"
+  - role: worker
+  - role: worker

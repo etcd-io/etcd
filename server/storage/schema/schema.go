@@ -95,15 +95,11 @@ func UnsafeDetectSchemaVersion(lg *zap.Logger, tx backend.UnsafeReader) (v semve
 		return *vp, nil
 	}
 
-	// TODO: remove the operations of reading the fields `confState`
-	// and `term` in 3.7. We only need to be back-compatible
-	// with 3.6 when we are running 3.7, and the `storageVersion`
-	// already exists in all versions >= 3.6, so we don't need to
-	// use any other fields to identify the etcd's storage version.
-	confstate := UnsafeConfStateFromBackend(lg, tx)
-	if confstate == nil {
-		return v, fmt.Errorf("missing confstate information")
-	}
+	// TODO: remove the operations of reading the field `term`
+	// in 3.7. We only need to be back-compatible with 3.6 when
+	// we are running 3.7, and the `storageVersion` already exists
+	// in all versions >= 3.6, so we don't need to use any other
+	// fields to identify the etcd's storage version.
 	_, term := UnsafeReadConsistentIndex(tx)
 	if term == 0 {
 		return v, fmt.Errorf("missing term information")
@@ -135,6 +131,7 @@ var (
 		version.V3_6: {
 			addNewField(Meta, MetaStorageVersionName, emptyStorageVersion),
 		},
+		version.V3_7: {},
 	}
 	// emptyStorageVersion is used for v3.6 Step for the first time, in all other version StoragetVersion should be set by migrator.
 	// Adding a addNewField for StorageVersion we can reuse logic to remove it when downgrading to v3.5

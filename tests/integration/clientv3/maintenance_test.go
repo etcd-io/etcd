@@ -31,6 +31,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
@@ -40,17 +42,17 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
-		_, err := clus.RandClient().Put(context.Background(), "foo", "bar")
+		_, err := clus.RandClient().Put(t.Context(), "foo", "bar")
 		require.NoError(t, err)
 	}
 
@@ -58,9 +60,9 @@ func TestMaintenanceHashKV(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		cli := clus.Client(i)
 		// ensure writes are replicated
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		require.NoError(t, err)
-		hresp, err := cli.HashKV(context.Background(), clus.Members[i].GRPCURL, 0)
+		hresp, err := cli.HashKV(t.Context(), clus.Members[i].GRPCURL, 0)
 		require.NoError(t, err)
 		if hv == 0 {
 			hv = hresp.Hash
@@ -75,15 +77,15 @@ func TestMaintenanceHashKV(t *testing.T) {
 // TestCompactionHash tests compaction hash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cc, err := clus.ClusterClient(t)
 	require.NoError(t, err)
 
-	testutil.TestCompactionHash(context.Background(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
+	testutil.TestCompactionHash(t.Context(), t, hashTestCase{cc, clus.Members[0].GRPCURL}, 1000)
 }
 
 type hashTestCase struct {
@@ -119,9 +121,9 @@ func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
 }
 
 func TestMaintenanceMoveLeader(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -129,13 +131,13 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 	target := uint64(clus.Members[targetIdx].ID())
 
 	cli := clus.Client(targetIdx)
-	_, err := cli.MoveLeader(context.Background(), target)
+	_, err := cli.MoveLeader(t.Context(), target)
 	if !errors.Is(err, rpctypes.ErrNotLeader) {
 		t.Fatalf("error expected %v, got %v", rpctypes.ErrNotLeader, err)
 	}
 
 	cli = clus.Client(oldLeadIdx)
-	_, err = cli.MoveLeader(context.Background(), target)
+	_, err = cli.MoveLeader(t.Context(), target)
 	require.NoError(t, err)
 
 	leadIdx := clus.WaitLeader(t)
@@ -148,13 +150,13 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 // TestMaintenanceSnapshotCancel ensures that context cancel
 // before snapshot reading returns corresponding context errors.
 func TestMaintenanceSnapshotCancel(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Since http2 spec defines the receive windows's size and max size of
 	// frame in the stream, the underlayer - gRPC client can pre-read data
@@ -205,13 +207,13 @@ func TestMaintenanceSnapshotTimeout(t *testing.T) {
 // testMaintenanceSnapshotTimeout given snapshot function ensures that it
 // returns corresponding context errors when context timeout happened before snapshot reading
 func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	// Since http2 spec defines the receive windows's size and max size of
@@ -230,9 +232,22 @@ func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context,
 	time.Sleep(2 * time.Second)
 
 	_, err = io.Copy(io.Discard, rc2)
-	if err != nil && !IsClientTimeout(err) {
-		t.Errorf("expected client timeout, got %v", err)
+	if IsClientTimeout(err) {
+		return
 	}
+	// Assumes the client receives a single message header and then
+	// waits for the payload body. If the context is canceled before
+	// the payload arrives, the client will read io.EOF. However, the
+	// grpc-go client converts this into io.ErrUnexpectedEOF with an
+	// internal error code. Ideally, grpc-go might return context.Canceled
+	// instead, but it's unclear if that's feasible. Let's explicitly
+	// check for this error in the test code.
+	//
+	// REF: https://github.com/grpc/grpc-go/blob/6821606f351799b026fda1e6ba143315e6c1e620/rpc_util.go#L644
+	//
+	// Once https://github.com/grpc/grpc-go/issues/8281 is fixed, we should
+	// revert this change. See more discussion in https://github.com/etcd-io/etcd/pull/19833.
+	assert.ErrorIs(t, status.Error(codes.Internal, io.ErrUnexpectedEOF.Error()), err)
 }
 
 // TestMaintenanceSnapshotWithVersionErrorInflight ensures that ReaderCloser returned by SnapshotWithVersion function
@@ -258,10 +273,10 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 // testMaintenanceSnapshotErrorInflight given snapshot function ensures that ReaderCloser returned by it
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	lg := zaptest.NewLogger(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
@@ -278,7 +293,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	clus.Members[0].Restart(t)
 
 	// reading snapshot with canceled context should error out
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	rc1, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
 	defer rc1.Close()
@@ -296,7 +311,7 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 	<-donec
 
 	// reading snapshot with deadline exceeded should error out
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	rc2, err := snapshot(ctx, clus.RandClient())
 	require.NoError(t, err)
@@ -312,36 +327,36 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 
 // TestMaintenanceSnapshotWithVersionVersion ensures that SnapshotWithVersion returns correct version value.
 func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	// Set SnapshotCount to 1 to force raft snapshot to ensure that storage version is set
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, SnapshotCount: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
 	// Put some keys to ensure that wal snapshot is triggered
 	for i := 0; i < 10; i++ {
-		clus.RandClient().Put(context.Background(), fmt.Sprintf("%d", i), "1")
+		clus.RandClient().Put(t.Context(), fmt.Sprintf("%d", i), "1")
 	}
 
 	// reading snapshot with canceled context should error out
-	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
-	if resp.Version != "3.6.0" {
+	if resp.Version != "3.7.0" {
 		t.Errorf("unexpected version, expected %q, got %q", version.Version, resp.Version)
 	}
 }
 
 func TestMaintenanceSnapshotContentDigest(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	populateDataIntoCluster(t, clus, 3, 1024*1024)
 
 	// reading snapshot with canceled context should error out
-	resp, err := clus.RandClient().SnapshotWithVersion(context.Background())
+	resp, err := clus.RandClient().SnapshotWithVersion(t.Context())
 	require.NoError(t, err)
 	defer resp.Snapshot.Close()
 
@@ -379,49 +394,72 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 }
 
 func TestMaintenanceStatus(t *testing.T) {
-	integration2.BeforeTest(t)
-
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, QuotaBackendBytes: storage.DefaultQuotaBytes})
-	defer clus.Terminate(t)
-
-	t.Logf("Waiting for leader...")
-	clus.WaitLeader(t)
-	t.Logf("Leader established.")
-
-	eps := make([]string, 3)
-	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCURL
+	testCases := []struct {
+		name          string
+		quotaCfg      int64
+		expectedQuota int64
+	}{
+		{
+			name:          "0 quota",
+			quotaCfg:      0,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "default quota",
+			quotaCfg:      storage.DefaultQuotaBytes,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "customized quota",
+			quotaCfg:      300010002000,
+			expectedQuota: 300010002000,
+		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			integration.BeforeTest(t)
 
-	t.Logf("Creating client...")
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
-	require.NoError(t, err)
-	defer cli.Close()
-	t.Logf("Creating client [DONE]")
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, QuotaBackendBytes: tc.quotaCfg})
+			defer clus.Terminate(t)
 
-	prevID, leaderFound := uint64(0), false
-	for i := 0; i < 3; i++ {
-		resp, err := cli.Status(context.TODO(), eps[i])
-		require.NoError(t, err)
-		t.Logf("Response from %v: %v", i, resp)
-		if resp.DbSizeQuota != storage.DefaultQuotaBytes {
-			t.Errorf("unexpected backend default quota returned: %d, expected %d", resp.DbSizeQuota, storage.DefaultQuotaBytes)
-		}
-		if prevID == 0 {
-			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
-			continue
-		}
-		if prevID == resp.Header.MemberId {
-			t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
-		}
-		if leaderFound && resp.Header.MemberId == resp.Leader {
-			t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
-		}
-		if !leaderFound {
-			leaderFound = resp.Header.MemberId == resp.Leader
-		}
-	}
-	if !leaderFound {
-		t.Fatal("no leader found")
+			t.Logf("Waiting for leader...")
+			clus.WaitLeader(t)
+			t.Logf("Leader established.")
+
+			eps := make([]string, 3)
+			for i := 0; i < 3; i++ {
+				eps[i] = clus.Members[i].GRPCURL
+			}
+
+			t.Logf("Creating client...")
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+			require.NoError(t, err)
+			defer cli.Close()
+			t.Logf("Creating client [DONE]")
+
+			prevID, leaderFound := uint64(0), false
+			for i := 0; i < 3; i++ {
+				resp, err := cli.Status(t.Context(), eps[i])
+				require.NoError(t, err)
+				t.Logf("Response from %v: %v", i, resp)
+				require.Equal(t, tc.expectedQuota, resp.DbSizeQuota)
+				if prevID == 0 {
+					prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
+					continue
+				}
+				if prevID == resp.Header.MemberId {
+					t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
+				}
+				if leaderFound && resp.Header.MemberId == resp.Leader {
+					t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
+				}
+				if !leaderFound {
+					leaderFound = resp.Header.MemberId == resp.Leader
+				}
+			}
+			if !leaderFound {
+				t.Fatal("no leader found")
+			}
+		})
 	}
 }

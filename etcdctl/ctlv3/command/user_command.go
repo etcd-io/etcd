@@ -31,8 +31,10 @@ var userShowDetail bool
 // NewUserCommand returns the cobra command for "user".
 func NewUserCommand() *cobra.Command {
 	ac := &cobra.Command{
-		Use:   "user <subcommand>",
-		Short: "User related commands",
+		Use:     "user <subcommand>",
+		Short:   "User related commands. Use `etcdctl user --help` to see subcommands",
+		Long:    "User related commands",
+		GroupID: groupAuthenticationID,
 	}
 
 	ac.AddCommand(newUserAddCommand())

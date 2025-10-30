@@ -28,8 +28,10 @@ import (
 // NewLeaseCommand returns the cobra command for "lease".
 func NewLeaseCommand() *cobra.Command {
 	lc := &cobra.Command{
-		Use:   "lease <subcommand>",
-		Short: "Lease related commands",
+		Use:     "lease <subcommand>",
+		Short:   "Lease related commands. Use `etcdctl lease --help` to see subcommands",
+		Long:    "Lease related commands",
+		GroupID: groupKVID,
 	}
 
 	lc.AddCommand(NewLeaseGrantCommand())

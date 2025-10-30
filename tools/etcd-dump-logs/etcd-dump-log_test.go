@@ -82,10 +82,10 @@ func TestEtcdDumpLogEntryType(t *testing.T) {
 			expected, err := os.ReadFile(path.Join(binDir, argtest.fileExpected))
 			require.NoError(t, err)
 
-			assert.EqualValues(t, string(expected), string(actual))
+			assert.Equal(t, string(expected), string(actual))
 			// The output files contains a lot of trailing whitespaces... difficult to diagnose without printing them explicitly.
 			// TODO(ptabor): Get rid of the whitespaces both in code and the test-files.
-			assert.EqualValues(t, strings.ReplaceAll(string(expected), " ", "_"), strings.ReplaceAll(string(actual), " ", "_"))
+			assert.Equal(t, strings.ReplaceAll(string(expected), " ", "_"), strings.ReplaceAll(string(actual), " ", "_"))
 		})
 	}
 }

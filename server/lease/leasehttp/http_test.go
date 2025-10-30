@@ -15,7 +15,6 @@
 package leasehttp
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,7 +41,7 @@ func TestRenewHTTP(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
 
-	ttl, err := RenewHTTP(context.TODO(), l.ID, ts.URL+LeasePrefix, http.DefaultTransport)
+	ttl, err := RenewHTTP(t.Context(), l.ID, ts.URL+LeasePrefix, http.DefaultTransport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +65,7 @@ func TestTimeToLiveHTTP(t *testing.T) {
 	ts := httptest.NewServer(NewHandler(le, waitReady))
 	defer ts.Close()
 
-	resp, err := TimeToLiveHTTP(context.TODO(), l.ID, true, ts.URL+LeaseInternalPrefix, http.DefaultTransport)
+	resp, err := TimeToLiveHTTP(t.Context(), l.ID, true, ts.URL+LeaseInternalPrefix, http.DefaultTransport)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,14 +79,14 @@ func TestTimeToLiveHTTP(t *testing.T) {
 
 func TestRenewHTTPTimeout(t *testing.T) {
 	testApplyTimeout(t, func(l *lease.Lease, serverURL string) error {
-		_, err := RenewHTTP(context.TODO(), l.ID, serverURL+LeasePrefix, http.DefaultTransport)
+		_, err := RenewHTTP(t.Context(), l.ID, serverURL+LeasePrefix, http.DefaultTransport)
 		return err
 	})
 }
 
 func TestTimeToLiveHTTPTimeout(t *testing.T) {
 	testApplyTimeout(t, func(l *lease.Lease, serverURL string) error {
-		_, err := TimeToLiveHTTP(context.TODO(), l.ID, true, serverURL+LeaseInternalPrefix, http.DefaultTransport)
+		_, err := TimeToLiveHTTP(t.Context(), l.ID, true, serverURL+LeaseInternalPrefix, http.DefaultTransport)
 		return err
 	})
 }

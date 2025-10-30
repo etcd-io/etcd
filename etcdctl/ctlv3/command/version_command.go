@@ -25,9 +25,10 @@ import (
 // NewVersionCommand prints out the version of etcd.
 func NewVersionCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
-		Short: "Prints the version of etcdctl",
-		Run:   versionCommandFunc,
+		Use:     "version",
+		Short:   "Prints the version of etcdctl",
+		Run:     versionCommandFunc,
+		GroupID: groupUtilityID,
 	}
 }
 

@@ -32,8 +32,10 @@ var (
 // NewRoleCommand returns the cobra command for "role".
 func NewRoleCommand() *cobra.Command {
 	ac := &cobra.Command{
-		Use:   "role <subcommand>",
-		Short: "Role related commands",
+		Use:     "role <subcommand>",
+		Short:   "Role related commands. Use `etcdctl role --help` to see subcommands",
+		Long:    "Role related commands",
+		GroupID: groupAuthenticationID,
 	}
 
 	ac.AddCommand(newRoleAddCommand())

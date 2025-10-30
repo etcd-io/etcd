@@ -101,7 +101,7 @@ func TestSet(t *testing.T) {
 	assert.Equal(t, "set", e.Action)
 	assert.Equal(t, "/foo", e.Node.Key)
 	assert.False(t, e.Node.Dir)
-	assert.Equal(t, "", *e.Node.Value)
+	assert.Empty(t, *e.Node.Value)
 	assert.Nil(t, e.Node.Nodes)
 	assert.Nil(t, e.Node.Expiration)
 	assert.Equal(t, int64(0), e.Node.TTL)
@@ -123,7 +123,7 @@ func TestSet(t *testing.T) {
 	// check prevNode
 	require.NotNil(t, e.PrevNode)
 	assert.Equal(t, "/foo", e.PrevNode.Key)
-	assert.Equal(t, "", *e.PrevNode.Value)
+	assert.Empty(t, *e.PrevNode.Value)
 	assert.Equal(t, uint64(1), e.PrevNode.ModifiedIndex)
 	// Set /foo="baz" (for testing prevNode)
 	eidx = 3
@@ -198,7 +198,7 @@ func TestStoreCreateValue(t *testing.T) {
 	assert.Equal(t, "create", e.Action)
 	assert.Equal(t, "/empty", e.Node.Key)
 	assert.False(t, e.Node.Dir)
-	assert.Equal(t, "", *e.Node.Value)
+	assert.Empty(t, *e.Node.Value)
 	assert.Nil(t, e.Node.Nodes)
 	assert.Nil(t, e.Node.Expiration)
 	assert.Equal(t, int64(0), e.Node.TTL)
@@ -271,7 +271,7 @@ func TestStoreUpdateValue(t *testing.T) {
 	assert.Equal(t, "update", e.Action)
 	assert.Equal(t, "/foo", e.Node.Key)
 	assert.False(t, e.Node.Dir)
-	assert.Equal(t, "", *e.Node.Value)
+	assert.Empty(t, *e.Node.Value)
 	assert.Equal(t, int64(0), e.Node.TTL)
 	assert.Equal(t, uint64(3), e.Node.ModifiedIndex)
 	// check prevNode
@@ -282,7 +282,7 @@ func TestStoreUpdateValue(t *testing.T) {
 
 	e, _ = s.Get("/foo", false, false)
 	assert.Equal(t, eidx, e.EtcdIndex)
-	assert.Equal(t, "", *e.Node.Value)
+	assert.Empty(t, *e.Node.Value)
 }
 
 // TestStoreUpdateFailsIfDirectory ensures that the store cannot update a directory.

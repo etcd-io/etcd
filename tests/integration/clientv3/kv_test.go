@@ -35,21 +35,21 @@ import (
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/api/v3/version"
 	clientv3 "go.etcd.io/etcd/client/v3"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestKVPutError(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	var (
 		maxReqBytes = 1.5 * 1024 * 1024                                // hard coded max in v3_server.go
 		quota       = int64(int(maxReqBytes*1.2) + 8*os.Getpagesize()) // make sure we have enough overhead in backend quota. See discussion in #6486.
 	)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, QuotaBackendBytes: quota, ClientMaxCallSendMsgSize: 100 * 1024 * 1024})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Put(ctx, "", "bar")
 	if !errors.Is(err, rpctypes.ErrEmptyKey) {
@@ -73,17 +73,17 @@ func TestKVPutError(t *testing.T) {
 }
 
 func TestKVPutWithLease(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	lapi := clus.RandClient()
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
-	lease, err := lapi.Grant(context.Background(), 10)
+	lease, err := lapi.Grant(t.Context(), 10)
 	if err != nil {
 		t.Fatalf("failed to create lease %v", err)
 	}
@@ -110,24 +110,24 @@ func TestKVPutWithLease(t *testing.T) {
 
 // TestKVPutWithIgnoreValue ensures that Put with WithIgnoreValue does not clobber the old value.
 func TestKVPutWithIgnoreValue(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
 
-	_, err := kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	_, err := kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
 	if !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	_, err = kv.Put(context.TODO(), "foo", "bar")
+	_, err = kv.Put(t.Context(), "foo", "bar")
 	require.NoError(t, err)
 
-	_, err = kv.Put(context.TODO(), "foo", "", clientv3.WithIgnoreValue())
+	_, err = kv.Put(t.Context(), "foo", "", clientv3.WithIgnoreValue())
 	require.NoError(t, err)
-	rr, rerr := kv.Get(context.TODO(), "foo")
+	rr, rerr := kv.Get(t.Context(), "foo")
 	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
@@ -139,31 +139,31 @@ func TestKVPutWithIgnoreValue(t *testing.T) {
 
 // TestKVPutWithIgnoreLease ensures that Put with WithIgnoreLease does not affect the existing lease for the key.
 func TestKVPutWithIgnoreLease(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
 
 	lapi := clus.RandClient()
 
-	resp, err := lapi.Grant(context.Background(), 10)
+	resp, err := lapi.Grant(t.Context(), 10)
 	if err != nil {
 		t.Errorf("failed to create lease %v", err)
 	}
 
-	if _, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
+	if _, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithIgnoreLease()); !errors.Is(err, rpctypes.ErrKeyNotFound) {
 		t.Fatalf("err expected %v, got %v", rpctypes.ErrKeyNotFound, err)
 	}
 
-	_, err = kv.Put(context.TODO(), "zoo", "bar", clientv3.WithLease(resp.ID))
+	_, err = kv.Put(t.Context(), "zoo", "bar", clientv3.WithLease(resp.ID))
 	require.NoError(t, err)
 
-	_, err = kv.Put(context.TODO(), "zoo", "bar1", clientv3.WithIgnoreLease())
+	_, err = kv.Put(t.Context(), "zoo", "bar1", clientv3.WithIgnoreLease())
 	require.NoError(t, err)
 
-	rr, rerr := kv.Get(context.TODO(), "zoo")
+	rr, rerr := kv.Get(t.Context(), "zoo")
 	require.NoError(t, rerr)
 	if len(rr.Kvs) != 1 {
 		t.Fatalf("len(rr.Kvs) expected 1, got %d", len(rr.Kvs))
@@ -174,9 +174,9 @@ func TestKVPutWithIgnoreLease(t *testing.T) {
 }
 
 func TestKVPutWithRequireLeader(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	clus.Members[1].Stop(t)
@@ -190,7 +190,7 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 	time.Sleep(time.Duration(3*electionTicks) * tickDuration)
 
 	kv := clus.Client(0)
-	_, err := kv.Put(clientv3.WithRequireLeader(context.Background()), "foo", "bar")
+	_, err := kv.Put(clientv3.WithRequireLeader(t.Context()), "foo", "bar")
 	if !errors.Is(err, rpctypes.ErrNoLeader) {
 		t.Fatal(err)
 	}
@@ -216,13 +216,13 @@ func TestKVPutWithRequireLeader(t *testing.T) {
 }
 
 func TestKVRange(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	keySet := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
 	for i, key := range keySet {
@@ -277,9 +277,9 @@ func TestKVRange(t *testing.T) {
 }
 
 func TestKVGetErrConnClosed(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -290,23 +290,23 @@ func TestKVGetErrConnClosed(t *testing.T) {
 
 	go func() {
 		defer close(donec)
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 	}()
 
 	select {
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}
 }
 
 func TestKVNewAfterClose(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
@@ -315,27 +315,27 @@ func TestKVNewAfterClose(t *testing.T) {
 
 	donec := make(chan struct{})
 	go func() {
-		_, err := cli.Get(context.TODO(), "foo")
+		_, err := cli.Get(t.Context(), "foo")
 		if !clientv3.IsConnCanceled(err) {
 			t.Errorf("expected %v, got %v", context.Canceled, err)
 		}
 		close(donec)
 	}()
 	select {
-	case <-time.After(integration2.RequestWaitTimeout):
+	case <-time.After(integration.RequestWaitTimeout):
 		t.Fatal("kv.Get took too long")
 	case <-donec:
 	}
 }
 
 func TestKVDeleteRange(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	tests := []struct {
 		key   string
@@ -378,13 +378,13 @@ func TestKVDeleteRange(t *testing.T) {
 }
 
 func TestKVCompactError(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	for i := 0; i < 5; i++ {
 		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
@@ -408,13 +408,13 @@ func TestKVCompactError(t *testing.T) {
 }
 
 func TestKVCompact(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	kv := clus.RandClient()
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	for i := 0; i < 10; i++ {
 		if _, err := kv.Put(ctx, "foo", "bar"); err != nil {
@@ -463,10 +463,10 @@ func TestKVCompact(t *testing.T) {
 
 // TestKVGetRetry ensures get will retry on disconnect.
 func TestKVGetRetry(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	clusterSize := 3
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: clusterSize, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: clusterSize, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// because killing leader and following election
@@ -474,7 +474,7 @@ func TestKVGetRetry(t *testing.T) {
 	fIdx := (clus.WaitLeader(t) + 1) % clusterSize
 
 	kv := clus.Client(fIdx)
-	ctx := context.TODO()
+	ctx := t.Context()
 
 	_, err := kv.Put(ctx, "foo", "bar")
 	require.NoError(t, err)
@@ -516,15 +516,15 @@ func TestKVGetRetry(t *testing.T) {
 
 // TestKVPutFailGetRetry ensures a get will retry following a failed put.
 func TestKVPutFailGetRetry(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	kv := clus.Client(0)
 	clus.Members[0].Stop(t)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	_, err := kv.Put(ctx, "foo", "bar")
 	if err == nil {
@@ -534,7 +534,7 @@ func TestKVPutFailGetRetry(t *testing.T) {
 	donec := make(chan struct{}, 1)
 	go func() {
 		// Get will fail, but reconnect will trigger
-		gresp, gerr := kv.Get(context.TODO(), "foo")
+		gresp, gerr := kv.Get(t.Context(), "foo")
 		if gerr != nil {
 			t.Error(gerr)
 		}
@@ -556,15 +556,15 @@ func TestKVPutFailGetRetry(t *testing.T) {
 
 // TestKVGetCancel tests that a context cancel on a Get terminates as expected.
 func TestKVGetCancel(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	oldconn := clus.Client(0).ActiveConnection()
 	kv := clus.Client(0)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	resp, err := kv.Get(ctx, "abc")
@@ -579,14 +579,14 @@ func TestKVGetCancel(t *testing.T) {
 
 // TestKVGetStoppedServerAndClose ensures closing after a failed Get works.
 func TestKVGetStoppedServerAndClose(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	// this Get fails and triggers an asynchronous connection retry
 	_, err := cli.Get(ctx, "abc")
 	cancel()
@@ -597,15 +597,15 @@ func TestKVGetStoppedServerAndClose(t *testing.T) {
 
 // TestKVPutStoppedServerAndClose ensures closing after a failed Put works.
 func TestKVPutStoppedServerAndClose(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cli := clus.Client(0)
 	clus.Members[0].Stop(t)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	// get retries on all errors.
 	// so here we use it to eat the potential broken pipe error for the next put.
 	// grpc client might see a broken pipe error when we issue the get request before
@@ -616,7 +616,7 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx, cancel = context.WithTimeout(context.TODO(), time.Second)
+	ctx, cancel = context.WithTimeout(t.Context(), time.Second)
 	// this Put fails and triggers an asynchronous connection retry
 	_, err = cli.Put(ctx, "abc", "123")
 	cancel()
@@ -628,11 +628,11 @@ func TestKVPutStoppedServerAndClose(t *testing.T) {
 // TestKVPutAtMostOnce ensures that a Put will only occur at most once
 // in the presence of network errors.
 func TestKVPutAtMostOnce(t *testing.T) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
-	_, err := clus.Client(0).Put(context.TODO(), "k", "1")
+	_, err := clus.Client(0).Put(t.Context(), "k", "1")
 	require.NoError(t, err)
 
 	for i := 0; i < 10; i++ {
@@ -645,14 +645,14 @@ func TestKVPutAtMostOnce(t *testing.T) {
 				time.Sleep(5 * time.Millisecond)
 			}
 		}()
-		_, err = clus.Client(0).Put(context.TODO(), "k", "v")
+		_, err = clus.Client(0).Put(t.Context(), "k", "v")
 		<-donec
 		if err != nil {
 			break
 		}
 	}
 
-	resp, err := clus.Client(0).Get(context.TODO(), "k")
+	resp, err := clus.Client(0).Get(t.Context(), "k")
 	require.NoError(t, err)
 	if resp.Kvs[0].Version > 11 {
 		t.Fatalf("expected version <= 10, got %+v", resp.Kvs[0])
@@ -661,7 +661,7 @@ func TestKVPutAtMostOnce(t *testing.T) {
 
 // TestKVLargeRequests tests various client/server side request limits.
 func TestKVLargeRequests(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	tests := []struct {
 		// make sure that "MaxCallSendMsgSize" < server-side default send/recv limit
 		maxRequestBytesServer  uint
@@ -718,8 +718,8 @@ func TestKVLargeRequests(t *testing.T) {
 		},
 	}
 	for i, test := range tests {
-		clus := integration2.NewCluster(t,
-			&integration2.ClusterConfig{
+		clus := integration.NewCluster(t,
+			&integration.ClusterConfig{
 				Size:                     1,
 				MaxRequestBytes:          test.maxRequestBytesServer,
 				ClientMaxCallSendMsgSize: test.maxCallSendBytesClient,
@@ -727,7 +727,7 @@ func TestKVLargeRequests(t *testing.T) {
 			},
 		)
 		cli := clus.Client(0)
-		_, err := cli.Put(context.TODO(), "foo", strings.Repeat("a", test.valueSize))
+		_, err := cli.Put(t.Context(), "foo", strings.Repeat("a", test.valueSize))
 
 		var etcdErr rpctypes.EtcdError
 		if errors.As(err, &etcdErr) {
@@ -740,7 +740,7 @@ func TestKVLargeRequests(t *testing.T) {
 
 		// put request went through, now expects large response back
 		if err == nil {
-			_, err = cli.Get(context.TODO(), "foo")
+			_, err = cli.Get(t.Context(), "foo")
 			if err != nil {
 				t.Errorf("#%d: get expected no error, got %v", i, err)
 			}
@@ -752,9 +752,9 @@ func TestKVLargeRequests(t *testing.T) {
 
 // TestKVForLearner ensures learner member only accepts serializable read request.
 func TestKVForLearner(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
@@ -783,7 +783,7 @@ func TestKVForLearner(t *testing.T) {
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
 	// this client only has endpoint of the learner member
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("failed to create clientv3: %v", err)
 	}
@@ -819,7 +819,7 @@ func TestKVForLearner(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-		_, err := cli.Do(context.TODO(), test.op)
+		_, err := cli.Do(t.Context(), test.op)
 		if err != nil && !test.wErr {
 			t.Errorf("%d: expect no error, got %v", idx, err)
 		}
@@ -831,9 +831,9 @@ func TestKVForLearner(t *testing.T) {
 
 // TestBalancerSupportLearner verifies that balancer's retry and failover mechanism supports cluster with learner member
 func TestBalancerSupportLearner(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, DisableStrictReconfigCheck: true})
 	defer clus.Terminate(t)
 
 	// we have to add and launch learner member after initial cluster was created, because
@@ -855,7 +855,7 @@ func TestBalancerSupportLearner(t *testing.T) {
 		DialTimeout: 5 * time.Second,
 		DialOptions: []grpc.DialOption{grpc.WithBlock()},
 	}
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	if err != nil {
 		t.Fatalf("failed to create clientv3: %v", err)
 	}
@@ -864,14 +864,14 @@ func TestBalancerSupportLearner(t *testing.T) {
 	// wait until learner member is ready
 	<-clus.Members[3].ReadyNotify()
 
-	if _, err = cli.Get(context.Background(), "foo"); err == nil {
+	if _, err = cli.Get(t.Context(), "foo"); err == nil {
 		t.Fatalf("expect Get request to learner to fail, got no error")
 	}
 	t.Logf("Expected: Read from learner error: %v", err)
 
 	eps := []string{learnerEp, clus.Members[0].GRPCURL}
 	cli.SetEndpoints(eps...)
-	if _, err := cli.Get(context.Background(), "foo"); err != nil {
+	if _, err := cli.Get(t.Context(), "foo"); err != nil {
 		t.Errorf("expect no error (balancer should retry when request to learner fails), got error: %v", err)
 	}
 }

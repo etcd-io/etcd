@@ -18,6 +18,7 @@ import (
 	"os"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 )
@@ -26,22 +27,22 @@ type tablePrinter struct{ printer }
 
 func (tp *tablePrinter) DBStatus(r snapshot.Status) {
 	hdr, rows := makeDBStatusTable(r)
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(hdr)
+	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
+	table.Header(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
-	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }
 
 func (tp *tablePrinter) DBHashKV(r HashKV) {
 	hdr, rows := makeDBHashKVTable(r)
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader(hdr)
+	cfgBuilder := tablewriter.NewConfigBuilder().WithRowAlignment(tw.AlignRight)
+	table := tablewriter.NewTable(os.Stdout, tablewriter.WithConfig(cfgBuilder.Build()))
+	table.Header(hdr)
 	for _, row := range rows {
 		table.Append(row)
 	}
-	table.SetAlignment(tablewriter.ALIGN_RIGHT)
 	table.Render()
 }

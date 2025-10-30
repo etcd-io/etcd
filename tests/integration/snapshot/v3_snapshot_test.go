@@ -16,6 +16,7 @@ package snapshot_test
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"net/url"
 	"os"
@@ -31,15 +32,16 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
+	"go.etcd.io/etcd/pkg/v3/cpuutil"
 	"go.etcd.io/etcd/server/v3/embed"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
 // from a snapshot file.
 func TestSnapshotV3RestoreSingle(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 
@@ -47,7 +49,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := integration2.NewEmbedConfig(t, "s1")
+	cfg := integration.NewEmbedConfig(t, "s1")
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
@@ -81,16 +83,14 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	}
 
 	var cli *clientv3.Client
-	cli, err = integration2.NewClient(t, clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}})
+	cli, err = integration.NewClient(t, clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}})
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
 		var gresp *clientv3.GetResponse
-		gresp, err = cli.Get(context.Background(), kvs[i].k)
+		gresp, err = cli.Get(t.Context(), kvs[i].k)
 		require.NoError(t, err)
-		if string(gresp.Kvs[0].Value) != kvs[i].v {
-			t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
-		}
+		require.Equalf(t, string(gresp.Kvs[0].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 	}
 }
 
@@ -98,7 +98,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 // can boot into the same cluster after being restored from a same
 // snapshot file.
 func TestSnapshotV3RestoreMulti(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 
@@ -114,30 +114,30 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < clusterN; i++ {
-		cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[i].String()}})
+		cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[i].String()}})
 		require.NoError(t, err)
 		defer cli.Close()
 		for i := range kvs {
 			var gresp *clientv3.GetResponse
-			gresp, err = cli.Get(context.Background(), kvs[i].k)
+			gresp, err = cli.Get(t.Context(), kvs[i].k)
 			require.NoError(t, err)
-			if string(gresp.Kvs[0].Value) != kvs[i].v {
-				t.Fatalf("#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
-			}
+			require.Equalf(t, string(gresp.Kvs[0].Value), kvs[i].v, "#%d: value expected %s, got %s", i, kvs[i].v, gresp.Kvs[0].Value)
 		}
 	}
 }
 
 // TestCorruptedBackupFileCheck tests if we can correctly identify a corrupted backup file.
 func TestCorruptedBackupFileCheck(t *testing.T) {
-	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
-	integration2.BeforeTest(t)
-	if _, err := os.Stat(dbPath); err != nil {
-		t.Fatalf("test file [%s] does not exist: %v", dbPath, err)
+	if cpuutil.ByteOrder() == binary.BigEndian {
+		t.Skipf("skipping on big endian platforms since testdata/corrupted_backup.db is in little endian format")
 	}
+	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
+	integration.BeforeTest(t)
+	_, err := os.Stat(dbPath)
+	require.NoErrorf(t, err, "test file [%s] does not exist: %v", dbPath, err)
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
-	_, err := sp.Status(dbPath)
+	_, err = sp.Status(dbPath)
 	expectedErrKeywords := "snapshot file integrity check failed"
 	/* example error message:
 	snapshot file integrity check failed. 2 errors found.
@@ -166,7 +166,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := integration2.NewEmbedConfig(t, "default")
+	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = pURLs, pURLs
@@ -183,11 +183,11 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
-	cli, err := integration2.NewClient(t, ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
-		ctx, cancel := context.WithTimeout(context.Background(), testutil.RequestTimeout)
+		ctx, cancel := context.WithTimeout(t.Context(), testutil.RequestTimeout)
 		_, err = cli.Put(ctx, kvs[i].k, kvs[i].v)
 		cancel()
 		require.NoError(t, err)
@@ -195,7 +195,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 
 	sp := snapshot.NewV3(zaptest.NewLogger(t))
 	dpPath := filepath.Join(t.TempDir(), fmt.Sprintf("snapshot%d.db", time.Now().Nanosecond()))
-	_, err = sp.Save(context.Background(), ccfg, dpPath)
+	_, err = sp.Save(t.Context(), ccfg, dpPath)
 	require.NoError(t, err)
 	return dpPath
 }
@@ -218,7 +218,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 
 	cfgs := make([]*embed.Config, clusterN)
 	for i := 0; i < clusterN; i++ {
-		cfg := integration2.NewEmbedConfig(t, fmt.Sprintf("m%d", i))
+		cfg := integration.NewEmbedConfig(t, fmt.Sprintf("m%d", i))
 		cfg.InitialClusterToken = testClusterTkn
 		cfg.ClusterState = "existing"
 		cfg.ListenClientUrls, cfg.AdvertiseClientUrls = []url.URL{cURLs[i]}, []url.URL{cURLs[i]}
@@ -270,7 +270,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 func newEmbedURLs(t testutil.TB, n int) (urls []url.URL) {
 	urls = make([]url.URL, n)
 	for i := 0; i < n; i++ {
-		l := integration2.NewLocalListener(t)
+		l := integration.NewLocalListener(t)
 		defer l.Close()
 
 		u, err := url.Parse(fmt.Sprintf("unix://%s", l.Addr()))

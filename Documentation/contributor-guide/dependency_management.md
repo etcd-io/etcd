@@ -57,7 +57,7 @@ cd ${ETCD_ROOT_DIR}/etcdctl
 go get github.com/spf13/cobra@v1.7.0
 go mod tidy
 cd ..
-./scripts/fix.sh
+make fix # This will update the bill of materials, Go modules and workspace, etc.
 ```
 
 Execute the same steps for all other modules. When you finish bumping the dependency for all modules, then commit the change,
@@ -120,12 +120,18 @@ and everyone is welcome to participate; you just need to register your name in t
 
 Usually, we don't proactively bump dependencies for stable releases unless there are any CVEs or bugs that affect etcd.
 
-If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh` in release-3.4, so no need to
+If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh`/`make fix` in release-3.4, so no need to
 execute it for 3.4.
 
 ## Golang versions
 
-The etcd project aims to maintain a development branch that is on the latest [Go version](https://go.dev/dl), ideally, this will align with the Go version in use for Kubernetes project development. For an example of how to update etcd to a new minor release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16393> and the linked pull requests.
+For all libraries that exist as independent subprojects (e.g., bbolt, raft, gofail), we should always stick
+to the oldest supported Go minor version for all branches, including main. It's up to the users of these
+libraries to choose which [Go version](https://go.dev/dl) they want to use in their own projects.
+
+For other subprojects that produce binaries or images (e.g. etcd, etcd-operator, auger), the main
+branches should use the latest Go minor version for development, while stable releases should use the
+latest patch of the previous supported Go minor version to ensure stability.
 
 Suggested steps for performing a minor version upgrade for the etcd development branch:
 
@@ -147,11 +153,11 @@ References:
 
 [bbolt](https://github.com/etcd-io/bbolt) and [raft](https://github.com/etcd-io/raft) are two core dependencies of etcd.
 
-Both etcd 3.4.x and 3.5.x depend on bbolt 1.3.x, and etcd 3.6.x (`main` branch) depends on bbolt 1.4.x.
+Both etcd 3.4.x and 3.5.x depend on bbolt 1.3.x, and etcd 3.6.x depends on bbolt 1.4.x.
 
 raft is included in the etcd repository for release-3.4 and release-3.5 branches, so etcd 3.4.x and 3.5.x do not depend on any
-external raft module. We moved raft into [a separate repository](https://github.com/etcd-io/raft) starting from 3.6 (`main` branch), and the first raft
-release will be v3.6.0, so etcd 3.6.x will depend on raft 3.6.x.
+external raft module. We moved raft into [a separate repository](https://github.com/etcd-io/raft) starting from 3.6, and the first raft
+release is v3.6.0, so etcd 3.6.0 depends on raft v3.6.0.
 
 Please see the table below:
 

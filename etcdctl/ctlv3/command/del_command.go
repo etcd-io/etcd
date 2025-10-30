@@ -35,9 +35,10 @@ var (
 // NewDelCommand returns the cobra command for "del".
 func NewDelCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "del [options] <key> [range_end]",
-		Short: "Removes the specified key or range of keys [key, range_end)",
-		Run:   delCommandFunc,
+		Use:     "del [options] <key> [range_end]",
+		Short:   "Removes the specified key or range of keys [key, range_end)",
+		Run:     delCommandFunc,
+		GroupID: groupKVID,
 	}
 
 	cmd.Flags().BoolVar(&delPrefix, "prefix", false, "delete keys with matching prefix")

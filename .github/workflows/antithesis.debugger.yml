@@ -1,0 +1,44 @@
+---
+name: Trigger Antithesis debugger
+
+on:
+  workflow_dispatch:
+    inputs:
+      session_id:
+        description: "The session_id of a test. Found at the bottom of a report."
+        required: true
+        type: string
+      input_hash:
+        description: "The input hash of a moment."
+        required: true
+        type: string
+      vtime:
+        description: "The vtime of a moment."
+        required: true
+        type: string
+      email:
+        description: 'Email notification recipient(s) (separate with ;)'
+        required: false
+        type: string
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  trigger-debugger:
+    runs-on: ubuntu-latest
+    environment: Antithesis
+    steps:
+      - name: Trigger Antithesis Debugger
+        uses: antithesishq/antithesis-trigger-action@6c0a27302c0a3cd97d87d40bd6704e673abed4bb # v0.9
+        with:
+          notebook_name: debugging
+          tenant: linuxfoundation
+          username: ${{ secrets.ANTITHESIS_WEBHOOK_USERNAME }}
+          password: ${{ secrets.ANTITHESIS_WEBHOOK_PASSWORD }}
+          github_token: ${{ secrets.GH_PAT }}
+          email_recipients: ${{ inputs.email || 'siarkowicz@google.com' }}
+          additional_parameters: |-
+            antithesis.debugging.session_id = ${{ inputs.session_id }}
+            antithesis.debugging.input_hash = ${{ inputs.input_hash }}
+            antithesis.debugging.vtime = ${{ inputs.vtime }}

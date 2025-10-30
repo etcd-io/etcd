@@ -28,7 +28,7 @@ import (
 
 func TestEndpointStatus(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
@@ -41,7 +41,7 @@ func TestEndpointStatus(t *testing.T) {
 
 func TestEndpointHashKV(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()
@@ -72,7 +72,7 @@ func TestEndpointHashKV(t *testing.T) {
 
 func TestEndpointHealth(t *testing.T) {
 	testRunner.BeforeTest(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	clus := testRunner.NewCluster(ctx, t)
 	defer clus.Close()

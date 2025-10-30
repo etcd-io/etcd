@@ -1,4 +1,17 @@
 #!/usr/bin/env bash
+# Copyright 2025 The etcd Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Run all etcd tests
 # ./scripts/test.sh
@@ -57,7 +70,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
   exec > >(tee -a "${OUTPUT_FILE}") 2>&1
 fi
 
-PASSES=${PASSES:-"gofmt bom dep build unit"}
+PASSES=${PASSES:-"bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
@@ -65,6 +78,18 @@ MARKDOWN_MARKER_VERSION=${MARKDOWN_MARKER_VERSION:="v0.10.0"}
 
 if [ -z "${GOARCH:-}" ]; then
   GOARCH=$(go env GOARCH);
+fi
+
+if [ -z "${OS:-}" ]; then
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -z "${ARCH:-}" ]; then
+  ARCH=$(uname -m)
+
+  if [ "$ARCH" = "arm64" ]; then
+    ARCH="aarch64"
+  fi
 fi
 
 # determine whether target supports race detection
@@ -331,7 +356,7 @@ function shellcheck_pass {
   SHELLCHECK=shellcheck
   if ! tool_exists "shellcheck" "https://github.com/koalaman/shellcheck#installing"; then
     log_callout "Installing shellcheck $SHELLCHECK_VERSION"
-    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
+    wget -qO- "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.${OS}.${ARCH}.tar.xz" | tar -xJv -C /tmp/ --strip-components=1
     mkdir -p ./bin
     mv /tmp/shellcheck ./bin/
     SHELLCHECK=./bin/shellcheck
@@ -356,7 +381,14 @@ function markdown_marker_pass {
   # TODO: check other markdown files when marker handles headers with '[]'
   if ! tool_exists "$marker" "https://crates.io/crates/marker"; then
     log_callout "Installing markdown marker $MARKDOWN_MARKER_VERSION"
-    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-x86_64-unknown-linux-musl.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
+    MARKER_OS=$OS
+    if [ "$OS" = "darwin" ]; then
+      MARKER_OS="apple-darwin"
+    elif [ "$OS" = "linux" ]; then
+      MARKER_OS="unknown-linux-musl"
+    fi
+
+    wget -qO- "https://github.com/crawford/marker/releases/download/${MARKDOWN_MARKER_VERSION}/marker-${MARKDOWN_MARKER_VERSION}-${ARCH}-${MARKER_OS}.tar.gz" | tar -xzv -C /tmp/ --strip-components=1 >/dev/null
     mkdir -p ./bin
     mv /tmp/marker ./bin/
     marker=./bin/marker
@@ -366,127 +398,39 @@ function markdown_marker_pass {
 }
 
 function govuln_pass {
+  run go install golang.org/x/vuln/cmd/govulncheck@latest
   run_for_modules run govulncheck -show verbose
 }
 
-function govet_pass {
-  run_for_modules generic_checker run go vet
-}
-
-function govet_shadow_per_package {
-  local shadow
-  shadow=$1
-
-  # skip grpc_gateway packages because
-  #
-  # stderr: etcdserverpb/gw/rpc.pb.gw.go:2100:3: declaration of "ctx" shadows declaration at line 2005
-  local skip_pkgs=(
-    "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb/gw"
-  )
-
-  local pkgs=()
-  while IFS= read -r line; do
-    local in_skip_pkgs="false"
-
-    for pkg in "${skip_pkgs[@]}"; do
-      if [ "${pkg}" == "${line}" ]; then
-        in_skip_pkgs="true"
-        break
-      fi
-    done
-
-    if [ "${in_skip_pkgs}" == "true" ]; then
-      continue
-    fi
-
-    pkgs+=("${line}")
-  done < <(go list ./...)
-
-  run go vet -all -vettool="${shadow}" "${pkgs[@]}"
-}
-
-function govet_shadow_pass {
-  local shadow
-  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
-
-  run_for_modules generic_checker govet_shadow_per_package "${shadow}"
-}
-
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
+  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
 function lint_fix_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
-}
-
-function license_header_per_module {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
-}
-
-function license_header_pass {
-  run_for_modules generic_checker license_header_per_module
-}
-
-# goword_for_package package
-# checks spelling and comments in the 'package' in the current module
-#
-function goword_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  
-  local gowordRes
-
-  # spellchecking can be enabled with GOBINARGS="--tags=spell"
-  # but it requires heavy dependencies installation, like:
-  # apt-get install libaspell-dev libhunspell-dev hunspell-en-us aspell-en
-
-  # only check for broke exported godocs
-  if gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${gofiles[@]}" | grep godoc-export | sort); then
-    log_error -e "goword checking failed:\\n${gowordRes}"
-    return 255
-  fi
-  if [ -n "$gowordRes" ]; then
-    log_error -e "goword checking returned output:\\n${gowordRes}"
-    return 255
-  fi
-}
-
-
-function goword_pass {
-  run_for_modules goword_for_package || return 255
-}
-
-function go_fmt_for_package {
-  # We utilize 'go fmt' to find all files suitable for formatting,
-  # but reuse full power gofmt to perform just RO check.
-  go fmt -n "$1" | sed 's| -w | -d |g' | sh
-}
-
-function gofmt_pass {
-  run_for_modules generic_checker go_fmt_for_package
+  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
 function bom_pass {
   log_callout "Checking bill of materials..."
-  # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  # shellcheck disable=SC2207
-  modules=($(modules_for_bom))
+  local _bom_modules=()
+  load_workspace_relative_modules_for_bom _bom_modules
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
-  output=$(GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  # Intentionally run the command once first, so it fetches dependencies. The exit code on the first
+  # run in a just cloned repository is always dirty.
+  GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
+    --override-file ./bill-of-materials.override.json "${_bom_modules[@]}" &>/dev/null
+
+  # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
+  # results in certain dependencies being excluded from the BOM file, such as procfs.
+  # For more info, https://github.com/etcd-io/etcd/issues/19665
+  output=$(GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
-    "${modules[@]}")
-  code="$?"
+    "${_bom_modules[@]}")
+  local code="$?"
 
   run cp go.sum.tmp go.sum || return 2
   run cp go.mod.tmp go.mod || return 2
@@ -504,41 +448,61 @@ function bom_pass {
   rm bom-now.json.tmp
 }
 
+function module_gomodguard {
+  if [ ! -f .gomodguard.yaml ]; then
+    # Nothing to validate, return.
+    return
+  fi
+
+  local tool_bin="$1"
+  run "${tool_bin}"
+}
+
+function gomodguard_pass {
+  local tool_bin
+  tool_bin=$(tool_get_bin github.com/ryancurrah/gomodguard/cmd/gomodguard)
+  run_for_workspace_modules module_gomodguard "${tool_bin}"
+}
+
 ######## VARIOUS CHECKERS ######################################################
 
-function dump_deps_of_module() {
+function dump_module_deps() {
+  local json_mod
+  json_mod=$(run go mod edit -json)
+
   local module
-  if ! module=$(run go mod edit -json | jq -r .Module.Path); then
+  if ! module=$(echo "${json_mod}" | jq -r .Module.Path); then
     return 255
   fi
-  run go mod edit -json | jq -r '.Require[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
+
+  local require
+  require=$(echo "${json_mod}" | jq -r '.Require')
+  if [ "$require" == "null" ]; then
+    return 0
+  fi
+
+  echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
 function dep_pass {
   local all_dependencies
-  local tools_mod_dependencies
-  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
-  # tools/mod is a special case. It is a module that is not included in the
-  # module list from test_lib.sh. However, we need to ensure that the
-  # dependency versions match the rest of the project. Therefore, explicitly
-  # execute the command for tools/mod, and append its dependencies to the list.
-  tools_mod_dependencies=$(run_for_module "tools/mod" dump_deps_of_module "./...") || return 2
-  all_dependencies="${all_dependencies}"$'\n'"${tools_mod_dependencies}"
+  all_dependencies=$(run_for_workspace_modules dump_module_deps | sort) || return 2
 
   local duplicates
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
 
-  for dup in ${duplicates}; do
-    log_error "FAIL: inconsistent versions for dependency: ${dup}"
-    echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
-  done
   if [[ -n "${duplicates}" ]]; then
+    for dup in ${duplicates}; do
+      log_error "FAIL: inconsistent versions for dependency: ${dup}"
+      echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
+    done
+
     log_error "FAIL: inconsistent dependencies"
     return 2
-  else
-    log_success "SUCCESS: dependencies are consistent across modules"
   fi
+
+  log_success "SUCCESS: dependencies are consistent across modules"
 }
 
 function release_pass {
@@ -565,7 +529,7 @@ function release_pass {
   UPGRADE_VER=$(git ls-remote --tags https://github.com/etcd-io/etcd.git \
     | grep --only-matching --perl-regexp "(?<=v)${binary_major}.${previous_minor}.[\d]+?(?=[\^])" \
     | sort --numeric-sort --key 1.5 | tail -1 | sed 's/^/v/')
-  log_callout "Found latest release: ${UPGRADE_VER}."
+  log_callout "Found previous minor version (v${binary_major}.${previous_minor}) latest release: ${UPGRADE_VER}."
 
   if [ -n "${MANUAL_VER:-}" ]; then
     # in case, we need to test against different version
@@ -596,17 +560,50 @@ function release_pass {
       ;;
   esac
 
-  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1
+  tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1 --no-same-owner
   mkdir -p ./bin
   mv /tmp/etcd ./bin/etcd-last-release
 }
 
-function mod_tidy_for_module {
-  run go mod tidy -diff
+function release_tests_pass {
+  if [ -z "${VERSION:-}" ]; then
+    VERSION=$(go list -m go.etcd.io/etcd/api/v3 2>/dev/null | \
+     awk '{split(substr($2,2), a, "."); print a[1]"."a[2]".99"}')
+  fi
+
+  if [ -n "${CI:-}" ]; then
+    git config user.email "prow@etcd.io"
+    git config user.name "Prow"
+
+    gpg --batch --gen-key <<EOF
+%no-protection
+Key-Type: 1
+Key-Length: 2048
+Subkey-Type: 1
+Subkey-Length: 2048
+Name-Real: Prow
+Name-Email: prow@etcd.io
+Expire-Date: 0
+EOF
+
+    git remote add origin https://github.com/etcd-io/etcd.git
+  fi
+
+  DRY_RUN=true run "${ETCD_ROOT_DIR}/scripts/release.sh" --no-upload --no-docker-push --no-gh-release --in-place "${VERSION}"
+  VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
 function mod_tidy_pass {
-  run_for_modules generic_checker mod_tidy_for_module
+  run_for_workspace_modules run go mod tidy -diff
+}
+
+function module_mod_tidy_fix {
+  run rm ./go.sum
+  run go mod tidy || return 2
+}
+
+function mod_tidy_fix_pass {
+  run_for_workspace_modules module_mod_tidy_fix
 }
 
 function proto_annotations_pass {
@@ -615,6 +612,17 @@ function proto_annotations_pass {
 
 function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
+}
+
+function go_workspace_pass {
+  log_callout "Ensuring go workspace is in sync."
+
+  run go mod download
+  if [ -n "$(git status --porcelain go.work.sum)" ]; then
+    log_error "Go workspace not in sync."
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
+  fi
 }
 
 ########### MAIN ###############################################################

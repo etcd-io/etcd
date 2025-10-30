@@ -29,7 +29,6 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/pkg/v3/flags"
 )
 
 var (
@@ -40,8 +39,10 @@ var (
 // NewEndpointCommand returns the cobra command for "endpoint".
 func NewEndpointCommand() *cobra.Command {
 	ec := &cobra.Command{
-		Use:   "endpoint <subcommand>",
-		Short: "Endpoint related commands",
+		Use:     "endpoint <subcommand>",
+		Short:   "Endpoint related commands. Use `etcdctl endpoint --help` to see subcommands",
+		Long:    "Endpoint related commands",
+		GroupID: groupClusterMaintenanceID,
 	}
 
 	ec.PersistentFlags().BoolVar(&epClusterEndpoints, "cluster", false, "use all endpoints from the cluster member list")
@@ -96,8 +97,6 @@ func epHealthCommandFunc(cmd *cobra.Command, args []string) {
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
-	flags.SetPflagsFromEnv(lg, "ETCDCTL", cmd.InheritedFlags())
-	initDisplayFromCmd(cmd)
 
 	cfgSpec := clientConfigFromCmd(cmd)
 
@@ -253,10 +252,24 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 		return endpoints
 	}
 
-	cfgSpec := clientConfigFromCmd(cmd)
+	sec := secureCfgFromCmd(cmd)
+	dt := dialTimeoutFromCmd(cmd)
+	ka := keepAliveTimeFromCmd(cmd)
+	kat := keepAliveTimeoutFromCmd(cmd)
+	eps, err := endpointsFromCmd(cmd)
+	if err != nil {
+		cobrautl.ExitWithError(cobrautl.ExitError, err)
+	}
 	// exclude auth for not asking needless password (MemberList() doesn't need authentication)
 	lg, _ := logutil.CreateDefaultZapLogger(zap.InfoLevel)
-	cfg, err := clientv3.NewClientConfig(cfgSpec, lg)
+
+	cfg, err := clientv3.NewClientConfig(&clientv3.ConfigSpec{
+		Endpoints:        eps,
+		DialTimeout:      dt,
+		KeepAliveTime:    ka,
+		KeepAliveTimeout: kat,
+		Secure:           sec,
+	}, lg)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}

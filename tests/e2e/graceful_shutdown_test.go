@@ -47,7 +47,7 @@ func TestGracefulShutdown(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			testRunner := e2e.NewE2eRunner()
 			testRunner.BeforeTest(t)
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterSize(tc.clusterSize))
 			// clean up orphaned resources like closing member client.

@@ -35,6 +35,7 @@ func (d dummyAuthTokenBundle) UpdateAuthToken(token string) {
 func TestClientShouldRefreshToken(t *testing.T) {
 	type fields struct {
 		authTokenBundle credentials.PerRPCCredentialsBundle
+		token           string
 	}
 	type args struct {
 		err      error
@@ -118,11 +119,21 @@ func TestClientShouldRefreshToken(t *testing.T) {
 			args: args{rpctypes.ErrGRPCAuthFailed, optsWithFalse},
 			want: false,
 		},
+		{
+			name: "User provided token, ErrGRPCInvalidAuthToken",
+			fields: fields{
+				authTokenBundle: nil,
+				token:           "user-supplied-token",
+			},
+			args: args{rpctypes.ErrGRPCInvalidAuthToken, optsWithTrue},
+			want: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &Client{
 				authTokenBundle: tt.fields.authTokenBundle,
+				Token:           tt.fields.token,
 			}
 			if got := c.shouldRefreshToken(tt.args.err, tt.args.callOpts); got != tt.want {
 				t.Errorf("shouldRefreshToken() = %v, want %v", got, tt.want)

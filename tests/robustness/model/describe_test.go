@@ -18,9 +18,9 @@ import (
 	"errors"
 	"testing"
 
-	"go.etcd.io/etcd/api/v3/mvccpb"
-
 	"github.com/stretchr/testify/assert"
+
+	"go.etcd.io/etcd/api/v3/mvccpb"
 )
 
 func TestModelDescribe(t *testing.T) {
@@ -126,8 +126,8 @@ func TestModelDescribe(t *testing.T) {
 		},
 		{
 			req:            defragmentRequest(),
-			resp:           defragmentResponse(10),
-			expectDescribe: `defragment() -> ok, rev: 10`,
+			resp:           defragmentResponse(),
+			expectDescribe: `defragment() -> ok`,
 		},
 		{
 			req:            listRequest("key11", 0),

@@ -20,8 +20,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	recipe "go.etcd.io/etcd/client/v3/experimental/recipes"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 const (
@@ -31,9 +33,9 @@ const (
 
 // TestQueueOneReaderOneWriter confirms the queue is FIFO
 func TestQueueOneReaderOneWriter(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	done := make(chan struct{})
@@ -57,12 +59,8 @@ func TestQueueOneReaderOneWriter(t *testing.T) {
 	q := recipe.NewQueue(etcdc, "testq")
 	for i := 0; i < 5; i++ {
 		s, err := q.Dequeue()
-		if err != nil {
-			t.Fatalf("error dequeueing (%v)", err)
-		}
-		if s != fmt.Sprintf("%d", i) {
-			t.Fatalf("expected dequeue value %v, got %v", s, i)
-		}
+		require.NoErrorf(t, err, "error dequeueing (%v)", err)
+		require.Equalf(t, s, fmt.Sprintf("%d", i), "expected dequeue value %v, got %v", s, i)
 	}
 }
 
@@ -80,10 +78,10 @@ func TestQueueManyReaderManyWriter(t *testing.T) {
 
 // BenchmarkQueue benchmarks Queues using many/many readers/writers
 func BenchmarkQueue(b *testing.B) {
-	integration2.BeforeTest(b)
+	integration.BeforeTest(b)
 
 	// XXX switch tests to use TB interface
-	clus := integration2.NewCluster(nil, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(nil, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	for i := 0; i < b.N; i++ {
 		testQueueNReaderMWriter(nil, manyQueueClients, manyQueueClients)
@@ -92,9 +90,9 @@ func BenchmarkQueue(b *testing.B) {
 
 // TestPrQueueOneReaderOneWriter tests whether priority queues respect priorities.
 func TestPrQueueOneReaderOneWriter(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// write out five items with random priority
@@ -103,32 +101,25 @@ func TestPrQueueOneReaderOneWriter(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		// [0, 2] priority for priority collision to test seq keys
 		pr := uint16(rand.Intn(3))
-		if err := q.Enqueue(fmt.Sprintf("%d", pr), pr); err != nil {
-			t.Fatalf("error enqueuing (%v)", err)
-		}
+		require.NoErrorf(t, q.Enqueue(fmt.Sprintf("%d", pr), pr), "error enqueuing")
 	}
 
 	// read back items; confirm priority order is respected
 	lastPr := -1
 	for i := 0; i < 5; i++ {
 		s, err := q.Dequeue()
-		if err != nil {
-			t.Fatalf("error dequeueing (%v)", err)
-		}
+		require.NoErrorf(t, err, "error dequeueing (%v)", err)
 		curPr := 0
-		if _, err := fmt.Sscanf(s, "%d", &curPr); err != nil {
-			t.Fatalf(`error parsing item "%s" (%v)`, s, err)
-		}
-		if lastPr > curPr {
-			t.Fatalf("expected priority %v > %v", curPr, lastPr)
-		}
+		_, err = fmt.Sscanf(s, "%d", &curPr)
+		require.NoErrorf(t, err, `error parsing item "%s" (%v)`, s, err)
+		require.LessOrEqualf(t, lastPr, curPr, "expected priority %v > %v", curPr, lastPr)
 	}
 }
 
 func TestPrQueueManyReaderManyWriter(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	rqs := newPriorityQueues(clus, manyQueueClients)
 	wqs := newPriorityQueues(clus, manyQueueClients)
@@ -137,10 +128,10 @@ func TestPrQueueManyReaderManyWriter(t *testing.T) {
 
 // BenchmarkPrQueueOneReaderOneWriter benchmarks Queues using n/n readers/writers
 func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
-	integration2.BeforeTest(b)
+	integration.BeforeTest(b)
 
 	// XXX switch tests to use TB interface
-	clus := integration2.NewCluster(nil, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(nil, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(nil)
 	rqs := newPriorityQueues(clus, 1)
 	wqs := newPriorityQueues(clus, 1)
@@ -150,13 +141,13 @@ func BenchmarkPrQueueOneReaderOneWriter(b *testing.B) {
 }
 
 func testQueueNReaderMWriter(t *testing.T, n int, m int) {
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 	testReadersWriters(t, newQueues(clus, n), newQueues(clus, m))
 }
 
-func newQueues(clus *integration2.Cluster, n int) (qs []testQueue) {
+func newQueues(clus *integration.Cluster, n int) (qs []testQueue) {
 	for i := 0; i < n; i++ {
 		etcdc := clus.RandClient()
 		qs = append(qs, recipe.NewQueue(etcdc, "q"))
@@ -164,7 +155,7 @@ func newQueues(clus *integration2.Cluster, n int) (qs []testQueue) {
 	return qs
 }
 
-func newPriorityQueues(clus *integration2.Cluster, n int) (qs []testQueue) {
+func newPriorityQueues(clus *integration.Cluster, n int) (qs []testQueue) {
 	for i := 0; i < n; i++ {
 		etcdc := clus.RandClient()
 		q := &flatPriorityQueue{recipe.NewPriorityQueue(etcdc, "prq")}

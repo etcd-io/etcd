@@ -134,7 +134,7 @@ func TestResolveTCPAddrs(t *testing.T) {
 			}
 			return &net.TCPAddr{IP: net.ParseIP(tt.hostMap[host]), Port: i, Zone: ""}, nil
 		}
-		ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 		urls, err := resolveTCPAddrs(ctx, zaptest.NewLogger(t), tt.urls)
 		cancel()
 		if tt.hasError {
@@ -305,7 +305,7 @@ func TestURLsEqual(t *testing.T) {
 	}
 
 	for i, test := range tests {
-		result, err := urlsEqual(context.TODO(), zaptest.NewLogger(t), test.a, test.b)
+		result, err := urlsEqual(t.Context(), zaptest.NewLogger(t), test.a, test.b)
 		assert.Equalf(t, result, test.expect, "idx=%d #%d: a:%v b:%v, expected %v but %v", i, test.n, test.a, test.b, test.expect, result)
 		if test.err != nil {
 			if err.Error() != test.err.Error() {
@@ -342,7 +342,7 @@ func TestURLStringsEqual(t *testing.T) {
 	for idx, c := range cases {
 		t.Logf("TestURLStringsEqual, case #%d", idx)
 		resolveTCPAddr = c.resolver
-		result, err := URLStringsEqual(context.TODO(), zaptest.NewLogger(t), c.urlsA, c.urlsB)
+		result, err := URLStringsEqual(t.Context(), zaptest.NewLogger(t), c.urlsA, c.urlsB)
 		assert.Truef(t, result, "unexpected result %v", result)
 		assert.NoErrorf(t, err, "unexpected error %v", err)
 	}

@@ -104,7 +104,6 @@ func TestApplyRepeat(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		uberApply:    uberApplierMock{},
 	}
@@ -149,7 +148,7 @@ func TestApplyRepeat(t *testing.T) {
 
 type uberApplierMock struct{}
 
-func (uberApplierMock) Apply(r *pb.InternalRaftRequest) *apply2.Result {
+func (uberApplierMock) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership.ShouldApplyV3) *apply2.Result {
 	return &apply2.Result{}
 }
 
@@ -790,7 +789,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
-		SyncTicker:   &time.Ticker{},
 		consistIndex: ci,
 		beHooks:      serverstorage.NewBackendHooks(lg, ci),
 	}
@@ -885,7 +883,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),
 		cluster:           cl,
-		SyncTicker:        &time.Ticker{},
 		consistIndex:      ci,
 		beHooks:           serverstorage.NewBackendHooks(lg, ci),
 		firstCommitInTerm: notify.NewNotifier(),
@@ -980,13 +977,12 @@ func TestAddMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
 	m := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"foo"}}}
-	_, err := s.AddMember(context.Background(), m)
+	_, err := s.AddMember(t.Context(), m)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1037,7 +1033,6 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
@@ -1052,7 +1047,7 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	if types.ID(m.To) == s.MemberID() {
 		t.Fatalf("m.To (%d) is expected to mismatch s.MemberID (%d)", m.To, s.MemberID())
 	}
-	err := s.Process(context.Background(), m)
+	err := s.Process(t.Context(), m)
 	if err == nil {
 		t.Fatalf("Must ignore the message and return an error")
 	}
@@ -1087,12 +1082,11 @@ func TestRemoveMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
-	_, err := s.RemoveMember(context.Background(), 1234)
+	_, err := s.RemoveMember(t.Context(), 1234)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1136,13 +1130,12 @@ func TestUpdateMember(t *testing.T) {
 		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
-		SyncTicker:   &time.Ticker{},
 		consistIndex: cindex.NewFakeConsistentIndex(0),
 		beHooks:      serverstorage.NewBackendHooks(lg, nil),
 	}
 	s.start()
 	wm := membership.Member{ID: 1234, RaftAttributes: membership.RaftAttributes{PeerURLs: []string{"http://127.0.0.1:1"}}}
-	_, err := s.UpdateMember(context.Background(), wm)
+	_, err := s.UpdateMember(t.Context(), wm)
 	gaction := n.Action()
 	s.Stop()
 
@@ -1166,7 +1159,7 @@ func TestPublishV3(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
@@ -1181,7 +1174,6 @@ func TestPublishV3(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
@@ -1208,24 +1200,23 @@ func TestPublishV3(t *testing.T) {
 
 // TestPublishV3Stopped tests that publish will be stopped if server is stopped.
 func TestPublishV3Stopped(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	r := newRaftNode(raftNodeConfig{
 		lg:        zaptest.NewLogger(t),
 		Node:      newNodeNop(),
 		transport: newNopTransporter(),
 	})
 	srv := &EtcdServer{
-		lgMu:       new(sync.RWMutex),
-		lg:         zaptest.NewLogger(t),
-		Cfg:        config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
-		r:          *r,
-		cluster:    &membership.RaftCluster{},
-		w:          mockwait.NewNop(),
-		done:       make(chan struct{}),
-		stopping:   make(chan struct{}),
-		stop:       make(chan struct{}),
-		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
+		lgMu:     new(sync.RWMutex),
+		lg:       zaptest.NewLogger(t),
+		Cfg:      config.ServerConfig{Logger: zaptest.NewLogger(t), TickMs: 1, SnapshotCatchUpEntries: DefaultSnapshotCatchUpEntries},
+		r:        *r,
+		cluster:  &membership.RaftCluster{},
+		w:        mockwait.NewNop(),
+		done:     make(chan struct{}),
+		stopping: make(chan struct{}),
+		stop:     make(chan struct{}),
+		reqIDGen: idutil.NewGenerator(0, time.Time{}),
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -1236,7 +1227,7 @@ func TestPublishV3Stopped(t *testing.T) {
 
 // TestPublishV3Retry tests that publish will keep retry until success.
 func TestPublishV3Retry(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	n := newNodeRecorderStream()
 
 	lg := zaptest.NewLogger(t)
@@ -1254,7 +1245,6 @@ func TestPublishV3Retry(t *testing.T) {
 		attributes: membership.Attributes{Name: "node1", ClientURLs: []string{"http://a", "http://b"}},
 		cluster:    &membership.RaftCluster{},
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 		ctx:        ctx,
@@ -1290,7 +1280,7 @@ func TestUpdateVersionV3(t *testing.T) {
 	// simulate that request has gone through consensus
 	ch <- &apply2.Result{}
 	w := wait.NewWithResponse(ch)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	lg := zaptest.NewLogger(t)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
@@ -1304,7 +1294,6 @@ func TestUpdateVersionV3(t *testing.T) {
 		cluster:    &membership.RaftCluster{},
 		w:          w,
 		reqIDGen:   idutil.NewGenerator(0, time.Time{}),
-		SyncTicker: &time.Ticker{},
 		authStore:  auth.NewAuthStore(lg, schema.NewAuthBackend(lg, be), nil, 0),
 		be:         be,
 
@@ -1514,13 +1503,14 @@ func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange
 	return &raftpb.ConfState{}
 }
 
-func newTestCluster(t testing.TB) *membership.RaftCluster {
-	return membership.NewCluster(zaptest.NewLogger(t))
+func newTestCluster(tb testing.TB) *membership.RaftCluster {
+	return membership.NewCluster(zaptest.NewLogger(tb))
 }
 
-func newTestClusterWithBackend(t testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
-	lg := zaptest.NewLogger(t)
+func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
+	lg := zaptest.NewLogger(tb)
 	c := membership.NewCluster(lg)
+	c.SetStore(v2store.New())
 	c.SetBackend(schema.NewMembershipBackend(lg, be))
 	for _, m := range membs {
 		c.AddMember(m, true)
@@ -1627,12 +1617,11 @@ func TestWaitAppliedIndex(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := &EtcdServer{
-				appliedIndex:   tc.appliedIndex,
-				committedIndex: tc.committedIndex,
-				stopping:       make(chan struct{}, 1),
-				applyWait:      wait.NewTimeList(),
+				stopping:  make(chan struct{}, 1),
+				applyWait: wait.NewTimeList(),
 			}
-
+			s.appliedIndex.Store(tc.appliedIndex)
+			s.committedIndex.Store(tc.committedIndex)
 			if tc.action != nil {
 				go tc.action(s)
 			}
