@@ -206,6 +206,17 @@ function run_for_modules {
   fi
 }
 
+function get_junit_filename_prefix {
+  local junit_report_dir="$1"
+  if [[ -z "${junit_report_dir}" ]]; then
+    echo ""
+    return
+  fi
+
+  mkdir -p "${junit_report_dir}"
+  mktemp --dry-run "${junit_report_dir}/junit_XXXXXXXXXX"
+}
+
 junitFilenamePrefix() {
   if [[ -z "${JUNIT_REPORT_DIR:-}" ]]; then
     echo ""
@@ -331,6 +342,96 @@ function go_test {
 
   if [ -n "${failures[*]}" ] ; then
     log_error -e "ERROR: Tests for following packages failed:\\n  ${failures[*]}"
+    return 2
+  fi
+}
+
+# run_go_tests_expanding_packages [arguments to pass to go test]
+# Expands the packages in the list of arguments, i.e. ./... into a list of
+# packages for that given module. Then, it calls run_go_tests with the expanded
+# packages.
+function run_go_tests_expanding_packages {
+  local packages=()
+  local args=()
+  for arg in "$@"; do
+    if [[ "${arg}" =~ ./ ]]; then
+      packages+=("${arg}")
+    else
+      args+=("${arg}")
+    fi
+  done
+
+  # Expanding patterns (like ./...) into list of packages
+  local unpacked_packages=()
+  while IFS='' read -r line; do unpacked_packages+=("$line"); done < <(
+    go list "${packages[@]}"
+  )
+
+  run_go_tests "${unpacked_packages[@]}" "${args[@]}"
+}
+
+# run_go_test [arguments to pass to go test]
+# The following environment variables affect how the tests run:
+#   - KEEP_GOING_TESTS: If set to true it will keep executing tests even after
+#                       a failure. It collects all failures and reports them at
+#                       the end, if there are failures the return code is 2.
+#                       Defaults to false.
+#   - JUNIT_REPORT_DIR/ARTIFACTS: Enables collecting JUnit XML reports.
+#   - VERBOSE: Sets a verbose output.
+#
+# Example:
+#   KEEP_GOING_TESTS=true run_go_tests "./..." --short
+#
+# The function returns != 0 code in case of test failure.
+function run_go_tests {
+  local go_test_flags=()
+
+  local packages=()
+  local args=()
+  for arg in "$@"; do
+    if [[ "${arg}" =~ ^\./ || "${arg}" =~ ^go\.etcd\.io/etcd ]]; then
+      packages+=("${arg}")
+    else
+      args+=("${arg}")
+    fi
+  done
+
+  local keep_going=${KEEP_GOING_TESTS:-false}
+
+  # If JUNIT_REPORT_DIR is unset, and ARTIFACTS is set, then have them match.
+  local junit_report_dir=${JUNIT_REPORT_DIR:-${ARTIFACTS:-}}
+
+  local go_test_grep_pattern=".*"
+  if [[ -n "${junit_report_dir}" ]]; then
+    # Show only summary lines by matching lines like "status package/test"
+    go_test_grep_pattern="^[^[:space:]]\+[[:space:]]\+[^[:space:]]\+/[^[[:space:]]\+"
+  fi
+
+  if [[ -n "${junit_report_dir}" || "${VERBOSE:-}" == "1" ]]; then
+    go_test_flags+=("-v" "-json")
+  fi
+
+  local failures=()
+  # execution of tests against packages:
+  for pkg in "${packages[@]}"; do
+    local cmd=(go test "${go_test_flags[@]}" "${pkg}" "${args[@]}")
+
+    local junit_filename_prefix
+    junit_filename_prefix=$(get_junit_filename_prefix "${junit_report_dir}")
+
+    if ! run env ETCD_VERIFY="${ETCD_VERIFY}" "${cmd[@]}" | tee ${junit_filename_prefix:+"${junit_filename_prefix}.stdout"} | grep --binary-files=text "${go_test_grep_pattern}" ; then
+      if [ "${keep_going}" = "true" ]; then
+        failures+=("${pkg}")
+      else
+        produce_junit_xmlreport "${junit_filename_prefix}"
+        return 2
+      fi
+    fi
+    produce_junit_xmlreport "${junit_filename_prefix}"
+  done
+
+  if [ -n "${failures[*]}" ]; then
+    log_error -e "FAIL: Tests for following packages failed:\\n  ${failures[*]}"
     return 2
   fi
 }
