@@ -125,16 +125,13 @@ function build_pass {
 
 ################# REGULAR TESTS ################################################
 
-# run_unit_tests [pkgs] runs unit tests for a current module and givesn set of [pkgs]
-function run_unit_tests {
-  local pkgs="${1:-./...}"
-  shift 1
-  # shellcheck disable=SC2068 #For context see - https://github.com/etcd-io/etcd/pull/16433#issuecomment-1684312755
-  go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@"
-}
-
 function unit_pass {
-  run_for_modules run_unit_tests "$@"
+  run_for_all_workspace_modules \
+    run_go_tests -short \
+                 -timeout="${TIMEOUT:-3m}" \
+                 "${COMMON_TEST_FLAGS[@]}" \
+                 "${RUN_ARG[@]}" \
+                 "$@"
 }
 
 function integration_extra {
