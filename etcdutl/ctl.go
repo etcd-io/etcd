@@ -16,6 +16,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	"go.etcd.io/etcd/etcdutl/v3/etcdutl"
@@ -33,6 +35,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	rootCmd.PersistentFlags().DurationVar(&etcdutl.FlockTimeout, "timeout", 10*time.Second, "time to wait to obtain a file lock on db file, 0 to block indefinitely")
 	rootCmd.PersistentFlags().StringVarP(&etcdutl.OutputFormat, "write-out", "w", "simple", "set the output format (fields, json, protobuf, simple, table)")
 	rootCmd.RegisterFlagCompletionFunc("write-out", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
 		return []string{"fields", "json", "protobuf", "simple", "table"}, cobra.ShellCompDirectiveDefault
