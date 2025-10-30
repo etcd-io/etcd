@@ -30,8 +30,6 @@ import (
 // Sleep duration
 const SLEEP = 10
 
-var NodeCount = "3"
-
 // CheckHealth checks health of all etcd nodes
 func CheckHealth() bool {
 	hosts, _, _ := common.GetPaths()

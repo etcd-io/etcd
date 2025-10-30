@@ -59,7 +59,6 @@ var (
 		traffic.EtcdPutDeleteLease,
 		traffic.Kubernetes,
 	}
-	NodeCount = "3"
 )
 
 func main() {
