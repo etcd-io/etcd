@@ -17,6 +17,7 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Add Support for Unix Socket endpoints](https://github.com/etcd-io/etcd/pull/19760)
 - [Improves performance of lease and user/role operations (up to 2x) by updating `(*readView) Rev()` to use `SharedBufReadTxMode`](https://github.com/etcd-io/etcd/pull/20411)
 - [Allow client to retrieve AuthStatus without authentication](https://github.com/etcd-io/etcd/pull/20802)
+- [Add FastLeaseKeepAlive feature to enable faster lease renewal by skipping the wait for the applied index](https://github.com/etcd-io/etcd/pull/20589)
 
 ### Package `clientv3`
 

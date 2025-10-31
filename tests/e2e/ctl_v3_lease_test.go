@@ -24,21 +24,72 @@ import (
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
 
-func TestCtlV3LeaseKeepAlive(t *testing.T) { testCtl(t, leaseTestKeepAlive) }
+func TestCtlV3LeaseKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigAutoTLS()
+	enableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func TestCtlV3LeaseKeepAliveDisableFastKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigAutoTLS()
+	disableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
 func TestCtlV3LeaseKeepAliveNoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigNoTLS()))
+	cfg := e2e.NewConfigNoTLS()
+	enableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func TestCtlV3LeaseKeepAliveNoTLSDisableFastKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigNoTLS()
+	disableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
 }
 
 func TestCtlV3LeaseKeepAliveClientTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientTLS()))
+	cfg := e2e.NewConfigClientTLS()
+	enableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func TestCtlV3LeaseKeepAliveClientTLSDisableFastKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigClientTLS()
+	disableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
 }
 
 func TestCtlV3LeaseKeepAliveClientAutoTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigClientAutoTLS()))
+	cfg := e2e.NewConfigClientAutoTLS()
+	enableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func TestCtlV3LeaseKeepAliveClientAutoTLSDisableFastKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigClientAutoTLS()
+	disableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
 }
 
 func TestCtlV3LeaseKeepAlivePeerTLS(t *testing.T) {
-	testCtl(t, leaseTestKeepAlive, withCfg(*e2e.NewConfigPeerTLS()))
+	cfg := e2e.NewConfigPeerTLS()
+	enableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func TestCtlV3LeaseKeepAlivePeerTLSDisableFastKeepAlive(t *testing.T) {
+	cfg := e2e.NewConfigPeerTLS()
+	disableFastLeaseKeepAlive(cfg)
+	testCtl(t, leaseTestKeepAlive, withCfg(*cfg))
+}
+
+func enableFastLeaseKeepAlive(cfg *e2e.EtcdProcessClusterConfig) {
+	e2e.WithServerFeatureGate("FastLeaseKeepAlive", true)(cfg)
+}
+
+func disableFastLeaseKeepAlive(cfg *e2e.EtcdProcessClusterConfig) {
+	e2e.WithServerFeatureGate("FastLeaseKeepAlive", false)(cfg)
 }
 
 func leaseTestKeepAlive(cx ctlCtx) {
