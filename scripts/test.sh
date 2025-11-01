@@ -130,7 +130,7 @@ function run_unit_tests {
   local pkgs="${1:-./...}"
   shift 1
   # shellcheck disable=SC2068 #For context see - https://github.com/etcd-io/etcd/pull/16433#issuecomment-1684312755
-  GOLANG_TEST_SHORT=true go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@"
+  go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@"
 }
 
 function unit_pass {
@@ -309,7 +309,7 @@ function cov_pass {
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
   for m in $(module_dirs); do
-    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
+    run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
        "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
   done
 
