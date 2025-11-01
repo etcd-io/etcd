@@ -54,6 +54,7 @@ var (
 	ErrNoPasswordUser       = errors.New("auth: authentication failed, password was given for no password user")
 	ErrPermissionDenied     = errors.New("auth: permission denied")
 	ErrRoleNotGranted       = errors.New("auth: role is not granted to the user")
+	ErrRootRoleNotGranted   = errors.New("auth: permission denied, root role is not granted to current user")
 	ErrPermissionNotGranted = errors.New("auth: permission is not granted to the role")
 	ErrAuthNotEnabled       = errors.New("auth: authentication is not enabled")
 	ErrAuthOldRevision      = errors.New("auth: revision in header is old")
@@ -927,7 +928,7 @@ func (as *authStore) IsAdminPermitted(authInfo *AuthInfo) error {
 	}
 
 	if !hasRootRole(u) {
-		return ErrPermissionDenied
+		return ErrRootRoleNotGranted
 	}
 
 	return nil
