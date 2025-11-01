@@ -29,7 +29,21 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
 	putReturnTime := uniquePutReturnTime(operations, persistedRequests, clientPutCount)
-	return patchOperations(operations, putRevision, putReturnTime, clientPutCount, persistedPutCount)
+
+	persistedDeleteCount := countPersistedDeletes(persistedRequests)
+	clientDeleteCount := countClientDeletes(reports)
+	deleteReturnTime := uniqueDeleteReturnTime(operations, persistedRequests, clientDeleteCount)
+
+	persistedCompactCount := countPersistedCompacts(persistedRequests)
+	clientCompactCount := countClientCompacts(reports)
+	compactReturnTime := uniqueCompactReturnTime(operations, persistedRequests, clientCompactCount)
+
+	return patchOperations(
+		operations, putRevision, putReturnTime, clientPutCount, persistedPutCount,
+		clientDeleteCount, persistedDeleteCount,
+		clientCompactCount, persistedCompactCount,
+		deleteReturnTime, compactReturnTime,
+	)
 }
 
 func putRevision(reports []report.ClientReport) map[keyValue]int64 {
@@ -54,7 +68,14 @@ func putRevision(reports []report.ClientReport) map[keyValue]int64 {
 	return requestRevision
 }
 
-func patchOperations(operations []porcupine.Operation, watchRevision, putReturnTime, clientPutCount, persistedPutCount map[keyValue]int64) []porcupine.Operation {
+func patchOperations(
+	operations []porcupine.Operation,
+	watchRevision, putReturnTime, clientPutCount, persistedPutCount map[keyValue]int64,
+	clientDeleteCount, persistedDeleteCount map[string]int64,
+	clientCompactCount, persistedCompactCount map[int64]int64,
+	deleteReturnTime map[string]int64,
+	compactReturnTime map[int64]int64,
+) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
@@ -84,6 +105,27 @@ func patchOperations(operations []porcupine.Operation, watchRevision, putReturnT
 					op.Return = min(op.Return, returnTime)
 				}
 			case model.DeleteOperation:
+				key := etcdOp.Delete.Key
+				if _, ok := persistedDeleteCount[key]; ok {
+					persisted = true
+				}
+				if count := clientDeleteCount[key]; count != 1 {
+					continue
+				}
+				if returnTime, ok := deleteReturnTime[key]; ok {
+					op.Return = min(op.Return, returnTime)
+				}
+			case model.CompactOperation:
+				rev := etcdOp.Compact.Revision
+				if _, ok := persistedCompactCount[rev]; ok {
+					persisted = true
+				}
+				if count := clientCompactCount[rev]; count != 1 {
+					continue
+				}
+				if returnTime, ok := compactReturnTime[rev]; ok {
+					op.Return = min(op.Return, returnTime)
+				}
 			case model.RangeOperation:
 			default:
 				panic(fmt.Sprintf("unknown operation type %q", etcdOp.Type))
@@ -245,6 +287,96 @@ func countPuts(counter map[keyValue]int64, request model.EtcdRequest) {
 	default:
 		panic(fmt.Sprintf("unknown request type %q", request.Type))
 	}
+}
+
+func uniqueDeleteReturnTime(allOps []porcupine.Operation, persisted []model.EtcdRequest, clientDeleteCount map[string]int64) map[string]int64 {
+	times := map[string]int64{}
+	for _, op := range allOps {
+		req := op.Input.(model.EtcdRequest)
+		if req.Type == model.Txn {
+			for _, e := range append(req.Txn.OperationsOnSuccess, req.Txn.OperationsOnFailure...) {
+				if e.Type != model.DeleteOperation {
+					continue
+				}
+				k := e.Delete.Key
+				if clientDeleteCount[k] == 1 {
+					if t, ok := times[k]; !ok || op.Return < t {
+						times[k] = op.Return
+					}
+				}
+			}
+		}
+	}
+	return times
+}
+
+func countClientDeletes(reports []report.ClientReport) map[string]int64 {
+	counter := map[string]int64{}
+	for _, client := range reports {
+		for _, op := range client.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			countDeletes(counter, request)
+		}
+	}
+	return counter
+}
+
+func countPersistedDeletes(requests []model.EtcdRequest) map[string]int64 {
+	counter := map[string]int64{}
+	for _, req := range requests {
+		countDeletes(counter, req)
+	}
+	return counter
+}
+
+func countDeletes(counter map[string]int64, request model.EtcdRequest) {
+	if request.Type != model.Txn {
+		return
+	}
+	for _, operation := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+		if operation.Type == model.DeleteOperation {
+			counter[operation.Delete.Key]++
+		}
+	}
+}
+
+func uniqueCompactReturnTime(allOps []porcupine.Operation, persisted []model.EtcdRequest, clientCompactCount map[int64]int64) map[int64]int64 {
+	times := map[int64]int64{}
+	for _, op := range allOps {
+		req := op.Input.(model.EtcdRequest)
+		if req.Type == model.Compact {
+			rev := req.Compact.Revision
+			if clientCompactCount[rev] == 1 {
+				if t, ok := times[rev]; !ok || op.Return < t {
+					times[rev] = op.Return
+				}
+			}
+		}
+	}
+	return times
+}
+
+func countClientCompacts(reports []report.ClientReport) map[int64]int64 {
+	counter := map[int64]int64{}
+	for _, client := range reports {
+		for _, op := range client.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			if request.Type == model.Compact {
+				counter[request.Compact.Revision]++
+			}
+		}
+	}
+	return counter
+}
+
+func countPersistedCompacts(requests []model.EtcdRequest) map[int64]int64 {
+	counter := map[int64]int64{}
+	for _, req := range requests {
+		if req.Type == model.Compact {
+			counter[req.Compact.Revision]++
+		}
+	}
+	return counter
 }
 
 type keyValue struct {
