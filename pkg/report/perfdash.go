@@ -74,7 +74,7 @@ func (r *report) writePerfDashReport(benchmarkOp string) {
 		artifactsDir = "./_artifacts"
 	}
 
-	fileName := fmt.Sprintf("EtcdAPI_benchmark_%s.json", time.Now().UTC().Format(time.RFC3339))
+	fileName := fmt.Sprintf("EtcdAPI_benchmark_%s_%s.json", benchmarkOp, time.Now().UTC().Format(time.RFC3339))
 	err := os.MkdirAll(artifactsDir, 0o755)
 	if err != nil {
 		fmt.Println("Error creating artifacts directory:", err)
