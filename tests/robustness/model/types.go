@@ -96,18 +96,20 @@ type EtcdCondition struct {
 }
 
 type EtcdOperation struct {
-	Type   OperationType
-	Range  RangeOptions
-	Put    PutOptions
-	Delete DeleteOptions
+	Type    OperationType
+	Range   RangeOptions
+	Put     PutOptions
+	Delete  DeleteOptions
+	Compact CompactRequest
 }
 
 type OperationType string
 
 const (
-	RangeOperation  OperationType = "range-operation"
-	PutOperation    OperationType = "put-operation"
-	DeleteOperation OperationType = "delete-operation"
+	RangeOperation   OperationType = "range-operation"
+	PutOperation     OperationType = "put-operation"
+	DeleteOperation  OperationType = "delete-operation"
+	CompactOperation OperationType = "compact-operation"
 )
 
 type LeaseGrantRequest struct {

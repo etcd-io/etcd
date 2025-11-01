@@ -401,6 +401,47 @@ func TestPatchHistory(t *testing.T) {
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
+		{
+			name: "successful compact remains",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(42, 100, 200, &clientv3.CompactResponse{}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				compactRequest(42),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{
+					Output: model.MaybeEtcdResponse{
+						EtcdResponse: model.EtcdResponse{
+							Compact:  &model.CompactResponse{},
+							Revision: -1,
+						},
+						Persisted: false,
+						Error:     "",
+					},
+					Return: 200,
+				},
+			},
+		},
+		{
+			name: "failed compact remains if there is a matching persisted request",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(100, 100, 200, nil, errors.New("failed"))
+			},
+			persistedRequest: []model.EtcdRequest{
+				compactRequest(100),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{
+					Output: model.MaybeEtcdResponse{
+						EtcdResponse: model.EtcdResponse{},
+						Persisted:    false,
+						Error:        "failed",
+					},
+					Return: infinite,
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			history := model.NewAppendableHistory(identity.NewIDProvider())
@@ -463,5 +504,12 @@ func deleteEvent(key string, revision int64) model.WatchEvent {
 			},
 			Revision: revision,
 		},
+	}
+}
+
+func compactRequest(rev int64) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type:    model.Compact,
+		Compact: &model.CompactRequest{Revision: rev},
 	}
 }
