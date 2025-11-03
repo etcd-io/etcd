@@ -104,8 +104,8 @@ func (l *Lease) Demoted() bool {
 
 // Keys returns all the keys attached to the lease.
 func (l *Lease) Keys() []string {
-	l.mu.RLock()
 	keys := make([]string, 0, len(l.itemSet))
+	l.mu.RLock()
 	for k := range l.itemSet {
 		keys = append(keys, k.Key)
 	}
