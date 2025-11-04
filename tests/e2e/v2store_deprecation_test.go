@@ -16,6 +16,7 @@ package e2e
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -145,6 +146,45 @@ func TestV2DeprecationCheckCustomContentOffline(t *testing.T) {
 		_, err = proc.Expect("No custom content found in v2store")
 		assert.NoError(t, err)
 	})
+}
+
+func TestCtlV2CustomContentWithDedicatedWALDir(t *testing.T) {
+	BeforeTestV2(t)
+
+	epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+		ClusterSize:           1,
+		EnableV2:              true,
+		SnapshotCount:         1,
+		EnableDedicatedWALDir: true,
+	})
+	require.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		if err := e2e.CURLPut(epc, e2e.CURLReq{
+			Endpoint: "/v2/keys/foo", Value: "bar" + fmt.Sprint(i),
+			Expected: `{"action":"set","node":{"key":"/foo","value":"bar` + fmt.Sprint(i)}); err != nil {
+			t.Fatalf("failed put with curl (%v)", err)
+		}
+	}
+
+	t.Log("Stop the cluster")
+	require.NoError(t, epc.Stop())
+
+	t.Log("Execute 'etcdutl check v2store' should fail because no such wal dir")
+	dataDirPath := epc.Procs[0].Config().DataDirPath
+	proc, err := e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath}, nil)
+	assert.NoError(t, err)
+	_, err = proc.Expect(fmt.Sprintf("open %s: no such file or directory", filepath.Join(dataDirPath, "member", "wal")))
+	assert.NoError(t, err)
+	proc.Wait()
+
+	t.Log("Execute 'etcdutl check v2store' should fail because of custom content in v2store")
+	walDirPath := epc.Procs[0].Config().DedicatedWALDirPath
+	proc, err = e2e.SpawnCmd([]string{e2e.BinDir + "/etcdutl", "check", "v2store", "--data-dir=" + dataDirPath, "--wal-dir=" + walDirPath}, nil)
+	assert.NoError(t, err)
+	_, err = proc.Expect("detected custom content in v2store")
+	assert.NoError(t, err)
+	proc.Wait()
 }
 
 func TestCtlV2CustomContentWithAuthData(t *testing.T) {
