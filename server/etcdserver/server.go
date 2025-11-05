@@ -29,6 +29,7 @@ import (
 
 	"github.com/coreos/go-semver/semver"
 	humanize "github.com/dustin/go-humanize"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 
@@ -243,7 +244,8 @@ type EtcdServer struct {
 	memberID   types.ID
 	attributes membership.Attributes
 
-	cluster *membership.RaftCluster
+	cluster    *membership.RaftCluster
+	srvMetrics *grpc_prometheus.ServerMetrics
 
 	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
@@ -314,6 +316,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 	sstats := stats.NewServerStats(cfg.Name, b.cluster.cl.String())
 	lstats := stats.NewLeaderStats(cfg.Logger, b.cluster.nodeID.String())
 
+	var mopts []grpc_prometheus.ServerMetricsOption
+	if cfg.Metrics == "extensive" {
+		mopts = append(mopts, grpc_prometheus.WithServerHandlingTimeHistogram())
+	}
+
 	heartbeat := time.Duration(cfg.TickMs) * time.Millisecond
 	srv = &EtcdServer{
 		readych:               make(chan struct{}),
@@ -335,6 +342,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		consistIndex:          b.storage.backend.ci,
 		firstCommitInTerm:     notify.NewNotifier(),
 		clusterVersionChanged: notify.NewNotifier(),
+		srvMetrics:            grpc_prometheus.NewServerMetrics(mopts...),
 	}
 
 	addFeatureGateMetrics(cfg.ServerFeatureGate, serverFeatureEnabled)
@@ -455,6 +463,10 @@ func (s *EtcdServer) Logger() *zap.Logger {
 
 func (s *EtcdServer) Config() config.ServerConfig {
 	return s.Cfg
+}
+
+func (s *EtcdServer) ServerMetrics() *grpc_prometheus.ServerMetrics {
+	return s.srvMetrics
 }
 
 // FeatureEnabled returns true if the feature is enabled by the etcd server, false otherwise.
