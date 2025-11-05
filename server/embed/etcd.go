@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/soheilhy/cmux"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -873,6 +874,10 @@ func (e *Etcd) serveMetrics() (err error) {
 		metricsMux := http.NewServeMux()
 		etcdhttp.HandleMetrics(metricsMux)
 		etcdhttp.HandleHealth(e.cfg.logger, metricsMux, e.Server)
+		err = prometheus.Register(e.Server.ServerMetrics())
+		if err != nil {
+			e.cfg.logger.Warn("etcdserver: failed to register grpc metrics", zap.Error(err))
+		}
 
 		for _, murl := range e.cfg.ListenMetricsUrls {
 			u := murl
