@@ -18,10 +18,7 @@ import (
 	"crypto/tls"
 	"math"
 
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -42,15 +39,7 @@ func Server(s *etcdserver.EtcdServer, tls *tls.Config, interceptor grpc.UnarySer
 		opts = append(opts, grpc.Creds(credentials.NewTransportCredential(tls)))
 	}
 
-	var mopts []grpc_prometheus.ServerMetricsOption
-	if s.Cfg.Metrics == "extensive" {
-		mopts = append(mopts, grpc_prometheus.WithServerHandlingTimeHistogram())
-	}
-	serverMetrics := grpc_prometheus.NewServerMetrics(mopts...)
-	err := prometheus.Register(serverMetrics)
-	if err != nil {
-		s.Cfg.Logger.Warn("etcdserver: failed to register grpc metrics", zap.Error(err))
-	}
+	serverMetrics := s.ServerMetrics()
 
 	chainUnaryInterceptors := []grpc.UnaryServerInterceptor{
 		newLogUnaryInterceptor(s),
