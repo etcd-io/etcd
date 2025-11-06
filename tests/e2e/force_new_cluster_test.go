@@ -126,6 +126,75 @@ func mustCreateNewClusterByPromotingMembers(t *testing.T, clusterVersion e2e.Clu
 	return epc, promotedMembers
 }
 
+// TestForceNewCluster_AddLearner_MemberCount verifies that `--force-new-cluster`
+// should always be able to clean up all other members, including learners.
+func TestForceNewCluster_AddLearner_MemberCount(t *testing.T) {
+	e2e.BeforeTest(t)
+
+	testCases := []struct {
+		name      string
+		snapcount int
+	}{
+		{
+			name:      "no snapshot after adding learner",
+			snapcount: 0,
+		},
+		{
+			name:      "create a snapshot after adding learner",
+			snapcount: 5,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			epc, err := e2e.NewEtcdProcessCluster(t, &e2e.EtcdProcessClusterConfig{
+				ClusterSize:   3,
+				SnapshotCount: tc.snapcount,
+				KeepDataDir:   true,
+			})
+			require.NoError(t, err)
+
+			t.Log("Adding a learner member")
+			testutils.ExecuteWithTimeout(t, 1*time.Minute, func() {
+				for {
+					_, aerr := epc.StartNewProc(epc.Cfg, true, t)
+					if aerr != nil {
+						if strings.Contains(aerr.Error(), "etcdserver: unhealthy cluster") {
+							time.Sleep(1 * time.Second)
+							continue
+						}
+					}
+					break
+				}
+			})
+
+			for i := 0; i < tc.snapcount; i++ {
+				werr := epc.Etcdctl().Put("foo", "bar")
+				require.NoError(t, werr)
+			}
+			require.NoError(t, epc.Close())
+
+			m := epc.Procs[0]
+			t.Logf("Forcibly create a one-member cluster with member: %s", m.Config().Name)
+			m.Config().Args = append(m.Config().Args, "--force-new-cluster")
+			require.NoError(t, m.Start())
+
+			t.Log("Restarting the member")
+			require.NoError(t, m.Restart())
+			defer func() {
+				t.Log("Closing the member")
+				require.NoError(t, m.Close())
+			}()
+
+			t.Log("Checking member count")
+			etcdctl := m.Etcdctl(e2e.ClientNonTLS, false, false)
+			resp, merr := etcdctl.MemberList()
+			require.NoError(t, merr)
+			require.Len(t, resp.Members, 1)
+		})
+	}
+}
+
 func mustReadMembersFromBoltDB(t *testing.T, dataDir string) []*membership.Member {
 	dbPath := datadir.ToBackendFileName(dataDir)
 
