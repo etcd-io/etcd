@@ -95,6 +95,8 @@ type EtcdServerProcessConfig struct {
 	DataDirPath string
 	KeepDataDir bool
 
+	DedicatedWALDirPath string
+
 	Name string
 
 	Purl url.URL

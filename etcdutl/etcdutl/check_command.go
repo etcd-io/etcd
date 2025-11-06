@@ -41,6 +41,7 @@ func NewCheckCommand() *cobra.Command {
 
 var (
 	argCheckV2StoreDataDir string
+	argCheckV2StoreWALDir  string
 )
 
 // NewCheckV2StoreCommand returns the cobra command for "check v2store".
@@ -51,25 +52,27 @@ func NewCheckV2StoreCommand() *cobra.Command {
 		Run:   checkV2StoreRunFunc,
 	}
 	cmd.Flags().StringVar(&argCheckV2StoreDataDir, "data-dir", "", "Required. A data directory not in use by etcd.")
+	cmd.Flags().StringVar(&argCheckV2StoreWALDir, "wal-dir", "", "Optional. A dedicated WAL directory.")
 	cmd.MarkFlagRequired("data-dir")
 	return cmd
 }
 
 func checkV2StoreRunFunc(_ *cobra.Command, _ []string) {
-	err := checkV2StoreDataDir(argCheckV2StoreDataDir)
+	snapDir := datadir.ToSnapDir(argCheckV2StoreDataDir)
+	walDir := datadir.ToWalDir(argCheckV2StoreDataDir)
+	if argCheckV2StoreWALDir != "" {
+		walDir = argCheckV2StoreWALDir
+	}
+
+	err := checkV2StoreDataDir(snapDir, walDir)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
 	fmt.Println("No custom content found in v2store.")
 }
 
-func checkV2StoreDataDir(dataDir string) error {
-	var (
-		lg = GetLogger()
-
-		walDir  = datadir.ToWalDir(dataDir)
-		snapDir = datadir.ToSnapDir(dataDir)
-	)
+func checkV2StoreDataDir(snapDir string, walDir string) error {
+	var lg = GetLogger()
 
 	walSnaps, err := wal.ValidSnapshotEntries(lg, walDir)
 	if err != nil {

@@ -194,6 +194,8 @@ type EtcdProcessClusterConfig struct {
 	CompactionBatchLimit       int
 
 	ExperimentalStopGRPCServiceOnDefrag bool
+
+	EnableDedicatedWALDir bool
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -388,6 +390,12 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		envVars["GOFAIL_HTTP"] = fmt.Sprintf("127.0.0.1:%d", gofailPort)
 	}
 
+	dedicatedWALDirPath := ""
+	if cfg.EnableDedicatedWALDir {
+		dedicatedWALDirPath = tb.TempDir()
+		args = append(args, "--wal-dir", dedicatedWALDirPath)
+	}
+
 	var execPath string
 	switch cfg.Version {
 	case CurrentVersion:
@@ -428,6 +436,7 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 		TlsArgs:             cfg.TlsArgs(),
 		DataDirPath:         dataDirPath,
 		KeepDataDir:         cfg.KeepDataDir,
+		DedicatedWALDirPath: dedicatedWALDirPath,
 		Name:                name,
 		Purl:                peerAdvertiseUrl,
 		Acurl:               curl,
