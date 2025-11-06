@@ -17,7 +17,6 @@ package main
 import (
 	"bufio"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,9 +34,10 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/storage/backend"
+	"go.etcd.io/etcd/server/v3/storage/datadir"
+	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -50,9 +50,8 @@ const (
 )
 
 func main() {
-	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
 	waldir := flag.String("wal-dir", "", "If set, dumps WAL from the informed path, rather than following the standard 'data_dir/member/wal/' location")
-	startIndex := flag.Uint64("start-index", 0, "The index to start dumping (inclusive). If unspecified, dumps from the index of the last snapshot.")
+	startIndex := flag.Uint64("start-index", 0, "The index to start dumping (inclusive). If unspecified, dumps from the consistent index.")
 	endIndex := flag.Uint64("end-index", math.MaxUint64, "The index to stop dumping (exclusive)")
 	// Default entry types are Normal and ConfigChange
 	entrytype := flag.String("entry-type", defaultEntryTypes, `If set, filters output by entry type. Must be one or more than one of:
@@ -65,16 +64,11 @@ and output a hex encoded line of binary for each input line`)
 	raw := flag.Bool("raw", false, "Read the logs in the low-level form")
 
 	flag.Parse()
-	lg := zap.NewExample()
 
 	if len(flag.Args()) != 1 {
 		log.Fatalf("Must provide data-dir argument (got %+v)", flag.Args())
 	}
 	dataDir := flag.Args()[0]
-
-	if *snapfile != "" && *startIndex != 0 {
-		log.Fatal("start-snap and start-index flags cannot be used together.")
-	}
 
 	startFromIndex := false
 	flag.Visit(func(f *flag.Flag) {
@@ -84,7 +78,7 @@ and output a hex encoded line of binary for each input line`)
 	})
 
 	if !*raw {
-		ents := readUsingReadAll(lg, startFromIndex, startIndex, endIndex, snapfile, dataDir, waldir)
+		ents := readUsingReadAll(startFromIndex, startIndex, endIndex, dataDir, waldir)
 
 		fmt.Printf("WAL entries: %d\n", len(ents))
 		if len(ents) > 0 {
@@ -99,9 +93,7 @@ and output a hex encoded line of binary for each input line`)
 
 		listEntriesType(*entrytype, *streamdecoder, ents)
 	} else {
-		if *snapfile != "" ||
-			*entrytype != defaultEntryTypes ||
-			*streamdecoder != "" {
+		if *entrytype != defaultEntryTypes || *streamdecoder != "" {
 			log.Fatalf("Flags --entry-type, --stream-decoder, --entrytype not supported in the RAW mode.")
 		}
 
@@ -113,46 +105,23 @@ and output a hex encoded line of binary for each input line`)
 	}
 }
 
-func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, endIndex *uint64, snapfile *string, dataDir string, waldir *string) []raftpb.Entry {
+func readUsingReadAll(startFromIndex bool, startIndex *uint64, endIndex *uint64, dataDir string, waldir *string) []raftpb.Entry {
 	var (
-		walsnap  walpb.Snapshot
-		snapshot *raftpb.Snapshot
-		err      error
+		index uint64
+		err   error
 	)
 
 	endAtIndex := *endIndex < math.MaxUint64
 	if startFromIndex {
-		fmt.Printf("Start dumping log entries from index %d.\n", *startIndex)
+		fmt.Printf("Start dumping log entries from user provided index %d.\n", *startIndex)
 		// ReadAll() reads entries from the index after walsnap.Index, so we need to move walsnap.Index back one.
 		if *startIndex > 0 {
 			*startIndex--
 		}
-		walsnap.Index = *startIndex
+		index = *startIndex
 	} else {
-		if *snapfile == "" {
-			ss := snap.New(lg, snapDir(dataDir))
-			snapshot, err = ss.Load()
-		} else {
-			snapshot, err = snap.Read(lg, filepath.Join(snapDir(dataDir), *snapfile))
-		}
-
-		switch {
-		case err == nil:
-			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-			nodes := genIDSlice(snapshot.Metadata.ConfState.Voters)
-
-			confStateJSON, merr := json.Marshal(snapshot.Metadata.ConfState)
-			if merr != nil {
-				confStateJSON = []byte(fmt.Sprintf("confstate err: %v", merr))
-			}
-			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s confstate=%s\n",
-				walsnap.Term, walsnap.Index, nodes, confStateJSON)
-		case errors.Is(err, snap.ErrNoSnapshot):
-			fmt.Print("Snapshot:\nempty\n")
-		default:
-			log.Fatalf("Failed loading snapshot: %v", err)
-		}
-		fmt.Println("Start dumping log entries from snapshot.")
+		index = getConsistentIndex(zap.NewNop(), dataDir)
+		fmt.Printf("Start dumping log entries from consistent index %d.\n.", index)
 	}
 
 	wd := *waldir
@@ -160,7 +129,7 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 		wd = walDir(dataDir)
 	}
 
-	w, err := wal.OpenForRead(zap.NewExample(), wd, walsnap)
+	w, err := wal.OpenForRead(zap.NewExample(), wd, index)
 	if err != nil {
 		log.Fatalf("Failed opening WAL: %v", err)
 	}
@@ -193,6 +162,14 @@ func readUsingReadAll(lg *zap.Logger, startFromIndex bool, startIndex *uint64, e
 	return ents
 }
 
+func getConsistentIndex(lg *zap.Logger, dataDir string) uint64 {
+	be := backend.NewDefaultBackend(lg, datadir.ToBackendFileName(dataDir))
+	defer be.Close()
+
+	consistentIdx, _ := schema.ReadConsistentIndex(be.ReadTx())
+	return consistentIdx
+}
+
 func walDir(dataDir string) string { return filepath.Join(dataDir, "member", "wal") }
 
 func snapDir(dataDir string) string { return filepath.Join(dataDir, "member", "snap") }
@@ -203,14 +180,6 @@ func parseWALMetadata(b []byte) (id, cid types.ID) {
 	id = types.ID(metadata.NodeID)
 	cid = types.ID(metadata.ClusterID)
 	return id, cid
-}
-
-func genIDSlice(a []uint64) []types.ID {
-	ids := make([]types.ID, len(a))
-	for i, id := range a {
-		ids[i] = types.ID(id)
-	}
-	return ids
 }
 
 // excerpt replaces middle part with ellipsis and returns a double-quoted

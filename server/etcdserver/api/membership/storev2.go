@@ -128,7 +128,7 @@ func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
 	}
 	p := path.Join(MemberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := s.Create(p, false, string(b), false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to save member to store",
 			zap.String("path", p),
 			zap.Error(err),
@@ -138,7 +138,7 @@ func mustSaveMemberToStore(lg *zap.Logger, s v2store.Store, m *Member) {
 
 func mustDeleteMemberFromStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 	if _, err := s.Delete(MemberStoreKey(id), true, true); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to delete member from store",
 			zap.String("path", MemberStoreKey(id)),
 			zap.Error(err),
@@ -150,7 +150,7 @@ func mustDeleteMemberFromStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 
 func mustAddToRemovedMembersInStore(lg *zap.Logger, s v2store.Store, id types.ID) {
 	if _, err := s.Create(RemovedMemberStoreKey(id), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to create removedMember",
 			zap.String("path", RemovedMemberStoreKey(id)),
 			zap.Error(err),
@@ -165,7 +165,7 @@ func mustUpdateMemberInStore(lg *zap.Logger, s v2store.Store, m *Member) {
 	}
 	p := path.Join(MemberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := s.Update(p, string(b), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to update raftAttributes",
 			zap.String("path", p),
 			zap.Error(err),
@@ -180,7 +180,7 @@ func mustUpdateMemberAttrInStore(lg *zap.Logger, s v2store.Store, m *Member) {
 	}
 	p := path.Join(MemberStoreKey(m.ID), attributesSuffix)
 	if _, err := s.Set(p, false, string(b), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to update attributes",
 			zap.String("path", p),
 			zap.Error(err),
@@ -190,7 +190,7 @@ func mustUpdateMemberAttrInStore(lg *zap.Logger, s v2store.Store, m *Member) {
 
 func mustSaveClusterVersionToStore(lg *zap.Logger, s v2store.Store, ver *semver.Version) {
 	if _, err := s.Set(StoreClusterVersionKey(), false, ver.String(), v2store.TTLOptionSet{ExpireTime: v2store.Permanent}); err != nil {
-		lg.Panic(
+		lg.Error(
 			"failed to save cluster version to store",
 			zap.String("path", StoreClusterVersionKey()),
 			zap.Error(err),

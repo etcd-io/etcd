@@ -109,22 +109,18 @@ func CreateConfigChangeEnts(lg *zap.Logger, ids []uint64, self uint64, term, ind
 	return ents
 }
 
-// GetEffectiveNodeIDsFromWALEntries returns an ordered set of IDs included in the given snapshot and
-// the entries. The given snapshot/entries can contain three kinds of
+// GetEffectiveNodeIDsFromWALEntries returns an ordered set of IDs included in the given members and
+// the entries. The given members/entries can contain three kinds of
 // ID-related entry:
 // - ConfChangeAddNode, in which case the contained ID will Be added into the set.
 // - ConfChangeRemoveNode, in which case the contained ID will Be removed from the set.
 // - ConfChangeAddLearnerNode, in which the contained ID will Be added into the set.
-func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, ents []raftpb.Entry) []uint64 {
-	ids := make(map[uint64]bool)
-	if snap != nil {
-		for _, id := range snap.Metadata.ConfState.Voters {
-			ids[id] = true
-		}
-		for _, id := range snap.Metadata.ConfState.Learners {
-			ids[id] = true
-		}
+func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, members map[types.ID]*membership.Member, ents []raftpb.Entry) []uint64 {
+	ids := make(map[uint64]struct{})
+	for memberID := range members {
+		ids[uint64(memberID)] = struct{}{}
 	}
+
 	for _, e := range ents {
 		if e.Type != raftpb.EntryConfChange {
 			continue
@@ -133,9 +129,9 @@ func GetEffectiveNodeIDsFromWALEntries(lg *zap.Logger, snap *raftpb.Snapshot, en
 		pbutil.MustUnmarshal(&cc, e.Data)
 		switch cc.Type {
 		case raftpb.ConfChangeAddLearnerNode:
-			ids[cc.NodeID] = true
+			ids[cc.NodeID] = struct{}{}
 		case raftpb.ConfChangeAddNode:
-			ids[cc.NodeID] = true
+			ids[cc.NodeID] = struct{}{}
 		case raftpb.ConfChangeRemoveNode:
 			delete(ids, cc.NodeID)
 		case raftpb.ConfChangeUpdateNode:

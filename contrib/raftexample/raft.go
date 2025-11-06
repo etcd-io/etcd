@@ -230,12 +230,8 @@ func (rc *raftNode) openWAL(snapshot *raftpb.Snapshot) *wal.WAL {
 		w.Close()
 	}
 
-	walsnap := walpb.Snapshot{}
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-	}
-	log.Printf("loading WAL at term %d and index %d", walsnap.Term, walsnap.Index)
-	w, err := wal.Open(zap.NewExample(), rc.waldir, walsnap)
+	log.Printf("loading WAL at term %d and index %d", snapshot.Metadata.Term, snapshot.Metadata.Index)
+	w, err := wal.Open(zap.NewExample(), rc.waldir, snapshot.Metadata.Index)
 	if err != nil {
 		log.Fatalf("raftexample: error loading wal (%v)", err)
 	}
