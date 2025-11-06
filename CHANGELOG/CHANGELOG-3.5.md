@@ -12,6 +12,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 - [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20751)
 - Fix [Learner promotion not being persisted into v3store may be propagated across multiple upgrades](https://github.com/etcd-io/etcd/pull/20797)
 
+### etcdutl
+
+- Add [flag `--wal-dir` to `etcdutl check v2store` command to support dedicated WAL directory](https://github.com/etcd-io/etcd/pull/20886)
+
 ### Dependencies
 
 - Compile binaries using [go 1.24.9](https://github.com/etcd-io/etcd/pull/20806).
