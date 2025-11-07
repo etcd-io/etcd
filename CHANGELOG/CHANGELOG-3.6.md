@@ -12,6 +12,7 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 - [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20749)
 - Fix [endpoint status not retuning the correct storage quota](https://github.com/etcd-io/etcd/pull/20790)
 - Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
+- Fix [duplicate metrics collector registration that caused warning messages](https://github.com/etcd-io/etcd/pull/20905)
 
 ### Dependencies
 
