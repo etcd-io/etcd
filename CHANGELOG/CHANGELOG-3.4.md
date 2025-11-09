@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 ### Dependencies
 
 - [Compile binaries with `buildvcs=false` to avoid having a pseudo-version reported by `go version`](https://github.com/etcd-io/etcd/pull/20847).
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20903).
 
 ---
 
