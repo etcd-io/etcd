@@ -28,7 +28,7 @@ require (
 	github.com/olekukonko/tablewriter v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.1
+	github.com/prometheus/common v0.67.2
 	github.com/soheilhy/cmux v0.1.5
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/bbolt v1.4.3
@@ -45,12 +45,12 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/sdk v1.38.0
-	go.opentelemetry.io/proto/otlp v1.8.0
+	go.opentelemetry.io/proto/otlp v1.9.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.43.0
 	golang.org/x/sync v0.17.0
 	golang.org/x/time v0.14.0
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
 

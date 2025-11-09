@@ -35,7 +35,7 @@ require (
 	go.etcd.io/raft/v3 v3.6.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/time v0.14.0
-	google.golang.org/grpc v1.75.1
+	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 )
 
@@ -73,7 +73,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.1 // indirect
+	github.com/prometheus/common v0.67.2 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
@@ -90,7 +90,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.8.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/crypto v0.43.0 // indirect
