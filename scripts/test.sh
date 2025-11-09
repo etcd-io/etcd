@@ -136,18 +136,33 @@ function unit_pass {
 
 function integration_extra {
   if [ -z "${PKG}" ] ; then
-    # shellcheck disable=SC2068
-    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@" || return $?
+    KEEP_GOING_TESTS=true \
+      run_go_tests_expanding_packages ./tests/integration/v2store/... \
+                                      -timeout="${TIMEOUT:-5m}" \
+                                      "${COMMON_TEST_FLAGS[@]}" \
+                                      "${RUN_ARG[@]}" \
+                                      "$@"
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
 }
 
 function integration_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
+  run_go_tests ./tests/integration/... \
+               -p=2 \
+               -timeout="${TIMEOUT:-15m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
+
+  run_go_tests ./tests/common/... \
+               -p=2 \
+               -tags=integration \
+               -timeout="${TIMEOUT:-15m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
+
   integration_extra "$@"
 }
 
