@@ -52,8 +52,10 @@ RUN for d in server etcdutl etcdctl; do \
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
 RUN CGO_ENABLED=1 make build
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 FROM ubuntu:24.04
+COPY --from=build /go/bin/dlv /bin/dlv
 COPY --from=build /etcd_instrumented/ /etcd
 # Move symbols to /symbols directory https://antithesis.com/docs/instrumentation/#symbolization
 RUN mv  /etcd/symbols /symbols
