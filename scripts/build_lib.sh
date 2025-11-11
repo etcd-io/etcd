@@ -18,7 +18,8 @@ set -euo pipefail
 source ./scripts/test_lib.sh
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
-VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
+VERSIONSHA_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
+VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.Version"
 
 # use go env if noset
 GOOS=${GOOS:-$(go env GOOS)}
@@ -30,7 +31,7 @@ CGO_ENABLED="${CGO_ENABLED:-0}"
 
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206
-GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
+GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSIONSHA_SYMBOL}=${GIT_SHA}" "-X=${VERSION_SYMBOL}=${VERSION:-"GitNotFound"}")
 GO_BUILD_ENV=("CGO_ENABLED=${CGO_ENABLED}" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
 etcd_build() {
@@ -106,9 +107,9 @@ tools_build() {
 run_build() {
   echo Running "$1"
   if $1; then
-    log_success "SUCCESS: $1 (GOARCH=${GOARCH})"
+    log_success "SUCCESS: $1 (GOOS=${GOOS},GOARCH=${GOARCH})"
   else
-    log_error "FAIL: $1 (GOARCH=${GOARCH})"
+    log_error "FAIL: $1 (GOOS=${GOOS},GOARCH=${GOARCH})"
     exit 2
   fi
 }
