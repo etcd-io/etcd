@@ -152,11 +152,18 @@ function integration_pass {
 }
 
 function e2e_pass {
-  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu do not have any impact.
+  KEEP_GOING_TESTS=true \
+    run_go_tests_expanding_packages ./tests/e2e/... \
+                                      -timeout="${TIMEOUT:-30m}" \
+                                      "${RUN_ARG[@]}" \
+                                      "$@"
+  KEEP_GOING_TESTS=true \
+    run_go_tests_expanding_packages ./tests/common/... \
+                                      -tags=e2e \
+                                      -timeout="${TIMEOUT:-30m}" \
+                                      "${RUN_ARG[@]}" \
+                                      "$@"
 }
 
 function robustness_pass {
