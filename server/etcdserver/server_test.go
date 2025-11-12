@@ -64,7 +64,6 @@ import (
 	"go.etcd.io/etcd/server/v3/features"
 	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/mock/mockstorage"
-	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/backend"
@@ -83,7 +82,6 @@ func TestApplyRepeat(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
 	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
@@ -101,7 +99,6 @@ func TestApplyRepeat(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -166,7 +163,6 @@ func TestV2SetMemberAttributes(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
@@ -212,7 +208,6 @@ func TestV2SetClusterVersion(t *testing.T) {
 	srv := &EtcdServer{
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
-		v2store:      mockstore.NewRecorder(),
 		cluster:      cl,
 		consistIndex: cindex.NewConsistentIndex(be),
 		w:            wait.New(),
@@ -504,7 +499,6 @@ func TestApplyConfigChangeUpdatesConsistIndex(t *testing.T) {
 	defer betesting.Close(t, be)
 
 	cl := membership.NewCluster(zaptest.NewLogger(t))
-	cl.SetStore(v2store.New())
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
 	cl.AddMember(&membership.Member{ID: types.ID(1)}, true)
@@ -649,7 +643,6 @@ func TestSnapshotDisk(t *testing.T) {
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
-	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
 	r := newRaftNode(raftNodeConfig{
 		lg:          zaptest.NewLogger(t),
@@ -661,7 +654,6 @@ func TestSnapshotDisk(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -686,7 +678,6 @@ func TestSnapshotDisk(t *testing.T) {
 	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, true)
 	<-ch
-	assert.Empty(t, st.Action())
 	assert.Equal(t, uint64(1), ep.diskSnapshotIndex)
 	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
@@ -700,7 +691,6 @@ func TestSnapshotMemory(t *testing.T) {
 
 	s := raft.NewMemoryStorage()
 	s.Append([]raftpb.Entry{{Index: 1}})
-	st := mockstore.NewRecorderStream()
 	p := mockstorage.NewStorageRecorderStream("")
 	r := newRaftNode(raftNodeConfig{
 		lg:          zaptest.NewLogger(t),
@@ -712,7 +702,6 @@ func TestSnapshotMemory(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		consistIndex: cindex.NewConsistentIndex(be),
 	}
 	srv.kv = mvcc.New(zaptest.NewLogger(t), be, &lease.FakeLessor{}, mvcc.StoreConfig{})
@@ -735,7 +724,6 @@ func TestSnapshotMemory(t *testing.T) {
 	ep := etcdProgress{appliedi: 1, confState: raftpb.ConfState{Voters: []uint64{1}}}
 	srv.snapshot(&ep, false)
 	<-ch
-	assert.Empty(t, st.Action())
 	assert.Equal(t, uint64(0), ep.diskSnapshotIndex)
 	assert.Equal(t, uint64(1), ep.memorySnapshotIndex)
 }
@@ -750,7 +738,6 @@ func TestSnapshotOrdering(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -786,7 +773,6 @@ func TestSnapshotOrdering(t *testing.T) {
 		lg:           lg,
 		Cfg:          cfg,
 		r:            *r,
-		v2store:      st,
 		snapshotter:  snap.New(lg, snapdir),
 		cluster:      cl,
 		consistIndex: ci,
@@ -848,9 +834,7 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 
 	lg := zaptest.NewLogger(t)
 	n := newNopReadyNode()
-	st := v2store.New()
 	cl := membership.NewCluster(lg)
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 
@@ -880,7 +864,6 @@ func TestConcurrentApplyAndSnapshotV3(t *testing.T) {
 			ServerFeatureGate:      features.NewDefaultServerFeatureGate("test", lg),
 		},
 		r:                 *r,
-		v2store:           st,
 		snapshotter:       snap.New(lg, testdir),
 		cluster:           cl,
 		consistIndex:      ci,
@@ -957,8 +940,6 @@ func TestAddMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -974,7 +955,6 @@ func TestAddMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1003,8 +983,6 @@ func TestAddMember(t *testing.T) {
 func TestProcessIgnoreMismatchMessage(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1030,7 +1008,6 @@ func TestProcessIgnoreMismatchMessage(t *testing.T) {
 		lg:           lg,
 		memberID:     1,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1061,8 +1038,6 @@ func TestRemoveMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(v2store.New())
 	be, _ := betesting.NewDefaultTmpBackend(t)
 	defer betesting.Close(t, be)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
@@ -1079,7 +1054,6 @@ func TestRemoveMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           zaptest.NewLogger(t),
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
@@ -1112,8 +1086,6 @@ func TestUpdateMember(t *testing.T) {
 		SoftState: &raft.SoftState{RaftState: raft.StateLeader},
 	}
 	cl := newTestCluster(t)
-	st := v2store.New()
-	cl.SetStore(st)
 	cl.SetBackend(schema.NewMembershipBackend(lg, be))
 	cl.AddMember(&membership.Member{ID: 1234}, true)
 	r := newRaftNode(raftNodeConfig{
@@ -1127,7 +1099,6 @@ func TestUpdateMember(t *testing.T) {
 		lgMu:         new(sync.RWMutex),
 		lg:           lg,
 		r:            *r,
-		v2store:      st,
 		cluster:      cl,
 		reqIDGen:     idutil.NewGenerator(0, time.Time{}),
 		consistIndex: cindex.NewFakeConsistentIndex(0),
