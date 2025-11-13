@@ -108,7 +108,7 @@ func patchOperations(
 		}
 		var txnRevision int64
 		var persisted bool
-		for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+		for _, etcdOp := range request.Txn.AllOperations() {
 			switch etcdOp.Type {
 			case model.PutOperation:
 				kv := model.PutOptions{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
@@ -214,7 +214,7 @@ func uniqueOperationReturnTime(allOperations []porcupine.Operation, persistedReq
 		request := op.Input.(model.EtcdRequest)
 		switch request.Type {
 		case model.Txn:
-			for _, etcdOp := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+			for _, etcdOp := range request.Txn.AllOperations() {
 				switch etcdOp.Type {
 				case model.PutOperation:
 					kv := model.PutOptions{Key: etcdOp.Put.Key, Value: etcdOp.Put.Value}
@@ -254,7 +254,7 @@ func uniqueOperationReturnTime(allOperations []porcupine.Operation, persistedReq
 			if lastReturnTime != math.MaxInt64 {
 				lastReturnTime--
 			}
-			for _, op := range request.Txn.OperationsOnSuccess {
+			for _, op := range request.Txn.AllOperations() {
 				switch op.Type {
 				case model.PutOperation:
 					kv := model.PutOptions{Key: op.Put.Key, Value: op.Put.Value}
@@ -308,7 +308,7 @@ func countPersistedPuts(requests []model.EtcdRequest) map[model.PutOptions]int64
 func countPuts(counter map[model.PutOptions]int64, request model.EtcdRequest) {
 	switch request.Type {
 	case model.Txn:
-		for _, operation := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+		for _, operation := range request.Txn.AllOperations() {
 			switch operation.Type {
 			case model.PutOperation:
 				kv := model.PutOptions{Key: operation.Put.Key, Value: operation.Put.Value}
@@ -352,7 +352,7 @@ func countDeletes(counter map[model.DeleteOptions]int64, request model.EtcdReque
 	if request.Type != model.Txn {
 		return
 	}
-	for _, operation := range append(request.Txn.OperationsOnSuccess, request.Txn.OperationsOnFailure...) {
+	for _, operation := range request.Txn.AllOperations() {
 		if operation.Type == model.DeleteOperation {
 			counter[operation.Delete]++
 		}
