@@ -224,7 +224,39 @@ func TestPatchHistory(t *testing.T) {
 			},
 		},
 		{
-			name: "failed delete remains, time patched based on persisted event and watch",
+			name: "failed delete with lease is dropped",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
+			},
+			expectedRemainingOperations: []porcupine.Operation{},
+		},
+		{
+			name: "failed delete remains, if there is a persisted request",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
+			},
+			persistedRequest: []model.EtcdRequest{
+				deleteRequest("key"),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true}},
+			},
+		},
+		{
+			name: "failed delete remains, if there is a persisted request, revision is not patched based on watch due to leaseRevoke also triggering delete watch events",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
+			},
+			persistedRequest: []model.EtcdRequest{
+				deleteRequest("key"),
+			},
+			watchOperations: watchResponse(3, deleteEvent("key", 2)),
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: infinite, Output: model.MaybeEtcdResponse{Persisted: true}},
+			},
+		},
+		{
+			name: "failed delete remains, if there is a matching persisted request, uniqueness of this operation and following operation allows patching based on following operation",
 			historyFunc: func(h *model.AppendableHistory) {
 				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
 				h.AppendPut("key", "value", 300, 400, &clientv3.PutResponse{}, nil)
@@ -233,10 +265,27 @@ func TestPatchHistory(t *testing.T) {
 				deleteRequest("key"),
 				putRequest("key", "value"),
 			},
-			watchOperations: watchResponse(3, deleteEvent("key", 2)),
 			expectedRemainingOperations: []porcupine.Operation{
-				{Return: 399, Output: model.MaybeEtcdResponse{Persisted: true, PersistedRevision: 2}},
+				{Return: 399, Output: model.MaybeEtcdResponse{Persisted: true}},
 				{Return: 400, Output: putResponse(0, model.EtcdOperationResult{})},
+			},
+		},
+		{
+			name: "failed delete remains if there is a matching persisted request, lack of uniqueness of this operation prevents patching based on following operation",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendDelete("key", 100, 200, nil, errors.New("failed"))
+				h.AppendPut("key", "value", 300, 400, &clientv3.PutResponse{}, nil)
+				h.AppendDelete("key", 500, 600, &clientv3.DeleteResponse{}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				deleteRequest("key"),
+				putRequest("key", "value"),
+				deleteRequest("key"),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
+				{Return: 400, Output: putResponse(0, model.EtcdOperationResult{})},
+				{Return: 600, Output: putResponse(0, model.EtcdOperationResult{})},
 			},
 		},
 		{
