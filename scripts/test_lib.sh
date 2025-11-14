@@ -349,7 +349,7 @@ function go_test {
 # run_go_tests_expanding_packages [arguments to pass to go test]
 # Expands the packages in the list of arguments, i.e. ./... into a list of
 # packages for that given module. Then, it calls run_go_tests with the expanded
-# packages.
+# packages. Implements the legacy modes for non-parallel testing.
 function run_go_tests_expanding_packages {
   local packages=()
   local args=()
