@@ -15,49 +15,57 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 VERSION" >&2
-  exit 1
-fi
+source ./scripts/test_lib.sh
 
-VERSION=${1}
+VERSION=${1:-}
 if [ -z "$VERSION" ]; then
   echo "Usage: ${0} VERSION" >&2
   exit 1
 fi
 
-ARCH=$(go env GOARCH)
-VERSION="${VERSION}-${ARCH}"
-DOCKERFILE="Dockerfile"
+PLATFORMS=${2:-"linux/amd64,linux/arm64,linux/ppc64le,linux/s390x"}
 
-if [ -z "${BINARYDIR:-}" ]; then
-  RELEASE="etcd-${1}"-$(go env GOOS)-${ARCH}
-  BINARYDIR="${RELEASE}"
-  TARFILE="${RELEASE}.tar.gz"
-  TARURL="https://github.com/etcd-io/etcd/releases/download/${1}/${TARFILE}"
-  if ! curl -f -L -o "${TARFILE}" "${TARURL}" ; then
-    echo "Failed to download ${TARURL}."
-    exit 1
-  fi
-  tar -zvxf "${TARFILE}"
+if [ -n "${CI:-}" ]; then
+  docker run --privileged --rm tonistiigi/binfmt --install all
+  docker buildx create \
+    --name multiarch-multiplatform-builder \
+    --driver docker-container \
+    --bootstrap --use
 fi
 
-BINARYDIR=${BINARYDIR:-.}
-BUILDDIR=${BUILDDIR:-.}
+if [ -z "${REGISTRY:-}" ]; then
+    docker build --build-arg="VERSION=${VERSION}" \
+      --build-arg="BUILD_DIR=${BUILD_DIR}" \
+      --platform="${PLATFORMS}" \
+      -t "gcr.io/etcd-development/etcd:${VERSION}" \
+      -t "quay.io/coreos/etcd:${VERSION}" \
+      .
+    # we should deprecate publishing tags for specific architectures and use the multi-arch image
+    for arch in amd64 arm64 ppc64le s390x; do
+        log_callout "Building ${arch} docker image..."
+        docker build --build-arg="VERSION=${VERSION}" \
+          --build-arg="BUILD_DIR=${BUILD_DIR}" \
+          --platform="linux/${arch}" \
+          -t "gcr.io/etcd-development/etcd:${VERSION}-${arch}" \
+          -t "quay.io/coreos/etcd:${VERSION}-${arch}" \
+          .
+    done
 
-IMAGEDIR=${BUILDDIR}/image-docker
-
-mkdir -p "${IMAGEDIR}"/var/etcd
-mkdir -p "${IMAGEDIR}"/var/lib/etcd
-cp "${BINARYDIR}"/etcd "${BINARYDIR}"/etcdctl "${BINARYDIR}"/etcdutl "${IMAGEDIR}"
-
-cat ./"${DOCKERFILE}" > "${IMAGEDIR}"/Dockerfile
-
-if [ -z "${TAG:-}" ]; then
-    # Fix incorrect image "Architecture" using buildkit
-    # From https://stackoverflow.com/q/72144329/
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "gcr.io/etcd-development/etcd:${VERSION}" "${IMAGEDIR}"
-    DOCKER_BUILDKIT=1 docker build --build-arg="ARCH=${ARCH}" -t "quay.io/coreos/etcd:${VERSION}" "${IMAGEDIR}"
 else
-    docker build -t "${TAG}:${VERSION}" "${IMAGEDIR}"
+    docker buildx build --build-arg="VERSION=${VERSION}" \
+      --build-arg="BUILD_DIR=${BUILD_DIR}" \
+      --platform="${PLATFORMS}" \
+      -t "${REGISTRY}/etcd:${VERSION}" \
+      --push \
+      .
+    # we should deprecate publishing tags for specific architectures and use the multi-arch image
+    for arch in amd64 arm64 ppc64le s390x; do
+        log_callout "Building ${arch} docker image..."
+        docker buildx build --build-arg="VERSION=${VERSION}" \
+          --build-arg="BUILD_DIR=${BUILD_DIR}" \
+          --platform="linux/${arch}" \
+          -t "${REGISTRY}/etcd:${VERSION}-${arch}" \
+          --push \
+          .
+    done
 fi

@@ -22,8 +22,7 @@ source ./scripts/test_lib.sh
 
 VERSION=${1:-}
 if [ -z "${VERSION}" ]; then
-  echo "Usage: ${0} VERSION" >> /dev/stderr
-  exit 255
+  VERSION=$(git describe --tags --always --dirty)
 fi
 
 if ! command -v docker >/dev/null; then
@@ -31,14 +30,29 @@ if ! command -v docker >/dev/null; then
     exit 1
 fi
 
+if [ -n "${CI:-}" ]; then
+  # there are few things missing in CI that we need to install
+  # busybox tar doesn't support some of the flags we need for reproducible builds
+  apk --no-cache add zip tar || true
+fi
+
 ETCD_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+
+VERSION=$(git describe --tags --always --dirty)
 
 pushd "${ETCD_ROOT}" >/dev/null
   log_callout "Building etcd binary..."
   ./scripts/build-binary.sh "${VERSION}"
 
-  for TARGET_ARCH in "amd64" "arm64" "ppc64le" "s390x"; do
-    log_callout "Building ${TARGET_ARCH} docker image..."
-    GOOS=linux GOARCH=${TARGET_ARCH} BINARYDIR=release/etcd-${VERSION}-linux-${TARGET_ARCH} BUILDDIR=release ./scripts/build-docker.sh "${VERSION}"
-  done
+  BUILD_DIR=release ./scripts/build-docker.sh "${VERSION}"
+  find release -name '*.*' -type f -maxdepth 1 -exec sha256sum {} \; | sed "s~release/~~" > release/SHA256SUMS
+  if [ -n "${CI:-}" ]; then
+    # cloudbuild will copy contents of this folder to GCS
+    echo "Copying release artifacts to release/cloudbuild/${VERSION}"
+    mkdir -p "release/cloudbuild/${VERSION}"
+    cp release/SHA256SUMS release/cloudbuild/"${VERSION}"/SHA256SUMS
+    cp release/*.zip release/cloudbuild/"${VERSION}"/ 
+    cp release/*.tar.gz release/cloudbuild/"${VERSION}"/
+    gcloud storage cp --recursive "release/cloudbuild" "gs://${GCS_LOCATION}"
+  fi
 popd >/dev/null
