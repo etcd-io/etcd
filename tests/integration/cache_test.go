@@ -1113,6 +1113,11 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			ch := c.Watch(t.Context(), prefix, clientv3.WithPrefix())
 
 			generateEvents(t, client, prefix, tt.eventCount)
+
+			if tt.name == "pipeline overflow" {
+				time.Sleep(100 * time.Millisecond)
+			}
+
 			gotEvents, ok := collectAndAssertAtomicEvents(t, ch)
 			closed := !ok
 
