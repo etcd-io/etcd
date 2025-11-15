@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -62,14 +63,17 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 		return nil, errors.New("no data dirs")
 	}
 	entriesPersistedInWAL := make([][]raftpb.Entry, len(dataDirs))
+	var minCommitIndex uint64 = math.MaxUint64
 	for i, dir := range dataDirs {
-		_, entries, err := ReadWAL(lg, dir)
+		state, entries, err := ReadWAL(lg, dir)
 		if err != nil {
 			lg.Error("Failed to read WAL", zap.Error(err), zap.String("data-dir", dir))
+			continue
 		}
+		minCommitIndex = min(minCommitIndex, state.Commit)
 		entriesPersistedInWAL[i] = entries
 	}
-	entries, err := mergeMembersEntries(entriesPersistedInWAL)
+	entries, err := mergeMembersEntries(minCommitIndex, entriesPersistedInWAL)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +93,7 @@ func PersistedRequests(lg *zap.Logger, dataDirs []string) ([]model.EtcdRequest, 
 	return persistedRequests, nil
 }
 
-func mergeMembersEntries(memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error) {
+func mergeMembersEntries(minCommitIndex uint64, memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error) {
 	for _, entries := range memberEntries {
 		var lastIndex uint64
 		for _, e := range entries {
@@ -162,10 +166,20 @@ func mergeMembersEntries(memberEntries [][]raftpb.Entry) ([]raftpb.Entry, error)
 			if vote != topVotes {
 				continue
 			}
-			if entryWithMostVotes != nil && !reflect.DeepEqual(*entryWithMostVotes, memberEntries[i][memberIndices[i]]) {
-				return nil, fmt.Errorf("mismatching entries on raft index %d", raftIndex)
+			entry := memberEntries[i][memberIndices[i]]
+			if entryWithMostVotes == nil {
+				entryWithMostVotes = &entry
+				continue
 			}
-			entryWithMostVotes = &memberEntries[i][memberIndices[i]]
+			if entryWithMostVotes.Term != entry.Term && entry.Index > minCommitIndex {
+				if entryWithMostVotes.Term < entry.Term {
+					entryWithMostVotes = &entry
+				}
+				continue
+			}
+			if !reflect.DeepEqual(*entryWithMostVotes, entry) {
+				return nil, fmt.Errorf("mismatching entries on raft index %d, mostVotes: %+v, other: %+v", raftIndex, *entryWithMostVotes, entry)
+			}
 		}
 		mergedHistory = append(mergedHistory, *entryWithMostVotes)
 	}
