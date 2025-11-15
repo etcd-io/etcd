@@ -15,7 +15,17 @@ function(config) {
     + { refresh: config.dashboard_var_refresh }
     + var.query.queryTypes.withLabelValues(
       config.clusterLabel,
-      'etcd_server_has_leader{%s}' % [config.etcd_selector]
+      'etcd_server_has_leader'
+    ),
+
+  job:
+    var.query.new('job')
+    + var.query.generalOptions.withLabel('job')
+    + var.query.withDatasourceFromVariable(self.datasource)
+    + { refresh: config.dashboard_var_refresh }
+    + var.query.queryTypes.withLabelValues(
+      'job',
+      'etcd_server_has_leader{cluster="$cluster", %s}' % [config.etcd_selector]
     ),
 
 }
