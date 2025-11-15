@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"maps"
 	"reflect"
+	"slices"
 )
 
 // RevisionForNonLinearizableResponse is a fake revision value used to
@@ -87,6 +88,10 @@ type TxnRequest struct {
 	Conditions          []EtcdCondition
 	OperationsOnSuccess []EtcdOperation
 	OperationsOnFailure []EtcdOperation
+}
+
+func (txn *TxnRequest) AllOperations() []EtcdOperation {
+	return slices.Concat(txn.OperationsOnSuccess, txn.OperationsOnFailure)
 }
 
 type EtcdCondition struct {
