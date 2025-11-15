@@ -1129,6 +1129,43 @@ DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 ./etcdctl downgrade cancel
 Downgrade cancel success, cluster version 3.5
 ```
+### DIAGNOSIS
+
+`etcdctl diagnosis [flags]` - Collects and analyzes troubleshooting data from a running etcd cluster.
+
+The `diagnosis` command gathers a concise set of diagnostic details from each cluster member by performing several checks, including:
+
+  * **Membership checks**: Verifies the cluster membership information.
+  * **Endpoint status**: Retrieves the status of each endpoint.
+  * **Serializable and linearizable reads**: Performs read operations to validate data consistency.
+  * **Metrics snapshot**: Collects a small snapshot of key metrics.
+
+#### Flags
+
+- `--cluster`: use all endpoints discovered from the cluster member list.
+- `--etcd-storage-quota-bytes`: expected etcd storage quota in bytes (value passed to etcd with `--quota-backend-bytes`).
+- `-o, --output`: optional file path to write the JSON report; by default the report is written to stdout. Logs are written to stderr.
+
+Global flags (like `--endpoints`, TLS, auth, and timeouts) are shared with other `etcdctl` commands. See `etcdctl options` for the full list.
+
+#### Examples
+
+To perform analysis of a running etcd cluster, you can use the following command. This will collect and analyze data from all specified endpoints.
+
+```bash
+etcdctl diagnosis --endpoints=https://10.0.1.10:2379,https://10.0.1.11:2379,https://10.0.1.12:2379 \
+  --cacert ./ca.crt --key ./etcd-diagnosis.key --cert ./etcd-diagnosis.crt
+
+# Use cluster-discovered endpoints
+etcdctl diagnosis --cluster
+
+# Write report to a file (logs still go to stderr)
+etcdctl diagnosis -o report.json
+```
+
+
+Example output: see [ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json](ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json)
+
 
 ## Concurrency commands
 
