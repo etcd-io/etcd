@@ -1063,6 +1063,7 @@ func TestCacheLaggingWatcher(t *testing.T) {
 		wantExactEventCount int
 		wantAtMaxEventCount int
 		wantClosed          bool
+		postGenerateDelay   time.Duration
 	}{
 		{
 			name:                "all event fit",
@@ -1091,6 +1092,7 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			eventCount:          12,
 			wantAtMaxEventCount: 1, // Either 0 or 1.
 			wantClosed:          true,
+			postGenerateDelay:   100 * time.Millisecond,
 		},
 	}
 
@@ -1113,6 +1115,11 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			ch := c.Watch(t.Context(), prefix, clientv3.WithPrefix())
 
 			generateEvents(t, client, prefix, tt.eventCount)
+
+			if tt.postGenerateDelay > 0 {
+				time.Sleep(tt.postGenerateDelay)
+			}
+
 			gotEvents, ok := collectAndAssertAtomicEvents(t, ch)
 			closed := !ok
 
