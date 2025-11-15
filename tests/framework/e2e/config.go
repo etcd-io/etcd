@@ -17,6 +17,7 @@ package e2e
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/coreos/go-semver/semver"
 
@@ -41,9 +42,12 @@ func (cv ClusterVersion) String() string {
 }
 
 type ClusterContext struct {
-	Version ClusterVersion
-	EnvVars map[string]string
-	UseUnix bool
+	Version                           ClusterVersion
+	EnvVars                           map[string]string
+	UseUnix                           bool
+	BasePort                          int
+	ClientHTTPSeparate                bool
+	ServerWatchProgressNotifyInterval time.Duration
 }
 
 func WithHTTP2Debug() config.ClusterOption {

@@ -66,6 +66,10 @@ func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config
 		if ctx.UseUnix {
 			e2eConfig.BaseClientScheme = "unix"
 		}
+		e2eConfig.ClientHTTPSeparate = ctx.ClientHTTPSeparate
+		if ctx.ServerWatchProgressNotifyInterval != 0 {
+			e2eConfig.ServerConfig.WatchProgressNotifyInterval = ctx.ServerWatchProgressNotifyInterval
+		}
 	}
 
 	switch cfg.ClientTLS {
