@@ -85,5 +85,5 @@ func (s *serverVersionAdapter) UpdateStorageVersion(target semver.Version) error
 	tx := s.be.BatchTx()
 	tx.LockOutsideApply()
 	defer tx.Unlock()
-	return schema.UnsafeMigrate(s.lg, tx, s.r.storage, target)
+	return schema.UnsafeMigrate(s.lg, tx, s.r.Storage, target)
 }
