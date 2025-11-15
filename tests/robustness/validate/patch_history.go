@@ -79,8 +79,7 @@ func watchRevisions(reports []report.ClientReport) (map[model.PutOptions]int64, 
 						kv := model.PutOptions{Key: event.Key, Value: event.Value}
 						putRevisions[kv] = event.Revision
 					case model.DeleteOperation:
-						kv := model.DeleteOptions{Key: event.Key} // ADD: Track delete revisions
-						delRevisions[kv] = event.Revision
+						// Delete events are also created by leaseRevoke rquest.
 					default:
 						panic(fmt.Sprintf("unknown event type %q", event.Type))
 					}
