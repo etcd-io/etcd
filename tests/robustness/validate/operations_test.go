@@ -322,7 +322,7 @@ func allPutSuccesses(concurrencyCount int) []porcupine.Operation {
 		ops = append(ops, porcupine.Operation{
 			ClientId: i,
 			Input:    putRequest("key", "value"),
-			Output:   putResponse(int64(i)+2, model.EtcdOperationResult{}),
+			Output:   txnResponse(int64(i)+2, model.EtcdOperationResult{}),
 			Call:     int64(i),
 			Return:   int64(i) + int64(concurrencyCount),
 		})
