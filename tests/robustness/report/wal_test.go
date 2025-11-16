@@ -24,10 +24,11 @@ import (
 
 func TestMergeMemberEntries(t *testing.T) {
 	tcs := []struct {
-		name          string
-		memberEntries [][]raftpb.Entry
-		expectErr     string
-		expectEntries []raftpb.Entry
+		name           string
+		minCommitIndex uint64
+		memberEntries  [][]raftpb.Entry
+		expectErr      string
+		expectEntries  []raftpb.Entry
 	}{
 		{
 			name:          "Error when empty data dir",
@@ -314,10 +315,43 @@ func TestMergeMemberEntries(t *testing.T) {
 			},
 			expectErr: "mismatching entries on raft index 1",
 		},
+		{
+			name:           "Error if entries mismatch on index before minCommitIndex",
+			minCommitIndex: 2,
+			memberEntries: [][]raftpb.Entry{
+				{
+					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
+				},
+				{
+					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					raftpb.Entry{Index: 2, Term: 2, Data: []byte("c")},
+				},
+			},
+			expectErr: "mismatching entries on raft index 2",
+		},
+		{
+			name:           "Select entry with higher term if they conflict on uncommitted index",
+			minCommitIndex: 1,
+			memberEntries: [][]raftpb.Entry{
+				{
+					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					raftpb.Entry{Index: 2, Term: 1, Data: []byte("b")},
+				},
+				{
+					raftpb.Entry{Index: 1, Term: 1, Data: []byte("a")},
+					raftpb.Entry{Index: 2, Term: 2, Data: []byte("x")},
+				},
+			},
+			expectEntries: []raftpb.Entry{
+				{Index: 1, Term: 1, Data: []byte("a")},
+				{Index: 2, Term: 2, Data: []byte("x")},
+			},
+		},
 	}
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
-			entries, err := mergeMembersEntries(tc.memberEntries)
+			entries, err := mergeMembersEntries(tc.minCommitIndex, tc.memberEntries)
 			if tc.expectErr == "" {
 				require.NoError(t, err)
 			} else {
