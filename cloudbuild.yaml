@@ -1,0 +1,19 @@
+# See https://cloud.google.com/cloud-build/docs/build-config
+timeout: 1800s
+options:
+  machineType: "E2_HIGHCPU_32"
+steps:
+  # Push the images
+  - name: "gcr.io/k8s-staging-test-infra/gcb-docker-gcloud:v20251110-7ccd542560"
+    id: images
+    entrypoint: bash
+    args:
+      - scripts/build-release.sh
+    env:
+      - REGISTRY=$_REGISTRY
+      - GCS_LOCATION=$_GCS_LOCATION
+      - CI=1
+      - BUILDX_NO_DEFAULT_ATTESTATIONS=1
+substitutions:
+  _REGISTRY: gcr.io/k8s-staging-etcd #us-central1-docker.pkg.dev/k8s-staging-images/us-central1/etcd
+  _GCS_LOCATION: k8s-staging-etcd/releases
