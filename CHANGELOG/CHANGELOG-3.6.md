@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.7 (TBA)
 
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
+
 ---
 
 ## v3.6.6 (2025-11-11)
