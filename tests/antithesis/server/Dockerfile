@@ -51,7 +51,7 @@ RUN for d in server etcdutl etcdctl; do \
 
 # The instrumentation also adds a new main file which clashes with dummy.go found in non release-3.4 branches
 RUN if [ -f "dummy.go" ]; then sed -i 's/package main_test/package main/' dummy.go; fi
-RUN CGO_ENABLED=1 make build
+RUN CGO_ENABLED=1 GO_GCFLAGS="all=-N -l" make build
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 FROM ubuntu:24.04
