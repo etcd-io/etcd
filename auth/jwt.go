@@ -21,6 +21,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/coreos/pkg/capnslog"
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
 )
@@ -61,9 +62,10 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 
 	if err != nil {
 		if t.lg != nil {
+			tokenFingerprint := redactToken(token)
 			t.lg.Warn(
 				"failed to parse a JWT token",
-				zap.String("token", token),
+				zap.String("token-fingerprint", tokenFingerprint),
 				zap.Error(err),
 			)
 		} else {
@@ -74,10 +76,11 @@ func (t *tokenJWT) info(ctx context.Context, token string, rev uint64) (*AuthInf
 
 	claims, ok := parsed.Claims.(jwt.MapClaims)
 	if !parsed.Valid || !ok {
+		tokenFingerprint := redactToken(token)
 		if t.lg != nil {
-			t.lg.Warn("invalid JWT token", zap.String("token", token))
+			t.lg.Warn("invalid JWT token", zap.String("token-fingerprint", tokenFingerprint))
 		} else {
-			plog.Warningf("invalid jwt token: %s", token)
+			plog.Warningf("invalid jwt token: %s", tokenFingerprint)
 		}
 		return nil, false
 	}
@@ -127,14 +130,17 @@ func (t *tokenJWT) assign(ctx context.Context, username string, revision uint64)
 	}
 
 	if t.lg != nil {
-		t.lg.Debug(
-			"created/assigned a new JWT token",
-			zap.String("user-name", username),
-			zap.Uint64("revision", revision),
-			zap.String("token", token),
-		)
+		if ce := t.lg.Check(zap.DebugLevel, "created/assigned a new JWT token"); ce != nil {
+			tokenFingerprint := redactToken(token)
+			ce.Write(zap.String("user-name", username),
+				zap.Uint64("revision", revision),
+				zap.String("token-fingerprint", tokenFingerprint))
+		}
 	} else {
-		plog.Debugf("jwt token: %s", token)
+		if plog.LevelAt(capnslog.DEBUG) {
+			tokenFingerprint := redactToken(token)
+			plog.Debugf("jwt token: %s", tokenFingerprint)
+		}
 	}
 	return token, err
 }

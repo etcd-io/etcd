@@ -129,14 +129,15 @@ func (t *tokenSimple) assignSimpleTokenToUser(username, token string) {
 
 	_, ok := t.simpleTokens[token]
 	if ok {
+		tokenFingerprint := redactToken(token)
 		if t.lg != nil {
 			t.lg.Panic(
 				"failed to assign already-used simple token to a user",
 				zap.String("user-name", username),
-				zap.String("token", token),
+				zap.String("token-fingerprint", tokenFingerprint),
 			)
 		} else {
-			plog.Panicf("token %s is already used", token)
+			plog.Panicf("token %s is already used", tokenFingerprint)
 		}
 	}
 
@@ -174,10 +175,9 @@ func (t *tokenSimple) enable() {
 				t.lg.Info(
 					"deleted a simple token",
 					zap.String("user-name", username),
-					zap.String("token", tk),
 				)
 			} else {
-				plog.Infof("deleting token %s for user %s", tk, username)
+				plog.Infof("deleting token for user %s", username)
 			}
 			delete(t.simpleTokens, tk)
 		}
