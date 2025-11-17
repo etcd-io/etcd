@@ -17,7 +17,9 @@ package auth
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"sort"
 	"strings"
@@ -340,13 +342,15 @@ func (as *authStore) Authenticate(ctx context.Context, username, password string
 	}
 
 	if as.lg != nil {
-		as.lg.Debug(
-			"authenticated a user",
-			zap.String("user-name", username),
-			zap.String("token", token),
-		)
+		if ce := as.lg.Check(zap.DebugLevel, "authenticated a user"); ce != nil {
+			tokenFingerprint := redactToken(token)
+			ce.Write(zap.String("user-name", username), zap.String("token-fingerprint", tokenFingerprint))
+		}
 	} else {
-		plog.Debugf("authorized %s, token is %s", username, token)
+		if plog.LevelAt(capnslog.DEBUG) {
+			tokenFingerprint := redactToken(token)
+			plog.Debugf("authorized %s, token-fingerprint is %s", username, tokenFingerprint)
+		}
 	}
 	return &pb.AuthenticateResponse{Token: token}, nil
 }
@@ -1322,10 +1326,11 @@ func (as *authStore) AuthInfoFromCtx(ctx context.Context) (*AuthInfo, error) {
 	token := ts[0]
 	authInfo, uok := as.authInfoFromToken(ctx, token)
 	if !uok {
+		tokenFingerprint := redactToken(token)
 		if as.lg != nil {
-			as.lg.Warn("invalid auth token", zap.String("token", token))
+			as.lg.Warn("invalid auth token", zap.String("token-fingerprint", tokenFingerprint))
 		} else {
-			plog.Warningf("invalid auth token: %s", token)
+			plog.Warningf("invalid auth token: %s", tokenFingerprint)
 		}
 		return nil, ErrInvalidAuthToken
 	}
@@ -1511,4 +1516,9 @@ func (as *authStore) setupMetricsReporter() {
 		return float64(as.Revision())
 	}
 	reportCurrentAuthRevMu.Unlock()
+}
+
+func redactToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])[:12]
 }
