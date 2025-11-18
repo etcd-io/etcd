@@ -72,7 +72,7 @@ func newSnapshotStatusCommand() *cobra.Command {
 		Long: `When --write-out is set to simple, this command prints out comma-separated status lists for each endpoint.
 The items in the lists are hash, revision, total keys, total size.
 
-Moved to 'etcdctl snapshot status ...'
+Moved to 'etcdutl snapshot status ...'
 `,
 		Run: snapshotStatusCommandFunc,
 	}
@@ -83,7 +83,7 @@ func NewSnapshotRestoreCommand() *cobra.Command {
 		Use:   "restore <filename> [options]",
 		Short: "Restores an etcd member snapshot to an etcd directory",
 		Run:   snapshotRestoreCommandFunc,
-		Long:  "Moved to `etcdctl snapshot restore ...`\n",
+		Long:  "Moved to `etcdutl snapshot restore ...`\n",
 	}
 	cmd.Flags().StringVar(&restoreDataDir, "data-dir", "", "Path to the data directory")
 	cmd.Flags().StringVar(&restoreWalDir, "wal-dir", "", "Path to the WAL directory (use --data-dir if none given)")
