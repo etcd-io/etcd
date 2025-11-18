@@ -78,7 +78,7 @@ function main {
 			export GOARCH=${TARGET_ARCH}
 
 			pushd etcd >/dev/null
-			GO_LDFLAGS="-s" ./build
+			GO_LDFLAGS="-s" GO_BUILD_FLAGS="-v -buildvcs=false" ./build
 			popd >/dev/null
 
 			TARGET="etcd-${VER}-${GOOS}-${GOARCH}"
