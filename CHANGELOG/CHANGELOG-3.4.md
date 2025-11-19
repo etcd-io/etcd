@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 - [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20943)
 
+### Dependencies
+
+- [Scripts/build-binary.sh: use `buildvcs=false` to avoid having a pseudo-version reported by `go version`](https://github.com/etcd-io/etcd/pull/20950)
+
 ---
 
 ## v3.4.39 (2025-11-11)
