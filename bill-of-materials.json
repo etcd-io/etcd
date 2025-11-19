@@ -72,6 +72,33 @@
 		]
 	},
 	{
+		"project": "github.com/clipperhouse/displaywidth",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/clipperhouse/stringish",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/clipperhouse/uax29/v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/coreos/go-semver/semver",
 		"licenses": [
 			{
@@ -306,6 +333,15 @@
 		]
 	},
 	{
+		"project": "github.com/olekukonko/cat",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/olekukonko/errors",
 		"licenses": [
 			{
@@ -382,15 +418,6 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
-		"project": "github.com/rivo/uniseg",
-		"licenses": [
-			{
-				"type": "MIT License",
 				"confidence": 1
 			}
 		]
