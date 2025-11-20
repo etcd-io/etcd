@@ -45,6 +45,9 @@ fi
 
 source ./scripts/test_lib.sh
 
+PATH=$(pwd)/bin:$(go env GOPATH)/bin:$PATH
+export PATH
+
 if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
   echo "Could not find protoc 3.20.3, installing now..."
 
@@ -70,8 +73,6 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
   wget ${download_url} && unzip -p ${protoc_download_file} bin/protoc > tmpFile && mv tmpFile bin/protoc
   rm ${protoc_download_file}
   chmod +x bin/protoc
-  PATH=$PATH:$(pwd)/bin
-  export PATH
   echo "Now running: $(protoc --version)"
 
 fi
