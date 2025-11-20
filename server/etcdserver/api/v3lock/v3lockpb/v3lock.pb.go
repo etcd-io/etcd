@@ -4,7 +4,6 @@
 package v3lockpb
 
 import (
-	context "context"
 	fmt "fmt"
 	io "io"
 	math "math"
@@ -14,9 +13,6 @@ import (
 	proto "github.com/golang/protobuf/proto"
 	etcdserverpb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
-	grpc "google.golang.org/grpc"
-	codes "google.golang.org/grpc/codes"
-	status "google.golang.org/grpc/status"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -278,140 +274,6 @@ var fileDescriptor_52389b3e2f253201 = []byte{
 	0xba, 0x23, 0xa4, 0x0d, 0x90, 0xba, 0xeb, 0x3c, 0x76, 0x3e, 0x03, 0x7a, 0x7c, 0x9d, 0x4f, 0x96,
 	0x69, 0x07, 0x75, 0xda, 0x80, 0xfe, 0x57, 0x00, 0x00, 0x00, 0xff, 0xff, 0xcb, 0x48, 0x31, 0x4a,
 	0x70, 0x02, 0x00, 0x00,
-}
-
-// Reference imports to suppress errors if they are not otherwise used.
-var _ context.Context
-var _ grpc.ClientConn
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
-
-// LockClient is the client API for Lock service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type LockClient interface {
-	// Lock acquires a distributed shared lock on a given named lock.
-	// On success, it will return a unique key that exists so long as the
-	// lock is held by the caller. This key can be used in conjunction with
-	// transactions to safely ensure updates to etcd only occur while holding
-	// lock ownership. The lock is held until Unlock is called on the key or the
-	// lease associate with the owner expires.
-	Lock(ctx context.Context, in *LockRequest, opts ...grpc.CallOption) (*LockResponse, error)
-	// Unlock takes a key returned by Lock and releases the hold on lock. The
-	// next Lock caller waiting for the lock will then be woken up and given
-	// ownership of the lock.
-	Unlock(ctx context.Context, in *UnlockRequest, opts ...grpc.CallOption) (*UnlockResponse, error)
-}
-
-type lockClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewLockClient(cc *grpc.ClientConn) LockClient {
-	return &lockClient{cc}
-}
-
-func (c *lockClient) Lock(ctx context.Context, in *LockRequest, opts ...grpc.CallOption) (*LockResponse, error) {
-	out := new(LockResponse)
-	err := c.cc.Invoke(ctx, "/v3lockpb.Lock/Lock", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *lockClient) Unlock(ctx context.Context, in *UnlockRequest, opts ...grpc.CallOption) (*UnlockResponse, error) {
-	out := new(UnlockResponse)
-	err := c.cc.Invoke(ctx, "/v3lockpb.Lock/Unlock", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// LockServer is the server API for Lock service.
-type LockServer interface {
-	// Lock acquires a distributed shared lock on a given named lock.
-	// On success, it will return a unique key that exists so long as the
-	// lock is held by the caller. This key can be used in conjunction with
-	// transactions to safely ensure updates to etcd only occur while holding
-	// lock ownership. The lock is held until Unlock is called on the key or the
-	// lease associate with the owner expires.
-	Lock(context.Context, *LockRequest) (*LockResponse, error)
-	// Unlock takes a key returned by Lock and releases the hold on lock. The
-	// next Lock caller waiting for the lock will then be woken up and given
-	// ownership of the lock.
-	Unlock(context.Context, *UnlockRequest) (*UnlockResponse, error)
-}
-
-// UnimplementedLockServer can be embedded to have forward compatible implementations.
-type UnimplementedLockServer struct {
-}
-
-func (*UnimplementedLockServer) Lock(ctx context.Context, req *LockRequest) (*LockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Lock not implemented")
-}
-func (*UnimplementedLockServer) Unlock(ctx context.Context, req *UnlockRequest) (*UnlockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Unlock not implemented")
-}
-
-func RegisterLockServer(s *grpc.Server, srv LockServer) {
-	s.RegisterService(&_Lock_serviceDesc, srv)
-}
-
-func _Lock_Lock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LockServer).Lock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/v3lockpb.Lock/Lock",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LockServer).Lock(ctx, req.(*LockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Lock_Unlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UnlockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(LockServer).Unlock(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/v3lockpb.Lock/Unlock",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LockServer).Unlock(ctx, req.(*UnlockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _Lock_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "v3lockpb.Lock",
-	HandlerType: (*LockServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "Lock",
-			Handler:    _Lock_Lock_Handler,
-		},
-		{
-			MethodName: "Unlock",
-			Handler:    _Lock_Unlock_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "v3lock.proto",
 }
 
 func (m *LockRequest) Marshal() (dAtA []byte, err error) {
