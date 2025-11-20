@@ -84,6 +84,13 @@ GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/v2/prot
 RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
 GOOGLEAPI_ROOT=$(mktemp -d -t 'googleapi.XXXXX')
 
+module_mapping_list=(
+  Mraftpb/raft.proto=go.etcd.io/raft/v3/raftpb
+  Mgoogle/protobuf/descriptor.proto=google.golang.org/protobuf/types/descriptorpb
+  Mgoogle/protobuf/struct.proto=google.golang.org/protobuf/types/known/structpb
+)
+module_mappings=$(IFS=$','; echo "${module_mapping_list[*]}" )
+
 readonly googleapi_commit=0adf469dcd7822bf5bc058a7b0217f5558a75643
 
 function cleanup_googleapi() {
@@ -122,7 +129,7 @@ log_callout -e "\\nRunning gofast (gogo) proto generation..."
 for dir in ${DIRS}; do
   run pushd "${dir}"
     run protoc --gofast_out=plugins=grpc:. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
-      --gofast_opt=paths=source_relative,Mraftpb/raft.proto=go.etcd.io/raft/v3/raftpb,Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor \
+      --gofast_opt=paths=source_relative,${module_mappings} \
       -I"${GRPC_GATEWAY_ROOT}" \
       --plugin="${GOFAST_BIN}" ./**/*.proto
 
@@ -144,9 +151,9 @@ for pb in api/etcdserverpb/rpc server/etcdserver/api/v3lock/v3lockpb/v3lock serv
       -I"${ETCD_ROOT_DIR}/.." \
       -I"${RAFT_ROOT}" \
       --grpc-gateway_out=logtostderr=true,paths=source_relative:. \
-      --grpc-gateway_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types \
+      --grpc-gateway_opt=${module_mappings} \
       --openapiv2_out=json_names_for_fields=false,logtostderr=true:./Documentation/dev-guide/apispec/swagger/. \
-      --openapiv2_opt=Mgoogle/protobuf/descriptor.proto=github.com/gogo/protobuf/protoc-gen-gogo/descriptor,Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types:. \
+      --openapiv2_opt=${module_mappings}:. \
       --plugin="${OPENAPIV2_BIN}" \
       --plugin="${GRPC_GATEWAY_BIN}" \
       ${pb}.proto
