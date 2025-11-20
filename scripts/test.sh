@@ -215,13 +215,21 @@ function grpcproxy_pass {
 }
 
 function grpcproxy_integration_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/integration/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 function grpcproxy_e2e_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/e2e/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 ################# COVERAGE #####################################################
