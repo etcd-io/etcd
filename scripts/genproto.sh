@@ -77,7 +77,6 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
 
 fi
 
-GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
 GOGEN_BIN=$(tool_get_bin google.golang.org/protobuf/cmd/protoc-gen-go)
 GOGENGRPC_BIN=$(tool_get_bin google.golang.org/grpc/cmd/protoc-gen-go-grpc)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
@@ -116,7 +115,6 @@ download_googleapi
 
 echo
 echo "Resolved binary and packages versions:"
-echo "  - protoc-gen-gofast:       ${GOFAST_BIN}"
 echo "  - protoc-gen-go:           ${GOGEN_BIN}"
 echo "  - protoc-gen-go-grpc:      ${GOGENGRPC_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
@@ -129,16 +127,16 @@ GOGOPROTO_PATH="${GOGOPROTO_ROOT}:${GOGOPROTO_ROOT}/protobuf"
 # directories containing protos to be built
 DIRS="./server/storage/wal/walpb ./api/etcdserverpb ./server/etcdserver/api/snap/snappb ./api/mvccpb ./server/lease/leasepb ./api/authpb ./server/etcdserver/api/v3lock/v3lockpb ./server/etcdserver/api/v3election/v3electionpb ./api/membershippb ./api/versionpb"
 
-log_callout -e "\\nRunning gofast (gogo) proto generation..."
+log_callout -e "\\nRunning protoc-gen-go proto generation..."
 
 for dir in ${DIRS}; do
   run pushd "${dir}"
-    run protoc --gofast_out=. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
-      "--gofast_opt=paths=source_relative,${module_mappings}" \
+    run protoc --go_out=. -I=".:${GOGOPROTO_PATH}:${ETCD_ROOT_DIR}/..:${RAFT_ROOT}:${ETCD_ROOT_DIR}:${GOOGLEAPI_ROOT}" \
+      "--go_opt=paths=source_relative,${module_mappings}" \
       --go-grpc_out=. \
       "--go-grpc_opt=paths=source_relative,${module_mappings}" \
       -I"${GRPC_GATEWAY_ROOT}" \
-      --plugin="${GOFAST_BIN}" ./**/*.proto
+      ./**/*.proto
 
     run gofmt -s -w ./**/*.pb.go
     run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
