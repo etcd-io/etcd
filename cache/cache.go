@@ -64,6 +64,22 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 
 	internalCtx, cancel := context.WithCancel(context.Background())
 
+	// Auto-calculate internal watcher buffer size if not explicitly set.
+	// The internal store watcher is critical infrastructure and should have
+	// sufficient buffer to handle burst traffic without lagging.
+	internalBufferSize := cfg.InternalWatcherBufferSize
+	if internalBufferSize == 0 {
+		// Use the larger of: 4x client buffer or 1/4 of history window
+		internalBufferSize = cfg.PerWatcherBufferSize * 4
+		if historyQuarter := cfg.HistoryWindowSize / 4; historyQuarter > internalBufferSize {
+			internalBufferSize = historyQuarter
+		}
+		// Ensure minimum buffer size of 10 for reasonable throughput
+		if internalBufferSize < 10 {
+			internalBufferSize = 10
+		}
+	}
+
 	cache := &Cache{
 		prefix:      prefix,
 		cfg:         cfg,
@@ -74,6 +90,8 @@ func New(client *clientv3.Client, prefix string, opts ...Option) (*Cache, error)
 		stop:        cancel,
 		internalCtx: internalCtx,
 	}
+	// Store the calculated buffer size back to config for use in watch()
+	cache.cfg.InternalWatcherBufferSize = internalBufferSize
 
 	cache.demux = NewDemux(internalCtx, &cache.waitGroup, cfg.HistoryWindowSize, cfg.ResyncInterval)
 
@@ -241,7 +259,7 @@ func (c *Cache) get(ctx context.Context) (*clientv3.GetResponse, error) {
 func (c *Cache) watch(rev int64) error {
 	readyOnce := sync.Once{}
 	for {
-		storeW := newWatcher(c.cfg.PerWatcherBufferSize, nil)
+		storeW := newInternalWatcher(c.cfg.InternalWatcherBufferSize, nil)
 		c.demux.Register(storeW, rev)
 		applyErr := make(chan error, 1)
 		c.waitGroup.Add(1)
@@ -269,6 +287,10 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 			return nil
 		case resp, ok := <-storeW.respCh:
 			if !ok {
+				// Channel closed. Check if there's an error response.
+				if storeW.cancelResp != nil {
+					return fmt.Errorf("%s", storeW.cancelResp.CancelReason)
+				}
 				return nil
 			}
 			if err := c.store.Apply(resp); err != nil {
