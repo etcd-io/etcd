@@ -73,7 +73,8 @@ type UserAddOptions struct {
 }
 
 type WatchOptions struct {
-	Prefix   bool
-	Revision int64
-	RangeEnd string
+	Prefix         bool
+	Revision       int64
+	RangeEnd       string
+	ProgressNotify bool
 }

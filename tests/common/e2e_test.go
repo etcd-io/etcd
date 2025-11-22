@@ -54,12 +54,41 @@ func minimalE2eEnabled() bool {
 func e2eClusterTestCases() []testCase {
 	minimalTestCases := []testCase{
 		{
-			name:   "NoTLS",
-			config: config.ClusterConfig{ClusterSize: 1},
+			name: "NoTLS",
+			config: config.ClusterConfig{
+				ClusterSize: 1,
+				ClusterContext: &e2e.ClusterContext{
+					ClientHTTPSeparate: false,
+				},
+			},
 		},
 		{
-			name:   "PeerTLS and ClientTLS",
-			config: config.ClusterConfig{ClusterSize: 3, PeerTLS: config.ManualTLS, ClientTLS: config.ManualTLS},
+			name: "NoTLS SeparateHTTPPort",
+			config: config.ClusterConfig{
+				ClusterSize: 1,
+				ClusterContext: &e2e.ClusterContext{
+					ClientHTTPSeparate: true,
+				},
+			},
+		},
+		{
+			name: "PeerTLS and ClientTLS",
+			config: config.ClusterConfig{
+				ClusterSize: 3,
+				PeerTLS:     config.ManualTLS,
+				ClientTLS:   config.ManualTLS,
+			},
+		},
+		{
+			name: "PeerTLS and ClientTLS SeparateHTTPPort",
+			config: config.ClusterConfig{
+				ClusterSize: 3,
+				PeerTLS:     config.ManualTLS,
+				ClientTLS:   config.ManualTLS,
+				ClusterContext: &e2e.ClusterContext{
+					ClientHTTPSeparate: true,
+				},
+			},
 		},
 	}
 

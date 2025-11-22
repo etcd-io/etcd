@@ -16,14 +16,20 @@ package common
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
+
+	e2e_utils "go.etcd.io/etcd/tests/v3/e2e"
 )
 
 func TestWatch(t *testing.T) {
@@ -85,11 +91,103 @@ func TestWatch(t *testing.T) {
 						wCancel()
 						require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)
 					}
+					fmt.Println("kvs: ", kvs)
 
 					wCancel()
 					assert.Equal(t, tt.wanted, kvs)
 				}
 			})
+		})
+	}
+}
+
+func TestWatchDelayForPeriodicProgressNotification(t *testing.T) {
+	testRunner.BeforeTest(t)
+	watchResponsePeriod := 100 * time.Millisecond
+	watchTestDuration := 5 * time.Second
+	dbSizeBytes := 5 * 1000 * 1000
+
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+			defer cancel()
+
+			cfg := tc.config
+			if cfg.ClusterContext == nil {
+				cfg.ClusterContext = &e2e.ClusterContext{}
+			}
+			cfg.ClusterContext.(*e2e.ClusterContext).ServerWatchProgressNotifyInterval = watchResponsePeriod
+
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg))
+			defer clus.Close()
+
+			cc := testutils.MustClient(clus.Client())
+
+			wCtx, cancel := context.WithTimeout(t.Context(), watchTestDuration)
+			defer cancel()
+			require.NoError(t, e2e_utils.FillEtcdWithData(ctx, cc, dbSizeBytes))
+
+			g := errgroup.Group{}
+
+			wch := cc.Watch(wCtx, "fake-key", config.WatchOptions{ProgressNotify: true})
+			require.NotNil(t, wch)
+
+			e2e_utils.ContinuouslyExecuteGetAll(wCtx, t, &g, cc)
+
+			e2e_utils.ValidateWatchDelay(t, wch, 150*time.Millisecond)
+			require.NoError(t, g.Wait())
+		})
+	}
+}
+
+func TestWatchDelayForEvent(t *testing.T) {
+	e2e.BeforeTest(t)
+	watchResponsePeriod := 100 * time.Millisecond
+	watchTestDuration := 5 * time.Second
+	dbSizeBytes := 5 * 1000 * 1000
+
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+			defer cancel()
+
+			cfg := tc.config
+			if cfg.ClusterContext == nil {
+				cfg.ClusterContext = &e2e.ClusterContext{}
+			}
+			cfg.ClusterContext.(*e2e.ClusterContext).ServerWatchProgressNotifyInterval = watchResponsePeriod
+
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(cfg))
+			defer clus.Close()
+
+			cc := testutils.MustClient(clus.Client())
+
+			wCtx, cancel := context.WithTimeout(t.Context(), watchTestDuration)
+			defer cancel()
+			require.NoError(t, e2e_utils.FillEtcdWithData(ctx, cc, dbSizeBytes))
+
+			g := errgroup.Group{}
+			g.Go(func() error {
+				i := 0
+				for {
+					err := cc.Put(ctx, "key", fmt.Sprintf("%d", i), config.PutOptions{})
+					if err != nil {
+						if strings.Contains(err.Error(), "context deadline exceeded") {
+							return nil
+						}
+						return err
+					}
+					time.Sleep(watchResponsePeriod)
+				}
+			})
+
+			wch := cc.Watch(wCtx, "key", config.WatchOptions{})
+			require.NotNil(t, wch)
+
+			e2e_utils.ContinuouslyExecuteGetAll(wCtx, t, &g, cc)
+
+			e2e_utils.ValidateWatchDelay(t, wch, 150*time.Millisecond)
+			require.NoError(t, g.Wait())
 		})
 	}
 }
