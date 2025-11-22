@@ -15,9 +15,6 @@
 package grpcproxy
 
 import (
-	"encoding/json"
-	"os"
-
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -72,7 +69,7 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 		ss.Close()
 		return nil, err
 	}
-	endpoint := endpoints.Endpoint{Addr: addr, Metadata: getMeta()}
+	endpoint := endpoints.Endpoint{Addr: addr}
 	if err = em.AddEndpoint(c.Ctx(), prefix+"/"+addr, endpoint, clientv3.WithLease(ss.Lease())); err != nil {
 		ss.Close()
 		return nil, err
@@ -84,21 +81,4 @@ func registerSession(lg *zap.Logger, c *clientv3.Client, prefix string, addr str
 		zap.Int("lease-ttl", ttl),
 	)
 	return ss, nil
-}
-
-// meta represents metadata of proxy register.
-type meta struct {
-	Name string `json:"name"`
-}
-
-func getMeta() string {
-	hostname, _ := os.Hostname()
-	bts, _ := json.Marshal(meta{Name: hostname})
-	return string(bts)
-}
-
-func decodeMeta(s string) (meta, error) {
-	m := meta{}
-	err := json.Unmarshal([]byte(s), &m)
-	return m, err
 }
