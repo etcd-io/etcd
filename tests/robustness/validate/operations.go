@@ -16,6 +16,7 @@ package validate
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/anishathalye/porcupine"
@@ -75,10 +76,10 @@ func validateSerializableOperationsError(lg *zap.Logger, operations []porcupine.
 		response := read.Output.(model.MaybeEtcdResponse)
 		err := validateSerializableRead(lg, replay, request, response)
 		if err != nil {
-			lastErr = err
+			return err
 		}
 	}
-	return lastErr
+	return nil
 }
 
 func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request model.EtcdRequest, response model.MaybeEtcdResponse) error {
@@ -97,7 +98,8 @@ func validateSerializableRead(lg *zap.Logger, replay *model.EtcdReplay, request 
 	_, expectResp := state.Step(request)
 
 	if diff := cmp.Diff(response.EtcdResponse.Range, expectResp.Range); diff != "" {
-		lg.Error("Failed validating serializable operation", zap.Any("request", request), zap.String("diff", diff))
+		lg.Error("Failed validating serializable operation", zap.Any("request", request))
+		fmt.Printf(diff)
 		return errRespNotMatched
 	}
 	return nil

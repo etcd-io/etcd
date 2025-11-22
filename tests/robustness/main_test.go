@@ -124,7 +124,7 @@ func testRobustness(ctx context.Context, t *testing.T, lg *zap.Logger, s scenari
 	panicked = false
 }
 
-func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) (reports []report.ClientReport) {
+func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg *zap.Logger, clus *e2e.EtcdProcessCluster) []report.ClientReport {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	g := errgroup.Group{}
@@ -155,6 +155,7 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 	trafficSet := client.NewSet(ids, baseTime)
 	defer trafficSet.Close()
 	maxRevisionChan := make(chan int64, 1)
+	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
 		operationReport := traffic.SimulateTraffic(ctx, t, lg, clus, s.Profile, s.Traffic, failpointInjected, trafficSet)
@@ -178,15 +179,24 @@ func runScenario(ctx context.Context, t *testing.T, s scenarios.TestScenario, lg
 		return err
 	})
 	err := g.Wait()
+	endTime := time.Since(baseTime)
 	if err != nil {
 		t.Error(err)
 	}
+
+	reports := slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
+
+	totalStats := traffic.CalculateStats(reports, startTime, endTime)
+	lg.Info("Reporting complete traffic", zap.Int("successes", totalStats.Successes), zap.Int("failures", totalStats.Failures), zap.Float64("successRate", totalStats.SuccessRate()), zap.Duration("period", totalStats.Period), zap.Float64("qps", totalStats.QPS()))
+
+	watchTotal := traffic.CalculateWatchStats(reports, startTime, endTime)
+	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
 
 	err = client.CheckEndOfTestHashKV(ctx, clus)
 	if err != nil {
 		t.Error(err)
 	}
-	return slices.Concat(trafficSet.Reports(), watchSet.Reports(), failpointClientReport)
+	return reports
 }
 
 func randomizeTime(base time.Duration, jitter time.Duration) time.Duration {
