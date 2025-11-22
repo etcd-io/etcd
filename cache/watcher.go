@@ -21,18 +21,28 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// watcher holds one client’s buffered stream of events.
+// watcher holds one client's buffered stream of events.
 type watcher struct {
 	respCh     chan clientv3.WatchResponse
 	cancelResp *clientv3.WatchResponse
 	keyPred    KeyPredicate
+	isInternal bool // if true, this is the internal store watcher and should never be resynced
 	stopOnce   sync.Once
 }
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 	return &watcher{
-		respCh:  make(chan clientv3.WatchResponse, bufSize),
-		keyPred: pred,
+		respCh:     make(chan clientv3.WatchResponse, bufSize),
+		keyPred:    pred,
+		isInternal: false,
+	}
+}
+
+func newInternalWatcher(bufSize int, pred KeyPredicate) *watcher {
+	return &watcher{
+		respCh:     make(chan clientv3.WatchResponse, bufSize),
+		keyPred:    pred,
+		isInternal: true,
 	}
 }
 
@@ -74,6 +84,19 @@ func (w *watcher) Compact(compactRev int64) {
 // Stop closes the event channel atomically.
 func (w *watcher) Stop() {
 	w.stopOnce.Do(func() {
+		close(w.respCh)
+	})
+}
+
+// StopWithError closes the event channel and sets an error response.
+// This is used when the internal store watcher lags and needs to trigger a watch restart.
+func (w *watcher) StopWithError(reason string) {
+	resp := &clientv3.WatchResponse{
+		Canceled:     true,
+		CancelReason: reason,
+	}
+	w.stopOnce.Do(func() {
+		w.cancelResp = resp
 		close(w.respCh)
 	})
 }

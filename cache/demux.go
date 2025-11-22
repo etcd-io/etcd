@@ -76,8 +76,19 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// Internal watchers (store watcher) drive the demux state.
+	// If registering an internal watcher with a revision behind maxRev,
+	// it means we're restarting after a failure - purge and reset.
+	if w.isInternal && d.maxRev > 0 && startingRev <= d.maxRev {
+		d.purge()
+		d.minRev = startingRev
+	}
+
 	if d.maxRev == 0 {
-		if startingRev == 0 {
+		// Internal watchers should always be active, never lagging.
+		if w.isInternal {
+			d.activeWatchers[w] = startingRev
+		} else if startingRev == 0 {
 			d.activeWatchers[w] = 0
 		} else {
 			d.laggingWatchers[w] = startingRev
@@ -85,13 +96,19 @@ func (d *demux) Register(w *watcher, startingRev int64) {
 		return
 	}
 
-	// Special case: 0 means “newest”.
+	// Special case: 0 means "newest".
 	if startingRev == 0 {
 		startingRev = d.maxRev + 1
 	}
 
 	if startingRev <= d.maxRev {
-		d.laggingWatchers[w] = startingRev
+		if w.isInternal {
+			// Internal watchers should always be active. If we reach here after
+			// the purge above didn't trigger, register as active anyway.
+			d.activeWatchers[w] = startingRev
+		} else {
+			d.laggingWatchers[w] = startingRev
+		}
 	} else {
 		d.activeWatchers[w] = startingRev
 	}
@@ -216,8 +233,15 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 
 	for w, nextRev := range d.activeWatchers {
 		if nextRev != 0 && firstRev > nextRev {
-			d.laggingWatchers[w] = nextRev
-			delete(d.activeWatchers, w)
+			if w.isInternal {
+				// Internal watchers (like store watcher) should never be resynced.
+				// If they lag, stop them with error to trigger watch restart.
+				w.StopWithError("cache: internal store watcher lagged behind")
+				delete(d.activeWatchers, w)
+			} else {
+				d.laggingWatchers[w] = nextRev
+				delete(d.activeWatchers, w)
+			}
 			continue
 		}
 
@@ -236,8 +260,15 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 		if !w.enqueueResponse(clientv3.WatchResponse{
 			Events: events[sendStart:],
 		}) { // overflow → lagging
-			d.laggingWatchers[w] = nextRev
-			delete(d.activeWatchers, w)
+			if w.isInternal {
+				// Internal watchers (like store watcher) should never be resynced.
+				// If they lag, stop them with error to trigger watch restart.
+				w.StopWithError("cache: internal store watcher buffer overflow")
+				delete(d.activeWatchers, w)
+			} else {
+				d.laggingWatchers[w] = nextRev
+				delete(d.activeWatchers, w)
+			}
 		} else {
 			d.activeWatchers[w] = lastRev + 1
 		}
@@ -282,6 +313,14 @@ func (d *demux) resyncLaggingWatchers() {
 	}
 
 	for w, nextRev := range d.laggingWatchers {
+		// Internal watchers should never be resynced (defensive check).
+		// They should have been stopped in broadcastEventsLocked.
+		if w.isInternal {
+			w.StopWithError("cache: internal watcher should not be in lagging watchers")
+			delete(d.laggingWatchers, w)
+			continue
+		}
+
 		if nextRev < d.minRev {
 			w.Compact(nextRev)
 			delete(d.laggingWatchers, w)

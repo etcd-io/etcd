@@ -17,9 +17,13 @@ package cache
 import "time"
 
 type Config struct {
-	// PerWatcherBufferSize caps each watcher’s buffered channel.
+	// PerWatcherBufferSize caps each watcher's buffered channel.
 	// Bigger values tolerate brief client slow-downs at the cost of extra memory.
 	PerWatcherBufferSize int
+	// InternalWatcherBufferSize caps the internal store watcher's buffered channel.
+	// This should be sized for system throughput to prevent the store watcher from lagging.
+	// If 0, defaults to max(PerWatcherBufferSize * 4, HistoryWindowSize / 4).
+	InternalWatcherBufferSize int
 	// HistoryWindowSize is the max events kept in memory for replay.
 	// It defines how far back the cache can replay events to lagging watchers
 	HistoryWindowSize int
@@ -38,13 +42,14 @@ type Config struct {
 // TODO: tune via performance/load tests.
 func defaultConfig() Config {
 	return Config{
-		PerWatcherBufferSize: 10,
-		HistoryWindowSize:    2048,
-		ResyncInterval:       50 * time.Millisecond,
-		InitialBackoff:       50 * time.Millisecond,
-		MaxBackoff:           2 * time.Second,
-		GetTimeout:           5 * time.Second,
-		BTreeDegree:          32,
+		PerWatcherBufferSize:      10,
+		InternalWatcherBufferSize: 0, // Auto-calculated based on HistoryWindowSize
+		HistoryWindowSize:         2048,
+		ResyncInterval:            50 * time.Millisecond,
+		InitialBackoff:            50 * time.Millisecond,
+		MaxBackoff:                2 * time.Second,
+		GetTimeout:                5 * time.Second,
+		BTreeDegree:               32,
 	}
 }
 
@@ -76,4 +81,8 @@ func WithGetTimeout(d time.Duration) Option {
 
 func WithBTreeDegree(n int) Option {
 	return func(c *Config) { c.BTreeDegree = n }
+}
+
+func WithInternalWatcherBufferSize(n int) Option {
+	return func(c *Config) { c.InternalWatcherBufferSize = n }
 }
