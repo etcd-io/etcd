@@ -240,12 +240,12 @@ func (s *serverStreamingRetryingStream) RecvMsg(m any) error {
 		}
 		newStream, err := s.reestablishStreamAndResendBuffer(s.ctx)
 		if err != nil {
-			s.client.lg.Error("failed reestablishStreamAndResendBuffer", zap.Error(err))
+			s.client.GetLogger().Error("failed reestablishStreamAndResendBuffer", zap.Error(err))
 			return err // TODO(mwitkow): Maybe dial and transport errors should be retriable?
 		}
 		s.setStream(newStream)
 
-		s.client.lg.Warn("retrying RecvMsg", zap.Error(lastErr))
+		s.client.GetLogger().Warn("retrying RecvMsg", zap.Error(lastErr))
 		attemptRetry, lastErr = s.receiveMsgAndIndicateRetry(m)
 		if !attemptRetry {
 			return lastErr
@@ -278,7 +278,7 @@ func (s *serverStreamingRetryingStream) receiveMsgAndIndicateRetry(m any) (bool,
 	if s.client.shouldRefreshToken(err, s.callOpts) {
 		gtErr := s.client.refreshToken(s.ctx)
 		if gtErr != nil {
-			s.client.lg.Warn("retry failed to fetch new auth token", zap.Error(gtErr))
+			s.client.GetLogger().Warn("retry failed to fetch new auth token", zap.Error(gtErr))
 			return false, err // return the original error for simplicity
 		}
 		return true, err
@@ -344,7 +344,7 @@ func isSafeRetry(c *Client, err error, callOpts *options) bool {
 	case nonRepeatable:
 		return isSafeRetryMutableRPC(err)
 	default:
-		c.lg.Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
+		c.GetLogger().Warn("unrecognized retry policy", zap.String("retryPolicy", callOpts.retryPolicy.String()))
 		return false
 	}
 }
