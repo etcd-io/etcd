@@ -9,7 +9,7 @@ require (
 	github.com/appscodelabs/license-bill-of-materials v0.0.0-20220707232035-6018e0c5287c
 	github.com/cloudflare/cfssl v1.6.5
 	github.com/gogo/protobuf v1.3.2
-	github.com/golangci/golangci-lint/v2 v2.6.1
+	github.com/golangci/golangci-lint/v2 v2.6.2
 	github.com/google/yamlfmt v0.20.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3
 	github.com/ryancurrah/gomodguard v1.4.1
@@ -150,8 +150,8 @@ require (
 	github.com/macabu/inamedparam v0.2.0 // indirect
 	github.com/manuelarte/embeddedstructfieldcheck v0.4.0 // indirect
 	github.com/manuelarte/funcorder v0.5.0 // indirect
-	github.com/maratori/testableexamples v1.0.0 // indirect
-	github.com/maratori/testpackage v1.1.1 // indirect
+	github.com/maratori/testableexamples v1.0.1 // indirect
+	github.com/maratori/testpackage v1.1.2 // indirect
 	github.com/matoous/godox v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
