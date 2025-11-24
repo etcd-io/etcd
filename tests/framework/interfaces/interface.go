@@ -40,6 +40,8 @@ type Member interface {
 	Client() Client
 	Start(ctx context.Context) error
 	Stop()
+	DataDirPath() string
+	Name() string
 }
 
 type Client interface {

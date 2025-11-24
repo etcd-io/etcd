@@ -54,6 +54,7 @@ func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts .
 		DisableStrictReconfigCheck: !cfg.StrictReconfigCheck,
 		AuthToken:                  cfg.AuthToken,
 		SnapshotCount:              cfg.SnapshotCount,
+		CorruptCheckTime:           cfg.CorruptCheckTime,
 	}
 	integrationCfg.ClientTLS, err = tlsInfo(tb, cfg.ClientTLS)
 	if err != nil {
@@ -165,6 +166,14 @@ func (m integrationMember) Start(ctx context.Context) error {
 
 func (m integrationMember) Stop() {
 	m.Member.Stop(m.t)
+}
+
+func (m integrationMember) DataDirPath() string {
+	return m.Member.DataDir
+}
+
+func (m integrationMember) Name() string {
+	return m.Member.Name
 }
 
 func (c *integrationCluster) Close() error {

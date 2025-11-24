@@ -58,6 +58,7 @@ func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config
 		WithStrictReconfigCheck(cfg.StrictReconfigCheck),
 		WithAuthTokenOpts(cfg.AuthToken),
 		WithSnapshotCount(cfg.SnapshotCount),
+		WithCorruptCheckTime(cfg.CorruptCheckTime),
 	)
 
 	if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
@@ -170,4 +171,12 @@ func (m e2eMember) Start(ctx context.Context) error {
 
 func (m e2eMember) Stop() {
 	m.EtcdProcess.Stop()
+}
+
+func (m e2eMember) DataDirPath() string {
+	return m.EtcdProcess.Config().DataDirPath
+}
+
+func (m e2eMember) Name() string {
+	return m.EtcdProcess.Config().Name
 }
