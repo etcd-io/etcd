@@ -52,6 +52,19 @@ var (
 		},
 		[]string{"type", "client_api_version"},
 	)
+
+	watchLatency = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Namespace: "etcd",
+			Subsystem: "server",
+			Name:      "watch_latency_milliseconds",
+			Help:      "The latency distributions of sending events to watchers",
+
+			// lowest bucket start of upper bound 1 ms with factor 2
+			// highest bucket start of 1 ms * 2^13 == 8.192 sec
+			Buckets: prometheus.ExponentialBuckets(1, 2, 13),
+		},
+	)
 )
 
 func init() {
@@ -59,4 +72,5 @@ func init() {
 	prometheus.MustRegister(receivedBytes)
 	prometheus.MustRegister(streamFailures)
 	prometheus.MustRegister(clientRequests)
+	prometheus.MustRegister(watchLatency)
 }

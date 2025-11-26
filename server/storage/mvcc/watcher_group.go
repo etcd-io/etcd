@@ -17,6 +17,7 @@ package mvcc
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/adt"
@@ -34,6 +35,8 @@ type eventBatch struct {
 	revs int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
+	// sendStartTime is the time when the events were sent for the first time
+	sendStartTime *time.Time
 }
 
 func (eb *eventBatch) add(ev mvccpb.Event) {

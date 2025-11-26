@@ -294,7 +294,7 @@ func (s *watchableStore) moveVictims() (moved int) {
 		for w, eb := range wb {
 			// watcher has observed the store up to, but not including, w.minRev
 			rev := w.minRev - 1
-			if !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
+			if !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev, SendStartTime: eb.sendStartTime}) {
 				if newVictim == nil {
 					newVictim = make(watcherBatch)
 				}
@@ -365,6 +365,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 
 	victims := make(watcherBatch)
 	wb := newWatcherBatch(wg, evs)
+	now := time.Now()
 	for w := range wg.watchers {
 		if w.minRev < compactionRev {
 			// Skip the watcher that failed to send compacted watch response due to w.ch is full.
@@ -385,7 +386,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 			w.minRev = eb.moreRev
 		}
 
-		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev}) {
+		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: curRev, SendStartTime: &now}) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {
 			w.victim = true
@@ -498,12 +499,14 @@ func (s *watchableStore) notify(rev int64, evs []mvccpb.Event) {
 				zap.Int("number-of-revisions", eb.revs),
 			)
 		}
-		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
+		now := time.Now()
+		if w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev, SendStartTime: &now}) {
 			pendingEventsGauge.Add(float64(len(eb.evs)))
 		} else {
 			// move slow watcher to victims
 			w.victim = true
 			victim[w] = eb
+			eb.sendStartTime = &now
 			s.synced.delete(w)
 			slowWatcherGauge.Inc()
 		}

@@ -19,6 +19,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel/trace"
 
@@ -95,6 +96,9 @@ type WatchResponse struct {
 
 	// CompactRevision is set when the watcher is cancelled due to compaction.
 	CompactRevision int64
+
+	// SendStartTime is the time when the events were first sent.
+	SendStartTime *time.Time
 }
 
 // watchStream contains a collection of watchers that share

@@ -495,6 +495,10 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
+			if wresp.SendStartTime != nil {
+				watchLatency.Observe(float64(time.Since(*wresp.SendStartTime) / time.Millisecond))
+			}
+
 			sws.mu.Lock()
 			if len(evs) > 0 && sws.progress[wresp.WatchID] {
 				// elide next progress update if sent a key update
