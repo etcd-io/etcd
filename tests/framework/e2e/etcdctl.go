@@ -29,6 +29,8 @@ type Etcdctl struct {
 	isAutoTLS bool
 	endpoints []string
 	v2        bool
+
+	EtcdctlBinPath string
 }
 
 func NewEtcdctl(endpoints []string, connType ClientConnType, isAutoTLS bool, v2 bool) *Etcdctl {
@@ -38,6 +40,11 @@ func NewEtcdctl(endpoints []string, connType ClientConnType, isAutoTLS bool, v2 
 		isAutoTLS: isAutoTLS,
 		v2:        v2,
 	}
+}
+
+func (ctl *Etcdctl) WithBinPath(binPath string) *Etcdctl {
+	ctl.EtcdctlBinPath = binPath
+	return ctl
 }
 
 func (ctl *Etcdctl) HashKV(rev int64) ([]*clientv3.HashKVResponse, error) {
@@ -216,6 +223,22 @@ func (ctl *Etcdctl) Status() ([]*clientv3.StatusResponse, error) {
 	return resp, err
 }
 
+func (ctl *Etcdctl) SnapshotSave(fpath string) error {
+	args := ctl.cmdArgs("snapshot", "save", fpath)
+	return SpawnWithExpectWithEnv(args, ctl.env(), fmt.Sprintf("Snapshot saved at %s", fpath))
+}
+
+func (ctl *Etcdctl) SnapshotRestore(fpath, dataDir, name, initialCluster, initialClusterToken, initialAdvertisePeerUrls string) error {
+	args := ctl.cmdArgs("snapshot", "restore", fpath,
+		"--data-dir", dataDir,
+		"--name", name,
+		"--initial-cluster", initialCluster,
+		"--initial-cluster-token", initialClusterToken,
+		"--initial-advertise-peer-urls", initialAdvertisePeerUrls,
+	)
+	return SpawnWithExpectWithEnv(args, ctl.env(), "restored snapshot")
+}
+
 func (ctl *Etcdctl) spawnJsonCmd(output interface{}, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), ctl.env())
@@ -231,6 +254,9 @@ func (ctl *Etcdctl) spawnJsonCmd(output interface{}, args ...string) error {
 
 func (ctl *Etcdctl) cmdArgs(args ...string) []string {
 	cmdArgs := []string{CtlBinPath}
+	if ctl.EtcdctlBinPath != "" {
+		cmdArgs[0] = ctl.EtcdctlBinPath
+	}
 	for k, v := range ctl.flags() {
 		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s=%s", k, v))
 	}
