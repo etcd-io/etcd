@@ -37,8 +37,9 @@ func getUsernamePassword(usernameFlag string) (string, string, error) {
 	if globalUserName != "" && globalPassword != "" {
 		return globalUserName, globalPassword, nil
 	}
-	colon := strings.Index(usernameFlag, ":")
-	if colon == -1 {
+	var ok bool
+	globalUserName, globalPassword, ok = strings.Cut(usernameFlag, ":")
+	if !ok {
 		// Prompt for the password.
 		password, err := speakeasy.Ask("Password: ")
 		if err != nil {
@@ -46,9 +47,6 @@ func getUsernamePassword(usernameFlag string) (string, string, error) {
 		}
 		globalUserName = usernameFlag
 		globalPassword = password
-	} else {
-		globalUserName = usernameFlag[:colon]
-		globalPassword = usernameFlag[colon+1:]
 	}
 	return globalUserName, globalPassword, nil
 }
