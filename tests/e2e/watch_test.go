@@ -33,13 +33,8 @@ import (
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	v3rpc "go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/pkg/v3/stringutil"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
-)
-
-const (
-	watchResponsePeriod = 100 * time.Millisecond
-	watchTestDuration   = 5 * time.Second
-	readLoadConcurrency = 10
 )
 
 type testCase struct {
@@ -561,4 +556,24 @@ func TestResumeCompactionOnTombstone(t *testing.T) {
 		// escape hatch in case the watch response is delayed.
 		t.Fatal("timed out getting watch response")
 	}
+}
+
+func fillEtcdWithData(ctx context.Context, c *clientv3.Client, dbSize int) error {
+	g := errgroup.Group{}
+	concurrency := 10
+	keyCount := 100
+	keysPerRoutine := keyCount / concurrency
+	valueSize := dbSize / keyCount
+	for i := 0; i < concurrency; i++ {
+		i := i
+		g.Go(func() error {
+			for j := 0; j < keysPerRoutine; j++ {
+				if _, err := c.Put(ctx, fmt.Sprintf("%d", i*keysPerRoutine+j), stringutil.RandString(uint(valueSize))); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	return g.Wait()
 }
