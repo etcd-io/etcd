@@ -366,7 +366,8 @@ type Config struct {
 	// CompactionSleepInterval is the sleep interval between every etcd compaction loop.
 	CompactionSleepInterval time.Duration `json:"compaction-sleep-interval"`
 	// WatchProgressNotifyInterval is the time duration of periodic watch progress notifications.
-	WatchProgressNotifyInterval time.Duration `json:"watch-progress-notify-interval"`
+	WatchProgressNotifyInterval     time.Duration
+	WatchProgressNotifyIntervalJSON ConfigDuration `json:"watch-progress-notify-interval"`
 	// WarningApplyDuration is the time duration after which a warning is generated if applying request
 	WarningApplyDuration time.Duration `json:"warning-apply-duration"`
 	// BootstrapDefragThresholdMegabytes is the minimum number of megabytes needed to be freed for etcd server to
@@ -903,6 +904,10 @@ func (cfg *configYAML) configFromFile(path string) error {
 	cfg.PeerAutoTLS = cfg.PeerSecurityJSON.AutoTLS
 	if cfg.SelfSignedCertValidity == 0 {
 		cfg.SelfSignedCertValidity = 1
+	}
+
+	if cfg.WatchProgressNotifyIntervalJSON != 0 {
+		cfg.WatchProgressNotifyInterval = time.Duration(cfg.WatchProgressNotifyIntervalJSON)
 	}
 	return cfg.Validate()
 }
