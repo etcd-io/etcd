@@ -36,13 +36,9 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
-	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -154,7 +150,7 @@ func mockMembersJSON(m []etcdserverpb.Member) string {
 func TestBootstrapBackend(t *testing.T) {
 	tests := []struct {
 		name                  string
-		prepareData           func(config.ServerConfig) error
+		prepareData           func(config.ServerConfig, uint64) error
 		expectedConsistentIdx uint64
 		expectedError         error
 	}{
@@ -170,8 +166,6 @@ func TestBootstrapBackend(t *testing.T) {
 			expectedConsistentIdx: 5,
 			expectedError:         nil,
 		},
-		// TODO(ahrtr): add more test cases
-		// https://github.com/etcd-io/etcd/issues/13507
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -186,14 +180,11 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			if tt.prepareData != nil {
-				err = tt.prepareData(cfg)
+				err = tt.prepareData(cfg, tt.expectedConsistentIdx)
 				require.NoErrorf(t, err, "failed to prepare data, unexpected error: %v", err)
 			}
 
-			haveWAL := wal.Exist(cfg.WALDir())
-			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-			ss := snap.New(cfg.Logger, cfg.SnapDir())
-			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			backend, err := bootstrapBackend(cfg)
 			defer t.Cleanup(func() {
 				backend.Close()
 			})
@@ -207,9 +198,7 @@ func TestBootstrapBackend(t *testing.T) {
 				require.Containsf(t, err.Error(), tt.expectedError.Error(), "expected error to contain: %q, got: %q", tt.expectedError.Error(), err.Error())
 			}
 
-			if backend.ci.ConsistentIndex() != tt.expectedConsistentIdx {
-				t.Errorf("expected consistent index: %d, got: %d", tt.expectedConsistentIdx, backend.ci.ConsistentIndex())
-			}
+			require.Equal(t, tt.expectedConsistentIdx, backend.ci.ConsistentIndex())
 		})
 	}
 }
@@ -235,78 +224,27 @@ func createDataDir(t *testing.T) (string, error) {
 }
 
 // prepare data for the test case
-func prepareData(cfg config.ServerConfig) error {
-	var snapshotTerm, snapshotIndex uint64 = 2, 5
-
-	if err := createWALFileWithSnapshotRecord(cfg, snapshotTerm, snapshotIndex); err != nil {
-		return err
-	}
-
-	return createSnapshotAndBackendDB(cfg, snapshotTerm, snapshotIndex)
-}
-
-func createWALFileWithSnapshotRecord(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) (err error) {
-	var w *wal.WAL
-	if w, err = wal.Create(cfg.Logger, cfg.WALDir(), []byte("somedata")); err != nil {
-		return err
-	}
-
-	defer func() {
-		err = w.Close()
-	}()
-
-	walSnap := walpb.Snapshot{
-		Index: snapshotIndex,
-		Term:  snapshotTerm,
-		ConfState: &raftpb.ConfState{
-			Voters:    []uint64{0x00ffca74},
-			AutoLeave: false,
-		},
-	}
-
-	if err = w.SaveSnapshot(walSnap); err != nil {
-		return err
-	}
-
-	return w.Save(raftpb.HardState{Term: snapshotTerm, Vote: 3, Commit: snapshotIndex}, nil)
-}
-
-func createSnapshotAndBackendDB(cfg config.ServerConfig, snapshotTerm, snapshotIndex uint64) error {
-	var err error
-
+func prepareData(cfg config.ServerConfig, index uint64) error {
 	confState := raftpb.ConfState{
 		Voters: []uint64{1, 2, 3},
-	}
-
-	// create snapshot file
-	ss := snap.New(cfg.Logger, cfg.SnapDir())
-	if err = ss.SaveSnap(raftpb.Snapshot{
-		Data: []byte("{}"),
-		Metadata: raftpb.SnapshotMetadata{
-			ConfState: confState,
-			Index:     snapshotIndex,
-			Term:      snapshotTerm,
-		},
-	}); err != nil {
-		return err
 	}
 
 	// create snapshot db file: "%016x.snap.db"
 	be := serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), snapshotIndex, snapshotTerm)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), index, 2)
 	schema.MustUnsafeSaveConfStateToBackend(cfg.Logger, be.BatchTx(), &confState)
-	if err = be.Close(); err != nil {
+	if err := be.Close(); err != nil {
 		return err
 	}
-	sdb := filepath.Join(cfg.SnapDir(), fmt.Sprintf("%016x.snap.db", snapshotIndex))
-	if err = os.Rename(cfg.BackendPath(), sdb); err != nil {
+	sdb := filepath.Join(cfg.SnapDir(), fmt.Sprintf("%016x.snap.db", index))
+	if err := os.Rename(cfg.BackendPath(), sdb); err != nil {
 		return err
 	}
 
 	// create backend db file
 	be = serverstorage.OpenBackend(cfg, nil)
 	schema.CreateMetaBucket(be.BatchTx())
-	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), 1, 1)
+	schema.UnsafeUpdateConsistentIndex(be.BatchTx(), index, 2)
 	return be.Close()
 }

@@ -39,8 +39,9 @@ func TestForceNewCluster(t *testing.T) {
 	e2e.BeforeTest(t)
 
 	testCases := []struct {
-		name      string
-		snapcount int
+		name       string
+		snapcount  int
+		fakeMember *membership.Member
 	}{
 		{
 			name:      "create a snapshot after promotion",
@@ -49,6 +50,20 @@ func TestForceNewCluster(t *testing.T) {
 		{
 			name:      "no snapshot after promotion",
 			snapcount: 0,
+		},
+		{
+			// refer to https://github.com/etcd-io/etcd/issues/20967#issuecomment-3589944612
+			name: "add fake member before creating single-member cluster",
+			fakeMember: &membership.Member{
+				ID: 10000,
+				RaftAttributes: membership.RaftAttributes{
+					PeerURLs: []string{"http://127.0.0.1:62380"},
+				},
+				Attributes: membership.Attributes{
+					Name:       "fake-member",
+					ClientURLs: []string{"http://127.0.0.1:62379"},
+				},
+			},
 		},
 	}
 
@@ -66,9 +81,20 @@ func TestForceNewCluster(t *testing.T) {
 			require.NoError(t, epc.Close())
 
 			m := epc.Procs[0]
+
+			if tc.fakeMember != nil {
+				t.Log("Adding fake member to the bbolt db directly")
+				mustWriteMemberToBoltDB(t, m.Config().DataDirPath, tc.fakeMember)
+			}
+
 			t.Logf("Forcibly create a one-member cluster with member: %s", m.Config().Name)
 			m.Config().Args = append(m.Config().Args, "--force-new-cluster")
 			require.NoError(t, m.Start(t.Context()))
+
+			t.Log("Online checking the member count")
+			mresp, merr := m.Etcdctl().MemberList(t.Context(), false)
+			require.NoError(t, merr)
+			require.Len(t, mresp.Members, 1)
 
 			t.Log("Restarting the member")
 			require.NoError(t, m.Restart(t.Context()))
@@ -200,4 +226,23 @@ func mustReadMembersFromBoltDB(t *testing.T, dataDir string) []*membership.Membe
 	})
 
 	return members
+}
+
+func mustWriteMemberToBoltDB(t *testing.T, dataDir string, m *membership.Member) {
+	dbPath := datadir.ToBackendFileName(dataDir)
+	db, err := bbolt.Open(dbPath, 0o400, &bbolt.Options{})
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, db.Close())
+	}()
+
+	db.Update(func(tx *bbolt.Tx) error {
+		b := tx.Bucket(schema.Members.Name())
+		mkey := schema.BackendMemberKey(m.ID)
+		mvalue, err := json.Marshal(m)
+		require.NoError(t, err)
+		err = b.Put(mkey, mvalue)
+		require.NoError(t, err)
+		return nil
+	})
 }
