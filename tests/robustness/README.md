@@ -6,6 +6,16 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 [KV API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#kv-apis
 [watch API guarantees]: https://etcd.io/docs/v3.6/learning/api_guarantees/#watch-apis
 
+## Robustness vs Antithesis tests
+
+[Antithesis] runs the robustness tests inside their
+[deterministic simulation testing](https://antithesis.com/resources/deterministic_simulation_testing/)
+environment and [fault injection](https://antithesis.com/docs/environment/fault_injection/).
+
+For more details on Antithesis integration, see the [antithesis directory](../antithesis).
+
+[Antithesis]: https://antithesis.com/
+
 ## Robustness track record
 
 | Correctness / Consistency issue                                              | Report     | Introduced in     | Discovered by   | Reproducible by robustness test                   | Command                             |
@@ -20,9 +30,12 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 | Watch events lost during stream starvation [#17529]                          | Mar 2024   | v3.4 or earlier   | User            | Yes, after covering of slow watch                 | `make test-robustness-issue17529`   |
 | Revision decreasing caused by crash during compaction [#17780]               | Apr 2024   | v3.4 or earlier   | Robustness      | Yes, after covering compaction                    |                                     |
 | Watch dropping an event when compacting on delete [#18089]                   | May 2024   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue18089`   |
+| Panic when two snapshots are received in a short period [#18055]             | May 2024   | v3.4 or earlier   | Robustness      | Yes, via Antithesis                               |                                     |
 | Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024   | v3.4 or earlier   | User            |                                                   |                                     |
 | Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue19179`   |
-| Watch on future revision returns old events or notifications [#20221]        | Jun 2025   | v3.4 or earlier   | Robustness      | Yes, after covering connection to multiple members|                                     |
+| Watch on future revision returns notifications [#20221]                      | Jun 2025   | v3.4 or earlier   | Robustness      | Yes, after covering connection to multiple members|                                     |
+| Watch on future revision returns old events [#20221]                         | Jun 2025   | v3.4 or earlier   | Antithesis      | Yes, after covering connection to multiple members|                                     |
+| Panic from db page expected to be 5 [#20271]                                 | Jul 2025   | v3.4 or earlier   | Antithesis      | Yes, via Antithesis                               |                                     |
 
 [#13766]: https://github.com/etcd-io/etcd/issues/13766
 [#14370]: https://github.com/etcd-io/etcd/issues/14370
@@ -37,6 +50,8 @@ The purpose of these tests is to rigorously validate that etcd maintains its [KV
 [#18667]: https://github.com/etcd-io/etcd/issues/18667
 [#19179]: https://github.com/etcd-io/etcd/issues/19179
 [#20221]: https://github.com/etcd-io/etcd/issues/20221
+[#18055]: https://github.com/etcd-io/etcd/issues/18055
+[#20271]: https://github.com/etcd-io/etcd/issues/20271
 
 ## How Robustness Tests Work
 
