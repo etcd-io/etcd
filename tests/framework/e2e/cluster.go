@@ -196,6 +196,8 @@ type EtcdProcessClusterConfig struct {
 	ExperimentalStopGRPCServiceOnDefrag bool
 
 	EnableDedicatedWALDir bool
+
+	ExecPath string // NOTE: only applicable when Version is CurrentVersion
 }
 
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
@@ -400,6 +402,9 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	switch cfg.Version {
 	case CurrentVersion:
 		execPath = BinPath
+		if cfg.ExecPath != "" {
+			execPath = cfg.ExecPath
+		}
 	case MinorityLastVersion:
 		if i <= cfg.ClusterSize/2 {
 			execPath = BinPath
@@ -684,6 +689,40 @@ func (epc *EtcdProcessCluster) StartNewProc(cfg *EtcdProcessClusterConfig, isLea
 	return memberID, nil
 }
 
+// StopAndRemoveFirstProc stops and removes the first member process from the cluster.
+func (epc *EtcdProcessCluster) StopAndRemoveFirstProc(tb testing.TB) error {
+	if len(epc.Procs) <= 1 {
+		return fmt.Errorf("cannot remove member from cluster with only one member")
+	}
+
+	firstProc := epc.Procs[0]
+	tb.Logf("remove member from cluster; member-name %s, member-peer-url %s", firstProc.Config().Name, firstProc.Config().Purl.String())
+
+	// First remove member from cluster
+	statuses, sErr := firstProc.Etcdctl(epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, false).Status()
+	if sErr != nil {
+		return fmt.Errorf("failed to get member status: %w", sErr)
+	}
+	if len(statuses) == 0 {
+		return fmt.Errorf("no status returned from member")
+	}
+
+	memberCtl := NewEtcdctl(epc.Procs[1].EndpointsV3(), epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, false)
+	_, mErr := memberCtl.MemberRemove(statuses[0].Header.MemberId)
+	if mErr != nil {
+		return fmt.Errorf("failed to remove member: %w", mErr)
+	}
+
+	// Then stop process
+	tb.Logf("stop and remove member process; member-name %s, member-peer-url %s", firstProc.Config().Name, firstProc.Config().Purl.String())
+	if err := firstProc.Stop(); err != nil {
+		return fmt.Errorf("failed to stop member process: %w", err)
+	}
+
+	epc.Procs = epc.Procs[1:]
+	return nil
+}
+
 // AddMember adds a new member to the cluster without starting it.
 func (epc *EtcdProcessCluster) AddMember(cfg *EtcdProcessClusterConfig, isLearner bool, tb testing.TB) (memberID uint64, serverCfg *EtcdServerProcessConfig, err error) {
 	if cfg == nil {
@@ -719,6 +758,75 @@ func (epc *EtcdProcessCluster) AddMember(cfg *EtcdProcessClusterConfig, isLearne
 	}
 
 	return resp.Member.ID, serverCfg, nil
+}
+
+func (epc *EtcdProcessCluster) ForceNewCluster(tb testing.TB, i int) error {
+	proc := epc.Procs[i]
+	serverCfg := proc.Config()
+
+	if err := proc.Stop(); err != nil {
+		return fmt.Errorf("failed to stop member process: %w", err)
+	}
+	serverCfg.Args = append(serverCfg.Args, "--force-new-cluster=true")
+	return proc.Start()
+}
+
+// RejoinMember will remove the member from the cluster, clean up its data dir,
+// and re-add it to the cluster and start the member process again.
+func (epc *EtcdProcessCluster) RejoinMember(tb testing.TB, i int) error {
+	if i < 0 || i >= len(epc.Procs) {
+		return fmt.Errorf("invalid member index %d", i)
+	}
+
+	size := len(epc.Procs)
+	if size <= 1 {
+		return fmt.Errorf("cannot rejoin member to cluster with only one member")
+	}
+
+	proc := epc.Procs[i]
+	serverCfg := proc.Config()
+
+	statuses, sErr := proc.Etcdctl(epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, false).Status()
+	if sErr != nil {
+		return fmt.Errorf("failed to get member status: %w", sErr)
+	}
+	if len(statuses) == 0 {
+		return fmt.Errorf("no status returned from member")
+	}
+	memberID := statuses[0].Header.MemberId
+
+	tb.Logf("Removing member %d to cluster(name: %s, peer-url: %s)", memberID, serverCfg.Name, serverCfg.Purl.String())
+	memberCtl := NewEtcdctl(epc.Procs[(i+1)%size].EndpointsV3(), epc.Cfg.ClientTLS, epc.Cfg.IsClientAutoTLS, false)
+	_, mErr := memberCtl.MemberRemove(memberID)
+	if mErr != nil {
+		return fmt.Errorf("failed to remove member: %w", mErr)
+	}
+	if err := proc.Stop(); err != nil {
+		return fmt.Errorf("failed to stop member process: %w", err)
+	}
+
+	tb.Logf("Removing member %d data dir %s", memberID, serverCfg.DataDirPath)
+	if err := os.RemoveAll(serverCfg.DataDirPath); err != nil {
+		return fmt.Errorf("failed to remove data dir: %w", err)
+	}
+
+	serverCfg.DataDirPath = tb.TempDir()
+	serverCfg.Args = append(serverCfg.Args, "--data-dir", serverCfg.DataDirPath)
+
+	initialCluster := []string{}
+	for _, p := range epc.Procs {
+		initialCluster = append(initialCluster, fmt.Sprintf("%s=%s", p.Config().Name, p.Config().Purl.String()))
+	}
+	epc.Cfg.SetInitialCluster(serverCfg, initialCluster, "existing")
+
+	epc.WaitLeader(tb)
+
+	tb.Logf("Re-adding member %d to cluster(name: %s, peer-url: %s)", memberID, serverCfg.Name, serverCfg.Purl.String())
+	_, mErr2 := memberCtl.MemberAdd(serverCfg.Name, []string{serverCfg.Purl.String()})
+	if mErr2 != nil {
+		return fmt.Errorf("failed to add new member: %w", mErr2)
+	}
+	return proc.Start()
 }
 
 func (cfg *EtcdProcessClusterConfig) SetInitialCluster(serverCfg *EtcdServerProcessConfig, initialCluster []string, initialClusterState string) {
