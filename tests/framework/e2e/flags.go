@@ -56,6 +56,10 @@ func InitFlags() {
 
 	BinPath = BinDir + "/etcd"
 	BinPathLastRelease = BinDir + "/etcd-last-release"
+
+	CtlBinPathLastRelease = BinDir + "/etcdctl-last-release"
+	CtlBinPathV3439Release = BinDir + "/etcdctl-v3439-release"
+
 	CtlBinPath = BinDir + "/etcdctl"
 	UtlBinPath = BinDir + "/etcdutl"
 	CertPath = CertDir + "/server.crt"

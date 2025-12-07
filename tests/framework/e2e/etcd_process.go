@@ -41,6 +41,9 @@ var (
 	BinPathLastRelease   string
 	CtlBinPath           string
 	UtlBinPath           string
+
+	CtlBinPathLastRelease  string
+	CtlBinPathV3439Release string
 )
 
 // EtcdProcess is a process that serves etcd requests.
