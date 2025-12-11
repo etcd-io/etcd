@@ -10,6 +10,10 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 - [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
 
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20998).
+
 ---
 
 ## v3.6.6 (2025-11-11)
