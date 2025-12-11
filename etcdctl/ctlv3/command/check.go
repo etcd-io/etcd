@@ -335,7 +335,7 @@ func newCheckDatascaleCommand(cmd *cobra.Command, args []string) {
 	}
 
 	// get endpoints
-	eps, errEndpoints := endpointsFromCmd(cmd)
+	eps, errEndpoints := endpointsFromCmd()
 	if errEndpoints != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, errEndpoints)
 	}

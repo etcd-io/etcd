@@ -108,11 +108,11 @@ func makeMirrorCommandFunc(cmd *cobra.Command, args []string) {
 		cobrautl.ExitWithError(cobrautl.ExitBadArgs, errors.New("make-mirror takes one destination argument"))
 	}
 
-	dialTimeout := dialTimeoutFromCmd(cmd)
-	keepAliveTime := keepAliveTimeFromCmd(cmd)
-	keepAliveTimeout := keepAliveTimeoutFromCmd(cmd)
-	maxCallSendMsgSize := maxCallSendMsgSizeFromCmd(cmd)
-	maxCallRecvMsgSize := maxCallRecvMsgSizeFromCmd(cmd)
+	dialTimeout := dialTimeoutFromCmd()
+	keepAliveTime := keepAliveTimeFromCmd()
+	keepAliveTimeout := keepAliveTimeoutFromCmd()
+	maxCallSendMsgSize := maxCallSendMsgSizeFromCmd()
+	maxCallRecvMsgSize := maxCallRecvMsgSizeFromCmd()
 	sec := &clientv3.SecureConfig{
 		Cert:              mmcert,
 		Key:               mmkey,
