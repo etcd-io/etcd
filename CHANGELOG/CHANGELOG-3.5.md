@@ -9,6 +9,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### etcd server
 
 - [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20942)
+- Fix [zombie members in v3store](https://github.com/etcd-io/etcd/pull/20995)
 
 ---
 
