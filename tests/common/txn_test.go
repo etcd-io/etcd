@@ -65,9 +65,9 @@ func TestTxnSucc(t *testing.T) {
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
-				err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
+				_, err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key1", "value1")
-				err = cc.Put(ctx, "key2", "value2", config.PutOptions{})
+				_, err = cc.Put(ctx, "key2", "value2", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key2", "value2")
 				for _, req := range reqs {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
@@ -105,7 +105,7 @@ func TestTxnFail(t *testing.T) {
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 			testutils.ExecuteUntil(ctx, t, func() {
-				err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
+				_, err := cc.Put(ctx, "key1", "value1", config.PutOptions{})
 				require.NoErrorf(t, err, "could not create key:%s, value:%s", "key1", "value1")
 				for _, req := range reqs {
 					resp, err := cc.Txn(ctx, req.compare, req.ifSuccess, req.ifFail, config.TxnOptions{
