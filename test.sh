@@ -654,6 +654,8 @@ function dep_pass {
 
 function release_pass {
   rm -f ./bin/etcd-last-release
+  rm -f ./bin/etcdctl-last-release
+  rm -f ./bin/etcdctl-v3439-release
 
   # Work out the previous minor release based on the version reported by etcd binary
   binary_version=$(./bin/etcd --version | grep --only-matching --perl-regexp '(?<=etcd Version: )\d+\.\d+')
@@ -695,6 +697,27 @@ function release_pass {
   tar xzvf "/tmp/$file" -C /tmp/ --strip-components=1 --no-same-owner
   mkdir -p ./bin
   mv /tmp/etcd ./bin/etcd-last-release
+  mv /tmp/etcdctl ./bin/etcdctl-last-release
+
+  # We also need etcdctl v3.4.39 binary to reproduce zombie members.
+  #
+  # See https://github.com/etcd-io/etcd/issues/20967
+  log_callout "Downloading v3.4.39 etcdctl"
+  v3439_file="etcd-v3.4.39-linux-$GOARCH.tar.gz"
+
+  set +e
+  curl --fail -L "https://github.com/etcd-io/etcd/releases/download/v3.4.39/$v3439_file" -o "/tmp/$v3439_file"
+  local result=$?
+  set -e
+  case $result in
+    0)  ;;
+    *)  log_error "--- FAIL:" ${result}
+      return $result
+      ;;
+  esac
+
+  tar xzvf "/tmp/$v3439_file" -C /tmp/ --strip-components=1 --no-same-owner
+  mv /tmp/etcdctl ./bin/etcdctl-v3439-release
 }
 
 function release_tests_pass {

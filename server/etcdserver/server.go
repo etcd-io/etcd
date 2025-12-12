@@ -1361,6 +1361,8 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, apply *apply) {
 
 	lg.Info("restored v2 store")
 
+	lg.Info("checking and cleaning up zombie members during snapshot restore")
+	membership.CleanupZombieMembersIfNeeded(lg, newbe, s.v2store)
 	if err = membership.SyncLearnerPromotionIfNeeded(lg, newbe, s.v2store); err != nil {
 		lg.Error("Failed to sync learner promotion for v3store", zap.Error(err))
 	}
@@ -2266,6 +2268,12 @@ func (s *EtcdServer) apply(
 			s.setAppliedIndex(e.Index)
 			s.setTerm(e.Term)
 			shouldStop = shouldStop || removedSelf
+
+			if shouldApplyV3 {
+				s.lg.Info("checking and cleaning up zombie members if needed after confState changed")
+				s.cluster.CleanupZombieMembersIfNeeded(shouldApplyV3)
+			}
+
 			s.w.Trigger(cc.ID, &confChangeResponse{s.cluster.Members(), err})
 
 		default:

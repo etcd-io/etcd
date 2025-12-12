@@ -216,6 +216,14 @@ func (ctl *Etcdctl) Status() ([]*clientv3.StatusResponse, error) {
 	return resp, err
 }
 
+func (ctl *Etcdctl) GenerateCmdArgs(baseArgs ...string) []string {
+	return ctl.cmdArgs(baseArgs...)
+}
+
+func (ctl *Etcdctl) Envs() map[string]string {
+	return ctl.env()
+}
+
 func (ctl *Etcdctl) spawnJsonCmd(output interface{}, args ...string) error {
 	args = append(args, "-w", "json")
 	cmd, err := SpawnCmd(append(ctl.cmdArgs(), args...), ctl.env())
