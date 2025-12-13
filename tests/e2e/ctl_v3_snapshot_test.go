@@ -458,8 +458,9 @@ func TestBreakConsistentIndexNewerThanSnapshot(t *testing.T) {
 	err = copyFile(tmpFile, dbPath)
 	require.NoError(t, err)
 	err = member.Start(ctx)
-	require.Error(t, err)
-	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failed to find database snapshot file (snap: snapshot file doesn't exist)"})
+	// refer to https://github.com/etcd-io/etcd/issues/20187#issuecomment-3601435298
+	// require.Error(t, err)
+	// _, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failed to find database snapshot file (snap: snapshot file doesn't exist)"})
 	assert.NoError(t, err)
 }
 
