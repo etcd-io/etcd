@@ -252,7 +252,7 @@ func generateSnapshot(t *testing.T, snapshotCount uint64, cc *e2e.EtcdctlV3) {
 	var i uint64
 	t.Logf("Adding keys")
 	for i = 0; i < snapshotCount*3; i++ {
-		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
+		_, err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
 		assert.NoError(t, err)
 	}
 }

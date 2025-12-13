@@ -138,7 +138,7 @@ func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.Etcd
 	// Execute some non-trivial key&member operation
 	var i uint64
 	for i = 0; i < snapshotCount*3; i++ {
-		err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
+		_, err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
 		require.NoError(tb, err)
 	}
 	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
@@ -153,7 +153,7 @@ func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.Etcd
 	require.NoError(tb, err)
 
 	for i = 0; i < snapshotCount; i++ {
-		err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
+		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
 		require.NoError(tb, err)
 	}
 	member2, err := cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
@@ -161,7 +161,7 @@ func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.Etcd
 	members = append(members, member2.Member.ID)
 
 	for i = 0; i < snapshotCount/2; i++ {
-		err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
+		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
 		assert.NoError(tb, err)
 	}
 	return members

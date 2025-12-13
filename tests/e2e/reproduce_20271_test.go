@@ -54,10 +54,11 @@ func TestIssue20271(t *testing.T) {
 
 	t.Log("Step 1: Write some data to the cluster")
 	for i := 0; i < snapCount*5; i++ {
-		require.NoError(t, epc.Procs[0].Etcdctl().Put(ctx,
+		_, err = epc.Procs[0].Etcdctl().Put(ctx,
 			fmt.Sprintf("foo%d", i),
 			strings.Repeat("Oops", 1024),
-			config.PutOptions{}))
+			config.PutOptions{})
+		require.NoError(t, err)
 	}
 
 	t.Log(`Step 2: Config the third member to sleep 15s after OpenSnapshotBackend and use SIGSTOP to pause it.`)
@@ -86,7 +87,7 @@ to override boltdb file. So, for the following changes, the third member will co
 
 	t.Log("Step 6: Write some data to the cluster")
 	for i := 0; i < snapCount/2; i++ {
-		err = epc.Procs[0].Etcdctl().Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("Oops", 1), config.PutOptions{})
+		_, err = epc.Procs[0].Etcdctl().Put(ctx, fmt.Sprintf("foo%d", i), strings.Repeat("Oops", 1), config.PutOptions{})
 		require.NoError(t, err)
 	}
 

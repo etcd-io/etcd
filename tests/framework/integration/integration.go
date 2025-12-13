@@ -218,7 +218,7 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	return c.Client.Get(ctx, key, clientOpts...)
 }
 
-func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
+func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
 	if opts.Timeout != 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
@@ -228,8 +228,7 @@ func (c integrationClient) Put(ctx context.Context, key, value string, opts conf
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
 	}
-	_, err := c.Client.Put(ctx, key, value, clientOpts...)
-	return err
+	return c.Client.Put(ctx, key, value, clientOpts...)
 }
 
 func (c integrationClient) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {

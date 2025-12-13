@@ -621,7 +621,7 @@ func TestEtcdHealthyWithTinySnapshotCatchupEntries(t *testing.T) {
 		g.Go(func() error {
 			cc := epc.Etcdctl()
 			for j := 0; j < 100; j++ {
-				if err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
+				if _, err := cc.Put(ctx, "foo", fmt.Sprintf("bar%d", clientID), config.PutOptions{}); err != nil {
 					return err
 				}
 			}

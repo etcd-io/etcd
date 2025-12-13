@@ -40,7 +40,8 @@ func TestKVPut(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
-				require.NoErrorf(t, cc.Put(ctx, key, value, config.PutOptions{}), "count not put key %q", key)
+				_, err := cc.Put(ctx, key, value, config.PutOptions{})
+				require.NoErrorf(t, err, "count not put key %q", key)
 				resp, err := cc.Get(ctx, key, config.GetOptions{})
 				require.NoErrorf(t, err, "count not get key %q, err: %s", key, err)
 				assert.Lenf(t, resp.Kvs, 1, "Unexpected length of response, got %d", len(resp.Kvs))
@@ -70,7 +71,8 @@ func TestKVGet(t *testing.T) {
 				)
 
 				for i := range kvs {
-					require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
+					_, err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
+					require.NoErrorf(t, err, "count not put key %q", kvs[i])
 				}
 				tests := []struct {
 					begin   string
@@ -166,7 +168,8 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
+						_, err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
+						require.NoErrorf(t, err, "count not put key %q", kvs[i])
 					}
 					del, err := cc.Delete(ctx, tt.deleteKey, tt.options)
 					require.NoErrorf(t, err, "count not get key %q, err", tt.deleteKey)

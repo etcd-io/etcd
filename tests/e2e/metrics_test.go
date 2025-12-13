@@ -111,7 +111,8 @@ func learnerMetricApplyFromSnapshotTest(cx ctlCtx) {
 func triggerSnapshot(ctx context.Context, cx ctlCtx) {
 	etcdctl := cx.epc.Procs[0].Etcdctl()
 	for i := 0; i < int(cx.epc.Cfg.ServerConfig.SnapshotCount); i++ {
-		require.NoError(cx.t, etcdctl.Put(ctx, "k", "v", config.PutOptions{}))
+		_, err := etcdctl.Put(ctx, "k", "v", config.PutOptions{})
+		require.NoError(cx.t, err)
 	}
 }
 
@@ -310,7 +311,7 @@ func TestNoMetricsMissing(t *testing.T) {
 
 			c := epc.Procs[0].Etcdctl()
 			for i := 0; i < 3; i++ {
-				err = c.Put(ctx, fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i), config.PutOptions{})
+				_, err = c.Put(ctx, fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i), config.PutOptions{})
 				require.NoError(t, err)
 			}
 			_, err = c.Get(ctx, "k", config.GetOptions{})

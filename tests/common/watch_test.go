@@ -76,7 +76,7 @@ func TestWatch(t *testing.T) {
 					require.NotNilf(t, wch, "failed to watch %s", tt.watchKey)
 
 					for j := range tt.puts {
-						err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{})
+						_, err := cc.Put(ctx, tt.puts[j].Key, tt.puts[j].Val, config.PutOptions{})
 						require.NoErrorf(t, err, "can't not put key %q, err: %s", tt.puts[j].Key, err)
 					}
 
