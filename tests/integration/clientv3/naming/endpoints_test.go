@@ -43,7 +43,7 @@ func TestEndpointManager(t *testing.T) {
 		t.Fatal("failed to establish watch", err)
 	}
 
-	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata"}
+	e1 := endpoints.Endpoint{Addr: "127.0.0.1"}
 	err = em.AddEndpoint(t.Context(), "foo/a1", e1)
 	if err != nil {
 		t.Fatal("failed to add foo", err)
@@ -130,14 +130,14 @@ func TestEndpointManagerCRUD(t *testing.T) {
 
 	// Add
 	k1 := "foo/a1"
-	e1 := endpoints.Endpoint{Addr: "127.0.0.1", Metadata: "metadata1"}
+	e1 := endpoints.Endpoint{Addr: "127.0.0.1"}
 	err = em.AddEndpoint(t.Context(), k1, e1)
 	if err != nil {
 		t.Fatal("failed to add", k1, err)
 	}
 
 	k2 := "foo/a2"
-	e2 := endpoints.Endpoint{Addr: "127.0.0.2", Metadata: "metadata2"}
+	e2 := endpoints.Endpoint{Addr: "127.0.0.2"}
 	err = em.AddEndpoint(t.Context(), k2, e2)
 	if err != nil {
 		t.Fatal("failed to add", k2, err)
@@ -166,7 +166,7 @@ func TestEndpointManagerCRUD(t *testing.T) {
 
 	// Update
 	k3 := "foo/a3"
-	e3 := endpoints.Endpoint{Addr: "127.0.0.3", Metadata: "metadata3"}
+	e3 := endpoints.Endpoint{Addr: "127.0.0.3"}
 	updates := []*endpoints.UpdateWithOpts{
 		{Update: endpoints.Update{Op: endpoints.Add, Key: k3, Endpoint: e3}},
 		{Update: endpoints.Update{Op: endpoints.Delete, Key: k2}},
