@@ -45,7 +45,7 @@ var (
 		},
 		"indent": func(s string) string {
 			pad := strings.Repeat(" ", 2)
-			return pad + strings.Replace(s, "\n", "\n"+pad, -1)
+			return pad + strings.ReplaceAll(s, "\n", "\n"+pad)
 		},
 	}
 )
@@ -106,7 +106,11 @@ GLOBAL OPTIONS:
 {{end}}
 `[1:]
 
-	commandUsageTemplate = template.Must(template.New("command_usage").Funcs(templFuncs).Parse(strings.ReplaceAll(commandUsage, "\\\n", "")))
+	commandUsageTemplate = template.Must(
+		template.New("command_usage").
+			Funcs(templFuncs).
+			Parse(strings.ReplaceAll(commandUsage, "\\\n", "")),
+	)
 }
 
 func etcdFlagUsages(flagSet *pflag.FlagSet) string {
