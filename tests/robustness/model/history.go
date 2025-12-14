@@ -65,10 +65,12 @@ func (h *AppendableHistory) AppendRange(startKey, endKey string, revision, limit
 		return
 	}
 	var respRevision int64
+	var respMemberID uint64
 	if resp != nil && resp.Header != nil {
 		respRevision = resp.Header.Revision
+		respMemberID = resp.Header.MemberId
 	}
-	h.appendSuccessful(request, start, end, rangeResponse(resp.Kvs, resp.Count, respRevision))
+	h.appendSuccessful(request, start, end, rangeResponseWithMemberID(resp.Kvs, resp.Count, respRevision, respMemberID))
 }
 
 func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duration, resp *clientv3.PutResponse, err error) {
@@ -78,10 +80,12 @@ func (h *AppendableHistory) AppendPut(key, value string, start, end time.Duratio
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
+		MemberID = resp.Header.MemberId
 	}
-	h.appendSuccessful(request, start, end, putResponse(revision))
+	h.appendSuccessful(request, start, end, putResponseWithMemberID(revision, MemberID))
 }
 
 func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64, start, end time.Duration, resp *clientv3.PutResponse, err error) {
@@ -91,10 +95,12 @@ func (h *AppendableHistory) AppendPutWithLease(key, value string, leaseID int64,
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
+		MemberID = resp.Header.MemberId
 	}
-	h.appendSuccessful(request, start, end, putResponse(revision))
+	h.appendSuccessful(request, start, end, putResponseWithMemberID(revision, MemberID))
 }
 
 func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *clientv3.LeaseGrantResponse, err error) {
@@ -108,10 +114,12 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	if resp != nil && resp.ResponseHeader != nil {
 		revision = resp.ResponseHeader.Revision
+		MemberID = resp.ResponseHeader.MemberId
 	}
-	h.appendSuccessful(request, start, end, leaseGrantResponse(revision))
+	h.appendSuccessful(request, start, end, leaseGrantResponseWithMemberID(revision, MemberID))
 }
 
 func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration, resp *clientv3.LeaseRevokeResponse, err error) {
@@ -121,10 +129,12 @@ func (h *AppendableHistory) AppendLeaseRevoke(id int64, start, end time.Duration
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
+		MemberID = resp.Header.MemberId
 	}
-	h.appendSuccessful(request, start, end, leaseRevokeResponse(revision))
+	h.appendSuccessful(request, start, end, leaseRevokeResponseWithMemberID(revision, MemberID))
 }
 
 func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, resp *clientv3.DeleteResponse, err error) {
@@ -134,12 +144,14 @@ func (h *AppendableHistory) AppendDelete(key string, start, end time.Duration, r
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	var deleted int64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
+		MemberID = resp.Header.MemberId
 		deleted = resp.Deleted
 	}
-	h.appendSuccessful(request, start, end, deleteResponse(deleted, revision))
+	h.appendSuccessful(request, start, end, deleteResponseWithMemberID(deleted, revision, MemberID))
 }
 
 func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, clientOnFailure []clientv3.Op, start, end time.Duration, resp *clientv3.TxnResponse, err error) {
@@ -161,14 +173,16 @@ func (h *AppendableHistory) AppendTxn(cmp []clientv3.Cmp, clientOnSuccessOps, cl
 		return
 	}
 	var revision int64
+	var MemberID uint64
 	if resp != nil && resp.Header != nil {
 		revision = resp.Header.Revision
+		MemberID = resp.Header.MemberId
 	}
 	results := []EtcdOperationResult{}
 	for _, resp := range resp.Responses {
 		results = append(results, toEtcdOperationResult(resp))
 	}
-	h.appendSuccessful(request, start, end, txnResponse(results, resp.Succeeded, revision))
+	h.appendSuccessful(request, start, end, txnResponseWithMemberID(results, resp.Succeeded, revision, MemberID))
 }
 
 func (h *AppendableHistory) appendClientError(request EtcdRequest, start, end time.Duration, err error) {
@@ -357,6 +371,10 @@ func getResponseWithVer(key, value string, modRevision, ver, revision int64) May
 }
 
 func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtcdResponse {
+	return rangeResponseWithMemberID(kvs, count, revision, 0)
+}
+
+func rangeResponseWithMemberID(kvs []*mvccpb.KeyValue, count int64, revision int64, MemberID uint64) MaybeEtcdResponse {
 	result := RangeResponse{KVs: make([]KeyValue, len(kvs)), Count: count}
 
 	for i, kv := range kvs {
@@ -369,7 +387,7 @@ func rangeResponse(kvs []*mvccpb.KeyValue, count int64, revision int64) MaybeEtc
 			},
 		}
 	}
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision, MemberID: MemberID}}
 }
 
 func failedResponse(err error) MaybeEtcdResponse {
@@ -385,7 +403,11 @@ func putRequest(key, value string) EtcdRequest {
 }
 
 func putResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision}}
+	return putResponseWithMemberID(revision, 0)
+}
+
+func putResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision, MemberID: MemberID}}
 }
 
 func deleteRequest(key string) EtcdRequest {
@@ -393,7 +415,11 @@ func deleteRequest(key string) EtcdRequest {
 }
 
 func deleteResponse(deleted int64, revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision}}
+	return deleteResponseWithMemberID(deleted, revision, 0)
+}
+
+func deleteResponseWithMemberID(deleted int64, revision int64, MemberID uint64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision, MemberID: MemberID}}
 }
 
 func compareRevisionAndPutRequest(key string, expectedRevision int64, value string) EtcdRequest {
@@ -444,7 +470,11 @@ func txnEmptyResponse(succeeded bool, revision int64) MaybeEtcdResponse {
 }
 
 func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision}}
+	return txnResponseWithMemberID(result, succeeded, revision, 0)
+}
+
+func txnResponseWithMemberID(result []EtcdOperationResult, succeeded bool, revision int64, MemberID uint64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision, MemberID: MemberID}}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
@@ -456,7 +486,11 @@ func leaseGrantRequest(leaseID int64) EtcdRequest {
 }
 
 func leaseGrantResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision}}
+	return leaseGrantResponseWithMemberID(revision, 0)
+}
+
+func leaseGrantResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision, MemberID: MemberID}}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
@@ -464,7 +498,11 @@ func leaseRevokeRequest(leaseID int64) EtcdRequest {
 }
 
 func leaseRevokeResponse(revision int64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision}}
+	return leaseRevokeResponseWithMemberID(revision, 0)
+}
+
+func leaseRevokeResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision, MemberID: MemberID}}
 }
 
 func defragmentRequest() EtcdRequest {

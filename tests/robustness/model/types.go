@@ -147,6 +147,7 @@ type EtcdResponse struct {
 	Compact     *CompactResponse
 	ClientError string
 	Revision    int64
+	MemberID    uint64
 }
 
 func Match(r1, r2 MaybeEtcdResponse) bool {
@@ -158,6 +159,10 @@ func Match(r1, r2 MaybeEtcdResponse) bool {
 	if r2.Persisted {
 		r2Revision = r2.PersistedRevision
 	}
+
+	r1.EtcdResponse.MemberID = 0
+	r2.EtcdResponse.MemberID = 0
+
 	return (r1.Persisted && r1.PersistedRevision == 0) || (r2.Persisted && r2.PersistedRevision == 0) || ((r1.Persisted || r2.Persisted) && (r1.Error != "" || r2.Error != "" || r1Revision == r2Revision)) || reflect.DeepEqual(r1, r2)
 }
 
