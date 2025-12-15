@@ -59,7 +59,7 @@ func TestForceNewCluster(t *testing.T) {
 			require.Len(t, promotedMembers, 4)
 
 			for i := 0; i < tc.snapcount; i++ {
-				err := epc.Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
+				_, err := epc.Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
 				require.NoError(t, err)
 			}
 
@@ -153,7 +153,7 @@ func TestForceNewCluster_AddLearner_MemberCount(t *testing.T) {
 			})
 
 			for i := 0; i < tc.snapcount; i++ {
-				werr := epc.Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
+				_, werr := epc.Etcdctl().Put(t.Context(), "foo", "bar", config.PutOptions{})
 				require.NoError(t, werr)
 			}
 			require.NoError(t, epc.Close())

@@ -124,7 +124,7 @@ func TestInPlaceRecovery(t *testing.T) {
 	oldCc, err := e2e.NewEtcdctl(epcOld.Cfg.Client, epcOld.EndpointsGRPC())
 	require.NoError(t, err)
 	for i := 0; i < 10; i++ {
-		err = oldCc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		_, err = oldCc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		require.NoErrorf(t, err, "error on put")
 	}
 
@@ -210,7 +210,7 @@ func TestPeriodicCheckDetectsCorruption(t *testing.T) {
 
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
-		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		require.NoErrorf(t, err, "error on put")
 	}
 
@@ -261,7 +261,7 @@ func testCompactHashCheckDetectCorruption(t *testing.T, useFeatureGate bool) {
 
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
-		err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
+		_, err = cc.Put(ctx, testutil.PickKey(int64(i)), fmt.Sprint(i), config.PutOptions{})
 		require.NoErrorf(t, err, "error on put")
 	}
 	memberID, found, err := getMemberIDByName(ctx, cc, epc.Procs[0].Config().Name)
@@ -341,7 +341,7 @@ func testCompactHashCheckDetectCorruptionInterrupt(t *testing.T, useFeatureGate 
 	t.Log("putting 10 values to the identical key...")
 	cc := epc.Etcdctl()
 	for i := 0; i < 10; i++ {
-		err = cc.Put(ctx, "key", fmt.Sprint(i), config.PutOptions{})
+		_, err = cc.Put(ctx, "key", fmt.Sprint(i), config.PutOptions{})
 		require.NoErrorf(t, err, "error on put")
 	}
 

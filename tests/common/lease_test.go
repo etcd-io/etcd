@@ -132,7 +132,7 @@ func TestLeaseGrantTimeToLiveExpired(t *testing.T) {
 				leaseResp, err := cc.Grant(ctx, 2)
 				require.NoError(t, err)
 
-				err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
 				require.NoError(t, err)
 
 				getResp, err := cc.Get(ctx, "foo", config.GetOptions{})
@@ -230,7 +230,7 @@ func TestLeaseGrantRevoke(t *testing.T) {
 				leaseResp, err := cc.Grant(ctx, 20)
 				require.NoError(t, err)
 
-				err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
+				_, err = cc.Put(ctx, "foo", "bar", config.PutOptions{LeaseID: leaseResp.ID})
 				require.NoError(t, err)
 
 				getResp, err := cc.Get(ctx, "foo", config.GetOptions{})

@@ -166,8 +166,9 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 	return &resp, err
 }
 
-func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
-	args := ctl.cmdArgs()
+func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
+	resp := clientv3.PutResponse{}
+	args := []string{}
 	args = append(args, "put", key, value)
 	if opts.LeaseID != 0 {
 		args = append(args, "--lease", strconv.FormatInt(int64(opts.LeaseID), 16))
@@ -175,8 +176,8 @@ func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.Pu
 	if opts.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", opts.Timeout))
 	}
-	_, err := SpawnWithExpectLines(ctx, args, nil, expect.ExpectedResponse{Value: "OK"})
-	return err
+	err := ctl.spawnJSONCmd(ctx, &resp, args...)
+	return &resp, err
 }
 
 func (ctl *EtcdctlV3) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {
