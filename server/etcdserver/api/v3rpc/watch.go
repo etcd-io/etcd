@@ -432,6 +432,7 @@ func (sws *serverWatchStream) sendLoop() {
 				return
 			}
 
+			start := time.Now()
 			// TODO: evs is []mvccpb.Event type
 			// either return []*mvccpb.Event from the mvcc package
 			// or define protocol buffer with []mvccpb.Event.
@@ -502,11 +503,15 @@ func (sws *serverWatchStream) sendLoop() {
 			}
 			sws.mu.Unlock()
 
+			totalDur := time.Since(start)
+			watchSendLoopWatchStreamDuration.Observe(totalDur.Seconds())
+			watchSendLoopWatchStreamDurationPerEvent.Observe(totalDur.Seconds() / float64(len(evs)))
+
 		case c, ok := <-sws.ctrlStream:
 			if !ok {
 				return
 			}
-
+			start := time.Now()
 			if err := sws.gRPCStream.Send(c); err != nil {
 				if isClientCtxErr(sws.gRPCStream.Context().Err(), err) {
 					sws.lg.Debug("failed to send watch control response to gRPC stream", zap.Error(err))
@@ -544,7 +549,11 @@ func (sws *serverWatchStream) sendLoop() {
 				delete(pending, wid)
 			}
 
+			watchSendLoopControlStreamDuration.Observe(time.Since(start).Seconds())
+
 		case <-progressTicker.C:
+			start := time.Now()
+
 			sws.mu.Lock()
 			for id, ok := range sws.progress {
 				if ok {
@@ -553,6 +562,7 @@ func (sws *serverWatchStream) sendLoop() {
 				sws.progress[id] = true
 			}
 			sws.mu.Unlock()
+			watchSendLoopProgressDuration.Observe(time.Since(start).Seconds())
 
 		case <-sws.closec:
 			return
