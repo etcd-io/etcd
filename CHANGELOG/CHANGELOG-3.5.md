@@ -4,16 +4,21 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.26 (TBA)
+## v3.5.26 (2025-12-17)
 
 ### etcd server
 
 - [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20942)
 - Fix [zombie members in v3store](https://github.com/etcd-io/etcd/pull/20995)
 
+### etcdctl
+
+- [Fix a typo of 'etcdctl snapshot restore' command](https://github.com/etcd-io/etcd/pull/20948).
+
 ### Dependencies
 
 - Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20999).
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21023).
 
 ---
 
