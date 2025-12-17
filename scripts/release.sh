@@ -124,7 +124,7 @@ main() {
     fi
 
     log_callout "Building etcd and checking --version output"
-    ./build
+    GO_BUILD_FLAGS="-v -buildvcs=false" ./build
     local etcd_version
     etcd_version=$(bin/etcd --version | grep "etcd Version" | awk '{ print $3 }')
     if [[ "${etcd_version}" != "${VERSION}" ]]; then
