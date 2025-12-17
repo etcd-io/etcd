@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 - [Scripts/build-binary.sh: use `buildvcs=false` to avoid having a pseudo-version reported by `go version`](https://github.com/etcd-io/etcd/pull/20950)
 - Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/21000).
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21022).
 
 ---
 

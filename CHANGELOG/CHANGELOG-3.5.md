@@ -14,6 +14,7 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 ### Dependencies
 
 - Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20999).
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21023).
 
 ---
 
