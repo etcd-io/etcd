@@ -31,7 +31,7 @@ import (
 
 var (
 	useCluster   bool
-	dbQuotaBytes int
+	dbQuotaBytes int64
 	outputFile   string
 )
 
@@ -45,7 +45,7 @@ func NewDiagnosisCommand() *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&useCluster, "cluster", false, "use all endpoints from the cluster member list")
-	cmd.Flags().IntVar(&dbQuotaBytes, "etcd-storage-quota-bytes", 2*1024*1024*1024, "etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)")
+	cmd.Flags().Int64Var(&dbQuotaBytes, "etcd-storage-quota-bytes", 2*1024*1024*1024, "etcd storage quota in bytes (the value passed to etcd instance by flag --quota-backend-bytes)")
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "write report to file instead of stdout")
 
 	return cmd

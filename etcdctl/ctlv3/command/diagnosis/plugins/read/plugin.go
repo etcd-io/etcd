@@ -22,7 +22,6 @@ import (
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
-
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/engine/intf"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/plugins/common"
 )

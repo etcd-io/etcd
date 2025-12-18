@@ -21,7 +21,6 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/engine/intf"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/plugins/common"
 )
@@ -41,7 +40,7 @@ type checkResult struct {
 	EpStatusList []epStatus `json:"epStatusList,omitempty"`
 }
 
-func NewPlugin(cfg *clientv3.ConfigSpec, eps []string, timeout time.Duration, dbQuota int) intf.Plugin {
+func NewPlugin(cfg *clientv3.ConfigSpec, eps []string, timeout time.Duration, dbQuota int64) intf.Plugin {
 	return &epStatusChecker{
 		Checker: common.Checker{
 			Cfg:            cfg,
@@ -174,14 +173,14 @@ func compareSoftInfo(s1, s2 *clientv3.StatusResponse) bool {
 		s1.Leader == s2.Leader
 }
 
-func checkDBSize(chkResult *checkResult, dbQuota int) {
+func checkDBSize(chkResult *checkResult, dbQuota int64) {
 	for _, sts := range chkResult.EpStatusList {
 		if sts.EpStatus == nil {
 			continue
 		}
 
 		freeSize := sts.EpStatus.DbSize - sts.EpStatus.DbSizeInUse
-		if freeSize > sts.EpStatus.DbSizeInUse && freeSize > 1_000_000_000 /* about 1GB */ || sts.EpStatus.DbSize >= int64(dbQuota*80/100) {
+		if freeSize > sts.EpStatus.DbSizeInUse && freeSize > 1_000_000_000 /* about 1GB */ || sts.EpStatus.DbSize >= dbQuota*80/100 {
 			appendSummary(chkResult, "Detected large amount of db [free] space for endpoint %q, dbQuota: %d, dbSize: %d, dbSizeInUse: %d, dbSizeFree: %d", sts.Endpoint, dbQuota, sts.EpStatus.DbSize, sts.EpStatus.DbSizeInUse, freeSize)
 		}
 	}

@@ -27,6 +27,6 @@ type Checker struct {
 	Cfg            *clientv3.ConfigSpec
 	Endpoints      []string
 	CommandTimeout time.Duration
-	DbQuotaBytes   int
+	DbQuotaBytes   int64
 	Name           string
 }

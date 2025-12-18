@@ -27,7 +27,6 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
-
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/engine/intf"
 	"go.etcd.io/etcd/etcdctl/v3/ctlv3/command/diagnosis/plugins/common"
 )
@@ -145,13 +144,13 @@ func fetchMetrics(cfg *clientv3.ConfigSpec, ep string, timeout time.Duration) ([
 
 	client := &http.Client{Timeout: timeout}
 	if strings.HasPrefix(urlPath, "https://") && cfg.Secure != nil {
-		cert, err := tls.LoadX509KeyPair(cfg.Secure.Cert, cfg.Secure.Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load certificate: %w", err)
+		cert, certErr := tls.LoadX509KeyPair(cfg.Secure.Cert, cfg.Secure.Key)
+		if certErr != nil {
+			return nil, fmt.Errorf("failed to load certificate: %w", certErr)
 		}
-		caCert, err := os.ReadFile(cfg.Secure.Cacert)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load CA: %w", err)
+		caCert, caErr := os.ReadFile(cfg.Secure.Cacert)
+		if caErr != nil {
+			return nil, fmt.Errorf("failed to load CA: %w", caErr)
 		}
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)

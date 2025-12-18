@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD003 MD004 MD007 MD012 MD022 MD024 MD040 -->
+
 etcdctl
 ========
 
@@ -134,7 +136,9 @@ RPC: Range
 - min-mod-revision -- restrict results to kvs with modified revision greater or equal than the supplied revision
 
 #### Output
+
 Prints the data in format below,
+
 ```
 \<key\>\n\<value\>\n\<next_key\>\n\<next_value\>...
 ```
@@ -142,7 +146,6 @@ Prints the data in format below,
 Note serializable requests are better for lower latency requirement, but
 stale data might be returned if serializable option (`--consistency=s`)
 is specified.
-
 
 #### Examples
 
@@ -283,6 +286,7 @@ RPC: Txn
 - interactive -- input transaction with interactive prompting.
 
 #### Input Format
+
 ```ebnf
 <Txn> ::= <CMP>* "\n" <THEN> "\n" <ELSE> "\n"
 <CMP> ::= (<CMPCREATE>|<CMPMOD>|<CMPVAL>|<CMPVER>|<CMPLEASE>) "\n"
@@ -309,6 +313,7 @@ RPC: Txn
 #### Examples
 
 txn in interactive mode:
+
 ```bash
 ./etcdctl txn -i
 # compares:
@@ -329,6 +334,7 @@ put key2 "some extra key"
 ```
 
 txn in non-interactive mode:
+
 ```bash
 ./etcdctl txn <<<'mod("key1") > "0"
 
@@ -384,6 +390,7 @@ RPC: Compact
 Prints the compacted revision.
 
 #### Example
+
 ```bash
 ./etcdctl compaction 1234
 # compacted revision 1234
@@ -642,6 +649,7 @@ RPC: LeaseKeepAlive
 Prints a message for every keep alive sent or prints a message indicating the lease is gone.
 
 #### Example
+
 ```bash
 ./etcdctl lease keep-alive 32695410dcc0ca0
 # lease 32695410dcc0ca0 keepalived with TTL(100)
@@ -727,6 +735,7 @@ MEMBER LIST prints the member details for all members associated with an etcd cl
 RPC: MemberList
 
 #### Options
+
 - consistency -- Linearizable(l) or Serializable(s), defaults to Linearizable(l).
 
 #### Output
@@ -990,7 +999,6 @@ DEFRAG defragments the backend database file for a set of given endpoints while 
 
 **Note that defragmentation request does not get replicated over cluster. That is, the request is only applied to the local node. Specify all members in `--endpoints` flag or `--cluster` flag to automatically find all cluster members.**
 
-
 #### Output
 
 For each endpoints, prints a message indicating whether the endpoint was successfully defragmented.
@@ -1031,6 +1039,7 @@ The backend snapshot is written to the given file path.
 #### Example
 
 Save a snapshot to "snapshot.db":
+
 ```
 ./etcdctl snapshot save snapshot.db
 ```
@@ -1038,7 +1047,6 @@ Save a snapshot to "snapshot.db":
 ### SNAPSHOT RESTORE [options] \<filename\>
 
 Removed in v3.6. Use `etcdutl snapshot restore` instead.
-
 
 ### SNAPSHOT STATUS \<filename\>
 
@@ -1079,6 +1087,7 @@ New members will refuse joining cluster with cluster version newer than theirs, 
 Downgrade commands allow cluster administrator to force cluster version to be lowered to previous minor version, thus allowing to downgrade the cluster.
 
 Downgrade should be executed in stages:
+
 1. Verify that cluster is ready to be downgraded by running `etcdctl downgrade validate <TARGET_VERSION>`
 2. Start the downgrade process by running `etcdctl downgrade enable <TARGET_VERSION>`
 3. For each cluster member:
@@ -1129,6 +1138,7 @@ DOWNGRADE CANCEL cancels the ongoing downgrade action to cluster.
 ./etcdctl downgrade cancel
 Downgrade cancel success, cluster version 3.5
 ```
+
 ### DIAGNOSIS
 
 `etcdctl diagnosis [flags]` - Collects and analyzes troubleshooting data from a running etcd cluster.
@@ -1166,7 +1176,6 @@ etcdctl diagnosis -o report.json
 
 Example output: see [ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json](ctlv3/command/diagnosis/examples/etcd_diagnosis_report.json)
 
-
 ## Concurrency commands
 
 ### LOCK [options] \<lockname\> [command arg1 arg2 ...]
@@ -1200,6 +1209,7 @@ Acquire lock and execute `echo lock acquired`:
 ```
 
 Acquire lock and execute `etcdctl put` command
+
 ```bash
 ./etcdctl lock mylock ./etcdctl put foo bar
 # OK
@@ -1588,7 +1598,6 @@ The approximate total number of keys transferred to the destination cluster, upd
 
 [mirror]: ./doc/mirror_maker.md
 
-
 ### VERSION
 
 Prints the version of etcdctl.
@@ -1615,7 +1624,6 @@ CHECK PERF checks the performance of the etcd cluster for 60 seconds. Running th
 
 Notice that different workload models use different configurations in terms of number of clients and throughput. Here is the configuration for each load:
 
-
 | Load | Number of clients | Number of put requests (requests/sec) |
 |---------|------|---------|
 | Small   | 50   | 10000   |
@@ -1629,9 +1637,7 @@ The test checks for the following conditions:
 - All the requests should be done in less than 500 ms
 - The standard deviation of the requests should be less than 100 ms
 
-
 Hence, a workload model may work while another one might fail.
-
 
 RPC: CheckPerf
 
@@ -1746,7 +1752,4 @@ backward compatibility for `JSON` format and the format in non-interactive mode.
 
 [etcd]: https://github.com/coreos/etcd
 [READMEv2]: READMEv2.md
-[v2key]: ../store/node_extern.go#L28-L37
-[v3key]: ../api/mvccpb/kv.proto#L12-L29
 [etcdrpc]: ../api/etcdserverpb/rpc.proto
-[storagerpc]: ../api/mvccpb/kv.proto
