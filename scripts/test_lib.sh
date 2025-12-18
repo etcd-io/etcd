@@ -354,7 +354,7 @@ function run_go_tests_expanding_packages {
   local packages=()
   local args=()
   for arg in "$@"; do
-    if [[ "${arg}" =~ ./ ]]; then
+    if [[ "${arg}" =~ ^\./ || "${arg}" =~ ^go\.etcd\.io/etcd ]]; then
       packages+=("${arg}")
     else
       args+=("${arg}")
