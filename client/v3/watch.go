@@ -811,11 +811,13 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 		}
 		select {
 		case outc <- *curWr:
-			if ws.buf[0].Err() != nil {
+			if len(ws.buf) > 0 && ws.buf[0] != nil && ws.buf[0].Err() != nil {
 				return
 			}
-			ws.buf[0] = nil
-			ws.buf = ws.buf[1:]
+			if len(ws.buf) > 0 {
+				ws.buf[0] = nil
+				ws.buf = ws.buf[1:]
+			}
 		case wr, ok := <-ws.recvc:
 			if !ok {
 				// shutdown from closeSubstream
