@@ -4,6 +4,10 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
+## v3.5.27 (TBC)
+
+---
+
 ## v3.5.26 (2025-12-17)
 
 ### etcd server
