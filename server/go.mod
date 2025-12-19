@@ -32,10 +32,10 @@ require (
 	go.etcd.io/etcd/pkg/v3 v3.6.0-alpha.0
 	go.etcd.io/raft/v3 v3.6.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0
-	go.opentelemetry.io/otel v1.38.0
+	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.38.0
-	go.opentelemetry.io/otel/sdk v1.38.0
-	go.opentelemetry.io/otel/trace v1.38.0
+	go.opentelemetry.io/otel/sdk v1.39.0
+	go.opentelemetry.io/otel/trace v1.39.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.46.0
 	golang.org/x/net v0.48.0
@@ -66,7 +66,7 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.38.0 // indirect
-	go.opentelemetry.io/otel/metric v1.38.0 // indirect
+	go.opentelemetry.io/otel/metric v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.9.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
