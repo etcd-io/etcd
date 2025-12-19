@@ -140,3 +140,264 @@ func TestDedupe(t *testing.T) {
 		})
 	}
 }
+
+func Test_bucketBuffer_Range(t *testing.T) {
+	tests := []struct {
+		name                       string
+		bb                         func() *bucketBuffer
+		key, endKey                []byte
+		limit                      int64
+		expectedKeys, expectedVals [][]byte
+		expectPanicFromRange       bool
+		expectPanicFromAdd         bool
+	}{
+		{
+			name:                 "nil bucketBuffer",
+			bb:                   func() *bucketBuffer { return nil },
+			expectPanicFromRange: true,
+		},
+		{
+			name: "unproperly initialized bucket",
+			bb: func() *bucketBuffer {
+				b := &bucketBuffer{}
+				b.used = 20
+				return b
+			},
+			expectPanicFromAdd: true,
+		},
+		{
+			name:         "blank bucketBuffer return nil keys and values",
+			bb:           newBucketBuffer,
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "the key does not exist in the bucket",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key1"), []byte("val1"))
+				b.add([]byte("key2"), []byte("val2"))
+				return b
+			},
+			key:          []byte("non-existent"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "key exists right at bucket's used slot",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key1"), []byte("val1"))
+				b.add([]byte("key2"), []byte("val2"))
+				b.add([]byte("key3"), []byte("val3"))
+
+				b.used = 1
+				return b
+			},
+			key:          []byte("key2"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "key exists beyond bucket's used slot",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key1"), []byte("val1"))
+				b.add([]byte("key2"), []byte("val2"))
+				b.add([]byte("key3"), []byte("val3"))
+
+				b.used = 1
+				return b
+			},
+			key:          []byte("key3"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "single key lookup (no endKey)",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key1"), []byte("val1"))
+				b.add([]byte("key2"), []byte("val2"))
+				b.add([]byte("key3"), []byte("val3"))
+				return b
+			},
+			key:          []byte("key1"),
+			endKey:       []byte(""),
+			expectedKeys: [][]byte{[]byte("key1")},
+			expectedVals: [][]byte{[]byte("val1")},
+		},
+		{
+			name: "endKey is lower than key",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				return b
+			},
+			key:          []byte("key4"),
+			endKey:       []byte("key3"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "endKey is lower than key",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				return b
+			},
+			key:          []byte("key4"),
+			endKey:       []byte("key3"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "endKey is the same as key",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				return b
+			},
+			key:          []byte("key5"),
+			endKey:       []byte("key5"),
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+		{
+			name: "key and endKey are in the range of the bucket",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				b.add([]byte("key7"), []byte("val7"))
+				b.add([]byte("key8"), []byte("val8"))
+				b.add([]byte("key9"), []byte("val9"))
+				return b
+			},
+			key:    []byte("key5"),
+			endKey: []byte("key8"),
+			limit:  6,
+			expectedKeys: [][]byte{
+				[]byte("key5"),
+				[]byte("key6"),
+				[]byte("key7"), // exclusive of endKey
+			},
+			expectedVals: [][]byte{
+				[]byte("val5"),
+				[]byte("val6"),
+				[]byte("val7"),
+			},
+		},
+		{
+			name: "key and endKey are consecutive",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				b.add([]byte("key7"), []byte("val7"))
+				b.add([]byte("key8"), []byte("val8"))
+				b.add([]byte("key9"), []byte("val9"))
+				return b
+			},
+			key:    []byte("key5"),
+			endKey: []byte("key6"),
+			limit:  6,
+			expectedKeys: [][]byte{
+				[]byte("key5"),
+			},
+			expectedVals: [][]byte{
+				[]byte("val5"),
+			},
+		},
+		{
+			name: "endKey is beyond the range of buffer",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				return b
+			},
+			key:    []byte("key5"),
+			endKey: []byte("key9"),
+			limit:  3,
+			expectedKeys: [][]byte{
+				[]byte("key5"),
+				[]byte("key6"),
+			},
+			expectedVals: [][]byte{
+				[]byte("val5"),
+				[]byte("val6"),
+			},
+		},
+		{
+			name: "range is controlled by the limit",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				b.add([]byte("key7"), []byte("val7"))
+				return b
+			},
+			key:    []byte("key5"),
+			endKey: []byte("key9"),
+			limit:  2,
+			expectedKeys: [][]byte{
+				[]byte("key5"),
+				[]byte("key6"),
+			},
+			expectedVals: [][]byte{
+				[]byte("val5"),
+				[]byte("val6"),
+			},
+		},
+		{
+			name: "corrupted buffer with the wrong calculated used slot",
+			bb: func() *bucketBuffer {
+				b := newBucketBuffer()
+				b.add([]byte("key4"), []byte("val4"))
+				b.add([]byte("key5"), []byte("val5"))
+				b.add([]byte("key6"), []byte("val6"))
+				b.add([]byte("key7"), []byte("val7"))
+				// corrupted buffer
+				b.used = 20
+				return b
+			},
+			key:    []byte("key7"),
+			endKey: []byte("key9"),
+			limit:  5,
+			// nil as sort.Search will continue until idx == b.used due to pre-allocated blank values by newBucketBuffer()
+			expectedKeys: nil,
+			expectedVals: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bb := tt.bb()
+			if tt.expectPanicFromRange {
+				assert.Panics(t, func() {
+					bb.Range(tt.key, tt.endKey, tt.limit)
+				})
+				return
+			}
+			if tt.expectPanicFromAdd {
+				assert.Panics(t, func() {
+					bb.add([]byte("key1"), []byte("val1"))
+				})
+				return
+			}
+			actualKeys, actualValues := bb.Range(tt.key, tt.endKey, tt.limit)
+			assert.Equal(t, tt.expectedKeys, actualKeys)
+			assert.Equal(t, tt.expectedVals, actualValues)
+		})
+	}
+}
