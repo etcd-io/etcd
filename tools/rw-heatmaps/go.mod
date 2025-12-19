@@ -22,5 +22,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
 	golang.org/x/image v0.18.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 )

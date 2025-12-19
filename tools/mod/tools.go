@@ -34,6 +34,7 @@ import (
 	_ "go.etcd.io/gofail"
 	_ "go.etcd.io/protodoc"
 	_ "go.etcd.io/raft/v3"
+	_ "golang.org/x/tools/cmd/goimports"
 	_ "gotest.tools/gotestsum"
 	_ "gotest.tools/v3"
 	_ "honnef.co/go/tools/cmd/staticcheck"
