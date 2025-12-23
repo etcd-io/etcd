@@ -411,7 +411,7 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		return -1, errors.ErrTimeout
 	case errorspkg.Is(err, context.Canceled):
 		// Parent ctx (likely the gRPC stream ctx) got canceled.
-		return -1, errors.ErrStopped
+		return -1, errors.ErrCanceled
 	// The next two cases should be unreachable, but we keep it defensive.
 	// Return ErrTimeout in both cases to tell the client to retry later.
 	case err == nil:
