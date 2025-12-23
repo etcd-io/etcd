@@ -363,7 +363,7 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		require.NoError(t, err)
 		count, err := strconv.ParseInt(metricVal, 10, 32)
 		require.NoError(t, err)
-		require.Equal(t, count, int64(0))
+		require.Equal(t, int64(0), count)
 	})
 
 	t.Run("forwarding times out", func(t *testing.T) {
