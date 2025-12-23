@@ -79,6 +79,11 @@ const (
 	// beta: v3.7
 	// main PR: https://github.com/etcd-io/etcd/pull/20589
 	FastLeaseKeepAlive featuregate.Feature = "FastLeaseKeepAlive"
+	// PriorityRequest enables certain kinds of requests(e.g. LreaeRevoke) having higher priority to be applied under overload conditions.
+	// owner: @silentred
+	// alpha: v3.7
+	// main PR: https://github.com/etcd-io/etcd/pull/20492
+	PriorityRequest featuregate.Feature = "PriorityRequest"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -90,6 +95,7 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
 	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
+	PriorityRequest:              {Default: false, PreRelease: featuregate.Alpha},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {
