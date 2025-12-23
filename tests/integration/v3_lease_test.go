@@ -314,6 +314,79 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 	})
 }
 
+// TestV3LeaseKeepAliveForwardingCatchError ensures the server properly generates error
+// codes while the follower server is forwarding LeaseKeepAlive request to the leader.
+func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
+	integration.BeforeTest(t)
+
+	t.Run("client cancels while forwarding", func(t *testing.T) {
+		cancel, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
+		defer keepAliveClient.CloseSend()
+
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+		// cancel while the leader server is stuck in ServeHTTP
+		cancel()
+
+		// Recv should surface Canceled error.
+		_, err := keepAliveClient.Recv()
+		errStatus, ok := status.FromError(err)
+		require.True(t, ok)
+		require.Equal(t, codes.Canceled, errStatus.Code())
+	})
+
+	t.Run("forwarding times out", func(t *testing.T) {
+		_, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
+		defer keepAliveClient.CloseSend()
+
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+
+		_, err := keepAliveClient.Recv()
+		require.Equal(t, rpctypes.ErrGRPCTimeout, err)
+	})
+}
+
+func setupLeaseKeepAliveForwarding(t *testing.T) (context.CancelFunc, pb.Lease_LeaseKeepAliveClient, int64) {
+	t.Helper()
+	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	t.Cleanup(func() { cluster.Terminate(t) })
+
+	leaderIdx := cluster.WaitLeader(t)
+	followerIdx := (leaderIdx + 1) % 3
+
+	// Create a lease
+	grantResp, err := integration.ToGRPC(cluster.Client(leaderIdx)).Lease.LeaseGrant(
+		t.Context(),
+		&pb.LeaseGrantRequest{TTL: 30},
+	)
+	require.NoError(t, err)
+	require.Empty(t, grantResp.Error)
+	leaseID := grantResp.ID
+
+	// Start keepalive stream on follower so that it will forward request to leader via HTTP
+	ctx, cancel := context.WithCancel(t.Context())
+	leaseClient := integration.ToGRPC(cluster.Client(followerIdx)).Lease
+	keepAliveClient, err := leaseClient.LeaseKeepAlive(ctx)
+	require.NoError(t, err)
+
+	// Make sure the stream is actually functioning first.
+	require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+	keepAliveResp, err := keepAliveClient.Recv()
+	require.NoError(t, err)
+	require.Equal(t, leaseID, keepAliveResp.ID)
+
+	// Block the leaseHandler.ServeHTTP function for 10s (longer than the default timeout
+	// duration 7s), so that test cases can either wait for timeout or simply cancel.
+	failpointName := "beforeServeHTTPLeaseRenew"
+	require.NoError(t, gofail.Enable(failpointName, `sleep("10s")`))
+	t.Cleanup(func() {
+		terr := gofail.Disable(failpointName)
+		if terr != nil && !errors.Is(terr, gofail.ErrDisabled) {
+			t.Fatalf("Failed to disable failpoint %v, got error: %v", failpointName, terr)
+		}
+	})
+	return cancel, keepAliveClient, leaseID
+}
+
 // TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
 // across leader elections.
 func TestV3LeaseCheckpoint(t *testing.T) {
@@ -891,7 +964,7 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 	}
 }
 
-func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
+func TestV3LeaseRecoverKeyWithMultipleLease(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})

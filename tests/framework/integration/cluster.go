@@ -234,6 +234,7 @@ func (c *Cluster) Launch(t testutil.TB) {
 	for _, m := range c.Members {
 		t.Logf(" - %v -> %v (%v)", m.Name, m.ID(), m.GRPCURL)
 	}
+	t.Logf("========== Successfully launched cluster ==========")
 }
 
 // ProtoMembers returns a list of all active members as etcdserverpb.Member

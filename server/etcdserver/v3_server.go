@@ -384,6 +384,8 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 	defer cancel()
 
 	// renewals don't go through raft; forward to leader manually
+	// This is best-effort until the context times out. For now all
+	// error codes are considered retryable except ErrLeaseNotFound.
 	for cctx.Err() == nil {
 		leader, lerr := s.waitLeader(cctx)
 		if lerr != nil {
@@ -397,13 +399,30 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 			}
 		}
 		// Throttle in case of e.g. connection problems.
-		time.Sleep(50 * time.Millisecond)
+		select {
+		case <-time.After(50 * time.Millisecond):
+		case <-cctx.Done():
+		}
 	}
 
-	if errorspkg.Is(cctx.Err(), context.DeadlineExceeded) {
+	err := cctx.Err()
+	switch {
+	case errorspkg.Is(err, context.DeadlineExceeded):
+		return -1, errors.ErrTimeout
+	case errorspkg.Is(err, context.Canceled):
+		// Parent ctx (likely the gRPC stream ctx) got canceled.
+		return -1, errors.ErrStopped
+	// The next two cases should be unreachable, but we keep it defensive.
+	// Return ErrTimeout in both cases to tell the client to retry later.
+	case err == nil:
+		// Should be unreachable: loop exits only when cctx.Err() != nil.
+		return -1, errors.ErrTimeout
+	default:
+		// Should be unreachable: ctx error can only be either DeadlineExceeded
+		// or Canceled here.
+		s.Logger().Warn("Unexpected lease renew context error", zap.Error(err))
 		return -1, errors.ErrTimeout
 	}
-	return -1, errors.ErrCanceled
 }
 
 func (s *EtcdServer) checkLeaseTimeToLive(ctx context.Context, leaseID lease.LeaseID) (uint64, error) {
