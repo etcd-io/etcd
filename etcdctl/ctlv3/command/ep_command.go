@@ -253,10 +253,10 @@ func endpointsFromCluster(cmd *cobra.Command) []string {
 	}
 
 	sec := secureCfgFromCmd(cmd)
-	dt := dialTimeoutFromCmd(cmd)
-	ka := keepAliveTimeFromCmd(cmd)
-	kat := keepAliveTimeoutFromCmd(cmd)
-	eps, err := endpointsFromCmd(cmd)
+	dt := dialTimeoutFromCmd()
+	ka := keepAliveTimeFromCmd()
+	kat := keepAliveTimeoutFromCmd()
+	eps, err := endpointsFromCmd()
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
