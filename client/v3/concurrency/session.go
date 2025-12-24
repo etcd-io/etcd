@@ -23,7 +23,10 @@ import (
 	v3 "go.etcd.io/etcd/client/v3"
 )
 
-const defaultSessionTTL = 60
+const (
+	defaultSessionTTL = 60
+	defaultLeaseTimeout = 5 * time.Second
+)
 
 // Session represents a lease kept alive for the lifetime of a client.
 // Fault-tolerant applications may use sessions to reason about liveness.
@@ -47,7 +50,9 @@ func NewSession(client *v3.Client, opts ...SessionOption) (*Session, error) {
 
 	id := ops.leaseID
 	if id == v3.NoLease {
-		resp, err := client.Grant(ops.ctx, int64(ops.ttl))
+		ctx, cancel := context.WithTimeout(ops.ctx, defaultLeaseTimeout)
+		defer cancel()
+		resp, err := client.Grant(ctx, int64(ops.ttl))
 		if err != nil {
 			return nil, err
 		}
