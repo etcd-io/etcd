@@ -323,15 +323,21 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 	}
 	integration.BeforeTest(t)
 
+	getMetricVal := func(follower *integration.Member, grpcCode string) int64 {
+		metricVal, err := follower.Metric(
+			"grpc_server_handled_total",
+			`grpc_method="LeaseKeepAlive"`,
+			fmt.Sprintf(`grpc_code="%v"`, grpcCode),
+		)
+		require.NoError(t, err)
+		count, err := strconv.ParseInt(metricVal, 10, 32)
+		require.NoError(t, err)
+		return count
+	}
+
 	t.Run("client cancels while forwarding", func(t *testing.T) {
 		follower, cancel, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
 		defer keepAliveClient.CloseSend()
-
-		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
-		// Make it more deterministic that the follower has entered the forwarding path,
-		// then cancel the client context.
-		time.Sleep(50 * time.Millisecond)
-		cancel()
 
 		// It's insufficient to use the error return by keepAliveClient.Recv() and assert
 		// the error code is Canceled. Such assertion always holds, because after the client
@@ -340,51 +346,37 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		// So in this test case, we'd need to use the metrics collected at the server side
 		// to ensure the worker function `EtcdServer.LeaseRenew` properly handles the context
 		// cancellation.
-		//
+		prevCanceledCount := getMetricVal(follower, "Canceled")
+		prevUnavailableCount := getMetricVal(follower, "Unavailable")
+
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+		// Make it more deterministic that the follower has entered the forwarding path,
+		// then cancel the client context.
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+
 		// Wait for the server-side accounting to observe the canceled stream.
 		require.Eventually(t, func() bool {
-			metricVal, err := follower.Metric(
-				"grpc_server_handled_total",
-				`grpc_method="LeaseKeepAlive"`,
-				`grpc_code="Canceled"`,
-			)
-			require.NoError(t, err)
-			count, err := strconv.ParseInt(metricVal, 10, 32)
-			require.NoError(t, err)
-			return count == 1
+			return getMetricVal(follower, "Canceled") == prevCanceledCount+1
 		}, 3*time.Second, 100*time.Millisecond)
 
 		// Ensure we did not inflate Unavailable due to client cancellation.
-		metricVal, err := follower.Metric(
-			"grpc_server_handled_total",
-			`grpc_method="LeaseKeepAlive"`,
-			`grpc_code="Unavailable"`,
-		)
-		require.NoError(t, err)
-		count, err := strconv.ParseInt(metricVal, 10, 32)
-		require.NoError(t, err)
-		require.Equal(t, int64(0), count)
+		require.Equal(t, prevUnavailableCount, getMetricVal(follower, "Unavailable"))
 	})
 
 	t.Run("forwarding times out", func(t *testing.T) {
 		follower, _, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
 		defer keepAliveClient.CloseSend()
 
+		prevUnavailableCount := getMetricVal(follower, "Unavailable")
 		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
 
 		_, err := keepAliveClient.Recv()
 		require.Equal(t, rpctypes.ErrGRPCTimeout, err)
 
+		// We should observe Unavailable metric went up by 1
 		require.Eventually(t, func() bool {
-			metricVal, err := follower.Metric(
-				"grpc_server_handled_total",
-				`grpc_method="LeaseKeepAlive"`,
-				`grpc_code="Unavailable"`,
-			)
-			require.NoError(t, err)
-			count, err := strconv.ParseInt(metricVal, 10, 32)
-			require.NoError(t, err)
-			return count == 1
+			return getMetricVal(follower, "Unavailable") == prevUnavailableCount+1
 		}, 3*time.Second, 100*time.Millisecond)
 	})
 }
@@ -419,10 +411,10 @@ func setupLeaseKeepAliveForwarding(t *testing.T) (*integration.Member, context.C
 	require.NoError(t, err)
 	require.Equal(t, leaseID, keepAliveResp.ID)
 
-	// Block the leaseHandler.ServeHTTP function for 10s (longer than the default timeout
-	// duration 7s), so that test cases can either wait for timeout or simply cancel.
+	// Block the leaseHandler.ServeHTTP function for some time (longer than the default
+	// timeout duration), so that test cases can either wait for timeout or simply cancel.
 	failpointName := "beforeServeHTTPLeaseRenew"
-	require.NoError(t, gofail.Enable(failpointName, `sleep("10s")`))
+	require.NoError(t, gofail.Enable(failpointName, `sleep("8s")`))
 	t.Cleanup(func() {
 		terr := gofail.Disable(failpointName)
 		if terr != nil && !errors.Is(terr, gofail.ErrDisabled) {
