@@ -22,7 +22,6 @@ import (
 	"go.uber.org/zap"
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
-	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/lease"
 )
@@ -98,11 +97,10 @@ func (ls *LeaseServer) LeaseKeepAlive(stream pb.Lease_LeaseKeepAliveServer) (err
 	select {
 	case err = <-errc:
 	case <-stream.Context().Done():
-		// the only server-side cancellation is noleader for now.
+		// The stream context is canceled by gRPC when the client disconnects,
+		// or the server shuts down, etc. DO NOT rewrite this into an etcd-specific
+		// error (e.g. NoLeader). Preserve the real gRPC context error.
 		err = stream.Context().Err()
-		if errors.Is(err, context.Canceled) {
-			err = rpctypes.ErrGRPCNoLeader
-		}
 	}
 	return err
 }
