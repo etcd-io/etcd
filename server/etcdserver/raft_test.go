@@ -44,50 +44,46 @@ func TestGetIDs(t *testing.T) {
 	updateEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(updatecc)}
 
 	tests := []struct {
-		confState *raftpb.ConfState
-		ents      []raftpb.Entry
+		members map[types.ID]*membership.Member
+		ents    []raftpb.Entry
 
 		widSet []uint64
 	}{
 		{nil, []raftpb.Entry{}, []uint64{}},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{},
 			[]uint64{1},
 		},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{addEntry},
 			[]uint64{1, 2},
 		},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{addEntry, removeEntry},
 			[]uint64{1},
 		},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{addEntry, normalEntry},
 			[]uint64{1, 2},
 		},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{addEntry, normalEntry, updateEntry},
 			[]uint64{1, 2},
 		},
 		{
-			&raftpb.ConfState{Voters: []uint64{1}},
+			map[types.ID]*membership.Member{types.ID(1): nil},
 			[]raftpb.Entry{addEntry, removeEntry, normalEntry},
 			[]uint64{1},
 		},
 	}
 
 	for i, tt := range tests {
-		var snap raftpb.Snapshot
-		if tt.confState != nil {
-			snap.Metadata.ConfState = *tt.confState
-		}
-		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, &snap, tt.ents)
+		idSet := serverstorage.GetEffectiveNodeIDsFromWALEntries(lg, tt.members, tt.ents)
 		if !reflect.DeepEqual(idSet, tt.widSet) {
 			t.Errorf("#%d: idset = %#v, want %#v", i, idSet, tt.widSet)
 		}
