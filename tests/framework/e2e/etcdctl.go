@@ -124,10 +124,28 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 	if o.FromKey {
 		args = append(args, "--from-key")
 	}
+	writeOut := "json"
+	if o.CountOnly || o.KeysOnly {
+		writeOut = "fields"
+	}
+	args = append(args, "-w", writeOut)
 	if o.CountOnly {
-		args = append(args, "-w", "fields", "--count-only")
-	} else {
-		args = append(args, "-w", "json")
+		args = append(args, "--count-only")
+	}
+	if o.KeysOnly {
+		args = append(args, "--keys-only")
+	}
+	if o.MaxCreateRevision != 0 {
+		args = append(args, fmt.Sprintf("--max-create-rev=%d", o.MaxCreateRevision))
+	}
+	if o.MinCreateRevision != 0 {
+		args = append(args, fmt.Sprintf("--min-create-rev=%d", o.MinCreateRevision))
+	}
+	if o.MaxModRevision != 0 {
+		args = append(args, fmt.Sprintf("--max-mod-rev=%d", o.MaxModRevision))
+	}
+	if o.MinModRevision != 0 {
+		args = append(args, fmt.Sprintf("--min-mod-rev=%d", o.MinModRevision))
 	}
 	switch o.SortBy {
 	case clientv3.SortByCreateRevision:
