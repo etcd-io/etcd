@@ -84,6 +84,10 @@ type DeleteOptions struct {
 	Key string
 }
 
+type CompactOptions struct {
+    Revision int64
+}
+
 type TxnRequest struct {
 	Conditions          []EtcdCondition
 	OperationsOnSuccess []EtcdOperation
@@ -113,6 +117,7 @@ const (
 	RangeOperation  OperationType = "range-operation"
 	PutOperation    OperationType = "put-operation"
 	DeleteOperation OperationType = "delete-operation"
+    CompactOperation OperationType = "compact-operation"
 )
 
 type LeaseGrantRequest struct {
