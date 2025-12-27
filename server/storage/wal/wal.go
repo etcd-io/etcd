@@ -396,6 +396,65 @@ func openAtIndex(lg *zap.Logger, dirpath string, snap walpb.Snapshot, write bool
 	return w, nil
 }
 
+func ReadAllEntries(lg *zap.Logger, dirpath string) (state raftpb.HardState, ents []raftpb.Entry, err error) {
+	names, nameIndex, err := selectWALFiles(lg, dirpath, walpb.Snapshot{Term: 0, Index: 0})
+	if err != nil {
+		return state, nil, fmt.Errorf("[ReadAllEntries] selectWALFiles failed: %w", err)
+	}
+
+	rs, _, closer, err := openWALFiles(lg, dirpath, names, nameIndex, false)
+	if err != nil {
+		return state, nil, fmt.Errorf("[ReadAllEntries] openWALFiles failed: %w", err)
+	}
+	defer closer()
+	rec := &walpb.Record{}
+	decoder := NewDecoder(rs...)
+	var startIndex uint64
+	for err = decoder.Decode(rec); err == nil; err = decoder.Decode(rec) {
+		switch rec.Type {
+		case EntryType:
+			e := MustUnmarshalEntry(rec.Data)
+			if e.Index == 0 {
+				return state, nil, fmt.Errorf("entry with index 0 found")
+			}
+			if startIndex == 0 {
+				startIndex = e.Index
+				ents = append(ents, e)
+				continue
+			}
+			if e.Index > startIndex {
+				offset := e.Index - startIndex
+				if offset > uint64(len(ents)) {
+					ents = append(ents, make([]raftpb.Entry, offset-uint64(len(ents)))...)
+				}
+				// The line below is potentially overriding some 'uncommitted' entries.
+				ents = append(ents[:offset], e)
+			}
+		case StateType:
+			state = MustUnmarshalState(rec.Data)
+		case MetadataType:
+		case CrcType:
+		case SnapshotType:
+		default:
+			return state, nil, fmt.Errorf("unexpected block type %d", rec.Type)
+		}
+	}
+	if err != nil && !errors.Is(err, io.EOF) {
+		return state, ents, err
+	}
+	// Filter empty entries
+	i := 0
+	for _, e := range ents {
+		if e.Index == 0 {
+			continue
+		}
+		ents[i] = e
+		i++
+	}
+	ents = ents[:i]
+	return state, ents, nil
+}
+
 func selectWALFiles(lg *zap.Logger, dirpath string, snap walpb.Snapshot) ([]string, int, error) {
 	names, err := readWALNames(lg, dirpath)
 	if err != nil {
