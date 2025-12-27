@@ -30,7 +30,6 @@ import (
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
 	"go.etcd.io/raft/v3/raftpb"
@@ -193,20 +192,8 @@ func ReadWAL(lg *zap.Logger, dataDir string) (state raftpb.HardState, ents []raf
 	walDir := datadir.ToWALDir(dataDir)
 	repaired := false
 	for {
-		w, err := wal.OpenForRead(lg, walDir, walpb.Snapshot{Index: 0})
+		state, ents, err = wal.ReadAllEntries(lg, walDir)
 		if err != nil {
-			return state, nil, fmt.Errorf("failed to open WAL, err: %w", err)
-		}
-		_, state, ents, err = w.ReadAll()
-		w.Close()
-		if err != nil {
-			if errors.Is(err, wal.ErrSnapshotNotFound) {
-				lg.Info("Error occurred when reading WAL entries", zap.Error(err))
-				return state, ents, nil
-			}
-			if errors.Is(err, wal.ErrSliceOutOfRange) {
-				return state, nil, fmt.Errorf("failed to read WAL, err: %w", err)
-			}
 			// we can only repair ErrUnexpectedEOF and we never repair twice.
 			if repaired || !errors.Is(err, io.ErrUnexpectedEOF) {
 				return state, nil, fmt.Errorf("failed to read WAL, cannot be repaired, err: %w", err)

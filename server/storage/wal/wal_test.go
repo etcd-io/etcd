@@ -1180,3 +1180,203 @@ func TestLastRecordLengthExceedFileEnd(t *testing.T) {
 	// environment, but only once.
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 }
+
+func TestWriteRead(t *testing.T) {
+	type batch struct {
+		state    *raftpb.HardState
+		entries  []raftpb.Entry
+		snapshot *walpb.Snapshot
+	}
+	type want struct {
+		wantState   raftpb.HardState
+		wantEntries []raftpb.Entry
+		wantError   string
+	}
+
+	tcs := []struct {
+		name           string
+		operations     []batch
+		readAt         walpb.Snapshot
+		walReadAll     want
+		readAllEntries want
+	}{
+		{
+			name: "single batch",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 5},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				},
+			},
+			walReadAll: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+		},
+		{
+			name: "multiple committed batches",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 2},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 4},
+					entries: []raftpb.Entry{{Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 5},
+					entries: []raftpb.Entry{{Index: 5, Data: []byte("e")}},
+				},
+			},
+			walReadAll: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("c")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+		},
+		{
+			name: "uncommitted ovewritten entries",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 1},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("a")}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 3},
+					entries: []raftpb.Entry{{Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("b")}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 4},
+					entries: []raftpb.Entry{{Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+				},
+			},
+			walReadAll: want{
+				wantState:   raftpb.HardState{Commit: 4},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 4},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 3, Data: []byte("b")}, {Index: 4, Data: []byte("c")}, {Index: 5, Data: []byte("c")}},
+			},
+		},
+		{
+			name: "before snapshot",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 1},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				},
+				{
+					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 5},
+					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				},
+			},
+			walReadAll: want{
+				wantError: "slice bounds out of range",
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+		},
+		{
+			name: "at snapshot",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 1},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				},
+				{
+					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 5},
+					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				},
+			},
+			readAt: walpb.Snapshot{Index: 3},
+			walReadAll: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+		},
+		{
+			name: "after snapshot",
+			operations: []batch{
+				{
+					state:   &raftpb.HardState{Commit: 1},
+					entries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}},
+				},
+				{
+					snapshot: &walpb.Snapshot{Index: 3, ConfState: &raftpb.ConfState{}},
+				},
+				{
+					state:   &raftpb.HardState{Commit: 5},
+					entries: []raftpb.Entry{{Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+				},
+			},
+			readAt: walpb.Snapshot{Index: 4},
+			walReadAll: want{
+				wantError: "snapshot not found",
+			},
+			readAllEntries: want{
+				wantState:   raftpb.HardState{Commit: 5},
+				wantEntries: []raftpb.Entry{{Index: 1, Data: []byte("a")}, {Index: 2, Data: []byte("b")}, {Index: 4, Data: []byte("d")}, {Index: 5, Data: []byte("e")}},
+			},
+		},
+	}
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			lg := zaptest.NewLogger(t)
+			w, err := Create(lg, dir, nil)
+			require.NoError(t, err)
+			for _, op := range tc.operations {
+				if op.state != nil {
+					err = w.Save(*op.state, op.entries)
+					require.NoError(t, err)
+				}
+				if op.snapshot != nil {
+					err = w.SaveSnapshot(*op.snapshot)
+					require.NoError(t, err)
+				}
+			}
+			w.Close()
+
+			w2, err := OpenForRead(lg, dir, tc.readAt)
+			require.NoError(t, err)
+			defer w2.Close()
+			t.Run("wal.ReadAll", func(t *testing.T) {
+				_, state, entries, err := w2.ReadAll()
+				if tc.walReadAll.wantError != "" {
+					require.ErrorContains(t, err, tc.walReadAll.wantError)
+					return
+				}
+				require.NoError(t, err)
+				assert.Equal(t, tc.walReadAll.wantState, state)
+				assert.Equal(t, tc.walReadAll.wantEntries, entries)
+			})
+			t.Run("ReadAllEntries", func(t *testing.T) {
+				state, entries, err := ReadAllEntries(lg, dir)
+				require.NoError(t, err)
+				assert.Equal(t, tc.readAllEntries.wantState, state)
+				assert.Equal(t, tc.readAllEntries.wantEntries, entries)
+			})
+		})
+	}
+}
