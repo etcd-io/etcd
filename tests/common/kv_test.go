@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	clientv3 "go.etcd.io/etcd/client/v3"
+
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
@@ -222,6 +222,27 @@ func TestKVGetNoQuorum(t *testing.T) {
 					require.NoError(t, err)
 				}
 			})
+		})
+	}
+}
+
+func TestKV_PutTimeout(t *testing.T) {
+	testRunner.BeforeTest(t)
+	for _, tc := range clusterTestCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := t.Context()
+
+			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
+			defer clus.Close()
+
+			client := testutils.MustClient(clus.Client())
+
+			_, err := client.Put(ctx, "foo", "bar", config.PutOptions{
+				Timeout: time.Nanosecond,
+			})
+
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "deadline")
 		})
 	}
 }
