@@ -63,21 +63,13 @@ func longestConnected(tp rafthttp.Transporter, membs []types.ID) (types.ID, bool
 		if tm.IsZero() { // inactive
 			continue
 		}
-
-		if oldest.IsZero() { // first longest candidate
-			oldest = tm
-			longest = id
-		}
-
-		if tm.Before(oldest) {
+		// Update if first active member or has earlier connection time
+		if oldest.IsZero() || tm.Before(oldest){ 
 			oldest = tm
 			longest = id
 		}
 	}
-	if uint64(longest) == 0 {
-		return longest, false
-	}
-	return longest, true
+	return longest, longest != 0
 }
 
 type notifier struct {
