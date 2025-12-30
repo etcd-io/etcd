@@ -213,6 +213,7 @@ func TestNoMetricsMissing(t *testing.T) {
 			"etcd_server_quota_backend_bytes",
 			"etcd_server_range_duration_seconds",
 			"etcd_server_read_indexes_failed_total",
+			"etcd_server_request_duration_seconds",
 			"etcd_server_slow_apply_total",
 			"etcd_server_slow_read_indexes_total",
 			"etcd_server_snapshot_apply_in_progress_total",
