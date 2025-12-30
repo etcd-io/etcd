@@ -77,7 +77,7 @@ func Verify(cfg Config) (retErr error) {
 	be := backend.NewDefaultBackend(lg, datadir.ToBackendFileName(cfg.DataDir))
 	defer be.Close()
 
-	snapshot, hardstate, err := validateWAL(cfg)
+	snapshot, hardstate, err := validateWAL(cfg, be)
 	if err != nil {
 		return err
 	}
@@ -131,16 +131,17 @@ func validateConsistentIndex(cfg Config, hardstate *raftpb.HardState, snapshot *
 	return nil
 }
 
-func validateWAL(cfg Config) (*walpb.Snapshot, *raftpb.HardState, error) {
+func validateWAL(cfg Config, be backend.Backend) (*walpb.Snapshot, *raftpb.HardState, error) {
 	walDir := datadir.ToWALDir(cfg.DataDir)
 
 	walSnaps, err := wal2.ValidSnapshotEntries(cfg.Logger, walDir)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	snapshot := walSnaps[len(walSnaps)-1]
-	hardstate, err := wal2.Verify(cfg.Logger, walDir, snapshot)
+
+	consistentIdx, _ := schema.ReadConsistentIndex(be.ReadTx())
+	hardstate, err := wal2.Verify(cfg.Logger, walDir, consistentIdx)
 	if err != nil {
 		return nil, nil, err
 	}
