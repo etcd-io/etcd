@@ -24,7 +24,6 @@ import (
 	"go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/server/v3/storage/wal"
-	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -45,7 +44,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 		tb.Fatalf("Failed to close WAL: %v", err)
 	}
 	if len(reqs) != 0 {
-		w, err = wal.Open(lg, tmpPath, walpb.Snapshot{})
+		w, err = wal.Open(lg, tmpPath, wal.Position{})
 		if err != nil {
 			tb.Fatalf("Failed to open WAL: %v", err)
 		}
@@ -74,7 +73,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 		}
 	}
 
-	w, err = wal.OpenForRead(lg, tmpPath, walpb.Snapshot{})
+	w, err = wal.OpenForRead(lg, tmpPath, wal.Position{})
 	if err != nil {
 		tb.Fatalf("Failed to open WAL: %v", err)
 	}
@@ -84,7 +83,7 @@ func NewTmpWAL(tb testing.TB, reqs []etcdserverpb.InternalRaftRequest) (*wal.WAL
 func Reopen(tb testing.TB, walPath string) *wal.WAL {
 	tb.Helper()
 	lg := zaptest.NewLogger(tb)
-	w, err := wal.OpenForRead(lg, walPath, walpb.Snapshot{})
+	w, err := wal.OpenForRead(lg, walPath, wal.Position{})
 	if err != nil {
 		tb.Fatalf("Failed to open WAL: %v", err)
 	}

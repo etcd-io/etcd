@@ -35,6 +35,12 @@ func MustUnsafeSaveConfStateToBackend(lg *zap.Logger, tx backend.UnsafeWriter, c
 	tx.UnsafePut(Meta, MetaConfStateName, confStateBytes)
 }
 
+func ReadConfStateFromBackend(lg *zap.Logger, tx backend.ReadTx) *raftpb.ConfState {
+	tx.RLock()
+	defer tx.RUnlock()
+	return UnsafeConfStateFromBackend(lg, tx)
+}
+
 // UnsafeConfStateFromBackend retrieves ConfState from the backend.
 // Returns nil if confState in backend is not persisted (e.g. backend written by <v3.5).
 func UnsafeConfStateFromBackend(lg *zap.Logger, tx backend.UnsafeReader) *raftpb.ConfState {

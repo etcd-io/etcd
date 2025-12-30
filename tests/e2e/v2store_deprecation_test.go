@@ -193,7 +193,6 @@ func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string, pat
 
 func assertMembershipEqual(tb testing.TB, lg *zap.Logger, firstStore v2store.Store, secondStore v2store.Store) {
 	rc1 := membership.NewCluster(zaptest.NewLogger(tb))
-	rc1.SetStore(firstStore)
 	be1, _ := betesting.NewDefaultTmpBackend(tb)
 	defer betesting.Close(tb, be1)
 	rc1.SetBackend(schema.NewMembershipBackend(lg, be1))
@@ -203,7 +202,6 @@ func assertMembershipEqual(tb testing.TB, lg *zap.Logger, firstStore v2store.Sto
 	be2, _ := betesting.NewDefaultTmpBackend(tb)
 	defer betesting.Close(tb, be2)
 	rc2.SetBackend(schema.NewMembershipBackend(lg, be2))
-	rc2.SetStore(secondStore)
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	// membership should match
