@@ -28,6 +28,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -44,7 +45,7 @@ func getMetricVal(t *testing.T, member *integration.Member, metricName string) i
 	metricVal, err := member.Metric(metricName)
 	require.NoError(t, err)
 	val, err := strconv.ParseInt(metricVal, 10, 64)
-	require.NoError(t, err, "failed to parse metric %q value %q", metricName, metricVal)
+	require.NoErrorf(t, err, "failed to parse metric %q value %q", metricName, metricVal)
 	return val
 }
 
@@ -1447,6 +1448,7 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 		cancel context.CancelFunc
 	}
 	const totalWatchers = 300
+	const remainWatchers = 20
 	watchers := make([]watcherInfo, 0, totalWatchers)
 	// Create many watchers distributed over the 10 unique keys.
 	for i := 0; i < totalWatchers; i++ {
@@ -1461,7 +1463,7 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 	}
 
 	// Wait until all watchers are created
-	require.Eventually(t, func() bool {
+	require.Eventuallyf(t, func() bool {
 		total := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
 		return total == totalWatchers
 	}, 5*time.Second, 100*time.Millisecond,
@@ -1498,10 +1500,10 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 
 	// Make sure the probe watcher is actually working before we trigger the cancel storm.
 	received := canRecvWatchEvent(probWatcher, 5*time.Second)
-	require.True(t, received, "probe watcher should be able receive events before cancel storm")
+	require.Truef(t, received, "probe watcher should be able receive events before cancel storm")
 
 	// Cancel most of the watchers in a burst to overwhelm the watch system
-	const canceledWatchers = 280
+	canceledWatchers := totalWatchers - remainWatchers
 	for i := 0; i < canceledWatchers; i++ {
 		watchers[i].cancel()
 	}
@@ -1512,17 +1514,15 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 
 	// Now the watcher cannot receive any watch events due to the deadlock
 	received = canRecvWatchEvent(probWatcher, 10*time.Second)
-	require.False(t, received, "deadlock was not reproduced and the probe watcher unexpectedly received events after cancel storm")
+	require.Falsef(t, received, "deadlock was not reproduced and the probe watcher unexpectedly received events after cancel storm")
 
 	// There are many watchers that didn't get canceled and are considered "slow",
 	// and also there are pending events that can't be delivered.
 	slowWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_slow_watcher_total")
 	pendingEvents := getMetricVal(t, member, "etcd_debugging_mvcc_pending_events_total")
 
-	t.Logf("slow_watcher_total=%d pending_events_total=%d", slowWatchers, pendingEvents)
-
-	require.Greater(t, slowWatchers, int64(0), "expected some slow watchers")
-	require.Greater(t, pendingEvents, int64(0), "expected some pending events")
+	require.Positive(t, slowWatchers, "expected some slow watchers")
+	require.Positive(t, pendingEvents, "expected some pending events")
 
 	cancel()
 	writeWG.Wait()
