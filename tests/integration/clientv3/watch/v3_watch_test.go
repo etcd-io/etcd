@@ -1521,8 +1521,8 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 	slowWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_slow_watcher_total")
 	pendingEvents := getMetricVal(t, member, "etcd_debugging_mvcc_pending_events_total")
 
-	require.Positive(t, slowWatchers, "expected some slow watchers")
-	require.Positive(t, pendingEvents, "expected some pending events")
+	require.Positivef(t, slowWatchers, "expected some slow watchers")
+	require.Positivef(t, pendingEvents, "expected some pending events")
 
 	cancel()
 	writeWG.Wait()
