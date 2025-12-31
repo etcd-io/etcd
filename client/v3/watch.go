@@ -813,7 +813,7 @@ func (w *watchGRPCStream) sendLoop(wc pb.Watch_WatchClient) {
 			}
 			watchID, reqType, key := getWatchReqInfo(req)
 			if err := wc.Send(req); err != nil {
-				w.lg.Warn(fmt.Sprintf("failed to send watch request"),
+				w.lg.Warn("failed to send watch request",
 					zap.Int64("watch-id", watchID),
 					zap.String("request-type", reqType),
 					zap.String("key", key),
