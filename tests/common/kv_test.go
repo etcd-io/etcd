@@ -22,8 +22,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
+	"go.etcd.io/etcd/tests/v3/framework/interfaces"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
@@ -52,6 +54,32 @@ func TestKVPut(t *testing.T) {
 	}
 }
 
+type rangeTestCase struct {
+	description string
+	key         string
+	options     config.GetOptions
+
+	wantResponse *clientv3.GetResponse
+	wantError    error
+}
+
+func verifyRange(ctx context.Context, cc interfaces.Client, t *testing.T, testcases []rangeTestCase) {
+	for _, tt := range testcases {
+		t.Run(tt.description, func(t *testing.T) {
+			resp, err := cc.Get(ctx, tt.key, tt.options)
+			if tt.wantError != nil {
+				require.Contains(t, err.Error(), tt.wantError.Error())
+				require.Nil(t, resp)
+				return
+			}
+			require.NoErrorf(t, err, "count not get key %q, err: %s", tt.key, err)
+			assert.Equal(t, tt.wantResponse.Kvs, resp.Kvs)
+			assert.Equal(t, tt.wantResponse.Count, resp.Count)
+			assert.Equal(t, tt.wantResponse.More, resp.More)
+		})
+	}
+}
+
 func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
@@ -63,47 +91,454 @@ func TestKVGet(t *testing.T) {
 			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				var (
-					kvs          = []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
-					wantKvs      = []string{"a", "b", "c", "foo", "foo/abc", "fop"}
-					kvsByVersion = []string{"a", "b", "foo", "foo/abc", "fop", "c"}
-					reversedKvs  = []string{"fop", "foo/abc", "foo", "c", "b", "a"}
-				)
+				puts := []testutils.KV{
+					{Key: "a", Val: "fooa"},
+					{Key: "x", Val: "foox"},
+					{Key: "b", Val: "foob"},
+					{Key: "y", Val: "fooy"},
+					{Key: "c", Val: "fooc"},
+					{Key: "z", Val: "fooz"},
+					{Key: "d", Val: "food"},
+					{Key: "e", Val: "fooe"},
+					{Key: "f", Val: "foof"},
+					{Key: "c/xyz", Val: "4ever"},
+					{Key: "c", Val: "foocc"},
+					{Key: "g", Val: "foog"},
+					{Key: "c", Val: "fooccc"},
+					{Key: "aa", Val: "bar"},
+					{Key: "c/abc", Val: "egg"},
+				}
 
-				for i := range kvs {
-					_, err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
-					require.NoErrorf(t, err, "count not put key %q", kvs[i])
+				var firstRev int
+				for i := range puts {
+					resp, err := cc.Put(ctx, puts[i].Key, puts[i].Val, config.PutOptions{})
+					require.NoErrorf(t, err, "could not put key %q", puts[i])
+					if i == 0 {
+						firstRev = int(resp.Header.Revision)
+					}
 				}
-				tests := []struct {
-					begin   string
-					end     string
-					options config.GetOptions
-
-					wkv []string
-				}{
-					{begin: "a", wkv: wantKvs[:1]},
-					{begin: "a", options: config.GetOptions{Serializable: true}, wkv: wantKvs[:1]},
-					{begin: "a", options: config.GetOptions{End: "c"}, wkv: wantKvs[:2]},
-					{begin: "", options: config.GetOptions{Prefix: true}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{FromKey: true}, wkv: wantKvs},
-					{begin: "a", options: config.GetOptions{End: "x"}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Revision: 4}, wkv: kvs[:3]},
-					{begin: "a", options: config.GetOptions{CountOnly: true}, wkv: nil},
-					{begin: "foo", options: config.GetOptions{Prefix: true}, wkv: []string{"foo", "foo/abc"}},
-					{begin: "foo", options: config.GetOptions{FromKey: true}, wkv: []string{"foo", "foo/abc", "fop"}},
-					{begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wkv: wantKvs[:2]},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wkv: kvsByVersion},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wkv: reversedKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: reversedKvs},
+				baseTestCases := []rangeTestCase{
+					{
+						description: "no key with prefix and specific revision -> all KVs before the revision",
+						key:         "",
+						options: config.GetOptions{
+							Prefix:   true,
+							Revision: firstRev + 4,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 5,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 4), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "a specific key with a specific revision - first update",
+						key:         "c",
+						options: config.GetOptions{
+							Revision: firstRev + 10, // first update on 'c'
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 1,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("foocc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 10), Version: 2},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "a specific key with a specific revision - after first update but before second update",
+						key:         "c",
+						options: config.GetOptions{
+							Revision: firstRev + 11,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 1,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("foocc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 10), Version: 2},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "a specific key with a specific revision - second update",
+						key:         "c",
+						options: config.GetOptions{
+							Revision: firstRev + 12,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 1,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "a specific key with a specific revision - after second update, but before current rev",
+						key:         "c",
+						options: config.GetOptions{
+							Revision: firstRev + 12 + 2, // 2 revs after 2nd update
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 1,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "a specific key with a specific revision - current rev",
+						key:         "c",
+						wantResponse: &clientv3.GetResponse{
+							Count: 1,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "key range with an end and min/max mod revs -> range filtered by min/max mod revs, sorted descending",
+						key:         "a",
+						options: config.GetOptions{
+							End:            "z",
+							MinModRevision: firstRev + 1,
+							MaxModRevision: firstRev + 5,
+							Order:          clientv3.SortDescend,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 12,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "all keys with min/max create revs -> range filtered by min/max create revs",
+						key:         "",
+						options: config.GetOptions{
+							Prefix:            true,
+							MinCreateRevision: firstRev + 1,
+							MaxCreateRevision: firstRev + 5,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "prefix of c",
+						key:         "c",
+						options: config.GetOptions{
+							Prefix: true,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 3,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "from key c",
+						key:         "c",
+						options: config.GetOptions{
+							FromKey: true,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 10,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "fromkey without any specified key -> return all",
+						key:         "",
+						options: config.GetOptions{
+							FromKey: true,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "start and end covering all entries",
+						key:         "a",
+						options: config.GetOptions{
+							End: "zz",
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "start and end covering all entries, but keys only",
+						key:         "a",
+						options: config.GetOptions{
+							KeysOnly: true,
+							End:      "zz",
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("a"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+								{Key: []byte("aa"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("b"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("c"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c/xyz"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("d"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("e"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("f"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("g"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("x"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("y"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+							},
+						},
+					},
+					{
+						description: "start and end covering all entries, but count only",
+						key:         "a",
+						options: config.GetOptions{
+							CountOnly: true,
+							End:       "zz",
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs:   nil,
+							More:  false,
+						},
+					},
+					{
+						description: "from key of c, but with a limit",
+						key:         "c",
+						options: config.GetOptions{
+							FromKey: true,
+							Limit:   2,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 10,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+							},
+							More: true,
+						},
+					},
+					{
+						description: "all entries, sorted by their mod revision",
+						key:         "",
+						options: config.GetOptions{
+							Prefix: true,
+							Order:  clientv3.SortNone,
+							SortBy: clientv3.SortByModRevision,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "all entries sorted by key descending with limit",
+						key:         "",
+						options: config.GetOptions{
+							Prefix: true,
+							Limit:  3,
+							Order:  clientv3.SortDescend,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+							},
+							More: true,
+						},
+					},
+					{
+						description: "all entries sorted by key descending with a limit, and keys only",
+						key:         "",
+						options: config.GetOptions{
+							Prefix:   true,
+							Limit:    3,
+							KeysOnly: true,
+							Order:    clientv3.SortDescend,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("z"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("y"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("x"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+							},
+							More: true,
+						},
+					},
+					{
+						description: "all entries, sorted by create revision",
+						key:         "",
+						options: config.GetOptions{
+							Prefix: true,
+							Order:  clientv3.SortDescend,
+							SortBy: clientv3.SortByCreateRevision,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "all entries, sorted by key descending",
+						key:         "",
+						options: config.GetOptions{
+							Prefix: true,
+							Order:  clientv3.SortDescend,
+							SortBy: clientv3.SortByKey,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+							},
+							More: false,
+						},
+					},
+					{
+						description: "all entries, by default sorted by key descending",
+						key:         "",
+						options: config.GetOptions{
+							Prefix: true,
+							Order:  clientv3.SortDescend,
+						},
+						wantResponse: &clientv3.GetResponse{
+							Count: 13,
+							Kvs: []*mvccpb.KeyValue{
+								{Key: []byte("z"), Value: []byte("fooz"), CreateRevision: int64(firstRev + 5), ModRevision: int64(firstRev + 5), Version: 1},
+								{Key: []byte("y"), Value: []byte("fooy"), CreateRevision: int64(firstRev + 3), ModRevision: int64(firstRev + 3), Version: 1},
+								{Key: []byte("x"), Value: []byte("foox"), CreateRevision: int64(firstRev + 1), ModRevision: int64(firstRev + 1), Version: 1},
+								{Key: []byte("g"), Value: []byte("foog"), CreateRevision: int64(firstRev + 11), ModRevision: int64(firstRev + 11), Version: 1},
+								{Key: []byte("f"), Value: []byte("foof"), CreateRevision: int64(firstRev + 8), ModRevision: int64(firstRev + 8), Version: 1},
+								{Key: []byte("e"), Value: []byte("fooe"), CreateRevision: int64(firstRev + 7), ModRevision: int64(firstRev + 7), Version: 1},
+								{Key: []byte("d"), Value: []byte("food"), CreateRevision: int64(firstRev + 6), ModRevision: int64(firstRev + 6), Version: 1},
+								{Key: []byte("c/xyz"), Value: []byte("4ever"), CreateRevision: int64(firstRev + 9), ModRevision: int64(firstRev + 9), Version: 1},
+								{Key: []byte("c/abc"), Value: []byte("egg"), CreateRevision: int64(firstRev + 14), ModRevision: int64(firstRev + 14), Version: 1},
+								{Key: []byte("c"), Value: []byte("fooccc"), CreateRevision: int64(firstRev + 4), ModRevision: int64(firstRev + 12), Version: 3},
+								{Key: []byte("b"), Value: []byte("foob"), CreateRevision: int64(firstRev + 2), ModRevision: int64(firstRev + 2), Version: 1},
+								{Key: []byte("aa"), Value: []byte("bar"), CreateRevision: int64(firstRev + 13), ModRevision: int64(firstRev + 13), Version: 1},
+								{Key: []byte("a"), Value: []byte("fooa"), CreateRevision: int64(firstRev), ModRevision: int64(firstRev), Version: 1},
+							},
+							More: false,
+						},
+					},
 				}
-				for _, tt := range tests {
-					resp, err := cc.Get(ctx, tt.begin, tt.options)
-					require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
-					kvs := testutils.KeysFromGetResponse(resp)
-					assert.Equal(t, tt.wkv, kvs)
-				}
+				verifyRange(ctx, cc, t, baseTestCases)
 			})
 		})
 	}
