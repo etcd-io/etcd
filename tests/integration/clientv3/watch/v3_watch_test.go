@@ -1446,7 +1446,7 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 		ch     clientv3.WatchChan
 		cancel context.CancelFunc
 	}
-	const totalWatchers = 200
+	const totalWatchers = 300
 	watchers := make([]watcherInfo, 0, totalWatchers)
 	// Create many watchers distributed over the 10 unique keys.
 	for i := 0; i < totalWatchers; i++ {
@@ -1501,7 +1501,7 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 	require.True(t, received, "probe watcher should be able receive events before cancel storm")
 
 	// Cancel most of the watchers in a burst to overwhelm the watch system
-	const canceledWatchers = 180
+	const canceledWatchers = 280
 	for i := 0; i < canceledWatchers; i++ {
 		watchers[i].cancel()
 	}
