@@ -156,8 +156,63 @@ func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam)
 	}
 }
 
-func (t etcdTraffic) RunWatchLoop(ctx context.Context, p RunTrafficLoopParam) {
-	return
+func (t etcdTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
+	limiter := rate.NewLimiter(rate.Limit(p.WatchQPS), 1)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		default:
+		}
+
+		// Wait for rate limiter before creating a new watch
+		if err := limiter.Wait(ctx); err != nil {
+			return
+		}
+
+		// Get current revision to watch from
+		opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := p.Client.Get(opCtx, "")
+		cancel()
+		if err != nil {
+			continue
+		}
+		currentRev := resp.Header.Revision
+
+		// Generate random offset: -RevisionOffset <= offset <= RevisionOffset
+		var targetRev int64
+		if p.RevisionOffset > 0 {
+			offset := rand.Int63n(2*p.RevisionOffset+1) - p.RevisionOffset
+			targetRev = currentRev + offset
+			if targetRev < 1 {
+				targetRev = 1
+			}
+		} else {
+			targetRev = currentRev + 1
+		}
+
+		// Create watch that stays open until context is cancelled or watch closes
+		w := p.Client.Watch(ctx, p.KeyStore.GetPrefix(), targetRev, true, true, true)
+
+	watchLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.Finish:
+				return
+			case _, ok := <-w:
+				if !ok {
+					// Watch channel closed, break to create a new watch
+					break watchLoop
+				}
+				// Continue consuming events
+			}
+		}
+	}
 }
 
 func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {

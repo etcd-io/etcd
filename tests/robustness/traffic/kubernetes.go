@@ -136,9 +136,10 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 	g.Wait()
 }
 
-func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
+	limiter := rate.NewLimiter(rate.Limit(p.WatchQPS), 1)
 
 	for {
 		select {
@@ -148,8 +149,14 @@ func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunTrafficLoopPar
 			return
 		default:
 		}
+
+		// Wait for rate limiter before creating a new watch
+		if err := limiter.Wait(ctx); err != nil {
+			return
+		}
+
 		_, rev := s.PickRandom()
-		t.Watch(ctx, p.Client, s, p.QPSLimiter, keyPrefix, rev)
+		t.Watch(ctx, p.Client, s, limiter, keyPrefix, rev)
 	}
 }
 

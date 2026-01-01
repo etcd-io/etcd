@@ -182,6 +182,21 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			})
 		}(c)
 	}
+	for i := range profile.MemberClientCount {
+		c := connect(clientSet, []string{hosts[i%len(hosts)]})
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+				Client:         c,
+				KeyStore:       keyStore,
+				Finish:         finish,
+				RevisionOffset: traffic.DefaultRevisionOffset,
+				WatchQPS:       traffic.DefaultWatchQPS,
+			})
+		}(c)
+	}
 	wg.Add(1)
 	compactClient := connect(clientSet, hosts)
 	go func(c *client.RecordingClient) {
