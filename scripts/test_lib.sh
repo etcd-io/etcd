@@ -116,8 +116,10 @@ function modules() {
 
 # Receives a reference to an array variable, and returns the workspace relative modules.
 function load_workspace_relative_modules() {
-  local -n _relative_modules=$1
-  while IFS= read -r line; do _relative_modules+=("$line"); done < <(
+  local _var_name=$1
+  while IFS= read -r line; do
+    eval "${_var_name}+=(\"$line\")"
+  done < <(
     go work edit -json | jq -r '.Use[].DiskPath + "/..."'
   )
 }
@@ -125,12 +127,12 @@ function load_workspace_relative_modules() {
 # Receives a reference to an array variable, and returns the workspace relative modules, not
 # including the tools, as they are not considered to be added to the bill for materials.
 function load_workspace_relative_modules_for_bom() {
-  local -n relative_modules_for_bom=$1
+  local _var_name=$1
   local modules=()
   load_workspace_relative_modules modules
-  for module in "${modules[@]}"; do
+  for module in "${modules[@]+"${modules[@]}"}"; do
     if [[ ! "${module}" =~ ^./tools ]]; then
-      relative_modules_for_bom+=("${module}")
+      eval "${_var_name}+=(\"${module}\")"
     fi
   done
 }
@@ -143,7 +145,7 @@ function run_for_all_workspace_modules {
   if [ -z "${USERMOD:-}" ]; then
     local _modules=()
     load_workspace_relative_modules _modules
-    run "$@" "${_modules[@]}"
+    run "$@" "${_modules[@]+"${_modules[@]}"}"
   else
     run_for_module "${USERMOD}" "$@" "${pkg}" || return "$?"
   fi
@@ -317,7 +319,7 @@ function go_test {
     goTestFlags+="-failfast "
   fi
 
-  local failures=""
+  local failures=()
 
   # execution of tests against packages:
   for pkg in "${unpacked_packages[@]}"; do
@@ -334,13 +336,13 @@ function go_test {
         produce_junit_xmlreport "${junit_filename_prefix}"
         return 2
       else
-        failures=("${failures[@]}" "${pkg}")
+        failures+=("${pkg}")
       fi
     fi
     produce_junit_xmlreport "${junit_filename_prefix}"
   done
 
-  if [ -n "${failures[*]}" ] ; then
+  if [ ${#failures[@]} -gt 0 ] ; then
     log_error -e "ERROR: Tests for following packages failed:\\n  ${failures[*]}"
     return 2
   fi
@@ -364,10 +366,10 @@ function run_go_tests_expanding_packages {
   # Expanding patterns (like ./...) into list of packages
   local unpacked_packages=()
   while IFS='' read -r line; do unpacked_packages+=("$line"); done < <(
-    go list "${packages[@]}"
+    go list "${packages[@]+"${packages[@]}"}"
   )
 
-  run_go_tests "${unpacked_packages[@]}" "${args[@]}"
+  run_go_tests "${unpacked_packages[@]+"${unpacked_packages[@]}"}" "${args[@]+"${args[@]}"}"
 }
 
 # run_go_test [arguments to pass to go test]
@@ -413,8 +415,8 @@ function run_go_tests {
 
   local failures=()
   # execution of tests against packages:
-  for pkg in "${packages[@]}"; do
-    local cmd=(go test "${go_test_flags[@]}" "${pkg}" "${args[@]}")
+  for pkg in "${packages[@]+"${packages[@]}"}"; do
+    local cmd=(go test "${go_test_flags[@]+"${go_test_flags[@]}"}" "${pkg}" "${args[@]+"${args[@]}"}")
 
     local junit_filename_prefix
     junit_filename_prefix=$(get_junit_filename_prefix "${junit_report_dir}")
@@ -430,7 +432,7 @@ function run_go_tests {
     produce_junit_xmlreport "${junit_filename_prefix}"
   done
 
-  if [ -n "${failures[*]}" ]; then
+  if [ ${#failures[@]} -gt 0 ]; then
     log_error -e "FAIL: Tests for following packages failed:\\n  ${failures[*]}"
     return 2
   fi

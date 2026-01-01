@@ -130,7 +130,7 @@ function unit_pass {
     run_go_tests -short \
                  -timeout="${TIMEOUT:-3m}" \
                  "${COMMON_TEST_FLAGS[@]}" \
-                 "${RUN_ARG[@]}" \
+                 "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                  "$@"
 }
 
@@ -140,7 +140,7 @@ function integration_extra {
       run_go_tests_expanding_packages ./tests/integration/v2store/... \
                                       -timeout="${TIMEOUT:-5m}" \
                                       "${COMMON_TEST_FLAGS[@]}" \
-                                      "${RUN_ARG[@]}" \
+                                      "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                                       "$@"
   else
     log_warning "integration_extra ignored when PKG is specified"
@@ -152,7 +152,7 @@ function integration_pass {
                -p=2 \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                "$@"
 
   run_go_tests ./tests/common/... \
@@ -160,7 +160,7 @@ function integration_pass {
                -tags=integration \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                "$@"
 
   integration_extra "$@"
@@ -171,13 +171,13 @@ function e2e_pass {
   KEEP_GOING_TESTS=true \
     run_go_tests_expanding_packages ./tests/e2e/... \
                                       -timeout="${TIMEOUT:-30m}" \
-                                      "${RUN_ARG[@]}" \
+                                      "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                                       "$@"
   KEEP_GOING_TESTS=true \
     run_go_tests_expanding_packages ./tests/common/... \
                                       -tags=e2e \
                                       -timeout="${TIMEOUT:-30m}" \
-                                      "${RUN_ARG[@]}" \
+                                      "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                                       "$@"
 }
 
@@ -186,7 +186,7 @@ function robustness_pass {
   KEEP_GOING_TESTS=true \
     run_go_tests ./tests/robustness \
                    -timeout="${TIMEOUT:-30m}" \
-                   "${RUN_ARG[@]}" \
+                   "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                    "$@"
 }
 
@@ -222,7 +222,7 @@ function grpcproxy_integration_pass {
                -tags=cluster_proxy \
                -timeout="${TIMEOUT:-30m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                "$@"
 }
 
@@ -231,7 +231,7 @@ function grpcproxy_e2e_pass {
                -tags=cluster_proxy \
                -timeout="${TIMEOUT:-30m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               "${RUN_ARG[@]+"${RUN_ARG[@]}"}" \
                "$@"
 }
 
