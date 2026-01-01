@@ -6,6 +6,7 @@
   - [Dependencies used in workflows](#dependencies-used-in-workflows)
   - [Bumping order](#bumping-order)
   - [Steps to bump a dependency](#steps-to-bump-a-dependency)
+    - [Alternative: Using the update_dep.sh script](#alternative-using-the-update_depsh-script)
   - [Indirect dependencies](#indirect-dependencies)
   - [Known incompatible dependency updates](#known-incompatible-dependency-updates)
     - [arduino/setup-protoc](#arduinosetup-protoc)
@@ -72,7 +73,31 @@ Please close the related PRs which were automatically opened by dependabot.
 When you bump multiple dependencies in one PR, it's recommended to create a separate commit for each dependency. But it isn't a must; for example,
 you can get all dependencies bumping for the module `go.etcd.io/etcd/tools/v3` included in one commit.
 
-#### Troubleshooting 
+#### Alternative: Using the update_dep.sh script
+
+> Note: Please use bash shell version 5.x or higher.
+
+As an alternative to the manual steps above, you can use the `update_dep.sh` script to automate the dependency bump process across all modules:
+
+```bash
+# Update to a specific version
+./scripts/update_dep.sh github.com/spf13/cobra v1.7.0
+
+# Update to the latest version
+./scripts/update_dep.sh github.com/spf13/cobra
+```
+
+The script will:
+
+1. Display the current version of the dependency across all go.mod files
+2. Warn and prompt for confirmation if the dependency is purely indirect
+3. Update the dependency in all modules that depend on it
+4. Run `make fix verify-dep` to ensure consistency across all modules
+5. Display the updated versions for verification
+
+This script handles the correct bumping order automatically and ensures version consistency across all modules.
+
+#### Troubleshooting
 
 In an event of bumping the version of protoc, protoc plugins or grpc-gateway, it might change `*.proto` file which can result in the following error:
 
