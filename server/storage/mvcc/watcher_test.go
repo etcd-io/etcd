@@ -31,6 +31,14 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
+// resetNextWatchIDForTesting resets the global watch ID counter to 0.
+// This should only be used in tests.
+func resetNextWatchIDForTesting() {
+	nextWatchIDMutex.Lock()
+	defer nextWatchIDMutex.Unlock()
+	nextWatchID = 0
+}
+
 // TestWatcherWatchID tests that each watcher provides unique watchID,
 // and the watched event attaches the correct watchID.
 func TestWatcherWatchID(t *testing.T) {
@@ -84,6 +92,9 @@ func TestWatcherWatchID(t *testing.T) {
 }
 
 func TestWatcherRequestsCustomID(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, b)
@@ -195,6 +206,9 @@ func TestWatcherWatchPrefix(t *testing.T) {
 // TestWatcherWatchWrongRange ensures that watcher with wrong 'end' range
 // does not create watcher, which panics when canceling in range tree.
 func TestWatcherWatchWrongRange(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
 	b, _ := betesting.NewDefaultTmpBackend(t)
 	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
 	defer cleanup(s, b)

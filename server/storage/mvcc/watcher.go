@@ -32,6 +32,10 @@ var (
 	ErrWatcherDuplicateID = errors.New("mvcc: duplicate watch ID provided on the WatchStream")
 )
 
+// the watchID is unique across streams
+var nextWatchIDMutex sync.Mutex
+var nextWatchID int64
+
 type WatchID int64
 
 // FilterFunc returns true if the given event should be filtered out.
@@ -103,9 +107,7 @@ type watchStream struct {
 	watchable watchable
 	ch        chan WatchResponse
 
-	mu sync.Mutex // guards fields below it
-	// nextID is the ID pre-allocated for next new watcher in this stream
-	nextID   WatchID
+	mu       sync.Mutex // guards fields below it
 	closed   bool
 	cancels  map[WatchID]cancelFunc
 	watchers map[WatchID]*watcher
@@ -126,11 +128,14 @@ func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, s
 	}
 
 	if id == clientv3.AutoWatchID {
-		for ws.watchers[ws.nextID] != nil {
-			ws.nextID++
+		// ensure that the nextWatchID check is done in a critical section
+		nextWatchIDMutex.Lock()
+		for ws.watchers[WatchID(nextWatchID)] != nil {
+			nextWatchID++
 		}
-		id = ws.nextID
-		ws.nextID++
+		id = WatchID(nextWatchID)
+		nextWatchID++
+		nextWatchIDMutex.Unlock()
 	} else if _, ok := ws.watchers[id]; ok {
 		return -1, ErrWatcherDuplicateID
 	}
