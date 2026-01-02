@@ -88,7 +88,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
 	s := newStorage()
 	keyPrefix := "/registry/" + t.resource + "/"
@@ -134,6 +134,10 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopP
 		}
 	})
 	g.Wait()
+}
+
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
+	// TODO: implement in a subsequent commit
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {

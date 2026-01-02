@@ -85,7 +85,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
@@ -105,7 +105,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, RunTrafficLoopParam{
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
@@ -335,8 +335,22 @@ type RunCompactLoopParam struct {
 	Finish <-chan struct{}
 }
 
+type RunWatchLoopParam struct {
+	Client         *client.RecordingClient
+	KeyStore       *keyStore
+	Finish         <-chan struct{}
+	RevisionOffset int64   // Random offset range: -RevisionOffset <= offset <= RevisionOffset
+	WatchQPS       float64 // QPS limit for watch requests
+}
+
+const (
+	DefaultWatchQPS       = 10.0
+	DefaultRevisionOffset = 100
+)
+
 type Traffic interface {
-	RunTrafficLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
 	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
 }
