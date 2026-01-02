@@ -478,6 +478,9 @@ func TestWatchCompacted(t *testing.T) {
 }
 
 func TestWatchNoEventLossOnCompact(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
 	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
 
 	b, _ := betesting.NewDefaultTmpBackend(t)
