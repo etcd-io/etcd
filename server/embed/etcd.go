@@ -135,6 +135,10 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			zap.Bool("reuse-port", cfg.SocketOpts.ReusePort),
 		)
 	}
+	// Enable CAReloader tracking for cleanup on shutdown
+	cfg.PeerTLSInfo.EnableCAReloaderTracking()
+	cfg.ClientTLSInfo.EnableCAReloaderTracking()
+
 	e.cfg.logger.Info(
 		"configuring peer listeners",
 		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
@@ -479,6 +483,11 @@ func (e *Etcd) Close() {
 			cancel()
 		}
 	}
+
+	// Stop CA certificate reloaders
+	e.cfg.PeerTLSInfo.Close()
+	e.cfg.ClientTLSInfo.Close()
+
 	if e.errc != nil {
 		e.wg.Wait()
 		close(e.errc)
@@ -536,11 +545,20 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
 	}
 	updateMinMaxVersions(&cfg.PeerTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
+	// Configure CA reload for peer TLS
+	if cfg.PeerTLSReloadCA {
+		cfg.PeerTLSInfo.ReloadTrustedCA = true
+		cfg.PeerTLSInfo.CAReloadInterval = cfg.TLSCAReloadInterval
+		cfg.PeerTLSInfo.Logger = cfg.logger
+	}
+
 	if !cfg.PeerTLSInfo.Empty() {
 		cfg.logger.Info(
 			"starting with peer TLS",
 			zap.String("tls-info", fmt.Sprintf("%+v", cfg.PeerTLSInfo)),
 			zap.Strings("cipher-suites", cfg.CipherSuites),
+			zap.Bool("reload-ca", cfg.PeerTLSReloadCA),
 		)
 	}
 
@@ -650,6 +668,14 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
 	}
 	updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
+	// Configure CA reload for client TLS
+	if cfg.ClientTLSReloadCA {
+		cfg.ClientTLSInfo.ReloadTrustedCA = true
+		cfg.ClientTLSInfo.CAReloadInterval = cfg.TLSCAReloadInterval
+		cfg.ClientTLSInfo.Logger = cfg.logger
+	}
+
 	if cfg.EnablePprof {
 		cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
 	}

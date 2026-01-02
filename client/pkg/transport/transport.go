@@ -16,10 +16,13 @@ package transport
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"strings"
 	"time"
+
+	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 )
 
 type unixTransport struct{ *http.Transport }
@@ -38,26 +41,78 @@ func NewTransport(info TLSInfo, dialtimeoutd time.Duration) (*http.Transport, er
 		}
 	}
 
+	dialer := &net.Dialer{
+		Timeout:   dialtimeoutd,
+		LocalAddr: ipAddr,
+		// value taken from http.DefaultTransport
+		KeepAlive: 30 * time.Second,
+	}
+
 	t := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   dialtimeoutd,
-			LocalAddr: ipAddr,
-			// value taken from http.DefaultTransport
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
+		Proxy:       http.ProxyFromEnvironment,
+		DialContext: dialer.DialContext,
 		// value taken from http.DefaultTransport
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     cfg,
 	}
 
-	dialer := &net.Dialer{
+	// When ReloadTrustedCA is enabled, use DialTLSContext to create
+	// a fresh tls.Config with updated RootCAs per connection.
+	// This avoids needing InsecureSkipVerify.
+	cs := info.cafiles()
+	if info.ReloadTrustedCA && len(cs) > 0 {
+		caReloader, err := tlsutil.NewCAReloader(cs, info.Logger)
+		if err != nil {
+			return nil, err
+		}
+		if info.CAReloadInterval > 0 {
+			caReloader.WithInterval(info.CAReloadInterval)
+		}
+		caReloader.Start()
+
+		// Track CAReloader for cleanup
+		info.trackCAReloader(caReloader)
+
+		t.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// Clone the base config and update RootCAs with fresh pool
+			tlsCfg := cfg.Clone()
+			tlsCfg.RootCAs = caReloader.GetCertPool()
+
+			// Set ServerName if not already set
+			if tlsCfg.ServerName == "" {
+				host, _, err := net.SplitHostPort(addr)
+				if err != nil {
+					host = addr
+				}
+				tlsCfg.ServerName = host
+			}
+
+			// Dial the connection
+			conn, err := dialer.DialContext(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+
+			// Wrap with TLS
+			tlsConn := tls.Client(conn, tlsCfg)
+
+			// Perform handshake with context
+			if err := tlsConn.HandshakeContext(ctx); err != nil {
+				conn.Close()
+				return nil, err
+			}
+
+			return tlsConn, nil
+		}
+	}
+
+	unixDialer := &net.Dialer{
 		Timeout:   dialtimeoutd,
 		KeepAlive: 30 * time.Second,
 	}
 
 	dialContext := func(ctx context.Context, net, addr string) (net.Conn, error) {
-		return dialer.DialContext(ctx, "unix", addr)
+		return unixDialer.DialContext(ctx, "unix", addr)
 	}
 	tu := &http.Transport{
 		Proxy:               http.ProxyFromEnvironment,
