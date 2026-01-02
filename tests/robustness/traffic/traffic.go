@@ -30,7 +30,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
@@ -324,7 +323,6 @@ type Profile struct {
 	CompactPeriod                  time.Duration
 	WatchQPS                       float64
 	WatchRevisionOffset            int64
-	options.BackgroundWatchConfig
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -334,16 +332,6 @@ func (p Profile) WithoutCompaction() Profile {
 
 func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	p.CompactPeriod = cp
-	return p
-}
-
-func (p Profile) WithBackgroundWatchConfigInterval(interval time.Duration) Profile {
-	p.BackgroundWatchConfig.Interval = interval
-	return p
-}
-
-func (p Profile) WithBackgroundWatchConfigRevisionOffset(offset int64) Profile {
-	p.BackgroundWatchConfig.RevisionOffset = offset
 	return p
 }
 

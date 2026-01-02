@@ -46,7 +46,7 @@ var (
 			{Choice: KubernetesGetStale, Weight: 2},
 			{Choice: KubernetesGetRev, Weight: 8},
 			{Choice: KubernetesListStale, Weight: 5},
-			{Choice: KubernetesListAndWatch, Weight: 80},
+			{Choice: KubernetesList, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
@@ -66,7 +66,7 @@ var (
 			{Choice: KubernetesGetStale, Weight: 2},
 			{Choice: KubernetesGetRev, Weight: 8},
 			{Choice: KubernetesListStale, Weight: 5},
-			{Choice: KubernetesListAndWatch, Weight: 80},
+			{Choice: KubernetesList, Weight: 80},
 		},
 		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
@@ -166,13 +166,9 @@ func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, 
 		_, rev := s.PickRandom()
 		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
 		return err
-	case KubernetesListAndWatch:
-		rev, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
-		if err != nil {
-			return err
-		}
-		t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
-		return nil
+	case KubernetesList:
+		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
+		return err
 	default:
 		panic(fmt.Sprintf("invalid choice: %q", op))
 	}
@@ -346,7 +342,7 @@ const (
 	KubernetesGetStale     KubernetesRequestType = "get_stale"
 	KubernetesGetRev       KubernetesRequestType = "get_rev"
 	KubernetesListStale    KubernetesRequestType = "list_stale"
-	KubernetesListAndWatch KubernetesRequestType = "list_watch"
+	KubernetesList KubernetesRequestType = "list_watch"
 )
 
 type storage struct {

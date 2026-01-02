@@ -32,7 +32,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 	robustnessrand "go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
@@ -48,10 +47,6 @@ var (
 		MaxNonUniqueRequestConcurrency: 3,
 		WatchQPS:                       traffic.DefaultWatchQPS,
 		WatchRevisionOffset:            traffic.DefaultRevisionOffset,
-		BackgroundWatchConfig: options.BackgroundWatchConfig{
-			Interval:       0,
-			RevisionOffset: 0,
-		},
 	}
 	trafficNames = []string{
 		"etcd",
@@ -123,7 +118,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 			MaxRevisionChan:       maxRevisionChan,
 			Cfg:                   watchConfig,
 			ClientSet:             watchSet,
-			BackgroundWatchConfig: profile.BackgroundWatchConfig,
 		})
 		return err
 	})
