@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 
@@ -312,6 +313,115 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 		_, err = lc.LeaseRevoke(t.Context(), &pb.LeaseRevokeRequest{ID: leaseID})
 		return err
 	})
+}
+
+// TestV3LeaseKeepAliveForwardingCatchError ensures the server properly generates error
+// codes while the follower server is forwarding LeaseKeepAlive request to the leader.
+func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+	integration.BeforeTest(t)
+
+	getMetricVal := func(follower *integration.Member, grpcCode string) int64 {
+		metricVal, err := follower.Metric(
+			"grpc_server_handled_total",
+			`grpc_method="LeaseKeepAlive"`,
+			fmt.Sprintf(`grpc_code="%v"`, grpcCode),
+		)
+		require.NoError(t, err)
+		count, err := strconv.ParseInt(metricVal, 10, 32)
+		require.NoError(t, err)
+		return count
+	}
+
+	t.Run("client cancels while forwarding", func(t *testing.T) {
+		follower, cancel, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
+		defer keepAliveClient.CloseSend()
+
+		// It's insufficient to use the error return by keepAliveClient.Recv() and assert
+		// the error code is Canceled. Such assertion always holds, because after the client
+		// initialized cancel(), it simply returns Canceled and ignores the actual response
+		// returned by server.
+		// So in this test case, we'd need to use the metrics collected at the server side
+		// to ensure the worker function `EtcdServer.LeaseRenew` properly handles the context
+		// cancellation.
+		prevCanceledCount := getMetricVal(follower, "Canceled")
+		prevUnavailableCount := getMetricVal(follower, "Unavailable")
+
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+		// Make it more deterministic that the follower has entered the forwarding path,
+		// then cancel the client context.
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+
+		// Wait for the server-side accounting to observe the canceled stream.
+		require.Eventually(t, func() bool {
+			return getMetricVal(follower, "Canceled") == prevCanceledCount+1
+		}, 3*time.Second, 100*time.Millisecond)
+
+		// Ensure we did not inflate Unavailable due to client cancellation.
+		require.Equal(t, prevUnavailableCount, getMetricVal(follower, "Unavailable"))
+	})
+
+	t.Run("forwarding times out", func(t *testing.T) {
+		follower, _, keepAliveClient, leaseID := setupLeaseKeepAliveForwarding(t)
+		defer keepAliveClient.CloseSend()
+
+		prevUnavailableCount := getMetricVal(follower, "Unavailable")
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+
+		_, err := keepAliveClient.Recv()
+		require.Equal(t, rpctypes.ErrGRPCTimeout, err)
+
+		// We should observe Unavailable metric went up by 1
+		require.Eventually(t, func() bool {
+			return getMetricVal(follower, "Unavailable") == prevUnavailableCount+1
+		}, 3*time.Second, 100*time.Millisecond)
+	})
+}
+
+func setupLeaseKeepAliveForwarding(t *testing.T) (*integration.Member, context.CancelFunc, pb.Lease_LeaseKeepAliveClient, int64) {
+	t.Helper()
+	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
+	t.Cleanup(func() { cluster.Terminate(t) })
+
+	leaderIdx := cluster.WaitLeader(t)
+	followerIdx := (leaderIdx + 1) % 3
+	follower := cluster.Members[followerIdx]
+
+	// Create a lease
+	grantResp, err := integration.ToGRPC(cluster.Client(leaderIdx)).Lease.LeaseGrant(
+		t.Context(),
+		&pb.LeaseGrantRequest{TTL: 30},
+	)
+	require.NoError(t, err)
+	require.Empty(t, grantResp.Error)
+	leaseID := grantResp.ID
+
+	// Start keepalive stream on follower so that it will forward request to leader via HTTP
+	ctx, cancel := context.WithCancel(t.Context())
+	leaseClient := integration.ToGRPC(follower.Client).Lease
+	keepAliveClient, err := leaseClient.LeaseKeepAlive(ctx)
+	require.NoError(t, err)
+
+	// Make sure the stream is actually functioning first.
+	require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+	keepAliveResp, err := keepAliveClient.Recv()
+	require.NoError(t, err)
+	require.Equal(t, leaseID, keepAliveResp.ID)
+
+	// Block the leaseHandler.ServeHTTP function for some time (longer than the default
+	// timeout duration), so that test cases can either wait for timeout or simply cancel.
+	failpointName := "beforeServeHTTPLeaseRenew"
+	require.NoError(t, gofail.Enable(failpointName, `sleep("8s")`))
+	t.Cleanup(func() {
+		terr := gofail.Disable(failpointName)
+		if terr != nil && !errors.Is(terr, gofail.ErrDisabled) {
+			t.Fatalf("Failed to disable failpoint %v, got error: %v", failpointName, terr)
+		}
+	})
+	return follower, cancel, keepAliveClient, leaseID
 }
 
 // TestV3LeaseCheckpoint ensures a lease checkpoint results in a remaining TTL being persisted
@@ -891,7 +1001,7 @@ func TestV3LeaseRecoverKeyWithDetachedLease(t *testing.T) {
 	}
 }
 
-func TestV3LeaseRecoverKeyWithMutipleLease(t *testing.T) {
+func TestV3LeaseRecoverKeyWithMultipleLease(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
