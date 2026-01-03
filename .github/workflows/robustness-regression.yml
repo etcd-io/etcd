@@ -1,0 +1,140 @@
+---
+name: Robustness Regression Tests
+
+on:
+  schedule:
+    # Run every Monday at 00:00 UTC (weekly)
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+    inputs:
+      parallel:
+        description: 'Number of parallel jobs (1-9)'
+        required: false
+        default: '4'
+        type: string
+      verbose:
+        description: 'Enable verbose output'
+        required: false
+        default: false
+        type: boolean
+  pull_request:
+    paths:
+      - 'tests/robustness/**'
+      - 'scripts/test_robustness_regression.sh'
+      - '.github/workflows/robustness-regression.yml'
+
+# Declare default permissions as read only.
+permissions: read-all
+
+jobs:
+  robustness-regression:
+    name: Run Robustness Regression Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max for all tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+        with:
+          go-version-file: .go-version
+
+      - name: Install gofail
+        run: |
+          GOPATH=$(go env GOPATH)
+          GOFAIL_VERSION=$(cd tools/mod && go list -m -f {{.Version}} go.etcd.io/gofail)
+          go install go.etcd.io/gofail@${GOFAIL_VERSION}
+          echo "${GOPATH}/bin" >> $GITHUB_PATH
+
+      - name: Determine parallel jobs
+        id: parallel
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "jobs=${{ github.event.inputs.parallel }}" >> $GITHUB_OUTPUT
+          else
+            echo "jobs=4" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine verbose flag
+        id: verbose
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.verbose }}" = "true" ]; then
+            echo "flag=--verbose" >> $GITHUB_OUTPUT
+          else
+            echo "flag=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create results directory
+        run: |
+          mkdir -p /tmp/robustness-regression-results
+          echo "RESULTS_DIR=/tmp/robustness-regression-results" >> $GITHUB_ENV
+
+      - name: Run regression tests
+        id: regression_tests
+        run: |
+          set +e  # Don't fail immediately, we want to collect results
+
+          ./scripts/test_robustness_regression.sh \
+            --parallel=${{ steps.parallel.outputs.jobs }} \
+            --results-dir="${RESULTS_DIR}" \
+            --persist-results \
+            ${{ steps.verbose.outputs.flag }}
+
+          TEST_EXIT_CODE=$?
+          echo "exit_code=${TEST_EXIT_CODE}" >> $GITHUB_OUTPUT
+
+          # Always generate summary for GitHub Actions
+          if [ -f "${RESULTS_DIR}/summary.txt" ]; then
+            echo "## Robustness Regression Test Results" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat "${RESULTS_DIR}/summary.txt" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+
+          exit ${TEST_EXIT_CODE}
+
+      - name: Upload test results on failure
+        if: failure() && steps.regression_tests.outcome == 'failure'
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: robustness-regression-results
+          path: /tmp/robustness-regression-results/
+          retention-days: 14
+
+      - name: Upload test results on success (if persist enabled)
+        if: success() && github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: robustness-regression-results-success
+          path: /tmp/robustness-regression-results/
+          retention-days: 7
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = '/tmp/robustness-regression-results/summary.txt';
+
+            if (fs.existsSync(summaryPath)) {
+              const summary = fs.readFileSync(summaryPath, 'utf8');
+              const exitCode = '${{ steps.regression_tests.outputs.exit_code }}';
+
+              let emoji = exitCode === '0' ? '✅' : '❌';
+              let message = `${emoji} **Robustness Regression Test Results**\n\n`;
+              message += '```\n' + summary + '\n```\n';
+
+              if (exitCode !== '0') {
+                message += '\n⚠️ Some regression tests failed. ';
+                message += 'Please check the workflow artifacts for detailed logs.\n';
+              }
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: message
+              });
+            }

@@ -92,6 +92,35 @@ The script will:
 
 This is particularly useful before and after large refactors to verify that all known bugs remain reproducible.
 
+### Automated CI Validation
+
+The regression tests run automatically via GitHub Actions to catch regressions early:
+
+**Schedule**: Every Monday at 00:00 UTC (weekly)
+
+**Triggers**:
+- Scheduled weekly runs
+- Manual trigger via workflow_dispatch
+- Pull requests that modify robustness tests or the test runner script
+
+**Features**:
+- Runs all 9 regression tests in parallel (configurable)
+- Uploads test artifacts on failure for debugging
+- Posts results summary as PR comments
+- Configurable parallel jobs and verbosity via manual dispatch
+
+**Manual Trigger**:
+You can manually trigger a run from the [Actions tab](../../actions/workflows/robustness-regression.yml) with custom parameters:
+- Number of parallel jobs (1-9, default: 4)
+- Verbose output (true/false)
+
+**Viewing Results**:
+- Check the [workflow runs](../../actions/workflows/robustness-regression.yml) for status
+- Download artifacts from failed runs for detailed analysis
+- Review PR comments for test summaries
+
+This automation ensures continuous validation of bug reproducibility and helps detect regressions introduced by framework changes.
+
 ## How Robustness Tests Work
 
 Robustness tests compare the etcd cluster behavior against a simplified model of its expected behavior.
