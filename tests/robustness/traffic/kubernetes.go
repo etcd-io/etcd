@@ -137,7 +137,14 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 }
 
 func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	// TODO: implement in a subsequent commit
+	s := newStorage()
+	keyPrefix := "/registry/" + t.resource + "/"
+	runWatchLoop(ctx, p, watchLoopConfig{
+		getKey:        keyPrefix,
+		watchKey:      keyPrefix,
+		requireLeader: true,
+		onEvent:       s.Update,
+	})
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
