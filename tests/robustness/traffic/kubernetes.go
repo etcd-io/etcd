@@ -90,7 +90,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 
 func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
-	s := newStorage()
+	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
 
@@ -137,7 +137,7 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 }
 
 func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	s := newStorage()
+	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	runWatchLoop(ctx, p, watchLoopConfig{
 		getKey:        keyPrefix,
