@@ -82,8 +82,12 @@ const (
 	// NoLease is a lease ID for the absence of a lease.
 	NoLease LeaseID = 0
 
-	// retryConnWait is how long to wait before retrying request due to an error
-	retryConnWait = 500 * time.Millisecond
+	// retryConnMinBackoff is the starting backoff when retrying a request due to an error
+	retryConnMinBackoff = 500 * time.Millisecond
+	// retryConnMaxBackoff is the max backoff when retrying a request due to an error
+	retryConnMaxBackoff = 15 * time.Second
+	// sendKeepaliveFrequency is how often to send keepalives
+	sendKeepaliveFrequency = 500 * time.Millisecond
 )
 
 // LeaseResponseChSize is the size of buffer to store unsent lease responses.
@@ -458,9 +462,11 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 		l.mu.Unlock()
 	}()
 
+	backoffGeneration := 0
 	for {
 		stream, err := l.resetRecv()
 		if err != nil {
+			backoffGeneration++
 			l.lg.Warn("error occurred during lease keep alive loop",
 				zap.Error(err),
 			)
@@ -468,6 +474,7 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 				return err
 			}
 		} else {
+			backoffGeneration = 0
 			for {
 				resp, err := stream.Recv()
 				if err != nil {
@@ -485,8 +492,10 @@ func (l *lessor) recvKeepAliveLoop() (gerr error) {
 			}
 		}
 
+		backoff := jitterUp(expBackoff(backoffGeneration, retryConnMinBackoff, retryConnMaxBackoff), 0.5)
+
 		select {
-		case <-time.After(retryConnWait):
+		case <-time.After(backoff):
 		case <-l.stopCtx.Done():
 			return l.stopCtx.Err()
 		}
@@ -607,7 +616,7 @@ func (l *lessor) sendKeepAliveLoop(stream pb.Lease_LeaseKeepAliveClient) {
 		}
 
 		select {
-		case <-time.After(retryConnWait):
+		case <-time.After(sendKeepaliveFrequency):
 		case <-stream.Context().Done():
 			return
 		case <-l.donec:
