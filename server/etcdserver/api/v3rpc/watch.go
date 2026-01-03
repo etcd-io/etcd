@@ -117,7 +117,16 @@ func SetProgressReportInterval(newTimeout time.Duration) {
 // be serialized. Thus we use a buffered chan to solve the problem.
 // A small buffer should be OK for most cases, since we expect the
 // ctrl requests are infrequent.
-const ctrlStreamBufLen = 16
+// ctrlStream buffers watch control (create / cancel) responses produced by
+// recvLoop while sendLoop is busy.
+// It must be buffered so that a burst of control messages does not block
+// recvLoop and prevent it from draining the underlying gRPC stream, but it
+// also must stay bounded so a misbehaving client cannot hold an unbounded
+// number of control responses in memory.
+//
+// The chosen size should absorb short-term spikes (e.g. cancel storms from
+// many watchers). Adjust this with care if workload characteristics change.
+const ctrlStreamBufLen = 128
 
 // serverWatchStream is an etcd server side stream. It receives requests
 // from client side gRPC stream. It receives watch events from mvcc.WatchStream,

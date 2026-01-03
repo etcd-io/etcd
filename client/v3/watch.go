@@ -44,6 +44,12 @@ const (
 
 	// InvalidWatchID represents an invalid watch ID and prevents duplication with an existing watch.
 	InvalidWatchID = -1
+
+	// sendChanBufLen bounds the per-stream client-side queue for outgoing watch
+	// requests (create / cancel / progress).
+	// When this queue is full, enqueueSend drops best-effort requests instead of
+	// blocking. Currently, all watch requests are considered best-effort.
+	sendChanBufLen = 128
 )
 
 type Event mvccpb.Event
@@ -167,13 +173,17 @@ type watchGRPCStream struct {
 
 	// substreams holds all active watchers on this grpc stream
 	substreams map[int64]*watcherStream
-	// resuming holds all resuming watchers on this grpc stream
+	// resuming holds all resuming watchers on this grpc stream, including
+	// watchers to be created for the first time, and those that are
+	// disconnected and wait to be reconnected.
 	resuming []*watcherStream
 
 	// reqc sends a watch request from Watch() to the main goroutine
 	reqc chan watchStreamRequest
 	// respc receives data from the watch client
 	respc chan *pb.WatchResponse
+	// sendc holds data to send to the grpc stream
+	sendc chan *pb.WatchRequest
 	// donec closes to broadcast shutdown
 	donec chan struct{}
 	// errc transmits errors from grpc Recv to the watch stream reconnect logic
@@ -182,6 +192,8 @@ type watchGRPCStream struct {
 	closingc chan *watcherStream
 	// wg is Done when all substream goroutines have exited
 	wg sync.WaitGroup
+	// sendWg ensures there's only one sendLoop goroutine running
+	sendWg sync.WaitGroup
 
 	// resumec closes to signal that all substreams should begin resuming
 	resumec chan struct{}
@@ -237,7 +249,12 @@ type watcherStream struct {
 	// closing is set to true when stream should be scheduled to shutdown.
 	closing bool
 	// id is the registered watch id on the grpc stream
+	// At the initialization of watcherStream, the ID is set to InvalidWatchID.
+	// After the server processes the watch request and returns the corresponding
+	// ID, we will use that to update this field.
 	id int64
+	// key is the key in the KV store this watcher is watching
+	key string
 
 	// buf holds all events received from etcd but not yet consumed by the client
 	buf []*WatchResponse
@@ -503,7 +520,6 @@ func (w *watchGRPCStream) closeSubstream(ws *watcherStream) {
 
 // run is the root of the goroutines for managing a watcher client
 func (w *watchGRPCStream) run() {
-	var wc pb.Watch_WatchClient
 	var closeErr error
 
 	// substreams marked to close but goroutine still running; needed for
@@ -511,6 +527,7 @@ func (w *watchGRPCStream) run() {
 	closing := make(map[*watcherStream]struct{})
 
 	defer func() {
+		w.lg.Debug("shutting down watchGRPCStream")
 		w.closeErr = closeErr
 		// shutdown substreams and resuming substreams
 		for _, ws := range w.substreams {
@@ -534,7 +551,8 @@ func (w *watchGRPCStream) run() {
 	}()
 
 	// start a stream with the etcd grpc server
-	if wc, closeErr = w.newWatchClient(); closeErr != nil {
+	if closeErr = w.newWatchClient(); closeErr != nil {
+		w.lg.Debug(fmt.Sprintf("failed to create new watch client, got error: %s. watchGRPCStream exiting now", closeErr.Error()))
 		return
 	}
 
@@ -542,6 +560,9 @@ func (w *watchGRPCStream) run() {
 
 	var cur *pb.WatchResponse
 	backoff := time.Millisecond
+	// All select branches in run must avoid long blocking operations, especially
+	// ones that depend on sendLoop / recvLoop making progress. Otherwise, we could
+	// deadlock the watch stream and leave both sending and receiving sides stuck.
 	for {
 		select {
 		// Watch() requested
@@ -551,6 +572,7 @@ func (w *watchGRPCStream) run() {
 				outc := make(chan WatchResponse, 1)
 				// TODO: pass custom watch ID?
 				ws := &watcherStream{
+					key:     wreq.key,
 					initReq: *wreq,
 					id:      InvalidWatchID,
 					outc:    outc,
@@ -566,14 +588,10 @@ func (w *watchGRPCStream) run() {
 				w.resuming = append(w.resuming, ws)
 				if len(w.resuming) == 1 {
 					// head of resume queue, can register a new watcher
-					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						w.lg.Debug("error when sending request", zap.Error(err))
-					}
+					w.enqueueSend(ws.initReq.toPB())
 				}
 			case *progressRequest:
-				if err := wc.Send(wreq.toPB()); err != nil {
-					w.lg.Debug("error when sending request", zap.Error(err))
-				}
+				w.enqueueSend(wreq.toPB())
 			}
 
 		// new events from the watch client
@@ -599,11 +617,8 @@ func (w *watchGRPCStream) run() {
 				}
 
 				if ws := w.nextResume(); ws != nil {
-					if err := wc.Send(ws.initReq.toPB()); err != nil {
-						w.lg.Debug("error when sending request", zap.Error(err))
-					}
+					w.enqueueSend(ws.initReq.toPB())
 				}
-
 				// reset for next iteration
 				cur = nil
 
@@ -646,29 +661,33 @@ func (w *watchGRPCStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				w.lg.Debug("sending watch cancel request for failed dispatch", zap.Int64("watch-id", pbresp.WatchId))
-				if err := wc.Send(req); err != nil {
-					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", pbresp.WatchId), zap.Error(err))
-				}
+				w.enqueueSend(req)
 			}
 
 		// watch client failed on Recv; spawn another if possible
 		case err := <-w.errc:
+			// Drain all remaining unsent requests, otherwise these outdated messages
+			// will be picked up by the next newly created sendLoop and therefore
+			// confusing the server. For example, at server side watchID=0 refers
+			// to key "def", while the outdated request here with the same watchID=0
+			// assumes the key being watched could be "abc".
+			close(w.sendc)
 			if isHaltErr(w.ctx, err) || errors.Is(ContextError(w.ctx, err), v3rpc.ErrNoLeader) {
 				closeErr = err
 				return
 			}
 			backoff = w.backoffIfUnavailable(backoff, err)
-			if wc, closeErr = w.newWatchClient(); closeErr != nil {
+			// wait till the previous sendLoop goroutine exits
+			w.sendWg.Wait()
+
+			if closeErr = w.newWatchClient(); closeErr != nil {
+				w.lg.Debug(fmt.Sprintf("couldn't spawn another watch client due to error: %s", closeErr.Error()))
 				return
 			}
 			if ws := w.nextResume(); ws != nil {
-				if err := wc.Send(ws.initReq.toPB()); err != nil {
-					w.lg.Debug("error when sending request", zap.Error(err))
-				}
+				w.enqueueSend(ws.initReq.toPB())
 			}
 			cancelSet = make(map[int64]struct{})
-
 		case <-w.ctx.Done():
 			return
 
@@ -689,10 +708,7 @@ func (w *watchGRPCStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				w.lg.Debug("sending watch cancel request for closed watcher", zap.Int64("watch-id", ws.id))
-				if err := wc.Send(req); err != nil {
-					w.lg.Debug("failed to send watch cancel request", zap.Int64("watch-id", ws.id), zap.Error(err))
-				}
+				w.enqueueSend(req)
 			}
 		}
 	}
@@ -760,11 +776,12 @@ func (w *watchGRPCStream) unicastResponse(wr *WatchResponse, watchID int64) bool
 	return true
 }
 
-// serveWatchClient forwards messages from the grpc stream to run()
-func (w *watchGRPCStream) serveWatchClient(wc pb.Watch_WatchClient) {
+// recvLoop receives watch responses from the grpc stream and forwards them to run()
+func (w *watchGRPCStream) recvLoop(wc pb.Watch_WatchClient) {
 	for {
 		resp, err := wc.Recv()
 		if err != nil {
+			w.lg.Warn("failed to receive watch response from gRPC stream", zap.Error(err))
 			select {
 			case w.errc <- err:
 			case <-w.donec:
@@ -777,6 +794,85 @@ func (w *watchGRPCStream) serveWatchClient(wc pb.Watch_WatchClient) {
 			return
 		}
 	}
+}
+
+// sendLoop sends watch requests (create/cancel/progress) to the grpc stream
+//
+// Once sending returns an error, the underlying gRPC stream is already
+// broken (or in the process of being torn down). In that case we should stop
+// consuming from sendc and just return; recvLoop will observe the same
+// transport error on Recv(), forward it to errc, and run() will drive the
+// normal reconnect / teardown path. All remaining requests in sendc will
+// be cleaned up.
+func (w *watchGRPCStream) sendLoop(wc pb.Watch_WatchClient) {
+	for {
+		select {
+		case req, ok := <-w.sendc:
+			if !ok {
+				return
+			}
+			watchID, reqType, key := getWatchReqInfo(req)
+			if err := wc.Send(req); err != nil {
+				w.lg.Warn("failed to send watch request",
+					zap.Int64("watch-id", watchID),
+					zap.String("request-type", reqType),
+					zap.String("key", key),
+					zap.Error(err))
+				return
+			}
+		case <-w.donec:
+			return
+		case <-w.ctx.Done():
+			return
+		}
+	}
+}
+
+// enqueueSend is a helper to enqueue the outgoing watch request in a
+// non-blocking style to avoid the system getting stuck.
+func (w *watchGRPCStream) enqueueSend(req *pb.WatchRequest) {
+	// This should not happen, but we'd like to be defensive
+	if req == nil {
+		return
+	}
+
+	select {
+	case w.sendc <- req:
+	case <-w.donec:
+	case <-w.ctx.Done():
+	default:
+		// Queue is full, we’re under pressure and have to drop this request
+		watchID, reqType, key := getWatchReqInfo(req)
+		w.lg.Warn("dropping outgoing watch request due to send queue full",
+			zap.String("request-type", reqType),
+			zap.Int64("watch-id", watchID),
+			zap.String("key", key),
+			zap.Int("queue-len", len(w.sendc)))
+		return
+	}
+}
+
+func getWatchReqInfo(req *pb.WatchRequest) (int64, string, string) {
+	var watchID int64 = InvalidWatchID
+	var reqType string
+	var key string
+	switch u := req.RequestUnion.(type) {
+	case *pb.WatchRequest_CreateRequest:
+		reqType = "create"
+		if u.CreateRequest != nil {
+			watchID = u.CreateRequest.WatchId
+			key = string(u.CreateRequest.Key)
+		}
+	case *pb.WatchRequest_CancelRequest:
+		reqType = "cancel"
+		if u.CancelRequest != nil {
+			watchID = u.CancelRequest.WatchId
+		}
+	case *pb.WatchRequest_ProgressRequest:
+		reqType = "progress"
+		// keep watchID as InvalidWatchID
+	}
+	return watchID, reqType, key
 }
 
 // serveSubstream forwards watch responses from run() to the subscriber
@@ -818,7 +914,8 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 			ws.buf = ws.buf[1:]
 		case wr, ok := <-ws.recvc:
 			if !ok {
-				// shutdown from closeSubstream
+				// either the entire client side watchGRPCStream is shutting down or this
+				// substream has been canceled.
 				return
 			}
 
@@ -877,7 +974,10 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 	// lazily send cancel message if events on missing id
 }
 
-func (w *watchGRPCStream) newWatchClient() (pb.Watch_WatchClient, error) {
+// newWatchClient creates a gRPC client to communicate with the server, and
+// starts running the recvLoop and sendLoop goroutines to exchange watch
+// requests and responses.
+func (w *watchGRPCStream) newWatchClient() error {
 	// mark all substreams as resuming
 	close(w.resumec)
 	w.resumec = make(chan struct{})
@@ -915,12 +1015,19 @@ func (w *watchGRPCStream) newWatchClient() (pb.Watch_WatchClient, error) {
 	}
 
 	if err != nil {
-		return nil, v3rpc.Error(err)
+		return v3rpc.Error(err)
 	}
 
-	// receive data from new grpc stream
-	go w.serveWatchClient(wc)
-	return wc, nil
+	// receive from and send to the new grpc stream
+	w.lg.Debug("created new watch client and started the recv/send loop")
+	w.sendc = make(chan *pb.WatchRequest, sendChanBufLen)
+	w.sendWg.Add(1)
+	go func() {
+		defer w.sendWg.Done()
+		w.sendLoop(wc)
+	}()
+	go w.recvLoop(wc)
+	return nil
 }
 
 func (w *watchGRPCStream) waitCancelSubstreams(stopc <-chan struct{}) <-chan struct{} {
@@ -1023,6 +1130,7 @@ func (wr *watchRequest) toPB() *pb.WatchRequest {
 		Filters:        wr.filters,
 		PrevKv:         wr.prevKV,
 		Fragment:       wr.fragment,
+		WatchId:        AutoWatchID,
 	}
 	cr := &pb.WatchRequest_CreateRequest{CreateRequest: req}
 	return &pb.WatchRequest{RequestUnion: cr}
