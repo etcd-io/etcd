@@ -82,6 +82,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	finish := make(chan struct{})
 
 	keyStore := NewKeyStore(10, "key")
+	kubernetesStorage := newStorage()
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
@@ -101,6 +102,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -121,6 +123,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -135,6 +138,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
 				Client:                c,
 				KeyStore:              keyStore,
+				Storage:               kubernetesStorage,
 				Finish:                finish,
 				BackgroundWatchConfig: profile.BackgroundWatchConfig,
 			})
@@ -350,6 +354,7 @@ type RunTrafficLoopParam struct {
 	LeaseIDStorage                     identity.LeaseIDStorage
 	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
 	KeyStore                           *keyStore
+	Storage                            *storage
 	Finish                             <-chan struct{}
 }
 
@@ -362,6 +367,7 @@ type RunCompactLoopParam struct {
 type RunWatchLoopParam struct {
 	Client                        *client.RecordingClient
 	KeyStore                      *keyStore
+	Storage                       *storage
 	Finish                        <-chan struct{}
 	options.BackgroundWatchConfig // Embedded: Interval and RevisionOffset
 }
