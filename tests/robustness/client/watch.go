@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -32,7 +31,7 @@ type CollectClusterWatchEventsParam struct {
 	MaxRevisionChan <-chan int64
 	Cfg             WatchConfig
 	ClientSet       *ClientSet
-	options.BackgroundWatchConfig
+	options.WatchConfig
 }
 
 func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
@@ -50,28 +49,13 @@ func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEve
 			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 		})
 	}
-	finish := make(chan struct{})
 	g.Go(func() error {
 		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
-		close(finish)
 		return nil
 	})
-
-	if param.BackgroundWatchConfig.Interval > 0 {
-		for _, endpoint := range param.Endpoints {
-			g.Go(func() error {
-				c, err := param.ClientSet.NewClient([]string{endpoint})
-				if err != nil {
-					return err
-				}
-				defer c.Close()
-				return openWatchPeriodically(ctx, &g, c, param.BackgroundWatchConfig, finish)
-			})
-		}
-	}
 
 	return g.Wait()
 }
@@ -142,40 +126,5 @@ resetWatch:
 				}
 			}
 		}
-	}
-}
-
-func openWatchPeriodically(ctx context.Context, g *errgroup.Group, c *RecordingClient, backgroundWatchConfig options.BackgroundWatchConfig, finish <-chan struct{}) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-finish:
-			return nil
-		case <-time.After(backgroundWatchConfig.Interval):
-		}
-		g.Go(func() error {
-			resp, err := c.Get(ctx, "/key")
-			if err != nil {
-				return err
-			}
-			rev := resp.Header.Revision + backgroundWatchConfig.RevisionOffset
-
-			watchCtx, cancel := context.WithCancel(ctx)
-			defer cancel()
-			w := c.Watch(watchCtx, "", rev, true, true, true)
-			for {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-finish:
-					return nil
-				case _, ok := <-w:
-					if !ok {
-						return nil
-					}
-				}
-			}
-		})
 	}
 }
