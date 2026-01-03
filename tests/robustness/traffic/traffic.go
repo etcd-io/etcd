@@ -16,6 +16,7 @@ package traffic
 
 import (
 	"context"
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -24,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -47,6 +49,8 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
+		WatchQPS:                       DefaultWatchQPS,
+		WatchRevisionOffset:            DefaultRevisionOffset,
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
@@ -55,6 +59,8 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
+		WatchQPS:                       DefaultWatchQPS,
+		WatchRevisionOffset:            DefaultRevisionOffset,
 	}
 )
 
@@ -113,6 +119,22 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
 				Finish:                             finish,
+			})
+		}(c)
+	}
+	for i := range profile.MemberClientCount {
+		wg.Add(1)
+		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+		require.NoError(t, nerr)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+				Client:         c,
+				KeyStore:       keyStore,
+				Finish:         finish,
+				RevisionOffset: profile.WatchRevisionOffset,
+				WatchQPS:       profile.WatchQPS,
 			})
 		}(c)
 	}
@@ -296,6 +318,8 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
+	WatchQPS                       float64
+	WatchRevisionOffset            int64
 	options.BackgroundWatchConfig
 }
 
@@ -353,6 +377,82 @@ type Traffic interface {
 	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
 	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
+}
+
+// runWatchLoop is a helper function that implements the common watch loop pattern.
+// It creates watches at a controlled rate with random revision offsets.
+func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+	limiter := rate.NewLimiter(rate.Limit(p.WatchQPS), 1)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		default:
+		}
+
+		// Wait for rate limiter before creating a new watch
+		if err := limiter.Wait(ctx); err != nil {
+			return
+		}
+
+		// Get current revision to watch from
+		opCtx, cancel := context.WithTimeout(ctx, RequestTimeout)
+		resp, err := p.Client.Get(opCtx, cfg.getKey)
+		cancel()
+		if err != nil {
+			continue
+		}
+		currentRev := resp.Header.Revision
+
+		// Generate random offset: -RevisionOffset <= offset <= RevisionOffset
+		var targetRev int64
+		if p.RevisionOffset > 0 {
+			offset := rand.Int63n(2*p.RevisionOffset+1) - p.RevisionOffset
+			targetRev = currentRev + offset
+			if targetRev < 1 {
+				targetRev = 1
+			}
+		} else {
+			targetRev = currentRev + 1
+		}
+
+		// Spawn a goroutine to run this watch independently
+		go func() {
+			watchCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+
+			if cfg.requireLeader {
+				watchCtx = clientv3.WithRequireLeader(watchCtx)
+			}
+
+			w := p.Client.Watch(watchCtx, cfg.watchKey, targetRev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-p.Finish:
+					return
+				case resp, ok := <-w:
+					if !ok {
+						return
+					}
+					if cfg.onEvent != nil {
+						cfg.onEvent(resp)
+					}
+				}
+			}
+		}()
+	}
+}
+
+type watchLoopConfig struct {
+	getKey        string
+	watchKey      string
+	requireLeader bool
+	onEvent       func(clientv3.WatchResponse)
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {
