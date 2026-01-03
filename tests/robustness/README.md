@@ -66,6 +66,32 @@ When performing large refactors to the robustness testing framework, it is criti
 
 This ensures that improvements to the testing framework do not inadvertently reduce our ability to detect known failure modes.
 
+### Automated Regression Test Runner
+
+To make it easier to run all regression tests, use the automated test runner script:
+
+```bash
+# Run all regression tests sequentially
+make test-robustness-regression
+
+# Or run the script directly with options
+./scripts/test_robustness_regression.sh [OPTIONS]
+
+# Run tests in parallel (e.g., 4 jobs)
+./scripts/test_robustness_regression.sh --parallel=4
+
+# Get help on available options
+./scripts/test_robustness_regression.sh --help
+```
+
+The script will:
+* Run all 9 regression tests listed in the track record table
+* Continue running even if some tests fail (to collect complete results)
+* Generate a summary table showing which tests passed/failed
+* Save detailed logs for each test in the results directory
+
+This is particularly useful before and after large refactors to verify that all known bugs remain reproducible.
+
 ## How Robustness Tests Work
 
 Robustness tests compare the etcd cluster behavior against a simplified model of its expected behavior.

@@ -79,6 +79,10 @@ test-release:
 test-robustness:
 	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
 
+.PHONY: test-robustness-regression
+test-robustness-regression:
+	./scripts/test_robustness_regression.sh $(ARGS)
+
 .PHONY: test-coverage
 test-coverage:
 	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
