@@ -53,6 +53,19 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 [#18055]: https://github.com/etcd-io/etcd/issues/18055
 [#20271]: https://github.com/etcd-io/etcd/issues/20271
 
+## Maintaining Bug Reproducibility During Refactoring
+
+When performing large refactors to the robustness testing framework, it is critical to ensure that we do not lose the ability to reproduce previously discovered bugs. The track record table above documents known correctness issues, and many include specific reproduction commands (e.g., `make test-robustness-issue14370`).
+
+**Best Practices:**
+
+* Before starting a large refactor, run all reproducible test cases listed in the track record table to establish a baseline.
+* After completing the refactor, verify that all previously reproducible bugs can still be detected by running their associated commands.
+* If a refactor changes how tests are structured or executed, update the reproduction commands accordingly and document the changes.
+* Consider the refactor incomplete until all regression tests continue to catch their target bugs.
+
+This ensures that improvements to the testing framework do not inadvertently reduce our ability to detect known failure modes.
+
 ## How Robustness Tests Work
 
 Robustness tests compare the etcd cluster behavior against a simplified model of its expected behavior.
