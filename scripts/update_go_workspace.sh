@@ -24,17 +24,33 @@ set -euo pipefail
 
 source ./scripts/test_lib.sh
 
+# Detect sed variant (BSD vs GNU) for in-place editing
+# Source: https://stackoverflow.com/a/22084103 (CC BY-SA 4.0)
+case "$OSTYPE" in
+  darwin*|bsd*)
+    sed_no_backup=( -i '' )
+    ;;
+  *)
+    sed_no_backup=( -i )
+    ;;
+esac
+
 # Avoid issues and remove the workspace files.
 rm -f go.work go.work.sum
 
 # Generate the workspace.
 go work init
-sed -i -e '1i\// This is a generated file. Do not edit directly.\n' go.work
+# Prepend comment header (portable sed syntax with literal newline after backslash)
+sed "${sed_no_backup[@]}" '1i\
+// This is a generated file. Do not edit directly.\
+
+' go.work
 
 # Include all submodules from the repository.
-git ls-files -z ':(glob)**/go.mod' \
-    | xargs -0 -n1 dirname -z \
-    | xargs -0 -n1 go work edit -use
+# Use while-read loop for portability (dirname -z is GNU-specific, not available on macOS)
+git ls-files -z ':(glob)**/go.mod' | while IFS= read -r -d '' modfile; do
+    go work edit -use "$(dirname "$modfile")"
+done
 
 go work edit -toolchain "go$(cat .go-version)"
 go work edit -go "$(go mod edit -json | jq -r .Go)"
