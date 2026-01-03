@@ -16,7 +16,6 @@ package grpcproxy
 
 import (
 	"net"
-	"os"
 	"testing"
 	"time"
 
@@ -42,7 +41,6 @@ func TestClusterProxyMemberList(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	serverEps := []string{clus.Members[0].GRPCURL}
 	prefix := "test-prefix"
-	hostname, _ := os.Hostname()
 	cts := newClusterProxyServer(lg, serverEps, prefix, t)
 	defer cts.close(t)
 
@@ -63,7 +61,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 
 	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
 	require.Lenf(t, mresp.Members[0].ClientURLs, 1, "len(mresp.Members[0].ClientURLs) expected 1, got %d (%+v)", len(mresp.Members[0].ClientURLs), mresp.Members[0].ClientURLs[0])
-	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
+	assert.Contains(t, mresp.Members, &pb.Member{Name: "", ClientURLs: []string{cts.caddr}})
 
 	// test proxy member add
 	newMemberAddr := "127.0.0.2:6789"
@@ -75,7 +73,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	mresp, err = client.Cluster.MemberList(t.Context())
 	require.NoErrorf(t, err, "err %v, want nil", err)
 	require.Lenf(t, mresp.Members, 2, "len(mresp.Members) expected 2, got %d (%+v)", len(mresp.Members), mresp.Members)
-	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{newMemberAddr}})
+	assert.Contains(t, mresp.Members, &pb.Member{Name: "", ClientURLs: []string{newMemberAddr}})
 
 	// test proxy member delete
 	deregisterMember(cts.c, prefix, newMemberAddr, t)
@@ -86,7 +84,7 @@ func TestClusterProxyMemberList(t *testing.T) {
 	mresp, err = client.Cluster.MemberList(t.Context())
 	require.NoErrorf(t, err, "err %v, want nil", err)
 	require.Lenf(t, mresp.Members, 1, "len(mresp.Members) expected 1, got %d (%+v)", len(mresp.Members), mresp.Members)
-	assert.Contains(t, mresp.Members, &pb.Member{Name: hostname, ClientURLs: []string{cts.caddr}})
+	assert.Contains(t, mresp.Members, &pb.Member{Name: "", ClientURLs: []string{cts.caddr}})
 }
 
 type clusterproxyTestServer struct {
