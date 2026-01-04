@@ -32,9 +32,12 @@ var (
 	ErrWatcherDuplicateID = errors.New("mvcc: duplicate watch ID provided on the WatchStream")
 )
 
-// the watchID is unique across streams
+// nextWatchID is a global counter for auto-assigned watch IDs.
+// assignedWatchIDs tracks all watch IDs in use across all streams with reference counting.
+// The count indicates how many streams are using each ID (user-specified IDs can be shared).
 var nextWatchIDMutex sync.Mutex
 var nextWatchID int64
+var assignedWatchIDs = make(map[WatchID]int)
 
 type WatchID int64
 
@@ -128,16 +131,22 @@ func (ws *watchStream) Watch(ctx context.Context, id WatchID, key, end []byte, s
 	}
 
 	if id == clientv3.AutoWatchID {
-		// ensure that the nextWatchID check is done in a critical section
 		nextWatchIDMutex.Lock()
-		for ws.watchers[WatchID(nextWatchID)] != nil {
+		// Check global registry instead of per-stream map
+		for assignedWatchIDs[WatchID(nextWatchID)] > 0 {
 			nextWatchID++
 		}
 		id = WatchID(nextWatchID)
+		assignedWatchIDs[id]++
 		nextWatchID++
 		nextWatchIDMutex.Unlock()
 	} else if _, ok := ws.watchers[id]; ok {
 		return -1, ErrWatcherDuplicateID
+	} else {
+		// User-specified ID: increment reference count in global registry
+		nextWatchIDMutex.Lock()
+		assignedWatchIDs[id]++
+		nextWatchIDMutex.Unlock()
 	}
 
 	w, c := ws.watchable.watch(key, end, startRev, id, ws.ch, fcs...)
@@ -174,6 +183,13 @@ func (ws *watchStream) Cancel(id WatchID) error {
 	if ww := ws.watchers[id]; ww == w {
 		delete(ws.cancels, id)
 		delete(ws.watchers, id)
+		// Decrement reference count in global registry
+		nextWatchIDMutex.Lock()
+		assignedWatchIDs[id]--
+		if assignedWatchIDs[id] <= 0 {
+			delete(assignedWatchIDs, id)
+		}
+		nextWatchIDMutex.Unlock()
 	}
 	ws.mu.Unlock()
 
