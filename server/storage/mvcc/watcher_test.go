@@ -20,9 +20,12 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
@@ -31,12 +34,13 @@ import (
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 )
 
-// resetNextWatchIDForTesting resets the global watch ID counter to 0.
+// resetNextWatchIDForTesting resets the global watch ID counter and registry.
 // This should only be used in tests.
 func resetNextWatchIDForTesting() {
 	nextWatchIDMutex.Lock()
 	defer nextWatchIDMutex.Unlock()
 	nextWatchID = 0
+	assignedWatchIDs = make(map[WatchID]int)
 }
 
 // TestWatcherWatchID tests that each watcher provides unique watchID,
@@ -466,4 +470,197 @@ func TestWatcherWatchWithFilter(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("failed to receive delete request")
 	}
+}
+
+// TestWatchIDUniquenessAcrossStreams verifies auto-assigned watch IDs are unique across multiple streams.
+func TestWatchIDUniquenessAcrossStreams(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	// Create multiple streams
+	numStreams := 5
+	watchersPerStream := 10
+	streams := make([]WatchStream, numStreams)
+	allIDs := make(map[WatchID]struct{})
+
+	for i := 0; i < numStreams; i++ {
+		streams[i] = s.NewWatchStream()
+		defer streams[i].Close()
+	}
+
+	// Create watchers across all streams with auto-assigned IDs
+	for i := 0; i < numStreams; i++ {
+		for j := 0; j < watchersPerStream; j++ {
+			id, err := streams[i].Watch(t.Context(), 0, []byte("foo"), nil, 0)
+			require.NoError(t, err)
+
+			// Verify ID is unique across all streams
+			if _, exists := allIDs[id]; exists {
+				t.Errorf("duplicate watch ID %d found across streams", id)
+			}
+			allIDs[id] = struct{}{}
+		}
+	}
+
+	// Verify we got the expected number of unique IDs
+	expectedTotal := numStreams * watchersPerStream
+	assert.Lenf(t, allIDs, expectedTotal, "expected %d unique IDs", expectedTotal)
+}
+
+// TestUserSpecifiedIDsCanCollideAcrossStreams verifies backward compatibility -
+// user-specified IDs can be duplicated across different streams.
+func TestUserSpecifiedIDsCanCollideAcrossStreams(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	stream1 := s.NewWatchStream()
+	defer stream1.Close()
+	stream2 := s.NewWatchStream()
+	defer stream2.Close()
+
+	// Both streams can use the same user-specified ID
+	customID := WatchID(100)
+
+	id1, err := stream1.Watch(t.Context(), customID, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, customID, id1, "stream1 should be able to use customID for its watchID")
+
+	id2, err := stream2.Watch(t.Context(), customID, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, customID, id2, "stream2 should be able to use customID for its watchID")
+
+	// Same ID on same stream should still fail
+	_, err = stream1.Watch(t.Context(), customID, []byte("bar"), nil, 0)
+	assert.ErrorIs(t, err, ErrWatcherDuplicateID)
+}
+
+// TestAutoAssignSkipsUserSpecifiedIDsFromOtherStreams verifies auto-assignment
+// skips IDs that are in use by user-specified watches on other streams.
+func TestAutoAssignSkipsUserSpecifiedIDsFromOtherStreams(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	stream1 := s.NewWatchStream()
+	defer stream1.Close()
+	stream2 := s.NewWatchStream()
+	defer stream2.Close()
+
+	// Stream1 uses auto-assign, gets ID 0
+	id1, err := stream1.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, WatchID(0), id1, "first auto-assigned ID should be 0")
+
+	// Stream2 manually specifies ID 1
+	id2, err := stream2.Watch(t.Context(), WatchID(1), []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, WatchID(1), id2, "stream2 should be able to use custom ID 1")
+
+	// Stream1 auto-assigns again - should skip ID 1 and get ID 2
+	id3, err := stream1.Watch(t.Context(), 0, []byte("bar"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, WatchID(2), id3, "auto-assigned ID should skip ID 1 which is used by stream2")
+}
+
+// TestWatchIDReferenceCountingOnCancel verifies reference counting -
+// IDs become available only when all streams using them are cancelled.
+func TestWatchIDReferenceCountingOnCancel(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	stream1 := s.NewWatchStream()
+	defer stream1.Close()
+	stream2 := s.NewWatchStream()
+	defer stream2.Close()
+	stream3 := s.NewWatchStream()
+	defer stream3.Close()
+
+	// Both streams use same user-specified ID
+	customID := WatchID(1)
+
+	_, err := stream1.Watch(t.Context(), customID, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	_, err = stream2.Watch(t.Context(), customID, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	require.Equalf(t, 2, assignedWatchIDs[WatchID(1)], "ID 1 should have ref count 2 after being used by stream1 and stream2")
+
+	// Cancel on stream1 - ID should still be in use by stream2
+	err = stream1.Cancel(customID)
+	require.NoError(t, err)
+	require.Equalf(t, 1, assignedWatchIDs[WatchID(1)], "ID 1 should have ref count 1 after being cancelled on stream1")
+
+	// Stream3 auto-assigns - should skip ID 1 since stream2 still uses it
+	// First fill up ID 0
+	_, err = stream3.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+
+	// Next auto-assign should skip 1 and get 2
+	id, err := stream3.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+	require.NoError(t, err)
+	assert.Equalf(t, WatchID(2), id, "should skip ID 1 still in use by stream2")
+
+	// Cancel on stream2 - ID 1 is now fully released
+	err = stream2.Cancel(customID)
+	require.NoError(t, err)
+	_, ok := assignedWatchIDs[WatchID(1)]
+	require.Falsef(t, ok, "ID 1 should have been released")
+}
+
+// TestConcurrentWatchIDAssignmentAcrossStreams is a stress test to verify
+// no duplicate IDs under concurrent access from multiple streams.
+func TestConcurrentWatchIDAssignmentAcrossStreams(t *testing.T) {
+	resetNextWatchIDForTesting()
+	t.Cleanup(resetNextWatchIDForTesting)
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := New(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	numStreams := 10
+	watchersPerStream := 50
+
+	var mu sync.Mutex
+	allIDs := make(map[WatchID]struct{})
+	var wg sync.WaitGroup
+
+	for i := 0; i < numStreams; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			stream := s.NewWatchStream()
+			defer stream.Close()
+
+			for j := 0; j < watchersPerStream; j++ {
+				id, err := stream.Watch(t.Context(), 0, []byte("foo"), nil, 0)
+				assert.NoError(t, err)
+
+				mu.Lock()
+				if _, exists := allIDs[id]; exists {
+					t.Errorf("duplicate watch ID %d found", id)
+				}
+				allIDs[id] = struct{}{}
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	expectedTotal := numStreams * watchersPerStream
+	assert.Lenf(t, allIDs, expectedTotal, "expected %d unique IDs", expectedTotal)
 }
