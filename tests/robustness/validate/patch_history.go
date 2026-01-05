@@ -32,7 +32,7 @@ type patchArgs struct {
 }
 
 func patchLinearizableOperations(operations []porcupine.Operation, reports []report.ClientReport, persistedRequests []model.EtcdRequest) []porcupine.Operation {
-	putRevision, delRevision := watchRevisions(reports)
+	putRevision := watchRevisions(reports)
 	persistedPutCount := countPersistedPuts(persistedRequests)
 	clientPutCount := countClientPuts(reports)
 
@@ -56,7 +56,6 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 			clientCount:    c,
 			persistedCount: persistedDeleteCount[opts],
 			returnTime:     delReturnTime[opts],
-			revision:       delRevision[opts],
 		}
 	}
 
@@ -65,9 +64,8 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 	)
 }
 
-func watchRevisions(reports []report.ClientReport) (map[model.PutOptions]int64, map[model.DeleteOptions]int64) {
+func watchRevisions(reports []report.ClientReport) map[model.PutOptions]int64 {
 	putRevisions := map[model.PutOptions]int64{}
-	delRevisions := map[model.DeleteOptions]int64{}
 
 	for _, client := range reports {
 		for _, watch := range client.Watch {
@@ -87,7 +85,7 @@ func watchRevisions(reports []report.ClientReport) (map[model.PutOptions]int64, 
 			}
 		}
 	}
-	return putRevisions, delRevisions
+	return putRevisions
 }
 
 func patchOperations(
