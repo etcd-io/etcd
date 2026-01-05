@@ -488,6 +488,62 @@ func TestPatchHistory(t *testing.T) {
 			},
 			expectedRemainingOperations: []porcupine.Operation{},
 		},
+		{
+			name: "successful compact with unique revision keeps original return time",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(5, 100, 200, &clientv3.CompactResponse{}, nil)
+				h.AppendPut("key", "value", 300, 400, &clientv3.PutResponse{}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				compactRequest(5),
+				putRequest("key", "value"),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: 200, Output: model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Revision: -1, Compact: &model.CompactResponse{}}}},
+				{Return: 400, Output: txnResponse(0, model.EtcdOperationResult{})},
+			},
+		},
+		{
+			name: "failed compact with unique revision is patched with return time",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(5, 100, 200, nil, errors.New("failed"))
+				h.AppendPut("key", "value", 300, 400, &clientv3.PutResponse{}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				compactRequest(5),
+				putRequest("key", "value"),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: 399, Output: model.MaybeEtcdResponse{Error: "failed"}},
+				{Return: 400, Output: txnResponse(0, model.EtcdOperationResult{})},
+			},
+		},
+		{
+			name: "failed compact with non-unique revision remains unchanged",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(5, 100, 200, nil, errors.New("failed"))
+				h.AppendCompact(5, 300, 400, &clientv3.CompactResponse{}, nil)
+				h.AppendPut("key", "value", 500, 600, &clientv3.PutResponse{}, nil)
+			},
+			persistedRequest: []model.EtcdRequest{
+				compactRequest(5),
+				compactRequest(5),
+				putRequest("key", "value"),
+			},
+			expectedRemainingOperations: []porcupine.Operation{
+				{Return: infinite, Output: model.MaybeEtcdResponse{Error: "failed"}},
+				{Return: 400, Output: model.MaybeEtcdResponse{EtcdResponse: model.EtcdResponse{Revision: -1, Compact: &model.CompactResponse{}}}},
+				{Return: 600, Output: txnResponse(0, model.EtcdOperationResult{})},
+			},
+		},
+		{
+			name: "failed compact with unique revision is dropped when not persisted",
+			historyFunc: func(h *model.AppendableHistory) {
+				h.AppendCompact(5, 100, 200, nil, errors.New("failed"))
+			},
+			persistedRequest:            []model.EtcdRequest{},
+			expectedRemainingOperations: []porcupine.Operation{},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			history := model.NewAppendableHistory(identity.NewIDProvider())
@@ -548,6 +604,15 @@ func deleteEvent(key string, revision int64) model.WatchEvent {
 				Type: model.DeleteOperation,
 				Key:  key,
 			},
+			Revision: revision,
+		},
+	}
+}
+
+func compactRequest(revision int64) model.EtcdRequest {
+	return model.EtcdRequest{
+		Type: model.Compact,
+		Compact: &model.CompactRequest{
 			Revision: revision,
 		},
 	}

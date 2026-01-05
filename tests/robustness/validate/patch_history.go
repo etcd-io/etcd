@@ -39,7 +39,10 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 	persistedDeleteCount := countPersistedDeletes(persistedRequests)
 	clientDeleteCount := countClientDeletes(reports)
 
-	putReturnTime, delReturnTime := uniqueOperationReturnTime(operations, persistedRequests, clientPutCount, clientDeleteCount)
+	persistedCompactCount := countPersistedCompacts(persistedRequests)
+	clientCompactCount := countClientCompacts(reports)
+
+	putReturnTime, delReturnTime, compactReturnTime := uniqueOperationReturnTime(operations, persistedRequests, clientPutCount, clientDeleteCount, clientCompactCount)
 
 	putArgs := make(map[model.PutOptions]patchArgs)
 	for opts, c := range clientPutCount {
@@ -58,9 +61,17 @@ func patchLinearizableOperations(operations []porcupine.Operation, reports []rep
 			returnTime:     delReturnTime[opts],
 		}
 	}
+	compactArgs := make(map[model.CompactRequest]patchArgs)
+	for opts, c := range clientCompactCount {
+		compactArgs[opts] = patchArgs{
+			clientCount:    c,
+			persistedCount: persistedCompactCount[opts],
+			returnTime:     compactReturnTime[opts],
+		}
+	}
 
 	return patchOperations(
-		operations, putArgs, delArgs,
+		operations, putArgs, delArgs, compactArgs,
 	)
 }
 
@@ -92,12 +103,29 @@ func patchOperations(
 	operations []porcupine.Operation,
 	putArgs map[model.PutOptions]patchArgs,
 	delArgs map[model.DeleteOptions]patchArgs,
+	compactArgs map[model.CompactRequest]patchArgs,
 ) []porcupine.Operation {
 	newOperations := make([]porcupine.Operation, 0, len(operations))
 
 	for _, op := range operations {
 		request := op.Input.(model.EtcdRequest)
 		resp := op.Output.(model.MaybeEtcdResponse)
+
+		if request.Type == model.Compact {
+			kv := model.CompactRequest{Revision: request.Compact.Revision}
+			if arg, ok := compactArgs[kv]; ok && arg.clientCount == 1 {
+				if arg.persistedCount == 0 && resp.Error != "" {
+					// the failed compact should be dropped
+					continue
+				}
+				if arg.returnTime > 0 {
+					op.Return = min(op.Return, arg.returnTime)
+				}
+			}
+			newOperations = append(newOperations, op)
+			continue
+		}
+
 		if resp.Error == "" || request.Type != model.Txn {
 			// Cannot patch those requests.
 			newOperations = append(newOperations, op)
@@ -203,9 +231,20 @@ func hasUniqueWriteOperation(ops []model.EtcdOperation, putArgs map[model.PutOpt
 	return false
 }
 
-func uniqueOperationReturnTime(allOperations []porcupine.Operation, persistedRequests []model.EtcdRequest, clientPutCount map[model.PutOptions]int64, clientDeleteCount map[model.DeleteOptions]int64) (map[model.PutOptions]int64, map[model.DeleteOptions]int64) {
+func uniqueOperationReturnTime(
+	allOperations []porcupine.Operation,
+	persistedRequests []model.EtcdRequest,
+	clientPutCount map[model.PutOptions]int64,
+	clientDeleteCount map[model.DeleteOptions]int64,
+	clientCompactCount map[model.CompactRequest]int64,
+) (
+	map[model.PutOptions]int64,
+	map[model.DeleteOptions]int64,
+	map[model.CompactRequest]int64,
+) {
 	putTimes := map[model.PutOptions]int64{}
 	delTimes := map[model.DeleteOptions]int64{}
+	compactTimes := map[model.CompactRequest]int64{}
 	var lastReturnTime int64
 	for _, op := range allOperations {
 		request := op.Input.(model.EtcdRequest)
@@ -235,6 +274,12 @@ func uniqueOperationReturnTime(allOperations []porcupine.Operation, persistedReq
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
 		case model.Compact:
+			if clientCompactCount[*request.Compact] > 1 {
+				continue
+			}
+			if returnTime, ok := compactTimes[*request.Compact]; !ok || returnTime > op.Return {
+				compactTimes[*request.Compact] = op.Return
+			}
 		case model.Defragment:
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
@@ -276,11 +321,21 @@ func uniqueOperationReturnTime(allOperations []porcupine.Operation, persistedReq
 		case model.LeaseGrant:
 		case model.LeaseRevoke:
 		case model.Compact:
+			if lastReturnTime != math.MaxInt64 {
+				lastReturnTime--
+			}
+			if clientCompactCount[*request.Compact] > 1 {
+				continue
+			}
+			if returnTime, ok := compactTimes[*request.Compact]; ok {
+				lastReturnTime = min(returnTime, lastReturnTime)
+				compactTimes[*request.Compact] = lastReturnTime
+			}
 		default:
 			panic(fmt.Sprintf("Unknown request type: %q", request.Type))
 		}
 	}
-	return putTimes, delTimes
+	return putTimes, delTimes, compactTimes
 }
 
 func countClientPuts(reports []report.ClientReport) map[model.PutOptions]int64 {
@@ -353,5 +408,30 @@ func countDeletes(counter map[model.DeleteOptions]int64, request model.EtcdReque
 		if operation.Type == model.DeleteOperation {
 			counter[operation.Delete]++
 		}
+	}
+}
+
+func countClientCompacts(reports []report.ClientReport) map[model.CompactRequest]int64 {
+	counter := map[model.CompactRequest]int64{}
+	for _, client := range reports {
+		for _, op := range client.KeyValue {
+			request := op.Input.(model.EtcdRequest)
+			countCompacts(counter, request)
+		}
+	}
+	return counter
+}
+
+func countPersistedCompacts(requests []model.EtcdRequest) map[model.CompactRequest]int64 {
+	counter := map[model.CompactRequest]int64{}
+	for _, req := range requests {
+		countCompacts(counter, req)
+	}
+	return counter
+}
+
+func countCompacts(counter map[model.CompactRequest]int64, request model.EtcdRequest) {
+	if request.Type == model.Compact {
+		counter[*request.Compact]++
 	}
 }
