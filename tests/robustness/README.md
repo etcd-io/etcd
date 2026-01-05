@@ -18,25 +18,27 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 
 ## Robustness track record
 
-| Correctness / Consistency issue                                              | Report     | Introduced in     | Discovered by   | Reproducible by robustness test                   | Command                             |
-| -----------------------------------------------------------------            | ---------- | ----------------- | --------------- | ------------------------------------------------- | ----------------------------------- |
-| Inconsistent revision caused by crash during high load [#13766]              | Mar 2022   | v3.5              | User            | Yes, report preceded robustness tests             | `make test-robustness-issue13766`   |
-| Single node cluster can lose a write on crash [#14370]                       | Aug 2022   | v3.4 or earlier   | User            | Yes, report preceded robustness tests             | `make test-robustness-issue14370`   |
-| Enabling auth can lead to inconsistency [#14571]                             | Oct 2022   | v3.4 or earlier   | User            | No, authorization is not covered.                 |                                     |
-| Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022   | v3.5              | Robustness      | Yes, after covering defragmentation.              | `make test-robustness-issue14685`   |
-| Watch progress notification not synced with stream [#15220]                  | Jan 2023   | v3.4 or earlier   | User            | Yes, after covering watch progress notification   | `make test-robustness-issue15220`   |
-| Watch traveling back in time after network partition [#15271]                | Feb 2023   | v3.4 or earlier   | Robustness      | Yes, after covering network partitions            | `make test-robustness-issue15271`   |
-| Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024   | main branch       | Robustness      | Yes, prevented regression in v3.6                 |                                     |
-| Watch events lost during stream starvation [#17529]                          | Mar 2024   | v3.4 or earlier   | User            | Yes, after covering of slow watch                 | `make test-robustness-issue17529`   |
-| Revision decreasing caused by crash during compaction [#17780]               | Apr 2024   | v3.4 or earlier   | Robustness      | Yes, after covering compaction                    |                                     |
-| Watch dropping an event when compacting on delete [#18089]                   | May 2024   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue18089`   |
-| Panic when two snapshots are received in a short period [#18055]             | May 2024   | v3.4 or earlier   | Robustness      | Yes, via Antithesis                               |                                     |
-| Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024   | v3.4 or earlier   | User            |                                                   |                                     |
-| Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025   | v3.4 or earlier   | Robustness      | Yes, after covering of compaction                 | `make test-robustness-issue19179`   |
-| Watch on future revision returns notifications [#20221]                      | Jun 2025   | v3.4 or earlier   | Robustness      | Yes, after covering connection to multiple members|                                     |
-| Watch on future revision returns old events [#20221]                         | Jun 2025   | v3.4 or earlier   | Antithesis      | Yes, after covering connection to multiple members|                                     |
-| Panic from db page expected to be 5 [#20271]                                 | Jul 2025   | v3.4 or earlier   | Antithesis      | Yes, via Antithesis                               |                                     |
+| Correctness / Consistency issue                                              | Report   | Introduced in   | Discovered by                                             | Last reproduction commit     | Reproduction Script               |
+| -----------------------------------------------------------------            | -------- | --------------- | --------------------------------------------------------- | -----------------------------| --------------------------------- |
+| Inconsistent revision caused by crash during high load [#13766]              | Mar 2022 | v3.5            | User                                                      | Load not high enough         | `make test-robustness-issue13766` |
+| Single node cluster can lose a write on crash [#14370]                       | Aug 2022 | v3.4 or earlier | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue14370` |
+| Enabling auth can lead to inconsistency [#14571]                             | Oct 2022 | v3.4 or earlier | User                                                      | Authorization is not covered |                                   |
+| Inconsistent revision caused by crash during defrag [#14685]                 | Nov 2022 | v3.5            | Robustness, after covering defragmentation                | [a438759] from Jan 3, 2026   | `make test-robustness-issue14685` |
+| Watch progress notification not synced with stream [#15220]                  | Jan 2023 | v3.4 or earlier | User                                                      | [a438759] from Jan 3, 2026   | `make test-robustness-issue15220` |
+| Watch traveling back in time after network partition [#15271]                | Feb 2023 | v3.4 or earlier | Robustness, after covering network partitions             |                              | `make test-robustness-issue15271` |
+| Duplicated watch event due to bug in TXN caching [#17247]                    | Jan 2024 | main branch     | Robustness, prevented regression on main branch           |                              |                                   |
+| Watch events lost during stream starvation [#17529]                          | Mar 2024 | v3.4 or earlier | User                                                      | [c272ade] from May 30, 2025  | `make test-robustness-issue17529` |
+| Revision decreasing caused by crash during compaction [#17780]               | Apr 2024 | v3.4 or earlier | Robustness, after covering compaction                     |                              |                                   |
+| Watch dropping an event when compacting on delete [#18089]                   | May 2024 | v3.4 or earlier | Robustness, after covering compaction                     | [a438759] from Jan 3, 2026   | `make test-robustness-issue18089` |
+| Panic when two snapshots are received in a short period [#18055]             | May 2024 | v3.4 or earlier | Robustness                                                |                              |                                   |
+| Inconsistency when reading compacted revision in TXN [#18667]                | Oct 2024 | v3.4 or earlier | User                                                      |                              |                                   |
+| Missing delete event on watch opened on same revision as compaction [#19179] | Jan 2025 | v3.4 or earlier | Robustness, after covering compaction                     |                              | `make test-robustness-issue19179` |
+| Watch on future revision returns notifications [#20221]                      | Jun 2025 | v3.4 or earlier | Robustness, after covering connection to multiple members |                              |                                   |
+| Watch on future revision returns old events [#20221]                         | Jun 2025 | v3.4 or earlier | Antithesis, after covering connection to multiple members |                              |                                   |
+| Panic from db page expected to be 5 [#20271]                                 | Jul 2025 | v3.4 or earlier | Antithesis                                                |                              |                                   |
 
+[c272ade]: https://github.com/etcd-io/etcd/tree/c272adec29afaa69f08b7458422c53b8978c7af1
+[a438759]: https://github.com/etcd-io/etcd/tree/a438759bf0bcafce851fae1a84a8511452b6b704
 [#13766]: https://github.com/etcd-io/etcd/issues/13766
 [#14370]: https://github.com/etcd-io/etcd/issues/14370
 [#14571]: https://github.com/etcd-io/etcd/issues/14571
@@ -53,16 +55,20 @@ For more details on Antithesis integration, see the [antithesis directory](../an
 [#18055]: https://github.com/etcd-io/etcd/issues/18055
 [#20271]: https://github.com/etcd-io/etcd/issues/20271
 
-## Maintaining Bug Reproducibility During Refactoring
+## Maintaining Bug Reproducibility During Non-Trivial Changes
 
-When performing large refactors to the robustness testing framework, it is critical to ensure that we do not lose the ability to reproduce previously discovered bugs. The track record table above documents known correctness issues, and many include specific reproduction commands (e.g., `make test-robustness-issue14370`).
+When performing large non-trivial changes to the robustness testing framework, it is critical to ensure that we do not lose the ability to reproduce previously discovered bugs. The track record table above documents known correctness issues, and many include specific reproduction commands (e.g., `make test-robustness-issue14370`).
+
+To prevent regressions, we must ensure that the latest version of the robustness framework remains capable of reproducing old bugs.
+We manually track this capability in the "Last reproduction commit" column.
 
 **Best Practices:**
 
-* Before starting a large refactor, run all reproducible test cases listed in the track record table to establish a baseline.
-* After completing the refactor, verify that all previously reproducible bugs can still be detected by running their associated commands.
-* If a refactor changes how tests are structured or executed, update the reproduction commands accordingly and document the changes.
-* Consider the refactor incomplete until all regression tests continue to catch their target bugs.
+* **Establish Baseline:** Before starting a large non-trivial change, run all reproducible test cases listed in the track record table.
+* **Verify Reproducibility:** After completing the change, verify that all previously reproducible bugs can still be detected.
+* **Update Tracking:** Refresh the "Last reproduction commit" column with commit hash and it's creation date to confirm the new framework version works.
+* **Update Commands:** If the change affects test execution, update the reproduction commands accordingly.
+* **Gate Completion:** Consider the change incomplete until all regression tests continue to catch their target bugs.
 
 This ensures that improvements to the testing framework do not inadvertently reduce our ability to detect known failure modes.
 
