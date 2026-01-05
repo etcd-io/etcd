@@ -462,7 +462,7 @@ func TestBreakConsistentIndexNewerThanSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	err = member.Start(ctx)
 	require.Error(t, err)
-	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "failed to find database snapshot file (snap: snapshot file doesn't exist)"})
+	_, err = member.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "snap: snapshot file doesn't exist"})
 	assert.NoError(t, err)
 }
 
