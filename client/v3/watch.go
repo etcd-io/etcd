@@ -701,7 +701,7 @@ func (w *watchGRPCStream) run() {
 			w.sendWg.Wait()
 
 			if closeErr = w.newWatchClient(); closeErr != nil {
-				w.lg.Debug(fmt.Sprintf("couldn't spawn another watch client due to error: %s", closeErr.Error()))
+				w.lg.Debug("couldn't spawn another watch client", zap.Error(closeErr))
 				return
 			}
 			if ws := w.nextResume(); ws != nil {
