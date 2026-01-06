@@ -112,20 +112,15 @@ func SetProgressReportInterval(newTimeout time.Duration) {
 	progressReportIntervalMu.Unlock()
 }
 
-// We send ctrl response inside the read loop. We do not want
-// send to block read, but we still want ctrl response we sent to
-// be serialized. Thus we use a buffered chan to solve the problem.
-// A small buffer should be OK for most cases, since we expect the
-// ctrl requests are infrequent.
 // ctrlStream buffers watch control (create / cancel) responses produced by
 // recvLoop while sendLoop is busy.
-// It must be buffered so that a burst of control messages does not block
-// recvLoop and prevent it from draining the underlying gRPC stream, but it
-// also must stay bounded so a misbehaving client cannot hold an unbounded
-// number of control responses in memory.
 //
 // The chosen size should absorb short-term spikes (e.g. cancel storms from
-// many watchers). Adjust this with care if workload characteristics change.
+// many watchers). Regardless of what size we chose, the system is safe from
+// deadlock between client and server even when client sends way much faster
+// than server can handle, because the exceeding cancel requests will just
+// be dropped at client side. However, the larger this ctrlStream buffer, the
+// fewer cancel requests to be dropped.
 const ctrlStreamBufLen = 128
 
 // serverWatchStream is an etcd server side stream. It receives requests

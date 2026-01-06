@@ -45,11 +45,15 @@ const (
 	// InvalidWatchID represents an invalid watch ID and prevents duplication with an existing watch.
 	InvalidWatchID = -1
 
-	// sendChanBufLen bounds the per-stream client-side queue for outgoing watch
-	// requests (create / cancel / progress).
-	// When this queue is full, enqueueSend drops best-effort requests instead of
-	// blocking. Currently, all watch requests are considered best-effort.
-	sendChanBufLen = 128
+	// sendBestEffortChanBufLen bounds the per-stream client-side best-effort queue for
+	// outgoing watch requests (cancel / progress). When this queue is full, new incoming
+	// requests will be dropped instead of blocking.
+	sendBestEffortChanBufLen = 128
+
+	// sendCreateChanBufLen bounds the per-stream client-side priority queue for outgoing
+	// watch create requests. Create requests must not be dropped, otherwise the resuming
+	// queue can stall indefinitely.
+	sendCreateChanBufLen = 16
 )
 
 type Event mvccpb.Event
@@ -175,15 +179,30 @@ type watchGRPCStream struct {
 	substreams map[int64]*watcherStream
 	// resuming holds all resuming watchers on this grpc stream, including
 	// watchers to be created for the first time, and those that are
-	// disconnected and wait to be reconnected.
+	// disconnected and wait to be reconnected. Only the watcher at the
+	// head of this queue is allowed to send create requests. After we
+	// receive created response for this watcher, we can move on to the
+	// pending watcher in the queue. Sending create requests all at once
+	// might seem more efficient, but we wouldn't be able to map the
+	// watchID returned from the server to these inflight watch requests.
 	resuming []*watcherStream
 
 	// reqc sends a watch request from Watch() to the main goroutine
 	reqc chan watchStreamRequest
 	// respc receives data from the watch client
 	respc chan *pb.WatchResponse
-	// sendc holds data to send to the grpc stream
-	sendc chan *pb.WatchRequest
+
+	// We have three types of watch requests: create / cancel / progress. A create
+	// request has to be delivered to and processed by the server, and the user
+	// client will just block until it receives created response. However, the
+	// cancel / progress requests are best-effort. Such distinction matters because
+	// when the watch system is under high pressure, we need to keep the create
+	// requests while dropping the best-effort ones.
+	// sendCreatec holds create requests to send to the grpc stream
+	sendCreatec chan *pb.WatchRequest
+	// sendBestEffortc holds cancel/progress requests to send to the grpc stream
+	sendBestEffortc chan *pb.WatchRequest
+
 	// donec closes to broadcast shutdown
 	donec chan struct{}
 	// errc transmits errors from grpc Recv to the watch stream reconnect logic
@@ -552,7 +571,7 @@ func (w *watchGRPCStream) run() {
 
 	// start a stream with the etcd grpc server
 	if closeErr = w.newWatchClient(); closeErr != nil {
-		w.lg.Debug(fmt.Sprintf("failed to create new watch client, got error: %s. watchGRPCStream exiting now", closeErr.Error()))
+		w.lg.Debug("creating new watch client failed. watchGRPCStream exiting now", zap.Error(closeErr))
 		return
 	}
 
@@ -569,13 +588,12 @@ func (w *watchGRPCStream) run() {
 		case req := <-w.reqc:
 			switch wreq := req.(type) {
 			case *watchRequest:
-				outc := make(chan WatchResponse, 1)
 				// TODO: pass custom watch ID?
 				ws := &watcherStream{
 					key:     wreq.key,
 					initReq: *wreq,
 					id:      InvalidWatchID,
-					outc:    outc,
+					outc:    make(chan WatchResponse, 1),
 					// unbuffered so resumes won't cause repeat events
 					recvc: make(chan *WatchResponse),
 				}
@@ -588,10 +606,10 @@ func (w *watchGRPCStream) run() {
 				w.resuming = append(w.resuming, ws)
 				if len(w.resuming) == 1 {
 					// head of resume queue, can register a new watcher
-					w.enqueueSend(ws.initReq.toPB())
+					w.enqueueCreateReq(ws.initReq.toPB())
 				}
 			case *progressRequest:
-				w.enqueueSend(wreq.toPB())
+				w.enqueueBestEffortReq(wreq.toPB())
 			}
 
 		// new events from the watch client
@@ -617,7 +635,7 @@ func (w *watchGRPCStream) run() {
 				}
 
 				if ws := w.nextResume(); ws != nil {
-					w.enqueueSend(ws.initReq.toPB())
+					w.enqueueCreateReq(ws.initReq.toPB())
 				}
 				// reset for next iteration
 				cur = nil
@@ -661,7 +679,7 @@ func (w *watchGRPCStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				w.enqueueSend(req)
+				w.enqueueBestEffortReq(req)
 			}
 
 		// watch client failed on Recv; spawn another if possible
@@ -671,7 +689,9 @@ func (w *watchGRPCStream) run() {
 			// confusing the server. For example, at server side watchID=0 refers
 			// to key "def", while the outdated request here with the same watchID=0
 			// assumes the key being watched could be "abc".
-			close(w.sendc)
+			close(w.sendBestEffortc)
+			close(w.sendCreatec)
+
 			if isHaltErr(w.ctx, err) || errors.Is(ContextError(w.ctx, err), v3rpc.ErrNoLeader) {
 				closeErr = err
 				return
@@ -685,7 +705,7 @@ func (w *watchGRPCStream) run() {
 				return
 			}
 			if ws := w.nextResume(); ws != nil {
-				w.enqueueSend(ws.initReq.toPB())
+				w.enqueueCreateReq(ws.initReq.toPB())
 			}
 			cancelSet = make(map[int64]struct{})
 		case <-w.ctx.Done():
@@ -708,7 +728,7 @@ func (w *watchGRPCStream) run() {
 					},
 				}
 				req := &pb.WatchRequest{RequestUnion: cr}
-				w.enqueueSend(req)
+				w.enqueueBestEffortReq(req)
 			}
 		}
 	}
@@ -781,7 +801,7 @@ func (w *watchGRPCStream) recvLoop(wc pb.Watch_WatchClient) {
 	for {
 		resp, err := wc.Recv()
 		if err != nil {
-			w.lg.Warn("failed to receive watch response from gRPC stream", zap.Error(err))
+			w.lg.Debug("failed to receive watch response from gRPC stream", zap.Error(err))
 			select {
 			case w.errc <- err:
 			case <-w.donec:
@@ -800,24 +820,38 @@ func (w *watchGRPCStream) recvLoop(wc pb.Watch_WatchClient) {
 //
 // Once sending returns an error, the underlying gRPC stream is already
 // broken (or in the process of being torn down). In that case we should stop
-// consuming from sendc and just return; recvLoop will observe the same
+// consuming from send channels and just return; recvLoop will observe the same
 // transport error on Recv(), forward it to errc, and run() will drive the
-// normal reconnect / teardown path. All remaining requests in sendc will
-// be cleaned up.
+// normal reconnect / teardown path. All remaining requests in the send channels
+// will be cleaned up.
 func (w *watchGRPCStream) sendLoop(wc pb.Watch_WatchClient) {
+	sendReq := func(req *pb.WatchRequest) bool {
+		if err := wc.Send(req); err != nil {
+			watchID, reqType, key := getWatchReqInfo(req)
+			w.lg.Warn("failed to send watch request",
+				zap.Int64("watch-id", watchID),
+				zap.String("request-type", reqType),
+				zap.String("key", key),
+				zap.Error(err))
+			return false
+		}
+		return true
+	}
+
 	for {
 		select {
-		case req, ok := <-w.sendc:
+		case req, ok := <-w.sendCreatec:
 			if !ok {
 				return
 			}
-			watchID, reqType, key := getWatchReqInfo(req)
-			if err := wc.Send(req); err != nil {
-				w.lg.Warn("failed to send watch request",
-					zap.Int64("watch-id", watchID),
-					zap.String("request-type", reqType),
-					zap.String("key", key),
-					zap.Error(err))
+			if !sendReq(req) {
+				return
+			}
+		case req, ok := <-w.sendBestEffortc:
+			if !ok {
+				return
+			}
+			if !sendReq(req) {
 				return
 			}
 		case <-w.donec:
@@ -828,16 +862,22 @@ func (w *watchGRPCStream) sendLoop(wc pb.Watch_WatchClient) {
 	}
 }
 
-// enqueueSend is a helper to enqueue the outgoing watch request in a
-// non-blocking style to avoid the system getting stuck.
-func (w *watchGRPCStream) enqueueSend(req *pb.WatchRequest) {
-	// This should not happen, but we'd like to be defensive
-	if req == nil {
-		return
-	}
-
+// enqueueCreateReq is a helper to enqueue the watch create request. This sendCreatec
+// channel will always be either empty or only one pending request in it, so we
+// don't need to worry about blocking the main run() loop.
+func (w *watchGRPCStream) enqueueCreateReq(req *pb.WatchRequest) {
 	select {
-	case w.sendc <- req:
+	case w.sendCreatec <- req:
+	case <-w.donec:
+	case <-w.ctx.Done():
+	}
+}
+
+// enqueueBestEffortReq is a helper to enqueue cancel / progress request
+// in a non-blocking style to avoid the system getting stuck.
+func (w *watchGRPCStream) enqueueBestEffortReq(req *pb.WatchRequest) {
+	select {
+	case w.sendBestEffortc <- req:
 	case <-w.donec:
 	case <-w.ctx.Done():
 	default:
@@ -847,8 +887,7 @@ func (w *watchGRPCStream) enqueueSend(req *pb.WatchRequest) {
 			zap.String("request-type", reqType),
 			zap.Int64("watch-id", watchID),
 			zap.String("key", key),
-			zap.Int("queue-len", len(w.sendc)))
-		return
+			zap.Int("queue-len", len(w.sendBestEffortc)))
 	}
 }
 
@@ -1020,7 +1059,8 @@ func (w *watchGRPCStream) newWatchClient() error {
 
 	// receive from and send to the new grpc stream
 	w.lg.Debug("created new watch client and started the recv/send loop")
-	w.sendc = make(chan *pb.WatchRequest, sendChanBufLen)
+	w.sendCreatec = make(chan *pb.WatchRequest, sendCreateChanBufLen)
+	w.sendBestEffortc = make(chan *pb.WatchRequest, sendBestEffortChanBufLen)
 	w.sendWg.Add(1)
 	go func() {
 		defer w.sendWg.Done()
