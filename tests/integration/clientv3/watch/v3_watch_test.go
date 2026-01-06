@@ -1450,6 +1450,9 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 		cancel context.CancelFunc
 	}
 
+	// In CI the watcher count may not start at 0
+	currentNumWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+
 	// Create many watchers and then cancel most of them in a burst.
 	// The cancellation burst is intended to fill up the client-side send queue.
 	const totalWatchers = 600
@@ -1464,8 +1467,8 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 	// Wait until all watchers are created.
 	require.Eventuallyf(t, func() bool {
 		total := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
-		return total == totalWatchers
-	}, 5*time.Second, 100*time.Millisecond,
+		return total >= totalWatchers+currentNumWatchers
+	}, 10*time.Second, 100*time.Millisecond,
 		"expected the cluster to create %d watchers", totalWatchers,
 	)
 
