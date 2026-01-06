@@ -31,6 +31,9 @@ type ConsistentIndexer interface {
 	// ConsistentIndex returns the consistent index of current executing entry.
 	ConsistentIndex() uint64
 
+	// ConsistentIndexAndTerm returns the consistent index and term of current executing entry.
+	ConsistentIndexAndTerm() (uint64, uint64)
+
 	// ConsistentApplyingIndex returns the consistent applying index of current executing entry.
 	ConsistentApplyingIndex() (uint64, uint64)
 
@@ -88,15 +91,20 @@ func NewConsistentIndex(be Backend) ConsistentIndexer {
 }
 
 func (ci *consistentIndex) ConsistentIndex() uint64 {
-	if index := atomic.LoadUint64(&ci.consistentIndex); index > 0 {
-		return index
+	index, _ := ci.ConsistentIndexAndTerm()
+	return index
+}
+
+func (ci *consistentIndex) ConsistentIndexAndTerm() (uint64, uint64) {
+	if index, term := atomic.LoadUint64(&ci.consistentIndex), atomic.LoadUint64(&ci.term); index > 0 {
+		return index, term
 	}
 	ci.mutex.Lock()
 	defer ci.mutex.Unlock()
 
 	v, term := schema.ReadConsistentIndex(ci.be.ReadTx())
 	ci.SetConsistentIndex(v, term)
-	return v
+	return v, term
 }
 
 func (ci *consistentIndex) UnsafeConsistentIndex() uint64 {
@@ -148,6 +156,10 @@ type fakeConsistentIndex struct {
 
 func (f *fakeConsistentIndex) ConsistentIndex() uint64 {
 	return atomic.LoadUint64(&f.index)
+}
+
+func (f *fakeConsistentIndex) ConsistentIndexAndTerm() (uint64, uint64) {
+	return atomic.LoadUint64(&f.index), atomic.LoadUint64(&f.term)
 }
 
 func (f *fakeConsistentIndex) ConsistentApplyingIndex() (uint64, uint64) {
