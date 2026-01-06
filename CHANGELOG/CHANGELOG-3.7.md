@@ -46,3 +46,14 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 ### etcdutl
 
 - [Add a timeout flag to all etcdutl commands](https://github.com/etcd-io/etcd/pull/20708) when waiting to acquire a file lock on the database file.
+
+### Metrics, Monitoring
+
+See [List of metrics](https://etcd.io/docs/latest/metrics/) for all metrics per release.
+
+- Add [`etcd_server_request_duration_seconds`](https://github.com/etcd-io/etcd/pull/21038).
+- Add [the following metrics related to watch send loop](https://github.com/etcd-io/etcd/pull/21030),
+  - etcd_debugging_server_watch_send_loop_watch_stream_duration_seconds
+  - etcd_debugging_server_watch_send_loop_watch_stream_duration_per_event_seconds
+  - etcd_debugging_server_watch_send_loop_control_stream_duration_seconds
+  - etcd_debugging_server_watch_send_loop_progress_duration_seconds
