@@ -526,16 +526,25 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 	}
 
 	if shouldApplyV3 {
-		c.members[id].RaftAttributes.IsLearner = false
-		c.updateMembershipMetric(id, true)
-		c.be.MustSaveMemberToBackend(c.members[id])
+		if m, ok := c.members[id]; ok {
+			m.RaftAttributes.IsLearner = false
+			c.updateMembershipMetric(id, true)
+			c.be.MustSaveMemberToBackend(m)
 
-		c.lg.Info(
-			"promote member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("promoted-member-id", id.String()),
-		)
+			c.lg.Info(
+				"promote member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("promoted-member-id", id.String()),
+			)
+		} else {
+			c.lg.Info(
+				"ignore promoting non-existent member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("promoted-member-id", id.String()),
+			)
+		}
 	} else {
 		c.lg.Info(
 			"ignore already promoted member",
@@ -564,17 +573,28 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 	}
 
 	if shouldApplyV3 {
-		c.members[id].RaftAttributes = raftAttr
-		c.be.MustSaveMemberToBackend(c.members[id])
+		if m, ok := c.members[id]; ok {
+			m.RaftAttributes = raftAttr
+			c.be.MustSaveMemberToBackend(m)
 
-		c.lg.Info(
-			"updated member",
-			zap.String("cluster-id", c.cid.String()),
-			zap.String("local-member-id", c.localID.String()),
-			zap.String("updated-remote-peer-id", id.String()),
-			zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
-			zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
-		)
+			c.lg.Info(
+				"updated member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("updated-remote-peer-id", id.String()),
+				zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+				zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+			)
+		} else {
+			c.lg.Info(
+				"ignore updating non-existent member",
+				zap.String("cluster-id", c.cid.String()),
+				zap.String("local-member-id", c.localID.String()),
+				zap.String("updated-remote-peer-id", id.String()),
+				zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
+				zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
+			)
+		}
 	} else {
 		c.lg.Info(
 			"ignored already updated member",
