@@ -105,8 +105,38 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
+	if haveWAL {
+		// construct a new snapshot based on v3 state
+		sn := newSnapshot(cfg, backend, cluster)
+		s.wal.snapshot = sn
+
+		cfg.Logger.Info("Constructed a new raft snapshot from v3 state", zap.Uint64("index", sn.Metadata.Index),
+			zap.Uint64("term", sn.Metadata.Term), zap.String("confState", sn.Metadata.ConfState.String()))
+
+		if s.wal.st != nil {
+			if sn.Metadata.Index > s.wal.st.Commit {
+				// Ensure the raft invariable property: appliedIndex <= committedIndex
+				oldCommit, oldTerm := s.wal.st.Commit, s.wal.st.Term
+				s.wal.st.Commit = sn.Metadata.Index
+				s.wal.st.Term = sn.Metadata.Term
+
+				cfg.Logger.Info("Corrected the hardstate", zap.Uint64("old-commit", oldCommit), zap.Uint64("old-term", oldTerm),
+					zap.Uint64("new-commit", s.wal.st.Commit), zap.Uint64("new-term", s.wal.st.Term))
+			} else {
+				cfg.Logger.Info("Keep current hardstate", zap.Uint64("Commit", s.wal.st.Commit), zap.Uint64("term", s.wal.st.Term))
+			}
+		} else {
+			s.wal.st = &raftpb.HardState{
+				Commit: sn.Metadata.Index,
+				Term:   sn.Metadata.Term,
+			}
+			cfg.Logger.Info("Constructed a new hardstate", zap.Uint64("Commit", s.wal.st.Commit), zap.Uint64("term", s.wal.st.Term))
+		}
+	}
+
 	cfg.Logger.Info("bootstrapping raft")
 	raft := bootstrapRaft(cfg, cluster, s.wal)
+
 	return &bootstrappedServer{
 		prt:     prt,
 		ss:      ss,
@@ -114,6 +144,19 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		cluster: cluster,
 		raft:    raft,
 	}, nil
+}
+
+func newSnapshot(cfg config.ServerConfig, backend *bootstrappedBackend, cluster *bootstrappedCluster) *raftpb.Snapshot {
+	cs := schema.UnsafeConfStateFromBackend(cfg.Logger, backend.be.ReadTx())
+	index, term := backend.ci.ConsistentIndexAndTerm()
+	return &raftpb.Snapshot{
+		Data: GetMembershipInfoInV2Format(cfg.Logger, cluster.cl),
+		Metadata: raftpb.SnapshotMetadata{
+			Index:     index,
+			Term:      term,
+			ConfState: *cs,
+		},
+	}
 }
 
 type bootstrappedServer struct {
@@ -501,12 +544,22 @@ func bootstrapRaftFromCluster(cfg config.ServerConfig, cl *membership.RaftCluste
 
 func bootstrapRaftFromWAL(cfg config.ServerConfig, bwal *bootstrappedWAL) *bootstrappedRaft {
 	s := bwal.MemoryStorage()
-	return &bootstrappedRaft{
+
+	appliedIndex := bwal.snapshot.Metadata.Index
+	firstIndex, _ := s.FirstIndex()
+
+	cfg.Logger.Info("bootstrap raft from consistent-index and WAL",
+		zap.Uint64("applied-index", appliedIndex), zap.Uint64("first-index", firstIndex))
+
+	r := &bootstrappedRaft{
 		lg:        cfg.Logger,
 		heartbeat: time.Duration(cfg.TickMs) * time.Millisecond,
 		config:    raftConfig(cfg, uint64(bwal.meta.nodeID), s),
 		storage:   s,
 	}
+	r.config.Applied = appliedIndex
+
+	return r
 }
 
 func raftConfig(cfg config.ServerConfig, id uint64, s *raft.MemoryStorage) *raft.Config {
