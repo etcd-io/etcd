@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 # Detect sed variant (BSD vs GNU) for in-place editing
 # Source: https://stackoverflow.com/a/22084103 (CC BY-SA 4.0)

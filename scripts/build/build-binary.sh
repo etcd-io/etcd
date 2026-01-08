@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 VER=${1:-}
 REPOSITORY="${REPOSITORY:-git@github.com:etcd-io/etcd.git}"

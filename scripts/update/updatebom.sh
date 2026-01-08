@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 function bom_fix {
   log_callout "generating bill-of-materials.json"

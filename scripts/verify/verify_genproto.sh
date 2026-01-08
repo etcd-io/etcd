@@ -27,7 +27,7 @@ cp -r . "$tmpWorkDir"
 pushd "$tmpWorkDir"
 git add -A
 git commit -m init || true # maybe fail because nothing to commit 
-./scripts/genproto.sh
+./scripts/verify/genproto.sh
 diff=$(git diff --numstat | awk '{print $3}')
 popd
 if [ -z "$diff" ]; then
@@ -37,5 +37,5 @@ fi
 echo "Failed genproto-verification!" >&2
 printf "* Found changed files:\n%s\n" "$diff" >&2
 echo "* Please rerun genproto.sh after changing *.proto file" >&2
-echo "* Run ./scripts/genproto.sh" >&2
+echo "* Run ./scripts/verify/genproto.sh" >&2
 exit 1

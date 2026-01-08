@@ -43,7 +43,7 @@ else
   exit 1
 fi
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
   echo "Could not find protoc 3.20.3, installing now..."

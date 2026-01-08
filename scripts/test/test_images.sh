@@ -17,8 +17,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-source ./scripts/test_lib.sh
-source ./scripts/build_lib.sh
+source ./scripts/test/test_lib.sh
+source ./scripts/build/build_lib.sh
 
 # Can't run darwin binaries in linux containers.
 if [[ $(go env GOOS) == "darwin" ]]; then

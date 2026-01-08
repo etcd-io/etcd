@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 GIT_SHA=$(git rev-parse --short HEAD || echo "GitNotFound")
 VERSION_SYMBOL="${ROOT_MODULE}/api/v3/version.GitSHA"
