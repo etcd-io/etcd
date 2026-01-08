@@ -122,18 +122,18 @@ func newConfig() *config {
 	return cfg
 }
 
-func (cfg *config) parse(arguments []string) error {
+func (cfg *config) parse(arguments []string) (bool, error) {
 	perr := cfg.cf.flagSet.Parse(arguments)
 	switch {
 	case perr == nil:
 	case errors.Is(perr, flag.ErrHelp):
 		fmt.Println(flagsline)
-		os.Exit(0)
+		return true, nil
 	default:
-		os.Exit(2)
+		return false, fmt.Errorf("%w: %v", ErrArgumentError, perr)
 	}
 	if len(cfg.cf.flagSet.Args()) != 0 {
-		return fmt.Errorf("%q is not a valid flag", cfg.cf.flagSet.Arg(0))
+		return false, fmt.Errorf("%w: %q is not a valid flag", ErrArgumentError, cfg.cf.flagSet.Arg(0))
 	}
 
 	if cfg.printVersion {
@@ -141,7 +141,7 @@ func (cfg *config) parse(arguments []string) error {
 		fmt.Printf("Git SHA: %s\n", version.GitSHA)
 		fmt.Printf("Go Version: %s\n", runtime.Version())
 		fmt.Printf("Go OS/Arch: %s/%s\n", runtime.GOOS, runtime.GOARCH)
-		os.Exit(0)
+		return true, nil
 	}
 
 	var err error
@@ -187,7 +187,7 @@ func (cfg *config) parse(arguments []string) error {
 		}
 	}
 
-	return err
+	return false, err
 }
 
 func (cfg *config) configFromCmdLine() error {
