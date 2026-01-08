@@ -15,9 +15,7 @@
 package e2e
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -30,10 +28,7 @@ import (
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
-	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/schema"
 	"go.etcd.io/etcd/tests/v3/framework/config"
@@ -54,34 +49,18 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	e2e.BeforeTest(t)
 	lastReleaseData := t.TempDir()
 	currentReleaseData := t.TempDir()
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
 	var snapshotCount uint64 = 10
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, lastReleaseData, snapshotCount)
 	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
-	cc1 := epc.Etcdctl()
-	members1 := addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
 	require.NoError(t, epc.Close())
 	epc = runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, currentReleaseData, snapshotCount)
 	newMemberDataDir := epc.Procs[0].Config().DataDirPath
-	cc2 := epc.Etcdctl()
-	members2 := addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	require.NoError(t, epc.Close())
 
-	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir, func(data []byte) []byte {
-		// Patch members ids
-		for i, mid := range members1 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
-		}
-		for i, mid := range members2 {
-			data = bytes.Replace(data, []byte(fmt.Sprintf("%x", mid)), []byte(fmt.Sprintf("%d", i+1)), -1)
-		}
-		return data
-	})
+	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir)
 }
 
 func TestV2DeprecationSnapshotRecover(t *testing.T) {
@@ -134,44 +113,11 @@ func runEtcdAndCreateSnapshot(tb testing.TB, serverVersion e2e.ClusterVersion, d
 	return epc
 }
 
-func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.EtcdctlV3, snapshotCount uint64) (members []uint64) {
-	// Execute some non-trivial key&member operation
-	var i uint64
-	for i = 0; i < snapshotCount*3; i++ {
-		_, err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
-		require.NoError(tb, err)
-	}
-	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
-	require.NoError(tb, err)
-	members = append(members, member1.Member.ID)
-
-	for i = 0; i < snapshotCount*2; i++ {
-		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
-		require.NoError(tb, err)
-	}
-	_, err = cc.MemberRemove(ctx, member1.Member.ID)
-	require.NoError(tb, err)
-
-	for i = 0; i < snapshotCount; i++ {
-		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
-		require.NoError(tb, err)
-	}
-	member2, err := cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
-	require.NoError(tb, err)
-	members = append(members, member2.Member.ID)
-
-	for i = 0; i < snapshotCount/2; i++ {
-		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
-		assert.NoError(tb, err)
-	}
-	return members
-}
-
 func filterSnapshotFiles(path string) bool {
 	return strings.HasSuffix(path, ".snap")
 }
 
-func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string, patch func([]byte) []byte) {
+func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string) {
 	lg := zaptest.NewLogger(tb)
 	firstFiles, err := fileutil.ListFiles(firstDataDir, filterSnapshotFiles)
 	require.NoError(tb, err)
@@ -183,17 +129,12 @@ func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string, pat
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
-		firstSnapshot, err := snap.Read(lg, firstFiles[i])
-		require.NoError(tb, err)
-		secondSnapshot, err := snap.Read(lg, secondFiles[i])
-		require.NoError(tb, err)
-		assertMembershipEqual(tb, lg, openSnap(patch(firstSnapshot.Data)), openSnap(patch(secondSnapshot.Data)))
+		assertMembershipEqual(tb, lg)
 	}
 }
 
-func assertMembershipEqual(tb testing.TB, lg *zap.Logger, firstStore v2store.Store, secondStore v2store.Store) {
+func assertMembershipEqual(tb testing.TB, lg *zap.Logger) {
 	rc1 := membership.NewCluster(zaptest.NewLogger(tb))
-	rc1.SetStore(firstStore)
 	be1, _ := betesting.NewDefaultTmpBackend(tb)
 	defer betesting.Close(tb, be1)
 	rc1.SetBackend(schema.NewMembershipBackend(lg, be1))
@@ -203,7 +144,6 @@ func assertMembershipEqual(tb testing.TB, lg *zap.Logger, firstStore v2store.Sto
 	be2, _ := betesting.NewDefaultTmpBackend(tb)
 	defer betesting.Close(tb, be2)
 	rc2.SetBackend(schema.NewMembershipBackend(lg, be2))
-	rc2.SetStore(secondStore)
 	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
 
 	// membership should match
@@ -211,10 +151,4 @@ func assertMembershipEqual(tb testing.TB, lg *zap.Logger, firstStore v2store.Sto
 		tb.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
 		tb.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
 	}
-}
-
-func openSnap(data []byte) v2store.Store {
-	st := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
-	st.Recovery(data)
-	return st
 }

@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"path"
 	"reflect"
 	"testing"
 
@@ -26,10 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
-	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/raft/v3/raftpb"
 )
 
@@ -279,18 +276,9 @@ func TestClusterValidateAndAssignIDs(t *testing.T) {
 }
 
 func TestClusterValidateConfigurationChangeV3(t *testing.T) {
-	testClusterValidateConfigurationChange(t, true)
-}
-
-func TestClusterValidateConfigurationChangeV2(t *testing.T) {
-	testClusterValidateConfigurationChange(t, false)
-}
-
-func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldApplyV3) {
 	cl := NewCluster(zaptest.NewLogger(t), WithMaxLearners(1))
 	be := newMembershipBackend()
 	cl.SetBackend(be)
-	cl.SetStore(v2store.New())
 	for i := 1; i <= 4; i++ {
 		var isLearner bool
 		if i == 1 {
@@ -467,7 +455,7 @@ func testClusterValidateConfigurationChange(t *testing.T, shouldApplyV3 ShouldAp
 		},
 	}
 	for i, tt := range tests {
-		err := cl.ValidateConfigurationChange(tt.cc, shouldApplyV3)
+		err := cl.ValidateConfigurationChange(tt.cc, true)
 		if !errors.Is(err, tt.werr) {
 			t.Errorf("#%d: validateConfigurationChange error = %v, want %v", i, err, tt.werr)
 		}
@@ -489,7 +477,6 @@ func TestClusterGenID(t *testing.T) {
 	}
 	previd := cs.ID()
 
-	cs.SetStore(mockstore.NewNop())
 	cs.AddMember(newTestMember(3, nil, "", nil), true)
 	cs.genID()
 	if cs.ID() == previd {
@@ -530,29 +517,6 @@ func TestNodeToMemberBad(t *testing.T) {
 }
 
 func TestClusterAddMember(t *testing.T) {
-	t.Run("V2", func(t *testing.T) {
-		st := mockstore.NewRecorder()
-		c := newTestCluster(t, nil)
-		c.SetStore(st)
-		c.AddMember(newTestMember(1, nil, "node1", nil), false)
-
-		wactions := []testutil.Action{
-			{
-				Name: "Create",
-				Params: []any{
-					path.Join(StoreMembersPrefix, "1", "raftAttributes"),
-					false,
-					`{"peerURLs":null}`,
-					false,
-					v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
-				},
-			},
-		}
-		if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-			t.Errorf("actions = %v, want %v", g, wactions)
-		}
-	})
-
 	t.Run("V3", func(t *testing.T) {
 		c := newTestCluster(t, nil)
 		c.AddMember(newTestMember(1, nil, "node1", nil), true)
@@ -568,29 +532,6 @@ func TestClusterAddMember(t *testing.T) {
 }
 
 func TestClusterAddMemberAsLearner(t *testing.T) {
-	t.Run("V2", func(t *testing.T) {
-		st := mockstore.NewRecorder()
-		c := newTestCluster(t, nil)
-		c.SetStore(st)
-		c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), false)
-
-		wactions := []testutil.Action{
-			{
-				Name: "Create",
-				Params: []any{
-					path.Join(StoreMembersPrefix, "1", "raftAttributes"),
-					false,
-					`{"peerURLs":[],"isLearner":true}`,
-					false,
-					v2store.TTLOptionSet{ExpireTime: v2store.Permanent},
-				},
-			},
-		}
-		if g := st.Action(); !reflect.DeepEqual(g, wactions) {
-			t.Errorf("actions = %v, want %v", g, wactions)
-		}
-	})
-
 	t.Run("V3", func(t *testing.T) {
 		c := newTestCluster(t, nil)
 		c.AddMember(newTestMemberAsLearner(1, []string{}, "node1", []string{"http://node1"}), true)
@@ -628,21 +569,6 @@ func TestClusterMembers(t *testing.T) {
 }
 
 func TestClusterRemoveMember(t *testing.T) {
-	t.Run("V2", func(t *testing.T) {
-		st := mockstore.NewRecorder()
-		c := newTestCluster(t, nil)
-		c.SetStore(st)
-		c.RemoveMember(1, false)
-
-		wactions := []testutil.Action{
-			{Name: "Delete", Params: []any{MemberStoreKey(1), true, true}},
-			{Name: "Create", Params: []any{RemovedMemberStoreKey(1), false, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent}}},
-		}
-		if !reflect.DeepEqual(st.Action(), wactions) {
-			t.Errorf("actions = %v, want %v", st.Action(), wactions)
-		}
-	})
-
 	t.Run("V3", func(t *testing.T) {
 		c := newTestCluster(t, nil)
 		c.AddMember(newTestMember(1, nil, "node1", nil), true)
@@ -684,16 +610,6 @@ func TestClusterUpdateAttributes(t *testing.T) {
 		},
 	}
 	for i, tt := range tests {
-		t.Run(fmt.Sprintf("V2-%d", i), func(t *testing.T) {
-			c := newTestCluster(t, tt.mems)
-			c.removed = tt.removed
-
-			c.UpdateAttributes(types.ID(1), Attributes{Name: name, ClientURLs: clientURLs}, false)
-			if g := c.Members(); !reflect.DeepEqual(g, tt.wmems) {
-				t.Errorf("#%d: members = %+v, want %+v", i, g, tt.wmems)
-			}
-		})
-
 		t.Run(fmt.Sprintf("V3-%d", i), func(t *testing.T) {
 			c := newTestCluster(t, tt.mems)
 			for id := range tt.removed {
@@ -746,13 +662,9 @@ func newTestCluster(tb testing.TB, membs []*Member) *RaftCluster {
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 		be:      newMembershipBackend(),
-		v2store: v2store.New(),
 	}
 	for _, m := range membs {
 		c.AddMember(m, true)
-		if m.ClientURLs != nil {
-			mustUpdateMemberAttrInStore(c.lg, c.v2store, m)
-		}
 	}
 	return c
 }
@@ -1128,15 +1040,6 @@ func TestPromoteMember(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Run("V2", func(t *testing.T) {
-				c := newTestCluster(t, tc.members)
-
-				c.PromoteMember(tc.promoteID, false)
-
-				mst, _ := membersFromStore(c.lg, c.v2store)
-				require.Equal(t, tc.wantMembers, mst)
-			})
-
 			t.Run("V3", func(t *testing.T) {
 				c := newTestCluster(t, tc.members)
 
@@ -1186,24 +1089,13 @@ func TestUpdateRaftAttributes(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Run("V2", func(t *testing.T) {
-				c := newTestCluster(t, tc.members)
+		t.Run("V3", func(t *testing.T) {
+			c := newTestCluster(t, tc.members)
 
-				c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, false)
+			c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, true)
 
-				mst, _ := membersFromStore(c.lg, c.v2store)
-				require.Equal(t, tc.wantMembers, mst)
-			})
-
-			t.Run("V3", func(t *testing.T) {
-				c := newTestCluster(t, tc.members)
-
-				c.UpdateRaftAttributes(tc.updateMemberID, RaftAttributes{PeerURLs: newPeerURLs}, true)
-
-				mst, _ := c.be.MustReadMembersFromBackend()
-				require.Equal(t, tc.wantMembers, mst)
-			})
+			mst, _ := c.be.MustReadMembersFromBackend()
+			require.Equal(t, tc.wantMembers, mst)
 		})
 	}
 }
