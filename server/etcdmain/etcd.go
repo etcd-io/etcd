@@ -78,7 +78,7 @@ func startEtcdOrProxyV2Error(args []string) error {
 		lg, zapError = logutil.CreateDefaultZapLogger(zap.InfoLevel)
 		if zapError != nil {
 			fmt.Printf("error creating zap logger %v", zapError)
-			return fmt.Errorf("%w: error creating zap logger %v", ErrGeneralError, zapError)
+			return fmt.Errorf("%w: error creating zap logger %w", ErrGeneralError, zapError)
 		}
 	}
 	lg.Info("Running: ", zap.Strings("args", args))
@@ -90,7 +90,7 @@ func startEtcdOrProxyV2Error(args []string) error {
 		if errorspkg.Is(err, ErrArgumentError) {
 			return err
 		}
-		return fmt.Errorf("%w: failed to verify flags %v", ErrArgumentError, err)
+		return fmt.Errorf("%w: failed to verify flags %w", ErrArgumentError, err)
 	}
 
 	cfg.ec.SetupGlobalLoggers()
@@ -162,7 +162,7 @@ func startEtcdOrProxyV2Error(args []string) error {
 			)
 			lg.Warn("do not reuse discovery token; generate a new one to bootstrap a cluster")
 
-			return fmt.Errorf("%w: discovery failed %v", ErrGeneralError, err)
+			return fmt.Errorf("%w: discovery failed %w", ErrGeneralError, err)
 		}
 
 		if strings.Contains(err.Error(), "include") && strings.Contains(err.Error(), "--initial-cluster") {
@@ -176,10 +176,10 @@ func startEtcdOrProxyV2Error(args []string) error {
 			if cfg.ec.InitialCluster == cfg.ec.InitialClusterFromName(cfg.ec.Name) && len(cfg.ec.DiscoveryCfg.Endpoints) == 0 {
 				lg.Warn("V3 discovery settings (i.e., --discovery-token, --discovery-endpoints) are not set")
 			}
-			return fmt.Errorf("%w: failed to start %v", ErrGeneralError, err)
+			return fmt.Errorf("%w: failed to start %w", ErrGeneralError, err)
 		}
 		lg.Error("discovery failed", zap.Error(err))
-		return fmt.Errorf("%w: discovery failed %v", ErrGeneralError, err)
+		return fmt.Errorf("%w: discovery failed %w", ErrGeneralError, err)
 	}
 
 	osutil.HandleInterrupts(lg)
@@ -195,7 +195,7 @@ func startEtcdOrProxyV2Error(args []string) error {
 	case lerr := <-errc:
 		// exit on listener errors
 		lg.Error("listener failed", zap.Error(lerr))
-		return fmt.Errorf("%w: listener failed %v", ErrGeneralError, lerr)
+		return fmt.Errorf("%w: listener failed %w", ErrGeneralError, lerr)
 	case <-stopped:
 	}
 
