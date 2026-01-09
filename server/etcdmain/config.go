@@ -130,7 +130,7 @@ func (cfg *config) parse(arguments []string) (bool, error) {
 		fmt.Println(flagsline)
 		return true, nil
 	default:
-		return false, fmt.Errorf("%w: %v", ErrArgumentError, perr)
+		return false, fmt.Errorf("%w: %w", ErrArgumentError, perr)
 	}
 	if len(cfg.cf.flagSet.Args()) != 0 {
 		return false, fmt.Errorf("%w: %q is not a valid flag", ErrArgumentError, cfg.cf.flagSet.Arg(0))
