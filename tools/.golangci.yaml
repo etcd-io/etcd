@@ -85,7 +85,6 @@ linters:
     staticcheck:
       checks:
         - all
-        - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
         - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
         - -QF1001 # TODO(fix) Apply De Morgan’s law
         - -QF1002 # TODO(fix) Convert untagged switch to tagged switch

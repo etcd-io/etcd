@@ -53,7 +53,7 @@ func NewEtcdctl(cfg ClientConfig, endpoints []string, opts ...config.ClientOptio
 		client, err := clientv3.New(clientv3.Config{
 			Endpoints:   ctl.endpoints,
 			DialTimeout: 5 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    ctl.authConfig.Username,
 			Password:    ctl.authConfig.Password,
 			Token:       ctl.authConfig.Token,

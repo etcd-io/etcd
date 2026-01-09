@@ -172,7 +172,7 @@ func RenewHTTP(ctx context.Context, id lease.LeaseID, url string, rt http.RoundT
 		return -1, err
 	}
 	req.Header.Set("Content-Type", "application/protobuf")
-	req.Cancel = ctx.Done()
+	req.Cancel = ctx.Done() //nolint:staticcheck // TODO: remove for a supported version
 
 	resp, err := cc.Do(req)
 	if err != nil {

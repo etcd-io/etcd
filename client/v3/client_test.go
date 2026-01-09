@@ -103,12 +103,12 @@ func TestDialTimeout(t *testing.T) {
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: 2 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		},
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    "abc",
 			Password:    "def",
 		},

@@ -37,7 +37,7 @@ func TestNewTimeoutTransport(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(remoteAddr))
 
 	defer srv.Close()
-	conn, err := tr.Dial("tcp", srv.Listener.Addr().String())
+	conn, err := tr.Dial("tcp", srv.Listener.Addr().String()) //nolint:staticcheck // TODO: remove for a supported version
 	require.NoError(t, err)
 	defer conn.Close()
 

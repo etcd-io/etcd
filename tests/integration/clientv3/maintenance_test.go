@@ -432,7 +432,7 @@ func TestMaintenanceStatus(t *testing.T) {
 			}
 
 			t.Logf("Creating client...")
-			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}}) //nolint:staticcheck // TODO: remove for a supported version
 			require.NoError(t, err)
 			defer cli.Close()
 			t.Logf("Creating client [DONE]")

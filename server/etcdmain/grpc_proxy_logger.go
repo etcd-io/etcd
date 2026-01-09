@@ -22,8 +22,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb" //nolint:staticcheck // TODO: remove for a supported version
+	"github.com/golang/protobuf/proto"  //nolint:staticcheck // TODO: remove for a supported version
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/peer"

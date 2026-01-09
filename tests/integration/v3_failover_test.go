@@ -93,7 +93,7 @@ func createClient(t *testing.T, cc *tls.Config, clus *integration.Cluster) (*cli
 	cli, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   clus.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		TLS:         cc,
 	})
 	if err != nil {

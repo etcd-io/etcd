@@ -122,7 +122,7 @@ func testBalancerUnderNetworkPartition(t *testing.T, op func(*clientv3.Client, c
 	ccfg := clientv3.Config{
 		Endpoints:   []string{eps[0]},
 		DialTimeout: 3 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
@@ -177,7 +177,7 @@ func TestBalancerUnderNetworkPartitionLinearizableGetLeaderElection(t *testing.T
 	cli, err := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{eps[(lead+1)%2]},
 		DialTimeout: 2 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	})
 	require.NoError(t, err)
 	defer cli.Close()
@@ -279,7 +279,7 @@ func TestDropReadUnderNetworkPartition(t *testing.T) {
 	ccfg := clientv3.Config{
 		Endpoints:   eps,
 		DialTimeout: 10 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 	}
 	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
