@@ -100,7 +100,6 @@ func (ctl *EtcdctlV3) DowngradeCancel(ctx context.Context) error {
 }
 
 func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) (*clientv3.GetResponse, error) {
-	resp := clientv3.GetResponse{}
 	var args []string
 	if o.Timeout != 0 {
 		args = append(args, fmt.Sprintf("--command-timeout=%s", o.Timeout))
@@ -177,11 +176,48 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 			return nil, err
 		}
 		defer cmd.Close()
+		// Relying on finding 'Count' as the last line of the output to get all the lines from cmd.Lines()
 		_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
-		return &resp, err
+		if err != nil {
+			return nil, err
+		}
+		return parseFieldsGetResponse(cmd.Lines())
 	}
+	resp := clientv3.GetResponse{}
 	err := ctl.spawnJSONCmd(ctx, &resp, args...)
 	return &resp, err
+}
+
+func parseFieldsGetResponse(lines []string) (*clientv3.GetResponse, error) {
+	resp := &clientv3.GetResponse{Header: &etcdserverpb.ResponseHeader{}}
+	for _, l := range lines {
+		fields := strings.Split(l, ":")
+		key, value := strings.TrimSpace(fields[0]), strings.TrimSpace(fields[1])
+		var err error
+		if key, err = strconv.Unquote(key); err != nil {
+			return resp, err
+		}
+		switch key {
+		case "ClusterID":
+			resp.Header.ClusterId, err = strconv.ParseUint(value, 10, 64)
+		case "MemberID":
+			resp.Header.MemberId, err = strconv.ParseUint(value, 10, 64)
+		case "Revision":
+			resp.Header.Revision, err = strconv.ParseInt(value, 10, 64)
+		case "RaftTerm":
+			resp.Header.RaftTerm, err = strconv.ParseUint(value, 10, 64)
+		case "More":
+			resp.More, err = strconv.ParseBool(value)
+		case "Count":
+			resp.Count, err = strconv.ParseInt(value, 10, 64)
+		default:
+			return resp, fmt.Errorf("unexpected field %q:%s", key, value)
+		}
+		if err != nil {
+			return resp, err
+		}
+	}
+	return resp, nil
 }
 
 func (ctl *EtcdctlV3) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
