@@ -17,7 +17,7 @@
 set -euo pipefail
 
 ETCD_ROOT_DIR=${ETCD_ROOT_DIR:-$(git rev-parse --show-toplevel)}
-source "${ETCD_ROOT_DIR}/scripts/test_lib.sh"
+source "${ETCD_ROOT_DIR}/scripts/test/test_lib.sh"
 
 function main {
   local TAB=$'\t'

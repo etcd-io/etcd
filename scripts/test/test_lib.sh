@@ -15,7 +15,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_utils.sh
+source ./scripts/test/test_utils.sh
 
 ROOT_MODULE="go.etcd.io/etcd"
 

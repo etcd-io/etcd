@@ -18,7 +18,7 @@
 #
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 VERSION=${1:-}
 if [ -z "${VERSION}" ]; then

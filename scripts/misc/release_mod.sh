@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 DRY_RUN=${DRY_RUN:-true}
 

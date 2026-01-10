@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 target_go_version="${target_go_version:-"$(cat "${ETCD_ROOT_DIR}/.go-version")"}"
 log_info "expected go toolchain directive: go${target_go_version}"

@@ -60,8 +60,8 @@ set -o nounset
 export GOFLAGS=-mod=readonly
 export ETCD_VERIFY=all
 
-source ./scripts/test_lib.sh
-source ./scripts/build_lib.sh
+source ./scripts/test/test_lib.sh
+source ./scripts/build/build_lib.sh
 
 OUTPUT_FILE=${OUTPUT_FILE:-""}
 

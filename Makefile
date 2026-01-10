@@ -6,7 +6,7 @@ include $(REPOSITORY_ROOT)/tests/robustness/Makefile
 
 .PHONY: build
 build:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build/build.sh
 
 .PHONY: install-benchmark
 install-benchmark: build
@@ -20,7 +20,7 @@ endif
 .PHONY: bench-put
 bench-put: build install-benchmark
 	@echo "Running benchmark: put $(ARGS)"
-	./scripts/benchmark_test.sh put $(ARGS)
+	./scripts/misc/benchmark_test.sh put $(ARGS)
 
 PLATFORMS=linux-amd64 linux-386 linux-arm linux-arm64 linux-ppc64le linux-s390x darwin-amd64 darwin-arm64 windows-amd64 windows-arm64
 
@@ -32,11 +32,11 @@ build-all:
 
 .PHONY: build-%
 build-%:
-	GOOS=$$(echo $* | cut -d- -f 1) GOARCH=$$(echo $* | cut -d- -f 2) GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build.sh
+	GOOS=$$(echo $* | cut -d- -f 1) GOARCH=$$(echo $* | cut -d- -f 2) GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build/build.sh
 
 .PHONY: tools
 tools:
-	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build_tools.sh
+	GO_BUILD_FLAGS="${GO_BUILD_FLAGS} -v -mod=readonly" ./scripts/build/build_tools.sh
 
 # Tests
 
@@ -44,55 +44,55 @@ GO_TEST_FLAGS?=
 
 .PHONY: test
 test:
-	PASSES="unit integration release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="unit integration release e2e" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-unit
 test-unit:
-	PASSES="unit" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="unit" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-integration
 test-integration:
-	PASSES="integration" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="integration" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-e2e
 test-e2e: build
-	PASSES="e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="e2e" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-grpcproxy-integration
 test-grpcproxy-integration:
-	PASSES="grpcproxy_integration" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="grpcproxy_integration" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-grpcproxy-e2e
 test-grpcproxy-e2e: build
-	PASSES="grpcproxy_e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="grpcproxy_e2e" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-e2e-release
 test-e2e-release: build
-	PASSES="release e2e" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="release e2e" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 # When we release the first 3.7.0-alpha.0, we can remove `VERSION="3.7.99"` below.
 .PHONY: test-release
 test-release:
-	PASSES="release_tests" VERSION="3.7.99" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="release_tests" VERSION="3.7.99" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-robustness
 test-robustness:
-	PASSES="robustness" ./scripts/test.sh $(GO_TEST_FLAGS)
+	PASSES="robustness" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: test-coverage
 test-coverage:
-	COVERDIR=covdir PASSES="build cov" ./scripts/test.sh $(GO_TEST_FLAGS)
+	COVERDIR=covdir PASSES="build cov" ./scripts/test/test.sh $(GO_TEST_FLAGS)
 
 .PHONY: upload-coverage-report
 upload-coverage-report:
 	return_code=0; \
 	$(MAKE) test-coverage || return_code=$$?; \
-	COVERDIR=covdir ./scripts/codecov_upload.sh; \
+	COVERDIR=covdir ./scripts/misc/codecov_upload.sh; \
 	exit $$return_code
 
 .PHONY: fuzz
 fuzz: 
-	./scripts/fuzzing.sh
+	./scripts/misc/fuzzing.sh
 
 # Static analysis
 .PHONY: verify
@@ -107,39 +107,39 @@ fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
 
 .PHONY: verify-bom
 verify-bom:
-	PASSES="bom" ./scripts/test.sh
+	PASSES="bom" ./scripts/test/test.sh
 
 .PHONY: fix-bom
 fix-bom:
-	./scripts/updatebom.sh
+	./scripts/update/updatebom.sh
 
 .PHONY: verify-dep
 verify-dep:
-	PASSES="dep" ./scripts/test.sh
+	PASSES="dep" ./scripts/test/test.sh
 
 .PHONY: verify-lint
 verify-lint: install-golangci-lint
-	PASSES="lint" ./scripts/test.sh
+	PASSES="lint" ./scripts/test/test.sh
 
 .PHONY: fix-lint
 fix-lint: install-golangci-lint
-	PASSES="lint_fix" ./scripts/test.sh
+	PASSES="lint_fix" ./scripts/test/test.sh
 
 .PHONY: verify-shellcheck
 verify-shellcheck:
-	PASSES="shellcheck" ./scripts/test.sh
+	PASSES="shellcheck" ./scripts/test/test.sh
 
 .PHONY: verify-mod-tidy
 verify-mod-tidy:
-	PASSES="mod_tidy" ./scripts/test.sh
+	PASSES="mod_tidy" ./scripts/test/test.sh
 
 .PHONY: fix-mod-tidy
 fix-mod-tidy:
-	PASSES="mod_tidy_fix" ./scripts/test.sh
+	PASSES="mod_tidy_fix" ./scripts/test/test.sh
 
 .PHONY: verify-shellws
 verify-shellws:
-	PASSES="shellws" ./scripts/test.sh
+	PASSES="shellws" ./scripts/test/test.sh
 
 .PHONY: fix-shell-ws
 fix-shell-ws:
@@ -147,11 +147,11 @@ fix-shell-ws:
 
 .PHONY: verify-proto-annotations
 verify-proto-annotations:
-	PASSES="proto_annotations" ./scripts/test.sh
+	PASSES="proto_annotations" ./scripts/test/test.sh
 
 .PHONY: verify-genproto
 verify-genproto:
-	PASSES="genproto" ./scripts/test.sh
+	PASSES="genproto" ./scripts/test/test.sh
 
 .PHONY: verify-yamllint
 verify-yamllint:
@@ -169,7 +169,7 @@ endif
 
 .PHONY: verify-markdown-marker
 verify-markdown-marker:
-	PASSES="markdown_marker" ./scripts/test.sh
+	PASSES="markdown_marker" ./scripts/test/test.sh
 
 .PHONY: fix-yamllint
 fix-yamllint:
@@ -177,13 +177,13 @@ fix-yamllint:
 
 .PHONY: run-govulncheck
 run-govulncheck:
-	PASSES="govuln" ./scripts/test.sh
+	PASSES="govuln" ./scripts/test/test.sh
 
 # Tools
 
 .PHONY: install-golangci-lint
 install-golangci-lint:
-	./scripts/verify_golangci-lint_version.sh
+	./scripts/verify/verify_golangci-lint_version.sh
 
 .PHONY: install-lazyfs
 install-lazyfs: bin/lazyfs
@@ -214,15 +214,15 @@ clean:
 
 .PHONY: verify-go-versions
 verify-go-versions:
-	./scripts/verify_go_versions.sh
+	./scripts/verify/verify_go_versions.sh
 
 .PHONY: verify-gomodguard
 verify-gomodguard:
-	PASSES="gomodguard" ./scripts/test.sh
+	PASSES="gomodguard" ./scripts/test/test.sh
 
 .PHONY: verify-go-workspace
 verify-go-workspace:
-	PASSES="go_workspace" ./scripts/test.sh
+	PASSES="go_workspace" ./scripts/test/test.sh
 
 .PHONY: verify-grpc-experimental
 verify-grpc-experimental:
@@ -230,12 +230,12 @@ verify-grpc-experimental:
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
-	./scripts/sync_go_toolchain_directive.sh
+	./scripts/misc/sync_go_toolchain_directive.sh
 
 .PHONY: markdown-diff-lint
 markdown-diff-lint:
-	./scripts/markdown_diff_lint.sh
+	./scripts/misc/markdown_diff_lint.sh
 
 .PHONY: update-go-workspace
 update-go-workspace:
-	./scripts/update_go_workspace.sh
+	./scripts/update/update_go_workspace.sh

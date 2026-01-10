@@ -24,7 +24,7 @@
 
 set -euo pipefail
 
-source ./scripts/test_lib.sh
+source ./scripts/test/test_lib.sh
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
     log_error "Illegal number of parameters. Usage: $0 module [version]"

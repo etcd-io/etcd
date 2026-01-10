@@ -17,8 +17,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-source ./scripts/test_lib.sh
-source ./scripts/release_mod.sh
+source ./scripts/test/test_lib.sh
+source ./scripts/misc/release_mod.sh
 
 DRY_RUN=${DRY_RUN:-true}
 
