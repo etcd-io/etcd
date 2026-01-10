@@ -726,7 +726,7 @@ func MustNewMember(t testutil.TB, mcfg MemberConfig) *Member {
 		m.MaxLearners = mcfg.MaxLearners
 	}
 	m.Metrics = mcfg.Metrics
-	m.V2Deprecation = config.V2_DEPR_DEFAULT
+	m.V2Deprecation = config.V2_DEPR_DEFAULT //nolint:staticcheck // TODO: remove for a supported version
 	m.GRPCServerRecorder = &grpctesting.GRPCRecorder{}
 
 	m.Logger, m.LogObserver = memberLogger(t, mcfg.Name)
@@ -897,7 +897,7 @@ func NewClientV3(m *Member) (*clientv3.Client, error) {
 	cfg := clientv3.Config{
 		Endpoints:          []string{m.GRPCURL},
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: m.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: m.ClientMaxCallRecvMsgSize,
 		Logger:             m.Logger.Named("client"),
@@ -1492,7 +1492,7 @@ func (c *Cluster) newClientCfg() (*clientv3.Config, error) {
 	cfg := &clientv3.Config{
 		Endpoints:          c.Endpoints(),
 		DialTimeout:        5 * time.Second,
-		DialOptions:        []grpc.DialOption{grpc.WithBlock()},
+		DialOptions:        []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		MaxCallSendMsgSize: c.Cfg.ClientMaxCallSendMsgSize,
 		MaxCallRecvMsgSize: c.Cfg.ClientMaxCallRecvMsgSize,
 	}

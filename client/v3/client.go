@@ -331,7 +331,7 @@ func (c *Client) dial(creds grpccredentials.TransportCredentials, dopts ...grpc.
 		defer cancel() // TODO: Is this right for cases where grpc.WithBlock() is not set on the dial options?
 	}
 	target := fmt.Sprintf("%s://%p/%s", resolver.Schema, c, authority(c.endpoints[0]))
-	conn, err := grpc.DialContext(dctx, target, opts...)
+	conn, err := grpc.DialContext(dctx, target, opts...) //nolint:staticcheck // TODO: remove for a supported version
 	if err != nil {
 		return nil, err
 	}

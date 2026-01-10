@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-semver/semver"
-	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"github.com/prometheus/client_golang/prometheus"
 	ptestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"

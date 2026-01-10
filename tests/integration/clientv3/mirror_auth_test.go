@@ -54,7 +54,7 @@ func TestMirrorSync_Authenticated(t *testing.T) {
 	cfg := clientv3.Config{
 		Endpoints:   initialClient.Endpoints(),
 		DialTimeout: 5 * time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		Username:    "syncer",
 		Password:    "syncfoo",
 	}

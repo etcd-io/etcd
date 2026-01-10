@@ -113,7 +113,7 @@ func convertToGRPCEndpoint(ups map[string]*endpoints.Update) []gresolver.Endpoin
 			Addresses: []gresolver.Address{
 				{
 					Addr:     up.Endpoint.Addr,
-					Metadata: up.Endpoint.Metadata,
+					Metadata: up.Endpoint.Metadata, //nolint:staticcheck // TODO: remove for a supported version
 				},
 			},
 		}
