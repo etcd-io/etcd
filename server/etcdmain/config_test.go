@@ -52,7 +52,7 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 	}
 
 	cfg := newConfig()
-	err := cfg.parse(args)
+	_, err := cfg.parse(args)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestConfigFileMemberFields(t *testing.T) {
 	args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 	cfg := newConfig()
-	if err = cfg.parse(args); err != nil {
+	if _, err = cfg.parse(args); err != nil {
 		t.Fatal(err)
 	}
 
@@ -113,7 +113,7 @@ func TestConfigParsingClusteringFlags(t *testing.T) {
 	}
 
 	cfg := newConfig()
-	if err := cfg.parse(args); err != nil {
+	if _, err := cfg.parse(args); err != nil {
 		t.Fatal(err)
 	}
 
@@ -145,7 +145,7 @@ func TestConfigFileClusteringFields(t *testing.T) {
 
 	args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 	cfg := newConfig()
-	err = cfg.parse(args)
+	_, err = cfg.parse(args)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func TestConfigFileClusteringFlags(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); err != nil {
+		if _, err := cfg.parse(args); err != nil {
 			t.Errorf("%d: err = %v", i, err)
 		}
 	}
@@ -229,7 +229,7 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 
 	for i, tt := range conflictArgs {
 		cfg := newConfig()
-		if err := cfg.parse(tt); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
+		if _, err := cfg.parse(tt); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
 			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
 		}
 	}
@@ -278,7 +278,7 @@ func TestConfigFileConflictClusteringFlags(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
+		if _, err := cfg.parse(args); !errors.Is(err, embed.ErrConflictBootstrapFlags) {
 			t.Errorf("%d: err = %v, want %v", i, err, embed.ErrConflictBootstrapFlags)
 		}
 	}
@@ -320,7 +320,7 @@ func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
 
 	for i, tt := range tests {
 		cfg := newConfig()
-		if err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
+		if _, err := cfg.parse(tt.args); !errors.Is(err, tt.werr) {
 			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
 		}
 	}
@@ -337,7 +337,7 @@ func TestConfigIsNewCluster(t *testing.T) {
 	for i, tt := range tests {
 		cfg := newConfig()
 		args := []string{"--initial-cluster-state", tests[i].state}
-		err := cfg.parse(args)
+		_, err := cfg.parse(args)
 		require.NoErrorf(t, err, "#%d: unexpected clusterState.Set error: %v", i, err)
 		if g := cfg.ec.IsNewCluster(); g != tt.wIsNew {
 			t.Errorf("#%d: isNewCluster = %v, want %v", i, g, tt.wIsNew)
@@ -385,7 +385,7 @@ func TestConfigFileElectionTimeout(t *testing.T) {
 		args := []string{fmt.Sprintf("--config-file=%s", tmpfile.Name())}
 
 		cfg := newConfig()
-		if err := cfg.parse(args); err == nil || !strings.Contains(err.Error(), tt.errStr) {
+		if _, err := cfg.parse(args); err == nil || !strings.Contains(err.Error(), tt.errStr) {
 			t.Errorf("%d: Wrong err = %v", i, err)
 		}
 	}
@@ -434,7 +434,7 @@ func TestParseFeatureGateFlags(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := newConfig()
-			err := cfg.parse(tc.args)
+			_, err := cfg.parse(tc.args)
 			if tc.expectErr {
 				require.Errorf(t, err, "expect parse error")
 				return
@@ -579,7 +579,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 
 			// Parse config
 			cfg := newConfig()
-			err = cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
+			_, err = cfg.parse([]string{fmt.Sprintf("--config-file=%s", tmpfile.Name())})
 			if err != nil {
 				t.Fatal(err)
 			}
