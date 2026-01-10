@@ -99,7 +99,7 @@ fuzz:
 verify: verify-bom verify-lint verify-dep verify-shellcheck verify-mod-tidy \
 	verify-shellws verify-proto-annotations verify-genproto verify-yamllint \
 	verify-markdown-marker verify-go-versions verify-gomodguard \
-	verify-go-workspace
+	verify-go-workspace verify-grpc-experimental
 
 .PHONY: fix
 fix: fix-mod-tidy fix-bom fix-lint fix-yamllint sync-toolchain-directive \
@@ -223,6 +223,10 @@ verify-gomodguard:
 .PHONY: verify-go-workspace
 verify-go-workspace:
 	PASSES="go_workspace" ./scripts/test.sh
+
+.PHONY: verify-grpc-experimental
+verify-grpc-experimental:
+	./scripts/verify_grpc_experimental.sh
 
 .PHONY: sync-toolchain-directive
 sync-toolchain-directive:
