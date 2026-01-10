@@ -31,10 +31,18 @@ func TestCtlV3Elect(t *testing.T) {
 	testCtl(t, testElect)
 }
 
+// In this test case, we will spawn 3 etcdctl processed to send elect commands using
+// the same election name. The first etcdctl will succeed. The second one will block
+// because there can only be one leader under the same election. The third etcdctl will
+// also block due to the same reason, but will later succeed after we kill the previous
+// two processes.
 func testElect(cx ctlCtx) {
-	name := "a"
+	name := "my-election"
 
-	holder, ch, err := ctlV3Elect(cx, name, "p1", false)
+	// If the election succeeds, the etcdctl will receive output of election name + lease,
+	// like "my-election/186d9b7990d80d05"
+	logMatchFun := func(logLine string) bool { return strings.HasPrefix(logLine, name) }
+	holder, ch, err := ctlV3Elect(cx, name, "p1", false, logMatchFun)
 	require.NoError(cx.t, err)
 
 	l1 := ""
@@ -42,13 +50,10 @@ func testElect(cx ctlCtx) {
 	case <-time.After(2 * time.Second):
 		cx.t.Fatalf("timed out electing")
 	case l1 = <-ch:
-		if !strings.HasPrefix(l1, name) {
-			cx.t.Errorf("got %q, expected %q prefix", l1, name)
-		}
 	}
 
 	// blocked process that won't win the election
-	blocked, ch, err := ctlV3Elect(cx, name, "p2", true)
+	blocked, ch, err := ctlV3Elect(cx, name, "p2", true, logMatchFun)
 	require.NoError(cx.t, err)
 	select {
 	case <-time.After(100 * time.Millisecond):
@@ -57,7 +62,7 @@ func testElect(cx ctlCtx) {
 	}
 
 	// overlap with a blocker that will win the election
-	blockAcquire, ch, err := ctlV3Elect(cx, name, "p2", false)
+	blockAcquire, ch, err := ctlV3Elect(cx, name, "p2", false, logMatchFun)
 	require.NoError(cx.t, err)
 	defer func(blockAcquire *expect.ExpectProcess) {
 		err = blockAcquire.Stop()
@@ -88,14 +93,14 @@ func testElect(cx ctlCtx) {
 	case <-time.After(time.Second):
 		cx.t.Fatalf("timed out from waiting to holding")
 	case l2 := <-ch:
-		if l1 == l2 || !strings.HasPrefix(l2, name) {
+		if l1 == l2 {
 			cx.t.Fatalf("expected different elect name, got l1=%q, l2=%q", l1, l2)
 		}
 	}
 }
 
 // ctlV3Elect creates a elect process with a channel listening for when it wins the election.
-func ctlV3Elect(cx ctlCtx, name, proposal string, expectFailure bool) (*expect.ExpectProcess, <-chan string, error) {
+func ctlV3Elect(cx ctlCtx, name, proposal string, expectFailure bool, logMatchFunc func(string) bool) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "elect", name, proposal)
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
@@ -107,7 +112,7 @@ func ctlV3Elect(cx ctlCtx, name, proposal string, expectFailure bool) (*expect.E
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		s, xerr := proc.ExpectFunc(ctx, func(string) bool { return true })
+		s, xerr := proc.ExpectFunc(ctx, logMatchFunc)
 		if xerr != nil {
 			if !expectFailure {
 				cx.t.Errorf("expect failed (%v)", xerr)

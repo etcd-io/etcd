@@ -1021,18 +1021,24 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.Cluster)) {
 
 	// issue concurrent watches on "abc" with cancel
 	cli := clus.RandClient()
-	_, err := cli.Put(t.Context(), "abc", "def")
-	require.NoError(t, err)
+	// Write data to allow all watchers receive PUT events. We could just do only
+	// one write and have all watchers watch on the same key, but writing for each
+	// watcher specifically makes it much easier to debug when the test fails.
+	for i := 0; i < n; i++ {
+		_, err := cli.Put(t.Context(), fmt.Sprintf("abc-%d", i), "")
+		require.NoError(t, err)
+	}
 	ch := make(chan struct{}, n)
 	tCtx, cancelFunc := context.WithCancel(t.Context())
 	defer cancelFunc()
 	for i := 0; i < n; i++ {
-		go func() {
+		go func(i int) {
 			defer func() { ch <- struct{}{} }()
 			idx := rand.Intn(len(ctxs))
 			ctx, cancel := context.WithCancel(ctxs[idx])
 			ctxc[idx] <- struct{}{}
-			wch := cli.Watch(ctx, "abc", clientv3.WithRev(1))
+			// each watcher is watching a unique key
+			wch := cli.Watch(ctx, fmt.Sprintf("abc-%d", i), clientv3.WithRev(1))
 			select {
 			case <-tCtx.Done():
 				cancel()
@@ -1041,9 +1047,10 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.Cluster)) {
 			}
 			f(clus)
 			select {
+			// expecting to receive the PUT event
 			case _, ok := <-wch:
 				if !ok {
-					t.Errorf("unexpected closed channel %p", wch)
+					t.Errorf("unexpected closed watch channel started by watcher %d", i)
 				}
 			// may take a second or two to reestablish a watcher because of
 			// grpc back off policies for disconnects
@@ -1058,7 +1065,7 @@ func testWatchOverlapContextCancel(t *testing.T, f func(*integration.Cluster)) {
 				cancel()
 				<-ctxc[idx]
 			}
-		}()
+		}(i)
 	}
 	// join on watches
 	for i := 0; i < n; i++ {

@@ -37,9 +37,10 @@ func TestCtlV3LockWithCmd(t *testing.T) {
 }
 
 func testLock(cx ctlCtx) {
-	name := "a"
+	name := "my-lock"
 
-	holder, ch, err := ctlV3Lock(cx, name)
+	logMatchFun := func(logLine string) bool { return strings.HasPrefix(logLine, name) }
+	holder, ch, err := ctlV3Lock(cx, name, logMatchFun)
 	require.NoError(cx.t, err)
 
 	l1 := ""
@@ -47,13 +48,10 @@ func testLock(cx ctlCtx) {
 	case <-time.After(2 * time.Second):
 		cx.t.Fatalf("timed out locking")
 	case l1 = <-ch:
-		if !strings.HasPrefix(l1, name) {
-			cx.t.Errorf("got %q, expected %q prefix", l1, name)
-		}
 	}
 
 	// blocked process that won't acquire the lock
-	blocked, ch, err := ctlV3Lock(cx, name)
+	blocked, ch, err := ctlV3Lock(cx, name, logMatchFun)
 	require.NoError(cx.t, err)
 	select {
 	case <-time.After(100 * time.Millisecond):
@@ -62,7 +60,7 @@ func testLock(cx ctlCtx) {
 	}
 
 	// overlap with a blocker that will acquire the lock
-	blockAcquire, ch, err := ctlV3Lock(cx, name)
+	blockAcquire, ch, err := ctlV3Lock(cx, name, logMatchFun)
 	require.NoError(cx.t, err)
 	defer func(blockAcquire *expect.ExpectProcess) {
 		err = blockAcquire.Stop()
@@ -93,7 +91,7 @@ func testLock(cx ctlCtx) {
 	case <-time.After(time.Second):
 		cx.t.Fatalf("timed out from waiting to holding")
 	case l2 := <-ch:
-		if l1 == l2 || !strings.HasPrefix(l2, name) {
+		if l1 == l2 {
 			cx.t.Fatalf("expected different lock name, got l1=%q, l2=%q", l1, l2)
 		}
 	}
@@ -112,7 +110,7 @@ func testLockWithCmd(cx ctlCtx) {
 }
 
 // ctlV3Lock creates a lock process with a channel listening for when it acquires the lock.
-func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, error) {
+func ctlV3Lock(cx ctlCtx, name string, logMatchFunc func(string) bool) (*expect.ExpectProcess, <-chan string, error) {
 	cmdArgs := append(cx.PrefixArgs(), "lock", name)
 	proc, err := e2e.SpawnCmd(cmdArgs, cx.envMap)
 	outc := make(chan string, 1)
@@ -124,7 +122,7 @@ func ctlV3Lock(cx ctlCtx, name string) (*expect.ExpectProcess, <-chan string, er
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		s, xerr := proc.ExpectFunc(ctx, func(string) bool { return true })
+		s, xerr := proc.ExpectFunc(ctx, logMatchFunc)
 		if xerr != nil {
 			require.ErrorContains(cx.t, xerr, "Error: context canceled")
 		}
