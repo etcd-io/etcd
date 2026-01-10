@@ -177,7 +177,12 @@ func (ctl *EtcdctlV3) Get(ctx context.Context, key string, o config.GetOptions) 
 			return nil, err
 		}
 		defer cmd.Close()
-		_, err = cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
+		respCount, err := cmd.ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Count"})
+		if err != nil {
+			return nil, err
+		}
+		count, err := strconv.Atoi(respCount)
+		resp.Count = int64(count)
 		return &resp, err
 	}
 	err := ctl.spawnJSONCmd(ctx, &resp, args...)
