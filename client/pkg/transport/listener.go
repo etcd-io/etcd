@@ -30,6 +30,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -136,6 +137,27 @@ func newListenConfig(sopts *SocketOpts) net.ListenConfig {
 	return lc
 }
 
+// caReloaderTracker manages CAReloader lifecycle with thread-safe operations.
+type caReloaderTracker struct {
+	mu        sync.Mutex
+	reloaders []*tlsutil.CAReloader
+}
+
+func (t *caReloaderTracker) track(r *tlsutil.CAReloader) {
+	t.mu.Lock()
+	t.reloaders = append(t.reloaders, r)
+	t.mu.Unlock()
+}
+
+func (t *caReloaderTracker) stopAll() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, r := range t.reloaders {
+		r.Stop()
+	}
+	t.reloaders = nil
+}
+
 type TLSInfo struct {
 	// CertFile is the _server_ cert, it will also be used as a _client_ certificate if ClientCertFile is empty
 	CertFile string
@@ -152,6 +174,14 @@ type TLSInfo struct {
 	CRLFile             string
 	InsecureSkipVerify  bool
 	SkipClientSANVerify bool
+
+	// ReloadTrustedCA enables dynamic reloading of trusted CA certificates.
+	// When true, CA certificates are periodically reloaded from TrustedCAFile.
+	ReloadTrustedCA bool
+
+	// CAReloadInterval is the interval for checking CA file changes.
+	// If zero, the default interval (10s) is used.
+	CAReloadInterval time.Duration
 
 	// ServerName ensures the cert matches the given host in case of discovery / virtual hosting
 	ServerName string
@@ -207,10 +237,40 @@ type TLSInfo struct {
 
 	// LocalAddr is the local IP address to use when communicating with a peer.
 	LocalAddr string
+
+	// caReloaderTracker tracks active CAReloaders for cleanup.
+	caReloaderTracker *caReloaderTracker
 }
 
 func (info TLSInfo) String() string {
 	return fmt.Sprintf("cert = %s, key = %s, client-cert=%s, client-key=%s, trusted-ca = %s, client-cert-auth = %v, crl-file = %s", info.CertFile, info.KeyFile, info.ClientCertFile, info.ClientKeyFile, info.TrustedCAFile, info.ClientCertAuth, info.CRLFile)
+}
+
+// Close stops all CAReloaders associated with this TLSInfo.
+// This should be called when the TLS configuration is no longer needed
+// to prevent goroutine leaks.
+func (info *TLSInfo) Close() {
+	if info.caReloaderTracker == nil {
+		return
+	}
+	info.caReloaderTracker.stopAll()
+}
+
+// EnableCAReloaderTracking initializes CAReloader tracking for this TLSInfo.
+// Call this before ServerConfig() or creating transports if you need to
+// clean up CAReloaders later via Close().
+func (info *TLSInfo) EnableCAReloaderTracking() {
+	if info.caReloaderTracker == nil {
+		info.caReloaderTracker = &caReloaderTracker{}
+	}
+}
+
+// trackCAReloader adds a CAReloader to the tracking list for cleanup.
+func (info *TLSInfo) trackCAReloader(r *tlsutil.CAReloader) {
+	if info.caReloaderTracker == nil {
+		return // Tracking not enabled
+	}
+	info.caReloaderTracker.track(r)
 }
 
 func (info TLSInfo) Empty() bool {
@@ -545,11 +605,102 @@ func (info TLSInfo) ServerConfig() (*tls.Config, error) {
 	if len(cs) > 0 {
 		info.Logger.Info("Loading cert pool", zap.Strings("cs", cs),
 			zap.Any("tlsinfo", info))
-		cp, err := tlsutil.NewCertPool(cs)
-		if err != nil {
-			return nil, err
+
+		// When ReloadTrustedCA is enabled, use VerifyConnection callback
+		// to verify client certificates with dynamically reloaded CAs.
+		if info.ReloadTrustedCA {
+			caReloader, err := tlsutil.NewCAReloader(cs, info.Logger)
+			if err != nil {
+				return nil, err
+			}
+			if info.CAReloadInterval > 0 {
+				caReloader.WithInterval(info.CAReloadInterval)
+			}
+			caReloader.Start()
+
+			// Track CAReloader for cleanup
+			info.trackCAReloader(caReloader)
+
+			// Build allowed CN/hostname checker if configured
+			var verifyCertificate func(*x509.Certificate) bool
+			if info.AllowedCN != "" {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					return info.AllowedCN == cert.Subject.CommonName
+				}
+			} else if info.AllowedHostname != "" {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					return cert.VerifyHostname(info.AllowedHostname) == nil
+				}
+			} else if len(info.AllowedCNs) > 0 {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					for _, allowedCN := range info.AllowedCNs {
+						if allowedCN == cert.Subject.CommonName {
+							return true
+						}
+					}
+					return false
+				}
+			} else if len(info.AllowedHostnames) > 0 {
+				verifyCertificate = func(cert *x509.Certificate) bool {
+					for _, allowedHostname := range info.AllowedHostnames {
+						if cert.VerifyHostname(allowedHostname) == nil {
+							return true
+						}
+					}
+					return false
+				}
+			}
+
+			// Use RequireAnyClientCert to accept any client cert,
+			// then verify in VerifyConnection callback with fresh CAs.
+			cfg.ClientAuth = tls.RequireAnyClientCert
+			// Clear VerifyPeerCertificate set by baseConfig() since it expects
+			// verifiedChains to be populated, but RequireAnyClientCert causes
+			// Go to pass nil verifiedChains. All verification (including
+			// AllowedCN/AllowedHostname checks) is handled by VerifyConnection.
+			cfg.VerifyPeerCertificate = nil
+			cfg.VerifyConnection = func(cs tls.ConnectionState) error {
+				if len(cs.PeerCertificates) == 0 {
+					return errors.New("client certificate required")
+				}
+
+				roots := caReloader.GetCertPool()
+				opts := x509.VerifyOptions{
+					Roots:         roots,
+					Intermediates: x509.NewCertPool(),
+					KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+				}
+
+				// Add intermediate certificates
+				for _, cert := range cs.PeerCertificates[1:] {
+					opts.Intermediates.AddCert(cert)
+				}
+
+				// Verify the leaf certificate
+				verifiedChains, err := cs.PeerCertificates[0].Verify(opts)
+				if err != nil {
+					return err
+				}
+
+				// Check AllowedCN/AllowedHostname if configured
+				if verifyCertificate != nil {
+					for _, chains := range verifiedChains {
+						if len(chains) > 0 && verifyCertificate(chains[0]) {
+							return nil
+						}
+					}
+					return errors.New("client certificate authentication failed")
+				}
+
+				return nil
+			}
+		} else {
+			cp, err := tlsutil.NewCertPool(cs)
+			if err != nil {
+				return nil, err
+			}
+			cfg.ClientCAs = cp
 		}
-		cfg.ClientCAs = cp
 	}
 
 	// "h2" NextProtos is necessary for enabling HTTP2 for go's HTTP server
