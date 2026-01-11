@@ -162,6 +162,12 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 // cancelWatcher removes references of the watcher from the watchableStore
 func (s *watchableStore) cancelWatcher(wa *watcher) {
+	// Check if already canceled first to handle double-cancel scenarios
+	// (e.g., Cancel and Close racing on the same watcher)
+	if wa.ch == nil {
+		return
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -175,11 +181,11 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 		// but we wait until now to decrement gauges.
 		slowWatcherGauge.Dec()
 		watcherGauge.Dec()
-	} else if wa.ch != nil {
+	} else {
 		// This should never happen (it would indicate a bug in the watcher management)
 		panic(fmt.Errorf("watcher (ID: %d key: %s) to cancel was not found", wa.id, wa.key))
 	}
-	// else: watcher was already canceled (wa.ch == nil)
+
 	wa.ch = nil
 }
 
