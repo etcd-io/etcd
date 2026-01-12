@@ -16,7 +16,6 @@ package mvcc
 
 import (
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -346,8 +345,8 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 	compactionRev := s.store.compactMainRev
 
 	// Select a batch of watchers that need DB fetch
-	wg, minRev := s.selectForSync(maxWatchersPerSync, curRev, compactionRev)
-	if wg == nil {
+	wg, minRev := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
+	if wg.size() == 0 {
 		return s.unsynced.size(), evs
 	}
 	evs = rangeEventsWithReuse(s.store.lg, s.store.b, evs, minRev, curRev+1)
@@ -394,55 +393,6 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 
 	slowWatcherGauge.Set(float64(s.unsynced.size()))
 	return s.unsynced.size(), evs
-}
-
-// selectForSync selects up to maxWatchers from unsynced group that need to sync from DB.
-// It skips watchers with pending events (non-nil eventBatch) as they are handled by retryLoop.
-// It also handles compacted watchers by sending compaction responses and removing them.
-// Returns the selected watchers and the minimum revision needed for DB fetch.
-func (s *watchableStore) selectForSync(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
-	if s.unsynced.size() == 0 {
-		return nil, int64(math.MaxInt64)
-	}
-
-	minRev := int64(math.MaxInt64)
-	ret := newWatcherGroup()
-	for w, eb := range s.unsynced.watchers {
-		// Skip watchers with pending events - they are handled by retryLoop
-		if eb != nil {
-			continue
-		}
-		if w.minRev > curRev {
-			// Watchers moved from synced to unsynced during Restore() may have future revisions.
-			// They will be included but won't match any events, then moved back to synced.
-			if !w.restore {
-				panic(fmt.Errorf("watcher minimum revision %d should not exceed current revision %d", w.minRev, curRev))
-			}
-			w.restore = false
-		}
-		if w.minRev < compactRev {
-			select {
-			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
-				w.compacted = true
-				s.unsynced.delete(w)
-				// Gauge is decremented in cancelWatcher when client cancels
-			default:
-				// retry next time
-			}
-			continue
-		}
-		if minRev > w.minRev {
-			minRev = w.minRev
-		}
-		ret.add(w)
-		if ret.size() >= maxWatchers {
-			break
-		}
-	}
-	if ret.size() == 0 {
-		return nil, minRev
-	}
-	return &ret, minRev
 }
 
 // rangeEventsWithReuse returns events in range [minRev, maxRev), while reusing already provided events.

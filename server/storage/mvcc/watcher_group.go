@@ -15,6 +15,9 @@
 package mvcc
 
 import (
+	"fmt"
+	"math"
+
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/pkg/v3/adt"
 )
@@ -223,6 +226,62 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	}
 
 	return true
+}
+
+// choose selects watchers from the watcher group to update.
+// It skips watchers with pending events (non-nil eventBatch) as they are handled by retryLoop.
+func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
+	if len(wg.watchers) < maxWatchers {
+		return wg, wg.chooseAll(curRev, compactRev)
+	}
+	ret := newWatcherGroup()
+	for w, eb := range wg.watchers {
+		if eb != nil {
+			// Skip watchers with pending events - they are handled by retryLoop
+			continue
+		}
+		if maxWatchers <= 0 {
+			break
+		}
+		maxWatchers--
+		ret.add(w)
+	}
+	return &ret, ret.chooseAll(curRev, compactRev)
+}
+
+func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
+	minRev := int64(math.MaxInt64)
+	for w, eb := range wg.watchers {
+		if eb != nil {
+			// Skip watchers with pending events - they are handled by retryLoop
+			continue
+		}
+		if w.minRev > curRev {
+			// after network partition, possibly choosing future revision watcher from restore operation
+			// with watch key "proxy-namespace__lostleader" and revision "math.MaxInt64 - 2"
+			// do not panic when such watcher had been moved from "synced" watcher during restore operation
+			if !w.restore {
+				panic(fmt.Errorf("watcher minimum revision %d should not exceed current revision %d", w.minRev, curRev))
+			}
+
+			// mark 'restore' done, since it's chosen
+			w.restore = false
+		}
+		if w.minRev < compactRev {
+			select {
+			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
+				w.compacted = true
+				wg.delete(w)
+			default:
+				// retry next time
+			}
+			continue
+		}
+		if minRev > w.minRev {
+			minRev = w.minRev
+		}
+	}
+	return minRev
 }
 
 // watcherSetByKey gets the set of watchers that receive events on the given key.
