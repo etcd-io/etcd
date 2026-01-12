@@ -835,7 +835,7 @@ func (le *lessor) initAndRecover() {
 }
 
 // FakeLessor is a fake implementation of Lessor interface.
-// Used for testing only.
+// Used for testing  and lease mocking.
 type FakeLessor struct {
 	LeaseSet map[LeaseID]struct{}
 }

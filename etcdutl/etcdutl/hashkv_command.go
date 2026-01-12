@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
+	"go.etcd.io/etcd/server/v3/lease"
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
@@ -55,7 +56,7 @@ type HashKV struct {
 
 func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
 	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
-	st := mvcc.NewStore(zap.NewNop(), b, nil, mvcc.StoreConfig{})
+	st := mvcc.NewStore(zap.NewNop(), b, &lease.FakeLessor{}, mvcc.StoreConfig{})
 	hst := mvcc.NewHashStorage(zap.NewNop(), st)
 
 	h, _, err := hst.HashByRev(rev)
