@@ -627,15 +627,6 @@ function mod_tidy_pass {
   run_for_workspace_modules run go mod tidy -diff
 }
 
-function module_mod_tidy_fix {
-  run rm ./go.sum
-  run go mod tidy || return 2
-}
-
-function mod_tidy_fix_pass {
-  run_for_workspace_modules module_mod_tidy_fix
-}
-
 function proto_annotations_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_proto_annotations.sh"
 }
