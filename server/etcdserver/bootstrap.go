@@ -74,7 +74,7 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 	}
 
 	haveWAL := wal.Exist(cfg.WALDir())
-	backend, err := bootstrapBackend(cfg, haveWAL, ss)
+	backend, err := bootstrapBackend(cfg, haveWAL)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +194,7 @@ func bootstrapSnapshot(cfg config.ServerConfig) *snap.Snapshotter {
 	return snap.New(cfg.Logger, cfg.SnapDir())
 }
 
-func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, ss *snap.Snapshotter) (backend *bootstrappedBackend, err error) {
+func bootstrapBackend(cfg config.ServerConfig, haveWAL bool) (backend *bootstrappedBackend, err error) {
 	beExist := fileutil.Exist(cfg.BackendPath())
 	ci := cindex.NewConsistentIndex(nil)
 	beHooks := serverstorage.NewBackendHooks(cfg.Logger, ci)
@@ -217,7 +217,7 @@ func bootstrapBackend(cfg config.ServerConfig, haveWAL bool, ss *snap.Snapshotte
 	// TODO(serathius): Implement schema setup in fresh storage
 	var snapshot *raftpb.Snapshot
 	if haveWAL {
-		snapshot, be, err = recoverSnapshot(cfg, be, beExist, beHooks, ci, ss)
+		snapshot, be, err = recoverSnapshot(cfg, be, beExist, beHooks, ci)
 		if err != nil {
 			return nil, err
 		}
@@ -376,26 +376,33 @@ func bootstrapClusterWithWAL(cfg config.ServerConfig, meta *snapshotMetadata) (*
 	}, nil
 }
 
-func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer, ss *snap.Snapshotter) (*raftpb.Snapshot, backend.Backend, error) {
+func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, beHooks *serverstorage.BackendHooks, ci cindex.ConsistentIndexer) (*raftpb.Snapshot, backend.Backend, error) {
 	// Find a snapshot to start/restart a raft node
 	walSnaps, err := wal.ValidSnapshotEntries(cfg.Logger, cfg.WALDir())
 	if err != nil {
 		return nil, be, err
 	}
-	// snapshot files can be orphaned if etcd crashes after writing them but before writing the corresponding
-	// bwal log entries
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-		return nil, be, err
+
+	var snapshot *raftpb.Snapshot
+	if len(walSnaps) > 0 {
+		idx := len(walSnaps) - 1
+		snapshot = &raftpb.Snapshot{
+			Metadata: raftpb.SnapshotMetadata{
+				Term:  walSnaps[idx].Term,
+				Index: walSnaps[idx].Index,
+			},
+		}
+		if walSnaps[idx].ConfState != nil {
+			snapshot.Metadata.ConfState = *walSnaps[idx].ConfState
+		}
+		cfg.Logger.Info("constructed a snapshot from WAL record",
+			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
+			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
+			zap.String("confState", snapshot.Metadata.ConfState.String()),
+		)
 	}
 
 	if snapshot != nil {
-		cfg.Logger.Info(
-			"recovered v2 store from snapshot",
-			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
-			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
-		)
-
 		if be, err = serverstorage.RecoverSnapshotBackend(cfg, be, *snapshot, beExist, beHooks); err != nil {
 			cfg.Logger.Panic("failed to recover v3 backend from snapshot", zap.Error(err))
 		}
