@@ -161,14 +161,13 @@ func (s *watchableStore) watch(key, end []byte, startRev int64, id WatchID, ch c
 
 // cancelWatcher removes references of the watcher from the watchableStore
 func (s *watchableStore) cancelWatcher(wa *watcher) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	// Check if already canceled first to handle double-cancel scenarios
 	// (e.g., Cancel and Close racing on the same watcher)
 	if wa.ch == nil {
 		return
 	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if s.unsynced.delete(wa) {
 		slowWatcherGauge.Dec()
@@ -261,64 +260,6 @@ func (s *watchableStore) retryLoop() {
 			return
 		}
 	}
-}
-
-// retryPendingEvents tries to send events to watchers that have pending event batches.
-// Returns the number of watchers whose pending events were successfully sent.
-func (s *watchableStore) retryPendingEvents() (sent int) {
-	// This function holds s.mu lock during the entire processing loop.
-	// This is acceptable because w.send() is non-blocking.
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.store.revMu.RLock()
-	curRev := s.store.currentRev
-	s.store.revMu.RUnlock()
-
-	for w, eb := range s.unsynced.watchers {
-		if eb == nil {
-			continue
-		}
-
-		// Try to send the pending events
-		rev := w.minRev - 1
-		if !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
-			// Failed to send, stay as unsynced
-			continue
-		}
-		pendingEventsGauge.Add(float64(len(eb.evs)))
-		sent++
-
-		// Update minRev if there are more events beyond this batch.
-		// If moreRev == 0, minRev is already correct (set by syncWatchers/notify)
-		if eb.moreRev != 0 {
-			w.minRev = eb.moreRev
-		}
-
-		// Clear pending events and determine next state
-		if w.minRev <= curRev {
-			// Still behind - stay in unsynced but clear eventBatch for DB fetch
-			s.unsynced.watchers[w] = nil
-		} else {
-			// Caught up - move to synced
-			s.unsynced.delete(w)
-			s.synced.add(w)
-			slowWatcherGauge.Dec()
-		}
-	}
-	return sent
-}
-
-func (s *watchableStore) hasPendingEvents() bool {
-	// Check if there are still watchers with pending events
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	for _, eb := range s.unsynced.watchers {
-		if eb != nil {
-			return true
-		}
-	}
-	return false
 }
 
 // syncWatchers syncs unsynced watchers by:
@@ -506,6 +447,64 @@ func (s *watchableStore) signalRetryLoop() {
 	case s.retryc <- struct{}{}:
 	default:
 	}
+}
+
+// retryPendingEvents tries to send events to watchers that have pending event batches.
+// Returns the number of watchers whose pending events were successfully sent.
+func (s *watchableStore) retryPendingEvents() (sent int) {
+	// This function holds s.mu lock during the entire processing loop.
+	// This is acceptable because w.send() is non-blocking.
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.store.revMu.RLock()
+	curRev := s.store.currentRev
+	s.store.revMu.RUnlock()
+
+	for w, eb := range s.unsynced.watchers {
+		if eb == nil {
+			continue
+		}
+
+		// Try to send the pending events
+		rev := w.minRev - 1
+		if !w.send(WatchResponse{WatchID: w.id, Events: eb.evs, Revision: rev}) {
+			// Failed to send, stay as unsynced
+			continue
+		}
+		pendingEventsGauge.Add(float64(len(eb.evs)))
+		sent++
+
+		// Update minRev if there are more events beyond this batch.
+		// If moreRev == 0, minRev is already correct (set by syncWatchers/notify)
+		if eb.moreRev != 0 {
+			w.minRev = eb.moreRev
+		}
+
+		// Clear pending events and determine next state
+		if w.minRev <= curRev {
+			// Still behind - stay in unsynced but clear eventBatch for DB fetch
+			s.unsynced.watchers[w] = nil
+		} else {
+			// Caught up - move to synced
+			s.unsynced.delete(w)
+			s.synced.add(w)
+			slowWatcherGauge.Dec()
+		}
+	}
+	return sent
+}
+
+func (s *watchableStore) hasPendingEvents() bool {
+	// Check if there are still watchers with pending events
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	for _, eb := range s.unsynced.watchers {
+		if eb != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *watchableStore) rev() int64 { return s.store.Rev() }
