@@ -362,7 +362,7 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 	curRev := s.store.currentRev
 	compactionRev := s.store.compactMainRev
 
-	wg, minRev := s.selectForSync(maxWatchersPerSync, curRev, compactionRev)
+	wg, minRev := s.unsafeSelectForSync(maxWatchersPerSync, curRev, compactionRev)
 	evs = rangeEventsWithReuse(s.store.lg, s.store.b, evs, minRev, curRev+1)
 
 	victims := make(watcherBatch)
@@ -415,17 +415,16 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 	return s.unsynced.size(), evs
 }
 
-// selectForSync selects up to maxWatchers from the unsynced group for syncing.
+// unsafeSelectForSync selects up to maxWatchers from the unsynced group for syncing.
 // It handles compacted watchers by sending compaction responses and removing them.
 // Returns the selected watchers and the minimum revision needed for DB fetch.
-func (s *watchableStore) selectForSync(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
+// Unsafe because it assumes s.mu is held by the caller.
+func (s *watchableStore) unsafeSelectForSync(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
 	minRev := int64(math.MaxInt64)
+	ret := newWatcherGroup()
 	if s.unsynced.size() == 0 {
-		ret := newWatcherGroup()
 		return &ret, minRev
 	}
-
-	ret := newWatcherGroup()
 	for w := range s.unsynced.watchers {
 		if w.minRev > curRev {
 			// Watchers moved from synced to unsynced during Restore() may have future revisions.
