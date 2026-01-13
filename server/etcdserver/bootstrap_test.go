@@ -190,8 +190,7 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			haveWAL := wal.Exist(cfg.WALDir())
-			ss := snap.New(cfg.Logger, cfg.SnapDir())
-			backend, err := bootstrapBackend(cfg, haveWAL, ss)
+			backend, err := bootstrapBackend(cfg, haveWAL)
 			defer t.Cleanup(func() {
 				backend.Close()
 			})
