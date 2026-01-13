@@ -5,11 +5,11 @@ go 1.25.0
 toolchain go1.25.5
 
 require (
-	github.com/google/btree v1.1.3
 	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/api/v3 v3.6.0-alpha.0
 	go.etcd.io/etcd/client/v3 v3.6.0-alpha.0
+	k8s.io/utils v0.0.0-20260108192941-914a6e750570
 )
 
 require (
