@@ -73,6 +73,7 @@ func (h *leaseHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, ErrLeaseHTTPTimeout.Error(), http.StatusRequestTimeout)
 			return
 		}
+		// gofail: var beforeServeHTTPLeaseRenew struct{}
 		ttl, rerr := h.l.Renew(lease.LeaseID(lreq.ID))
 		if rerr != nil {
 			if errors.Is(rerr, lease.ErrLeaseNotFound) {
