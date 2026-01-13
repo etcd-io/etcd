@@ -39,6 +39,9 @@ import (
 )
 
 var (
+	DefaultWatchInterval  = 100 * time.Millisecond
+	DefaultRevisionOffset = int64(100)
+
 	profile = traffic.Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
@@ -46,9 +49,9 @@ var (
 		MemberClientCount:              3,
 		ClusterClientCount:             1,
 		MaxNonUniqueRequestConcurrency: 3,
-		BackgroundWatchConfig: options.BackgroundWatchConfig{
-			Interval:       0,
-			RevisionOffset: 0,
+		WatchConfig: options.WatchConfig{
+			Interval:       DefaultWatchInterval,
+			RevisionOffset: DefaultRevisionOffset,
 		},
 	}
 	trafficNames = []string{
@@ -116,12 +119,12 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	defer watchSet.Close()
 	g.Go(func() error {
 		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
-			Lg:                    lg,
-			Endpoints:             hosts,
-			MaxRevisionChan:       maxRevisionChan,
-			Cfg:                   watchConfig,
-			ClientSet:             watchSet,
-			BackgroundWatchConfig: profile.BackgroundWatchConfig,
+			Lg:              lg,
+			Endpoints:       hosts,
+			MaxRevisionChan: maxRevisionChan,
+			Cfg:             watchConfig,
+			ClientSet:       watchSet,
+			WatchConfig:     profile.WatchConfig,
 		})
 		return err
 	})
@@ -179,6 +182,34 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
 				KeyStore:                           keyStore,
 				Finish:                             finish,
+			})
+		}(c)
+	}
+	for i := range profile.MemberClientCount {
+		c := connect(clientSet, []string{hosts[i%len(hosts)]})
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+				Client:      c,
+				KeyStore:    keyStore,
+				Finish:      finish,
+				WatchConfig: profile.WatchConfig,
+			})
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		c := connect(clientSet, hosts)
+		wg.Add(1)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+				Client:      c,
+				KeyStore:    keyStore,
+				Finish:      finish,
+				WatchConfig: profile.WatchConfig,
 			})
 		}(c)
 	}

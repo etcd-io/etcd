@@ -39,6 +39,8 @@ var (
 	WatchTimeout                  = time.Second
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
+	DefaultWatchInterval          = 100 * time.Millisecond
+	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
@@ -47,6 +49,10 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
+		WatchConfig: options.WatchConfig{
+			Interval:       DefaultWatchInterval,
+			RevisionOffset: DefaultRevisionOffset,
+		},
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
@@ -55,6 +61,10 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
+		WatchConfig: options.WatchConfig{
+			Interval:       DefaultWatchInterval,
+			RevisionOffset: DefaultRevisionOffset,
+		},
 	}
 )
 
@@ -113,6 +123,36 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
 				Finish:                             finish,
+			})
+		}(c)
+	}
+	for i := range profile.MemberClientCount {
+		wg.Add(1)
+		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+		require.NoError(t, nerr)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+				Client:      c,
+				KeyStore:    keyStore,
+				Finish:      finish,
+				WatchConfig: profile.WatchConfig,
+			})
+		}(c)
+	}
+	for range profile.ClusterClientCount {
+		wg.Add(1)
+		c, nerr := clientSet.NewClient(endpoints)
+		require.NoError(t, nerr)
+		go func(c *client.RecordingClient) {
+			defer wg.Done()
+			defer c.Close()
+			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+				Client:      c,
+				KeyStore:    keyStore,
+				Finish:      finish,
+				WatchConfig: profile.WatchConfig,
 			})
 		}(c)
 	}
@@ -296,7 +336,7 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
-	options.BackgroundWatchConfig
+	options.WatchConfig
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -309,13 +349,13 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	return p
 }
 
-func (p Profile) WithBackgroundWatchConfigInterval(interval time.Duration) Profile {
-	p.BackgroundWatchConfig.Interval = interval
+func (p Profile) WithWatchInterval(interval time.Duration) Profile {
+	p.Interval = interval
 	return p
 }
 
-func (p Profile) WithBackgroundWatchConfigRevisionOffset(offset int64) Profile {
-	p.BackgroundWatchConfig.RevisionOffset = offset
+func (p Profile) WithWatchRevisionOffset(offset int64) Profile {
+	p.RevisionOffset = offset
 	return p
 }
 
@@ -336,23 +376,61 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client         *client.RecordingClient
-	KeyStore       *keyStore
-	Finish         <-chan struct{}
-	RevisionOffset int64   // Random offset range: -RevisionOffset <= offset <= RevisionOffset
-	WatchQPS       float64 // QPS limit for watch requests
+	Client              *client.RecordingClient
+	KeyStore            *keyStore
+	Finish              <-chan struct{}
+	options.WatchConfig // Embedded: Interval and RevisionOffset
 }
-
-const (
-	DefaultWatchQPS       = 10.0
-	DefaultRevisionOffset = 100
-)
 
 type Traffic interface {
 	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
 	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
 	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
+}
+
+// runWatchLoop is a helper function that implements the periodic watch loop pattern.
+// It spawns watches at regular intervals with random revision offsets.
+func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		case <-time.After(p.Interval):
+			// Time to spawn a new watch
+		}
+
+		go func() error {
+			resp, err := p.Client.Get(ctx, cfg.watchKey)
+			if err != nil {
+				return err
+			}
+			rev := resp.Header.Revision + p.RevisionOffset
+
+			watchCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-p.Finish:
+					return nil
+				case _, ok := <-w:
+					if !ok {
+						return nil
+					}
+				}
+			}
+		}()
+	}
+}
+
+type watchLoopConfig struct {
+	getKey   string
+	watchKey string
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {

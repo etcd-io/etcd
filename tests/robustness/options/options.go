@@ -16,7 +16,7 @@ package options
 
 import "time"
 
-type BackgroundWatchConfig struct {
+type WatchConfig struct {
 	Interval       time.Duration
 	RevisionOffset int64
 }
