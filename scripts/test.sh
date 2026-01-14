@@ -111,9 +111,9 @@ fi
 
 log_callout "Running with ${COMMON_TEST_FLAGS[*]}"
 
-RUN_ARG=()
+RUN_ARG=""
 if [ -n "${TESTCASE:-}" ]; then
-  RUN_ARG=("-run=${TESTCASE}")
+  RUN_ARG="-run=${TESTCASE}"
 fi
 
 function build_pass {
@@ -131,7 +131,7 @@ function unit_pass {
                  -failfast \
                  -timeout="${TIMEOUT:-3m}" \
                  "${COMMON_TEST_FLAGS[@]}" \
-                 "${RUN_ARG[@]}" \
+                 $RUN_ARG \
                  "$@"
 }
 
@@ -140,7 +140,7 @@ function integration_extra {
     run_go_tests_expanding_packages ./tests/integration/v2store/... \
                                     -timeout="${TIMEOUT:-5m}" \
                                     "${COMMON_TEST_FLAGS[@]}" \
-                                    "${RUN_ARG[@]}" \
+                                    $RUN_ARG \
                                     "$@"
   else
     log_warning "integration_extra ignored when PKG is specified"
@@ -153,7 +153,7 @@ function integration_pass {
                -failfast \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               $RUN_ARG \
                "$@"
 
   run_go_tests ./tests/common/... \
@@ -162,7 +162,7 @@ function integration_pass {
                -tags=integration \
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               $RUN_ARG \
                "$@"
 
   integration_extra "$@"
@@ -171,22 +171,22 @@ function integration_pass {
 function e2e_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu do not have any impact.
   run_go_tests_expanding_packages ./tests/e2e/... \
-                                    -timeout="${TIMEOUT:-30m}" \
-                                    "${RUN_ARG[@]}" \
-                                    "$@"
+                                  -timeout="${TIMEOUT:-30m}" \
+                                  $RUN_ARG \
+                                  "$@"
   run_go_tests_expanding_packages ./tests/common/... \
-                                    -tags=e2e \
-                                    -timeout="${TIMEOUT:-30m}" \
-                                    "${RUN_ARG[@]}" \
-                                    "$@"
+                                  -tags=e2e \
+                                  -timeout="${TIMEOUT:-30m}" \
+                                  $RUN_ARG \
+                                  "$@"
 }
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
   run_go_tests ./tests/robustness \
-                 -timeout="${TIMEOUT:-30m}" \
-                 "${RUN_ARG[@]}" \
-                 "$@"
+               -timeout="${TIMEOUT:-30m}" \
+               $RUN_ARG \
+               "$@"
 }
 
 function integration_e2e_pass {
@@ -221,7 +221,7 @@ function grpcproxy_integration_pass {
                -tags=cluster_proxy \
                -timeout="${TIMEOUT:-30m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               $RUN_ARG \
                "$@"
 }
 
@@ -230,7 +230,7 @@ function grpcproxy_e2e_pass {
                -tags=cluster_proxy \
                -timeout="${TIMEOUT:-30m}" \
                "${COMMON_TEST_FLAGS[@]}" \
-               "${RUN_ARG[@]}" \
+               $RUN_ARG \
                "$@"
 }
 
