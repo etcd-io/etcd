@@ -326,7 +326,8 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 	sleepDuration := 8 * time.Second
 
 	t.Run("forwarding succeeds", func(t *testing.T) {
-		leaderClient, follower := setupLeaseForwardingCluster(t)
+		leader, follower, _ := setupLeaseForwardingCluster(t)
+		leaderClient := integration.ToGRPC(leader.Client).Lease
 
 		grantResp, err := leaderClient.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 		require.NoError(t, err)
@@ -345,7 +346,8 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 
 	// Shows current behavior: client cancel during forwarding incorrectly returns Unavailable.
 	t.Run("client cancels while forwarding", func(t *testing.T) {
-		leaderClient, follower := setupLeaseForwardingCluster(t)
+		leader, follower, _ := setupLeaseForwardingCluster(t)
+		leaderClient := integration.ToGRPC(leader.Client).Lease
 
 		grantResp, err := leaderClient.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 		require.NoError(t, err)
@@ -383,7 +385,8 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 	})
 
 	t.Run("forwarding times out", func(t *testing.T) {
-		leaderClient, follower := setupLeaseForwardingCluster(t)
+		leader, follower, _ := setupLeaseForwardingCluster(t)
+		leaderClient := integration.ToGRPC(leader.Client).Lease
 
 		grantResp, err := leaderClient.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
 		require.NoError(t, err)
@@ -409,16 +412,33 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 			return getLeaseKeepAliveMetric(t, follower, "Unavailable") == prevUnavailableCount+1
 		}, 3*time.Second, 100*time.Millisecond)
 	})
+
+	// Client set up with WithRequireLeader() will receive NoLeader error right after
+	// monitorLeader() detects leader missing and cancels the server stream with ErrGRPCNoLeader.
+	t.Run("catches NoLeader error with WithRequireLeader", func(t *testing.T) {
+		leader, follower, anotherFollower := setupLeaseForwardingCluster(t)
+		followerClient := integration.ToGRPC(follower.Client).Lease
+
+		prevUnavailableCount := getLeaseKeepAliveMetric(t, follower, "Unavailable")
+		leader.Stop(t)
+		anotherFollower.Stop(t)
+
+		keepAliveClient, err := followerClient.LeaseKeepAlive(clientv3.WithRequireLeader(t.Context()))
+		require.NoError(t, err)
+
+		_, err = keepAliveClient.Recv()
+		require.Equal(t, rpctypes.ErrGRPCNoLeader, err)
+		require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+	})
 }
 
-func setupLeaseForwardingCluster(t *testing.T) (pb.LeaseClient, *integration.Member) {
+func setupLeaseForwardingCluster(t *testing.T) (*integration.Member, *integration.Member, *integration.Member) {
 	t.Helper()
 	cluster := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	t.Cleanup(func() { cluster.Terminate(t) })
 
 	leaderIdx := cluster.WaitLeader(t)
-	followerIdx := (leaderIdx + 1) % 3
-	return integration.ToGRPC(cluster.Client(leaderIdx)).Lease, cluster.Members[followerIdx]
+	return cluster.Members[leaderIdx], cluster.Members[(leaderIdx+1)%3], cluster.Members[(leaderIdx+2)%3]
 }
 
 func getLeaseKeepAliveMetric(t *testing.T, member *integration.Member, grpcCode string) int64 {
@@ -859,43 +879,6 @@ func TestV3LeaseFailover(t *testing.T) {
 
 	if !leaseExist(t, clus, lresp.ID) {
 		t.Error("unexpected lease not exists")
-	}
-}
-
-// TestV3LeaseRequireLeader ensures that a Recv will get a leader
-// loss error if there is no leader.
-func TestV3LeaseRequireLeader(t *testing.T) {
-	integration.BeforeTest(t)
-
-	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
-	defer clus.Terminate(t)
-
-	lc := integration.ToGRPC(clus.Client(0)).Lease
-	clus.Members[1].Stop(t)
-	clus.Members[2].Stop(t)
-
-	md := metadata.Pairs(rpctypes.MetadataRequireLeaderKey, rpctypes.MetadataHasLeader)
-	mctx := metadata.NewOutgoingContext(t.Context(), md)
-	ctx, cancel := context.WithCancel(mctx)
-	defer cancel()
-	lac, err := lc.LeaseKeepAlive(ctx)
-	require.NoError(t, err)
-
-	donec := make(chan struct{})
-	go func() {
-		defer close(donec)
-		resp, err := lac.Recv()
-		if err == nil {
-			t.Errorf("got response %+v, expected error", resp)
-		}
-		if rpctypes.ErrorDesc(err) != rpctypes.ErrNoLeader.Error() {
-			t.Errorf("err = %v, want %v", err, rpctypes.ErrNoLeader)
-		}
-	}()
-	select {
-	case <-time.After(5 * time.Second):
-		t.Fatal("did not receive leader loss error (in 5-sec)")
-	case <-donec:
 	}
 }
 
