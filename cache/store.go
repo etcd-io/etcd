@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/btree"
+	"k8s.io/utils/third_party/forked/golang/btree"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
@@ -38,7 +38,7 @@ type store struct {
 }
 
 func newStore(degree int, historyCapacity int) *store {
-	tree := btree.New(degree)
+	tree := btree.New[*kvItem](degree, kvItemLess)
 	return &store{
 		degree:  degree,
 		latest:  snapshot{rev: 0, tree: tree},
@@ -55,8 +55,8 @@ func newKVItem(kv *mvccpb.KeyValue) *kvItem {
 	return &kvItem{key: string(kv.Key), kv: kv}
 }
 
-func (a *kvItem) Less(b btree.Item) bool {
-	return a.key < b.(*kvItem).key
+func kvItemLess(a, b *kvItem) bool {
+	return a.key < b.key
 }
 
 func (s *store) Get(startKey, endKey []byte, rev int64) ([]*mvccpb.KeyValue, int64, error) {
@@ -106,7 +106,7 @@ func (s *store) Restore(kvs []*mvccpb.KeyValue, rev int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.latest.tree = btree.New(s.degree)
+	s.latest.tree = btree.New[*kvItem](s.degree, kvItemLess)
 	for _, kv := range kvs {
 		s.latest.tree.ReplaceOrInsert(newKVItem(kv))
 	}
@@ -152,7 +152,7 @@ func (s *store) applyEventsLocked(events []*clientv3.Event) error {
 			ev := events[i]
 			switch ev.Type {
 			case clientv3.EventTypeDelete:
-				if removed := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); removed == nil {
+				if _, ok := s.latest.tree.Delete(&kvItem{key: string(ev.Kv.Key)}); !ok {
 					return fmt.Errorf("cache: delete non-existent key %s", string(ev.Kv.Key))
 				}
 			case clientv3.EventTypePut:
