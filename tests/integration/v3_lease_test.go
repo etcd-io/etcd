@@ -1065,6 +1065,7 @@ func TestV3LeaseRecoverKeyWithMultipleLease(t *testing.T) {
 	clus.Members[0].Stop(t)
 	clus.Members[0].Restart(t)
 	clus.WaitMembersForLeader(t, clus.Members)
+	clus.Members[0].WaitStarted(t)
 	for i, leaseID := range leaseIDs {
 		if !leaseExist(t, clus, leaseID) {
 			t.Errorf("#%d: unexpected lease not exists", i)

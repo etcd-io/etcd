@@ -673,6 +673,7 @@ func TestV3PutIgnoreValue(t *testing.T) {
 		{ // put failure for non-existent key
 			func() error {
 				preq := newPutReq()
+				preq.Value = nil
 				preq.IgnoreValue = true
 				_, err := kvc.Put(t.Context(), preq)
 				return err
@@ -1176,8 +1177,8 @@ func TestV3TooLargeRequest(t *testing.T) {
 
 	kvc := integration.ToGRPC(clus.RandClient()).KV
 
-	// 2MB request value
-	largeV := make([]byte, 2*1024*1024)
+	// Must exceed MaxRequestBytes (1.5MB) but stay under gRPC MaxRecvMsgSize (2MB)
+	largeV := make([]byte, 1624*1024)
 	preq := &pb.PutRequest{Key: []byte("foo"), Value: largeV}
 
 	_, err := kvc.Put(t.Context(), preq)
@@ -2166,6 +2167,9 @@ func TestGRPCStreamRequireLeader(t *testing.T) {
 
 // TestV3LargeRequests ensures that configurable MaxRequestBytes works as intended.
 func TestV3LargeRequests(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpcproxy does not propagate MaxRequestBytes to its internal gRPC client connection")
+	}
 	integration.BeforeTest(t)
 	tests := []struct {
 		maxRequestBytes uint
@@ -2269,7 +2273,91 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 }
 
 func eqErrGRPC(err1 error, err2 error) bool {
-	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+	if err1 == nil && err2 == nil {
+		return true
+	}
+	if err1 == nil || err2 == nil {
+		return false
+	}
+	s1 := mustGRPCStatus(err1)
+	s2 := mustGRPCStatus(err2)
+	return s1.Code() == s2.Code() && s1.Message() == s2.Message()
+}
+
+func mustGRPCStatus(err error) *status.Status {
+	s, ok := status.FromError(err)
+	if ok {
+		return s
+	}
+	// In grpcproxy mode, ToGRPC adapters bypass the gRPC wire so errors
+	// arrive as rpctypes.EtcdError instead of gRPC status errors.
+	var etcdErr rpctypes.EtcdError
+	if errors.As(err, &etcdErr) {
+		return status.New(etcdErr.Code(), etcdErr.Error())
+	}
+	panic(fmt.Sprintf("eqErrGRPC: not a gRPC status error: %T %v", err, err))
+}
+
+func TestEqErrGRPC(t *testing.T) {
+	tests := []struct {
+		name     string
+		err1     error
+		err2     error
+		expected bool
+	}{
+		{
+			name:     "same error - same object",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "wire reconstruction - same code and message",
+			err1:     status.Error(codes.FailedPrecondition, "etcdserver: lease already exists"),
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		{
+			name:     "same code, different message",
+			err1:     status.Error(codes.FailedPrecondition, "error A"),
+			err2:     status.Error(codes.FailedPrecondition, "error B"),
+			expected: false,
+		},
+		{
+			name:     "different code, same message",
+			err1:     status.Error(codes.FailedPrecondition, "same message"),
+			err2:     status.Error(codes.NotFound, "same message"),
+			expected: false,
+		},
+		{
+			name:     "different code, different message",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseNotFound,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if result := eqErrGRPC(tt.err1, tt.err2); result != tt.expected {
+				t.Errorf("eqErrGRPC(%v, %v) = %v, want %v", tt.err1, tt.err2, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEqErrGRPCHandlesEtcdError(t *testing.T) {
+	require.True(t, eqErrGRPC(rpctypes.ErrUserEmpty, rpctypes.ErrGRPCUserEmpty))
+	require.False(t, eqErrGRPC(rpctypes.ErrUserEmpty, rpctypes.ErrGRPCPermissionDenied))
+}
+
+func TestEqErrGRPCPanicsOnPlainError(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Errorf("eqErrGRPC should panic on plain error")
+		}
+	}()
+	eqErrGRPC(errors.New("plain error"), rpctypes.ErrGRPCUserEmpty)
 }
 
 // waitForRestart tries a range request until the client's server responds.
