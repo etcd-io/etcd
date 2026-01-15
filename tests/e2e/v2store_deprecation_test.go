@@ -16,21 +16,22 @@ package e2e
 
 import (
 	"context"
-	"reflect"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
 
-	"github.com/coreos/go-semver/semver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zaptest"
 
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
+	"go.etcd.io/etcd/client/pkg/v3/types"
+	"go.etcd.io/etcd/server/v3/etcdserver"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
-	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
-	"go.etcd.io/etcd/server/v3/storage/schema"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 )
@@ -45,6 +46,8 @@ func TestV2DeprecationNotYet(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// TestV2DeprecationSnapshotMatches ensures that etcd v3.7 still commits v2 store
+// changes to the snapshot for backwards compatibility.
 func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	e2e.BeforeTest(t)
 	lastReleaseData := t.TempDir()
@@ -52,15 +55,54 @@ func TestV2DeprecationSnapshotMatches(t *testing.T) {
 	if !fileutil.Exist(e2e.BinPath.EtcdLastRelease) {
 		t.Skipf("%q does not exist", e2e.BinPath.EtcdLastRelease)
 	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
 	var snapshotCount uint64 = 10
+
 	epc := runEtcdAndCreateSnapshot(t, e2e.LastVersion, lastReleaseData, snapshotCount)
 	oldMemberDataDir := epc.Procs[0].Config().DataDirPath
+	cc1 := epc.Etcdctl()
+	addAndRemoveKeysAndMembers(ctx, t, cc1, snapshotCount)
 	require.NoError(t, epc.Close())
+
 	epc = runEtcdAndCreateSnapshot(t, e2e.CurrentVersion, currentReleaseData, snapshotCount)
 	newMemberDataDir := epc.Procs[0].Config().DataDirPath
+	cc2 := epc.Etcdctl()
+	addAndRemoveKeysAndMembers(ctx, t, cc2, snapshotCount)
 	require.NoError(t, epc.Close())
 
 	assertSnapshotsMatch(t, oldMemberDataDir, newMemberDataDir)
+}
+
+func addAndRemoveKeysAndMembers(ctx context.Context, tb testing.TB, cc *e2e.EtcdctlV3, snapshotCount uint64) {
+	// Execute some non-trivial key&member operation
+	var i uint64
+	for i = 0; i < snapshotCount*3; i++ {
+		_, err := cc.Put(ctx, fmt.Sprintf("%d", i), "1", config.PutOptions{})
+		require.NoError(tb, err)
+	}
+	member1, err := cc.MemberAddAsLearner(ctx, "member1", []string{"http://127.0.0.1:2000"})
+	require.NoError(tb, err)
+
+	for i = 0; i < snapshotCount*2; i++ {
+		_, err = cc.Delete(ctx, fmt.Sprintf("%d", i), config.DeleteOptions{})
+		require.NoError(tb, err)
+	}
+	_, err = cc.MemberRemove(ctx, member1.Member.ID)
+	require.NoError(tb, err)
+
+	for i = 0; i < snapshotCount; i++ {
+		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "2", config.PutOptions{})
+		require.NoError(tb, err)
+	}
+	_, err = cc.MemberAddAsLearner(ctx, "member2", []string{"http://127.0.0.1:2001"})
+	require.NoError(tb, err)
+
+	for i = 0; i < snapshotCount/2; i++ {
+		_, err = cc.Put(ctx, fmt.Sprintf("%d", i), "3", config.PutOptions{})
+		assert.NoError(tb, err)
+	}
 }
 
 func TestV2DeprecationSnapshotRecover(t *testing.T) {
@@ -119,36 +161,58 @@ func filterSnapshotFiles(path string) bool {
 
 func assertSnapshotsMatch(tb testing.TB, firstDataDir, secondDataDir string) {
 	lg := zaptest.NewLogger(tb)
+
 	firstFiles, err := fileutil.ListFiles(firstDataDir, filterSnapshotFiles)
 	require.NoError(tb, err)
+
 	secondFiles, err := fileutil.ListFiles(secondDataDir, filterSnapshotFiles)
 	require.NoError(tb, err)
+
 	assert.NotEmpty(tb, firstFiles)
 	assert.NotEmpty(tb, secondFiles)
 	assert.Len(tb, secondFiles, len(firstFiles))
+
 	sort.Strings(firstFiles)
 	sort.Strings(secondFiles)
 	for i := 0; i < len(firstFiles); i++ {
-		assertMembershipEqual(tb, lg)
+		assertV2StoreMembershipEqual(tb, lg, firstFiles[i], secondFiles[i])
 	}
 }
 
-func assertMembershipEqual(tb testing.TB, lg *zap.Logger) {
-	rc1 := membership.NewCluster(zaptest.NewLogger(tb))
-	be1, _ := betesting.NewDefaultTmpBackend(tb)
-	defer betesting.Close(tb, be1)
-	rc1.SetBackend(schema.NewMembershipBackend(lg, be1))
-	rc1.Recover(func(lg *zap.Logger, v *semver.Version) {})
+func assertV2StoreMembershipEqual(tb testing.TB, lg *zap.Logger, firstSnapPath, secondSnapPath string) {
+	st1 := loadV2StoreData(tb, lg, firstSnapPath)
+	st2 := loadV2StoreData(tb, lg, secondSnapPath)
 
-	rc2 := membership.NewCluster(zaptest.NewLogger(tb))
-	be2, _ := betesting.NewDefaultTmpBackend(tb)
-	defer betesting.Close(tb, be2)
-	rc2.SetBackend(schema.NewMembershipBackend(lg, be2))
-	rc2.Recover(func(lg *zap.Logger, v *semver.Version) {})
+	st1Members, st1Deleted := membership.MembersFromStore(lg, st1)
+	st2Members, st2Deleted := membership.MembersFromStore(lg, st2)
 
-	// membership should match
-	if !reflect.DeepEqual(rc1.Members(), rc2.Members()) {
-		tb.Logf("memberids_from_last_version = %+v, member_ids_from_current_version = %+v", rc1.MemberIDs(), rc2.MemberIDs())
-		tb.Errorf("members_from_last_version_snapshot = %+v, members_from_current_version_snapshot %+v", rc1.Members(), rc2.Members())
+	require.Lenf(tb, st1Members, len(st2Members), "number of members in v2 store do not match")
+	require.NotEmptyf(tb, st1Members, "no members found in v2 store")
+	require.Lenf(tb, st1Deleted, len(st2Deleted), "number of deleted members in v2 store do not match")
+
+	// remove ID because original ID was generated from hash of peerURLs + clusterName + time
+	require.Equal(tb, rebuildMembers(tb, st1Members), rebuildMembers(tb, st2Members))
+}
+
+// loadV2StoreData reads v2 store from the snapshot file at fpath.
+func loadV2StoreData(tb testing.TB, lg *zap.Logger, fpath string) v2store.Store {
+	sn, err := snap.Read(lg, fpath)
+	require.NoError(tb, err)
+
+	v2data := v2store.New(etcdserver.StoreClusterPrefix, etcdserver.StoreKeysPrefix)
+	v2data.Recovery(sn.Data)
+	return v2data
+}
+
+// rebuildMembers rebuilds the members map with zeroed IDs and peerURLs as keys.
+func rebuildMembers(tb testing.TB, members map[types.ID]*membership.Member) map[string]*membership.Member {
+	newMembers := make(map[string]*membership.Member)
+	for _, m := range members {
+		peerURLs, err := types.NewURLs(m.PeerURLs)
+		require.NoError(tb, err)
+
+		m.ID = 0
+		newMembers[peerURLs.String()] = m
 	}
+	return newMembers
 }

@@ -115,7 +115,7 @@ func IsMetaStoreOnly(store v2store.Store) (bool, error) {
 }
 
 func verifyNoMembersInStore(lg *zap.Logger, s v2store.Store) {
-	members, removed := membersFromStore(lg, s)
+	members, removed := MembersFromStore(lg, s)
 	if len(members) != 0 || len(removed) != 0 {
 		lg.Panic("store has membership info")
 	}
