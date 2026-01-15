@@ -137,7 +137,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				Client:      c,
 				KeyStore:    keyStore,
 				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				WatchConfig: normalizeWatchConfig(profile.WatchConfig),
 			})
 		}(c)
 	}
@@ -152,7 +152,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				Client:      c,
 				KeyStore:    keyStore,
 				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				WatchConfig: normalizeWatchConfig(profile.WatchConfig),
 			})
 		}(c)
 	}
@@ -380,6 +380,15 @@ type RunWatchLoopParam struct {
 	KeyStore            *keyStore
 	Finish              <-chan struct{}
 	options.WatchConfig // Embedded: Interval and RevisionOffset
+}
+
+// normalizeWatchConfig returns a copy of the config with validated values.
+// If Interval is <= 0, it's set to DefaultWatchInterval.
+func normalizeWatchConfig(cfg options.WatchConfig) options.WatchConfig {
+	if cfg.Interval <= 0 {
+		cfg.Interval = DefaultWatchInterval
+	}
+	return cfg
 }
 
 type Traffic interface {
