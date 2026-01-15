@@ -318,9 +318,6 @@ func TestV3LeaseKeepAlive(t *testing.T) {
 // TestV3LeaseKeepAliveForwardingCatchError ensures the server properly generates error
 // codes while the follower server is forwarding LeaseKeepAlive request to the leader.
 func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
-	if len(gofail.List()) == 0 {
-		t.Skip("please run 'make gofail-enable' before running the test")
-	}
 	integration.BeforeTest(t)
 	// Longer than leaseHandler.ServeHTTP()'s default timeout duration
 	sleepDuration := 8 * time.Second
@@ -346,6 +343,7 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 
 	// Shows current behavior: client cancel during forwarding incorrectly returns Unavailable.
 	t.Run("client cancels while forwarding", func(t *testing.T) {
+		integration.SkipIfNoGoFail(t)
 		leader, follower, _ := setupLeaseForwardingCluster(t)
 		leaderClient := integration.ToGRPC(leader.Client).Lease
 
@@ -385,6 +383,7 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 	})
 
 	t.Run("forwarding times out", func(t *testing.T) {
+		integration.SkipIfNoGoFail(t)
 		leader, follower, _ := setupLeaseForwardingCluster(t)
 		leaderClient := integration.ToGRPC(leader.Client).Lease
 
@@ -427,8 +426,11 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = keepAliveClient.Recv()
-		require.Equal(t, rpctypes.ErrGRPCNoLeader, err)
-		require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+		require.Equal(t, rpctypes.ErrNoLeader.Error(), rpctypes.ErrorDesc(err))
+		// Skip metric check in proxy mode - metrics are recorded on the proxy, not the etcd server.
+		if !integration.ThroughProxy {
+			require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+		}
 	})
 
 	// Client receives NoLeader error after the waitLeader() timed out in LeaseRenew().
@@ -1110,10 +1112,7 @@ func TestV3LeaseTimeToLiveWithLeaderChanged(t *testing.T) {
 }
 
 func testV3LeaseTimeToLiveWithLeaderChanged(t *testing.T, fpName string) {
-	if len(gofail.List()) == 0 {
-		t.Skip("please run 'make gofail-enable' before running the test")
-	}
-
+	integration.SkipIfNoGoFail(t)
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})

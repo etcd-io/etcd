@@ -1540,9 +1540,7 @@ func TestV3NoEventsLostOnCompact(t *testing.T) {
 		t.Skip("grpc proxy currently does not support requesting progress notifications")
 	}
 	integration.BeforeTest(t)
-	if len(gofail.List()) == 0 {
-		t.Skip("please run 'make gofail-enable' before running the test")
-	}
+	integration.SkipIfNoGoFail(t)
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
