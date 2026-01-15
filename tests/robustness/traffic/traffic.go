@@ -28,7 +28,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
 	"go.etcd.io/etcd/tests/v3/robustness/model"
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/validate"
 )
@@ -49,10 +48,6 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
-		WatchConfig: options.WatchConfig{
-			Interval:       DefaultWatchInterval,
-			RevisionOffset: DefaultRevisionOffset,
-		},
 	}
 	HighTrafficProfile = Profile{
 		MinimalQPS:                     100,
@@ -61,10 +56,6 @@ var (
 		MemberClientCount:              6,
 		ClusterClientCount:             2,
 		MaxNonUniqueRequestConcurrency: 3,
-		WatchConfig: options.WatchConfig{
-			Interval:       DefaultWatchInterval,
-			RevisionOffset: DefaultRevisionOffset,
-		},
 	}
 )
 
@@ -134,10 +125,9 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:      c,
-				KeyStore:    keyStore,
-				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				Client:   c,
+				KeyStore: keyStore,
+				Finish:   finish,
 			})
 		}(c)
 	}
@@ -149,10 +139,9 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:      c,
-				KeyStore:    keyStore,
-				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				Client:   c,
+				KeyStore: keyStore,
+				Finish:   finish,
 			})
 		}(c)
 	}
@@ -336,7 +325,6 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
-	options.WatchConfig
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -346,16 +334,6 @@ func (p Profile) WithoutCompaction() Profile {
 
 func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	p.CompactPeriod = cp
-	return p
-}
-
-func (p Profile) WithWatchInterval(interval time.Duration) Profile {
-	p.Interval = interval
-	return p
-}
-
-func (p Profile) WithWatchRevisionOffset(offset int64) Profile {
-	p.RevisionOffset = offset
 	return p
 }
 
@@ -376,10 +354,9 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client              *client.RecordingClient
-	KeyStore            *keyStore
-	Finish              <-chan struct{}
-	options.WatchConfig // Embedded: Interval and RevisionOffset
+	Client   *client.RecordingClient
+	KeyStore *keyStore
+	Finish   <-chan struct{}
 }
 
 type Traffic interface {
@@ -398,7 +375,7 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			return
 		case <-p.Finish:
 			return
-		case <-time.After(p.Interval):
+		case <-time.After(DefaultWatchInterval):
 			// Time to spawn a new watch
 		}
 
@@ -407,7 +384,7 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			if err != nil {
 				return err
 			}
-			rev := resp.Header.Revision + p.RevisionOffset
+			rev := resp.Header.Revision + DefaultRevisionOffset
 
 			watchCtx, cancel := context.WithCancel(ctx)
 			defer cancel()

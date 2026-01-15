@@ -21,8 +21,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 )
 
 type CollectClusterWatchEventsParam struct {
@@ -31,7 +29,6 @@ type CollectClusterWatchEventsParam struct {
 	MaxRevisionChan <-chan int64
 	Cfg             WatchConfig
 	ClientSet       *ClientSet
-	options.WatchConfig
 }
 
 func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
