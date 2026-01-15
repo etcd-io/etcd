@@ -111,7 +111,7 @@ verify-bom:
 
 .PHONY: fix-bom
 fix-bom:
-	./scripts/updatebom.sh
+	./scripts/fix/bom.sh
 
 .PHONY: verify-dep
 verify-dep:
