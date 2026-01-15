@@ -58,6 +58,10 @@ func TestCurlV3AuthEnableDisableStatus(t *testing.T) {
 	testCtl(t, testCurlV3AuthEnableDisableStatus)
 }
 
+func TestCurlV3AuthNotEnabledErrorField(t *testing.T) {
+	testCtl(t, testCurlV3AuthNotEnabledErrorField)
+}
+
 func testCurlV3Auth(cx ctlCtx) {
 	usernames := []string{"root", "nonroot", "nooption"}
 	pwds := []string{"toor", "pass", "pass"}
@@ -407,4 +411,29 @@ func testCurlV3AuthEnableDisableStatus(cx ctlCtx) {
 		Value:    "{}",
 		Expected: expect.ExpectedResponse{Value: "revision"},
 	}), "testCurlV3AuthEnableDisableStatus failed to get auth status")
+}
+
+func testCurlV3AuthNotEnabledErrorField(cx ctlCtx) {
+	authreq, err := json.Marshal(&pb.AuthenticateRequest{Name: "root", Password: "toor"})
+	require.NoError(cx.t, err)
+
+	args := e2e.CURLPrefixArgsCluster(cx.epc.Cfg, cx.epc.Procs[0], "POST", e2e.CURLReq{
+		Endpoint: "/v3/auth/authenticate",
+		Value:    string(authreq),
+	})
+	resp, err := runCommandAndReadJSONOutput(args)
+	require.NoError(cx.t, err)
+
+	errorField, ok := resp["error"].(string)
+	require.Truef(cx.t, ok, "grpc-gateway error field missing or not a string: %v", resp)
+
+	messageField, ok := resp["message"].(string)
+	require.Truef(cx.t, ok, "grpc-gateway message field missing or not a string: %v", resp)
+
+	require.Equalf(cx.t, messageField, errorField, "grpc-gateway error field should match message")
+	require.Equal(cx.t, "etcdserver: authentication is not enabled", messageField)
+
+	codeField, ok := resp["code"].(float64)
+	require.Truef(cx.t, ok, "grpc-gateway code field missing or not a number: %v", resp)
+	require.Equal(cx.t, 9, int(codeField))
 }

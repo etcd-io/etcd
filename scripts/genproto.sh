@@ -45,11 +45,21 @@ fi
 
 source ./scripts/test_lib.sh
 
-if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
-  echo "Could not find protoc 3.20.3, installing now..."
+GOOGLEAPI_ROOT=$(mktemp -d -t 'googleapi.XXXXX')
+readonly googleapi_commit=0adf469dcd7822bf5bc058a7b0217f5558a75643
 
+readonly PROTOC_VERSION="3.20.3"
+PROTOC_ROOT=$(mktemp -d -t 'protoc.XXXXX')
+
+function cleanup_temps() {
+  echo "Cleaning up ${PROTOC_ROOT} and ${GOOGLEAPI_ROOT}"
+  rm -rf "${PROTOC_ROOT}"
+  rm -rf "${GOOGLEAPI_ROOT}"
+}
+trap cleanup_temps EXIT
+
+function download_protoc() {
   arch=$(go env GOARCH)
-
   case ${arch} in
     "amd64") file="x86_64" ;;
     "arm64") file="aarch_64" ;;
@@ -59,38 +69,40 @@ if [[ $(protoc --version | cut -f2 -d' ') != "3.20.3" ]]; then
       ;;
   esac
 
-  protoc_download_file="protoc-3.20.3-linux-${file}.zip"
+  protoc_download_file="protoc-${PROTOC_VERSION}-linux-${file}.zip"
   if [ "$OS" == "darwin" ]; then
     # protoc-3.20.3 does not have pre-built binaries for darwin_arm64. Thanks to Rosetta, we could use x86_64 binary.
-    protoc_download_file="protoc-3.20.3-osx-x86_64.zip"
+    protoc_download_file="protoc-${PROTOC_VERSION}-osx-x86_64.zip"
   fi
-  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/${protoc_download_file}"
+
+  download_url="https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${protoc_download_file}"
   echo "Running on ${OS} ${arch}. Downloading ${protoc_download_file}"
   mkdir -p bin
-  wget ${download_url} && unzip -p ${protoc_download_file} bin/protoc > tmpFile && mv tmpFile bin/protoc
+  wget ${download_url} && unzip ${protoc_download_file} -d "${PROTOC_ROOT}"
   rm ${protoc_download_file}
-  chmod +x bin/protoc
-  PATH=$PATH:$(pwd)/bin
-  export PATH
-  echo "Now running: $(protoc --version)"
 
-fi
+  chmod +x "${PROTOC_ROOT}/bin/protoc"
+  export PATH=${PROTOC_ROOT}/bin:${PATH}
+}
+
+function check_protoc_installed() {
+  local version
+
+  version=$(protoc --version | awk '{print $2}')
+  echo "protoc - $version"
+  if [ "${version}" != "${PROTOC_VERSION}" ]; then
+    echo "protoc version ${version} found, but v${PROTOC_VERSION} is required"
+    exit 1
+  fi
+}
 
 GOFAST_BIN=$(tool_get_bin github.com/gogo/protobuf/protoc-gen-gofast)
+GO_PROTOGEN_BIN=$(tool_get_bin google.golang.org/protobuf/cmd/protoc-gen-go)
 GRPC_GATEWAY_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)
 OPENAPIV2_BIN=$(tool_get_bin github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2)
 GOGOPROTO_ROOT="$(tool_pkg_dir github.com/gogo/protobuf/proto)/.."
 GRPC_GATEWAY_ROOT="$(tool_pkg_dir github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway)/.."
 RAFT_ROOT="$(tool_pkg_dir go.etcd.io/raft/v3/raftpb)/.."
-GOOGLEAPI_ROOT=$(mktemp -d -t 'googleapi.XXXXX')
-
-readonly googleapi_commit=0adf469dcd7822bf5bc058a7b0217f5558a75643
-
-function cleanup_googleapi() {
-  rm -rf "${GOOGLEAPI_ROOT}"
-}
-
-trap cleanup_googleapi EXIT
 
 # TODO(ahrtr): use buf (https://github.com/bufbuild/buf) to manage the protobuf dependencies?
 function download_googleapi() {
@@ -102,12 +114,16 @@ function download_googleapi() {
   run popd
 }
 
+download_protoc
+check_protoc_installed
 download_googleapi
 
 echo
 echo "Resolved binary and packages versions:"
 echo "  - protoc-gen-gofast:       ${GOFAST_BIN}"
+echo "  - protoc-gen-go:           ${GO_PROTOGEN_BIN}"
 echo "  - protoc-gen-grpc-gateway: ${GRPC_GATEWAY_BIN}"
+echo "  - protoc-root:             ${PROTOC_ROOT}"
 echo "  - openapiv2:               ${OPENAPIV2_BIN}"
 echo "  - gogoproto-root:          ${GOGOPROTO_ROOT}"
 echo "  - grpc-gateway-root:       ${GRPC_GATEWAY_ROOT}"
@@ -130,6 +146,17 @@ for dir in ${DIRS}; do
     run_go_tool "golang.org/x/tools/cmd/goimports" -w ./**/*.pb.go
   run popd
 done
+
+run pushd "./server/etcdserver/api/internalpb"
+  # Using non-gogo Go proto to keep compatibility with google.rpc.Status for grpc-gateway.
+  run protoc \
+    --go_out=. \
+    --go_opt=paths=source_relative \
+    -I=".:${PROTOC_ROOT}/include" \
+    ./*.proto
+  run gofmt -s -w ./*.pb.go
+  run_go_tool "golang.org/x/tools/cmd/goimports" -w ./*.pb.go
+run popd
 
 log_callout -e "\\nRunning swagger & grpc_gateway proto generation..."
 

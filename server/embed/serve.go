@@ -31,8 +31,10 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
+	statuspb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -40,6 +42,7 @@ import (
 	"go.etcd.io/etcd/pkg/v3/httputil"
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver"
+	"go.etcd.io/etcd/server/v3/etcdserver/api/internalpb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3client"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
@@ -342,6 +345,18 @@ func (sctx *serveCtx) registerGateway(dial func(ctx context.Context) (*grpc.Clie
 				},
 			},
 		),
+		gw.WithForwardResponseRewriter(func(_ context.Context, resp proto.Message) (any, error) {
+			st, ok := resp.(*statuspb.Status)
+			if !ok || st == nil {
+				return resp, nil
+			}
+			return &internalpb.GRPCGatewayError{
+				Error:   st.GetMessage(),
+				Code:    st.GetCode(),
+				Message: st.GetMessage(),
+				Details: st.GetDetails(),
+			}, nil
+		}),
 	)
 
 	handlers := []registerHandlerFunc{
