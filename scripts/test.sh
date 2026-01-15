@@ -154,7 +154,7 @@ function integration_pass {
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
                "${RUN_ARG[@]}" \
-               "$@"
+               "$@" || return 2
 
   run_go_tests ./tests/common/... \
                -p=2 \
@@ -163,7 +163,7 @@ function integration_pass {
                -timeout="${TIMEOUT:-15m}" \
                "${COMMON_TEST_FLAGS[@]}" \
                "${RUN_ARG[@]}" \
-               "$@"
+               "$@" || return 2
 
   integration_extra "$@"
 }
@@ -173,7 +173,8 @@ function e2e_pass {
   run_go_tests_expanding_packages ./tests/e2e/... \
                                     -timeout="${TIMEOUT:-30m}" \
                                     "${RUN_ARG[@]}" \
-                                    "$@"
+                                    "$@" || return 2
+
   run_go_tests_expanding_packages ./tests/common/... \
                                     -tags=e2e \
                                     -timeout="${TIMEOUT:-30m}" \
@@ -190,7 +191,7 @@ function robustness_pass {
 }
 
 function integration_e2e_pass {
-  run_pass "integration" "${@}"
+  run_pass "integration" "${@}" || return 2
   run_pass "e2e" "${@}"
 }
 
@@ -212,7 +213,7 @@ function generic_checker {
 }
 
 function grpcproxy_pass {
-  run_pass "grpcproxy_integration" "${@}"
+  run_pass "grpcproxy_integration" "${@}" || return 2
   run_pass "grpcproxy_e2e" "${@}"
 }
 
