@@ -32,7 +32,6 @@ import (
 	"go.etcd.io/etcd/tests/v3/antithesis/test-template/robustness/common"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
-	"go.etcd.io/etcd/tests/v3/robustness/options"
 	robustnessrand "go.etcd.io/etcd/tests/v3/robustness/random"
 	"go.etcd.io/etcd/tests/v3/robustness/report"
 	"go.etcd.io/etcd/tests/v3/robustness/traffic"
@@ -49,10 +48,6 @@ var (
 		MemberClientCount:              3,
 		ClusterClientCount:             1,
 		MaxNonUniqueRequestConcurrency: 3,
-		WatchConfig: options.WatchConfig{
-			Interval:       DefaultWatchInterval,
-			RevisionOffset: DefaultRevisionOffset,
-		},
 	}
 	trafficNames = []string{
 		"etcd",
@@ -124,7 +119,6 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 			MaxRevisionChan: maxRevisionChan,
 			Cfg:             watchConfig,
 			ClientSet:       watchSet,
-			WatchConfig:     profile.WatchConfig,
 		})
 		return err
 	})
@@ -192,10 +186,9 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			defer wg.Done()
 			defer c.Close()
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:      c,
-				KeyStore:    keyStore,
-				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				Client:   c,
+				KeyStore: keyStore,
+				Finish:   finish,
 			})
 		}(c)
 	}
@@ -206,10 +199,9 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			defer wg.Done()
 			defer c.Close()
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:      c,
-				KeyStore:    keyStore,
-				Finish:      finish,
-				WatchConfig: profile.WatchConfig,
+				Client:   c,
+				KeyStore: keyStore,
+				Finish:   finish,
 			})
 		}(c)
 	}
