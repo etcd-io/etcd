@@ -104,7 +104,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		simulateTraffic(ctx, tf, hosts, trafficSet, duration)
+		simulateTraffic(ctx, lg, tf, hosts, trafficSet, duration)
 		maxRevision := report.OperationsMaxRevision(trafficSet.Reports())
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
@@ -138,7 +138,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	return reports, nil
 }
 
-func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
+func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
 	var wg sync.WaitGroup
 	leaseStorage := identity.NewLeaseIDStorage()
 	kubernetesStorage := traffic.NewKubernetesStorage()
@@ -195,6 +195,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 					Storage:   kubernetesStorage,
 					Finish:    finish,
 					WaitGroup: &wg,
+					Logger:    lg,
 				})
 			}(c)
 		}
@@ -210,6 +211,7 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 					Storage:   kubernetesStorage,
 					Finish:    finish,
 					WaitGroup: &wg,
+					Logger:    lg,
 				})
 			}(c)
 		}
