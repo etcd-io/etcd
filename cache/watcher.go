@@ -15,24 +15,34 @@
 package cache
 
 import (
+	"errors"
 	"sync"
 
 	"go.etcd.io/etcd/api/v3/v3rpc/rpctypes"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
-// watcher holds one client’s buffered stream of events.
+// watcher holds one client's buffered stream of events.
 type watcher struct {
 	respCh     chan clientv3.WatchResponse
 	cancelResp *clientv3.WatchResponse
 	keyPred    KeyPredicate
 	stopOnce   sync.Once
+	// Store watchers cannot be resynced - if they overflow, the watch must restart.
+	isStoreWatcher bool
 }
 
 func newWatcher(bufSize int, pred KeyPredicate) *watcher {
 	return &watcher{
 		respCh:  make(chan clientv3.WatchResponse, bufSize),
 		keyPred: pred,
+	}
+}
+
+func newStoreWatcher(bufSize int) *watcher {
+	return &watcher{
+		respCh:         make(chan clientv3.WatchResponse, bufSize),
+		isStoreWatcher: true,
 	}
 }
 
@@ -64,6 +74,21 @@ func (w *watcher) Compact(compactRev int64) {
 		Canceled:        true,
 		CompactRevision: compactRev,
 		CancelReason:    rpctypes.ErrCompacted.Error(),
+	}
+	w.stopOnce.Do(func() {
+		w.cancelResp = resp
+		close(w.respCh)
+	})
+}
+
+// ErrStoreWatcherOverflow is returned when the store watcher's buffer overflows.
+var ErrStoreWatcherOverflow = errors.New("cache: store watcher buffer overflow")
+
+// Overflow signals that the store watcher cannot keep up and the watch should be restarted.
+func (w *watcher) Overflow() {
+	resp := &clientv3.WatchResponse{
+		Canceled:     true,
+		CancelReason: ErrStoreWatcherOverflow.Error(),
 	}
 	w.stopOnce.Do(func() {
 		w.cancelResp = resp

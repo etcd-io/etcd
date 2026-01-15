@@ -216,6 +216,11 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 
 	for w, nextRev := range d.activeWatchers {
 		if nextRev != 0 && firstRev > nextRev {
+			if w.isStoreWatcher {
+				w.Overflow()
+				delete(d.activeWatchers, w)
+				continue
+			}
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 			continue
@@ -235,7 +240,13 @@ func (d *demux) broadcastEventsLocked(events []*clientv3.Event) {
 
 		if !w.enqueueResponse(clientv3.WatchResponse{
 			Events: events[sendStart:],
-		}) { // overflow → lagging
+		}) {
+			// Store watcher cannot be resynced - close with overflow error.
+			if w.isStoreWatcher {
+				w.Overflow()
+				delete(d.activeWatchers, w)
+				continue
+			}
 			d.laggingWatchers[w] = nextRev
 			delete(d.activeWatchers, w)
 		} else {

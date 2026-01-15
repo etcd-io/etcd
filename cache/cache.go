@@ -241,7 +241,7 @@ func (c *Cache) get(ctx context.Context) (*clientv3.GetResponse, error) {
 func (c *Cache) watch(rev int64) error {
 	readyOnce := sync.Once{}
 	for {
-		storeW := newWatcher(c.cfg.PerWatcherBufferSize, nil)
+		storeW := newStoreWatcher(c.cfg.PerWatcherBufferSize)
 		c.demux.Register(storeW, rev)
 		applyErr := make(chan error, 1)
 		c.waitGroup.Add(1)
@@ -269,6 +269,9 @@ func (c *Cache) applyStorage(storeW *watcher) error {
 			return nil
 		case resp, ok := <-storeW.respCh:
 			if !ok {
+				if storeW.cancelResp != nil && storeW.cancelResp.CancelReason == ErrStoreWatcherOverflow.Error() {
+					return ErrStoreWatcherOverflow
+				}
 				return nil
 			}
 			if err := c.store.Apply(resp); err != nil {
