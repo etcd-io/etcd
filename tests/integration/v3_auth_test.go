@@ -44,7 +44,7 @@ func TestV3AuthEmptyUserGet(t *testing.T) {
 	authSetupRoot(t, api.Auth)
 
 	_, err := api.KV.Range(ctx, &pb.RangeRequest{Key: []byte("abc")})
-	require.Truef(t, eqErrGRPC(err, rpctypes.ErrUserEmpty), "got %v, expected %v", err, rpctypes.ErrUserEmpty)
+	require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty), "got %v, expected %v", err, rpctypes.ErrGRPCUserEmpty)
 }
 
 // TestV3AuthEmptyUserPut ensures that a put with an empty user will return an empty user error,
@@ -68,7 +68,7 @@ func TestV3AuthEmptyUserPut(t *testing.T) {
 	// cluster terminating.
 	for i := 0; i < 10; i++ {
 		_, err := api.KV.Put(ctx, &pb.PutRequest{Key: []byte("foo"), Value: []byte("bar")})
-		require.Truef(t, eqErrGRPC(err, rpctypes.ErrUserEmpty), "got %v, expected %v", err, rpctypes.ErrUserEmpty)
+		require.Truef(t, eqErrGRPC(err, rpctypes.ErrGRPCUserEmpty), "got %v, expected %v", err, rpctypes.ErrGRPCUserEmpty)
 	}
 }
 
