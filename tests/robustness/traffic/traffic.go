@@ -133,6 +133,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
@@ -149,6 +150,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
@@ -368,6 +370,7 @@ type RunWatchLoopParam struct {
 	Storage   *storage
 	Finish    <-chan struct{}
 	WaitGroup *sync.WaitGroup
+	Logger    *zap.Logger
 }
 
 type Traffic interface {
@@ -391,11 +394,12 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		}
 
 		p.WaitGroup.Add(1)
-		go func() error {
+		go func() {
 			defer p.WaitGroup.Done()
 			resp, err := p.Client.Get(ctx, cfg.watchKey)
 			if err != nil {
-				return err
+				p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
+				return
 			}
 			rev := resp.Header.Revision + DefaultRevisionOffset
 
@@ -405,12 +409,12 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			for {
 				select {
 				case <-ctx.Done():
-					return ctx.Err()
+					return
 				case <-p.Finish:
-					return nil
+					return
 				case _, ok := <-w:
 					if !ok {
-						return nil
+						return
 					}
 				}
 			}
