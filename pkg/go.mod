@@ -13,7 +13,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.0-alpha.0
 	go.opentelemetry.io/otel/trace v1.39.0
 	go.uber.org/zap v1.27.1
-	golang.org/x/sys v0.39.0
+	golang.org/x/sys v0.40.0
 	google.golang.org/grpc v1.78.0
 )
 
