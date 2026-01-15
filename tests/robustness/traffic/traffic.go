@@ -125,9 +125,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:   c,
-				KeyStore: keyStore,
-				Finish:   finish,
+				Client:    c,
+				KeyStore:  keyStore,
+				Finish:    finish,
+				WaitGroup: &wg,
 			})
 		}(c)
 	}
@@ -139,9 +140,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:   c,
-				KeyStore: keyStore,
-				Finish:   finish,
+				Client:    c,
+				KeyStore:  keyStore,
+				Finish:    finish,
+				WaitGroup: &wg,
 			})
 		}(c)
 	}
@@ -354,9 +356,10 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client   *client.RecordingClient
-	KeyStore *keyStore
-	Finish   <-chan struct{}
+	Client    *client.RecordingClient
+	KeyStore  *keyStore
+	Finish    <-chan struct{}
+	WaitGroup *sync.WaitGroup
 }
 
 type Traffic interface {
@@ -379,7 +382,9 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			// Time to spawn a new watch
 		}
 
+		p.WaitGroup.Add(1)
 		go func() error {
+			defer p.WaitGroup.Done()
 			resp, err := p.Client.Get(ctx, cfg.watchKey)
 			if err != nil {
 				return err
