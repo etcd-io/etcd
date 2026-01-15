@@ -103,6 +103,20 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		return nil, err
 	}
 
+	if haveWAL {
+		sn := s.wal.snapshot
+		if sn == nil {
+			sn = &raftpb.Snapshot{}
+		}
+		cs := buildConfStateFromV3store(cfg.Logger, backend.be)
+
+		sn.Metadata.ConfState = cs
+		s.wal.snapshot = sn
+
+		cfg.Logger.Info("Constructed a new raft snapshot from v3 state", zap.Uint64("index", sn.Metadata.Index),
+			zap.Uint64("term", sn.Metadata.Term), zap.String("confState", sn.Metadata.ConfState.String()))
+	}
+
 	cfg.Logger.Info("bootstrapping raft")
 	raft := bootstrapRaft(cfg, cluster, s.wal)
 	return &bootstrappedServer{
@@ -112,6 +126,25 @@ func bootstrap(cfg config.ServerConfig) (b *bootstrappedServer, err error) {
 		cluster: cluster,
 		raft:    raft,
 	}, nil
+}
+
+func buildConfStateFromV3store(lg *zap.Logger, be backend.Backend) raftpb.ConfState {
+	members, _ := schema.NewMembershipBackend(lg, be).MustReadMembersFromBackend()
+	var (
+		voters   []uint64
+		learners []uint64
+	)
+	for _, m := range members {
+		if m.IsLearner {
+			learners = append(learners, uint64(m.ID))
+		} else {
+			voters = append(voters, uint64(m.ID))
+		}
+	}
+	return raftpb.ConfState{
+		Voters:   voters,
+		Learners: learners,
+	}
 }
 
 type bootstrappedServer struct {
@@ -399,6 +432,7 @@ func recoverSnapshot(cfg config.ServerConfig, be backend.Backend, beExist bool, 
 			zap.Uint64("snapshot-index", snapshot.Metadata.Index),
 			zap.String("snapshot-size", humanize.Bytes(uint64(snapshot.Size()))),
 			zap.String("confState", snapshot.Metadata.ConfState.String()),
+			zap.Int("walSnaps-count", len(walSnaps)),
 		)
 	}
 

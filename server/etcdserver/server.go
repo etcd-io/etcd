@@ -2008,7 +2008,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		return false, err
 	}
 
-	*confState = *s.r.ApplyConfChange(cc)
+	// We don't validate the configuration change when `shouldApplyV3`
+	// is false, so we shouldn't apply it to raft either in this case.
+	// Otherwise, we might apply an invalid confChange (which failed
+	// the validation previously) to raft on bootstrap.
+	if shouldApplyV3 {
+		*confState = *s.r.ApplyConfChange(cc)
+	}
 	s.beHooks.SetConfState(confState)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:
