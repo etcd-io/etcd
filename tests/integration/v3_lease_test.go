@@ -430,6 +430,41 @@ func TestV3LeaseKeepAliveForwardingCatchError(t *testing.T) {
 		require.Equal(t, rpctypes.ErrGRPCNoLeader, err)
 		require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
 	})
+
+	// Client receives NoLeader error after the waitLeader() timed out in LeaseRenew().
+	t.Run("catches NoLeader error without WithRequireLeader", func(t *testing.T) {
+		leader, follower, anotherFollower := setupLeaseForwardingCluster(t)
+		leaderClient := integration.ToGRPC(leader.Client).Lease
+		followerClient := integration.ToGRPC(follower.Client).Lease
+
+		grantResp, err := leaderClient.LeaseGrant(t.Context(), &pb.LeaseGrantRequest{TTL: 30})
+		require.NoError(t, err)
+		leaseID := grantResp.ID
+
+		keepAliveClient, err := followerClient.LeaseKeepAlive(t.Context())
+		require.NoError(t, err)
+		defer keepAliveClient.CloseSend()
+
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+		_, err = keepAliveClient.Recv()
+		require.NoError(t, err)
+		prevUnavailableCount := getLeaseKeepAliveMetric(t, follower, "Unavailable")
+
+		leader.Stop(t)
+		anotherFollower.Stop(t)
+		require.NoError(t, keepAliveClient.Send(&pb.LeaseKeepAliveRequest{ID: leaseID}))
+		_, err = keepAliveClient.Recv()
+		if integration.ThroughProxy {
+			// Known limitation: grpcproxy doesn't propagate NoLeader error without
+			// WithRequireLeader. The keepAliveLoop in server/proxy/grpcproxy/lease.go
+			// discards errors and only calls cancel(), resulting in context.Canceled.
+			// TODO: Consider fixing grpcproxy to properly propagate errors.
+			require.ErrorIs(t, err, context.Canceled)
+		} else {
+			require.Equal(t, rpctypes.ErrNoLeader.Error(), rpctypes.ErrorDesc(err))
+			require.Equal(t, prevUnavailableCount+1, getLeaseKeepAliveMetric(t, follower, "Unavailable"))
+		}
+	})
 }
 
 func setupLeaseForwardingCluster(t *testing.T) (*integration.Member, *integration.Member, *integration.Member) {
