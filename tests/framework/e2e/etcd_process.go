@@ -274,6 +274,9 @@ func (ep *EtcdServerProcess) Logs() LogsExpect {
 
 func (ep *EtcdServerProcess) Kill() error {
 	ep.cfg.lg.Info("killing server...", zap.String("name", ep.cfg.Name))
+	if ep.proc == nil {
+		return nil
+	}
 	return ep.proc.Signal(syscall.SIGKILL)
 }
 
