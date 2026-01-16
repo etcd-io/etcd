@@ -1427,7 +1427,6 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 			key := uniqueKeys[i%len(uniqueKeys)]
 			_, err := cli.Put(ctx, key, "")
 			if err != nil {
-				// Most likely the server is shutting down; just exit.
 				return
 			}
 			i++
@@ -1494,9 +1493,8 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 }
 
 func canRecvWatchEvent(t *testing.T, watcherCh clientv3.WatchChan, watchKey string) bool {
-
-	helperCtx, helperCancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer helperCancel()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
 
 	for {
 		select {
@@ -1512,7 +1510,7 @@ func canRecvWatchEvent(t *testing.T, watcherCh clientv3.WatchChan, watchKey stri
 				require.Equal(t, watchKey, string(event.Kv.Key))
 			}
 			return true
-		case <-helperCtx.Done():
+		case <-ctx.Done():
 			return false
 		}
 	}
