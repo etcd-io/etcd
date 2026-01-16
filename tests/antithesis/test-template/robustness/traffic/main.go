@@ -186,9 +186,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			defer wg.Done()
 			defer c.Close()
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:   c,
-				KeyStore: keyStore,
-				Finish:   finish,
+				Client:    c,
+				KeyStore:  keyStore,
+				Finish:    finish,
+				WaitGroup: &wg,
 			})
 		}(c)
 	}
@@ -199,9 +200,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			defer wg.Done()
 			defer c.Close()
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:   c,
-				KeyStore: keyStore,
-				Finish:   finish,
+				Client:    c,
+				KeyStore:  keyStore,
+				Finish:    finish,
+				WaitGroup: &wg,
 			})
 		}(c)
 	}
