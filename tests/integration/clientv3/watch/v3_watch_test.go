@@ -1393,29 +1393,25 @@ func TestV3WatchCancellation(t *testing.T) {
 	}
 }
 
-// TestV3WatchCancellationStorm reproduces the current behavior of the watch system
-// where a spike of watch cancel requests will cause deadlock in the stream. We should
-// fix the bug soon  and update this test accordingly.
 func TestV3WatchCancellationStorm(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
 
 	member := clus.Members[0]
-	// We have to use the in-process client here so that the connection between
-	// client and server isn't guarded by gRPC's backpressure mechanism, and
-	// thus we can force to overwhelm the system.
+	// Use the in-process client because the connection is not guarded by
+	// gRPC's backpressure flow control and thus vulnerable.
 	cli := member.ServerClient
 
-	keyPrefix := "/mykey"
+	keyPrefix := "mykey"
 	uniqueKeys := make([]string, 10)
 	for i := range uniqueKeys {
 		uniqueKeys[i] = fmt.Sprintf("%s-%d", keyPrefix, i)
 	}
 
-	// Background writer continuously generates PUT events that are being watched.
 	var writeWG sync.WaitGroup
 	writeWG.Add(1)
 	go func() {
@@ -1436,8 +1432,6 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 				return
 			}
 			i++
-			// We don't need extreme QPS here; a small sleep keeps CPU sane
-			// but still generates events fast enough for the test.
 			time.Sleep(10 * time.Millisecond)
 		}
 	}()
@@ -1447,85 +1441,82 @@ func TestV3WatchCancellationStorm(t *testing.T) {
 		ch     clientv3.WatchChan
 		cancel context.CancelFunc
 	}
-	const totalWatchers = 300
+
+	// Create many watchers and then cancel most of them in a burst.
+	numTotalWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	const totalWatchers = 500
 	const remainWatchers = 20
 	watchers := make([]watcherInfo, 0, totalWatchers)
-	// Create many watchers distributed over the 10 unique keys.
 	for i := 0; i < totalWatchers; i++ {
 		watcherCtx, watcherCancel := context.WithCancel(ctx)
 		key := uniqueKeys[i%len(uniqueKeys)]
 		ch := cli.Watch(watcherCtx, key)
-		watchers = append(watchers, watcherInfo{
-			key:    key,
-			ch:     ch,
-			cancel: watcherCancel,
-		})
+		watchers = append(watchers, watcherInfo{key: key, ch: ch, cancel: watcherCancel})
 	}
 
-	// Wait until all watchers are created
 	require.Eventuallyf(t, func() bool {
 		total := getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
-		return total == totalWatchers
-	}, 5*time.Second, 100*time.Millisecond,
+		return total >= totalWatchers+numTotalWatchers
+	}, 10*time.Second, 100*time.Millisecond,
 		"expected the cluster to create %d watchers", totalWatchers,
 	)
 
-	// Helper to check if the given watcher can still receive events within timeout.
-	canRecvWatchEvent := func(watcher watcherInfo, timeout time.Duration) bool {
-		helperCtx, helperCancel := context.WithTimeout(ctx, timeout)
-		defer helperCancel()
-
-		for {
-			select {
-			case resp, ok := <-watcher.ch:
-				if !ok {
-					return false
-				}
-				if len(resp.Events) == 0 {
-					// This can happen for progress notifications; just keep waiting.
-					continue
-				}
-				for _, event := range resp.Events {
-					require.Equal(t, watcher.key, string(event.Kv.Key))
-				}
-				return true
-			case <-helperCtx.Done():
-				return false
-			}
-		}
-	}
-
-	// Pick a probe watcher that we will NOT cancel (it should get stuck watching later).
-	probWatcher := watchers[len(watchers)-1]
-
-	// Make sure the probe watcher is actually working before we trigger the cancel storm.
-	received := canRecvWatchEvent(probWatcher, 5*time.Second)
-	require.Truef(t, received, "probe watcher should be able receive events before cancel storm")
-
-	// Cancel most of the watchers in a burst to overwhelm the watch system
-	canceledWatchers := totalWatchers - remainWatchers
-	for i := 0; i < canceledWatchers; i++ {
+	// Pick a probe watcher that we will not cancel (it will get stuck watching later).
+	probeWatcher := watchers[len(watchers)-1]
+	received := canRecvWatchEvent(t, probeWatcher.ch, probeWatcher.key)
+	require.Truef(t, received, "watcher should be able to receive events before the cancellation burst")
+	for i := 0; i < totalWatchers-remainWatchers; i++ {
 		watchers[i].cancel()
 	}
 
-	// Give the server some time to handle requests and then fill up its ctrl stream
-	// channel, Eventually the system will run into deadlock.
-	time.Sleep(3 * time.Second)
-
-	// Now the watcher cannot receive any watch events due to the deadlock
-	received = canRecvWatchEvent(probWatcher, 10*time.Second)
+	received = canRecvWatchEvent(t, probeWatcher.ch, probeWatcher.key)
 	require.Falsef(t, received, "deadlock was not reproduced and the probe watcher unexpectedly received events after cancel storm")
+	numSlowWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_slow_watcher_total")
+	numPendingEvents := getMetricVal(t, member, "etcd_debugging_mvcc_pending_events_total")
+	numTotalWatchers = getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	require.Positivef(t, numSlowWatchers, "expected some slow watchers")
+	require.Positivef(t, numPendingEvents, "expected some pending events")
+	require.Equal(t, numTotalWatchers, numSlowWatchers, "all watchers should become slow watchers now")
 
-	// There are many watchers that didn't get canceled and are considered "slow",
-	// and also there are pending events that can't be delivered.
-	slowWatchers := getMetricVal(t, member, "etcd_debugging_mvcc_slow_watcher_total")
-	pendingEvents := getMetricVal(t, member, "etcd_debugging_mvcc_pending_events_total")
-
-	require.Positivef(t, slowWatchers, "expected some slow watchers")
-	require.Positivef(t, pendingEvents, "expected some pending events")
+	const numNewWatchers = 50
+	newWatchers := make([]watcherInfo, 0, numNewWatchers)
+	for i := 0; i < numNewWatchers; i++ {
+		t.Logf("creating new watcher %d", i)
+		watcherCtx, watcherCancel := context.WithCancel(ctx)
+		key := uniqueKeys[i%len(uniqueKeys)]
+		ch := cli.Watch(watcherCtx, key)
+		newWatchers = append(newWatchers, watcherInfo{key: key, ch: ch, cancel: watcherCancel})
+	}
+	numCreatedWatchers := numTotalWatchers - getMetricVal(t, member, "etcd_debugging_mvcc_watcher_total")
+	require.Zero(t, numCreatedWatchers, "expecting no new watchers successfully created")
 
 	cancel()
 	writeWG.Wait()
+}
+
+func canRecvWatchEvent(t *testing.T, watcherCh clientv3.WatchChan, watchKey string) bool {
+
+	helperCtx, helperCancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer helperCancel()
+
+	for {
+		select {
+		case resp, ok := <-watcherCh:
+			if !ok {
+				return false
+			}
+			if len(resp.Events) == 0 {
+				// This can happen for progress notifications; just keep waiting.
+				continue
+			}
+			for _, event := range resp.Events {
+				require.Equal(t, watchKey, string(event.Kv.Key))
+			}
+			return true
+		case <-helperCtx.Done():
+			return false
+		}
+	}
 }
 
 // TestV3WatchCloseCancelRace ensures that watch close doesn't decrement the watcher total too far.
