@@ -391,7 +391,7 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			}
 			rev := resp.Header.Revision + DefaultRevisionOffset
 
-			watchCtx, cancel := context.WithCancel(ctx)
+			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 			defer cancel()
 			w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
 			for {
