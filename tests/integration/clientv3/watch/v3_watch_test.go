@@ -39,7 +39,6 @@ import (
 	gofail "go.etcd.io/gofail/runtime"
 )
 
-// getMetricVal is a helper to parse the server metric into integer
 func getMetricVal(t *testing.T, member *integration.Member, metricName string) int64 {
 	t.Helper()
 	metricVal, err := member.Metric(metricName)
