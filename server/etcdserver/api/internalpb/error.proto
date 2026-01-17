@@ -1,0 +1,20 @@
+syntax = "proto3";
+package internalpb;
+
+import "google/protobuf/any.proto";
+
+option go_package = "go.etcd.io/etcd/server/v3/etcdserver/api/internalpb";
+
+// GRPCGatewayError preserves the legacy "error" field in grpc-gateway JSON
+// responses for backward compatibility with existing clients and tooling.
+//
+// The "error" field is deprecated in v3.7 and will be removed in v3.8; use
+// the standard gRPC Status fields ("code", "message", "details") instead.
+//
+// REF: https://github.com/grpc-ecosystem/grpc-gateway/issues/1098
+message GRPCGatewayError {
+  string error = 1;
+  int32 code = 2;
+  string message = 3;
+  repeated google.protobuf.Any details = 4;
+}
