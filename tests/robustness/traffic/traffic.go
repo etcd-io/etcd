@@ -38,7 +38,7 @@ var (
 	WatchTimeout                  = time.Second
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
-	DefaultWatchInterval          = 100 * time.Millisecond
+	DefaultWatchInterval          = 250 * time.Millisecond
 	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
@@ -74,6 +74,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	finish := make(chan struct{})
 
 	keyStore := NewKeyStore(10, "key")
+	kubernetesStorage := NewKubernetesStorage()
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
@@ -93,6 +94,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -113,6 +115,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				LeaseIDStorage:                     lm,
 				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -127,8 +130,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
 				Client:    c,
 				KeyStore:  keyStore,
+				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
@@ -142,8 +147,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
 				Client:    c,
 				KeyStore:  keyStore,
+				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
@@ -346,6 +353,7 @@ type RunTrafficLoopParam struct {
 	LeaseIDStorage                     identity.LeaseIDStorage
 	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
 	KeyStore                           *keyStore
+	Storage                            *storage
 	Finish                             <-chan struct{}
 }
 
@@ -356,10 +364,13 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client    *client.RecordingClient
+	Client *client.RecordingClient
+	// TODO: merge 2 key stores into 1
 	KeyStore  *keyStore
+	Storage   *storage
 	Finish    <-chan struct{}
 	WaitGroup *sync.WaitGroup
+	Logger    *zap.Logger
 }
 
 type Traffic interface {
@@ -383,11 +394,12 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		}
 
 		p.WaitGroup.Add(1)
-		go func() error {
+		go func() {
 			defer p.WaitGroup.Done()
 			resp, err := p.Client.Get(ctx, cfg.watchKey)
 			if err != nil {
-				return err
+				p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
+				return
 			}
 			rev := resp.Header.Revision + DefaultRevisionOffset
 
@@ -397,12 +409,12 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			for {
 				select {
 				case <-ctx.Done():
-					return ctx.Err()
+					return
 				case <-p.Finish:
-					return nil
+					return
 				case _, ok := <-w:
 					if !ok {
-						return nil
+						return
 					}
 				}
 			}

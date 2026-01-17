@@ -104,7 +104,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		simulateTraffic(ctx, tf, hosts, trafficSet, duration)
+		simulateTraffic(ctx, lg, tf, hosts, trafficSet, duration)
 		maxRevision := report.OperationsMaxRevision(trafficSet.Reports())
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
@@ -138,9 +138,10 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	return reports, nil
 }
 
-func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
+func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
 	var wg sync.WaitGroup
-	storage := identity.NewLeaseIDStorage()
+	leaseStorage := identity.NewLeaseIDStorage()
+	kubernetesStorage := traffic.NewKubernetesStorage()
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
@@ -155,9 +156,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     storage,
+				LeaseIDStorage:                     leaseStorage,
 				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -172,9 +174,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 				Client:                             c,
 				QPSLimiter:                         limiter,
 				IDs:                                clientSet.IdentityProvider(),
-				LeaseIDStorage:                     storage,
+				LeaseIDStorage:                     leaseStorage,
 				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
 				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
 				Finish:                             finish,
 			})
 		}(c)
@@ -188,8 +191,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
 				Client:    c,
 				KeyStore:  keyStore,
+				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
@@ -202,8 +207,10 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
 				Client:    c,
 				KeyStore:  keyStore,
+				Storage:   kubernetesStorage,
 				Finish:    finish,
 				WaitGroup: &wg,
+				Logger:    lg,
 			})
 		}(c)
 	}
