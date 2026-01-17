@@ -1155,7 +1155,7 @@ func TestClusterStore(t *testing.T) {
 			c.Store(st)
 
 			// Verify that the members are properly stored
-			mst, rst := membersFromStore(c.lg, st)
+			mst, rst := MembersFromStore(c.lg, st)
 			for _, mem := range tt.mems {
 				assert.Equal(t, mem, mst[mem.ID])
 			}
