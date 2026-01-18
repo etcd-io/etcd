@@ -1,13 +1,10 @@
-From 135c75d2689318dd47b7778b8f87902e75178d52 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Aleksander Mistewicz <amistewicz@google.com>
 Date: Wed, 13 Aug 2025 13:45:20 +0200
 Subject: [PATCH 1/4] Add Open Telemetry trace event when passing through
  contract interface
 
 Signed-off-by: Aleksander Mistewicz <amistewicz@google.com>
----
- .../etcd/client/v3/kubernetes/client.go       | 21 +++++++++++++++++++
- 1 file changed, 21 insertions(+)
 
 diff --git a/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go b/vendor/go.etcd.io/etcd/client/v3/kubernetes/client.go
 index 11f2a456447..0efab3711d7 100644
@@ -76,6 +73,3 @@ index 11f2a456447..0efab3711d7 100644
  	txn := k.KV.Txn(ctx).If(
  		clientv3.Compare(clientv3.ModRevision(key), "=", expectedRevision),
  	).Then(
--- 
-2.51.0.rc2.233.g662b1ed5c5-goog
-

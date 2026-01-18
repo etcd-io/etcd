@@ -109,7 +109,7 @@ func (t etcdTraffic) Name() string {
 	return "Etcd"
 }
 
-func (t etcdTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) {
+func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	lastOperationSucceeded := true
 	var lastRev int64
 	var requestType etcdRequestType
@@ -154,6 +154,13 @@ func (t etcdTraffic) RunTrafficLoop(ctx context.Context, p RunTrafficLoopParam) 
 		}
 		p.QPSLimiter.Wait(ctx)
 	}
+}
+
+func (t etcdTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
+	runWatchLoop(ctx, p, watchLoopConfig{
+		getKey:   "",
+		watchKey: p.KeyStore.GetPrefix(),
+	})
 }
 
 func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {

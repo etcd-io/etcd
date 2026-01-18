@@ -37,7 +37,6 @@ import (
 	"go.etcd.io/etcd/server/v3/config"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -191,9 +190,7 @@ func TestBootstrapBackend(t *testing.T) {
 			}
 
 			haveWAL := wal.Exist(cfg.WALDir())
-			st := v2store.New(StoreClusterPrefix, StoreKeysPrefix)
-			ss := snap.New(cfg.Logger, cfg.SnapDir())
-			backend, err := bootstrapBackend(cfg, haveWAL, st, ss)
+			backend, err := bootstrapBackend(cfg, haveWAL)
 			defer t.Cleanup(func() {
 				backend.Close()
 			})

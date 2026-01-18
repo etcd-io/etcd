@@ -131,6 +131,8 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 			)
 		}
 		trace.LogIfLong(traceThreshold)
+		success := err == nil
+		requestDurationSec.WithLabelValues("Range", strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 	}(time.Now())
 
 	if !r.Serializable {
@@ -218,6 +220,8 @@ func (s *EtcdServer) Txn(ctx context.Context, r *pb.TxnRequest) (*pb.TxnResponse
 		defer func(start time.Time) {
 			txn.WarnOfExpensiveReadOnlyTxnRequest(s.Logger(), s.Cfg.WarningApplyDuration, start, r, resp, err)
 			trace.LogIfLong(traceThreshold)
+			success := err == nil
+			requestDurationSec.WithLabelValues("ReadonlyTxn", strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
 		}(time.Now())
 
 		get := func() {
@@ -353,8 +357,22 @@ func (s *EtcdServer) LeaseRenew(ctx context.Context, id lease.LeaseID) (int64, e
 		if !s.ensureLeadership() {
 			return -1, lease.ErrNotPrimary
 		}
-		if err := s.waitAppliedIndex(); err != nil {
-			return 0, err
+
+		// This change aims to make lease renewal faster under high server load
+		// while preserving correctness. If a lease is not found, it might still be in
+		// the process of being created. We must wait for the applied index to advance
+		// to verify whether the lease truly does not exist.
+		if s.FeatureEnabled(features.FastLeaseKeepAlive) {
+			le := s.lessor.Lookup(id)
+			if le == nil {
+				if err := s.waitAppliedIndex(); err != nil {
+					return 0, err
+				}
+			}
+		} else {
+			if err := s.waitAppliedIndex(); err != nil {
+				return 0, err
+			}
 		}
 
 		ttl, err := s.lessor.Renew(id)
@@ -823,7 +841,18 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		}
 	}
 
-	data, err := r.Marshal()
+	var (
+		data    []byte
+		err     error
+		start   = time.Now()
+		reqType = getRequestType(&r)
+	)
+	defer func() {
+		success := err == nil
+		requestDurationSec.WithLabelValues(reqType, strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
+	}()
+
+	data, err = r.Marshal()
 	if err != nil {
 		return nil, err
 	}
@@ -841,7 +870,6 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 	cctx, cancel := context.WithTimeout(ctx, s.Cfg.ReqTimeout())
 	defer cancel()
 
-	start := time.Now()
 	span := trace.SpanFromContext(ctx)
 	span.AddEvent("Send raft proposal")
 	err = s.r.Propose(cctx, data)
@@ -863,6 +891,73 @@ func (s *EtcdServer) processInternalRaftRequestOnce(ctx context.Context, r pb.In
 		return nil, s.parseProposeCtxErr(cctx.Err(), start)
 	case <-s.done:
 		return nil, errors.ErrStopped
+	}
+}
+
+func getRequestType(r *pb.InternalRaftRequest) string {
+	switch {
+	case r.Range != nil:
+		return "Range"
+	case r.Put != nil:
+		return "Put"
+	case r.DeleteRange != nil:
+		return "DeleteRange"
+	case r.Txn != nil:
+		return "Txn"
+	case r.Compaction != nil:
+		return "Compaction"
+	case r.LeaseGrant != nil:
+		return "LeaseGrant"
+	case r.LeaseRevoke != nil:
+		return "LeaseRevoke"
+	case r.LeaseCheckpoint != nil:
+		return "LeaseCheckpoint"
+	case r.Alarm != nil:
+		return "Alarm"
+	case r.Authenticate != nil:
+		return "Authenticate"
+	case r.AuthEnable != nil:
+		return "AuthEnable"
+	case r.AuthDisable != nil:
+		return "AuthDisable"
+	case r.AuthStatus != nil:
+		return "AuthStatus"
+	case r.AuthUserAdd != nil:
+		return "AuthUserAdd"
+	case r.AuthUserDelete != nil:
+		return "AuthUserDelete"
+	case r.AuthUserChangePassword != nil:
+		return "AuthUserChangePassword"
+	case r.AuthUserGrantRole != nil:
+		return "AuthUserGrantRole"
+	case r.AuthUserGet != nil:
+		return "AuthUserGet"
+	case r.AuthUserRevokeRole != nil:
+		return "AuthUserRevokeRole"
+	case r.AuthRoleAdd != nil:
+		return "AuthRoleAdd"
+	case r.AuthRoleGrantPermission != nil:
+		return "AuthRoleGrantPermission"
+	case r.AuthRoleGet != nil:
+		return "AuthRoleGet"
+	case r.AuthRoleRevokePermission != nil:
+		return "AuthRoleRevokePermission"
+	case r.AuthRoleDelete != nil:
+		return "AuthRoleDelete"
+	case r.AuthUserList != nil:
+		return "AuthUserList"
+	case r.AuthRoleList != nil:
+		return "AuthRoleList"
+	case r.ClusterVersionSet != nil:
+		return "ClusterVersionSet"
+	case r.ClusterMemberAttrSet != nil:
+		return "ClusterMemberAttrSet"
+	case r.DowngradeInfoSet != nil:
+		return "DowngradeInfoSet"
+	case r.DowngradeVersionTest != nil:
+		return "DowngradeVersionTest"
+	default:
+		return "Unknown"
 	}
 }
 

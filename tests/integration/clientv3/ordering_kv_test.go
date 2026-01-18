@@ -24,14 +24,14 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/ordering"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestDetectKvOrderViolation(t *testing.T) {
 	errOrderViolation := errors.New("DetectedOrderViolation")
 
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -41,7 +41,7 @@ func TestDetectKvOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCURL,
 		},
 	}
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, cli.Close()) }()
 	ctx := t.Context()
@@ -89,8 +89,8 @@ func TestDetectKvOrderViolation(t *testing.T) {
 func TestDetectTxnOrderViolation(t *testing.T) {
 	errOrderViolation := errors.New("DetectedOrderViolation")
 
-	integration2.BeforeTest(t)
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, UseBridge: true})
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
 	defer clus.Terminate(t)
 
 	cfg := clientv3.Config{
@@ -100,7 +100,7 @@ func TestDetectTxnOrderViolation(t *testing.T) {
 			clus.Members[2].GRPCURL,
 		},
 	}
-	cli, err := integration2.NewClient(t, cfg)
+	cli, err := integration.NewClient(t, cfg)
 	require.NoError(t, err)
 	defer func() { assert.NoError(t, cli.Close()) }()
 	ctx := t.Context()

@@ -3,7 +3,6 @@
 approvers:
   - sig-etcd-chairs     # Defined in OWNERS_ALIASES
   - sig-etcd-tech-leads # Defined in OWNERS_ALIASES
-  - fuweid              # Wei Fu <fuweid89@gmail.com>
   - spzala              # Sahdev Zala <spzala@us.ibm.com>
 emeritus_approvers:
   - bdarnell            # Ben Darnell <ben@bendarnell.com>

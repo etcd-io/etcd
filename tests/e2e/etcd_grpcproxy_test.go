@@ -61,7 +61,7 @@ func TestGrpcProxyAutoSync(t *testing.T) {
 
 	proxyCtl, err := e2e.NewEtcdctl(e2e.ClientConfig{}, []string{proxyClientURL})
 	require.NoError(t, err)
-	err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
+	_, err = proxyCtl.Put(ctx, "k1", "v1", config.PutOptions{})
 	require.NoError(t, err)
 
 	// Add and start second member

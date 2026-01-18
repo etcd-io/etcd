@@ -35,7 +35,7 @@ import (
 // allow for concurrent requests to conform to model.AppendableHistory requirements.
 type RecordingClient struct {
 	ID     int
-	client clientv3.Client
+	client *clientv3.Client
 	// using baseTime time-measuring operation to get monotonic clock reading
 	// see https://github.com/golang/go/blob/master/src/time/time.go#L17
 	baseTime time.Time
@@ -66,7 +66,7 @@ func NewRecordingClient(endpoints []string, ids identity.Provider, baseTime time
 	}
 	return &RecordingClient{
 		ID:           ids.NewClientID(),
-		client:       *cc,
+		client:       cc,
 		kvOperations: model.NewAppendableHistory(ids),
 		baseTime:     baseTime,
 	}, nil

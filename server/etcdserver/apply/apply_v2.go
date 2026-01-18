@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package etcdserver
+package apply
 
 import (
 	"encoding/json"
 	"net/http"
 	"path"
+	"regexp"
 
 	"go.uber.org/zap"
 
@@ -25,6 +26,17 @@ import (
 	"go.etcd.io/etcd/api/v3/membershippb"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 )
+
+var (
+	storeMemberAttributeRegexp = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
+)
+
+type RequestV2 pb.Request
+
+func (r *RequestV2) String() string {
+	rpb := pb.Request(*r)
+	return rpb.String()
+}
 
 func v2ToV3Request(lg *zap.Logger, r *RequestV2) pb.InternalRaftRequest {
 	if r.Method != http.MethodPut || (!storeMemberAttributeRegexp.MatchString(r.Path) && r.Path != membership.StoreClusterVersionKey()) {

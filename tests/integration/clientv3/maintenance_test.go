@@ -42,13 +42,13 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/backend"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/mvcc/testutil"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestMaintenanceHashKV(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	for i := 0; i < 3; i++ {
@@ -77,9 +77,9 @@ func TestMaintenanceHashKV(t *testing.T) {
 // TestCompactionHash tests compaction hash
 // TODO: Change this to fuzz test
 func TestCompactionHash(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	cc, err := clus.ClusterClient(t)
@@ -121,9 +121,9 @@ func (tc hashTestCase) Compact(ctx context.Context, rev int64) error {
 }
 
 func TestMaintenanceMoveLeader(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3})
 	defer clus.Terminate(t)
 
 	oldLeadIdx := clus.WaitLeader(t)
@@ -150,9 +150,9 @@ func TestMaintenanceMoveLeader(t *testing.T) {
 // TestMaintenanceSnapshotCancel ensures that context cancel
 // before snapshot reading returns corresponding context errors.
 func TestMaintenanceSnapshotCancel(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with canceled context should error out
@@ -207,9 +207,9 @@ func TestMaintenanceSnapshotTimeout(t *testing.T) {
 // testMaintenanceSnapshotTimeout given snapshot function ensures that it
 // returns corresponding context errors when context timeout happened before snapshot reading
 func testMaintenanceSnapshotTimeout(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	// reading snapshot with deadline exceeded should error out
@@ -273,10 +273,10 @@ func TestMaintenanceSnapshotErrorInflight(t *testing.T) {
 // testMaintenanceSnapshotErrorInflight given snapshot function ensures that ReaderCloser returned by it
 // will fail to read with corresponding context errors on inflight context cancel timeout.
 func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Context, *clientv3.Client) (io.ReadCloser, error)) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	lg := zaptest.NewLogger(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, UseBridge: true})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, UseBridge: true})
 	defer clus.Terminate(t)
 
 	// take about 1-second to read snapshot
@@ -327,10 +327,10 @@ func testMaintenanceSnapshotErrorInflight(t *testing.T, snapshot func(context.Co
 
 // TestMaintenanceSnapshotWithVersionVersion ensures that SnapshotWithVersion returns correct version value.
 func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
 	// Set SnapshotCount to 1 to force raft snapshot to ensure that storage version is set
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1, SnapshotCount: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1, SnapshotCount: 1})
 	defer clus.Terminate(t)
 
 	// Put some keys to ensure that wal snapshot is triggered
@@ -348,9 +348,9 @@ func TestMaintenanceSnapshotWithVersionVersion(t *testing.T) {
 }
 
 func TestMaintenanceSnapshotContentDigest(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 1})
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
 	defer clus.Terminate(t)
 
 	populateDataIntoCluster(t, clus, 3, 1024*1024)
@@ -394,49 +394,72 @@ func TestMaintenanceSnapshotContentDigest(t *testing.T) {
 }
 
 func TestMaintenanceStatus(t *testing.T) {
-	integration2.BeforeTest(t)
-
-	clus := integration2.NewCluster(t, &integration2.ClusterConfig{Size: 3, QuotaBackendBytes: storage.DefaultQuotaBytes})
-	defer clus.Terminate(t)
-
-	t.Logf("Waiting for leader...")
-	clus.WaitLeader(t)
-	t.Logf("Leader established.")
-
-	eps := make([]string, 3)
-	for i := 0; i < 3; i++ {
-		eps[i] = clus.Members[i].GRPCURL
+	testCases := []struct {
+		name          string
+		quotaCfg      int64
+		expectedQuota int64
+	}{
+		{
+			name:          "0 quota",
+			quotaCfg:      0,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "default quota",
+			quotaCfg:      storage.DefaultQuotaBytes,
+			expectedQuota: storage.DefaultQuotaBytes,
+		},
+		{
+			name:          "customized quota",
+			quotaCfg:      300010002000,
+			expectedQuota: 300010002000,
+		},
 	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			integration.BeforeTest(t)
 
-	t.Logf("Creating client...")
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}})
-	require.NoError(t, err)
-	defer cli.Close()
-	t.Logf("Creating client [DONE]")
+			clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, QuotaBackendBytes: tc.quotaCfg})
+			defer clus.Terminate(t)
 
-	prevID, leaderFound := uint64(0), false
-	for i := 0; i < 3; i++ {
-		resp, err := cli.Status(t.Context(), eps[i])
-		require.NoError(t, err)
-		t.Logf("Response from %v: %v", i, resp)
-		if resp.DbSizeQuota != storage.DefaultQuotaBytes {
-			t.Errorf("unexpected backend default quota returned: %d, expected %d", resp.DbSizeQuota, storage.DefaultQuotaBytes)
-		}
-		if prevID == 0 {
-			prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
-			continue
-		}
-		if prevID == resp.Header.MemberId {
-			t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
-		}
-		if leaderFound && resp.Header.MemberId == resp.Leader {
-			t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
-		}
-		if !leaderFound {
-			leaderFound = resp.Header.MemberId == resp.Leader
-		}
-	}
-	if !leaderFound {
-		t.Fatal("no leader found")
+			t.Logf("Waiting for leader...")
+			clus.WaitLeader(t)
+			t.Logf("Leader established.")
+
+			eps := make([]string, 3)
+			for i := 0; i < 3; i++ {
+				eps[i] = clus.Members[i].GRPCURL
+			}
+
+			t.Logf("Creating client...")
+			cli, err := integration.NewClient(t, clientv3.Config{Endpoints: eps, DialOptions: []grpc.DialOption{grpc.WithBlock()}}) //nolint:staticcheck // TODO: remove for a supported version
+			require.NoError(t, err)
+			defer cli.Close()
+			t.Logf("Creating client [DONE]")
+
+			prevID, leaderFound := uint64(0), false
+			for i := 0; i < 3; i++ {
+				resp, err := cli.Status(t.Context(), eps[i])
+				require.NoError(t, err)
+				t.Logf("Response from %v: %v", i, resp)
+				require.Equal(t, tc.expectedQuota, resp.DbSizeQuota)
+				if prevID == 0 {
+					prevID, leaderFound = resp.Header.MemberId, resp.Header.MemberId == resp.Leader
+					continue
+				}
+				if prevID == resp.Header.MemberId {
+					t.Errorf("#%d: status returned duplicate member ID with %016x", i, prevID)
+				}
+				if leaderFound && resp.Header.MemberId == resp.Leader {
+					t.Errorf("#%d: leader already found, but found another %016x", i, resp.Header.MemberId)
+				}
+				if !leaderFound {
+					leaderFound = resp.Header.MemberId == resp.Leader
+				}
+			}
+			if !leaderFound {
+				t.Fatal("no leader found")
+			}
+		})
 	}
 }

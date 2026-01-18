@@ -34,14 +34,14 @@ import (
 	"go.etcd.io/etcd/etcdutl/v3/snapshot"
 	"go.etcd.io/etcd/pkg/v3/cpuutil"
 	"go.etcd.io/etcd/server/v3/embed"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
 )
 
 // TestSnapshotV3RestoreSingle tests single node cluster restoring
 // from a snapshot file.
 func TestSnapshotV3RestoreSingle(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 
@@ -49,7 +49,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := integration2.NewEmbedConfig(t, "s1")
+	cfg := integration.NewEmbedConfig(t, "s1")
 	cfg.InitialClusterToken = testClusterTkn
 	cfg.ClusterState = "existing"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
@@ -83,7 +83,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 	}
 
 	var cli *clientv3.Client
-	cli, err = integration2.NewClient(t, clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}})
+	cli, err = integration.NewClient(t, clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}})
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
@@ -98,7 +98,7 @@ func TestSnapshotV3RestoreSingle(t *testing.T) {
 // can boot into the same cluster after being restored from a same
 // snapshot file.
 func TestSnapshotV3RestoreMulti(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	kvs := []kv{{"foo1", "bar1"}, {"foo2", "bar2"}, {"foo3", "bar3"}}
 	dbPath := createSnapshotFile(t, kvs)
 
@@ -114,7 +114,7 @@ func TestSnapshotV3RestoreMulti(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < clusterN; i++ {
-		cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[i].String()}})
+		cli, err := integration.NewClient(t, clientv3.Config{Endpoints: []string{cURLs[i].String()}})
 		require.NoError(t, err)
 		defer cli.Close()
 		for i := range kvs {
@@ -132,7 +132,7 @@ func TestCorruptedBackupFileCheck(t *testing.T) {
 		t.Skipf("skipping on big endian platforms since testdata/corrupted_backup.db is in little endian format")
 	}
 	dbPath := testutils.MustAbsPath("testdata/corrupted_backup.db")
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	_, err := os.Stat(dbPath)
 	require.NoErrorf(t, err, "test file [%s] does not exist: %v", dbPath, err)
 
@@ -166,7 +166,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	urls := newEmbedURLs(t, clusterN*2)
 	cURLs, pURLs := urls[:clusterN], urls[clusterN:]
 
-	cfg := integration2.NewEmbedConfig(t, "default")
+	cfg := integration.NewEmbedConfig(t, "default")
 	cfg.ClusterState = "new"
 	cfg.ListenClientUrls, cfg.AdvertiseClientUrls = cURLs, cURLs
 	cfg.ListenPeerUrls, cfg.AdvertisePeerUrls = pURLs, pURLs
@@ -183,7 +183,7 @@ func createSnapshotFile(t *testing.T, kvs []kv) string {
 	}
 
 	ccfg := clientv3.Config{Endpoints: []string{cfg.AdvertiseClientUrls[0].String()}}
-	cli, err := integration2.NewClient(t, ccfg)
+	cli, err := integration.NewClient(t, ccfg)
 	require.NoError(t, err)
 	defer cli.Close()
 	for i := range kvs {
@@ -218,7 +218,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 
 	cfgs := make([]*embed.Config, clusterN)
 	for i := 0; i < clusterN; i++ {
-		cfg := integration2.NewEmbedConfig(t, fmt.Sprintf("m%d", i))
+		cfg := integration.NewEmbedConfig(t, fmt.Sprintf("m%d", i))
 		cfg.InitialClusterToken = testClusterTkn
 		cfg.ClusterState = "existing"
 		cfg.ListenClientUrls, cfg.AdvertiseClientUrls = []url.URL{cURLs[i]}, []url.URL{cURLs[i]}
@@ -270,7 +270,7 @@ func restoreCluster(t *testing.T, clusterN int, dbPath string) (
 func newEmbedURLs(t testutil.TB, n int) (urls []url.URL) {
 	urls = make([]url.URL, n)
 	for i := 0; i < n; i++ {
-		l := integration2.NewLocalListener(t)
+		l := integration.NewLocalListener(t)
 		defer l.Close()
 
 		u, err := url.Parse(fmt.Sprintf("unix://%s", l.Addr()))

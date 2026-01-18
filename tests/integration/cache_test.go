@@ -486,6 +486,64 @@ func TestCacheWithPrefixWatch(t *testing.T) {
 	}
 }
 
+func TestCacheWatchPrefixProgressNotify(t *testing.T) {
+	if integration.ThroughProxy {
+		t.Skip("grpc proxy currently does not support requesting progress notifications")
+	}
+	integration.BeforeTest(t)
+	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 1})
+	t.Cleanup(func() { clus.Terminate(t) })
+	client := clus.Client(0)
+
+	ctx := t.Context()
+
+	c, err := cache.New(client, "/foo")
+	if err != nil {
+		t.Fatalf("cache.New: %v", err)
+	}
+	t.Cleanup(c.Close)
+	if err := c.WaitReady(ctx); err != nil {
+		t.Fatalf("cache.WaitReady: %v", err)
+	}
+
+	wctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	watchCh := c.Watch(wctx, "/foo", clientv3.WithPrefix())
+
+	var latestRev int64
+	for i := 0; i < 5; i++ {
+		resp, err := client.Put(ctx, fmt.Sprintf("/bar/out-%d", i), "v")
+		if err != nil {
+			t.Fatalf("Put(/bar/out-%d): %v", i, err)
+		}
+		latestRev = resp.Header.Revision
+	}
+
+	if err := client.RequestProgress(ctx); err != nil {
+		t.Fatalf("RequestProgress: %v", err)
+	}
+
+	var progressRev int64
+	select {
+	case resp, ok := <-watchCh:
+		if !ok || resp.Canceled {
+			t.Fatalf("expected active watch (not canceled), got %+v (closed=%v)", resp, !ok)
+		}
+		if len(resp.Events) != 0 {
+			t.Fatalf("expected a progress notification (no events), got %d event(s)", len(resp.Events))
+		}
+		if !resp.IsProgressNotify() {
+			t.Fatalf("expected IsProgressNotify()==true, got false (resp: %+v)", resp)
+		}
+		progressRev = resp.Header.Revision
+		if progressRev < latestRev {
+			t.Fatalf("progress revision %d < latest outside-prefix rev %d", progressRev, latestRev)
+		}
+	case <-wctx.Done():
+		t.Fatalf("timed out waiting for progress notification: %v", wctx.Err())
+	}
+}
+
 func TestCacheWithoutPrefixGet(t *testing.T) {
 	tcs := []struct {
 		name                          string
@@ -841,6 +899,25 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 
 	reader := getReader()
 
+	var latestRev int64
+	for i := 0; i < 5; i++ {
+		r, err := cli.Put(ctx, fmt.Sprintf("/bar/x%d", i), fmt.Sprintf("%d", i))
+		if err != nil {
+			t.Fatalf("advance put: %v", err)
+		}
+		latestRev = r.Header.Revision
+	}
+
+	if err := cli.RequestProgress(ctx); err != nil {
+		t.Fatalf("RequestProgress: %v", err)
+	}
+
+	if c, ok := reader.(*cache.Cache); ok {
+		if err := c.WaitForRevision(ctx, latestRev); err != nil {
+			t.Fatalf("cache didn’t observe progress to rev %d: %v", latestRev, err)
+		}
+	}
+
 	expectedFooA := &mvccpb.KeyValue{
 		Key:            []byte("/foo/a"),
 		Value:          []byte("val"),
@@ -861,21 +938,42 @@ func testWithPrefixGet(t *testing.T, cli *clientv3.Client, getReader func() Gett
 			key:          "/foo/a",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable()},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "single key within cache prefix at latest/progress rev",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 		{
 			name:         "prefix query within cache prefix",
 			key:          "/foo",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix()},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "prefix query within cache prefix at latest/progress rev",
+			key:          "/foo",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithPrefix(), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 		{
 			name:         "range query within cache prefix",
 			key:          "/foo/a",
 			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/b")},
 			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
-			wantRevision: seedRev,
+			wantRevision: latestRev,
+		},
+		{
+			name:         "range query within cache prefix at latest/progress rev",
+			key:          "/foo/a",
+			opts:         []clientv3.OpOption{clientv3.WithSerializable(), clientv3.WithRange("/foo/z"), clientv3.WithRev(latestRev)},
+			wantKVs:      []*mvccpb.KeyValue{expectedFooA},
+			wantRevision: latestRev,
 		},
 	}
 

@@ -4,7 +4,35 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ---
 
-## v3.4.38 (TBC)
+## v3.4.41 (TBC)
+
+---
+
+## v3.4.40 (2025-12-17)
+
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20943)
+
+### Dependencies
+
+- [Scripts/build-binary.sh: use `buildvcs=false` to avoid having a pseudo-version reported by `go version`](https://github.com/etcd-io/etcd/pull/20950)
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/21000).
+- [Use buildvcs=false in release script](https://github.com/etcd-io/etcd/pull/21028)
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21022).
+
+---
+
+## v3.4.39 (2025-11-11)
+
+### Dependencies
+
+- [Compile binaries with `buildvcs=false` to avoid having a pseudo-version reported by `go version`](https://github.com/etcd-io/etcd/pull/20847).
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20903).
+
+---
+
+## v3.4.38 (2025-10-21)
 
 ### etcd server
 
@@ -12,10 +40,12 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 - Fix [Watch on future revision returns old events or notifications](https://github.com/etcd-io/etcd/pull/20291)
 - Improve [help message for --quota-backend-bytes](https://github.com/etcd-io/etcd/pull/20379)
 - Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20659)
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20711)
+- Fix [etcd may return success for leaseRenew request even when the lease is revoked](https://github.com/etcd-io/etcd/pull/20813)
 
 ### Dependencies
 
-- Compile binaries using [go 1.24.7](https://github.com/etcd-io/etcd/pull/20618).
+- Compile binaries using [go 1.24.9](https://github.com/etcd-io/etcd/pull/20807).
 - [Bump bbolt to v1.3.12](https://github.com/etcd-io/etcd/pull/20515).
 
 ---

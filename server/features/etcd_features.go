@@ -74,6 +74,11 @@ const (
 	// alpha: v3.6
 	// main PR: https://github.com/etcd-io/etcd/pull/17661
 	SetMemberLocalAddr featuregate.Feature = "SetMemberLocalAddr"
+	// FastLeaseKeepAlive enables lease renewal to skip waiting for the applied index.
+	// owner: @aaronjzhang
+	// beta: v3.7
+	// main PR: https://github.com/etcd-io/etcd/pull/20589
+	FastLeaseKeepAlive featuregate.Feature = "FastLeaseKeepAlive"
 )
 
 var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureSpec{
@@ -84,6 +89,7 @@ var DefaultEtcdServerFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	LeaseCheckpoint:              {Default: false, PreRelease: featuregate.Alpha},
 	LeaseCheckpointPersist:       {Default: false, PreRelease: featuregate.Alpha},
 	SetMemberLocalAddr:           {Default: false, PreRelease: featuregate.Alpha},
+	FastLeaseKeepAlive:           {Default: true, PreRelease: featuregate.Beta},
 }
 
 func NewDefaultServerFeatureGate(name string, lg *zap.Logger) featuregate.FeatureGate {

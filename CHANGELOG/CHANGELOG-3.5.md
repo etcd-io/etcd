@@ -4,7 +4,55 @@ Previous change logs can be found at [CHANGELOG-3.4](https://github.com/etcd-io/
 
 ---
 
-## v3.5.24 (TBA)
+## v3.5.27 (TBC)
+
+---
+
+## v3.5.26 (2025-12-17)
+
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20942)
+- Fix [zombie members in v3store](https://github.com/etcd-io/etcd/pull/20995)
+
+### etcdctl
+
+- [Fix a typo of 'etcdctl snapshot restore' command](https://github.com/etcd-io/etcd/pull/20948).
+
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20999).
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21023).
+
+---
+
+## v3.5.25 (2025-11-11)
+
+### etcd server
+
+- Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
+
+### etcdutl
+
+- Add [flag `--wal-dir` to `etcdutl check v2store` command to support dedicated WAL directory](https://github.com/etcd-io/etcd/pull/20886)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20902).
+
+---
+
+## v3.5.24 (2025-10-22)
+
+### etcd server
+
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20709)
+- [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20751)
+- Fix [Learner promotion not being persisted into v3store may be propagated across multiple upgrades](https://github.com/etcd-io/etcd/pull/20797)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.9](https://github.com/etcd-io/etcd/pull/20806).
 
 ---
 

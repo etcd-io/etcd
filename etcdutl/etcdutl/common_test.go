@@ -67,35 +67,6 @@ func TestGetLatestWalSnap(t *testing.T) {
 			},
 			expectedLatestWALSnap: walpb.Snapshot{Index: 35, Term: 5},
 		},
-		{
-			name: "there are orphan snapshot records in wal file",
-			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 30, Term: 4},
-				{Index: 45, Term: 5},
-				{Index: 55, Term: 6},
-			},
-			snapshots: []raftpb.Snapshot{
-				{Metadata: raftpb.SnapshotMetadata{Index: 10, Term: 2}},
-				{Metadata: raftpb.SnapshotMetadata{Index: 20, Term: 3}},
-				{Metadata: raftpb.SnapshotMetadata{Index: 30, Term: 4}},
-			},
-			expectedLatestWALSnap: walpb.Snapshot{Index: 30, Term: 4},
-		},
-		{
-			name: "wal snapshot records do not match the snapshot files at all",
-			walSnaps: []walpb.Snapshot{
-				{Index: 10, Term: 2},
-				{Index: 20, Term: 3},
-				{Index: 30, Term: 4},
-			},
-			snapshots: []raftpb.Snapshot{
-				{Metadata: raftpb.SnapshotMetadata{Index: 40, Term: 5}},
-				{Metadata: raftpb.SnapshotMetadata{Index: 50, Term: 6}},
-			},
-			expectedLatestWALSnap: walpb.Snapshot{},
-		},
 	}
 
 	for _, tc := range testCases {
@@ -137,7 +108,8 @@ func TestGetLatestWalSnap(t *testing.T) {
 			walSnap, err := getLatestWALSnap(lg, dataDir)
 			require.NoError(t, err)
 
-			require.Equal(t, tc.expectedLatestWALSnap, walSnap)
+			require.Equal(t, tc.expectedLatestWALSnap.Term, walSnap.Term)
+			require.Equal(t, tc.expectedLatestWALSnap.Index, walSnap.Index)
 		})
 	}
 }

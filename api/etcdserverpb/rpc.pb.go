@@ -7869,7 +7869,7 @@ type AuthClient interface {
 	UserDelete(ctx context.Context, in *AuthUserDeleteRequest, opts ...grpc.CallOption) (*AuthUserDeleteResponse, error)
 	// UserChangePassword changes the password of a specified user.
 	UserChangePassword(ctx context.Context, in *AuthUserChangePasswordRequest, opts ...grpc.CallOption) (*AuthUserChangePasswordResponse, error)
-	// UserGrant grants a role to a specified user.
+	// UserGrantRole grants a role to a specified user.
 	UserGrantRole(ctx context.Context, in *AuthUserGrantRoleRequest, opts ...grpc.CallOption) (*AuthUserGrantRoleResponse, error)
 	// UserRevokeRole revokes a role of specified user.
 	UserRevokeRole(ctx context.Context, in *AuthUserRevokeRoleRequest, opts ...grpc.CallOption) (*AuthUserRevokeRoleResponse, error)
@@ -8068,7 +8068,7 @@ type AuthServer interface {
 	UserDelete(context.Context, *AuthUserDeleteRequest) (*AuthUserDeleteResponse, error)
 	// UserChangePassword changes the password of a specified user.
 	UserChangePassword(context.Context, *AuthUserChangePasswordRequest) (*AuthUserChangePasswordResponse, error)
-	// UserGrant grants a role to a specified user.
+	// UserGrantRole grants a role to a specified user.
 	UserGrantRole(context.Context, *AuthUserGrantRoleRequest) (*AuthUserGrantRoleResponse, error)
 	// UserRevokeRole revokes a role of specified user.
 	UserRevokeRole(context.Context, *AuthUserRevokeRoleRequest) (*AuthUserRevokeRoleResponse, error)

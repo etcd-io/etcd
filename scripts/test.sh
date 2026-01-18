@@ -70,7 +70,7 @@ if [ -n "${OUTPUT_FILE}" ]; then
   exec > >(tee -a "${OUTPUT_FILE}") 2>&1
 fi
 
-PASSES=${PASSES:-"gofmt bom dep build unit"}
+PASSES=${PASSES:-"bom dep build unit"}
 KEEP_GOING_SUITE=${KEEP_GOING_SUITE:-false}
 PKG=${PKG:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
@@ -125,51 +125,73 @@ function build_pass {
 
 ################# REGULAR TESTS ################################################
 
-# run_unit_tests [pkgs] runs unit tests for a current module and givesn set of [pkgs]
-function run_unit_tests {
-  local pkgs="${1:-./...}"
-  shift 1
-  # shellcheck disable=SC2068 #For context see - https://github.com/etcd-io/etcd/pull/16433#issuecomment-1684312755
-  GOLANG_TEST_SHORT=true go_test "${pkgs}" "parallel" : -short -timeout="${TIMEOUT:-3m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@"
-}
-
 function unit_pass {
-  run_for_modules run_unit_tests "$@"
+  run_for_all_workspace_modules \
+    run_go_tests -short \
+                 -failfast \
+                 -timeout="${TIMEOUT:-3m}" \
+                 "${COMMON_TEST_FLAGS[@]}" \
+                 "${RUN_ARG[@]}" \
+                 "$@"
 }
 
 function integration_extra {
   if [ -z "${PKG}" ] ; then
-    # shellcheck disable=SC2068
-    run_for_module "tests"  go_test "./integration/v2store/..." "keep_going" : -timeout="${TIMEOUT:-5m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} "$@" || return $?
+    run_go_tests_expanding_packages ./tests/integration/v2store/... \
+                                    -timeout="${TIMEOUT:-5m}" \
+                                    "${COMMON_TEST_FLAGS[@]}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@"
   else
     log_warning "integration_extra ignored when PKG is specified"
   fi
 }
 
 function integration_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "parallel" : -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "parallel" : --tags=integration -timeout="${TIMEOUT:-15m}" ${COMMON_TEST_FLAGS[@]:-} ${RUN_ARG[@]:-} -p=2 "$@" || return $?
+  run_go_tests ./tests/integration/... \
+               -p=2 \
+               -failfast \
+               -timeout="${TIMEOUT:-15m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@" || return 2
+
+  run_go_tests ./tests/common/... \
+               -p=2 \
+               -failfast \
+               -tags=integration \
+               -timeout="${TIMEOUT:-15m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@" || return 2
+
   integration_extra "$@"
 }
 
 function e2e_pass {
-  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e/..." "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@" || return $?
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./common/..." "keep_going" : --tags=e2e -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu do not have any impact.
+  run_go_tests_expanding_packages ./tests/e2e/... \
+                                    -timeout="${TIMEOUT:-30m}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@" || return 2
+
+  run_go_tests_expanding_packages ./tests/common/... \
+                                    -tags=e2e \
+                                    -timeout="${TIMEOUT:-30m}" \
+                                    "${RUN_ARG[@]}" \
+                                    "$@"
 }
 
 function robustness_pass {
   # e2e tests are running pre-build binary. Settings like --race,-cover,-cpu does not have any impact.
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./robustness" "keep_going" : -timeout="${TIMEOUT:-30m}" ${RUN_ARG[@]:-} "$@"
+  run_go_tests ./tests/robustness \
+                 -timeout="${TIMEOUT:-30m}" \
+                 "${RUN_ARG[@]}" \
+                 "$@"
 }
 
 function integration_e2e_pass {
-  run_pass "integration" "${@}"
+  run_pass "integration" "${@}" || return 2
   run_pass "e2e" "${@}"
 }
 
@@ -191,18 +213,26 @@ function generic_checker {
 }
 
 function grpcproxy_pass {
-  run_pass "grpcproxy_integration" "${@}"
+  run_pass "grpcproxy_integration" "${@}" || return 2
   run_pass "grpcproxy_e2e" "${@}"
 }
 
 function grpcproxy_integration_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./integration/..." "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/integration/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 function grpcproxy_e2e_pass {
-  # shellcheck disable=SC2068
-  run_for_module "tests" go_test "./e2e" "fail_fast" : -timeout=30m -tags cluster_proxy ${COMMON_TEST_FLAGS[@]:-} "$@"
+  run_go_tests_expanding_packages ./tests/e2e/... \
+               -tags=cluster_proxy \
+               -timeout="${TIMEOUT:-30m}" \
+               "${COMMON_TEST_FLAGS[@]}" \
+               "${RUN_ARG[@]}" \
+               "$@"
 }
 
 ################# COVERAGE #####################################################
@@ -309,7 +339,7 @@ function cov_pass {
 
   log_callout "[$(date)] Collecting coverage from unit tests ..."
   for m in $(module_dirs); do
-    GOLANG_TEST_SHORT=true run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
+    run_for_module "${m}" go_test "./..." "parallel" "pkg_to_coverprofileflag unit_${m}" -short -timeout=30m \
        "${gocov_build_flags[@]}" "$@" || failed="$failed unit"
   done
 
@@ -402,127 +432,35 @@ function govuln_pass {
   run_for_modules run govulncheck -show verbose
 }
 
-function govet_pass {
-  run_for_modules generic_checker run go vet
-}
-
-function govet_shadow_per_package {
-  local shadow
-  shadow=$1
-
-  # skip grpc_gateway packages because
-  #
-  # stderr: etcdserverpb/gw/rpc.pb.gw.go:2100:3: declaration of "ctx" shadows declaration at line 2005
-  local skip_pkgs=(
-    "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3lock/v3lockpb/gw"
-    "go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb/gw"
-  )
-
-  local pkgs=()
-  while IFS= read -r line; do
-    local in_skip_pkgs="false"
-
-    for pkg in "${skip_pkgs[@]}"; do
-      if [ "${pkg}" == "${line}" ]; then
-        in_skip_pkgs="true"
-        break
-      fi
-    done
-
-    if [ "${in_skip_pkgs}" == "true" ]; then
-      continue
-    fi
-
-    pkgs+=("${line}")
-  done < <(go list ./...)
-
-  run go vet -all -vettool="${shadow}" "${pkgs[@]}"
-}
-
-function govet_shadow_pass {
-  local shadow
-  shadow=$(tool_get_bin "golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow")
-
-  run_for_modules generic_checker govet_shadow_per_package "${shadow}"
-}
-
 function lint_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --show-stats=false
+  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml"
 }
 
 function lint_fix_pass {
-  run_for_modules generic_checker run golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix --show-stats=false
-}
-
-function license_header_per_module {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  run_go_tool "github.com/google/addlicense" --check "${gofiles[@]}"
-}
-
-function license_header_pass {
-  run_for_modules generic_checker license_header_per_module
-}
-
-# goword_for_package package
-# checks spelling and comments in the 'package' in the current module
-#
-function goword_for_package {
-  # bash 3.x compatible replacement of: mapfile -t gofiles < <(go_srcs_in_module)
-  local gofiles=()
-  while IFS= read -r line; do gofiles+=("$line"); done < <(go_srcs_in_module)
-  
-  local gowordRes
-
-  # spellchecking can be enabled with GOBINARGS="--tags=spell"
-  # but it requires heavy dependencies installation, like:
-  # apt-get install libaspell-dev libhunspell-dev hunspell-en-us aspell-en
-
-  # only check for broke exported godocs
-  if gowordRes=$(run_go_tool "github.com/chzchzchz/goword" -use-spell=false "${gofiles[@]}" | grep godoc-export | sort); then
-    log_error -e "goword checking failed:\\n${gowordRes}"
-    return 255
-  fi
-  if [ -n "$gowordRes" ]; then
-    log_error -e "goword checking returned output:\\n${gowordRes}"
-    return 255
-  fi
-}
-
-
-function goword_pass {
-  run_for_modules goword_for_package || return 255
-}
-
-function go_fmt_for_package {
-  # We utilize 'go fmt' to find all files suitable for formatting,
-  # but reuse full power gofmt to perform just RO check.
-  go fmt -n "$1" | sed 's| -w | -d |g' | sh
-}
-
-function gofmt_pass {
-  run_for_modules generic_checker go_fmt_for_package
+  run_for_all_workspace_modules golangci-lint run --config "${ETCD_ROOT_DIR}/tools/.golangci.yaml" --fix
 }
 
 function bom_pass {
   log_callout "Checking bill of materials..."
-  # https://github.com/golang/go/commit/7c388cc89c76bc7167287fb488afcaf5a4aa12bf
-  # shellcheck disable=SC2207
-  modules=($(modules_for_bom))
+  local _bom_modules=()
+  load_workspace_relative_modules_for_bom _bom_modules
 
   # Internally license-bill-of-materials tends to modify go.sum
   run cp go.sum go.sum.tmp || return 2
   run cp go.mod go.mod.tmp || return 2
 
+  # Intentionally run the command once first, so it fetches dependencies. The exit code on the first
+  # run in a just cloned repository is always dirty.
+  GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
+    --override-file ./bill-of-materials.override.json "${_bom_modules[@]}" &>/dev/null
+
   # BOM file should be generated for linux. Otherwise running this command on other operating systems such as OSX
-  # results in certain dependencies being excluded from the BOM file, such as procfs. 
+  # results in certain dependencies being excluded from the BOM file, such as procfs.
   # For more info, https://github.com/etcd-io/etcd/issues/19665
-  output=$(GOOS=linux GOFLAGS=-mod=mod run_go_tool github.com/appscodelabs/license-bill-of-materials \
+  output=$(GOOS=linux run_go_tool github.com/appscodelabs/license-bill-of-materials \
     --override-file ./bill-of-materials.override.json \
-    "${modules[@]}")
-  code="$?"
+    "${_bom_modules[@]}")
+  local code="$?"
 
   run cp go.sum.tmp go.sum || return 2
   run cp go.mod.tmp go.mod || return 2
@@ -540,46 +478,61 @@ function bom_pass {
   rm bom-now.json.tmp
 }
 
+function module_gomodguard {
+  if [ ! -f .gomodguard.yaml ]; then
+    # Nothing to validate, return.
+    return
+  fi
+
+  local tool_bin="$1"
+  run "${tool_bin}"
+}
+
+function gomodguard_pass {
+  local tool_bin
+  tool_bin=$(tool_get_bin github.com/ryancurrah/gomodguard/cmd/gomodguard)
+  run_for_workspace_modules module_gomodguard "${tool_bin}"
+}
+
 ######## VARIOUS CHECKERS ######################################################
 
-function dump_deps_of_module() {
+function dump_module_deps() {
+  local json_mod
+  json_mod=$(run go mod edit -json)
+
   local module
-  if ! module=$(run go mod edit -json | jq -r .Module.Path); then
+  if ! module=$(echo "${json_mod}" | jq -r .Module.Path); then
     return 255
   fi
+
   local require
-  require=$(run go mod edit -json | jq -r '.Require')
+  require=$(echo "${json_mod}" | jq -r '.Require')
   if [ "$require" == "null" ]; then
     return 0
   fi
+
   echo "$require" | jq -r '.[] | .Path+","+.Version+","+if .Indirect then " (indirect)" else "" end+",'"${module}"'"'
 }
 
 # Checks whether dependencies are consistent across modules
 function dep_pass {
   local all_dependencies
-  local tools_mod_dependencies
-  all_dependencies=$(run_for_modules dump_deps_of_module | sort) || return 2
-  # tools/mod is a special case. It is a module that is not included in the
-  # module list from test_lib.sh. However, we need to ensure that the
-  # dependency versions match the rest of the project. Therefore, explicitly
-  # execute the command for tools/mod, and append its dependencies to the list.
-  tools_mod_dependencies=$(run_for_module "tools/mod" dump_deps_of_module "./...") || return 2
-  all_dependencies="${all_dependencies}"$'\n'"${tools_mod_dependencies}"
+  all_dependencies=$(run_for_workspace_modules dump_module_deps | sort) || return 2
 
   local duplicates
   duplicates=$(echo "${all_dependencies}" | cut -d ',' -f 1,2 | sort | uniq | cut -d ',' -f 1 | sort | uniq -d) || return 2
 
-  for dup in ${duplicates}; do
-    log_error "FAIL: inconsistent versions for dependency: ${dup}"
-    echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
-  done
   if [[ -n "${duplicates}" ]]; then
+    for dup in ${duplicates}; do
+      log_error "FAIL: inconsistent versions for dependency: ${dup}"
+      echo "${all_dependencies}" | grep "${dup}," | sed 's|\([^,]*\),\([^,]*\),\([^,]*\),\([^,]*\)|  - \1@\2\3 from: \4|g'
+    done
+
     log_error "FAIL: inconsistent dependencies"
     return 2
-  else
-    log_success "SUCCESS: dependencies are consistent across modules"
   fi
+
+  log_success "SUCCESS: dependencies are consistent across modules"
 }
 
 function release_pass {
@@ -670,12 +623,8 @@ EOF
   VERSION="${VERSION}" run "${ETCD_ROOT_DIR}/scripts/test_images.sh"
 }
 
-function mod_tidy_for_module {
-  run go mod tidy -diff
-}
-
 function mod_tidy_pass {
-  run_for_modules generic_checker mod_tidy_for_module
+  run_for_workspace_modules run go mod tidy -diff
 }
 
 function proto_annotations_pass {
@@ -684,6 +633,17 @@ function proto_annotations_pass {
 
 function genproto_pass {
   "${ETCD_ROOT_DIR}/scripts/verify_genproto.sh"
+}
+
+function go_workspace_pass {
+  log_callout "Ensuring go workspace is in sync."
+
+  run go mod download
+  if [ -n "$(git status --porcelain go.work.sum)" ]; then
+    log_error "Go workspace not in sync."
+    log_warning "Suggestion: run \"make fix\" to address the issue."
+    return 255
+  fi
 }
 
 ########### MAIN ###############################################################

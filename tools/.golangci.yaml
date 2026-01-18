@@ -4,7 +4,10 @@ linters:
   default: none
   enable: # please keep this alphabetized
     - errorlint
+    - goheader
+    - govet
     - ineffassign
+    - misspell
     - nakedret
     - revive
     - staticcheck
@@ -17,6 +20,27 @@ linters:
     - usetesting
     - whitespace
   settings:
+    goheader:
+      values:
+        regexp:
+          ORIGINAL_YEAR: 20[1-2][0-9]
+      template: |-
+        Copyright {{ORIGINAL_YEAR}} The etcd Authors
+
+        Licensed under the Apache License, Version 2.0 (the "License");
+        you may not use this file except in compliance with the License.
+        You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+        Unless required by applicable law or agreed to in writing, software
+        distributed under the License is distributed on an "AS IS" BASIS,
+        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+        See the License for the specific language governing permissions and
+        limitations under the License.
+    govet:
+      enable:
+        - shadow
     nakedret:
       # Align with https://github.com/alexkohler/nakedret/blob/v1.0.2/cmd/nakedret/main.go#L10
       max-func-lines: 5
@@ -61,7 +85,6 @@ linters:
     staticcheck:
       checks:
         - all
-        - -SA1019 # TODO(fix) Using a deprecated function, variable, constant or field
         - -SA2002 # TODO(fix) Called testing.T.FailNow or SkipNow in a goroutine, which isn’t allowed
         - -QF1001 # TODO(fix) Apply De Morgan’s law
         - -QF1002 # TODO(fix) Convert untagged switch to tagged switch

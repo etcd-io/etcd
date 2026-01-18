@@ -83,6 +83,12 @@ func BeforeTestExternal(t testutil.TB) {
 	BeforeTest(t, WithoutSkipInShort(), WithoutGoLeakDetection())
 }
 
+func SkipIfNoGoFail(t testutil.TB) {
+	if len(gofail.List()) == 0 {
+		t.Skip("please run 'make gofail-enable' before running the test")
+	}
+}
+
 func BeforeTest(t testutil.TB, opts ...TestOption) {
 	t.Helper()
 	options := newTestOptions(opts...)
@@ -100,9 +106,7 @@ func BeforeTest(t testutil.TB, opts ...TestOption) {
 	}
 
 	if options.failpoint != nil && len(options.failpoint.name) != 0 {
-		if len(gofail.List()) == 0 {
-			t.Skip("please run 'make gofail-enable' before running the test")
-		}
+		SkipIfNoGoFail(t)
 		require.NoError(t, gofail.Enable(options.failpoint.name, options.failpoint.payload))
 		t.Cleanup(func() {
 			require.NoError(t, gofail.Disable(options.failpoint.name))

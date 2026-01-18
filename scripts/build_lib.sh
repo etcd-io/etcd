@@ -31,6 +31,7 @@ CGO_ENABLED="${CGO_ENABLED:-0}"
 # Set GO_LDFLAGS="-s" for building without symbols for debugging.
 # shellcheck disable=SC2206
 GO_LDFLAGS=(${GO_LDFLAGS:-} "-X=${VERSION_SYMBOL}=${GIT_SHA}")
+GO_GCFLAGS=${GO_GCFLAGS:-}
 GO_BUILD_ENV=("CGO_ENABLED=${CGO_ENABLED}" "GO_BUILD_FLAGS=${GO_BUILD_FLAGS}" "GOOS=${GOOS}" "GOARCH=${GOARCH}")
 
 etcd_build() {
@@ -46,6 +47,7 @@ etcd_build() {
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
+      -gcflags="${GO_GCFLAGS}" \
       -o="../${out}/etcd" . || return 2
   ) || return 2
 
@@ -57,6 +59,7 @@ etcd_build() {
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
+      -gcflags="${GO_GCFLAGS}" \
       -o="../${out}/etcdutl" . || return 2
   ) || return 2
 
@@ -68,6 +71,7 @@ etcd_build() {
       -trimpath \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
+      -gcflags="${GO_GCFLAGS}" \
       -o="../${out}/etcdctl" . || return 2
   ) || return 2
   # Verify whether symbol we overwrote exists

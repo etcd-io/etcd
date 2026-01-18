@@ -172,8 +172,6 @@ func needAdminPermission(r *pb.InternalRaftRequest) bool {
 		return true
 	case r.AuthDisable != nil:
 		return true
-	case r.AuthStatus != nil:
-		return true
 	case r.AuthUserAdd != nil:
 		return true
 	case r.AuthUserDelete != nil:

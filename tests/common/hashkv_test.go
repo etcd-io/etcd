@@ -234,15 +234,27 @@ func verifyConsistentHashKVAcrossAllMembers(t *testing.T, cc intf.Client, hashKV
 	ctx := t.Context()
 
 	t.Logf("HashKV on rev=%d", hashKVOnRev)
-	resp, err := cc.HashKV(ctx, hashKVOnRev)
-	require.NoError(t, err)
 
-	// Ensure that there are multiple members in the cluster.
-	require.Greater(t, len(resp), 1)
-	require.NotEqual(t, 0, resp[0].Hash)
-	t.Logf("One Hash value is %d", resp[0].Hash)
+	assert.Eventually(t, func() bool {
+		resp, err := cc.HashKV(ctx, hashKVOnRev)
+		if err != nil {
+			t.Logf("HashKV failed: %v", err)
+			return false
+		}
 
-	for i := 1; i < len(resp); i++ {
-		assert.Equal(t, resp[0].Hash, resp[i].Hash)
-	}
+		// Ensure that there are multiple members in the cluster.
+		if len(resp) <= 1 {
+			t.Logf("Expected multiple members, got %d", len(resp))
+			return false
+		}
+
+		// Check if all members have the same hash
+		for i := 1; i < len(resp); i++ {
+			if resp[i].Hash != resp[0].Hash {
+				t.Logf("There is a chance that the physical compaction is not yet completed on the followers: Leader hash=%d, Follower hash=%d", resp[0].Hash, resp[i].Hash)
+				return false
+			}
+		}
+		return true
+	}, 3*time.Second, 100*time.Millisecond)
 }

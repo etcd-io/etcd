@@ -22,8 +22,6 @@ import (
 	"fmt"
 	"math"
 	"net/http"
-	"path"
-	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -119,7 +117,6 @@ var (
 	monitorVersionInterval = rafthttp.ConnWriteTimeout - time.Second
 
 	recommendedMaxRequestBytesString = humanize.Bytes(uint64(recommendedMaxRequestBytes))
-	storeMemberAttributeRegexp       = regexp.MustCompile(path.Join(membership.StoreMembersPrefix, "[[:xdigit:]]{1,16}", "attributes"))
 )
 
 func init() {
@@ -248,7 +245,6 @@ type EtcdServer struct {
 
 	cluster *membership.RaftCluster
 
-	v2store     v2store.Store
 	snapshotter *snap.Snapshotter
 
 	uberApply apply.UberApplier
@@ -324,7 +320,6 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		lgMu:                  new(sync.RWMutex),
 		lg:                    cfg.Logger,
 		errorc:                make(chan error, 1),
-		v2store:               b.storage.st,
 		snapshotter:           b.ss,
 		r:                     *b.raft.newRaftNode(b.ss, b.storage.wal.w, b.cluster.cl),
 		memberID:              b.cluster.nodeID,
@@ -1112,17 +1107,6 @@ func (s *EtcdServer) applySnapshot(ep *etcdProgress, toApply *toApply) {
 
 		lg.Info("restored auth store")
 	}
-
-	lg.Info("restoring v2 store")
-	if err := s.v2store.Recovery(toApply.snapshot.Data); err != nil {
-		lg.Panic("failed to restore v2 store", zap.Error(err))
-	}
-
-	if err := serverstorage.AssertNoV2StoreContent(lg, s.v2store, s.Cfg.V2Deprecation); err != nil {
-		lg.Panic("illegal v2store content", zap.Error(err))
-	}
-
-	lg.Info("restored v2 store")
 
 	s.cluster.SetBackend(schema.NewMembershipBackend(lg, newbe))
 
@@ -1947,7 +1931,6 @@ func (s *EtcdServer) apply(
 
 // applyEntryNormal applies an EntryNormal type raftpb request to the EtcdServer
 func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.ShouldApplyV3) {
-	var ar *apply.Result
 	if shouldApplyV3 {
 		defer func() {
 			// The txPostLockInsideApplyHook will not get called in some cases,
@@ -1972,36 +1955,7 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 		return
 	}
 
-	var raftReq pb.InternalRaftRequest
-	if !pbutil.MaybeUnmarshal(&raftReq, e.Data) { // backward compatible
-		var r pb.Request
-		rp := &r
-		pbutil.MustUnmarshal(rp, e.Data)
-		s.lg.Debug("applyEntryNormal", zap.Stringer("V2request", rp))
-		raftReq = v2ToV3Request(s.lg, (*RequestV2)(rp))
-	}
-	s.lg.Debug("applyEntryNormal", zap.Stringer("raftReq", &raftReq))
-
-	if raftReq.V2 != nil {
-		req := (*RequestV2)(raftReq.V2)
-		raftReq = v2ToV3Request(s.lg, req)
-	}
-
-	id := raftReq.ID
-	if id == 0 {
-		if raftReq.Header == nil {
-			s.lg.Panic("applyEntryNormal, could not find a header")
-		}
-		id = raftReq.Header.ID
-	}
-
-	needResult := s.w.IsRegistered(id)
-	if needResult || !noSideEffect(&raftReq) {
-		if !needResult && raftReq.Txn != nil {
-			removeNeedlessRangeReqs(raftReq.Txn)
-		}
-		ar = s.uberApply.Apply(&raftReq, shouldApplyV3)
-	}
+	ar, id := apply.Apply(s.lg, e, s.uberApply, s.w, shouldApplyV3)
 
 	// do not re-toApply applied entries.
 	if !shouldApplyV3 {
@@ -2036,28 +1990,6 @@ func (s *EtcdServer) applyEntryNormal(e *raftpb.Entry, shouldApplyV3 membership.
 	})
 }
 
-func noSideEffect(r *pb.InternalRaftRequest) bool {
-	return r.Range != nil || r.AuthUserGet != nil || r.AuthRoleGet != nil || r.AuthStatus != nil
-}
-
-func removeNeedlessRangeReqs(txn *pb.TxnRequest) {
-	f := func(ops []*pb.RequestOp) []*pb.RequestOp {
-		j := 0
-		for i := 0; i < len(ops); i++ {
-			if _, ok := ops[i].Request.(*pb.RequestOp_RequestRange); ok {
-				continue
-			}
-			ops[j] = ops[i]
-			j++
-		}
-
-		return ops[:j]
-	}
-
-	txn.Success = f(txn.Success)
-	txn.Failure = f(txn.Failure)
-}
-
 // applyConfChange applies a ConfChange to the server. It is only
 // invoked with a ConfChange that has already passed through Raft
 func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.ConfState, shouldApplyV3 membership.ShouldApplyV3) (bool, error) {
@@ -2076,7 +2008,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 		return false, err
 	}
 
-	*confState = *s.r.ApplyConfChange(cc)
+	// We don't validate the configuration change when `shouldApplyV3`
+	// is false, so we shouldn't apply it to raft either in this case.
+	// Otherwise, we might apply an invalid confChange (which failed
+	// the validation previously) to raft on bootstrap.
+	if shouldApplyV3 {
+		*confState = *s.r.ApplyConfChange(cc)
+	}
 	s.beHooks.SetConfState(confState)
 	switch cc.Type {
 	case raftpb.ConfChangeAddNode, raftpb.ConfChangeAddLearnerNode:

@@ -111,7 +111,8 @@ func learnerMetricApplyFromSnapshotTest(cx ctlCtx) {
 func triggerSnapshot(ctx context.Context, cx ctlCtx) {
 	etcdctl := cx.epc.Procs[0].Etcdctl()
 	for i := 0; i < int(cx.epc.Cfg.ServerConfig.SnapshotCount); i++ {
-		require.NoError(cx.t, etcdctl.Put(ctx, "k", "v", config.PutOptions{}))
+		_, err := etcdctl.Put(ctx, "k", "v", config.PutOptions{})
+		require.NoError(cx.t, err)
 	}
 }
 
@@ -159,12 +160,15 @@ func TestNoMetricsMissing(t *testing.T) {
 			"etcd_debugging_mvcc_watch_stream_total",
 			"etcd_debugging_mvcc_watcher_total",
 			"etcd_debugging_server_lease_expired_total",
+			"etcd_debugging_server_watch_send_loop_watch_stream_duration_seconds",
+			"etcd_debugging_server_watch_send_loop_watch_stream_duration_per_event_seconds",
+			"etcd_debugging_server_watch_send_loop_control_stream_duration_seconds",
+			"etcd_debugging_server_watch_send_loop_progress_duration_seconds",
 			"etcd_debugging_snap_save_marshalling_duration_seconds",
 			"etcd_debugging_snap_save_total_duration_seconds",
 			"etcd_debugging_store_expires_total",
 			"etcd_debugging_store_watch_requests_total",
 			"etcd_debugging_store_watchers",
-			"etcd_debugging_store_writes_total",
 			"etcd_disk_backend_commit_duration_seconds",
 			"etcd_disk_backend_defrag_duration_seconds",
 			"etcd_disk_backend_snapshot_duration_seconds",
@@ -208,6 +212,7 @@ func TestNoMetricsMissing(t *testing.T) {
 			"etcd_server_quota_backend_bytes",
 			"etcd_server_range_duration_seconds",
 			"etcd_server_read_indexes_failed_total",
+			"etcd_server_request_duration_seconds",
 			"etcd_server_slow_apply_total",
 			"etcd_server_slow_read_indexes_total",
 			"etcd_server_snapshot_apply_in_progress_total",
@@ -310,7 +315,7 @@ func TestNoMetricsMissing(t *testing.T) {
 
 			c := epc.Procs[0].Etcdctl()
 			for i := 0; i < 3; i++ {
-				err = c.Put(ctx, fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i), config.PutOptions{})
+				_, err = c.Put(ctx, fmt.Sprintf("key_%d", i), fmt.Sprintf("value_%d", i), config.PutOptions{})
 				require.NoError(t, err)
 			}
 			_, err = c.Get(ctx, "k", config.GetOptions{})

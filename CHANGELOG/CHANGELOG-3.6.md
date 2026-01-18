@@ -4,7 +4,39 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.6 (TBA)
+## v3.6.8 (TBC)
+
+### Dependencies
+
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
+
+---
+
+## v3.6.7 (2025-12-17)
+
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20998).
+
+---
+
+## v3.6.6 (2025-11-11)
+
+### etcd server
+
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20707)
+- [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20749)
+- Fix [endpoint status not retuning the correct storage quota](https://github.com/etcd-io/etcd/pull/20790)
+- Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
+- Fix [duplicate metrics collector registration that caused warning messages](https://github.com/etcd-io/etcd/pull/20905)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20901).
 
 ---
 

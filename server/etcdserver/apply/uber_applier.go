@@ -95,7 +95,7 @@ func (a *uberApplier) dispatch(r *pb.InternalRaftRequest, shouldApplyV3 membersh
 	ar := &Result{}
 	defer func(start time.Time) {
 		success := ar.Err == nil || errors.Is(ar.Err, mvcc.ErrCompacted)
-		txn.ApplySecObserve(v3Version, op, success, time.Since(start))
+		txn.ApplySecObserve("v3", op, success, time.Since(start))
 		txn.WarnOfExpensiveRequest(a.lg, a.warningApplyDuration, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)
 		if !success {
 			txn.WarnOfFailedRequest(a.lg, start, &pb.InternalRaftStringer{Request: r}, ar.Resp, ar.Err)

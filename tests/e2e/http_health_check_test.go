@@ -364,7 +364,7 @@ func triggerNoSpaceAlarm(ctx context.Context, t *testing.T, clus *e2e.EtcdProces
 	buf := strings.Repeat("b", os.Getpagesize())
 	etcdctl := clus.Etcdctl()
 	for {
-		if err := etcdctl.Put(ctx, "foo", buf, config.PutOptions{}); err != nil {
+		if _, err := etcdctl.Put(ctx, "foo", buf, config.PutOptions{}); err != nil {
 			require.ErrorContains(t, err, "etcdserver: mvcc: database space exceeded")
 			break
 		}
@@ -375,7 +375,8 @@ func triggerSlowApply(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCl
 	// the following proposal will be blocked at applying stage
 	// because when apply index < committed index, linearizable read would time out.
 	require.NoError(t, clus.Procs[0].Failpoints().SetupHTTP(ctx, "beforeApplyOneEntryNormal", fmt.Sprintf(`sleep("%s")`, duration)))
-	require.NoError(t, clus.Procs[1].Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{}))
+	_, err := clus.Procs[1].Etcdctl().Put(ctx, "foo", "bar", config.PutOptions{})
+	require.NoError(t, err)
 }
 
 func blackhole(_ context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
@@ -406,7 +407,7 @@ func triggerSlowBufferWriteBackWithAuth(ctx context.Context, t *testing.T, clus 
 func triggerCorrupt(ctx context.Context, t *testing.T, clus *e2e.EtcdProcessCluster, _ time.Duration) {
 	etcdctl := clus.Procs[0].Etcdctl()
 	for i := 0; i < 10; i++ {
-		err := etcdctl.Put(ctx, "foo", "bar", config.PutOptions{})
+		_, err := etcdctl.Put(ctx, "foo", "bar", config.PutOptions{})
 		require.NoError(t, err)
 	}
 	err := clus.Procs[0].Kill()

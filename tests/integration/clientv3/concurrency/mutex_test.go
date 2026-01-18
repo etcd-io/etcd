@@ -22,11 +22,11 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestMutexLockSessionExpired(t *testing.T) {
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
 
@@ -61,7 +61,7 @@ func TestMutexLockSessionExpired(t *testing.T) {
 }
 
 func TestMutexUnlock(t *testing.T) {
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
 

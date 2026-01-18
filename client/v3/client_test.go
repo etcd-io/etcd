@@ -103,12 +103,12 @@ func TestDialTimeout(t *testing.T) {
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: 2 * time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		},
 		{
 			Endpoints:   []string{"http://254.0.0.1:12345"},
 			DialTimeout: time.Second,
-			DialOptions: []grpc.DialOption{grpc.WithBlock()},
+			DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 			Username:    "abc",
 			Password:    "def",
 		},
@@ -257,12 +257,12 @@ func TestCloseCtxClient(t *testing.T) {
 func TestWithLogger(t *testing.T) {
 	ctx := t.Context()
 	c := NewCtxClient(ctx)
-	if c.lg == nil {
+	if c.lg.Load() == nil {
 		t.Errorf("unexpected nil in *zap.Logger")
 	}
 
 	c.WithLogger(nil)
-	if c.lg != nil {
+	if c.GetLogger() != nil {
 		t.Errorf("WithLogger should modify *zap.Logger")
 	}
 }
@@ -272,7 +272,7 @@ func TestZapWithLogger(t *testing.T) {
 	lg := zap.NewNop()
 	c := NewCtxClient(ctx, WithZapLogger(lg))
 
-	if c.lg != lg {
+	if c.GetLogger() != lg {
 		t.Errorf("WithZapLogger should modify *zap.Logger")
 	}
 }
@@ -353,7 +353,7 @@ func TestNewWithOnlyJWT(t *testing.T) {
 	}
 
 	if tok, ok := meta[rpctypes.TokenFieldNameGRPC]; !ok {
-		t.Error("Token was not successfuly set in the auth bundle")
+		t.Error("Token was not successfully set in the auth bundle")
 	} else if tok != "foo" {
 		t.Errorf("Incorrect token set in auth bundle, got '%s', expected 'foo'", tok)
 	}

@@ -24,11 +24,11 @@ import (
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/concurrency"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 func TestSessionOptions(t *testing.T) {
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
 	lease, err := cli.Grant(t.Context(), 100)
@@ -47,7 +47,7 @@ func TestSessionOptions(t *testing.T) {
 }
 
 func TestSessionTTLOptions(t *testing.T) {
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
 
@@ -74,7 +74,7 @@ func TestSessionTTLOptions(t *testing.T) {
 }
 
 func TestSessionCtx(t *testing.T) {
-	cli, err := integration2.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
+	cli, err := integration.NewClient(t, clientv3.Config{Endpoints: exampleEndpoints()})
 	require.NoError(t, err)
 	defer cli.Close()
 	lease, err := cli.Grant(t.Context(), 100)

@@ -1,3 +1,4 @@
+ANTITHESIS_ROOT :=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 REPOSITORY_ROOT := $(shell git rev-parse --show-toplevel)
 USER_ID := $(shell id -u)
 GROUP_ID := $(shell id -g)
@@ -9,14 +10,23 @@ CFG_NODE_COUNT ?= 3
 
 .PHONY: antithesis-build-client-docker-image
 antithesis-build-client-docker-image: validate-node-count
+	# This is a release image using go build without our tooling. Using the
+	# version defined in .go-version is the correct image tag.
 	docker build \
-		--build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
-		--build-arg CFG_NODE_COUNT=$(CFG_NODE_COUNT) \
-		-f $(REPOSITORY_ROOT)/tests/antithesis/test-template/Dockerfile $(REPOSITORY_ROOT) -t etcd-client:latest
+		--build-arg GO_IMAGE_TAG=$(shell cat $(REPOSITORY_ROOT)/.go-version) \
+		--file $(ANTITHESIS_ROOT)/test-template/Dockerfile \
+		--tag etcd-client:latest \
+		$(REPOSITORY_ROOT)
 
 .PHONY: antithesis-build-etcd-image
 antithesis-build-etcd-image:
-	docker build --build-arg GO_VERSION=$(shell cat $(REPOSITORY_ROOT)/.go-version) --build-arg REF=$(REF) $(REPOSITORY_ROOT)/tests/antithesis/server/ -t etcd-server:latest
+	# Use the Workspace Go version from the go directive. This is the base image
+	# later in the Dockerfile, we'll set the correct toolchain.
+	docker build \
+		--build-arg GO_IMAGE_TAG=$(shell go work edit -json | jq .Go) \
+		--build-arg REF=$(REF) \
+		--tag etcd-server:latest \
+		$(ANTITHESIS_ROOT)/server/
 
 .PHONY: antithesis-build-etcd-image-release-3.4
 antithesis-build-etcd-image-release-3.4: REF=release-3.4
@@ -57,11 +67,13 @@ antithesis-run-container-validation: validate-node-count
 
 .PHONY: antithesis-run-local-traffic
 antithesis-run-local-traffic:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/traffic/main.go --local
+	export ETCD_ROBUSTNESS_DATA_PATHS=/tmp/etcddata0,/tmp/etcddata1,/tmp/etcddata2 && export ETCD_ROBUSTNESS_REPORT_PATH=report && export ETCD_ROBUSTNESS_ENDPOINTS=127.0.0.1:12379,127.0.0.1:22379,127.0.0.1:32379 && \
+		go run --race ./test-template/robustness/traffic/main.go
 
 .PHONY: antithesis-run-local-validation
 antithesis-run-local-validation:
-	go run -ldflags "-X main.NodeCount=$(CFG_NODE_COUNT)" --race ./test-template/robustness/finally/main.go --local
+	export ETCD_ROBUSTNESS_DATA_PATHS=/tmp/etcddata0,/tmp/etcddata1,/tmp/etcddata2 && export ETCD_ROBUSTNESS_REPORT_PATH=report && export ETCD_ROBUSTNESS_ENDPOINTS=127.0.0.1:12379,127.0.0.1:22379,127.0.0.1:32379 && \
+		go run --race ./test-template/robustness/finally/main.go
 
 .PHONY: antithesis-clean
 antithesis-clean: validate-node-count

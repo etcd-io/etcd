@@ -15,19 +15,20 @@
 package etcdutl
 
 import (
-	"errors"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 	"go.etcd.io/etcd/pkg/v3/cobrautl"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
 	"go.etcd.io/etcd/server/v3/storage/datadir"
 	"go.etcd.io/etcd/server/v3/storage/wal"
 	"go.etcd.io/etcd/server/v3/storage/wal/walpb"
-	"go.etcd.io/raft/v3/raftpb"
 )
+
+// FlockTimeout is the duration to wait to obtain a file lock on db file.
+var FlockTimeout time.Duration
 
 func GetLogger() *zap.Logger {
 	config := logutil.DefaultZapLoggerConfig
@@ -41,30 +42,15 @@ func GetLogger() *zap.Logger {
 }
 
 func getLatestWALSnap(lg *zap.Logger, dataDir string) (walpb.Snapshot, error) {
-	snapshot, err := getLatestV2Snapshot(lg, dataDir)
+	walPath := datadir.ToWALDir(dataDir)
+	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
 	if err != nil {
 		return walpb.Snapshot{}, err
 	}
 
-	var walsnap walpb.Snapshot
-	if snapshot != nil {
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+	if len(walSnaps) > 0 {
+		lastIdx := len(walSnaps) - 1
+		return walSnaps[lastIdx], nil
 	}
-	return walsnap, nil
-}
-
-func getLatestV2Snapshot(lg *zap.Logger, dataDir string) (*raftpb.Snapshot, error) {
-	walPath := datadir.ToWALDir(dataDir)
-	walSnaps, err := wal.ValidSnapshotEntries(lg, walPath)
-	if err != nil {
-		return nil, err
-	}
-
-	ss := snap.New(lg, datadir.ToSnapDir(dataDir))
-	snapshot, err := ss.LoadNewestAvailable(walSnaps)
-	if err != nil && !errors.Is(err, snap.ErrNoSnapshot) {
-		return nil, err
-	}
-
-	return snapshot, nil
+	return walpb.Snapshot{}, nil
 }
