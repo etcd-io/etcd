@@ -455,7 +455,9 @@ func TestCacheCompactionResync(t *testing.T) {
 	}
 
 	t.Log("Phase 3: resync after compaction")
+	mw.resetRegistered()
 	mw.triggerCreatedNotify()
+	<-mw.registered
 	expectSnapshotRev := int64(20)
 	ctxResync, cancelResync := context.WithTimeout(t.Context(), time.Second)
 	defer cancelResync()
@@ -558,11 +560,19 @@ func (m *mockWatcher) getLastStartRev() int64 {
 }
 
 func (m *mockWatcher) signalRegistration() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	select {
 	case <-m.registered:
 	default:
 		close(m.registered)
 	}
+}
+
+func (m *mockWatcher) resetRegistered() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.registered = make(chan struct{})
 }
 
 func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.WatchResponse) {
