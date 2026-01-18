@@ -60,7 +60,7 @@ func validateReports(lg *zap.Logger, serversDataPath map[string]string, reports 
 	assertResult(validate.ResultFromError(err), "Loaded persisted requests")
 
 	validateConfig := validate.Config{ExpectRevisionUnique: tf.ExpectUniqueRevision}
-	result := validate.ValidateAndReturnVisualize(lg, validateConfig, reports, persistedRequests, 5*time.Minute)
+	result := validate.ValidateAndReturnVisualize(validate.NewTimerLogger(lg), validateConfig, reports, persistedRequests, 5*time.Minute)
 	assertResult(result.Assumptions, "Validation assumptions fulfilled")
 	if result.Linearization.Timeout {
 		assert.Unreachable("Linearization timeout", nil)
