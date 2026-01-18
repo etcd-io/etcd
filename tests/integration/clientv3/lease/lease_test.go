@@ -720,9 +720,7 @@ func TestV3LeaseFailureOverlap(t *testing.T) {
 	wg.Wait()
 }
 
-// TestLeaseWithRequireLeader checks keep-alive channel close when no leader,
-// and verifies lease expiration behavior after leader is restored.
-func TestLeaseWithRequireLeader(t *testing.T) {
+func TestLeaseKeepAliveAndExpirationWithNoLeader(t *testing.T) {
 	integration.BeforeTest(t)
 
 	clus := integration.NewCluster(t, &integration.ClusterConfig{Size: 3, UseBridge: true})
