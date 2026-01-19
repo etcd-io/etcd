@@ -708,6 +708,59 @@ func TestHashKVZeroRevision(t *testing.T) {
 	}
 }
 
+// TestHashByRevDetailed ensures that TestHashByRevDetailed returns correct detailed key hashs.
+func TestHashByRevDetailed(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := NewStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	rev := 100
+	for i := 2; i <= rev; i++ {
+		currentRev := s.Put([]byte("foo"), []byte(fmt.Sprintf("bar%d", i)), lease.NoLease)
+		if int64(i) != currentRev {
+			t.Errorf("current revision = %d, want %d", currentRev, i)
+		}
+	}
+	targetCompactRev := int64(98)
+	targetRev := int64(99)
+	detail, revResult, err := s.HashStorage().HashByRevDetailed(targetRev, targetCompactRev)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if detail.CompactRevision != targetCompactRev {
+		t.Errorf("compact revision = %d, want %d", detail.CompactRevision, compactRev)
+	}
+
+	if detail.Revision != targetRev {
+		t.Errorf("revision = %d, want %d", detail.Revision, targetRev)
+	}
+
+	if revResult != int64(rev) {
+		t.Errorf("current rev result = %d, want %d", revResult, rev)
+	}
+
+	// only last one left because of specified compaction rev
+	if len(detail.KeyHashes) != 1 {
+		t.Errorf("key count = %d, want %d", len(detail.KeyHashes), 1)
+	}
+
+	if detail.KeyHashes[0].Key != string([]byte("foo")) {
+		t.Errorf("key = %s, want %s", detail.KeyHashes[0].Key, "foo")
+	}
+
+	// the only kv's hash should equal to the total hash
+	if detail.KeyHashes[0].ModRev != targetRev {
+		t.Errorf("key rev = %d, target rev = %d", detail.KeyHashes[0].ModRev, targetRev)
+	}
+
+	// check the absolute hash
+	targetHash := uint32(3991331393)
+	if detail.KeyHashes[0].Hash != targetHash {
+		t.Errorf("key hash = %d, want %d", detail.KeyHashes[0].Hash, targetHash)
+	}
+}
+
 func TestTxnPut(t *testing.T) {
 	// assign arbitrary size
 	bytesN := 30
