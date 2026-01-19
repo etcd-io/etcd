@@ -15,7 +15,7 @@ require (
 	github.com/ryancurrah/gomodguard v1.4.1
 	go.etcd.io/gofail v0.2.0
 	go.etcd.io/protodoc v0.0.0-20180829002748-484ab544e116
-	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
+	go.etcd.io/raft/v3 v3.6.0
 	golang.org/x/tools v0.41.0
 	gotest.tools/gotestsum v1.13.0
 	gotest.tools/v3 v3.5.2
