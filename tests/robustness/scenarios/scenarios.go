@@ -167,7 +167,7 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue14370",
 		Failpoint: failpoint.RaftBeforeSavePanic,
-		Profile:   traffic.LowTraffic,
+		Profile:   traffic.LowTraffic.WithoutWatchLoop(),
 		Traffic:   traffic.EtcdPutDeleteLease,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
@@ -177,7 +177,7 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue14685",
 		Failpoint: failpoint.DefragBeforeCopyPanic,
-		Profile:   traffic.LowTraffic,
+		Profile:   traffic.LowTraffic.WithoutWatchLoop(),
 		Traffic:   traffic.EtcdPutDeleteLease,
 		Cluster: *e2e.NewConfig(
 			e2e.WithClusterSize(1),
@@ -187,7 +187,7 @@ func Regression(t *testing.T) []TestScenario {
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue13766",
 		Failpoint: failpoint.KillFailpoint,
-		Profile:   traffic.HighTrafficProfile,
+		Profile:   traffic.HighTrafficProfile.WithoutWatchLoop(),
 		Traffic:   traffic.EtcdPut,
 		Cluster: *e2e.NewConfig(
 			e2e.WithSnapshotCount(100),
@@ -219,7 +219,7 @@ func Regression(t *testing.T) []TestScenario {
 
 	scenarios = append(scenarios, TestScenario{
 		Name:      "Issue17780",
-		Profile:   traffic.LowTraffic.WithoutCompaction(),
+		Profile:   traffic.LowTraffic.WithoutCompaction().WithoutWatchLoop(),
 		Failpoint: failpoint.BatchCompactBeforeSetFinishedCompactPanic,
 		Traffic:   traffic.Kubernetes,
 		Cluster: *e2e.NewConfig(

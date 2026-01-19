@@ -179,33 +179,35 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 			})
 		}(c)
 	}
-	for i := range profile.MemberClientCount {
-		c := connect(clientSet, []string{hosts[i%len(hosts)]})
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:    c,
-				KeyStore:  keyStore,
-				Finish:    finish,
-				WaitGroup: &wg,
-			})
-		}(c)
-	}
-	for range profile.ClusterClientCount {
-		c := connect(clientSet, hosts)
-		wg.Add(1)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-				Client:    c,
-				KeyStore:  keyStore,
-				Finish:    finish,
-				WaitGroup: &wg,
-			})
-		}(c)
+	if !profile.ForbidRunWatchLoop {
+		for i := range profile.MemberClientCount {
+			c := connect(clientSet, []string{hosts[i%len(hosts)]})
+			wg.Add(1)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Finish:    finish,
+					WaitGroup: &wg,
+				})
+			}(c)
+		}
+		for range profile.ClusterClientCount {
+			c := connect(clientSet, hosts)
+			wg.Add(1)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Finish:    finish,
+					WaitGroup: &wg,
+				})
+			}(c)
+		}
 	}
 	wg.Add(1)
 	compactClient := connect(clientSet, hosts)

@@ -117,35 +117,37 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			})
 		}(c)
 	}
-	for i := range profile.MemberClientCount {
-		wg.Add(1)
-		c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
-		require.NoError(t, nerr)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:    c,
-				KeyStore:  keyStore,
-				Finish:    finish,
-				WaitGroup: &wg,
-			})
-		}(c)
-	}
-	for range profile.ClusterClientCount {
-		wg.Add(1)
-		c, nerr := clientSet.NewClient(endpoints)
-		require.NoError(t, nerr)
-		go func(c *client.RecordingClient) {
-			defer wg.Done()
-			defer c.Close()
-			traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-				Client:    c,
-				KeyStore:  keyStore,
-				Finish:    finish,
-				WaitGroup: &wg,
-			})
-		}(c)
+	if !profile.ForbidRunWatchLoop {
+		for i := range profile.MemberClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Finish:    finish,
+					WaitGroup: &wg,
+				})
+			}(c)
+		}
+		for range profile.ClusterClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient(endpoints)
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Finish:    finish,
+					WaitGroup: &wg,
+				})
+			}(c)
+		}
 	}
 	if !profile.ForbidCompaction {
 		wg.Add(1)
@@ -327,6 +329,7 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
+	ForbidRunWatchLoop             bool
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -336,6 +339,11 @@ func (p Profile) WithoutCompaction() Profile {
 
 func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	p.CompactPeriod = cp
+	return p
+}
+
+func (p Profile) WithoutWatchLoop() Profile {
+	p.ForbidRunWatchLoop = true
 	return p
 }
 
