@@ -55,7 +55,8 @@ type HashKV struct {
 
 func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
 	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
-	st := mvcc.NewStore(zap.NewNop(), b, nil, mvcc.StoreConfig{})
+	// Since `etcdutl hashkv` only hashes the keyspace and ignores leases, we use a simple lessor to simplify the implementation.
+	st := mvcc.NewStore(zap.NewNop(), b, &SimpleLessor{}, mvcc.StoreConfig{})
 	hst := mvcc.NewHashStorage(zap.NewNop(), st)
 
 	h, _, err := hst.HashByRev(rev)
