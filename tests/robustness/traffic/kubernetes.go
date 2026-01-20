@@ -90,7 +90,7 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 
 func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
 	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
-	s := newStorage()
+	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
 
@@ -137,7 +137,48 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 }
 
 func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	// TODO: implement in a subsequent commit
+	s := p.Storage
+	keyPrefix := "/registry/" + t.resource + "/"
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		case <-time.After(DefaultWatchInterval):
+			// Time to spawn a new watch
+		}
+
+		p.WaitGroup.Add(1)
+		go func() {
+			defer p.WaitGroup.Done()
+			resp, err := p.Client.Get(ctx, keyPrefix)
+			if err != nil {
+				return
+			}
+			rev := resp.Header.Revision + DefaultRevisionOffset
+
+			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+			defer cancel()
+
+			// Kubernetes issues Watch requests by requiring a leader to exist
+			watchCtx = clientv3.WithRequireLeader(watchCtx)
+			w := p.Client.Watch(watchCtx, keyPrefix, rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-p.Finish:
+					return
+				case resp, ok := <-w:
+					if !ok {
+						return
+					}
+					s.Update(resp)
+				}
+			}
+		}()
+	}
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
@@ -348,7 +389,9 @@ type storage struct {
 	revision    int64
 }
 
-func newStorage() *storage {
+// NewKubernetesStorage creates a new storage instance for tracking Kubernetes resource revisions.
+// This storage is used by Kubernetes traffic to maintain consistency in read and write operations.
+func NewKubernetesStorage() *storage {
 	return &storage{
 		keyRevision: map[string]int64{},
 	}
