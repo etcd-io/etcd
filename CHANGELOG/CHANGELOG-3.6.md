@@ -6,6 +6,11 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ## v3.6.8 (TBC)
 
+### etcd server
+
+- [Postpone removal of the --max-snapshots flag from v3.7 to v3.8](https://github.com/etcd-io/etcd/pull/21161)
+- [Revoke the deprecation of the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21163)
+
 ### Dependencies
 
 - Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
