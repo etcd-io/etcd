@@ -218,10 +218,14 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	return true
 }
 
-// choose selects watchers from the watcher group to update
-func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
+// choose selects watchers from the watcher group to update.
+// It returns the selected watcher group, the minimum revision to sync from,
+// and a list of watchers that were successfully notified of compaction.
+// The caller must delete compacted watchers from the original unsynced group.
+func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64, []*watcher) {
 	if len(wg.watchers) < maxWatchers {
-		return wg, wg.chooseAll(curRev, compactRev)
+		minRev, compactedWatchers := wg.chooseAll(curRev, compactRev)
+		return wg, minRev, compactedWatchers
 	}
 	ret := newWatcherGroup()
 	for w := range wg.watchers {
@@ -231,11 +235,17 @@ func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watc
 		maxWatchers--
 		ret.add(w)
 	}
-	return &ret, ret.chooseAll(curRev, compactRev)
+	minRev, compactedWatchers := ret.chooseAll(curRev, compactRev)
+	return &ret, minRev, compactedWatchers
 }
 
-func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
+// chooseAll processes all watchers in the group, returning the minimum revision
+// and a list of watchers that were successfully notified of compaction.
+// The caller is responsible for removing compacted watchers from the original
+// unsynced group, since this function may operate on a temporary copy.
+func (wg *watcherGroup) chooseAll(curRev, compactRev int64) (int64, []*watcher) {
 	minRev := int64(math.MaxInt64)
+	var compactedWatchers []*watcher
 	for w := range wg.watchers {
 		if w.minRev > curRev {
 			// after network partition, possibly choosing future revision watcher from restore operation
@@ -252,7 +262,9 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 			select {
 			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
 				w.compacted = true
-				wg.delete(w)
+				// Track compacted watchers instead of deleting here.
+				// The caller will delete from the original unsynced group.
+				compactedWatchers = append(compactedWatchers, w)
 			default:
 				// retry next time
 			}
@@ -262,7 +274,7 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 			minRev = w.minRev
 		}
 	}
-	return minRev
+	return minRev, compactedWatchers
 }
 
 // watcherSetByKey gets the set of watchers that receive events on the given key.
