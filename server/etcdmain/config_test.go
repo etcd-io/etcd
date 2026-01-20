@@ -1326,8 +1326,7 @@ func TestConfigFileDeprecatedOptions(t *testing.T) {
 				MaxSnapFiles:  5,
 			},
 			expectedFlags: map[string]struct{}{
-				"snapshot-count": {},
-				"max-snapshots":  {},
+				"max-snapshots": {},
 			},
 		},
 	}
