@@ -16,6 +16,7 @@ package common
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -106,6 +107,12 @@ func TestKVGet(t *testing.T) {
 				allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvFop}
 				kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvFop, kvC}
 				reversedKvs := []*mvccpb.KeyValue{kvFop, kvFooAbc, kvFoo, kvC, kvB, kvA}
+				allKvsKeysOnly := make([]*mvccpb.KeyValue, 0, len(allKvs))
+				for _, kv := range allKvs {
+					allKvsKeysOnly = append(allKvsKeysOnly, &mvccpb.KeyValue{Key: kv.Key, CreateRevision: kv.CreateRevision, ModRevision: kv.ModRevision, Version: kv.Version})
+				}
+				reversedKvsKeysOnly := slices.Clone(allKvsKeysOnly)
+				slices.Reverse(reversedKvsKeysOnly)
 
 				tests := []struct {
 					begin   string
@@ -130,6 +137,8 @@ func TestKVGet(t *testing.T) {
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvsKeysOnly}},
+					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvsKeysOnly}},
 				}
 				for _, tt := range tests {
 					resp, err := cc.Get(ctx, tt.begin, tt.options)
