@@ -207,15 +207,6 @@
 		]
 	},
 	{
-		"project": "github.com/google/btree",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/google/go-cmp/cmp",
 		"licenses": [
 			{
