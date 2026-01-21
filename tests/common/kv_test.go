@@ -66,12 +66,21 @@ func TestKVGet(t *testing.T) {
 			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				kvs := []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
+				kvs := [][]string{
+					{"a", "bar"},
+					{"b", "bar"},
+					{"c", "bar1"},
+					{"c", "bar2"},
+					{"c", "bar"},
+					{"foo", "bar"},
+					{"foo/abc", "bar"},
+					{"fop", "bar"},
+				}
 
 				var firstHeader *etcdserverpb.ResponseHeader
 				for i := range kvs {
-					resp, err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
-					require.NoErrorf(t, err, "count not put key %q", kvs[i])
+					resp, err := cc.Put(ctx, kvs[i][0], kvs[i][1], config.PutOptions{})
+					require.NoErrorf(t, err, "count not put key value %q", kvs[i])
 					if i == 0 {
 						firstHeader = resp.Header
 					}
@@ -99,7 +108,8 @@ func TestKVGet(t *testing.T) {
 				kvA := createKV("a", "bar", firstRev, firstRev, 1)
 				kvB := createKV("b", "bar", firstRev+1, firstRev+1, 1)
 				kvC := createKV("c", "bar", firstRev+2, firstRev+4, 3)
-				kvCV1 := createKV("c", "bar", firstRev+2, firstRev+2, 1)
+				kvCV1 := createKV("c", "bar1", firstRev+2, firstRev+2, 1)
+				kvCV2 := createKV("c", "bar2", firstRev+2, firstRev+3, 2)
 				kvFoo := createKV("foo", "bar", firstRev+5, firstRev+5, 1)
 				kvFooAbc := createKV("foo/abc", "bar", firstRev+6, firstRev+6, 1)
 				kvFop := createKV("fop", "bar", firstRev+7, firstRev+7, 1)
@@ -139,6 +149,10 @@ func TestKVGet(t *testing.T) {
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvsKeysOnly}},
 					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvsKeysOnly}},
+					{begin: "c", options: config.GetOptions{Revision: int(firstRev) + 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV1}}},
+					{begin: "c", options: config.GetOptions{Revision: int(firstRev) + 3}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV2}}},
+					{begin: "c", options: config.GetOptions{Revision: int(firstRev) + 4}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
+					{begin: "c", wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
 				}
 				for _, tt := range tests {
 					resp, err := cc.Get(ctx, tt.begin, tt.options)
