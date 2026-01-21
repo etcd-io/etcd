@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
@@ -154,6 +155,7 @@ func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam
 			defer p.WaitGroup.Done()
 			resp, err := p.Client.Get(ctx, keyPrefix)
 			if err != nil {
+				p.Logger.Error("kubernetes RunWatchLoop: Get failed", zap.Error(err))
 				return
 			}
 			rev := resp.Header.Revision + DefaultRevisionOffset
