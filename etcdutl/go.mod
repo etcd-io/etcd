@@ -26,6 +26,7 @@ require (
 	go.etcd.io/etcd/server/v3 v3.6.0-alpha.0
 	go.etcd.io/raft/v3 v3.6.0-beta.0.0.20260116184858-6d944ca211ee
 	go.uber.org/zap v1.27.1
+	gotest.tools/v3 v3.5.2
 )
 
 require (
