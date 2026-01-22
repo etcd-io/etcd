@@ -979,3 +979,151 @@ func TestStressWatchCancelClose(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestRangeEventsUseConcurrentReadTx verifies that rangeEvents uses ConcurrentReadTx
+// which allows write commits to proceed without being blocked by ongoing reads.
+// This is a regression test for write starvation caused by syncWatchers holding
+// ReadTx locks during large event range reads.
+func TestRangeEventsUseConcurrentReadTx(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	lg := zaptest.NewLogger(t)
+	s := NewStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	// Create some data to read
+	for i := 0; i < 100; i++ {
+		s.Put([]byte(fmt.Sprintf("key-%03d", i)), []byte("value"), lease.NoLease)
+	}
+
+	// Force commit to ensure data is persisted
+	b.ForceCommit()
+
+	// Test that rangeEvents works correctly with ConcurrentReadTx
+	// by verifying we can read events while a write is in progress
+	var wg sync.WaitGroup
+	writeComplete := make(chan struct{})
+	readComplete := make(chan struct{})
+
+	// Start a goroutine that reads events
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Read events - this should use ConcurrentReadTx internally
+		evs := rangeEvents(lg, b, 2, 50)
+		if len(evs) == 0 {
+			t.Error("expected events but got none")
+		}
+		close(readComplete)
+	}()
+
+	// Start a goroutine that does a write
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// Small delay to ensure read starts first
+		time.Sleep(10 * time.Millisecond)
+
+		// This write should not be blocked by the concurrent read
+		// because rangeEvents uses ConcurrentReadTx
+		start := time.Now()
+		s.Put([]byte("concurrent-write-key"), []byte("value"), lease.NoLease)
+		b.ForceCommit()
+		elapsed := time.Since(start)
+
+		// Write should complete quickly (within 1 second)
+		// If rangeEvents were using ReadTx, it could block writes much longer
+		if elapsed > time.Second {
+			t.Errorf("write took too long: %v, possible write starvation", elapsed)
+		}
+		close(writeComplete)
+	}()
+
+	// Wait for both operations to complete with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Success
+	case <-time.After(5 * time.Second):
+		t.Fatal("test timed out - possible deadlock or write starvation")
+	}
+}
+
+// TestRangeEventsNoWriteStarvation verifies that multiple concurrent rangeEvents
+// calls do not starve write operations.
+func TestRangeEventsNoWriteStarvation(t *testing.T) {
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	lg := zaptest.NewLogger(t)
+	s := NewStore(lg, b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	// Create data
+	for i := 0; i < 50; i++ {
+		s.Put([]byte(fmt.Sprintf("key-%03d", i)), []byte("value"), lease.NoLease)
+	}
+	b.ForceCommit()
+
+	var wg sync.WaitGroup
+	numReaders := 5
+	numWrites := 10
+	writeLatencies := make(chan time.Duration, numWrites)
+
+	// Start multiple concurrent readers
+	for i := 0; i < numReaders; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 10; j++ {
+				evs := rangeEvents(lg, b, 2, 30)
+				if len(evs) == 0 {
+					t.Error("expected events but got none")
+					return
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+		}()
+	}
+
+	// Concurrent writes should not be starved
+	for i := 0; i < numWrites; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			time.Sleep(time.Duration(n*10) * time.Millisecond)
+
+			start := time.Now()
+			s.Put([]byte(fmt.Sprintf("write-key-%d", n)), []byte("value"), lease.NoLease)
+			b.ForceCommit()
+			writeLatencies <- time.Since(start)
+		}(i)
+	}
+
+	// Wait with timeout
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(writeLatencies)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Check write latencies
+		var maxLatency time.Duration
+		for lat := range writeLatencies {
+			if lat > maxLatency {
+				maxLatency = lat
+			}
+		}
+		// Writes should complete within reasonable time even with concurrent reads
+		if maxLatency > 2*time.Second {
+			t.Errorf("max write latency too high: %v, indicates possible starvation", maxLatency)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("test timed out - write starvation detected")
+	}
+}

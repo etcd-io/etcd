@@ -457,13 +457,18 @@ func rangeEvents(lg *zap.Logger, b backend.Backend, minRev, maxRev int64) []mvcc
 
 	// UnsafeRange returns keys and values. And in boltdb, keys are revisions.
 	// values are actual key-value pairs in backend.
-	tx := b.ReadTx()
+	// Use ConcurrentReadTx to avoid blocking write commits while reading large event ranges.
+	// ReadTx would hold readTx.mu.RLock(), blocking batchTxBuffered.Unlock() which needs
+	// readTx.Lock() for writeback. This could cause write starvation and cluster timeouts
+	// when syncWatchers reads large event ranges during high write load.
+	tx := b.ConcurrentReadTx()
 	tx.RLock()
 	revs, vs := tx.UnsafeRange(schema.Key, minBytes, maxBytes, 0)
 	evs := kvsToEvents(lg, revs, vs)
 	// Must unlock after kvsToEvents, because vs (come from boltdb memory) is not deep copy.
 	// We can only unlock after Unmarshal, which will do deep copy.
 	// Otherwise we will trigger SIGSEGV during boltdb re-mmap.
+	// For ConcurrentReadTx, RUnlock signals txWg.Done() to allow proper transaction cleanup.
 	tx.RUnlock()
 	return evs
 }
