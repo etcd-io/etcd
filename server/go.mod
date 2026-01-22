@@ -12,7 +12,6 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8
 	github.com/golang/protobuf v1.5.4
-	github.com/google/btree v1.1.3
 	github.com/google/go-cmp v0.7.0
 	github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus v1.1.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.3
@@ -44,6 +43,7 @@ require (
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	k8s.io/utils v0.0.0-20260108192941-914a6e750570
 	sigs.k8s.io/yaml v1.6.0
 )
 
