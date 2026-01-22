@@ -83,23 +83,25 @@ func inRange(k, begin, end string) bool {
 }
 
 func (lc *leaseCache) LockWriteOps(ops []v3.Op) (ret []chan<- struct{}) {
+	lc.mu.Lock()
+	defer lc.mu.Unlock()
 	for _, op := range ops {
 		if op.IsGet() {
 			continue
 		}
 		key := string(op.KeyBytes())
 		if end := string(op.RangeBytes()); end == "" {
-			if wc, _ := lc.Lock(key); wc != nil {
-				ret = append(ret, wc)
+			if li := lc.entries[key]; li != nil {
+				li.waitc = make(chan struct{})
+				ret = append(ret, li.waitc)
 			}
 		} else {
-			for k := range lc.entries {
+			for k, li := range lc.entries {
 				if !inRange(k, key, end) {
 					continue
 				}
-				if wc, _ := lc.Lock(k); wc != nil {
-					ret = append(ret, wc)
-				}
+				li.waitc = make(chan struct{})
+				ret = append(ret, li.waitc)
 			}
 		}
 	}
@@ -136,6 +138,8 @@ func (lc *leaseCache) Add(key string, resp *v3.GetResponse, op v3.Op) *v3.GetRes
 	return ret
 }
 
+// Update updates a cached entry with the given value.
+// Caller must hold lc.mu.Lock().
 func (lc *leaseCache) Update(key, val []byte, respHeader *v3pb.ResponseHeader) {
 	li := lc.entries[string(key)]
 	if li == nil {
@@ -164,6 +168,8 @@ func (lc *leaseCache) Delete(key string, hdr *v3pb.ResponseHeader) {
 	lc.delete(key, hdr)
 }
 
+// delete marks a cached entry as deleted.
+// Caller must hold lc.mu.Lock().
 func (lc *leaseCache) delete(key string, hdr *v3pb.ResponseHeader) {
 	if li := lc.entries[key]; li != nil && hdr.Revision >= li.response.Header.Revision {
 		li.response.Kvs = nil
@@ -265,6 +271,8 @@ func (lc *leaseCache) clearOldRevokes(ctx context.Context) {
 	}
 }
 
+// evalCmp evaluates comparisons against cached entries.
+// Caller must hold lc.mu (at least RLock).
 func (lc *leaseCache) evalCmp(cmps []v3.Cmp) (cmpVal bool, ok bool) {
 	for _, cmp := range cmps {
 		if len(cmp.RangeEnd) > 0 {
@@ -281,6 +289,8 @@ func (lc *leaseCache) evalCmp(cmps []v3.Cmp) (cmpVal bool, ok bool) {
 	return true, true
 }
 
+// evalOps evaluates operations against cached entries.
+// Caller must hold lc.mu (at least RLock).
 func (lc *leaseCache) evalOps(ops []v3.Op) ([]*v3pb.ResponseOp, bool) {
 	resps := make([]*v3pb.ResponseOp, len(ops))
 	for i, op := range ops {
