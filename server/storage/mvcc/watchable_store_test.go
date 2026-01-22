@@ -938,6 +938,118 @@ func TestWatchVictims(t *testing.T) {
 	}
 }
 
+// TestSyncWatchersRemovesCompactedWatchersWhenOverLimit tests that compacted
+// watchers are properly removed from s.unsynced when there are more than
+// maxWatchersPerSync watchers. This is a regression test for a bug where
+// compacted watchers were deleted from a temporary watcherGroup copy instead
+// of the authoritative s.unsynced group, causing:
+// - Duplicate CompactRevision notifications
+// - Leaked watchers that were never removed
+func TestSyncWatchersRemovesCompactedWatchersWhenOverLimit(t *testing.T) {
+	oldChanBufLen, oldMaxWatchersPerSync := chanBufLen, maxWatchersPerSync
+	defer func() {
+		chanBufLen, maxWatchersPerSync = oldChanBufLen, oldMaxWatchersPerSync
+	}()
+
+	// Use small values to trigger the bug scenario without creating 512+ watchers
+	// The bug occurs when len(watchers) >= maxWatchersPerSync, causing choose()
+	// to create a temporary copy of the watcherGroup
+	chanBufLen = 10
+	maxWatchersPerSync = 4
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	// Use newWatchableStore to avoid automatic syncWatchers loop
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+
+	// Create some revisions, then compact
+	s.Put(testKey, testValue, lease.NoLease) // rev 2
+	s.Put(testKey, testValue, lease.NoLease) // rev 3
+	compactRev := int64(3)
+	_, err := s.Compact(traceutil.TODO(), compactRev)
+	require.NoError(t, err)
+
+	// Create more than maxWatchersPerSync (4) watchers with startRev < compactRev
+	// This triggers the code path where choose() creates a temporary copy
+	watcherCount := 6
+	w := s.NewWatchStream()
+	defer w.Close()
+
+	watchIDs := make(map[WatchID]struct{})
+	for i := 0; i < watcherCount; i++ {
+		// startRev=1 is less than compactRev=3, so all watchers should be compacted
+		id, err := w.Watch(t.Context(), 0, testKey, nil, 1)
+		require.NoError(t, err)
+		watchIDs[id] = struct{}{}
+	}
+
+	// All watchers should be in unsynced group
+	assert.Equal(t, watcherCount, s.unsynced.size(), "all watchers should be in unsynced")
+
+	// First syncWatchers call processes up to maxWatchersPerSync (4) watchers
+	s.syncWatchers([]mvccpb.Event{})
+
+	// With the fix: 4 watchers should be removed from unsynced (processed and compacted)
+	// Remaining: 6 - 4 = 2 watchers
+	assert.Equal(t, 2, s.unsynced.size(), "only unprocessed watchers should remain in unsynced")
+
+	// Drain the channel and track which watchers received CompactRevision
+	compactedIDs := make(map[WatchID]int)
+	for i := 0; i < maxWatchersPerSync; i++ {
+		select {
+		case resp := <-w.Chan():
+			require.NotZero(t, resp.CompactRevision, "expected CompactRevision response")
+			assert.Equal(t, compactRev, resp.CompactRevision)
+			compactedIDs[resp.WatchID]++
+		default:
+			t.Fatalf("expected %d responses in first batch, got %d", maxWatchersPerSync, i)
+		}
+	}
+
+	// Each processed watcher should have received exactly one notification
+	for id, count := range compactedIDs {
+		assert.Equal(t, 1, count, "watcher %d should receive exactly one CompactRevision", id)
+	}
+
+	// Second syncWatchers call should process the remaining 2 watchers
+	s.syncWatchers([]mvccpb.Event{})
+
+	// All watchers should now be removed from unsynced
+	assert.Equal(t, 0, s.unsynced.size(), "all compacted watchers should be removed from unsynced")
+
+	// Drain remaining responses
+	for i := 0; i < 2; i++ {
+		select {
+		case resp := <-w.Chan():
+			require.NotZero(t, resp.CompactRevision, "expected CompactRevision response")
+			assert.Equal(t, compactRev, resp.CompactRevision)
+			// This watcher should NOT have been notified before (no duplicates)
+			_, alreadyCompacted := compactedIDs[resp.WatchID]
+			assert.False(t, alreadyCompacted, "watcher %d received duplicate CompactRevision notification", resp.WatchID)
+			compactedIDs[resp.WatchID]++
+		default:
+			t.Fatalf("expected 2 more responses in second batch, got %d", i)
+		}
+	}
+
+	// Verify all watchers were notified exactly once
+	assert.Equal(t, watcherCount, len(compactedIDs), "all watchers should have been notified")
+
+	// Third syncWatchers call should not send any more responses
+	s.syncWatchers([]mvccpb.Event{})
+
+	// Channel should be empty - no duplicate notifications
+	select {
+	case resp := <-w.Chan():
+		t.Fatalf("unexpected response after all watchers compacted: %+v", resp)
+	default:
+		// Expected: no more responses
+	}
+}
+
 // TestStressWatchCancelClose tests closing a watch stream while
 // canceling its watches.
 func TestStressWatchCancelClose(t *testing.T) {
