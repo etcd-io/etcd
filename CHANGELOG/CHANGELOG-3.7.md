@@ -18,6 +18,11 @@ Previous change logs can be found at [CHANGELOG-3.6](https://github.com/etcd-io/
 - [Improves performance of lease and user/role operations (up to 2x) by updating `(*readView) Rev()` to use `SharedBufReadTxMode`](https://github.com/etcd-io/etcd/pull/20411)
 - [Allow client to retrieve AuthStatus without authentication](https://github.com/etcd-io/etcd/pull/20802)
 - [Add FastLeaseKeepAlive feature to enable faster lease renewal by skipping the wait for the applied index](https://github.com/etcd-io/etcd/pull/20589)
+- [Bootstrap etcd from v3store](https://github.com/etcd-io/etcd/issues/20187), see changes below,
+  - [Stop loading v2 snapshot files](https://github.com/etcd-io/etcd/pull/21107)
+  - [Initialize confState from v3 store on bootstrap](https://github.com/etcd-io/etcd/pull/21138)
+  - [Remove flag `--max-snapshots` in 3.8 rather than 3.7](https://github.com/etcd-io/etcd/pull/21160)
+  - [Keep the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21162)
 
 ### Package `clientv3`
 
