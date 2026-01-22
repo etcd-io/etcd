@@ -58,6 +58,9 @@ type RaftCluster struct {
 	downgradeInfo  *serverversion.DowngradeInfo
 	maxLearners    int
 	versionChanged *notify.Notifier
+
+	// memberEventBroadcaster broadcasts membership change events to subscribers.
+	memberEventBroadcaster *MemberEventBroadcaster
 }
 
 // ConfigChangeContext represents a context for confChange.
@@ -110,12 +113,19 @@ func NewCluster(lg *zap.Logger, opts ...ClusterOption) *RaftCluster {
 	clOpts := newClusterOpts(opts...)
 
 	return &RaftCluster{
-		lg:            lg,
-		members:       make(map[types.ID]*Member),
-		removed:       make(map[types.ID]bool),
-		downgradeInfo: &serverversion.DowngradeInfo{Enabled: false},
-		maxLearners:   clOpts.maxLearners,
+		lg:                     lg,
+		members:                make(map[types.ID]*Member),
+		removed:                make(map[types.ID]bool),
+		downgradeInfo:          &serverversion.DowngradeInfo{Enabled: false},
+		maxLearners:            clOpts.maxLearners,
+		memberEventBroadcaster: NewMemberEventBroadcaster(),
 	}
+}
+
+// MemberEventBroadcaster returns the membership event broadcaster.
+// This can be used to subscribe to membership change events.
+func (c *RaftCluster) MemberEventBroadcaster() *MemberEventBroadcaster {
+	return c.memberEventBroadcaster
 }
 
 func (c *RaftCluster) ID() types.ID { return c.cid }
@@ -412,6 +422,13 @@ func (c *RaftCluster) AddMember(m *Member, shouldApplyV3 ShouldApplyV3) {
 			zap.Strings("added-peer-peer-urls", m.PeerURLs),
 			zap.Bool("added-peer-is-learner", m.IsLearner),
 		)
+
+		if c.memberEventBroadcaster != nil {
+			c.memberEventBroadcaster.Broadcast(MemberEvent{
+				Type:   MemberAdded,
+				Member: m.Clone(),
+			})
+		}
 	} else {
 		c.lg.Info(
 			"ignore already added member",
@@ -445,6 +462,13 @@ func (c *RaftCluster) RemoveMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 				zap.Strings("removed-remote-peer-urls", m.PeerURLs),
 				zap.Bool("removed-remote-peer-is-learner", m.IsLearner),
 			)
+
+			if c.memberEventBroadcaster != nil {
+				c.memberEventBroadcaster.Broadcast(MemberEvent{
+					Type:   MemberRemoved,
+					Member: m.Clone(),
+				})
+			}
 		} else {
 			c.lg.Warn(
 				"skipped removing already removed member",
@@ -514,6 +538,13 @@ func (c *RaftCluster) PromoteMember(id types.ID, shouldApplyV3 ShouldApplyV3) {
 				zap.String("local-member-id", c.localID.String()),
 				zap.String("promoted-member-id", id.String()),
 			)
+
+			if c.memberEventBroadcaster != nil {
+				c.memberEventBroadcaster.Broadcast(MemberEvent{
+					Type:   MemberPromoted,
+					Member: m.Clone(),
+				})
+			}
 		} else {
 			c.lg.Info(
 				"ignore promoting non-existent member",
@@ -561,6 +592,13 @@ func (c *RaftCluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes,
 				zap.Strings("updated-remote-peer-urls", raftAttr.PeerURLs),
 				zap.Bool("updated-remote-peer-is-learner", raftAttr.IsLearner),
 			)
+
+			if c.memberEventBroadcaster != nil {
+				c.memberEventBroadcaster.Broadcast(MemberEvent{
+					Type:   MemberUpdated,
+					Member: m.Clone(),
+				})
+			}
 		} else {
 			c.lg.Info(
 				"ignore updating non-existent member",

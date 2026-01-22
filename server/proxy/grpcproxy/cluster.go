@@ -179,3 +179,8 @@ func (cp *clusterProxy) MemberPromote(ctx context.Context, r *pb.MemberPromoteRe
 	// TODO: implement
 	return nil, errors.New("not implemented")
 }
+
+func (cp *clusterProxy) MemberWatch(r *pb.MemberWatchRequest, stream pb.Cluster_MemberWatchServer) error {
+	// TODO: implement proxy support for member watch
+	return errors.New("not implemented")
+}

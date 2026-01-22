@@ -30,6 +30,16 @@ type (
 	MemberRemoveResponse  pb.MemberRemoveResponse
 	MemberUpdateResponse  pb.MemberUpdateResponse
 	MemberPromoteResponse pb.MemberPromoteResponse
+	MemberWatchResponse   pb.MemberWatchResponse
+	MemberEvent           pb.MemberEvent
+	MemberEventType       pb.MemberEventType
+)
+
+const (
+	MemberAdded    = MemberEventType(pb.MemberEventType_MEMBER_ADDED)
+	MemberRemoved  = MemberEventType(pb.MemberEventType_MEMBER_REMOVED)
+	MemberUpdated  = MemberEventType(pb.MemberEventType_MEMBER_UPDATED)
+	MemberPromoted = MemberEventType(pb.MemberEventType_MEMBER_PROMOTED)
 )
 
 type Cluster interface {
@@ -50,7 +60,15 @@ type Cluster interface {
 
 	// MemberPromote promotes a member from raft learner (non-voting) to raft voting member.
 	MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error)
+
+	// MemberWatch watches for membership changes in the cluster.
+	// It returns a channel that receives MemberWatchResponse events.
+	// The channel is closed when the context is canceled or an error occurs.
+	MemberWatch(ctx context.Context, includeCurrentMembers bool) (MemberWatchChan, error)
 }
+
+// MemberWatchChan is a channel for receiving membership watch responses.
+type MemberWatchChan <-chan MemberWatchResponse
 
 type cluster struct {
 	remote   pb.ClusterClient
@@ -138,4 +156,34 @@ func (c *cluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteR
 		return nil, ContextError(ctx, err)
 	}
 	return (*MemberPromoteResponse)(resp), nil
+}
+
+func (c *cluster) MemberWatch(ctx context.Context, includeCurrentMembers bool) (MemberWatchChan, error) {
+	r := &pb.MemberWatchRequest{
+		IncludeCurrentMembers: includeCurrentMembers,
+	}
+
+	stream, err := c.remote.MemberWatch(ctx, r, c.callOpts...)
+	if err != nil {
+		return nil, ContextError(ctx, err)
+	}
+
+	ch := make(chan MemberWatchResponse)
+
+	go func() {
+		defer close(ch)
+		for {
+			resp, err := stream.Recv()
+			if err != nil {
+				return
+			}
+			select {
+			case ch <- MemberWatchResponse(*resp):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return ch, nil
 }

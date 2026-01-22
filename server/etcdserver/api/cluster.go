@@ -35,4 +35,7 @@ type Cluster interface {
 	Member(id types.ID) *membership.Member
 	// Version is the cluster-wide minimum major.minor version.
 	Version() *semver.Version
+	// MemberEventBroadcaster returns the membership event broadcaster for watching membership changes.
+	// Returns nil if member watch is not supported.
+	MemberEventBroadcaster() *membership.MemberEventBroadcaster
 }

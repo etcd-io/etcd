@@ -47,3 +47,7 @@ func (s *cls2clc) MemberRemove(ctx context.Context, r *pb.MemberRemoveRequest, o
 func (s *cls2clc) MemberPromote(ctx context.Context, r *pb.MemberPromoteRequest, opts ...grpc.CallOption) (*pb.MemberPromoteResponse, error) {
 	return s.cls.MemberPromote(ctx, r)
 }
+
+func (s *cls2clc) MemberWatch(ctx context.Context, r *pb.MemberWatchRequest, opts ...grpc.CallOption) (pb.Cluster_MemberWatchClient, error) {
+	return nil, nil
+}

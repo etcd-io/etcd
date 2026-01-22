@@ -588,3 +588,7 @@ func (mc *mockCluster) MemberUpdate(ctx context.Context, id uint64, peerAddrs []
 func (mc *mockCluster) MemberPromote(ctx context.Context, id uint64) (*MemberPromoteResponse, error) {
 	return nil, nil
 }
+
+func (mc *mockCluster) MemberWatch(ctx context.Context, includeCurrentMembers bool) (MemberWatchChan, error) {
+	return nil, nil
+}

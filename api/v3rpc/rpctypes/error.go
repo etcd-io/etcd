@@ -47,6 +47,7 @@ var (
 	ErrGRPCMemberNotLearner       = status.Error(codes.FailedPrecondition, "etcdserver: can only promote a learner member")
 	ErrGRPCLearnerNotReady        = status.Error(codes.FailedPrecondition, "etcdserver: can only promote a learner member which is in sync with leader")
 	ErrGRPCTooManyLearners        = status.Error(codes.FailedPrecondition, "etcdserver: too many learner members in cluster")
+	ErrGRPCMemberWatchNotSupported = status.Error(codes.Unimplemented, "etcdserver: member watch not supported")
 	ErrGRPCClusterIDMismatch      = status.Error(codes.FailedPrecondition, "etcdserver: cluster ID mismatch")
 	//revive:disable:var-naming
 	// Deprecated: Please use ErrGRPCClusterIDMismatch.

@@ -583,6 +583,29 @@ func local_request_Cluster_MemberPromote_0(ctx context.Context, marshaler runtim
 	return protov1.MessageV2(msg), metadata, err
 }
 
+func request_Cluster_MemberWatch_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.ClusterClient, req *http.Request, pathParams map[string]string) (etcdserverpb.Cluster_MemberWatchClient, runtime.ServerMetadata, error) {
+	var (
+		protoReq etcdserverpb.MemberWatchRequest
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(protov1.MessageV2(&protoReq)); err != nil && !errors.Is(err, io.EOF) {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	stream, err := client.MemberWatch(ctx, &protoReq)
+	if err != nil {
+		return nil, metadata, err
+	}
+	header, err := stream.Header()
+	if err != nil {
+		return nil, metadata, err
+	}
+	metadata.HeaderMD = header
+	return stream, metadata, nil
+}
+
 func request_Maintenance_Alarm_0(ctx context.Context, marshaler runtime.Marshaler, client etcdserverpb.MaintenanceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var (
 		protoReq etcdserverpb.AlarmRequest
@@ -1644,6 +1667,13 @@ func RegisterClusterHandlerServer(ctx context.Context, mux *runtime.ServeMux, se
 		forward_Cluster_MemberPromote_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
 
+	mux.Handle(http.MethodPost, pattern_Cluster_MemberWatch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		err := status.Error(codes.Unimplemented, "streaming calls are not yet supported in the in-process transport")
+		_, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+		return
+	})
+
 	return nil
 }
 
@@ -2682,6 +2712,26 @@ func RegisterClusterHandlerClient(ctx context.Context, mux *runtime.ServeMux, cl
 		}
 		forward_Cluster_MemberPromote_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
 	})
+	mux.Handle(http.MethodPost, pattern_Cluster_MemberWatch_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/etcdserverpb.Cluster/MemberWatch", runtime.WithHTTPPathPattern("/v3/cluster/member/watch"))
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := request_Cluster_MemberWatch_0(annotatedContext, inboundMarshaler, client, req, pathParams)
+		annotatedContext = runtime.NewServerMetadataContext(annotatedContext, md)
+		if err != nil {
+			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		forward_Cluster_MemberWatch_0(annotatedContext, mux, outboundMarshaler, w, req, func() (proto.Message, error) {
+			m1, err := resp.Recv()
+			return protov1.MessageV2(m1), err
+		}, mux.GetForwardResponseOptions()...)
+	})
 	return nil
 }
 
@@ -2691,6 +2741,7 @@ var (
 	pattern_Cluster_MemberUpdate_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "update"}, ""))
 	pattern_Cluster_MemberList_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "list"}, ""))
 	pattern_Cluster_MemberPromote_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "promote"}, ""))
+	pattern_Cluster_MemberWatch_0   = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 2, 3}, []string{"v3", "cluster", "member", "watch"}, ""))
 )
 
 var (
@@ -2699,6 +2750,7 @@ var (
 	forward_Cluster_MemberUpdate_0  = runtime.ForwardResponseMessage
 	forward_Cluster_MemberList_0    = runtime.ForwardResponseMessage
 	forward_Cluster_MemberPromote_0 = runtime.ForwardResponseMessage
+	forward_Cluster_MemberWatch_0   = runtime.ForwardResponseStream
 )
 
 // RegisterMaintenanceHandlerFromEndpoint is same as RegisterMaintenanceHandler but

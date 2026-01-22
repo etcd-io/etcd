@@ -757,6 +757,48 @@
         ]
       }
     },
+    "/v3/cluster/member/watch": {
+      "post": {
+        "summary": "MemberWatch watches for membership changes in the cluster.\nIt streams membership events (add, remove, update, promote) as they occur.\nSupported since etcd 3.7.",
+        "operationId": "Cluster_MemberWatch",
+        "responses": {
+          "200": {
+            "description": "A successful response.(streaming responses)",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "result": {
+                  "$ref": "#/definitions/etcdserverpbMemberWatchResponse"
+                },
+                "error": {
+                  "$ref": "#/definitions/googlerpcStatus"
+                }
+              },
+              "title": "Stream result of etcdserverpbMemberWatchResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/googlerpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/etcdserverpbMemberWatchRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Cluster"
+        ]
+      }
+    },
     "/v3/kv/compaction": {
       "post": {
         "summary": "Compact compacts the event history in the etcd key-value store. The key-value\nstore should be periodically compacted or the event history will continue to grow\nindefinitely.",
@@ -2445,6 +2487,30 @@
         }
       }
     },
+    "etcdserverpbMemberEvent": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/etcdserverpbMemberEventType",
+          "description": "type is the kind of membership change event."
+        },
+        "member": {
+          "$ref": "#/definitions/etcdserverpbMember",
+          "description": "member is the member that was affected by the event."
+        }
+      }
+    },
+    "etcdserverpbMemberEventType": {
+      "type": "string",
+      "enum": [
+        "MEMBER_ADDED",
+        "MEMBER_REMOVED",
+        "MEMBER_UPDATED",
+        "MEMBER_PROMOTED"
+      ],
+      "default": "MEMBER_ADDED",
+      "description": " - MEMBER_ADDED: MEMBER_ADDED indicates a new member was added to the cluster.\n - MEMBER_REMOVED: MEMBER_REMOVED indicates a member was removed from the cluster.\n - MEMBER_UPDATED: MEMBER_UPDATED indicates a member's configuration was updated.\n - MEMBER_PROMOTED: MEMBER_PROMOTED indicates a learner member was promoted to voting member."
+    },
     "etcdserverpbMemberListRequest": {
       "type": "object",
       "properties": {
@@ -2551,6 +2617,39 @@
             "$ref": "#/definitions/etcdserverpbMember"
           },
           "description": "members is a list of all members after updating the member."
+        }
+      }
+    },
+    "etcdserverpbMemberWatchRequest": {
+      "type": "object",
+      "properties": {
+        "include_current_members": {
+          "type": "boolean",
+          "description": "include_current_members, if set, sends the current member list as the first response\nbefore streaming subsequent changes."
+        }
+      }
+    },
+    "etcdserverpbMemberWatchResponse": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "$ref": "#/definitions/etcdserverpbResponseHeader"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMemberEvent"
+          },
+          "description": "events is a list of membership change events."
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/etcdserverpbMember"
+          },
+          "description": "members is the current list of all members in the cluster.\nThis is only populated in the first response when include_current_members is true."
         }
       }
     },

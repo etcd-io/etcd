@@ -105,6 +105,80 @@ func (cs *ClusterServer) MemberPromote(ctx context.Context, r *pb.MemberPromoteR
 	return &pb.MemberPromoteResponse{Header: cs.header(), Members: membersToProtoMembers(membs)}, nil
 }
 
+// MemberWatch watches for membership changes in the cluster.
+func (cs *ClusterServer) MemberWatch(r *pb.MemberWatchRequest, stream pb.Cluster_MemberWatchServer) error {
+	// Get the membership event broadcaster from the cluster
+	broadcaster := cs.cluster.MemberEventBroadcaster()
+	if broadcaster == nil {
+		return rpctypes.ErrGRPCMemberWatchNotSupported
+	}
+
+	// Subscribe to membership events
+	subID, eventCh := broadcaster.Subscribe()
+	defer broadcaster.Unsubscribe(subID)
+
+	// If requested, send current members as the first response
+	if r.IncludeCurrentMembers {
+		membs := membersToProtoMembers(cs.cluster.Members())
+		resp := &pb.MemberWatchResponse{
+			Header:  cs.header(),
+			Members: membs,
+		}
+		if err := stream.Send(resp); err != nil {
+			return err
+		}
+	}
+
+	// Stream membership events
+	for {
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		case event, ok := <-eventCh:
+			if !ok {
+				// Channel closed, subscription ended
+				return nil
+			}
+
+			// Convert membership event to proto event
+			protoEvent := memberEventToProto(event)
+			resp := &pb.MemberWatchResponse{
+				Header: cs.header(),
+				Events: []*pb.MemberEvent{protoEvent},
+			}
+			if err := stream.Send(resp); err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// memberEventToProto converts a membership.MemberEvent to a pb.MemberEvent.
+func memberEventToProto(event membership.MemberEvent) *pb.MemberEvent {
+	var eventType pb.MemberEventType
+	switch event.Type {
+	case membership.MemberAdded:
+		eventType = pb.MemberEventType_MEMBER_ADDED
+	case membership.MemberRemoved:
+		eventType = pb.MemberEventType_MEMBER_REMOVED
+	case membership.MemberUpdated:
+		eventType = pb.MemberEventType_MEMBER_UPDATED
+	case membership.MemberPromoted:
+		eventType = pb.MemberEventType_MEMBER_PROMOTED
+	}
+
+	return &pb.MemberEvent{
+		Type: eventType,
+		Member: &pb.Member{
+			Name:       event.Member.Name,
+			ID:         uint64(event.Member.ID),
+			PeerURLs:   event.Member.PeerURLs,
+			ClientURLs: event.Member.ClientURLs,
+			IsLearner:  event.Member.IsLearner,
+		},
+	}
+}
+
 func (cs *ClusterServer) header() *pb.ResponseHeader {
 	return &pb.ResponseHeader{ClusterId: uint64(cs.cluster.ID()), MemberId: uint64(cs.server.MemberID()), RaftTerm: cs.server.Term()}
 }

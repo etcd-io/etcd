@@ -196,6 +196,16 @@ service Cluster {
         body: "*"
     };
   }
+
+  // MemberWatch watches for membership changes in the cluster.
+  // It streams membership events (add, remove, update, promote) as they occur.
+  // Supported since etcd 3.7.
+  rpc MemberWatch(MemberWatchRequest) returns (stream MemberWatchResponse) {
+      option (google.api.http) = {
+        post: "/v3/cluster/member/watch"
+        body: "*"
+    };
+  }
 }
 
 service Maintenance {
@@ -1064,6 +1074,47 @@ message MemberPromoteResponse {
   ResponseHeader header = 1;
   // members is a list of all members after promoting the member.
   repeated Member members = 2;
+}
+
+message MemberWatchRequest {
+  option (versionpb.etcd_version_msg) = "3.7";
+
+  // include_current_members, if set, sends the current member list as the first response
+  // before streaming subsequent changes.
+  bool include_current_members = 1;
+}
+
+enum MemberEventType {
+  option (versionpb.etcd_version_enum) = "3.7";
+
+  // MEMBER_ADDED indicates a new member was added to the cluster.
+  MEMBER_ADDED = 0;
+  // MEMBER_REMOVED indicates a member was removed from the cluster.
+  MEMBER_REMOVED = 1;
+  // MEMBER_UPDATED indicates a member's configuration was updated.
+  MEMBER_UPDATED = 2;
+  // MEMBER_PROMOTED indicates a learner member was promoted to voting member.
+  MEMBER_PROMOTED = 3;
+}
+
+message MemberWatchResponse {
+  option (versionpb.etcd_version_msg) = "3.7";
+
+  ResponseHeader header = 1;
+  // events is a list of membership change events.
+  repeated MemberEvent events = 2;
+  // members is the current list of all members in the cluster.
+  // This is only populated in the first response when include_current_members is true.
+  repeated Member members = 3;
+}
+
+message MemberEvent {
+  option (versionpb.etcd_version_msg) = "3.7";
+
+  // type is the kind of membership change event.
+  MemberEventType type = 1;
+  // member is the member that was affected by the event.
+  Member member = 2;
 }
 
 message DefragmentRequest {
