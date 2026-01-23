@@ -172,7 +172,7 @@ func (txn *txnLeasing) commitToCache(txnResp *v3pb.TxnResponse, userTxn v3.Op) {
 			txn.lkv.leases.delete(key, txnResp.Header)
 		}
 		if op.IsPut() {
-			txn.lkv.leases.Update(op.KeyBytes(), op.ValueBytes(), txnResp.Header)
+			txn.lkv.leases.UnsafeUpdate(op.KeyBytes(), op.ValueBytes(), txnResp.Header)
 		}
 	}
 	txn.lkv.leases.mu.Unlock()

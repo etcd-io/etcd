@@ -243,7 +243,7 @@ func (lkv *leasingKV) put(ctx context.Context, op v3.Op) (pr *v3.PutResponse, er
 		}
 		if resp.Succeeded {
 			lkv.leases.mu.Lock()
-			lkv.leases.Update(op.KeyBytes(), op.ValueBytes(), resp.Header)
+			lkv.leases.UnsafeUpdate(op.KeyBytes(), op.ValueBytes(), resp.Header)
 			lkv.leases.mu.Unlock()
 			pr = (*v3.PutResponse)(resp.Responses[0].GetResponsePut())
 			pr.Header = resp.Header

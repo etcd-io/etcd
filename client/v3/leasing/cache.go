@@ -138,9 +138,8 @@ func (lc *leaseCache) Add(key string, resp *v3.GetResponse, op v3.Op) *v3.GetRes
 	return ret
 }
 
-// Update updates a cached entry with the given value.
-// Caller must hold lc.mu.Lock().
-func (lc *leaseCache) Update(key, val []byte, respHeader *v3pb.ResponseHeader) {
+// UnsafeUpdate updates a cached entry with the given value.
+func (lc *leaseCache) UnsafeUpdate(key, val []byte, respHeader *v3pb.ResponseHeader) {
 	li := lc.entries[string(key)]
 	if li == nil {
 		return
