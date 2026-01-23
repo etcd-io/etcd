@@ -175,11 +175,9 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 			break
 		}
 
-		if !wa.victim {
-			s.mu.Unlock()
-			panic("watcher not victim but not in watch groups")
-		}
-
+		// Check victims slice first before checking victim flag.
+		// This order prevents a race where moveVictims clears wa.victim
+		// after moving the watcher back to synced/unsynced.
 		var victimBatch watcherBatch
 		for _, wb := range s.victims {
 			if wb[wa] != nil {
@@ -194,9 +192,58 @@ func (s *watchableStore) cancelWatcher(wa *watcher) {
 			break
 		}
 
-		// victim being processed so not accessible; retry
+		// If watcher has victim flag set but wasn't found in victims slice,
+		// it's being processed by moveVictims concurrently. Retry.
+		if wa.victim {
+			s.mu.Unlock()
+			time.Sleep(time.Millisecond)
+			continue
+		}
+
+		// Watcher is not in any group and not a victim - this is unexpected.
+		// However, there's a small race window where moveVictims has just
+		// cleared wa.victim but hasn't yet added it back to synced/unsynced.
+		// Give it one more retry cycle before panicking.
 		s.mu.Unlock()
 		time.Sleep(time.Millisecond)
+
+		// Final check after retry
+		s.mu.Lock()
+		if s.unsynced.delete(wa) {
+			slowWatcherGauge.Dec()
+			watcherGauge.Dec()
+			break
+		} else if s.synced.delete(wa) {
+			watcherGauge.Dec()
+			break
+		} else if wa.ch == nil {
+			break
+		} else if wa.compacted {
+			watcherGauge.Dec()
+			break
+		}
+
+		// Check victims one more time
+		for _, wb := range s.victims {
+			if wb[wa] != nil {
+				slowWatcherGauge.Dec()
+				watcherGauge.Dec()
+				delete(wb, wa)
+				victimBatch = wb
+				break
+			}
+		}
+		if victimBatch != nil {
+			break
+		}
+
+		// Still not found anywhere and not victim - truly unexpected state
+		if !wa.victim {
+			s.mu.Unlock()
+			panic("watcher not victim but not in watch groups")
+		}
+		// Still victim, continue retry loop
+		s.mu.Unlock()
 	}
 
 	wa.ch = nil

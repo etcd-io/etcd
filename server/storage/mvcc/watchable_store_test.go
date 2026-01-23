@@ -979,3 +979,97 @@ func TestStressWatchCancelClose(t *testing.T) {
 
 	wg.Wait()
 }
+
+// TestCancelWatcherDuringVictimProcessing tests that canceling a watcher
+// while it's being processed as a victim doesn't cause a panic.
+// This tests the fix for the race condition where moveVictims clears
+// wa.victim after moving the watcher back to synced/unsynced groups,
+// but cancelWatcher hasn't yet found the watcher in those groups.
+func TestCancelWatcherDuringVictimProcessing(t *testing.T) {
+	oldChanBufLen := chanBufLen
+	defer func() { chanBufLen = oldChanBufLen }()
+	// Use a very small buffer to force watchers into victim state
+	chanBufLen = 1
+
+	b, _ := betesting.NewDefaultTmpBackend(t)
+	s := newWatchableStore(zaptest.NewLogger(t), b, &lease.FakeLessor{}, StoreConfig{})
+	defer cleanup(s, b)
+
+	// Start the sync loops
+	s.wg.Add(2)
+	go s.syncWatchersLoop()
+	go s.syncVictimsLoop()
+
+	testKey := []byte("foo")
+	testValue := []byte("bar")
+
+	// Create initial data
+	s.Put(testKey, testValue, lease.NoLease)
+
+	var wg sync.WaitGroup
+	const numStreams = 50
+	const numWatchersPerStream = 10
+
+	// Create many watch streams with multiple watchers each
+	streams := make([]WatchStream, numStreams)
+	watchIDs := make([][]WatchID, numStreams)
+	for i := 0; i < numStreams; i++ {
+		streams[i] = s.NewWatchStream()
+		watchIDs[i] = make([]WatchID, numWatchersPerStream)
+		for j := 0; j < numWatchersPerStream; j++ {
+			watchIDs[i][j], _ = streams[i].Watch(t.Context(), 0, testKey, nil, 1)
+		}
+	}
+
+	// Create a done channel to signal producers to stop
+	done := make(chan struct{})
+
+	// Start producer goroutine that generates events to trigger victim processing
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; ; i++ {
+			select {
+			case <-done:
+				return
+			default:
+				s.Put(testKey, testValue, lease.NoLease)
+				// Small sleep to allow some interleaving
+				if i%10 == 0 {
+					time.Sleep(time.Microsecond * 100)
+				}
+			}
+		}
+	}()
+
+	// Concurrently cancel watchers while events are being processed
+	// This creates the race condition between cancelWatcher and moveVictims
+	for i := 0; i < numStreams; i++ {
+		wg.Add(1)
+		go func(streamIdx int) {
+			defer wg.Done()
+			// Cancel each watcher with small delays to maximize race window
+			for j := 0; j < numWatchersPerStream; j++ {
+				time.Sleep(time.Microsecond * 50)
+				streams[streamIdx].Cancel(watchIDs[streamIdx][j])
+			}
+		}(i)
+	}
+
+	// Give time for operations to run
+	time.Sleep(100 * time.Millisecond)
+
+	// Signal producer to stop
+	close(done)
+
+	// Wait for all goroutines to finish
+	wg.Wait()
+
+	// Close all streams
+	for i := 0; i < numStreams; i++ {
+		streams[i].Close()
+	}
+
+	// If we get here without a panic, the test passes
+}
+
