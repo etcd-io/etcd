@@ -715,3 +715,46 @@ type fakeCluster struct {
 func (c fakeCluster) Version() *semver.Version {
 	return c.version
 }
+
+// TestConcurrentLeaseRevoke ensures that concurrent Revoke() calls on the
+// same lease do not cause a panic from double-closing the revokec channel.
+// This tests the fix using sync.Once to safely close the channel.
+func TestConcurrentLeaseRevoke(t *testing.T) {
+	lg := zap.NewNop()
+	dir, be := NewTestBackend(t)
+	defer os.RemoveAll(dir)
+	defer be.Close()
+
+	le := newLessor(lg, be, clusterLatest(), LessorConfig{MinLeaseTTL: minLeaseTTL})
+	defer le.Stop()
+	le.SetRangeDeleter(func() TxnDelete { return newFakeDeleter(be) })
+
+	const numLeases = 10
+	const numGoroutines = 5
+
+	for i := 0; i < numLeases; i++ {
+		leaseID := LeaseID(i + 1)
+		_, err := le.Grant(leaseID, 100)
+		if err != nil {
+			t.Fatalf("failed to grant lease %d: %v", leaseID, err)
+		}
+
+		// Spawn multiple goroutines that all try to revoke the same lease concurrently
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+		for j := 0; j < numGoroutines; j++ {
+			go func() {
+				defer wg.Done()
+				// This should not panic even when multiple goroutines
+				// try to revoke the same lease simultaneously
+				le.Revoke(leaseID)
+			}()
+		}
+		wg.Wait()
+
+		// Verify the lease was actually revoked
+		if le.Lookup(leaseID) != nil {
+			t.Errorf("lease %d should have been revoked", leaseID)
+		}
+	}
+}

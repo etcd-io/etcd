@@ -332,7 +332,7 @@ func (le *lessor) Revoke(id LeaseID) error {
 		return ErrLeaseNotFound
 	}
 
-	defer close(l.revokec)
+	defer l.revokeOnce.Do(func() { close(l.revokec) })
 	// unlock before doing external work
 	le.mu.Unlock()
 

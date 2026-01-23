@@ -37,6 +37,9 @@ type Lease struct {
 	mu      sync.RWMutex
 	itemSet map[LeaseItem]struct{}
 	revokec chan struct{}
+	// revokeOnce ensures revokec is closed only once, preventing panic
+	// from concurrent Revoke() calls on the same lease
+	revokeOnce sync.Once
 }
 
 func NewLease(id LeaseID, ttl int64) *Lease {
