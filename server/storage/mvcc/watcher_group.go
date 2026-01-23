@@ -218,10 +218,7 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	return true
 }
 
-// choose selects watchers from the watcher group to update.
-// It returns the selected watcher group, the minimum revision to sync from,
-// and a list of watchers that were successfully notified of compaction.
-// The caller must delete compacted watchers from the original unsynced group.
+
 func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64, []*watcher) {
 	if len(wg.watchers) < maxWatchers {
 		minRev, compactedWatchers := wg.chooseAll(curRev, compactRev)
@@ -239,10 +236,7 @@ func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watc
 	return &ret, minRev, compactedWatchers
 }
 
-// chooseAll processes all watchers in the group, returning the minimum revision
-// and a list of watchers that were successfully notified of compaction.
-// The caller is responsible for removing compacted watchers from the original
-// unsynced group, since this function may operate on a temporary copy.
+
 func (wg *watcherGroup) chooseAll(curRev, compactRev int64) (int64, []*watcher) {
 	minRev := int64(math.MaxInt64)
 	var compactedWatchers []*watcher
