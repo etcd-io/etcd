@@ -138,7 +138,6 @@ func (lc *leaseCache) Add(key string, resp *v3.GetResponse, op v3.Op) *v3.GetRes
 	return ret
 }
 
-// UnsafeUpdate updates a cached entry with the given value.
 func (lc *leaseCache) UnsafeUpdate(key, val []byte, respHeader *v3pb.ResponseHeader) {
 	li := lc.entries[string(key)]
 	if li == nil {
@@ -167,7 +166,6 @@ func (lc *leaseCache) Delete(key string, hdr *v3pb.ResponseHeader) {
 	lc.delete(key, hdr)
 }
 
-// delete marks a cached entry as deleted.
 // Caller must hold lc.mu.Lock().
 func (lc *leaseCache) delete(key string, hdr *v3pb.ResponseHeader) {
 	if li := lc.entries[key]; li != nil && hdr.Revision >= li.response.Header.Revision {
@@ -270,7 +268,6 @@ func (lc *leaseCache) clearOldRevokes(ctx context.Context) {
 	}
 }
 
-// evalCmp evaluates comparisons against cached entries.
 // Caller must hold lc.mu (at least RLock).
 func (lc *leaseCache) evalCmp(cmps []v3.Cmp) (cmpVal bool, ok bool) {
 	for _, cmp := range cmps {
@@ -288,7 +285,6 @@ func (lc *leaseCache) evalCmp(cmps []v3.Cmp) (cmpVal bool, ok bool) {
 	return true, true
 }
 
-// evalOps evaluates operations against cached entries.
 // Caller must hold lc.mu (at least RLock).
 func (lc *leaseCache) evalOps(ops []v3.Op) ([]*v3pb.ResponseOp, bool) {
 	resps := make([]*v3pb.ResponseOp, len(ops))
