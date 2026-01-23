@@ -938,7 +938,6 @@ func TestWatchVictims(t *testing.T) {
 	}
 }
 
-// TestSyncWatchersRemovesCompactedWatchersWhenOverLimit tests that compacted
 // watchers are properly removed from s.unsynced when there are more than
 // maxWatchersPerSync watchers. This is a regression test for a bug where
 // compacted watchers were deleted from a temporary watcherGroup copy instead
