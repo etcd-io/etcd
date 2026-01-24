@@ -130,6 +130,7 @@ func (ms *maintenanceServer) Defragment(ctx context.Context, sr *pb.DefragmentRe
 const snapshotSendBufferSize = 32 * 1024
 
 func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance_SnapshotServer) error {
+	ctx := srv.Context()
 	ver := schema.ReadStorageVersion(ms.bg.Backend().ReadTx())
 	storageVersion := ""
 	if ver != nil {
@@ -140,12 +141,33 @@ func (ms *maintenanceServer) Snapshot(sr *pb.SnapshotRequest, srv pb.Maintenance
 
 	defer pr.Close()
 
+	// snapDone is closed when the snapshot writing goroutine completes
+	snapDone := make(chan struct{})
+
 	go func() {
+		defer close(snapDone)
 		snap.WriteTo(pw)
 		if err := snap.Close(); err != nil {
 			ms.lg.Warn("failed to close snapshot", zap.Error(err))
 		}
 		pw.Close()
+	}()
+
+	// Monitor context cancellation and clean up resources if client disconnects
+	go func() {
+		select {
+		case <-ctx.Done():
+			// Client disconnected, close the snapshot to unblock WriteTo
+			// and prevent resource leaks
+			ms.lg.Warn("snapshot stream context canceled, cleaning up",
+				zap.Error(ctx.Err()))
+			if err := snap.Close(); err != nil {
+				ms.lg.Warn("failed to close snapshot on context cancellation", zap.Error(err))
+			}
+			pw.CloseWithError(ctx.Err())
+		case <-snapDone:
+			// Snapshot completed normally, nothing to clean up
+		}
 	}()
 
 	// record SHA digest of snapshot data
