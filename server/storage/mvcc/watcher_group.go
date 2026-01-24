@@ -256,8 +256,6 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) (int64, []*watcher) 
 			select {
 			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
 				w.compacted = true
-				// Track compacted watchers instead of deleting here.
-				// The caller will delete from the original unsynced group.
 				compactedWatchers = append(compactedWatchers, w)
 			default:
 				// retry next time

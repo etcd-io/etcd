@@ -362,9 +362,6 @@ func (s *watchableStore) syncWatchers(evs []mvccpb.Event) (int, []mvccpb.Event) 
 
 	wg, minRev, compactedWatchers := s.unsynced.choose(maxWatchersPerSync, curRev, compactionRev)
 
-	// This is necessary because choose() may operate on a temporary copy
-	// when there are more than maxWatchersPerSync watchers, and deletions
-	// in chooseAll() would only affect that temporary copy.
 	for _, w := range compactedWatchers {
 		s.unsynced.delete(w)
 	}
