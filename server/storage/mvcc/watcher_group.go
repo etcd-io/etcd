@@ -218,11 +218,12 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	return true
 }
 
-// choose selects watchers from the watcher group to update
+// choose selects watchers from the watcher group to update.
+// It always returns a new watcherGroup containing the selected watchers,
+// never the original group. This is critical because chooseAll() may delete
+// watchers from the returned group, and we must not modify the original
+// unsynced group while the caller (syncWatchers) iterates over it.
 func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
-	if len(wg.watchers) < maxWatchers {
-		return wg, wg.chooseAll(curRev, compactRev)
-	}
 	ret := newWatcherGroup()
 	for w := range wg.watchers {
 		if maxWatchers <= 0 {
@@ -249,10 +250,16 @@ func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 			w.restore = false
 		}
 		if w.minRev < compactRev {
+			// Skip if already marked as compacted (notification already sent).
+			// This can happen when multiple goroutines race to process the same watcher.
+			if w.compacted {
+				continue
+			}
 			select {
 			case w.ch <- WatchResponse{WatchID: w.id, CompactRevision: compactRev}:
 				w.compacted = true
-				wg.delete(w)
+				// Note: we don't delete from wg here. The caller (syncWatchers)
+				// will delete from the original unsynced group after iterating.
 			default:
 				// retry next time
 			}
