@@ -2014,6 +2014,13 @@ func (s *EtcdServer) applyConfChange(cc raftpb.ConfChange, confState *raftpb.Con
 	// the validation previously) to raft on bootstrap.
 	if shouldApplyV3 {
 		*confState = *s.r.ApplyConfChange(cc)
+		if s.be != nil {
+			tx := s.be.BatchTx()
+			tx.LockInsideApply()
+			schema.MustUnsafeSaveConfStateToBackend(lg, tx, confState)
+			tx.Unlock()
+			s.be.ForceCommit()
+		}
 	}
 	s.beHooks.SetConfState(confState)
 	switch cc.Type {
