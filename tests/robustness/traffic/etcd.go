@@ -32,9 +32,8 @@ import (
 
 var (
 	EtcdPutDeleteLease Traffic = etcdTraffic{
-		keyCount:     10,
-		leaseTTL:     DefaultLeaseTTL,
-		largePutSize: 32769,
+		keyCount: 10,
+		leaseTTL: DefaultLeaseTTL,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
@@ -42,33 +41,29 @@ var (
 			{Choice: StaleGet, Weight: 10},
 			{Choice: StaleList, Weight: 10},
 			{Choice: Delete, Weight: 5},
-			{Choice: MultiOpTxn, Weight: 5},
+			{Choice: MultiOpTxn, Weight: 10},
 			{Choice: PutWithLease, Weight: 5},
 			{Choice: LeaseRevoke, Weight: 5},
 			{Choice: CompareAndSet, Weight: 5},
 			{Choice: Put, Weight: 20},
-			{Choice: LargePut, Weight: 5},
 		},
 	}
 	EtcdPut Traffic = etcdTraffic{
-		keyCount:     10,
-		largePutSize: 32769,
-		leaseTTL:     DefaultLeaseTTL,
+		keyCount: 10,
+		leaseTTL: DefaultLeaseTTL,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Get, Weight: 15},
 			{Choice: List, Weight: 15},
 			{Choice: StaleGet, Weight: 10},
 			{Choice: StaleList, Weight: 10},
-			{Choice: MultiOpTxn, Weight: 5},
-			{Choice: LargePut, Weight: 5},
+			{Choice: MultiOpTxn, Weight: 10},
 			{Choice: Put, Weight: 40},
 		},
 	}
 	EtcdDelete Traffic = etcdTraffic{
-		keyCount:     10,
-		largePutSize: 32769,
-		leaseTTL:     DefaultLeaseTTL,
+		keyCount: 10,
+		leaseTTL: DefaultLeaseTTL,
 		// Please keep the sum of weights equal 100.
 		requests: []random.ChoiceWeight[etcdRequestType]{
 			{Choice: Put, Weight: 50},
@@ -78,10 +73,9 @@ var (
 )
 
 type etcdTraffic struct {
-	keyCount     int
-	requests     []random.ChoiceWeight[etcdRequestType]
-	leaseTTL     int64
-	largePutSize int
+	keyCount int
+	requests []random.ChoiceWeight[etcdRequestType]
+	leaseTTL int64
 }
 
 func (t etcdTraffic) ExpectUniqueRevision() bool {
@@ -96,7 +90,6 @@ const (
 	List          etcdRequestType = "list"
 	StaleList     etcdRequestType = "staleList"
 	Put           etcdRequestType = "put"
-	LargePut      etcdRequestType = "largePut"
 	Delete        etcdRequestType = "delete"
 	MultiOpTxn    etcdRequestType = "multiOpTxn"
 	PutWithLease  etcdRequestType = "putWithLease"
@@ -243,12 +236,6 @@ func (c etcdTrafficClient) Request(ctx context.Context, request etcdRequestType,
 	case Put:
 		var resp *clientv3.PutResponse
 		resp, err = c.client.Put(opCtx, c.keyStore.GetKey(), fmt.Sprintf("%d", c.idProvider.NewRequestID()))
-		if resp != nil {
-			rev = resp.Header.Revision
-		}
-	case LargePut:
-		var resp *clientv3.PutResponse
-		resp, err = c.client.Put(opCtx, c.keyStore.GetKey(), random.RandString(c.largePutSize))
 		if resp != nil {
 			rev = resp.Header.Revision
 		}
