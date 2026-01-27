@@ -23,7 +23,6 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
@@ -138,36 +137,12 @@ func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoop
 }
 
 func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	s := p.Storage
-	keyPrefix := "/registry/" + t.resource + "/"
-	for {
-		resp, err := p.Client.Get(ctx, keyPrefix)
-		if err != nil {
-			p.Logger.Error("kubernetes RunWatchLoop: Get failed", zap.Error(err))
-			return
-		}
-		rev := resp.Header.Revision + DefaultRevisionOffset
-
-		watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-		defer cancel()
-
-		// Kubernetes issues Watch requests by requiring a leader to exist
-		watchCtx = clientv3.WithRequireLeader(watchCtx)
-		w := p.Client.Watch(watchCtx, keyPrefix, rev, true, true, true)
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-p.Finish:
-				return
-			case resp, ok := <-w:
-				if !ok {
-					return
-				}
-				s.Update(resp)
-			}
-		}
-	}
+	key := "/registry/" + t.resource + "/"
+	withRequireLeader := true
+	withPrefix := true
+	withProgressNotify := true
+	withPrevKV := true
+	runWatchLoop(ctx, p, key, withRequireLeader, withPrefix, withProgressNotify, withPrevKV)
 }
 
 func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {

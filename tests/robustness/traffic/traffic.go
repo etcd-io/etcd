@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -128,11 +129,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:   c,
-					KeyStore: keyStore,
-					Storage:  kubernetesStorage,
-					Finish:   finish,
-					Logger:   lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
@@ -144,11 +144,10 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:   c,
-					KeyStore: keyStore,
-					Storage:  kubernetesStorage,
-					Finish:   finish,
-					Logger:   lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
@@ -369,12 +368,10 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client *client.RecordingClient
-	// TODO: merge 2 key stores into 1
-	KeyStore *keyStore
-	Storage  *storage
-	Finish   <-chan struct{}
-	Logger   *zap.Logger
+	Client     *client.RecordingClient
+	QPSLimiter *rate.Limiter
+	Finish     <-chan struct{}
+	Logger     *zap.Logger
 }
 
 type Traffic interface {
@@ -384,20 +381,31 @@ type Traffic interface {
 	ExpectUniqueRevision() bool
 }
 
-// runWatchLoop is a helper function that implements the periodic watch loop pattern.
-// It spawns watches at regular intervals with random revision offsets.
-func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+func runWatchLoop(ctx context.Context, p RunWatchLoopParam, key string, withRequireLeader bool, withPrefix bool, withProgressNotify bool, withPrevKV bool) {
 	for {
-		resp, err := p.Client.Get(ctx, cfg.watchKey)
+		err := p.QPSLimiter.Wait(ctx)
 		if err != nil {
-			p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
 			return
 		}
-		rev := resp.Header.Revision + DefaultRevisionOffset
 
-		watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-		defer cancel()
-		w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
+		getCtx, getCancel := context.WithTimeout(ctx, RequestTimeout)
+		defer getCancel()
+
+		resp, err := p.Client.Get(getCtx, key)
+		if err != nil {
+			p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
+			continue
+		}
+
+		watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
+		defer watchCancel()
+
+		if withRequireLeader {
+			watchCtx = clientv3.WithRequireLeader(watchCtx)
+		}
+
+		rev := resp.Header.Revision + DefaultRevisionOffset
+		w := p.Client.Watch(watchCtx, key, rev, withPrefix, withProgressNotify, withPrevKV)
 		for {
 			select {
 			case <-ctx.Done():
@@ -411,11 +419,6 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			}
 		}
 	}
-}
-
-type watchLoopConfig struct {
-	getKey   string
-	watchKey string
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {

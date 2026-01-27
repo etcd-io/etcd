@@ -157,10 +157,12 @@ func (t etcdTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam)
 }
 
 func (t etcdTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
-	runWatchLoop(ctx, p, watchLoopConfig{
-		getKey:   "",
-		watchKey: p.KeyStore.GetPrefix(),
-	})
+	key := ""
+	withRequireLeader := false
+	withPrefix := true
+	withProgressNotify := false
+	withPrevKV := false
+	runWatchLoop(ctx, p, key, withRequireLeader, withPrefix, withProgressNotify, withPrevKV)
 }
 
 func (t etcdTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
