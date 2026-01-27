@@ -24,6 +24,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
+	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/e2e"
 	"go.etcd.io/etcd/tests/v3/robustness/client"
 	"go.etcd.io/etcd/tests/v3/robustness/identity"
@@ -404,16 +405,20 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		p.WaitGroup.Add(1)
 		go func() {
 			defer p.WaitGroup.Done()
-			resp, err := p.Client.Get(ctx, cfg.watchKey)
+			resp, err := p.Client.Get(ctx, cfg.key)
 			if err != nil {
-				p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
+				p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
 				return
 			}
 			rev := resp.Header.Revision + DefaultRevisionOffset
 
 			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
 			defer cancel()
-			w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
+
+			if cfg.requireLeader {
+				watchCtx = clientv3.WithRequireLeader(watchCtx)
+			}
+			w := p.Client.Watch(watchCtx, cfg.key, rev, true, true, true)
 			for {
 				select {
 				case <-ctx.Done():
@@ -431,8 +436,8 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 }
 
 type watchLoopConfig struct {
-	getKey   string
-	watchKey string
+	key           string
+	requireLeader bool
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {
