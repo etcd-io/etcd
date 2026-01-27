@@ -405,33 +405,37 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 		p.WaitGroup.Add(1)
 		go func() {
 			defer p.WaitGroup.Done()
-			resp, err := p.Client.Get(ctx, cfg.key)
-			if err != nil {
-				p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
+			runWatch(ctx, p, cfg)
+		}()
+	}
+}
+
+func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+	resp, err := p.Client.Get(ctx, cfg.key)
+	if err != nil {
+		p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
+		return
+	}
+	rev := resp.Header.Revision + DefaultRevisionOffset
+
+	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+	defer cancel()
+
+	if cfg.requireLeader {
+		watchCtx = clientv3.WithRequireLeader(watchCtx)
+	}
+	w := p.Client.Watch(watchCtx, cfg.key, rev, true, true, true)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		case _, ok := <-w:
+			if !ok {
 				return
 			}
-			rev := resp.Header.Revision + DefaultRevisionOffset
-
-			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			defer cancel()
-
-			if cfg.requireLeader {
-				watchCtx = clientv3.WithRequireLeader(watchCtx)
-			}
-			w := p.Client.Watch(watchCtx, cfg.key, rev, true, true, true)
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case <-p.Finish:
-					return
-				case _, ok := <-w:
-					if !ok {
-						return
-					}
-				}
-			}
-		}()
+		}
 	}
 }
 
