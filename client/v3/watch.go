@@ -151,6 +151,9 @@ type watcher struct {
 	// streams holds all the active grpc streams keyed by ctx value.
 	streams map[string]*watchGRPCStream
 	lg      *zap.Logger
+
+	// maxBufferSize is the maximum number of events that can be buffered per watcher
+	maxBufferSize int
 }
 
 // watchGRPCStream tracks all watch resources attached to a single grpc stream.
@@ -241,6 +244,12 @@ type watcherStream struct {
 
 	// buf holds all events received from etcd but not yet consumed by the client
 	buf []*WatchResponse
+	// maxBufferSize is the maximum number of events that can be buffered (0 = unlimited)
+	maxBufferSize int
+	// bufferWarningThreshold is the threshold at which to log warnings (80% of max)
+	bufferWarningThreshold int
+	// bufferWarningLogged tracks if we've already logged a warning to avoid spam
+	bufferWarningLogged bool
 }
 
 func NewWatcher(c *Client) Watcher {
@@ -255,6 +264,7 @@ func NewWatchFromWatchClient(wc pb.WatchClient, c *Client) Watcher {
 	if c != nil {
 		w.callOpts = c.callOpts
 		w.lg = c.GetLogger()
+		w.maxBufferSize = c.cfg.MaxWatcherBufferSize
 	}
 	return w
 }
@@ -555,7 +565,12 @@ func (w *watchGRPCStream) run() {
 					id:      InvalidWatchID,
 					outc:    outc,
 					// unbuffered so resumes won't cause repeat events
-					recvc: make(chan *WatchResponse),
+					recvc:         make(chan *WatchResponse),
+					maxBufferSize: w.owner.maxBufferSize,
+				}
+				// Set warning threshold at 80% of max buffer size
+				if ws.maxBufferSize > 0 {
+					ws.bufferWarningThreshold = int(float64(ws.maxBufferSize) * 0.8)
 				}
 
 				ws.donec = make(chan struct{})
@@ -863,8 +878,61 @@ func (w *watchGRPCStream) serveSubstream(ws *watcherStream, resumec chan struct{
 				continue
 			}
 
-			// TODO pause channel if buffer gets too large
-			ws.buf = append(ws.buf, wr)
+			// Check buffer size limit to prevent unbounded memory growth
+			bufLen := len(ws.buf)
+
+			// Log warning when approaching buffer limit
+			if ws.maxBufferSize > 0 && bufLen >= ws.bufferWarningThreshold && !ws.bufferWarningLogged {
+				w.lg.Warn("watch buffer approaching limit",
+					zap.Int64("watch-id", ws.id),
+					zap.String("key", ws.initReq.key),
+					zap.Int("buffer-size", bufLen),
+					zap.Int("max-buffer-size", ws.maxBufferSize),
+					zap.Int("num-events", len(wr.Events)))
+				ws.bufferWarningLogged = true
+			}
+
+			// Enforce buffer limit: pause receiving if buffer is full
+			if ws.maxBufferSize > 0 && bufLen >= ws.maxBufferSize {
+				// Buffer is full - we need to wait for consumer to catch up
+				// This implements backpressure to prevent OOM
+				w.lg.Warn("watch buffer full, applying backpressure",
+					zap.Int64("watch-id", ws.id),
+					zap.String("key", ws.initReq.key),
+					zap.Int("buffer-size", bufLen),
+					zap.Int("max-buffer-size", ws.maxBufferSize))
+
+				// Wait until we can send to outc (consumer is reading)
+				// or one of the cancellation conditions occurs
+				select {
+				case outc <- *curWr:
+					// Successfully sent, buffer space freed
+					if len(ws.buf) > 0 {
+						ws.buf[0] = nil
+						ws.buf = ws.buf[1:]
+					}
+					// Reset warning flag when buffer drains below threshold
+					if len(ws.buf) < ws.bufferWarningThreshold {
+						ws.bufferWarningLogged = false
+					}
+					// Now add the new event
+					ws.buf = append(ws.buf, wr)
+				case <-w.ctx.Done():
+					return
+				case <-ws.initReq.ctx.Done():
+					return
+				case <-resumec:
+					resuming = true
+					return
+				}
+			} else {
+				// Normal case: buffer not full, append event
+				ws.buf = append(ws.buf, wr)
+				// Reset warning flag when buffer drains below threshold
+				if ws.maxBufferSize > 0 && bufLen < ws.bufferWarningThreshold {
+					ws.bufferWarningLogged = false
+				}
+			}
 		case <-w.ctx.Done():
 			return
 		case <-ws.initReq.ctx.Done():
