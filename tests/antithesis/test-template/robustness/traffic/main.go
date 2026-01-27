@@ -194,7 +194,6 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 					KeyStore:  keyStore,
 					Storage:   kubernetesStorage,
 					Finish:    finish,
-					WaitGroup: &wg,
 					Logger:    lg,
 				})
 			}(c)
@@ -210,7 +209,6 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 					KeyStore:  keyStore,
 					Storage:   kubernetesStorage,
 					Finish:    finish,
-					WaitGroup: &wg,
 					Logger:    lg,
 				})
 			}(c)

@@ -141,45 +141,32 @@ func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam
 	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	for {
-		select {
-		case <-ctx.Done():
+		resp, err := p.Client.Get(ctx, keyPrefix)
+		if err != nil {
+			p.Logger.Error("kubernetes RunWatchLoop: Get failed", zap.Error(err))
 			return
-		case <-p.Finish:
-			return
-		case <-time.After(DefaultWatchInterval):
-			// Time to spawn a new watch
 		}
+		rev := resp.Header.Revision + DefaultRevisionOffset
 
-		p.WaitGroup.Add(1)
-		go func() {
-			defer p.WaitGroup.Done()
-			resp, err := p.Client.Get(ctx, keyPrefix)
-			if err != nil {
-				p.Logger.Error("kubernetes RunWatchLoop: Get failed", zap.Error(err))
+		watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+		defer cancel()
+
+		// Kubernetes issues Watch requests by requiring a leader to exist
+		watchCtx = clientv3.WithRequireLeader(watchCtx)
+		w := p.Client.Watch(watchCtx, keyPrefix, rev, true, true, true)
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
-			rev := resp.Header.Revision + DefaultRevisionOffset
-
-			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			defer cancel()
-
-			// Kubernetes issues Watch requests by requiring a leader to exist
-			watchCtx = clientv3.WithRequireLeader(watchCtx)
-			w := p.Client.Watch(watchCtx, keyPrefix, rev, true, true, true)
-			for {
-				select {
-				case <-ctx.Done():
+			case <-p.Finish:
+				return
+			case resp, ok := <-w:
+				if !ok {
 					return
-				case <-p.Finish:
-					return
-				case resp, ok := <-w:
-					if !ok {
-						return
-					}
-					s.Update(resp)
 				}
+				s.Update(resp)
 			}
-		}()
+		}
 	}
 }
 

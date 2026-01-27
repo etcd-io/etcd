@@ -38,7 +38,6 @@ var (
 	WatchTimeout                  = 500 * time.Millisecond
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
-	DefaultWatchInterval          = 250 * time.Millisecond
 	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
@@ -129,12 +128,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:   c,
+					KeyStore: keyStore,
+					Storage:  kubernetesStorage,
+					Finish:   finish,
+					Logger:   lg,
 				})
 			}(c)
 		}
@@ -146,12 +144,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:   c,
+					KeyStore: keyStore,
+					Storage:  kubernetesStorage,
+					Finish:   finish,
+					Logger:   lg,
 				})
 			}(c)
 		}
@@ -374,11 +371,10 @@ type RunCompactLoopParam struct {
 type RunWatchLoopParam struct {
 	Client *client.RecordingClient
 	// TODO: merge 2 key stores into 1
-	KeyStore  *keyStore
-	Storage   *storage
-	Finish    <-chan struct{}
-	WaitGroup *sync.WaitGroup
-	Logger    *zap.Logger
+	KeyStore *keyStore
+	Storage  *storage
+	Finish   <-chan struct{}
+	Logger   *zap.Logger
 }
 
 type Traffic interface {
@@ -392,41 +388,28 @@ type Traffic interface {
 // It spawns watches at regular intervals with random revision offsets.
 func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
 	for {
-		select {
-		case <-ctx.Done():
+		resp, err := p.Client.Get(ctx, cfg.watchKey)
+		if err != nil {
+			p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
 			return
-		case <-p.Finish:
-			return
-		case <-time.After(DefaultWatchInterval):
-			// Time to spawn a new watch
 		}
+		rev := resp.Header.Revision + DefaultRevisionOffset
 
-		p.WaitGroup.Add(1)
-		go func() {
-			defer p.WaitGroup.Done()
-			resp, err := p.Client.Get(ctx, cfg.watchKey)
-			if err != nil {
-				p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
+		watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+		defer cancel()
+		w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
+		for {
+			select {
+			case <-ctx.Done():
 				return
-			}
-			rev := resp.Header.Revision + DefaultRevisionOffset
-
-			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-			defer cancel()
-			w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
-			for {
-				select {
-				case <-ctx.Done():
+			case <-p.Finish:
+				return
+			case _, ok := <-w:
+				if !ok {
 					return
-				case <-p.Finish:
-					return
-				case _, ok := <-w:
-					if !ok {
-						return
-					}
 				}
 			}
-		}()
+		}
 	}
 }
 
