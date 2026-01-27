@@ -190,12 +190,12 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
@@ -206,12 +206,12 @@ func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, ho
 				defer wg.Done()
 				defer c.Close()
 				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
