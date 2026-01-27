@@ -39,7 +39,6 @@ var (
 	WatchTimeout                  = 500 * time.Millisecond
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
-	DefaultWatchInterval          = 250 * time.Millisecond
 	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
@@ -130,12 +129,12 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
@@ -147,12 +146,12 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				defer wg.Done()
 				defer c.Close()
 				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
-					Client:    c,
-					KeyStore:  keyStore,
-					Storage:   kubernetesStorage,
-					Finish:    finish,
-					WaitGroup: &wg,
-					Logger:    lg,
+					Client:     c,
+					QPSLimiter: limiter,
+					KeyStore:   keyStore,
+					Storage:    kubernetesStorage,
+					Finish:     finish,
+					Logger:     lg,
 				})
 			}(c)
 		}
@@ -373,13 +372,13 @@ type RunCompactLoopParam struct {
 }
 
 type RunWatchLoopParam struct {
-	Client *client.RecordingClient
+	Client     *client.RecordingClient
+	QPSLimiter *rate.Limiter
 	// TODO: merge 2 key stores into 1
-	KeyStore  *keyStore
-	Storage   *storage
-	Finish    <-chan struct{}
-	WaitGroup *sync.WaitGroup
-	Logger    *zap.Logger
+	KeyStore *keyStore
+	Storage  *storage
+	Finish   <-chan struct{}
+	Logger   *zap.Logger
 }
 
 type Traffic interface {
@@ -389,8 +388,6 @@ type Traffic interface {
 	ExpectUniqueRevision() bool
 }
 
-// runWatchLoop is a helper function that implements the periodic watch loop pattern.
-// It spawns watches at regular intervals with random revision offsets.
 func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
 	for {
 		select {
@@ -398,28 +395,31 @@ func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig)
 			return
 		case <-p.Finish:
 			return
-		case <-time.After(DefaultWatchInterval):
-			// Time to spawn a new watch
+		default:
 		}
-
-		p.WaitGroup.Add(1)
-		go func() {
-			defer p.WaitGroup.Done()
-			runWatch(ctx, p, cfg)
-		}()
+		err := p.QPSLimiter.Wait(ctx)
+		if err != nil {
+			return
+		}
+		err = runWatch(ctx, p, cfg)
+		if err != nil {
+			p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
+		}
 	}
 }
 
-func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
-	resp, err := p.Client.Get(ctx, cfg.key)
+func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) error {
+	getCtx, getCancel := context.WithTimeout(ctx, RequestTimeout)
+	defer getCancel()
+
+	resp, err := p.Client.Get(getCtx, cfg.key)
 	if err != nil {
-		p.Logger.Error("runWatchLoop: Get failed", zap.Error(err))
-		return
+		return err
 	}
 	rev := resp.Header.Revision + DefaultRevisionOffset
 
-	watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
-	defer cancel()
+	watchCtx, watchCancel := context.WithTimeout(ctx, WatchTimeout)
+	defer watchCancel()
 
 	if cfg.requireLeader {
 		watchCtx = clientv3.WithRequireLeader(watchCtx)
@@ -428,12 +428,12 @@ func runWatch(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-p.Finish:
-			return
+			return nil
 		case _, ok := <-w:
 			if !ok {
-				return
+				return nil
 			}
 		}
 	}
