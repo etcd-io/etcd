@@ -207,6 +207,62 @@ func TestHasherStore(t *testing.T) {
 	}
 }
 
+func TestHasherStoreWithCompactRev(t *testing.T) {
+	lg := zaptest.NewLogger(t)
+	store := newFakeStore(lg)
+	s := NewHashStorage(lg, store)
+	defer store.Close()
+
+	var hashes []KeyValueHash
+	for i := 0; i < hashStorageMaxSize; i++ {
+		hash := KeyValueHash{Hash: uint32(i), Revision: int64(i) + 10, CompactRevision: int64(i) + 1}
+		hashes = append(hashes, hash)
+		s.Store(hash)
+	}
+
+	// Test with compact revision 0
+	for _, want := range hashes {
+		got, _, err := s.HashByRevWithCompactRev(want.Revision, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want.Hash != got.Hash {
+			t.Errorf("Expected stored hash to match, got: %d, expected: %d", want.Hash, got.Hash)
+		}
+		if want.Revision != got.Revision {
+			t.Errorf("Expected stored revision to match, got: %d, expected: %d", want.Revision, got.Revision)
+		}
+	}
+
+	// Test with proper compact revision
+	for _, want := range hashes {
+		got, _, err := s.HashByRevWithCompactRev(want.Revision, want.CompactRevision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if want.Hash != got.Hash {
+			t.Errorf("Expected stored hash to match, got: %d, expected: %d", want.Hash, got.Hash)
+		}
+		if want.Revision != got.Revision {
+			t.Errorf("Expected stored revision to match, got: %d, expected: %d", want.Revision, got.Revision)
+		}
+		if want.CompactRevision != got.CompactRevision {
+			t.Errorf("Expected stored compact revision to match, got: %d, expected: %d", want.CompactRevision, got.CompactRevision)
+		}
+	}
+
+	// Test with wrong compact revision, return empty hash(no key found)
+	for _, want := range hashes {
+		hash, _, err := s.HashByRevWithCompactRev(want.Revision, want.CompactRevision+1)
+		if err == nil {
+			t.Errorf("Expected an error as compact revision is wrong")
+		}
+		if hash.Hash != uint32(0) {
+			t.Errorf("Expected empty hash, got: %d", hash.Hash)
+		}
+	}
+}
+
 func TestHasherStoreFull(t *testing.T) {
 	lg := zaptest.NewLogger(t)
 	store := newFakeStore(lg)

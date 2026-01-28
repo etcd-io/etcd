@@ -164,33 +164,78 @@ func (s *store) hash() (hash uint32, revision int64, err error) {
 }
 
 func (s *store) hashByRev(rev int64) (hash KeyValueHash, currentRev int64, err error) {
-	var compactRev int64
-	start := time.Now()
+	return s.hashByRevWithCompactRev(rev, 0)
+}
 
+// prepareHashParams prepares common parameters for hash calculation functions
+// It handles locking, parameter validation, and returns the necessary values for hash computation.
+// The caller must ensure proper unlocking of the returned cleanup function.
+func (s *store) prepareHashParams(rev int64, compactRev int64) (processedRev int64, processedCompactRev int64, keep map[Revision]struct{}, currentRev int64, tx backend.ReadTx, cleanup func(), err error) {
 	s.mu.RLock()
 	s.revMu.RLock()
-	compactRev, currentRev = s.compactMainRev, s.currentRev
+
+	if compactRev <= 0 {
+		compactRev = s.compactMainRev
+	}
+	currentRev = s.currentRev
 	s.revMu.RUnlock()
 
 	if rev > 0 && rev < compactRev {
 		s.mu.RUnlock()
-		return KeyValueHash{}, 0, ErrCompacted
+		return 0, 0, nil, 0, nil, nil, ErrCompacted
 	} else if rev > 0 && rev > currentRev {
 		s.mu.RUnlock()
-		return KeyValueHash{}, currentRev, ErrFutureRev
+		return 0, 0, nil, currentRev, nil, nil, ErrFutureRev
 	}
 	if rev == 0 {
 		rev = currentRev
 	}
-	keep := s.kvindex.Keep(rev)
+	keep = s.kvindex.Keep(rev)
 
-	tx := s.b.ReadTx()
+	tx = s.b.ReadTx()
 	tx.RLock()
-	defer tx.RUnlock()
 	s.mu.RUnlock()
-	hash, err = unsafeHashByRev(tx, compactRev, rev, keep)
+
+	cleanup = func() {
+		tx.RUnlock()
+	}
+
+	return rev, compactRev, keep, currentRev, tx, cleanup, nil
+}
+
+// hashByRevWithCompactRev computes the hash of all MVCC revisions up to a given revision
+// with an optional custom compact revision. If compactRev <= 0, uses the store's compact revision.
+func (s *store) hashByRevWithCompactRev(rev int64, compactRev int64) (hash KeyValueHash, currentRev int64, err error) {
+	start := time.Now()
+
+	processedRev, processedCompactRev, keep, currentRev, tx, cleanup, err := s.prepareHashParams(rev, compactRev)
+	if err != nil {
+		return KeyValueHash{}, currentRev, err
+	}
+	defer cleanup()
+
+	hash, err = unsafeHashByRev(tx, processedCompactRev, processedRev, keep)
 	hashRevSec.Observe(time.Since(start).Seconds())
 	return hash, currentRev, err
+}
+
+// hashByRevDetailed computes the hash of all MVCC revisions up to a given revision
+// with detailed information including individual key hashes.
+//
+// WARNING: This method processes all key-value pairs in the database. For large datasets,
+// it may consume significant memory and CPU resources. Use appropriately in production.
+func (s *store) hashByRevDetailed(rev int64, compactRev int64) (result DetailedHashResult, currentRev int64, err error) {
+	start := time.Now()
+
+	processedRev, processedCompactRev, keep, currentRev, tx, cleanup, err := s.prepareHashParams(rev, compactRev)
+	if err != nil {
+		return DetailedHashResult{}, currentRev, err
+	}
+	defer cleanup()
+
+	result, err = unsafeHashByRevDetailed(tx, processedCompactRev, processedRev, keep)
+	hashRevSec.Observe(time.Since(start).Seconds())
+	return result, currentRev, err
 }
 
 func (s *store) updateCompactRev(rev int64) (<-chan struct{}, int64, error) {
