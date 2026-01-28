@@ -30,9 +30,8 @@ var (
 	errFutureRevRespRequested = errors.New("request about a future rev with response")
 )
 
-func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
+func validateLinearizableOperations(lg *zap.Logger, operations []porcupine.Operation, timeout time.Duration) LinearizationResult {
 	lg.Info("Validating linearizable operations", zap.Duration("timeout", timeout))
-	start := time.Now()
 	check, info := porcupine.CheckOperationsVerbose(model.NonDeterministicModel, operations, timeout)
 	result := LinearizationResult{
 		Info:  info,
@@ -41,16 +40,16 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	switch check {
 	case porcupine.Ok:
 		result.Status = Success
-		lg.Info("Linearization success", zap.Duration("duration", time.Since(start)))
+		lg.Info("Linearization success")
 	case porcupine.Unknown:
 		result.Status = Failure
 		result.Message = "timed out"
 		result.Timeout = true
-		lg.Error("Linearization timed out", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization timed out")
 	case porcupine.Illegal:
 		result.Status = Failure
 		result.Message = "illegal"
-		lg.Error("Linearization illegal", zap.Duration("duration", time.Since(start)))
+		lg.Error("Linearization illegal")
 	default:
 		result.Status = Failure
 		result.Message = "unknown"
@@ -58,18 +57,7 @@ func validateLinearizableOperationsAndVisualize(lg *zap.Logger, operations []por
 	return result
 }
 
-func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) Result {
-	lg.Info("Validating serializable operations")
-	start := time.Now()
-	err := validateSerializableOperationsError(lg, operations, replay)
-	if err != nil {
-		lg.Error("Serializable validation failed", zap.Duration("duration", time.Since(start)), zap.Error(err))
-	}
-	lg.Info("Serializable validation success", zap.Duration("duration", time.Since(start)))
-	return ResultFromError(err)
-}
-
-func validateSerializableOperationsError(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
+func validateSerializableOperations(lg *zap.Logger, operations []porcupine.Operation, replay *model.EtcdReplay) (lastErr error) {
 	for _, read := range operations {
 		request := read.Input.(model.EtcdRequest)
 		response := read.Output.(model.MaybeEtcdResponse)
