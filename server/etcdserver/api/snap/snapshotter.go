@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -51,8 +52,10 @@ var (
 )
 
 type Snapshotter struct {
-	lg  *zap.Logger
-	dir string
+	lg       *zap.Logger
+	dir      string
+	mu       sync.RWMutex
+	reserved map[uint64]struct{}
 }
 
 func New(lg *zap.Logger, dir string) *Snapshotter {
@@ -60,8 +63,9 @@ func New(lg *zap.Logger, dir string) *Snapshotter {
 		lg = zap.NewNop()
 	}
 	return &Snapshotter{
-		lg:  lg,
-		dir: dir,
+		lg:       lg,
+		dir:      dir,
+		reserved: make(map[uint64]struct{}),
 	}
 }
 
@@ -271,12 +275,42 @@ func (s *Snapshotter) ReleaseSnapDBs(snap raftpb.Snapshot) error {
 				continue
 			}
 			if index < snap.Metadata.Index {
+				s.mu.RLock()
+				_, reserved := s.reserved[index]
+				if reserved {
+					s.mu.RUnlock()
+					s.lg.Info("skipping deletion of reserved .snap.db file", zap.String("path", filename), zap.Uint64("index", index))
+					continue
+				}
 				s.lg.Info("found orphaned .snap.db file; deleting", zap.String("path", filename))
-				if rmErr := os.Remove(filepath.Join(s.dir, filename)); rmErr != nil && !os.IsNotExist(rmErr) {
+				rmErr := os.Remove(filepath.Join(s.dir, filename))
+				s.mu.RUnlock()
+				if rmErr != nil && !os.IsNotExist(rmErr) {
 					s.lg.Error("failed to remove orphaned .snap.db file", zap.String("path", filename), zap.String("error", rmErr.Error()))
 				}
 			}
 		}
 	}
 	return nil
+}
+
+// ReserveDBSnapshot marks a snapshot database as reserved, preventing it from
+// being deleted by ReleaseSnapDBs. This should be called before opening a
+// snapshot backend to prevent race conditions where a newer snapshot might
+// trigger deletion of a snapshot that's currently being applied.
+func (s *Snapshotter) ReserveDBSnapshot(index uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.reserved[index] = struct{}{}
+	s.lg.Info("reserved snapshot database", zap.Uint64("index", index))
+}
+
+// ReleaseDBSnapshot removes the reservation on a snapshot database, allowing
+// it to be deleted by future ReleaseSnapDBs calls if needed. This should be
+// called after a snapshot has been successfully applied or if application fails.
+func (s *Snapshotter) ReleaseDBSnapshot(index uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.reserved, index)
+	s.lg.Info("released snapshot database reservation", zap.Uint64("index", index))
 }
