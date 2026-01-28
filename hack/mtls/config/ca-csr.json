@@ -1,0 +1,19 @@
+{
+  "CN": "etcd-mtls-ca",
+  "key": {
+    "algo": "ecdsa",
+    "size": 256
+  },
+  "names": [
+    {
+      "O": "etcd",
+      "OU": "etcd mTLS CA",
+      "L": "San Francisco",
+      "ST": "California",
+      "C": "US"
+    }
+  ],
+  "ca": {
+    "expiry": "87600h"
+  }
+}

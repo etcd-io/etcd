@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 
 	"go.etcd.io/etcd/api/v3/version"
+	"go.etcd.io/etcd/client/pkg/v3/tlsutil"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/client/v3/credentials"
@@ -79,6 +80,9 @@ type Etcd struct {
 	Server *etcdserver.EtcdServer
 
 	cfg Config
+
+	// caReloaders holds CA certificate reloaders for cleanup on shutdown.
+	caReloaders []*tlsutil.CAReloader
 
 	// closeOnce is to ensure `stopc` is closed only once, no matter
 	// how many times the Close() method is called.
@@ -135,6 +139,38 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 			zap.Bool("reuse-port", cfg.SocketOpts.ReusePort),
 		)
 	}
+
+	// Create CA reloaders if CA reload is enabled
+	if cfg.PeerTLSReloadCA && cfg.PeerTLSInfo.TrustedCAFile != "" {
+		caFiles := []string{cfg.PeerTLSInfo.TrustedCAFile}
+		reloader, err := tlsutil.NewCAReloader(caFiles, cfg.logger)
+		if err != nil {
+			return e, fmt.Errorf("failed to create peer CA reloader: %w", err)
+		}
+		if cfg.TLSCAReloadInterval > 0 {
+			reloader.WithInterval(cfg.TLSCAReloadInterval)
+		}
+		reloader.Start()
+		cfg.PeerTLSInfo.CAReloader = reloader
+		e.caReloaders = append(e.caReloaders, reloader)
+		cfg.logger.Info("peer CA reload enabled", zap.Duration("interval", cfg.TLSCAReloadInterval))
+	}
+
+	if cfg.ClientTLSReloadCA && cfg.ClientTLSInfo.TrustedCAFile != "" {
+		caFiles := []string{cfg.ClientTLSInfo.TrustedCAFile}
+		reloader, err := tlsutil.NewCAReloader(caFiles, cfg.logger)
+		if err != nil {
+			return e, fmt.Errorf("failed to create client CA reloader: %w", err)
+		}
+		if cfg.TLSCAReloadInterval > 0 {
+			reloader.WithInterval(cfg.TLSCAReloadInterval)
+		}
+		reloader.Start()
+		cfg.ClientTLSInfo.CAReloader = reloader
+		e.caReloaders = append(e.caReloaders, reloader)
+		cfg.logger.Info("client CA reload enabled", zap.Duration("interval", cfg.TLSCAReloadInterval))
+	}
+
 	e.cfg.logger.Info(
 		"configuring peer listeners",
 		zap.Strings("listen-peer-urls", e.cfg.getListenPeerURLs()),
@@ -479,6 +515,12 @@ func (e *Etcd) Close() {
 			cancel()
 		}
 	}
+
+	// Stop CA certificate reloaders
+	for _, r := range e.caReloaders {
+		r.Stop()
+	}
+
 	if e.errc != nil {
 		e.wg.Wait()
 		close(e.errc)
@@ -536,6 +578,7 @@ func configurePeerListeners(cfg *Config) (peers []*peerListener, err error) {
 		cfg.logger.Fatal("failed to get peer self-signed certs", zap.Error(err))
 	}
 	updateMinMaxVersions(&cfg.PeerTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
 	if !cfg.PeerTLSInfo.Empty() {
 		cfg.logger.Info(
 			"starting with peer TLS",
@@ -650,6 +693,7 @@ func configureClientListeners(cfg *Config) (sctxs map[string]*serveCtx, err erro
 		cfg.logger.Fatal("failed to get client self-signed certs", zap.Error(err))
 	}
 	updateMinMaxVersions(&cfg.ClientTLSInfo, cfg.TlsMinVersion, cfg.TlsMaxVersion)
+
 	if cfg.EnablePprof {
 		cfg.logger.Info("pprof is enabled", zap.String("path", debugutil.HTTPPrefixPProf))
 	}
@@ -832,7 +876,7 @@ func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Contex
 	}
 
 	return func(ctx context.Context) (*grpc.ClientConn, error) {
-		conn, err := grpc.DialContext(ctx, addr, opts...) //nolint:staticcheck // TODO: remove for a supported version
+		conn, err := grpc.DialContext(ctx, addr, opts...)
 		if err != nil {
 			sctx.lg.Error("grpc gateway failed to dial", zap.String("addr", addr), zap.Error(err))
 			return nil, err
