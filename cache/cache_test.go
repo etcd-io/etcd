@@ -16,7 +16,6 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -403,11 +402,17 @@ func TestValidateWatchRange(t *testing.T) {
 func TestCacheCompactionResync(t *testing.T) {
 	firstSnapshot := &clientv3.GetResponse{
 		Header: &pb.ResponseHeader{Revision: 5},
-		Kvs:    []*mvccpb.KeyValue{{Key: []byte("foo"), ModRevision: 5}},
+		Kvs: []*mvccpb.KeyValue{
+			{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
+			{Key: []byte("bar"), Value: []byte("old_bar"), ModRevision: 3, CreateRevision: 3, Version: 1},
+		},
 	}
 	secondSnapshot := &clientv3.GetResponse{
 		Header: &pb.ResponseHeader{Revision: 20},
-		Kvs:    []*mvccpb.KeyValue{{Key: []byte("foo"), ModRevision: 20}},
+		Kvs: []*mvccpb.KeyValue{
+			{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
+			{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
+		},
 	}
 	fakeClient := &clientv3.Client{
 		Watcher: newMockWatcher(16),
@@ -426,40 +431,43 @@ func TestCacheCompactionResync(t *testing.T) {
 	if err = cache.WaitReady(t.Context()); err != nil {
 		t.Fatalf("initial WaitReady: %v", err)
 	}
+	verifySnapshot(t, cache, []*mvccpb.KeyValue{
+		{Key: []byte("bar"), Value: []byte("old_bar"), ModRevision: 3, CreateRevision: 3, Version: 1},
+		{Key: []byte("foo"), Value: []byte("old_value"), ModRevision: 5, CreateRevision: 5, Version: 1},
+	})
 
 	t.Log("Phase 2: simulate compaction")
 	mw.errorCompacted(10)
 
 	waitUntil(t, time.Second, 10*time.Millisecond, func() bool { return !cache.Ready() })
-	start := time.Now()
 
 	ctxGet, cancelGet := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancelGet()
-	_, err = cache.Get(ctxGet, "foo", clientv3.WithSerializable())
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("expected Get() to timeout waiting for ready after compaction, got %v", err)
+	snapshot, err := cache.Get(ctxGet, "foo", clientv3.WithSerializable())
+	if err != nil {
+		t.Fatalf("expected Get() to serve from cached snapshot after compaction, got %v", err)
+	}
+	if got := snapshot.Header.Revision; got != firstSnapshot.Header.Revision {
+		t.Fatalf("expected cached revision %d after compaction, got %d", firstSnapshot.Header.Revision, got)
+	}
+	if string(snapshot.Kvs[0].Value) != "old_value" {
+		t.Fatalf("expected cached value 'old_value' during compaction, got %q", string(snapshot.Kvs[0].Value))
 	}
 
 	t.Log("Phase 3: resync after compaction")
+	mw.resetRegistered()
 	mw.triggerCreatedNotify()
-	if err = cache.WaitReady(t.Context()); err != nil {
-		t.Fatalf("second WaitReady: %v", err)
-	}
-	elapsed := time.Since(start)
-	if elapsed > time.Second {
-		t.Fatalf("cache was unready for %v; want:  < 1 s", elapsed)
-	}
-
+	<-mw.registered
 	expectSnapshotRev := int64(20)
-	expectedWatchStart := secondSnapshot.Header.Revision + 1
-	if gotWatchStart := mw.lastStartRev; gotWatchStart != expectedWatchStart {
-		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
+	ctxResync, cancelResync := context.WithTimeout(t.Context(), time.Second)
+	defer cancelResync()
+	if err = cache.WaitForRevision(ctxResync, expectSnapshotRev); err != nil {
+		t.Fatalf("cache failed to resync to rev=%d within 1s: %v", expectSnapshotRev, err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
-	defer cancel()
-	if err = cache.WaitForRevision(ctx, expectSnapshotRev); err != nil {
-		t.Fatalf("cache never reached rev=%d: %v", expectSnapshotRev, err)
+	expectedWatchStart := secondSnapshot.Header.Revision + 1
+	if gotWatchStart := mw.getLastStartRev(); gotWatchStart != expectedWatchStart {
+		t.Errorf("Watch started at rev=%d; want %d", gotWatchStart, expectedWatchStart)
 	}
 
 	gotSnapshot, err := cache.Get(t.Context(), "foo", clientv3.WithSerializable())
@@ -469,6 +477,10 @@ func TestCacheCompactionResync(t *testing.T) {
 	if gotSnapshot.Header.Revision != expectSnapshotRev {
 		t.Errorf("unexpected Snapshot revision: got=%d, want=%d", gotSnapshot.Header.Revision, expectSnapshotRev)
 	}
+	verifySnapshot(t, cache, []*mvccpb.KeyValue{
+		{Key: []byte("baz"), Value: []byte("new_baz"), ModRevision: 18, CreateRevision: 18, Version: 1},
+		{Key: []byte("foo"), Value: []byte("new_value"), ModRevision: 20, CreateRevision: 5, Version: 2},
+	})
 }
 
 func waitUntil(t *testing.T, timeout, poll time.Duration, cond func() bool) {
@@ -541,12 +553,26 @@ func (m *mockWatcher) recordStartRev(rev int64) {
 	m.lastStartRev = rev
 }
 
+func (m *mockWatcher) getLastStartRev() int64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.lastStartRev
+}
+
 func (m *mockWatcher) signalRegistration() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	select {
 	case <-m.registered:
 	default:
 		close(m.registered)
 	}
+}
+
+func (m *mockWatcher) resetRegistered() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.registered = make(chan struct{})
 }
 
 func (m *mockWatcher) streamResponses(ctx context.Context, out chan<- clientv3.WatchResponse) {
@@ -653,5 +679,16 @@ func collectAndAssertAtomicEvents(ctx context.Context, t *testing.T, watchCh cli
 				return events
 			}
 		}
+	}
+}
+
+func verifySnapshot(t *testing.T, cache *Cache, want []*mvccpb.KeyValue) {
+	resp, err := cache.Get(t.Context(), "", clientv3.WithPrefix(), clientv3.WithSerializable())
+	if err != nil {
+		t.Fatalf("Get all keys: %v", err)
+	}
+
+	if diff := cmp.Diff(want, resp.Kvs); diff != "" {
+		t.Fatalf("cache snapshot mismatch (-want +got):\n%s", diff)
 	}
 }

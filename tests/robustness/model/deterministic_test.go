@@ -265,6 +265,13 @@ var commonTestScenarios = []modelTestCase{
 		},
 	},
 	{
+		name: "Lease grant returns current revision",
+		operations: []testOperation{
+			{req: putRequest("key", "1"), resp: putResponse(2)},
+			{req: leaseGrantRequest(1), resp: leaseGrantResponse(2)},
+		},
+	},
+	{
 		name: "Put with valid lease id should succeed. Put with expired lease id should fail",
 		operations: []testOperation{
 			{req: leaseGrantRequest(1), resp: leaseGrantResponse(1)},

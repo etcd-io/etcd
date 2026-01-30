@@ -16,10 +16,11 @@ package validate
 
 import (
 	"errors"
+	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"go.uber.org/zap"
 
 	"go.etcd.io/etcd/tests/v3/robustness/model"
@@ -27,7 +28,7 @@ import (
 )
 
 var (
-	errBrokeBookmarkable = errors.New("broke Bookmarkable - Progress notification events guarantee that all events up to a revision have been already delivered")
+	errBrokeBookmarkable = errors.New("broke Bookmarkable - Progress notification events guarantee that all events up to a revision have already been delivered")
 	errBrokeOrdered      = errors.New("broke Ordered - events are ordered by revision; an event will never appear on a watch if it precedes an event in time that has already been posted")
 	errBrokeUnique       = errors.New("broke Unique - an event will never appear on a watch twice")
 	errBrokeAtomic       = errors.New("broke Atomic - a list of events is guaranteed to encompass complete revisions; updates in the same revision over multiple keys will not be split over several lists of events")
@@ -76,15 +77,15 @@ func validateWatchError(lg *zap.Logger, cfg Config, reports []report.ClientRepor
 		if err != nil {
 			return err
 		}
+		err = validateIsCreate(lg, replay, r)
+		if err != nil {
+			return err
+		}
 		err = validateReliable(lg, replay, r)
 		if err != nil {
 			return err
 		}
 		err = validatePrevKV(lg, replay, r)
-		if err != nil {
-			return err
-		}
-		err = validateIsCreate(lg, replay, r)
 		if err != nil {
 			return err
 		}
@@ -216,8 +217,10 @@ func validateReliable(lg *zap.Logger, replay *model.EtcdReplay, report report.Cl
 				gotEvents = append(gotEvents, event.PersistedEvent)
 			}
 		}
-		if diff := cmp.Diff(wantEvents, gotEvents, cmpopts.IgnoreFields(model.PersistedEvent{}, "IsCreate")); diff != "" {
-			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID), zap.String("diff", diff))
+		if !reflect.DeepEqual(wantEvents, gotEvents) {
+			lg.Error("Broke watch guarantee", zap.String("guarantee", "reliable"), zap.Int("client", report.ClientID))
+			// Directly print to console to avoid escaping newline.
+			fmt.Print(cmp.Diff(wantEvents, gotEvents))
 			err = errBrokeReliable
 		}
 	}

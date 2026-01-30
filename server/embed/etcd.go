@@ -832,7 +832,7 @@ func (e *Etcd) grpcGatewayDial(splitHTTP bool) (grpcDial func(ctx context.Contex
 	}
 
 	return func(ctx context.Context) (*grpc.ClientConn, error) {
-		conn, err := grpc.DialContext(ctx, addr, opts...)
+		conn, err := grpc.DialContext(ctx, addr, opts...) //nolint:staticcheck // TODO: remove for a supported version
 		if err != nil {
 			sctx.lg.Error("grpc gateway failed to dial", zap.String("addr", addr), zap.Error(err))
 			return nil, err

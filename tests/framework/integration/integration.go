@@ -63,6 +63,14 @@ func (e integrationRunner) NewCluster(ctx context.Context, tb testing.TB, opts .
 	if err != nil {
 		tb.Fatalf("PeerTLS: %s", err)
 	}
+
+	if cfg.ClusterContext != nil {
+		if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
+			integrationCfg.UseTCP = !ctx.UseUnix
+			integrationCfg.UseIP = !ctx.UseUnix
+		}
+	}
+
 	return &integrationCluster{
 		Cluster: NewCluster(tb, &integrationCfg),
 		t:       tb,
@@ -98,6 +106,48 @@ func (c *integrationCluster) Members() (ms []intf.Member) {
 		ms = append(ms, integrationMember{Member: m, t: c.t})
 	}
 	return ms
+}
+
+func (c *integrationCluster) TemplateEndpoints(tb testing.TB, pattern string) []string {
+	tb.Helper()
+	var endpoints []string
+	for _, m := range c.Cluster.Members {
+		ent := pattern
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", m.GRPCPortNumber())
+		ent = strings.ReplaceAll(ent, "${MEMBER_NAME}", m.Name)
+		endpoints = append(endpoints, ent)
+	}
+	return endpoints
+}
+
+func templateAuthority(tb testing.TB, pattern string, m *Member) string {
+	tb.Helper()
+	authority := pattern
+	authority = strings.ReplaceAll(authority, "${MEMBER_PORT}", m.GRPCPortNumber())
+	authority = strings.ReplaceAll(authority, "${MEMBER_NAME}", m.Name)
+	return authority
+}
+
+func (c *integrationCluster) AssertAuthority(tb testing.TB, expectedAuthorityPattern string) {
+	tb.Helper()
+	const filterMethod = "/etcdserverpb.KV/Put"
+	for _, m := range c.Cluster.Members {
+		expectedAuthority := templateAuthority(tb, expectedAuthorityPattern, m)
+		requestsFound := 0
+		for _, r := range m.RecordedRequests() {
+			if r.FullMethod != filterMethod {
+				continue
+			}
+			if r.Authority == expectedAuthority {
+				requestsFound++
+			} else {
+				tb.Errorf("Got unexpected authority header, member %q, request %q, got %q, expected %q", m.Name, r.FullMethod, r.Authority, expectedAuthority)
+			}
+		}
+		if requestsFound == 0 {
+			tb.Errorf("Expect at least one request with matched authority header value was recorded by the server intercepter on member %s but got 0", m.Name)
+		}
+	}
 }
 
 type integrationMember struct {
@@ -162,13 +212,28 @@ func (c integrationClient) Get(ctx context.Context, key string, o config.GetOpti
 	if o.CountOnly {
 		clientOpts = append(clientOpts, clientv3.WithCountOnly())
 	}
+	if o.KeysOnly {
+		clientOpts = append(clientOpts, clientv3.WithKeysOnly())
+	}
 	if o.SortBy != clientv3.SortByKey || o.Order != clientv3.SortNone {
 		clientOpts = append(clientOpts, clientv3.WithSort(o.SortBy, o.Order))
+	}
+	if o.MaxCreateRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMaxCreateRev(int64(o.MaxCreateRevision)))
+	}
+	if o.MinCreateRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMinCreateRev(int64(o.MinCreateRevision)))
+	}
+	if o.MaxModRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMaxModRev(int64(o.MaxModRevision)))
+	}
+	if o.MinModRevision != 0 {
+		clientOpts = append(clientOpts, clientv3.WithMinModRev(int64(o.MinModRevision)))
 	}
 	return c.Client.Get(ctx, key, clientOpts...)
 }
 
-func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) error {
+func (c integrationClient) Put(ctx context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error) {
 	if opts.Timeout != 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, opts.Timeout)
@@ -178,8 +243,7 @@ func (c integrationClient) Put(ctx context.Context, key, value string, opts conf
 	if opts.LeaseID != 0 {
 		clientOpts = append(clientOpts, clientv3.WithLease(opts.LeaseID))
 	}
-	_, err := c.Client.Put(ctx, key, value, clientOpts...)
-	return err
+	return c.Client.Put(ctx, key, value, clientOpts...)
 }
 
 func (c integrationClient) Delete(ctx context.Context, key string, o config.DeleteOptions) (*clientv3.DeleteResponse, error) {

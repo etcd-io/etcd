@@ -15,7 +15,6 @@
 package cmd
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -29,50 +28,18 @@ import (
 )
 
 var (
-	// dialTotal counts the number of mustCreateConn calls so that endpoint
-	// connections can be handed out in round-robin order
-	dialTotal int
-
-	// leaderEps is a cache for holding endpoints of a leader node
-	leaderEps []string
-
 	// cache the username and password for multiple connections
 	globalUserName string
 	globalPassword string
 )
 
-func mustFindLeaderEndpoints(c *clientv3.Client) {
-	resp, lerr := c.MemberList(context.TODO())
-	if lerr != nil {
-		fmt.Fprintf(os.Stderr, "failed to get a member list: %s\n", lerr)
-		os.Exit(1)
-	}
-
-	leaderID := uint64(0)
-	for _, ep := range c.Endpoints() {
-		if sresp, serr := c.Status(context.TODO(), ep); serr == nil {
-			leaderID = sresp.Leader
-			break
-		}
-	}
-
-	for _, m := range resp.Members {
-		if m.ID == leaderID {
-			leaderEps = m.ClientURLs
-			return
-		}
-	}
-
-	fmt.Fprint(os.Stderr, "failed to find a leader endpoint\n")
-	os.Exit(1)
-}
-
 func getUsernamePassword(usernameFlag string) (string, string, error) {
 	if globalUserName != "" && globalPassword != "" {
 		return globalUserName, globalPassword, nil
 	}
-	colon := strings.Index(usernameFlag, ":")
-	if colon == -1 {
+	var ok bool
+	globalUserName, globalPassword, ok = strings.Cut(usernameFlag, ":")
+	if !ok {
 		// Prompt for the password.
 		password, err := speakeasy.Ask("Password: ")
 		if err != nil {
@@ -80,22 +47,14 @@ func getUsernamePassword(usernameFlag string) (string, string, error) {
 		}
 		globalUserName = usernameFlag
 		globalPassword = password
-	} else {
-		globalUserName = usernameFlag[:colon]
-		globalPassword = usernameFlag[colon+1:]
 	}
 	return globalUserName, globalPassword, nil
 }
 
 func mustCreateConn() *clientv3.Client {
-	connEndpoints := leaderEps
-	if len(connEndpoints) == 0 {
-		connEndpoints = []string{endpoints[dialTotal%len(endpoints)]}
-		dialTotal++
-	}
 	cfg := clientv3.Config{
 		AutoSyncInterval: autoSyncInterval,
-		Endpoints:        connEndpoints,
+		Endpoints:        endpoints,
 		DialTimeout:      dialTimeout,
 	}
 	if !tls.Empty() || tls.TrustedCAFile != "" {
@@ -118,12 +77,6 @@ func mustCreateConn() *clientv3.Client {
 	}
 
 	client, err := clientv3.New(cfg)
-	if targetLeader && len(leaderEps) == 0 {
-		mustFindLeaderEndpoints(client)
-		client.Close()
-		return mustCreateConn()
-	}
-
 	grpclog.SetLoggerV2(grpclog.NewLoggerV2(os.Stderr, os.Stderr, os.Stderr))
 
 	if err != nil {
@@ -157,24 +110,24 @@ func mustRandBytes(n int) []byte {
 	return rb
 }
 
-func newReport(reportName string) report.Report {
+func newReport(benchmarkOp string) report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, reportName, generatePerfReport)
+		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
 	}
-	return report.NewReport(p, reportName, generatePerfReport)
+	return report.NewReport(p, benchmarkOp, generatePerfReport)
 }
 
-func newWeightedReport(reportName string) report.Report {
+func newWeightedReport(benchmarkOp string) report.Report {
 	p := "%4.4f"
 	if precise {
 		p = "%g"
 	}
 	if sample {
-		return report.NewReportSample(p, reportName, generatePerfReport)
+		return report.NewReportSample(p, benchmarkOp, generatePerfReport)
 	}
-	return report.NewWeightedReport(report.NewReport(p, reportName, generatePerfReport), p, reportName, generatePerfReport)
+	return report.NewWeightedReport(report.NewReport(p, benchmarkOp, generatePerfReport), p, benchmarkOp, generatePerfReport)
 }

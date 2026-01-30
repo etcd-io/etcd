@@ -42,8 +42,8 @@ func TestErrorWriteTo(t *testing.T) {
 			"X-Etcd-Index": {"1"},
 		})
 
-		if !reflect.DeepEqual(wheader, rr.HeaderMap) {
-			t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
+		if !reflect.DeepEqual(wheader, rr.HeaderMap) { //nolint:staticcheck // TODO: remove for a supported version
+			t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader) //nolint:staticcheck // TODO: remove for a supported version
 		}
 	}
 }

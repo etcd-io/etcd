@@ -51,7 +51,8 @@ func TestEndpointHashKV(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		require.NoErrorf(t, cc.Put(ctx, key, value, config.PutOptions{}), "count not put key %q", key)
+		_, err := cc.Put(ctx, key, value, config.PutOptions{})
+		require.NoErrorf(t, err, "count not put key %q", key)
 	}
 
 	t.Log("Check all members' Hash and HashRevision")

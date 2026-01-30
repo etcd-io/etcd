@@ -30,7 +30,7 @@ type watchBroadcasts struct {
 	donec   chan struct{}
 }
 
-// maxCoalesceRecievers prevents a popular watchBroadcast from being coalseced.
+// maxCoalesceRecievers prevents a popular watchBroadcast from being coalesced.
 const maxCoalesceReceivers = 5
 
 func newWatchBroadcasts(wp *watchProxy) *watchBroadcasts {

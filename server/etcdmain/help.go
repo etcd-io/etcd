@@ -1,5 +1,4 @@
 // Copyright 2015 The etcd Authors
-// Copyright 2015 The etcd Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,7 +57,7 @@ Member:
   --wal-dir ''
     Path to the dedicated wal directory.
   --snapshot-count '10000'
-    Number of committed transactions to trigger a snapshot to disk. Deprecated in v3.6 and will be decommissioned in v3.7.
+    Number of committed transactions to trigger a snapshot.
   --heartbeat-interval '100'
     Time (in milliseconds) of a heartbeat interval.
   --election-timeout '1000'
@@ -72,7 +71,7 @@ Member:
   --listen-client-http-urls ''
     List of URLs to listen on for http only client traffic. Enabling this flag removes http services from --listen-client-urls.
   --max-snapshots '` + strconv.Itoa(embed.DefaultMaxSnapshots) + `'
-    Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.7.
+    Maximum number of snapshot files to retain (0 is unlimited). Deprecated in v3.6 and will be decommissioned in v3.8.
   --max-wals '` + strconv.Itoa(embed.DefaultMaxWALs) + `'
     Maximum number of wal files to retain (0 is unlimited).
   --memory-mlock

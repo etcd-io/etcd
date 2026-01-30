@@ -223,6 +223,8 @@ func describeRangeRequest(opts RangeOptions, revision int64) string {
 		return fmt.Sprintf("get(%q%s)", opts.Start, kwargsString)
 	case opts.End == clientv3.GetPrefixRangeEnd(opts.Start):
 		return fmt.Sprintf("list(%q%s)", opts.Start, kwargsString)
+	case strings.HasSuffix(opts.Start, "\x00") && strings.HasSuffix(opts.End, "0") && strings.HasPrefix(opts.Start, opts.End[:len(opts.End)-1]):
+		return fmt.Sprintf("list[continued](%q%s)", strings.TrimRight(opts.Start, "\x00"), kwargsString)
 	default:
 		return fmt.Sprintf("range(%q..%q%s)", opts.Start, opts.End, kwargsString)
 	}

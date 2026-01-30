@@ -19,6 +19,7 @@ import (
 	"hash/fnv"
 	"maps"
 	"reflect"
+	"slices"
 )
 
 // RevisionForNonLinearizableResponse is a fake revision value used to
@@ -89,6 +90,10 @@ type TxnRequest struct {
 	OperationsOnFailure []EtcdOperation
 }
 
+func (txn *TxnRequest) AllOperations() []EtcdOperation {
+	return slices.Concat(txn.OperationsOnSuccess, txn.OperationsOnFailure)
+}
+
 type EtcdCondition struct {
 	Key              string
 	ExpectedRevision int64
@@ -122,7 +127,7 @@ type DefragmentRequest struct{}
 // Possible response state information:
 // * Normal response. Client observed response. Only EtcdResponse is set.
 // * Persisted. Client didn't observe response, but we know it was persisted by etcd. Only Persisted is set
-// * Persisted with Revision. Client didn't observe response, but we know that it was persisted, and it's revision. Both Persisted and PersistedRevision is set.
+// * Persisted with Revision. Client didn't observe a response, but we know that it was persisted, and its revision. Both Persisted and PersistedRevision is set.
 // * Error response. Client observed error, but we don't know if it was persisted. Only Error is set.
 type MaybeEtcdResponse struct {
 	EtcdResponse
@@ -142,6 +147,7 @@ type EtcdResponse struct {
 	Compact     *CompactResponse
 	ClientError string
 	Revision    int64
+	MemberID    uint64
 }
 
 func Match(r1, r2 MaybeEtcdResponse) bool {
@@ -153,6 +159,10 @@ func Match(r1, r2 MaybeEtcdResponse) bool {
 	if r2.Persisted {
 		r2Revision = r2.PersistedRevision
 	}
+
+	r1.EtcdResponse.MemberID = 0
+	r2.EtcdResponse.MemberID = 0
+
 	return (r1.Persisted && r1.PersistedRevision == 0) || (r2.Persisted && r2.PersistedRevision == 0) || ((r1.Persisted || r2.Persisted) && (r1.Error != "" || r2.Error != "" || r1Revision == r2Revision)) || reflect.DeepEqual(r1, r2)
 }
 

@@ -16,12 +16,15 @@ package common
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"go.etcd.io/etcd/api/v3/etcdserverpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	"go.etcd.io/etcd/tests/v3/framework/testutils"
@@ -40,7 +43,8 @@ func TestKVPut(t *testing.T) {
 			testutils.ExecuteUntil(ctx, t, func() {
 				key, value := "foo", "bar"
 
-				require.NoErrorf(t, cc.Put(ctx, key, value, config.PutOptions{}), "count not put key %q", key)
+				_, err := cc.Put(ctx, key, value, config.PutOptions{})
+				require.NoErrorf(t, err, "count not put key %q", key)
 				resp, err := cc.Get(ctx, key, config.GetOptions{})
 				require.NoErrorf(t, err, "count not get key %q, err: %s", key, err)
 				assert.Lenf(t, resp.Kvs, 1, "Unexpected length of response, got %d", len(resp.Kvs))
@@ -55,52 +59,109 @@ func TestKVGet(t *testing.T) {
 	testRunner.BeforeTest(t)
 	for _, tc := range clusterTestCases() {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			clus := testRunner.NewCluster(ctx, t, config.WithClusterConfig(tc.config))
 			defer clus.Close()
 			cc := testutils.MustClient(clus.Client())
 
 			testutils.ExecuteUntil(ctx, t, func() {
-				var (
-					kvs          = []string{"a", "b", "c", "c", "c", "foo", "foo/abc", "fop"}
-					wantKvs      = []string{"a", "b", "c", "foo", "foo/abc", "fop"}
-					kvsByVersion = []string{"a", "b", "foo", "foo/abc", "fop", "c"}
-					reversedKvs  = []string{"fop", "foo/abc", "foo", "c", "b", "a"}
-				)
-
-				for i := range kvs {
-					require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
+				kvs := [][]string{
+					{"a", "bar"},
+					{"b", "bar"},
+					{"c", "bar1"},
+					{"c", "bar2"},
+					{"c", "bar"},
+					{"foo", "bar"},
+					{"foo/abc", "bar"},
+					{"fop", "bar"},
 				}
+
+				var firstHeader *etcdserverpb.ResponseHeader
+				for i := range kvs {
+					resp, err := cc.Put(ctx, kvs[i][0], kvs[i][1], config.PutOptions{})
+					require.NoErrorf(t, err, "count not put key value %q", kvs[i])
+					if i == 0 {
+						firstHeader = resp.Header
+					}
+				}
+
+				createKV := func(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
+					return &mvccpb.KeyValue{
+						Key:            []byte(key),
+						Value:          []byte(val),
+						CreateRevision: createRev,
+						ModRevision:    modRev,
+						Version:        ver,
+					}
+				}
+
+				createHeader := func(rev int64) *etcdserverpb.ResponseHeader {
+					return &etcdserverpb.ResponseHeader{
+						ClusterId: firstHeader.ClusterId,
+						Revision:  rev,
+						RaftTerm:  firstHeader.RaftTerm,
+					}
+				}
+
+				firstRev := firstHeader.Revision
+				kvA := createKV("a", "bar", firstRev, firstRev, 1)
+				kvB := createKV("b", "bar", firstRev+1, firstRev+1, 1)
+				kvC := createKV("c", "bar", firstRev+2, firstRev+4, 3)
+				kvCV1 := createKV("c", "bar1", firstRev+2, firstRev+2, 1)
+				kvCV2 := createKV("c", "bar2", firstRev+2, firstRev+3, 2)
+				kvFoo := createKV("foo", "bar", firstRev+5, firstRev+5, 1)
+				kvFooAbc := createKV("foo/abc", "bar", firstRev+6, firstRev+6, 1)
+				kvFop := createKV("fop", "bar", firstRev+7, firstRev+7, 1)
+
+				allKvs := []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo, kvFooAbc, kvFop}
+				kvsByVersion := []*mvccpb.KeyValue{kvA, kvB, kvFoo, kvFooAbc, kvFop, kvC}
+				reversedKvs := []*mvccpb.KeyValue{kvFop, kvFooAbc, kvFoo, kvC, kvB, kvA}
+				allKvsKeysOnly := make([]*mvccpb.KeyValue, 0, len(allKvs))
+				for _, kv := range allKvs {
+					allKvsKeysOnly = append(allKvsKeysOnly, &mvccpb.KeyValue{Key: kv.Key, CreateRevision: kv.CreateRevision, ModRevision: kv.ModRevision, Version: kv.Version})
+				}
+				reversedKvsKeysOnly := slices.Clone(allKvsKeysOnly)
+				slices.Reverse(reversedKvsKeysOnly)
+
 				tests := []struct {
+					name    string
 					begin   string
 					end     string
 					options config.GetOptions
 
-					wkv []string
+					wantResponse *clientv3.GetResponse
 				}{
-					{begin: "a", wkv: wantKvs[:1]},
-					{begin: "a", options: config.GetOptions{Serializable: true}, wkv: wantKvs[:1]},
-					{begin: "a", options: config.GetOptions{End: "c"}, wkv: wantKvs[:2]},
-					{begin: "", options: config.GetOptions{Prefix: true}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{FromKey: true}, wkv: wantKvs},
-					{begin: "a", options: config.GetOptions{End: "x"}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Revision: 4}, wkv: kvs[:3]},
-					{begin: "a", options: config.GetOptions{CountOnly: true}, wkv: nil},
-					{begin: "foo", options: config.GetOptions{Prefix: true}, wkv: []string{"foo", "foo/abc"}},
-					{begin: "foo", options: config.GetOptions{FromKey: true}, wkv: []string{"foo", "foo/abc", "fop"}},
-					{begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wkv: wantKvs[:2]},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wkv: kvsByVersion},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wkv: wantKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wkv: reversedKvs},
-					{begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wkv: reversedKvs},
+					{name: "Get one specific key (a)", begin: "a", wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
+					{name: "Get one specific key (a), serializable", begin: "a", options: config.GetOptions{Serializable: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
+					{name: "Get [a, c)", begin: "a", options: config.GetOptions{End: "c"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvA, kvB}}},
+					{name: "blank key with --prefix option -> all KVs", begin: "", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
+					{name: "blank key with --from-key option -> all KVs", begin: "", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
+					{name: "Range covering all keys -> all KVs", begin: "a", options: config.GetOptions{End: "x"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
+					{name: "blank key with --prefix and revision -> [first key, entry at specified revision]", begin: "", options: config.GetOptions{Prefix: true, Revision: int(firstRev + 2)}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvCV1}}},
+					{name: "--count-only for one single key", begin: "a", options: config.GetOptions{CountOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: nil}},
+					{name: "--prefix of foo -> all entries with the prefix", begin: "foo", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc}}},
+					{name: "--from-key of 'foo' -> [", begin: "foo", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc, kvFop}}},
+					{name: "blank key with limit set", begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB}, More: true}},
+					{name: "all kvs ordered by mod revision ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
+					{name: "all KVs ordered by version ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: kvsByVersion}},
+					{name: "all KVs ordered by create revision, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
+					{name: "all KVs ordered by create revision descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
+					{name: "all KVs ordered by key descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
+					{name: "all KVs keys only, ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvsKeysOnly}},
+					{name: "all KVs keys only, descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvsKeysOnly}},
+					{name: "Get first version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV1}}},
+					{name: "Get second version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 3}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV2}}},
+					{name: "Get third version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 4}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
+					{name: "Get the latest version of 'c'", begin: "c", wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
 				}
 				for _, tt := range tests {
-					resp, err := cc.Get(ctx, tt.begin, tt.options)
-					require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
-					kvs := testutils.KeysFromGetResponse(resp)
-					assert.Equal(t, tt.wkv, kvs)
+					t.Run(tt.name, func(t *testing.T) {
+						resp, err := cc.Get(ctx, tt.begin, tt.options)
+						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
+						resp.Header.MemberId = 0
+						assert.Equal(t, tt.wantResponse, resp)
+					})
 				}
 			})
 		})
@@ -166,7 +227,8 @@ func TestKVDelete(t *testing.T) {
 				}
 				for _, tt := range tests {
 					for i := range kvs {
-						require.NoErrorf(t, cc.Put(ctx, kvs[i], "bar", config.PutOptions{}), "count not put key %q", kvs[i])
+						_, err := cc.Put(ctx, kvs[i], "bar", config.PutOptions{})
+						require.NoErrorf(t, err, "count not put key %q", kvs[i])
 					}
 					del, err := cc.Delete(ctx, tt.deleteKey, tt.options)
 					require.NoErrorf(t, err, "count not get key %q, err", tt.deleteKey)

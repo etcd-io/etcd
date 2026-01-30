@@ -169,7 +169,7 @@ func writeKVs(t *testing.T, etcdctl *e2e.EtcdctlV3, startIdx, endIdx int) {
 	for i := startIdx; i < endIdx; i++ {
 		key := fmt.Sprintf("key-%d", i)
 		value := fmt.Sprintf("value-%d", i)
-		err := etcdctl.Put(t.Context(), key, value, config.PutOptions{})
+		_, err := etcdctl.Put(t.Context(), key, value, config.PutOptions{})
 		require.NoErrorf(t, err, "failed to put %q", key)
 	}
 }
@@ -192,7 +192,7 @@ func assertKVHash(t *testing.T, epc *e2e.EtcdProcessCluster) {
 		}
 		for i := 1; i < clusterSize; i++ {
 			if hashKvs[0].Header.Revision != hashKvs[i].Header.Revision {
-				t.Logf("Got different revisions, [%d, %d]", hashKvs[0].Header.Revision, hashKvs[1].Header.Revision)
+				t.Logf("Got different revisions, [%d, %d]", hashKvs[0].Header.Revision, hashKvs[i].Header.Revision)
 				return false
 			}
 

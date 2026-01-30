@@ -66,7 +66,7 @@ func testTLSCipherSuites(t *testing.T, valid bool) {
 	cli, cerr := integration.NewClient(t, clientv3.Config{
 		Endpoints:   []string{clus.Members[0].GRPCURL},
 		DialTimeout: time.Second,
-		DialOptions: []grpc.DialOption{grpc.WithBlock()},
+		DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 		TLS:         cc,
 	})
 	if cli != nil {
@@ -129,7 +129,7 @@ func TestTLSMinMaxVersion(t *testing.T) {
 			cli, cerr := integration.NewClient(t, clientv3.Config{
 				Endpoints:   []string{clus.Members[0].GRPCURL},
 				DialTimeout: time.Second,
-				DialOptions: []grpc.DialOption{grpc.WithBlock()},
+				DialOptions: []grpc.DialOption{grpc.WithBlock()}, //nolint:staticcheck // TODO: remove for a supported version
 				TLS:         cc,
 			})
 			if cerr != nil {

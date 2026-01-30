@@ -72,6 +72,33 @@
 		]
 	},
 	{
+		"project": "github.com/clipperhouse/displaywidth",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/clipperhouse/stringish",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
+		"project": "github.com/clipperhouse/uax29/v2",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/coreos/go-semver/semver",
 		"licenses": [
 			{
@@ -176,15 +203,6 @@
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
 				"confidence": 0.9663865546218487
-			}
-		]
-	},
-	{
-		"project": "github.com/google/btree",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 1
 			}
 		]
 	},
@@ -306,6 +324,15 @@
 		]
 	},
 	{
+		"project": "github.com/olekukonko/cat",
+		"licenses": [
+			{
+				"type": "MIT License",
+				"confidence": 1
+			}
+		]
+	},
+	{
 		"project": "github.com/olekukonko/errors",
 		"licenses": [
 			{
@@ -387,15 +414,6 @@
 		]
 	},
 	{
-		"project": "github.com/rivo/uniseg",
-		"licenses": [
-			{
-				"type": "MIT License",
-				"confidence": 1
-			}
-		]
-	},
-	{
 		"project": "github.com/sirupsen/logrus",
 		"licenses": [
 			{
@@ -469,6 +487,15 @@
 	},
 	{
 		"project": "go.etcd.io/etcd/api/v3",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 0.9988925802879292
+			}
+		]
+	},
+	{
+		"project": "go.etcd.io/etcd/cache/v3",
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
@@ -580,7 +607,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -589,7 +616,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -598,7 +625,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -607,7 +634,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -616,7 +643,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -625,7 +652,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -634,7 +661,7 @@
 		"licenses": [
 			{
 				"type": "Apache License 2.0",
-				"confidence": 1
+				"confidence": 0.9647812166488794
 			}
 		]
 	},
@@ -688,6 +715,15 @@
 		]
 	},
 	{
+		"project": "golang.org/x/mod/semver",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
 		"project": "golang.org/x/net",
 		"licenses": [
 			{
@@ -706,7 +742,7 @@
 		]
 	},
 	{
-		"project": "golang.org/x/sys/unix",
+		"project": "golang.org/x/sys",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -725,6 +761,15 @@
 	},
 	{
 		"project": "golang.org/x/time/rate",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "golang.org/x/tools",
 		"licenses": [
 			{
 				"type": "BSD 3-clause \"New\" or \"Revised\" License",
@@ -783,6 +828,15 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.7469879518072289
+			}
+		]
+	},
+	{
+		"project": "k8s.io/utils/third_party/forked/golang/btree",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},

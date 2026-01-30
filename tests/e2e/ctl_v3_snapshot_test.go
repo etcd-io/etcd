@@ -315,7 +315,8 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 
 	kvs := []testutils.KV{{Key: "foo1", Val: "val1"}, {Key: "foo2", Val: "val2"}, {Key: "foo3", Val: "val3"}}
 	for i := range kvs {
-		require.NoError(t, ctl.Put(t.Context(), kvs[i].Key, kvs[i].Val, config.PutOptions{}))
+		_, err = ctl.Put(t.Context(), kvs[i].Key, kvs[i].Val, config.PutOptions{})
+		require.NoError(t, err)
 	}
 
 	watchTimeout := 1 * time.Second
@@ -337,7 +338,8 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 	// add some more kvs that are not in the snapshot that will be lost after restore
 	unsnappedKVs := []testutils.KV{{Key: "unsnapped1", Val: "one"}, {Key: "unsnapped2", Val: "two"}, {Key: "unsnapped3", Val: "three"}}
 	for i := range unsnappedKVs {
-		require.NoError(t, ctl.Put(t.Context(), unsnappedKVs[i].Key, unsnappedKVs[i].Val, config.PutOptions{}))
+		_, err = ctl.Put(t.Context(), unsnappedKVs[i].Key, unsnappedKVs[i].Val, config.PutOptions{})
+		require.NoError(t, err)
 	}
 
 	membersBefore, err := ctl.MemberList(t.Context(), false)
@@ -403,7 +405,8 @@ func TestRestoreCompactionRevBump(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), watchTimeout*5)
 	defer cancel()
 	watchCh = ctl.Watch(ctx, "foo", config.WatchOptions{Prefix: true, Revision: int64(bumpAmount + currentRev + 1)})
-	require.NoError(t, ctl.Put(t.Context(), "foo4", "val4", config.PutOptions{}))
+	_, err = ctl.Put(ctx, "foo4", "val4", config.PutOptions{})
+	require.NoError(t, err)
 	watchRes, err = testutils.KeyValuesFromWatchChan(watchCh, 1, watchTimeout)
 	require.NoErrorf(t, err, "failed to get key-values from watch channel %s", err)
 	require.Equal(t, []testutils.KV{{Key: "foo4", Val: "val4"}}, watchRes)

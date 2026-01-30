@@ -163,7 +163,7 @@ func TestEtctlutlMigrate(t *testing.T) {
 				require.NoError(t, e2e.SpawnWithExpect(append(prefixArgs, "put", fmt.Sprintf("%d", i), "value"), expect.ExpectedResponse{Value: "OK"}))
 			}
 
-			t.Log("Stopping the the members")
+			t.Log("Stopping the members")
 			for i := 0; i < len(epc.Procs); i++ {
 				t.Logf("Stopping server %d: %v", i, epc.Procs[i].EndpointsGRPC())
 				err = epc.Procs[i].Stop()

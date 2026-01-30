@@ -94,7 +94,7 @@ func benchmarkWatchableStoreWatchPut(b *testing.B, synced bool) {
 	defer w.Close()
 	watchIDs := make([]WatchID, b.N)
 	for i := range watchIDs {
-		watchIDs[i], _ = w.Watch(0, k, nil, rev)
+		watchIDs[i], _ = w.Watch(b.Context(), 0, k, nil, rev)
 	}
 
 	b.ResetTimer()
@@ -144,7 +144,7 @@ func BenchmarkWatchableStoreUnsyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// non-0 value to keep watchers in unsynced
-		watchIDs[i], _ = w.Watch(0, testKey, nil, 1)
+		watchIDs[i], _ = w.Watch(b.Context(), 0, testKey, nil, 1)
 	}
 
 	// random-cancel N watchers to make it not biased towards
@@ -182,7 +182,7 @@ func BenchmarkWatchableStoreSyncedCancel(b *testing.B) {
 	watchIDs := make([]WatchID, watcherN)
 	for i := 0; i < watcherN; i++ {
 		// 0 for startRev to keep watchers in synced
-		watchIDs[i], _ = w.Watch(0, testKey, nil, 0)
+		watchIDs[i], _ = w.Watch(b.Context(), 0, testKey, nil, 0)
 	}
 
 	// randomly cancel watchers to make it not biased towards

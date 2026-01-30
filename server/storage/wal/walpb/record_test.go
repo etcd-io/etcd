@@ -17,14 +17,14 @@ package walpb
 import (
 	"testing"
 
-	"github.com/golang/protobuf/descriptor"
+	"github.com/golang/protobuf/descriptor" //nolint:staticcheck // TODO: remove for a supported version
 
 	"go.etcd.io/raft/v3/raftpb"
 )
 
 func TestSnapshotMetadataCompatibility(t *testing.T) {
-	_, snapshotMetadataMd := descriptor.ForMessage(&raftpb.SnapshotMetadata{})
-	_, snapshotMd := descriptor.ForMessage(&Snapshot{})
+	_, snapshotMetadataMd := descriptor.ForMessage(&raftpb.SnapshotMetadata{}) //nolint:staticcheck // TODO: remove for a supported version
+	_, snapshotMd := descriptor.ForMessage(&Snapshot{})                        //nolint:staticcheck // TODO: remove for a supported version
 	if len(snapshotMetadataMd.GetField()) != len(snapshotMd.GetField()) {
 		t.Errorf("Different number of fields in raftpb.SnapshotMetadata vs. walpb.Snapshot. " +
 			"They are supposed to be in sync.")

@@ -21,12 +21,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v2store"
-	integration2 "go.etcd.io/etcd/tests/v3/framework/integration"
+	"go.etcd.io/etcd/tests/v3/framework/integration"
 )
 
 // TestStoreRecover ensures that the store can recover from a previously saved state.
 func TestStoreRecover(t *testing.T) {
-	integration2.BeforeTest(t)
+	integration.BeforeTest(t)
 	s := v2store.New()
 	var eidx uint64 = 4
 	s.Create("/foo", true, "", false, v2store.TTLOptionSet{ExpireTime: v2store.Permanent})

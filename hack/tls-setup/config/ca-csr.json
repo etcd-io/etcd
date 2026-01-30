@@ -12,5 +12,8 @@
       "ST": "California",
       "C": "US"
     }
-  ]
+  ],
+  "ca": {
+    "expiry": "876000h"
+  }
 }

@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd
+  namespace: default
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - name: client
+      port: 2379
+      targetPort: client
+    - name: peer
+      port: 2380
+      targetPort: peer
+  selector:
+    app: etcd
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: etcd
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: etcd
+  serviceName: etcd
+  replicas: 3
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: etcd
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+        - name: etcd-server
+          image: etcd-server:latest
+          imagePullPolicy: Never
+          env:
+            - name: ETCD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CLIENT_PORT
+              value: "2379"
+            - name: PEER_PORT
+              value: "2380"
+            - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+              value: http://$(ETCD_NAME).etcd.default.svc.cluster.local:$(PEER_PORT)
+            - name: ETCD_LISTEN_PEER_URLS
+              value: "http://0.0.0.0:$(PEER_PORT)"
+            - name: ETCD_LISTEN_CLIENT_URLS
+              value: "http://0.0.0.0:$(CLIENT_PORT)"
+            - name: ETCD_ADVERTISE_CLIENT_URLS
+              value: "https://$(ETCD_NAME).etcd:$(CLIENT_PORT)"
+            - name: ETCD_INITIAL_CLUSTER_TOKEN
+              value: "etcd-cluster-1"
+            - name: ETCD_INITIAL_CLUSTER
+              value: "etcd-0=http://etcd-0.etcd.default.svc.cluster.local:$(PEER_PORT),etcd-1=http://etcd-1.etcd.default.svc.cluster.local:$(PEER_PORT),etcd-2=http://etcd-2.etcd.default.svc.cluster.local:$(PEER_PORT)"
+            - name: ETCD_INITIAL_CLUSTER_STATE
+              value: "new"
+            - name: ETCD_DATA_DIR
+              value: "/var/etcd/data"
+            - name: ETCD_SNAPSHOT_CATCHUP_ENTRIES
+              value: "100"
+            - name: ETCD_SNAPSHOT_COUNT
+              value: "50"
+            - name: ETCD_COMPACTION_BATCH_LIMIT
+              value: "10"
+            - name: ETCD_VERIFY
+              value: "all"
+          ports:
+            - containerPort: 2379
+              name: client
+              protocol: TCP
+            - containerPort: 2380
+              name: peer
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: client
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: client
+          volumeMounts:
+            - name: data
+              mountPath: /var/etcd/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: standard
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 200Mi

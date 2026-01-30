@@ -93,6 +93,6 @@ func TestRecoverSnapshotBackend(t *testing.T) {
 	require.NoError(t, err)
 	_, err = blackholedMember.Logs().ExpectWithContext(ctx, expect.ExpectedResponse{Value: "Recovering from snapshot backend"})
 	require.NoError(t, err)
-	err = blackholedMember.Etcdctl().Put(ctx, "a", "1", config.PutOptions{})
+	_, err = blackholedMember.Etcdctl().Put(ctx, "a", "1", config.PutOptions{})
 	assert.NoError(t, err)
 }

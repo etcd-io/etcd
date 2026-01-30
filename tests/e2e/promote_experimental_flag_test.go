@@ -41,7 +41,7 @@ func TestWarningApplyDuration(t *testing.T) {
 	})
 
 	cc := epc.Etcdctl()
-	err = cc.Put(t.Context(), "foo", "bar", config.PutOptions{})
+	_, err = cc.Put(t.Context(), "foo", "bar", config.PutOptions{})
 	require.NoErrorf(t, err, "error on put")
 
 	// verify warning

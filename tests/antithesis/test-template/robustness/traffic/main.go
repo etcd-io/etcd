@@ -18,7 +18,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"math/rand/v2"
 	"os"
 	"slices"
@@ -39,6 +38,9 @@ import (
 )
 
 var (
+	DefaultWatchInterval  = 250 * time.Millisecond
+	DefaultRevisionOffset = int64(100)
+
 	profile = traffic.Profile{
 		MinimalQPS:                     100,
 		MaximalQPS:                     1000,
@@ -55,19 +57,10 @@ var (
 		traffic.EtcdPutDeleteLease,
 		traffic.Kubernetes,
 	}
-	NodeCount = "3"
 )
 
 func main() {
-	local := flag.Bool("local", false, "run tests locally and connect to etcd instances via localhost")
-	flag.Parse()
-
-	cfg := common.MakeConfig(NodeCount)
-
-	hosts, reportPath, etcdetcdDataPaths := common.DefaultPaths(cfg)
-	if *local {
-		hosts, reportPath, etcdetcdDataPaths = common.LocalPaths(cfg)
-	}
+	hosts, reportPath, etcdetcdDataPaths := common.GetPaths()
 
 	ctx := context.Background()
 	baseTime := time.Now()
@@ -111,7 +104,7 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	startTime := time.Since(baseTime)
 	g.Go(func() error {
 		defer close(maxRevisionChan)
-		simulateTraffic(ctx, tf, hosts, trafficSet, duration)
+		simulateTraffic(ctx, lg, tf, hosts, trafficSet, duration)
 		maxRevision := report.OperationsMaxRevision(trafficSet.Reports())
 		maxRevisionChan <- maxRevision
 		lg.Info("Finished simulating Traffic", zap.Int64("max-revision", maxRevision))
@@ -120,7 +113,13 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	watchSet := client.NewSet(ids, baseTime)
 	defer watchSet.Close()
 	g.Go(func() error {
-		err := client.CollectClusterWatchEvents(ctx, lg, hosts, maxRevisionChan, watchConfig, watchSet)
+		err := client.CollectClusterWatchEvents(ctx, client.CollectClusterWatchEventsParam{
+			Lg:              lg,
+			Endpoints:       hosts,
+			MaxRevisionChan: maxRevisionChan,
+			Cfg:             watchConfig,
+			ClientSet:       watchSet,
+		})
 		return err
 	})
 	if err := g.Wait(); err != nil {
@@ -139,9 +138,10 @@ func runTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts [
 	return reports, nil
 }
 
-func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
+func simulateTraffic(ctx context.Context, lg *zap.Logger, tf traffic.Traffic, hosts []string, clientSet *client.ClientSet, duration time.Duration) {
 	var wg sync.WaitGroup
-	storage := identity.NewLeaseIDStorage()
+	leaseStorage := identity.NewLeaseIDStorage()
+	kubernetesStorage := traffic.NewKubernetesStorage()
 	limiter := rate.NewLimiter(rate.Limit(profile.MaximalQPS), profile.BurstableQPS)
 	concurrencyLimiter := traffic.NewConcurrencyLimiter(profile.MaxNonUniqueRequestConcurrency)
 	finish := closeAfter(ctx, duration)
@@ -152,13 +152,16 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, c, limiter,
-				clientSet.IdentityProvider(),
-				storage,
-				concurrencyLimiter,
-				keyStore,
-				finish,
-			)
+			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     leaseStorage,
+				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
+				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	for range profile.ClusterClientCount {
@@ -167,21 +170,62 @@ func simulateTraffic(ctx context.Context, tf traffic.Traffic, hosts []string, cl
 		go func(c *client.RecordingClient) {
 			defer wg.Done()
 			defer c.Close()
-			tf.RunTrafficLoop(ctx, c, limiter,
-				clientSet.IdentityProvider(),
-				storage,
-				concurrencyLimiter,
-				keyStore,
-				finish,
-			)
+			tf.RunKeyValueLoop(ctx, traffic.RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     leaseStorage,
+				NonUniqueRequestConcurrencyLimiter: concurrencyLimiter,
+				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
+				Finish:                             finish,
+			})
 		}(c)
+	}
+	if !profile.ForbidRunWatchLoop {
+		for i := range profile.MemberClientCount {
+			c := connect(clientSet, []string{hosts[i%len(hosts)]})
+			wg.Add(1)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Storage:   kubernetesStorage,
+					Finish:    finish,
+					WaitGroup: &wg,
+					Logger:    lg,
+				})
+			}(c)
+		}
+		for range profile.ClusterClientCount {
+			c := connect(clientSet, hosts)
+			wg.Add(1)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				tf.RunWatchLoop(ctx, traffic.RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Storage:   kubernetesStorage,
+					Finish:    finish,
+					WaitGroup: &wg,
+					Logger:    lg,
+				})
+			}(c)
+		}
 	}
 	wg.Add(1)
 	compactClient := connect(clientSet, hosts)
 	go func(c *client.RecordingClient) {
 		defer wg.Done()
 		defer c.Close()
-		tf.RunCompactLoop(ctx, c, traffic.DefaultCompactionPeriod, finish)
+		tf.RunCompactLoop(ctx, traffic.RunCompactLoopParam{
+			Client: c,
+			Period: traffic.DefaultCompactionPeriod,
+			Finish: finish,
+		})
 	}(compactClient)
 	defragPeriod := traffic.DefaultCompactionPeriod * time.Duration(len(hosts))
 	for _, h := range hosts {

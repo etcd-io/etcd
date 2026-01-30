@@ -35,9 +35,11 @@ import (
 var (
 	DefaultLeaseTTL         int64 = 7200
 	RequestTimeout                = 200 * time.Millisecond
-	WatchTimeout                  = time.Second
+	WatchTimeout                  = 500 * time.Millisecond
 	MultiOpTxnOpCount             = 4
 	DefaultCompactionPeriod       = 200 * time.Millisecond
+	DefaultWatchInterval          = 250 * time.Millisecond
+	DefaultRevisionOffset         = int64(100)
 
 	LowTraffic = Profile{
 		MinimalQPS:                     100,
@@ -72,6 +74,7 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	finish := make(chan struct{})
 
 	keyStore := NewKeyStore(10, "key")
+	kubernetesStorage := NewKubernetesStorage()
 
 	lg.Info("Start traffic")
 	startTime := time.Since(clientSet.BaseTime())
@@ -84,7 +87,16 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     lm,
+				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
+				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
+				Finish:                             finish,
+			})
 		}(c)
 	}
 	for range profile.ClusterClientCount {
@@ -96,8 +108,53 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 			defer wg.Done()
 			defer c.Close()
 
-			traffic.RunTrafficLoop(ctx, c, limiter, clientSet.IdentityProvider(), lm, nonUniqueWriteLimiter, keyStore, finish)
+			traffic.RunKeyValueLoop(ctx, RunTrafficLoopParam{
+				Client:                             c,
+				QPSLimiter:                         limiter,
+				IDs:                                clientSet.IdentityProvider(),
+				LeaseIDStorage:                     lm,
+				NonUniqueRequestConcurrencyLimiter: nonUniqueWriteLimiter,
+				KeyStore:                           keyStore,
+				Storage:                            kubernetesStorage,
+				Finish:                             finish,
+			})
 		}(c)
+	}
+	if !profile.ForbidRunWatchLoop {
+		for i := range profile.MemberClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient([]string{endpoints[i%len(endpoints)]})
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Storage:   kubernetesStorage,
+					Finish:    finish,
+					WaitGroup: &wg,
+					Logger:    lg,
+				})
+			}(c)
+		}
+		for range profile.ClusterClientCount {
+			wg.Add(1)
+			c, nerr := clientSet.NewClient(endpoints)
+			require.NoError(t, nerr)
+			go func(c *client.RecordingClient) {
+				defer wg.Done()
+				defer c.Close()
+				traffic.RunWatchLoop(ctx, RunWatchLoopParam{
+					Client:    c,
+					KeyStore:  keyStore,
+					Storage:   kubernetesStorage,
+					Finish:    finish,
+					WaitGroup: &wg,
+					Logger:    lg,
+				})
+			}(c)
+		}
 	}
 	if !profile.ForbidCompaction {
 		wg.Add(1)
@@ -114,7 +171,11 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 				compactionPeriod = profile.CompactPeriod
 			}
 
-			traffic.RunCompactLoop(ctx, c, compactionPeriod, finish)
+			traffic.RunCompactLoop(ctx, RunCompactLoopParam{
+				Client: c,
+				Period: compactionPeriod,
+				Finish: finish,
+			})
 		}(c)
 	}
 	var fr *report.FailpointInjection
@@ -149,11 +210,89 @@ func SimulateTraffic(ctx context.Context, t *testing.T, lg *zap.Logger, clus *e2
 	lg.Info("Reporting traffic during failure injection", zap.Int("successes", duringFailpointStats.Successes), zap.Int("failures", duringFailpointStats.Failures), zap.Float64("successRate", duringFailpointStats.SuccessRate()), zap.Duration("period", duringFailpointStats.Period), zap.Float64("qps", duringFailpointStats.QPS()))
 	lg.Info("Reporting traffic after failure injection", zap.Int("successes", afterFailpointStats.Successes), zap.Int("failures", afterFailpointStats.Failures), zap.Float64("successRate", afterFailpointStats.SuccessRate()), zap.Duration("period", afterFailpointStats.Period), zap.Float64("qps", afterFailpointStats.QPS()))
 
+	watchTotal := CalculateWatchStats(reports, startTime, endTime)
+	lg.Info("Reporting complete watch", zap.Int("requests", watchTotal.Requests), zap.Int("events", watchTotal.Events), zap.Float64("eventsQPS", watchTotal.EventsQPS()), zap.Int("progressNotifies", watchTotal.ProgressNotifies), zap.Int("immediateClosures", watchTotal.ImmediateClosures), zap.Duration("period", watchTotal.Period), zap.Duration("avgDuration", watchTotal.AvgDuration()))
+
 	if beforeFailpointStats.QPS() < profile.MinimalQPS {
 		t.Errorf("Requiring minimal %f qps before failpoint injection for test results to be reliable, got %f qps", profile.MinimalQPS, beforeFailpointStats.QPS())
 	}
-	// TODO: Validate QPS post failpoint injection to ensure the that we sufficiently cover period when cluster recovers.
+	// TODO: Validate QPS post failpoint injection to ensure that we sufficiently cover the period when the cluster recovers.
 	return reports
+}
+
+func CalculateWatchStats(reports []report.ClientReport, start, end time.Duration) (ws watchStats) {
+	ws.Period = end - start
+	if ws.Period <= 0 {
+		return ws
+	}
+
+	for _, r := range reports {
+		for _, w := range r.Watch {
+			var (
+				firstInWindow       time.Duration
+				lastInWindow        time.Duration
+				haveInWindow        bool
+				noEventsYetInWindow = true
+				closedCounted       = false
+			)
+
+			for _, resp := range w.Responses {
+				if resp.Time < start || resp.Time > end {
+					continue
+				}
+				if !haveInWindow {
+					firstInWindow = resp.Time
+					haveInWindow = true
+				}
+				lastInWindow = resp.Time
+				if resp.IsProgressNotify {
+					ws.ProgressNotifies++
+				}
+				if len(resp.Events) > 0 {
+					ws.Events += len(resp.Events)
+					noEventsYetInWindow = false
+				}
+				if resp.Error != "" && noEventsYetInWindow && !closedCounted {
+					ws.ImmediateClosures++
+					closedCounted = true
+				}
+			}
+
+			if haveInWindow {
+				ws.Requests++
+				if lastInWindow > firstInWindow {
+					ws.SumDuration += lastInWindow - firstInWindow
+					ws.DurationsCount++
+				}
+			}
+		}
+	}
+
+	return ws
+}
+
+type watchStats struct {
+	Period            time.Duration
+	Requests          int
+	Events            int
+	ProgressNotifies  int
+	ImmediateClosures int
+	SumDuration       time.Duration
+	DurationsCount    int
+}
+
+func (ws *watchStats) AvgDuration() time.Duration {
+	if ws.DurationsCount == 0 {
+		return 0
+	}
+	return ws.SumDuration / time.Duration(ws.DurationsCount)
+}
+
+func (ws *watchStats) EventsQPS() float64 {
+	if ws.Period <= 0 {
+		return 0
+	}
+	return float64(ws.Events) / ws.Period.Seconds()
 }
 
 func CalculateStats(reports []report.ClientReport, start, end time.Duration) (ts trafficStats) {
@@ -197,6 +336,7 @@ type Profile struct {
 	ClusterClientCount             int
 	ForbidCompaction               bool
 	CompactPeriod                  time.Duration
+	ForbidRunWatchLoop             bool
 }
 
 func (p Profile) WithoutCompaction() Profile {
@@ -209,10 +349,90 @@ func (p Profile) WithCompactionPeriod(cp time.Duration) Profile {
 	return p
 }
 
+func (p Profile) WithoutWatchLoop() Profile {
+	p.ForbidRunWatchLoop = true
+	return p
+}
+
+type RunTrafficLoopParam struct {
+	Client                             *client.RecordingClient
+	QPSLimiter                         *rate.Limiter
+	IDs                                identity.Provider
+	LeaseIDStorage                     identity.LeaseIDStorage
+	NonUniqueRequestConcurrencyLimiter ConcurrencyLimiter
+	KeyStore                           *keyStore
+	Storage                            *storage
+	Finish                             <-chan struct{}
+}
+
+type RunCompactLoopParam struct {
+	Client *client.RecordingClient
+	Period time.Duration
+	Finish <-chan struct{}
+}
+
+type RunWatchLoopParam struct {
+	Client *client.RecordingClient
+	// TODO: merge 2 key stores into 1
+	KeyStore  *keyStore
+	Storage   *storage
+	Finish    <-chan struct{}
+	WaitGroup *sync.WaitGroup
+	Logger    *zap.Logger
+}
+
 type Traffic interface {
-	RunTrafficLoop(ctx context.Context, c *client.RecordingClient, qpsLimiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{})
-	RunCompactLoop(ctx context.Context, c *client.RecordingClient, period time.Duration, finish <-chan struct{})
+	RunKeyValueLoop(ctx context.Context, param RunTrafficLoopParam)
+	RunWatchLoop(ctx context.Context, param RunWatchLoopParam)
+	RunCompactLoop(ctx context.Context, param RunCompactLoopParam)
 	ExpectUniqueRevision() bool
+}
+
+// runWatchLoop is a helper function that implements the periodic watch loop pattern.
+// It spawns watches at regular intervals with random revision offsets.
+func runWatchLoop(ctx context.Context, p RunWatchLoopParam, cfg watchLoopConfig) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		case <-time.After(DefaultWatchInterval):
+			// Time to spawn a new watch
+		}
+
+		p.WaitGroup.Add(1)
+		go func() {
+			defer p.WaitGroup.Done()
+			resp, err := p.Client.Get(ctx, cfg.watchKey)
+			if err != nil {
+				p.Logger.Error("generic runWatchLoop: Get failed", zap.Error(err))
+				return
+			}
+			rev := resp.Header.Revision + DefaultRevisionOffset
+
+			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+			defer cancel()
+			w := p.Client.Watch(watchCtx, cfg.watchKey, rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-p.Finish:
+					return
+				case _, ok := <-w:
+					if !ok {
+						return
+					}
+				}
+			}
+		}()
+	}
+}
+
+type watchLoopConfig struct {
+	getKey   string
+	watchKey string
 }
 
 func CheckEmptyDatabaseAtStart(ctx context.Context, lg *zap.Logger, endpoints []string, cs *client.ClientSet) error {

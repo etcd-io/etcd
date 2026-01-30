@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
@@ -41,6 +42,14 @@ var (
 		resource:        "pods",
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
+		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesGet, Weight: 5},
+			{Choice: KubernetesGetStale, Weight: 2},
+			{Choice: KubernetesGetRev, Weight: 8},
+			{Choice: KubernetesListStale, Weight: 5},
+			{Choice: KubernetesListAndWatch, Weight: 80},
+		},
+		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesUpdate, Weight: 90},
 			{Choice: KubernetesDelete, Weight: 5},
@@ -53,6 +62,14 @@ var (
 		resource:        "pods",
 		namespace:       "default",
 		// Please keep the sum of weights equal 100.
+		readChoices: []random.ChoiceWeight[KubernetesRequestType]{
+			{Choice: KubernetesGet, Weight: 5},
+			{Choice: KubernetesGetStale, Weight: 2},
+			{Choice: KubernetesGetRev, Weight: 8},
+			{Choice: KubernetesListStale, Weight: 5},
+			{Choice: KubernetesListAndWatch, Weight: 80},
+		},
+		// Please keep the sum of weights equal 100.
 		writeChoices: []random.ChoiceWeight[KubernetesRequestType]{
 			{Choice: KubernetesDelete, Weight: 40},
 			{Choice: KubernetesCreate, Weight: 60},
@@ -64,6 +81,7 @@ type kubernetesTraffic struct {
 	averageKeyCount int
 	resource        string
 	namespace       string
+	readChoices     []random.ChoiceWeight[KubernetesRequestType]
 	writeChoices    []random.ChoiceWeight[KubernetesRequestType]
 }
 
@@ -71,27 +89,25 @@ func (t kubernetesTraffic) ExpectUniqueRevision() bool {
 	return true
 }
 
-func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.RecordingClient, limiter *rate.Limiter, ids identity.Provider, lm identity.LeaseIDStorage, nonUniqueWriteLimiter ConcurrencyLimiter, keyStore *keyStore, finish <-chan struct{}) {
-	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
-	s := newStorage()
+func (t kubernetesTraffic) RunKeyValueLoop(ctx context.Context, p RunTrafficLoopParam) {
+	kc := kubernetes.Client{Client: &clientv3.Client{KV: p.Client}}
+	s := p.Storage
 	keyPrefix := "/registry/" + t.resource + "/"
 	g := errgroup.Group{}
-	readLimit := t.averageKeyCount
 
 	g.Go(func() error {
 		for {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-finish:
+			case <-p.Finish:
 				return nil
 			default:
 			}
-			rev, err := t.Read(ctx, kc, s, limiter, keyPrefix, readLimit)
+			err := t.Read(ctx, p.Client, s, p.QPSLimiter, keyPrefix)
 			if err != nil {
 				continue
 			}
-			t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
 		}
 	})
 	g.Go(func() error {
@@ -100,18 +116,18 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-finish:
+			case <-p.Finish:
 				return nil
 			default:
 			}
 			// Avoid multiple failed writes in a row
 			if lastWriteFailed {
-				_, err := t.Read(ctx, kc, s, limiter, keyPrefix, 0)
+				_, err := t.List(ctx, kc, s, p.QPSLimiter, keyPrefix, t.averageKeyCount, 0)
 				if err != nil {
 					continue
 				}
 			}
-			err := t.Write(ctx, kc, ids, s, limiter, nonUniqueWriteLimiter)
+			err := t.Write(ctx, kc, p.IDs, s, p.QPSLimiter, p.NonUniqueRequestConcurrencyLimiter)
 			lastWriteFailed = err != nil
 			if err != nil {
 				continue
@@ -121,10 +137,92 @@ func (t kubernetesTraffic) RunTrafficLoop(ctx context.Context, c *client.Recordi
 	g.Wait()
 }
 
-func (t kubernetesTraffic) Read(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int) (rev int64, err error) {
+func (t kubernetesTraffic) RunWatchLoop(ctx context.Context, p RunWatchLoopParam) {
+	s := p.Storage
+	keyPrefix := "/registry/" + t.resource + "/"
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.Finish:
+			return
+		case <-time.After(DefaultWatchInterval):
+			// Time to spawn a new watch
+		}
+
+		p.WaitGroup.Add(1)
+		go func() {
+			defer p.WaitGroup.Done()
+			resp, err := p.Client.Get(ctx, keyPrefix)
+			if err != nil {
+				p.Logger.Error("kubernetes RunWatchLoop: Get failed", zap.Error(err))
+				return
+			}
+			rev := resp.Header.Revision + DefaultRevisionOffset
+
+			watchCtx, cancel := context.WithTimeout(ctx, WatchTimeout)
+			defer cancel()
+
+			// Kubernetes issues Watch requests by requiring a leader to exist
+			watchCtx = clientv3.WithRequireLeader(watchCtx)
+			w := p.Client.Watch(watchCtx, keyPrefix, rev, true, true, true)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-p.Finish:
+					return
+				case resp, ok := <-w:
+					if !ok {
+						return
+					}
+					s.Update(resp)
+				}
+			}
+		}()
+	}
+}
+
+func (t kubernetesTraffic) Read(ctx context.Context, c *client.RecordingClient, s *storage, limiter *rate.Limiter, keyPrefix string) error {
+	kc := kubernetes.Client{Client: &clientv3.Client{KV: c}}
+	op := random.PickRandom(t.readChoices)
+	switch op {
+	case KubernetesGet:
+		key, unusedRev := s.PickRandom()
+		if unusedRev == 0 {
+			return errors.New("storage empty")
+		}
+		return t.Get(ctx, kc, s, limiter, key, 0)
+	case KubernetesGetStale:
+		key, rev := s.KeyWithUnrelatedRev()
+		return t.Get(ctx, kc, s, limiter, key, rev)
+	case KubernetesGetRev:
+		return t.Get(ctx, kc, s, limiter, "/registry/"+t.resource, 0)
+	case KubernetesListStale:
+		_, rev := s.PickRandom()
+		_, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, rev)
+		return err
+	case KubernetesListAndWatch:
+		rev, err := t.List(ctx, kc, s, limiter, keyPrefix, t.averageKeyCount, 0)
+		if err != nil {
+			return err
+		}
+		t.Watch(ctx, c, s, limiter, keyPrefix, rev+1)
+		return nil
+	default:
+		panic(fmt.Sprintf("invalid choice: %q", op))
+	}
+}
+
+func (t kubernetesTraffic) Get(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, key string, rev int64) error {
+	_, err := kc.Get(ctx, key, kubernetes.GetOptions{Revision: rev})
+	limiter.Wait(ctx)
+	return err
+}
+
+func (t kubernetesTraffic) List(ctx context.Context, kc kubernetes.Interface, s *storage, limiter *rate.Limiter, keyPrefix string, limit int, revision int64) (rev int64, err error) {
 	hasMore := true
 	var kvs []*mvccpb.KeyValue
-	var revision int64
 	var cont string
 
 	for hasMore {
@@ -220,21 +318,21 @@ func (t kubernetesTraffic) generateKey() string {
 	return fmt.Sprintf("/registry/%s/%s/%s", t.resource, t.namespace, stringutil.RandString(5))
 }
 
-func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, c *client.RecordingClient, interval time.Duration, finish <-chan struct{}) {
+func (t kubernetesTraffic) RunCompactLoop(ctx context.Context, param RunCompactLoopParam) {
 	// Based on https://github.com/kubernetes/apiserver/blob/7dd4904f1896e11244ba3c5a59797697709de6b6/pkg/storage/etcd3/compact.go#L112-L127
 	var compactTime int64
 	var rev int64
 	var err error
 	for {
 		select {
-		case <-time.After(interval):
+		case <-time.After(param.Period):
 		case <-ctx.Done():
 			return
-		case <-finish:
+		case <-param.Finish:
 			return
 		}
 
-		compactTime, rev, err = compact(ctx, c, compactTime, rev)
+		compactTime, rev, err = compact(ctx, param.Client, compactTime, rev)
 		if err != nil {
 			continue
 		}
@@ -277,9 +375,14 @@ func compact(ctx context.Context, client *client.RecordingClient, t, rev int64) 
 type KubernetesRequestType string
 
 const (
-	KubernetesDelete KubernetesRequestType = "delete"
-	KubernetesUpdate KubernetesRequestType = "update"
-	KubernetesCreate KubernetesRequestType = "create"
+	KubernetesDelete       KubernetesRequestType = "delete"
+	KubernetesUpdate       KubernetesRequestType = "update"
+	KubernetesCreate       KubernetesRequestType = "create"
+	KubernetesGet          KubernetesRequestType = "get"
+	KubernetesGetStale     KubernetesRequestType = "get_stale"
+	KubernetesGetRev       KubernetesRequestType = "get_rev"
+	KubernetesListStale    KubernetesRequestType = "list_stale"
+	KubernetesListAndWatch KubernetesRequestType = "list_watch"
 )
 
 type storage struct {
@@ -288,7 +391,9 @@ type storage struct {
 	revision    int64
 }
 
-func newStorage() *storage {
+// NewKubernetesStorage creates a new storage instance for tracking Kubernetes resource revisions.
+// This storage is used by Kubernetes traffic to maintain consistency in read and write operations.
+func NewKubernetesStorage() *storage {
 	return &storage{
 		keyRevision: map[string]int64{},
 	}
@@ -333,7 +438,15 @@ func (s *storage) Count() int {
 func (s *storage) PickRandom() (key string, rev int64) {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
-	n := rand.Intn(len(s.keyRevision))
+	return s.pickRandomLocked()
+}
+
+func (s *storage) pickRandomLocked() (key string, rev int64) {
+	l := len(s.keyRevision)
+	if l == 0 {
+		return "", 0
+	}
+	n := rand.Intn(l)
 	i := 0
 	for k, v := range s.keyRevision {
 		if i == n {
@@ -342,4 +455,16 @@ func (s *storage) PickRandom() (key string, rev int64) {
 		i++
 	}
 	return "", 0
+}
+
+func (s *storage) KeyWithUnrelatedRev() (key string, rev int64) {
+	s.mux.RLock()
+	defer s.mux.RUnlock()
+	l := len(s.keyRevision)
+	if l == 0 {
+		return "", 0
+	}
+	key, _ = s.pickRandomLocked()
+	_, rev = s.pickRandomLocked()
+	return key, rev
 }

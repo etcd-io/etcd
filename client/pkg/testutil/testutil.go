@@ -16,6 +16,8 @@
 package testutil
 
 import (
+	"flag"
+	"log"
 	"net/url"
 	"os"
 	"runtime"
@@ -100,10 +102,13 @@ func SkipTestIfShortMode(t TB, reason string) {
 // ExitInShortMode closes the current process (with 0) if the short test mode detected.
 //
 // To be used in Test-main, where test context (testing.TB) is not available.
-//
-// Requires custom env-variable (GOLANG_TEST_SHORT) apart of `go test --short flag`.
 func ExitInShortMode(reason string) {
-	if os.Getenv("GOLANG_TEST_SHORT") == "true" {
+	// Calling testing.Short() requires flags to be parsed before.
+	if !flag.Parsed() {
+		flag.Parse()
+	}
+	if testing.Short() {
+		log.Println(reason)
 		os.Exit(0)
 	}
 }

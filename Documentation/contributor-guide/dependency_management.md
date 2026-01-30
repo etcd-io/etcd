@@ -6,6 +6,7 @@
   - [Dependencies used in workflows](#dependencies-used-in-workflows)
   - [Bumping order](#bumping-order)
   - [Steps to bump a dependency](#steps-to-bump-a-dependency)
+    - [Alternative: Using the update_dep.sh script](#alternative-using-the-update_depsh-script)
   - [Indirect dependencies](#indirect-dependencies)
   - [Known incompatible dependency updates](#known-incompatible-dependency-updates)
     - [arduino/setup-protoc](#arduinosetup-protoc)
@@ -57,7 +58,7 @@ cd ${ETCD_ROOT_DIR}/etcdctl
 go get github.com/spf13/cobra@v1.7.0
 go mod tidy
 cd ..
-./scripts/fix.sh
+make fix # This will update the bill of materials, Go modules and workspace, etc.
 ```
 
 Execute the same steps for all other modules. When you finish bumping the dependency for all modules, then commit the change,
@@ -72,7 +73,31 @@ Please close the related PRs which were automatically opened by dependabot.
 When you bump multiple dependencies in one PR, it's recommended to create a separate commit for each dependency. But it isn't a must; for example,
 you can get all dependencies bumping for the module `go.etcd.io/etcd/tools/v3` included in one commit.
 
-#### Troubleshooting 
+#### Alternative: Using the update_dep.sh script
+
+> Note: Please use bash shell version 5.x or higher.
+
+As an alternative to the manual steps above, you can use the `update_dep.sh` script to automate the dependency bump process across all modules:
+
+```bash
+# Update to a specific version
+./scripts/update_dep.sh github.com/spf13/cobra v1.7.0
+
+# Update to the latest version
+./scripts/update_dep.sh github.com/spf13/cobra
+```
+
+The script will:
+
+1. Display the current version of the dependency across all go.mod files
+2. Warn and prompt for confirmation if the dependency is purely indirect
+3. Update the dependency in all modules that depend on it
+4. Run `make fix verify-dep` to ensure consistency across all modules
+5. Display the updated versions for verification
+
+This script handles the correct bumping order automatically and ensures version consistency across all modules.
+
+#### Troubleshooting
 
 In an event of bumping the version of protoc, protoc plugins or grpc-gateway, it might change `*.proto` file which can result in the following error:
 
@@ -120,12 +145,18 @@ and everyone is welcome to participate; you just need to register your name in t
 
 Usually, we don't proactively bump dependencies for stable releases unless there are any CVEs or bugs that affect etcd.
 
-If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh` in release-3.4, so no need to
+If we have to do it, then follow the same guidance above. Note that there is no `./scripts/fix.sh`/`make fix` in release-3.4, so no need to
 execute it for 3.4.
 
 ## Golang versions
 
-The etcd project aims to maintain a development branch that is on the latest [Go version](https://go.dev/dl), ideally, this will align with the Go version in use for Kubernetes project development. For an example of how to update etcd to a new minor release of Go refer to issue <https://github.com/etcd-io/etcd/issues/16393> and the linked pull requests.
+For all libraries that exist as independent subprojects (e.g., bbolt, raft, gofail), we should always stick
+to the oldest supported Go minor version for all branches, including main. It's up to the users of these
+libraries to choose which [Go version](https://go.dev/dl) they want to use in their own projects.
+
+For other subprojects that produce binaries or images (e.g. etcd, etcd-operator, auger), the main
+branches should use the latest Go minor version for development, while stable releases should use the
+latest patch of the previous supported Go minor version to ensure stability.
 
 Suggested steps for performing a minor version upgrade for the etcd development branch:
 

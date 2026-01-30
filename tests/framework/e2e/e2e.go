@@ -16,10 +16,17 @@ package e2e
 
 import (
 	"context"
+	"fmt"
+	"net/url"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
+	"go.etcd.io/etcd/pkg/v3/expect"
 	"go.etcd.io/etcd/tests/v3/framework/config"
 	intf "go.etcd.io/etcd/tests/v3/framework/interfaces"
 )
@@ -53,9 +60,12 @@ func (e e2eRunner) NewCluster(ctx context.Context, tb testing.TB, opts ...config
 		WithSnapshotCount(cfg.SnapshotCount),
 	)
 
-	if cfg.ClusterContext != nil {
-		e2eClusterCtx := cfg.ClusterContext.(*ClusterContext)
-		e2eConfig.Version = e2eClusterCtx.Version
+	if ctx, ok := cfg.ClusterContext.(*ClusterContext); ok && ctx != nil {
+		e2eConfig.Version = ctx.Version
+		e2eConfig.EnvVars = ctx.EnvVars
+		if ctx.UseUnix {
+			e2eConfig.BaseClientScheme = "unix"
+		}
 	}
 
 	switch cfg.ClientTLS {
@@ -109,6 +119,32 @@ func (c *e2eCluster) Members() (ms []intf.Member) {
 		ms = append(ms, e2eMember{EtcdProcess: proc, Cfg: c.Cfg})
 	}
 	return ms
+}
+
+func (c *e2eCluster) TemplateEndpoints(tb testing.TB, pattern string) []string {
+	tb.Helper()
+	var endpoints []string
+	for i := 0; i < c.Cfg.ClusterSize; i++ {
+		ent := pattern
+		ent = strings.ReplaceAll(ent, "${MEMBER_PORT}", fmt.Sprintf("%d", EtcdProcessBasePort+i*5))
+		endpoints = append(endpoints, ent)
+	}
+	return endpoints
+}
+
+func (c *e2eCluster) AssertAuthority(tb testing.TB, expectAuthorityPattern string) {
+	for i := range c.Procs {
+		line, _ := c.Procs[i].Logs().ExpectWithContext(tb.Context(), expect.ExpectedResponse{
+			Value: `http2: decoded hpack field header field ":authority"`,
+		})
+		line = strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
+
+		u, err := url.Parse(c.Procs[i].EndpointsGRPC()[0])
+		require.NoError(tb, err)
+		expectAuthority := strings.ReplaceAll(expectAuthorityPattern, "${MEMBER_PORT}", u.Port())
+		expectLine := fmt.Sprintf(`http2: decoded hpack field header field ":authority" = %q`, expectAuthority)
+		assert.Truef(tb, strings.HasSuffix(line, expectLine), "Got %q expected suffix %q", line, expectLine)
+	}
 }
 
 type e2eClient struct {

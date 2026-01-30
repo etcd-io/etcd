@@ -155,14 +155,12 @@ func TestCloseProposerInflight(t *testing.T) {
 	defer clus.closeNoErrors(t)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
 
 	// some inflight ops
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		clus.proposeC[0] <- "foo"
 		clus.proposeC[0] <- "bar"
-	}()
+	})
 
 	// wait for one message
 	if c, ok := <-clus.commitC[0]; !ok || c.data[0] != "foo" {

@@ -17,7 +17,6 @@
 package main
 
 import (
-	"flag"
 	"maps"
 	"os"
 	"path/filepath"
@@ -36,18 +35,8 @@ const (
 	reportFileName = "history.html"
 )
 
-var NodeCount = "3"
-
 func main() {
-	local := flag.Bool("local", false, "run finally locally and connect to etcd instances via localhost")
-	flag.Parse()
-
-	cfg := common.MakeConfig(NodeCount)
-
-	_, reportPath, dirs := common.DefaultPaths(cfg)
-	if *local {
-		_, reportPath, dirs = common.LocalPaths(cfg)
-	}
+	_, reportPath, dirs := common.GetPaths()
 
 	lg, err := zap.NewProduction()
 	if err != nil {

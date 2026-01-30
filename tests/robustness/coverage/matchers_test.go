@@ -15,118 +15,103 @@
 package coverage_test
 
 import (
+	"strings"
+
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 )
 
-// Matcher returns true if trace passes the filter.
-type Matcher func(trace *tracev1.ResourceSpans) bool
+// Matcher returns true if span passes the filter.
+type Matcher func(span *tracev1.Span) bool
 
-// isCommandTestHC matches trace produced by curl call to verify Etcd instance
-// is working in command tests.
-func isCommandTestHC(trace *tracev1.ResourceSpans) bool {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			if span.GetName() != "put" {
-				continue
-			}
-			for _, attr := range span.GetAttributes() {
-				if attr.GetKey() == "key" {
-					return attr.GetValue().GetStringValue() == "_test"
-				}
-			}
+func serviceName(trace *tracev1.ResourceSpans) (string, bool) {
+	for _, attr := range trace.GetResource().GetAttributes() {
+		if attr.GetKey() == "service.name" {
+			return attr.GetValue().GetStringValue(), true
 		}
 	}
-	return false
+	return "", false
+}
+
+func isEtcdGRPC(span *tracev1.Span) bool {
+	return strings.HasPrefix(span.GetName(), "etcdserverpb.") && span.GetKind() == tracev1.Span_SPAN_KIND_SERVER
 }
 
 //nolint:unparam
 func keyIsEqualInt(key string, want int) Matcher {
-	return func(trace *tracev1.ResourceSpans) bool {
-		got, found := intAttr(trace, key)
+	return func(span *tracev1.Span) bool {
+		got, found := intAttr(span, key)
 		return found && got == want
 	}
 }
 
-func isLimitSet(trace *tracev1.ResourceSpans) bool {
-	limit, found := intAttr(trace, "limit")
-	return found && limit > 0
+var (
+	isLimitSet    = intAttrSet("limit")
+	isRevisionSet = intAttrSet("rev")
+)
+
+func intAttrSet(key string) Matcher {
+	return func(span *tracev1.Span) bool {
+		val, found := intAttr(span, key)
+		return found && val > 0
+	}
 }
 
-func isRevisionSet(trace *tracev1.ResourceSpans) bool {
-	rev, found := intAttr(trace, "rev")
-	return found && rev > 0
-}
-
-func intAttr(trace *tracev1.ResourceSpans, key string) (int, bool) {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			for _, attr := range span.GetAttributes() {
-				if attr.GetKey() == key {
-					return int(attr.GetValue().GetIntValue()), true
-				}
-			}
+func intAttr(span *tracev1.Span, key string) (int, bool) {
+	for _, attr := range span.GetAttributes() {
+		if attr.GetKey() == key {
+			return int(attr.GetValue().GetIntValue()), true
 		}
 	}
 	return 0, false
 }
 
 func keyIsEqualStr(key string, want string) Matcher {
-	return func(trace *tracev1.ResourceSpans) bool {
-		got, found := strAttr(trace, key)
+	return func(span *tracev1.Span) bool {
+		got, found := strAttr(span, key)
 		return found && got == want
 	}
 }
 
-func isRangeEndSet(trace *tracev1.ResourceSpans) bool {
-	rangeEnd, found := strAttr(trace, "range_end")
+func isRangeEndSet(span *tracev1.Span) bool {
+	rangeEnd, found := strAttr(span, "range_end")
 	return found && len(rangeEnd) > 0
 }
 
-func strAttr(trace *tracev1.ResourceSpans, key string) (string, bool) {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			for _, attr := range span.GetAttributes() {
-				if attr.GetKey() == key {
-					return attr.Value.GetStringValue(), true
-				}
-			}
+func strAttr(span *tracev1.Span, key string) (string, bool) {
+	for _, attr := range span.GetAttributes() {
+		if attr.GetKey() == key {
+			return attr.Value.GetStringValue(), true
 		}
 	}
 	return "", false
 }
 
-func isReadOnly(trace *tracev1.ResourceSpans) bool {
-	isRO, found := boolAttr(trace, "read_only")
-	return found && isRO
+var (
+	isReadOnly  = boolAttrSet("read_only")
+	isKeysOnly  = boolAttrSet("keys_only")
+	isCountOnly = boolAttrSet("count_only")
+)
+
+func boolAttrSet(key string) Matcher {
+	return func(span *tracev1.Span) bool {
+		val, found := boolAttr(span, key)
+		return found && val
+	}
 }
 
-func isKeysOnly(trace *tracev1.ResourceSpans) bool {
-	isKeys, found := boolAttr(trace, "keys_only")
-	return found && isKeys
-}
-
-func isCountOnly(trace *tracev1.ResourceSpans) bool {
-	isCount, found := boolAttr(trace, "count_only")
-	return found && isCount
-}
-
-func boolAttr(trace *tracev1.ResourceSpans, key string) (bool, bool) {
-	for _, scopeSpan := range trace.GetScopeSpans() {
-		for _, span := range scopeSpan.GetSpans() {
-			for _, attr := range span.GetAttributes() {
-				if attr.GetKey() == key {
-					return attr.Value.GetBoolValue(), true
-				}
-			}
+func boolAttr(span *tracev1.Span, key string) (bool, bool) {
+	for _, attr := range span.GetAttributes() {
+		if attr.GetKey() == key {
+			return attr.Value.GetBoolValue(), true
 		}
 	}
 	return false, false
 }
 
 func orMatcher(l ...Matcher) Matcher {
-	return func(trace *tracev1.ResourceSpans) bool {
+	return func(span *tracev1.Span) bool {
 		for _, m := range l {
-			if m(trace) {
+			if m(span) {
 				return true
 			}
 		}
@@ -135,9 +120,9 @@ func orMatcher(l ...Matcher) Matcher {
 }
 
 func andMatcher(l ...Matcher) Matcher {
-	return func(trace *tracev1.ResourceSpans) bool {
+	return func(span *tracev1.Span) bool {
 		for _, m := range l {
-			if !m(trace) {
+			if !m(span) {
 				return false
 			}
 		}
@@ -146,7 +131,11 @@ func andMatcher(l ...Matcher) Matcher {
 }
 
 func notMatcher(m Matcher) Matcher {
-	return func(trace *tracev1.ResourceSpans) bool {
-		return !m(trace)
+	return func(span *tracev1.Span) bool {
+		return !m(span)
 	}
+}
+
+func all(_ *tracev1.Span) bool {
+	return true
 }

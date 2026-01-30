@@ -4,11 +4,60 @@ Previous change logs can be found at [CHANGELOG-3.5](https://github.com/etcd-io/
 
 ---
 
-## v3.6.5 (TBA)
+## v3.6.8 (TBC)
+
+### etcd server
+
+- [Postpone removal of the --max-snapshots flag from v3.7 to v3.8](https://github.com/etcd-io/etcd/pull/21161)
+- [Revoke the deprecation of the `--snapshot-count` flag](https://github.com/etcd-io/etcd/pull/21163)
+
+### Dependencies
+
+- Bump [golang.org/x/crypto to 0.45.0 to address CVE-2025-47914, and CVE-2025-58181](https://github.com/etcd-io/etcd/pull/21037).
+
+---
+
+## v3.6.7 (2025-12-17)
+
+### etcd server
+
+- [Print token fingerprint instead of the original tokens in log messages](https://github.com/etcd-io/etcd/pull/20941)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.11](https://github.com/etcd-io/etcd/pull/20998).
+
+---
+
+## v3.6.6 (2025-11-11)
+
+### etcd server
+
+- [Reject watch request with -1 revision to prevent invalid resync behavior on uncompacted etcd](https://github.com/etcd-io/etcd/pull/20707)
+- [Change the TLS handshake 'EOF' errors to DEBUG not to spam logs](https://github.com/etcd-io/etcd/pull/20749)
+- Fix [endpoint status not retuning the correct storage quota](https://github.com/etcd-io/etcd/pull/20790)
+- Fix [`--force-new-cluster can't clean up learners after creating snapshot`](https://github.com/etcd-io/etcd/pull/20896)
+- Fix [duplicate metrics collector registration that caused warning messages](https://github.com/etcd-io/etcd/pull/20905)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.10](https://github.com/etcd-io/etcd/pull/20901).
+
+---
+
+## v3.6.5 (2025-09-19)
 
 ### etcd server
 
 - [Remove the flag `--experimental-snapshot-catch-up-entries` from `etcd --help` output](https://github.com/etcd-io/etcd/pull/20422)
+- Fix [etcd repeatedly log the error "cannot detect storage schema version: missing confstate information"](https://github.com/etcd-io/etcd/pull/20496)
+- Fix [etcd may return success for leaseRenew request even when the lease is revoked](https://github.com/etcd-io/etcd/pull/20615)
+- Fix [potential data corruption when applySnapshot and defragment happen concurrently](https://github.com/etcd-io/etcd/pull/20650)
+
+### Dependencies
+
+- Compile binaries using [go 1.24.7](https://github.com/etcd-io/etcd/pull/20664).
+- [Bump bbolt to v1.4.3](https://github.com/etcd-io/etcd/pull/20513).
 
 ---
 

@@ -43,7 +43,7 @@ type Member interface {
 }
 
 type Client interface {
-	Put(context context.Context, key, value string, opts config.PutOptions) error
+	Put(context context.Context, key, value string, opts config.PutOptions) (*clientv3.PutResponse, error)
 	Get(context context.Context, key string, opts config.GetOptions) (*clientv3.GetResponse, error)
 	Delete(context context.Context, key string, opts config.DeleteOptions) (*clientv3.DeleteResponse, error)
 	Compact(context context.Context, rev int64, opts config.CompactOption) (*clientv3.CompactResponse, error)
@@ -84,4 +84,12 @@ type Client interface {
 	MemberRemove(ctx context.Context, id uint64) (*clientv3.MemberRemoveResponse, error)
 
 	Watch(ctx context.Context, key string, opts config.WatchOptions) clientv3.WatchChan
+}
+
+type TemplateEndpoints interface {
+	TemplateEndpoints(tb testing.TB, pattern string) []string
+}
+
+type AssertAuthority interface {
+	AssertAuthority(tb testing.TB, expectedAuthorityPattern string)
 }

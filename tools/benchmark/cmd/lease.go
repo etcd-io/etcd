@@ -65,14 +65,12 @@ func leaseKeepaliveFunc(cmd *cobra.Command, _ []string) {
 		}(clients[i])
 	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for i := 0; i < leaseKeepaliveTotal; i++ {
 			requests <- struct{}{}
 		}
 		close(requests)
-	}()
+	})
 
 	rc := r.Run()
 	wg.Wait()

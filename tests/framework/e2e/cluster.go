@@ -16,7 +16,6 @@ package e2e
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"maps"
@@ -390,6 +389,15 @@ func WithExtensiveMetrics() EPClusterOption {
 	return func(c *EtcdProcessClusterConfig) { c.ServerConfig.Metrics = "extensive" }
 }
 
+func WithEnableDistributedTracing(addr string) EPClusterOption {
+	return func(c *EtcdProcessClusterConfig) {
+		c.ServerConfig.EnableDistributedTracing = true
+		c.ServerConfig.DistributedTracingServiceName = "etcd"
+		c.ServerConfig.DistributedTracingAddress = addr
+		c.ServerConfig.DistributedTracingSamplingRatePerMillion = 1_000_000
+	}
+}
+
 // NewEtcdProcessCluster launches a new cluster from etcd processes, returning
 // a new EtcdProcessCluster once all nodes are ready to accept client requests.
 func NewEtcdProcessCluster(ctx context.Context, tb testing.TB, opts ...EPClusterOption) (*EtcdProcessCluster, error) {
@@ -584,6 +592,14 @@ func (cfg *EtcdProcessClusterConfig) EtcdServerProcessConfig(tb testing.TB, i in
 	}
 	if !cfg.ServerConfig.StrictReconfigCheck {
 		args = append(args, "--strict-reconfig-check=false")
+	}
+	if cfg.ServerConfig.EnableDistributedTracing {
+		args = append(args,
+			"--enable-distributed-tracing",
+			fmt.Sprintf("--distributed-tracing-address=%s", cfg.ServerConfig.DistributedTracingAddress),
+			fmt.Sprintf("--distributed-tracing-service-name=%s", cfg.ServerConfig.DistributedTracingServiceName),
+			fmt.Sprintf("--distributed-tracing-sampling-rate=%d", cfg.ServerConfig.DistributedTracingSamplingRatePerMillion),
+		)
 	}
 
 	var murl string
@@ -817,19 +833,21 @@ func (epc *EtcdProcessCluster) CloseProc(ctx context.Context, finder func(EtcdPr
 		return fmt.Errorf("failed to find member ID: %w", err)
 	}
 
+	sleepDuration := 500 * time.Millisecond
+	maxRetries := int((2 * etcdserver.HealthInterval) / sleepDuration)
 	memberRemoved := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < maxRetries; i++ {
 		_, err := memberCtl.MemberRemove(ctx, memberID)
 		if err != nil && strings.Contains(err.Error(), "member not found") {
 			memberRemoved = true
 			break
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(sleepDuration)
 	}
 
 	if !memberRemoved {
-		return errors.New("failed to remove member after 10 tries")
+		return fmt.Errorf("failed to remove member after %d tries", maxRetries)
 	}
 
 	epc.lg.Info("successfully removed member", zap.String("acurl", proc.Config().ClientURL))

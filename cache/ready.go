@@ -19,16 +19,15 @@ import (
 	"sync"
 )
 
-// ready tracks the transition from “not ready” → “ready” and allows waiters to block
-// until the first transition has happened, and to be reset on error.
+// ready tracks readiness state changes and allows callers to wait for a target state
 type ready struct {
-	mu        sync.Mutex
-	isReady   bool
-	readyChan chan struct{} // closed exactly once per ready transition
+	mu      sync.Mutex
+	isReady bool
+	stateCh chan struct{} // closed on any state transition, then replaced immediately
 }
 
 func newReady() *ready {
-	return &ready{readyChan: make(chan struct{})}
+	return &ready{stateCh: make(chan struct{})}
 }
 
 func (r *ready) Ready() bool {
@@ -38,20 +37,11 @@ func (r *ready) Ready() bool {
 }
 
 func (r *ready) WaitReady(ctx context.Context) error {
-	r.mu.Lock()
-	ch := r.readyChan
-	ready := r.isReady
-	r.mu.Unlock()
+	return r.waitForState(ctx, func() bool { return r.isReady })
+}
 
-	if ready {
-		return nil
-	}
-	select {
-	case <-ch:
-		return ctx.Err()
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+func (r *ready) WaitNotReady(ctx context.Context) error {
+	return r.waitForState(ctx, func() bool { return !r.isReady })
 }
 
 func (r *ready) Set() {
@@ -59,7 +49,8 @@ func (r *ready) Set() {
 	defer r.mu.Unlock()
 	if !r.isReady {
 		r.isReady = true
-		close(r.readyChan)
+		close(r.stateCh)
+		r.stateCh = make(chan struct{})
 	}
 }
 
@@ -68,6 +59,25 @@ func (r *ready) Reset() {
 	defer r.mu.Unlock()
 	if r.isReady {
 		r.isReady = false
-		r.readyChan = make(chan struct{})
+		close(r.stateCh)
+		r.stateCh = make(chan struct{})
+	}
+}
+
+func (r *ready) waitForState(ctx context.Context, pred func() bool) error {
+	for {
+		r.mu.Lock()
+		if pred() {
+			r.mu.Unlock()
+			return ctx.Err()
+		}
+		stateChCopy := r.stateCh
+		r.mu.Unlock()
+
+		select {
+		case <-stateChCopy:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 }

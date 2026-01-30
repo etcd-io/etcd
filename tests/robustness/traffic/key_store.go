@@ -111,7 +111,7 @@ func (k *keyStore) GetPrefix() string {
 //  3. Maintaining the key store size by removing the higher numbered keys.
 //
 // Notice that higher numbered keys will eventually be added
-// again into the keystore, so it is safe to temporarily remove them from the.
+// again into the keystore, so it is safe to temporarily remove them from the
 // key store.
 func (k *keyStore) SyncKeys(resp *clientv3.GetResponse) {
 	k.mu.Lock()

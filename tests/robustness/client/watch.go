@@ -21,36 +21,39 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
-
-	"go.etcd.io/etcd/tests/v3/robustness/report"
 )
 
-func CollectClusterWatchEvents(ctx context.Context, lg *zap.Logger, endpoints []string, maxRevisionChan <-chan int64, cfg WatchConfig, clientSet *ClientSet) error {
+type CollectClusterWatchEventsParam struct {
+	Lg              *zap.Logger
+	Endpoints       []string
+	MaxRevisionChan <-chan int64
+	Cfg             WatchConfig
+	ClientSet       *ClientSet
+}
+
+func CollectClusterWatchEvents(ctx context.Context, param CollectClusterWatchEventsParam) error {
 	var g errgroup.Group
-	reports := make([]report.ClientReport, len(endpoints))
-	memberMaxRevisionChans := make([]chan int64, len(endpoints))
-	for i, endpoint := range endpoints {
+	memberMaxRevisionChans := make([]chan int64, len(param.Endpoints))
+	for i, endpoint := range param.Endpoints {
 		memberMaxRevisionChan := make(chan int64, 1)
 		memberMaxRevisionChans[i] = memberMaxRevisionChan
 		g.Go(func() error {
-			c, err := clientSet.NewClient([]string{endpoint})
+			c, err := param.ClientSet.NewClient([]string{endpoint})
 			if err != nil {
 				return err
 			}
 			defer c.Close()
-			err = watchUntilRevision(ctx, lg, c, memberMaxRevisionChan, cfg)
-			reports[i] = c.Report()
-			return err
+			return watchUntilRevision(ctx, param.Lg, c, memberMaxRevisionChan, param.Cfg)
 		})
 	}
-
 	g.Go(func() error {
-		maxRevision := <-maxRevisionChan
+		maxRevision := <-param.MaxRevisionChan
 		for _, memberChan := range memberMaxRevisionChans {
 			memberChan <- maxRevision
 		}
 		return nil
 	})
+
 	return g.Wait()
 }
 
@@ -58,7 +61,7 @@ type WatchConfig struct {
 	RequestProgress bool
 }
 
-// watchUntilRevision watches all changes until context is cancelled, it has observed revision provided via maxRevisionChan or maxRevisionChan was closed.
+// watchUntilRevision watches all changes until context is canceled, it has observed the revision provided via maxRevisionChan or maxRevisionChan was closed.
 func watchUntilRevision(ctx context.Context, lg *zap.Logger, c *RecordingClient, maxRevisionChan <-chan int64, cfg WatchConfig) error {
 	var maxRevision int64
 	var lastRevision int64 = 1
@@ -69,10 +72,10 @@ resetWatch:
 	for {
 		if closing {
 			if maxRevision == 0 {
-				return errors.New("Client didn't collect all events, max revision not set")
+				return errors.New("client didn't collect all events, max revision not set")
 			}
 			if lastRevision < maxRevision {
-				return fmt.Errorf("Client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
+				return fmt.Errorf("client didn't collect all events, got: %d, expected: %d", lastRevision, maxRevision)
 			}
 			return nil
 		}

@@ -1,4 +1,58 @@
-This directory enables integration of Antithesis with etcd. There are 4 containers running in this system: 3 that make up an etcd cluster (etcd0, etcd1, etcd2) and one that "[makes the system go](https://antithesis.com/docs/getting_started/basic_test_hookup/)" (client).
+# etcd Antithesis tests
+
+This document describes the etcd test integration with [Antithesis].
+Antithesis provides a testing platform that allows you to explore edge cases, race conditions, and rare
+bugs that are difficult or impossible to reproduce in a normal environment.
+
+[Antithesis]: https://antithesis.com/
+
+## Robustness vs Antithesis tests
+
+[Antithesis] runs the robustness tests inside their
+[deterministic simulation testing](https://antithesis.com/resources/deterministic_simulation_testing/)
+environment and [fault injection](https://antithesis.com/docs/environment/fault_injection/).
+
+For more details on robustness tests, see the [robustness directory](../robustness).
+
+## Antithesis Setup
+
+The setup consists of a 3-node etcd cluster and a client container, orchestrated
+via [Docker Compose](https://antithesis.com/docs/getting_started/setup/).
+
+During the etcd Antithesis test suite the etcd server is built with the following patches:
+
+* **Critical code locations**: We replace etcd `gofail` comments (which signify
+  code locations important for failure injection in robustness tests) with
+  Antithesis `assert.Reachable`. This guides Antithesis to explore the
+  execution space around these points.
+* **Assertions**: We change etcd `verify` package assertions to Antithesis
+  `assert.Always`, encouraging the platform to try and break those assertions.
+* **Instrumentation**: The etcd binary is instrumented using
+  `antithesis-go-instrumentor` to enable coverage tracking and feedback for
+  the Antithesis platform.
+
+The Antithesis etcd tests configure the
+[Test Composer](https://antithesis.com/docs/test_templates/test_composer_reference/)
+in the following way:
+
+* **`entrypoint`**:
+  * Waits for all etcd nodes to be healthy.
+  * Emits the `setup_complete` message to Antithesis to start the testing phase.
+* **`singleton_driver_traffic`**:
+  * Generates robustness test traffic against the cluster while faults are injected.
+  * Runs as a [Singleton Driver Command], meaning it is the only one generating traffic.
+  * All generated traffic is saved as an operation history and stored on a shared volume.
+* **`finally_validation`**:
+  * Runs as a [Finally Command], meaning it is the last to run, with failure injection disabled.
+  * Reads the history of operations and validates them using the robustness test validation logic.
+  * Results of robustness tests are executed as Antithesis `assert.Always` assertions.
+  * Similar to robustness tests, it emits a visualization of the operations
+    history to an HTML file that is uploaded to the Antithesis platform.
+
+[Singleton Driver Command]: https://antithesis.com/docs/test_templates/test_composer_reference/#singleton-driver
+[Finally Command]: https://antithesis.com/docs/test_templates/test_composer_reference/#finally-command
+
+# Running tests with docker compose
 
 ## Quickstart
 
@@ -106,3 +160,51 @@ make antithesis-clean
 ## Troubleshooting
 
 - **Image Pull Errors**: If Docker can’t pull `etcd-client:latest`, make sure you built it locally (see the “Build and Tag” step) or push it to a registry that Compose can access.
+
+# Running Tests with Kubernetes (WIP)
+
+## Prerequisites
+
+Please make sure that you have the following tools installed on your local:
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start#installation)
+
+## Testing locally
+
+### Setting up the cluster and deploying the images
+
+#### 1. Ensure your access to a test kubernetes cluster
+
+You can use `kind` to create a local cluster to deploy the etcd-server and test client.  Once you have `kind` installed, you can use the following command to create a local cluster:
+
+```bash
+kind create cluster
+```
+
+Alternatively, you can use any existing kubernetes cluster you have access to.
+
+#### 2. Build and load the images
+
+Please [build the client and server images](#1-build-and-tag-the-docker-image) first. Then load the images into the `kind` cluster:
+
+If you use `kind`, the cluster will need to have access to the images using the following commands:
+
+```bash
+kind load docker-image etcd-client:latest
+kind load docker-image etcd-server:latest
+```
+
+If you use something other than `kind`, please make sure the images are accessible to your cluster. This might involve pushing the images to a container registry that your cluster can pull from.
+
+#### 3. Deploy the kubernetes manifests
+
+```bash
+kubectl apply -f ./config/manifests
+```
+
+### Tearing down the cluster
+
+```bash
+kind delete cluster --name kind
+```

@@ -38,8 +38,8 @@ func TestHTTPErrorWriteTo(t *testing.T) {
 		t.Errorf("HTTP status code %d, want %d", rr.Code, wcode)
 	}
 
-	if !reflect.DeepEqual(wheader, rr.HeaderMap) {
-		t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader)
+	if !reflect.DeepEqual(wheader, rr.HeaderMap) { //nolint:staticcheck // TODO: remove for a supported version
+		t.Errorf("HTTP headers %v, want %v", rr.HeaderMap, wheader) //nolint:staticcheck // TODO: remove for a supported version
 	}
 
 	gbody := rr.Body.String()

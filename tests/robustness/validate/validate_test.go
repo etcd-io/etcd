@@ -35,7 +35,7 @@ func TestDataReports(t *testing.T) {
 	files, err := os.ReadDir(testdataPath)
 	require.NoError(t, err)
 	for _, file := range files {
-		if file.Name() == ".gitignore" {
+		if !file.IsDir() {
 			continue
 		}
 		t.Run(file.Name(), func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 							ClientId: 0,
 							Input:    putRequest("key", "value"),
 							Call:     300,
-							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Output:   txnResponse(2, model.EtcdOperationResult{}),
 							Return:   400,
 						},
 					},
@@ -154,7 +154,7 @@ func TestValidateAndReturnVisualize(t *testing.T) {
 							ClientId: 0,
 							Input:    putRequest("key", "value"),
 							Call:     300,
-							Output:   putResponse(2, model.EtcdOperationResult{}),
+							Output:   txnResponse(2, model.EtcdOperationResult{}),
 							Return:   400,
 						},
 					},
