@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -116,8 +117,8 @@ func (h *AppendableHistory) AppendLeaseGrant(start, end time.Duration, resp *cli
 	var revision int64
 	var MemberID uint64
 	if resp != nil && resp.ResponseHeader != nil {
-		revision = resp.ResponseHeader.Revision
-		MemberID = resp.ResponseHeader.MemberId
+		revision = resp.Revision
+		MemberID = resp.MemberId
 	}
 	h.appendSuccessful(request, start, end, leaseGrantResponseWithMemberID(revision, MemberID))
 }
@@ -387,7 +388,7 @@ func rangeResponseWithMemberID(kvs []*mvccpb.KeyValue, count int64, revision int
 			},
 		}
 	}
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Range: &result, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func failedResponse(err error) MaybeEtcdResponse {
@@ -407,7 +408,7 @@ func putResponse(revision int64) MaybeEtcdResponse {
 }
 
 func putResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{}}}, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func deleteRequest(key string) EtcdRequest {
@@ -419,7 +420,7 @@ func deleteResponse(deleted int64, revision int64) MaybeEtcdResponse {
 }
 
 func deleteResponseWithMemberID(deleted int64, revision int64, MemberID uint64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: []EtcdOperationResult{{Deleted: deleted}}}, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func compareRevisionAndPutRequest(key string, expectedRevision int64, value string) EtcdRequest {
@@ -474,7 +475,7 @@ func txnResponse(result []EtcdOperationResult, succeeded bool, revision int64) M
 }
 
 func txnResponseWithMemberID(result []EtcdOperationResult, succeeded bool, revision int64, MemberID uint64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{Txn: &TxnResponse{Results: result, Failure: !succeeded}, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func putWithLeaseRequest(key, value string, leaseID int64) EtcdRequest {
@@ -490,7 +491,7 @@ func leaseGrantResponse(revision int64) MaybeEtcdResponse {
 }
 
 func leaseGrantResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseGrant: &LeaseGrantReponse{}, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func leaseRevokeRequest(leaseID int64) EtcdRequest {
@@ -502,7 +503,7 @@ func leaseRevokeResponse(revision int64) MaybeEtcdResponse {
 }
 
 func leaseRevokeResponseWithMemberID(revision int64, MemberID uint64) MaybeEtcdResponse {
-	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision, MemberID: MemberID}}
+	return MaybeEtcdResponse{EtcdResponse: EtcdResponse{LeaseRevoke: &LeaseRevokeResponse{}, Revision: revision, MemberID: strconv.FormatUint(MemberID, 16)}}
 }
 
 func defragmentRequest() EtcdRequest {
