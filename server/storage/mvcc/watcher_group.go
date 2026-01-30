@@ -30,7 +30,7 @@ var watchBatchMaxRevs = 1000
 type eventBatch struct {
 	// evs is a batch of revision-ordered events
 	evs []mvccpb.Event
-	// revs is the minimum unique revisions observed for this batch
+	// revs is the minimum number of unique revisions observed for this batch
 	revs int
 	// moreRev is first revision with more events following this batch
 	moreRev int64
@@ -74,6 +74,13 @@ func (wb watcherBatch) add(w *watcher, ev mvccpb.Event) {
 	eb.add(ev)
 }
 
+func (wb watcherBatch) delete(w *watcher) {
+	if _, ok := wb[w]; !ok {
+		panic("removing missing watcher!")
+	}
+	delete(wb, w)
+}
+
 // newWatcherBatch maps watchers to their matched events. It enables quick
 // events look up by watcher.
 func newWatcherBatch(wg *watcherGroup, evs []mvccpb.Event) watcherBatch {
@@ -108,13 +115,6 @@ func (w watcherSet) union(ws watcherSet) {
 	}
 }
 
-func (w watcherSet) delete(wa *watcher) {
-	if _, ok := w[wa]; !ok {
-		panic("removing missing watcher!")
-	}
-	delete(w, wa)
-}
-
 type watcherSetByKey map[string]watcherSet
 
 func (w watcherSetByKey) add(wa *watcher) {
@@ -147,21 +147,31 @@ type watcherGroup struct {
 	keyWatchers watcherSetByKey
 	// ranges has the watchers that watch a range; it is sorted by interval
 	ranges adt.IntervalTree
-	// watchers is the set of all watchers
-	watchers watcherSet
+	// watchers maps all watchers to their pending event batches.
+	// A nil eventBatch means the watcher has no pending events.
+	// A non-nil eventBatch means the watcher has events waiting to be sent.
+	watchers watcherBatch
 }
 
 func newWatcherGroup() watcherGroup {
 	return watcherGroup{
 		keyWatchers: make(watcherSetByKey),
 		ranges:      adt.NewIntervalTree(),
-		watchers:    make(watcherSet),
+		watchers:    make(watcherBatch),
 	}
 }
 
-// add puts a watcher in the group.
+// add puts a watcher in the group with no pending events.
 func (wg *watcherGroup) add(wa *watcher) {
-	wg.watchers.add(wa)
+	wg.addWithEventBatch(wa, nil)
+}
+
+// addWithEventBatch puts a watcher in the group with pending events.
+func (wg *watcherGroup) addWithEventBatch(wa *watcher, eb *eventBatch) {
+	if _, ok := wg.watchers[wa]; ok {
+		panic("add watcher twice!")
+	}
+	wg.watchers[wa] = eb
 	if wa.end == nil {
 		wg.keyWatchers.add(wa)
 		return
@@ -218,13 +228,18 @@ func (wg *watcherGroup) delete(wa *watcher) bool {
 	return true
 }
 
-// choose selects watchers from the watcher group to update
+// choose selects watchers from the watcher group to update.
+// It skips watchers with pending events (non-nil eventBatch) as they are handled by retryLoop.
 func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watcherGroup, int64) {
 	if len(wg.watchers) < maxWatchers {
 		return wg, wg.chooseAll(curRev, compactRev)
 	}
 	ret := newWatcherGroup()
-	for w := range wg.watchers {
+	for w, eb := range wg.watchers {
+		if eb != nil {
+			// Skip watchers with pending events - they are handled by retryLoop
+			continue
+		}
 		if maxWatchers <= 0 {
 			break
 		}
@@ -236,7 +251,11 @@ func (wg *watcherGroup) choose(maxWatchers int, curRev, compactRev int64) (*watc
 
 func (wg *watcherGroup) chooseAll(curRev, compactRev int64) int64 {
 	minRev := int64(math.MaxInt64)
-	for w := range wg.watchers {
+	for w, eb := range wg.watchers {
+		if eb != nil {
+			// Skip watchers with pending events - they are handled by retryLoop
+			continue
+		}
 		if w.minRev > curRev {
 			// after network partition, possibly choosing future revision watcher from restore operation
 			// with watch key "proxy-namespace__lostleader" and revision "math.MaxInt64 - 2"
