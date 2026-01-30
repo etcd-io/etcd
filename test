@@ -36,6 +36,7 @@ set -euo pipefail
 export ETCD_VERIFY=all
 
 source ./build
+source ./scripts/test_lib.sh
 
 PASSES=${PASSES:-}
 SHELLCHECK_VERSION=${SHELLCHECK_VERSION:-"v0.10.0"}
