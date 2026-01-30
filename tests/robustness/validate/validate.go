@@ -29,7 +29,8 @@ import (
 
 var ErrNotEmptyDatabase = errors.New("non empty database at start, required by model used for linearizability validation")
 
-func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result RobustnessResult) {
+func ValidateAndReturnVisualize(t TimerLogger, cfg Config, reports []report.ClientReport, persistedRequests []model.EtcdRequest, timeout time.Duration) (result RobustnessResult) {
+	lg := t.Logger()
 	result.Assumptions = ResultFromError(checkValidationAssumptions(reports))
 	if result.Assumptions.Error() != nil {
 		return result
@@ -39,10 +40,13 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 	// The reason is that linearizableOperations are those dedicated for linearization, which requires them to have returnTime set to infinity as required by pourcupine.
 	// As for the report, the original report is used so the consumer doesn't need to track what patching was done or not.
 	if len(persistedRequests) != 0 {
-		linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
+		t.Run("Patch", func(tl TimerLogger) {
+			linearizableOperations = patchLinearizableOperations(linearizableOperations, reports, persistedRequests)
+		})
 	}
-
-	result.Linearization = validateLinearizableOperationsAndVisualize(lg, linearizableOperations, timeout)
+	t.Run("Linearization", func(t TimerLogger) {
+		result.Linearization = validateLinearizableOperations(t.Logger(), linearizableOperations, timeout)
+	})
 	result.Linearization.AddToVisualization(operationsForVisualization)
 	// Skip other validations if model is not linearizable, as they are expected to fail too and obfuscate the logs.
 	if result.Linearization.Error() != nil {
@@ -53,9 +57,27 @@ func ValidateAndReturnVisualize(lg *zap.Logger, cfg Config, reports []report.Cli
 		lg.Info("Skipping other validations as persisted requests were empty")
 		return result
 	}
-	replay := model.NewReplay(persistedRequests)
-	result.Watch = validateWatch(lg, cfg, reports, replay)
-	result.Serializable = validateSerializableOperations(lg, serializableOperations, replay)
+	t.Run("Replay", func(t TimerLogger) {
+		replay := model.NewReplay(persistedRequests)
+		t.Run("Watch", func(t TimerLogger) {
+			lg := t.Logger()
+			err := validateWatch(lg, cfg, reports, replay)
+			if err != nil {
+				lg.Error("Watch validation failed", zap.Error(err))
+			}
+			lg.Info("Watch validation success")
+			result.Watch = ResultFromError(err)
+		})
+		t.Run("Serializable", func(t TimerLogger) {
+			lg := t.Logger()
+			err := validateSerializableOperations(lg, serializableOperations, replay)
+			if err != nil {
+				lg.Error("Serializable validation failed")
+			}
+			lg.Info("Serializable validation success")
+			result.Serializable = ResultFromError(err)
+		})
+	})
 	return result
 }
 
