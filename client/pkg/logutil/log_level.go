@@ -22,9 +22,9 @@ var DefaultLogLevel = "info"
 
 // ConvertToZapLevel converts log level string to zapcore.Level.
 func ConvertToZapLevel(lvl string) zapcore.Level {
-	var level zapcore.Level
+	var lev zapcore.Level
 	if err := level.Set(lvl); err != nil {
 		panic(err)
 	}
-	return level
+	return lev
 }

@@ -16,6 +16,7 @@ package grpcproxy
 
 import (
 	"context"
+	"fmt"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/v3election/v3electionpb"
@@ -38,6 +39,7 @@ func (ep *electionProxy) Proclaim(ctx context.Context, req *v3electionpb.Proclai
 }
 
 func (ep *electionProxy) Leader(ctx context.Context, req *v3electionpb.LeaderRequest) (*v3electionpb.LeaderResponse, error) {
+	fmt.Println("Leader: req: ", req)
 	return ep.electionClient.Leader(ctx, req)
 }
 
