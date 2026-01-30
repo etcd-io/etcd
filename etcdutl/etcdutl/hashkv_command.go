@@ -15,6 +15,10 @@
 package etcdutl
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -23,7 +27,12 @@ import (
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 )
 
-var hashKVRevision int64
+var (
+	hashKVRevision   int64
+	hashKVCompactRev int64
+	hashKVDetailed   bool
+	hashKVOutputFile string
+)
 
 // NewHashKVCommand returns the cobra command for "hashkv".
 func NewHashKVCommand() *cobra.Command {
@@ -34,13 +43,16 @@ func NewHashKVCommand() *cobra.Command {
 		Run:   hashKVCommandFunc,
 	}
 	cmd.Flags().Int64Var(&hashKVRevision, "rev", 0, "maximum revision to hash (default: latest revision)")
+	cmd.Flags().Int64Var(&hashKVCompactRev, "compact-rev", 0, "compact revision - revisions less than or equal to this value will be ignored (default: 0, use storage compact revision)")
+	cmd.Flags().BoolVar(&hashKVDetailed, "detailed", false, "enable detailed mode to return individual key+revision hashes")
+	cmd.Flags().StringVar(&hashKVOutputFile, "output", "", "output file path for detailed JSON results (default: print to stdout)")
 	return cmd
 }
 
 func hashKVCommandFunc(cmd *cobra.Command, args []string) {
 	printer := initPrinterFromCmd(cmd)
 
-	ds, err := calculateHashKV(args[0], hashKVRevision)
+	ds, err := calculateHashKV(args[0], hashKVRevision, hashKVCompactRev, hashKVDetailed, hashKVOutputFile)
 	if err != nil {
 		cobrautl.ExitWithError(cobrautl.ExitError, err)
 	}
@@ -53,19 +65,64 @@ type HashKV struct {
 	CompactRevision int64  `json:"compactRevision"`
 }
 
-func calculateHashKV(dbPath string, rev int64) (HashKV, error) {
+func calculateHashKV(dbPath string, rev int64, compactRev int64, detailed bool, outputFile string) (HashKV, error) {
 	b := backend.NewDefaultBackend(zap.NewNop(), dbPath, backend.WithTimeout(FlockTimeout))
 	// Since `etcdutl hashkv` only hashes the keyspace and ignores leases, we use a simple lessor to simplify the implementation.
 	st := mvcc.NewStore(zap.NewNop(), b, &SimpleLessor{}, mvcc.StoreConfig{})
 	hst := mvcc.NewHashStorage(zap.NewNop(), st)
 
-	h, _, err := hst.HashByRev(rev)
-	if err != nil {
-		return HashKV{}, err
+	defer func() {
+		st.Close()
+		b.Close()
+	}()
+
+	var result HashKV
+
+	if detailed {
+		detailedResult, _, err := hst.HashByRevDetailed(rev, compactRev)
+		if err != nil {
+			return HashKV{}, err
+		}
+
+		result = HashKV{
+			Hash:            detailedResult.TotalHash.Hash,
+			HashRevision:    detailedResult.TotalHash.Revision,
+			CompactRevision: detailedResult.TotalHash.CompactRevision,
+		}
+
+		if err := outputDetailedResult(detailedResult.KeyHashes, outputFile); err != nil {
+			return HashKV{}, err
+		}
+	} else {
+		var h mvcc.KeyValueHash
+		var err error
+
+		h, _, err = hst.HashByRevWithCompactRev(rev, compactRev)
+
+		if err != nil {
+			return HashKV{}, err
+		}
+
+		result = HashKV{
+			Hash:            h.Hash,
+			HashRevision:    h.Revision,
+			CompactRevision: h.CompactRevision,
+		}
 	}
-	return HashKV{
-		Hash:            h.Hash,
-		HashRevision:    h.Revision,
-		CompactRevision: h.CompactRevision,
-	}, nil
+
+	return result, nil
+}
+
+func outputDetailedResult(detail []mvcc.KeyRevisionHash, outputFile string) error {
+	data, err := json.MarshalIndent(detail, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if outputFile != "" {
+		return os.WriteFile(outputFile, data, 0644)
+	}
+
+	fmt.Println(string(data))
+	return nil
 }
