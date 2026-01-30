@@ -1961,8 +1961,133 @@ func TestV3AdditionalGRPCOptions(t *testing.T) {
 	}
 }
 
+// eqErrGRPC validates both inputs must be gRPC status errors
+// (e.g., rpctypes.ErrGRPCXxx) or nil, and then compares them.
 func eqErrGRPC(err1 error, err2 error) bool {
-	return !(err1 == nil && err2 != nil) || err1.Error() == err2.Error()
+	s1 := mustGRPCStatus(err1)
+	s2 := mustGRPCStatus(err2)
+	return s1.Code() == s2.Code() && s1.Message() == s2.Message()
+}
+
+func mustGRPCStatus(err error) *status.Status {
+	if err == nil {
+		return status.New(codes.OK, "")
+	}
+	s, ok := status.FromError(err)
+	if !ok {
+		panic(fmt.Sprintf("eqErrGRPC: not a gRPC status error: %T %v", err, err))
+	}
+	return s
+}
+
+func TestEqErrGRPC(t *testing.T) {
+	tests := []struct {
+		name     string
+		err1     error
+		err2     error
+		expected bool
+	}{
+		{
+			name:     "both nil",
+			err1:     nil,
+			err2:     nil,
+			expected: true,
+		},
+		{
+			name:     "first nil, second non-nil",
+			err1:     nil,
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: false,
+		},
+		{
+			name:     "first non-nil, second nil",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     nil,
+			expected: false,
+		},
+		{
+			name:     "same error - same object",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		// Wire reconstruction: different objects with same code and message
+		{
+			name:     "wire reconstruction - same code and message",
+			err1:     status.Error(codes.FailedPrecondition, "etcdserver: lease already exists"),
+			err2:     rpctypes.ErrGRPCLeaseExist,
+			expected: true,
+		},
+		// Code/message permutation tests
+		{
+			name:     "same code, same message",
+			err1:     status.Error(codes.FailedPrecondition, "error message"),
+			err2:     status.Error(codes.FailedPrecondition, "error message"),
+			expected: true,
+		},
+		{
+			name:     "same code, different message",
+			err1:     status.Error(codes.FailedPrecondition, "error A"),
+			err2:     status.Error(codes.FailedPrecondition, "error B"),
+			expected: false,
+		},
+		{
+			name:     "different code, same message",
+			err1:     status.Error(codes.FailedPrecondition, "same message"),
+			err2:     status.Error(codes.NotFound, "same message"),
+			expected: false,
+		},
+		{
+			name:     "different code, different message",
+			err1:     rpctypes.ErrGRPCLeaseExist,
+			err2:     rpctypes.ErrGRPCLeaseNotFound,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := eqErrGRPC(tt.err1, tt.err2)
+			if result != tt.expected {
+				t.Errorf("eqErrGRPC(%v, %v) = %v, want %v", tt.err1, tt.err2, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestEqErrGRPCPanicsOnNonGRPCError(t *testing.T) {
+	tests := []struct {
+		name string
+		err1 error
+		err2 error
+	}{
+		{
+			name: "plain error vs gRPC error",
+			err1: errors.New("plain error"),
+			err2: rpctypes.ErrGRPCLeaseExist,
+		},
+		{
+			name: "gRPC error vs plain error",
+			err1: rpctypes.ErrGRPCLeaseExist,
+			err2: errors.New("plain error"),
+		},
+		{
+			name: "client-side EtcdError vs gRPC error",
+			err1: rpctypes.ErrUserEmpty,
+			err2: rpctypes.ErrGRPCUserEmpty,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("eqErrGRPC(%v, %v) should panic but didn't", tt.err1, tt.err2)
+				}
+			}()
+			eqErrGRPC(tt.err1, tt.err2)
+		})
+	}
 }
 
 // waitForRestart tries a range request until the client's server responds.
