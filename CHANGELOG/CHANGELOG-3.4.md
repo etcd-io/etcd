@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.41 (TBC)
 
+### Dependencies
+
+- Compile binaries using [go 1.24.12](https://github.com/etcd-io/etcd/pull/21218).
+
 ---
 
 ## v3.4.40 (2025-12-17)
