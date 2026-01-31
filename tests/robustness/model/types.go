@@ -15,7 +15,9 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"hash/fnv"
 	"maps"
 	"reflect"
@@ -138,6 +140,14 @@ type MaybeEtcdResponse struct {
 
 var ErrEtcdFutureRev = errors.New("future rev")
 
+type MemberID uint64
+
+// MarshalJSON implements the json.Marshaler interface for MemberID.
+// It marshals the MemberID as a hexadecimal string.
+func (m MemberID) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fmt.Sprintf("%x", m))
+}
+
 type EtcdResponse struct {
 	Txn         *TxnResponse
 	Range       *RangeResponse
@@ -147,7 +157,7 @@ type EtcdResponse struct {
 	Compact     *CompactResponse
 	ClientError string
 	Revision    int64
-	MemberID    uint64
+	MemberID    MemberID `json:"member-id,omitempty"`
 }
 
 func Match(r1, r2 MaybeEtcdResponse) bool {
