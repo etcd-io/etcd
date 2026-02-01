@@ -73,7 +73,7 @@ func runDiagnosis(cmd *cobra.Command, args []string) {
 		cfg.Endpoints = eps
 	}
 
-	timeout, err := cmd.Flags().GetDuration("command-timeout")
+	timeout, err := cmd.Flags().GetDuration(FlagCommandTimeout)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to get command-timeout: %v\n", err)
 		os.Exit(cobrautl.ExitError)
