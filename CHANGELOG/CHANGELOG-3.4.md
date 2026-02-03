@@ -6,6 +6,10 @@ Previous change logs can be found at [CHANGELOG-3.3](https://github.com/etcd-io/
 
 ## v3.4.41 (TBC)
 
+### Package `clientv3`
+
+- [Remove the use of grpc-go's Metadata field](https://github.com/etcd-io/etcd/pull/21243)
+
 ### Dependencies
 
 - Compile binaries using [go 1.24.12](https://github.com/etcd-io/etcd/pull/21218).
