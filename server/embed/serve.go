@@ -156,17 +156,6 @@ func (sctx *serveCtx) serve(
 	if sctx.insecure {
 		var gs *grpc.Server
 		var srv *http.Server
-		if httpEnabled {
-			httpmux := sctx.createMux(gwmux, handler)
-			srv = &http.Server{
-				Handler:  createAccessController(sctx.lg, s, httpmux),
-				ErrorLog: logger, // do not log user error
-			}
-			if err := configureHttpServer(srv, s.Cfg); err != nil {
-				sctx.lg.Error("Configure http server failed", zap.Error(err))
-				return err
-			}
-		}
 		if grpcEnabled {
 			gs = v3rpc.Server(s, nil, nil, gopts...)
 			v3electionpb.RegisterElectionServer(gs, servElection)
@@ -181,6 +170,20 @@ func (sctx *serveCtx) serve(
 					sctx.lg.Warn("stopped insecure grpc server due to error", zap.Error(err))
 				}
 			}(gs)
+		}
+		if httpEnabled {
+			if grpcEnabled {
+				handler = grpcHandlerFunc(gs, handler)
+			}
+			httpmux := sctx.createMux(gwmux, handler)
+			srv = &http.Server{
+				Handler:  createAccessController(sctx.lg, s, httpmux),
+				ErrorLog: logger, // do not log user error
+			}
+			if err := configureHttpServer(srv, s.Cfg); err != nil {
+				sctx.lg.Error("Configure http server failed", zap.Error(err))
+				return err
+			}
 		}
 		if onlyGRPC {
 			server = func() error {
@@ -199,10 +202,10 @@ func (sctx *serveCtx) serve(
 			if grpcEnabled {
 				grpcl := m.Match(cmux.HTTP2())
 				sctx.wg.Add(1)
-				go func(gs *grpc.Server, l net.Listener) {
+				go func(srvhttp *http.Server, l net.Listener) {
 					defer sctx.wg.Done()
-					errHandler(gs.Serve(l))
-				}(gs, grpcl)
+					errHandler(srvhttp.Serve(l))
+				}(srv, grpcl)
 			}
 		}
 
