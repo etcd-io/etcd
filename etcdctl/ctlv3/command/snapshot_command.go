@@ -17,6 +17,7 @@ package command
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -61,7 +62,7 @@ func NewSnapshotCommand() *cobra.Command {
 func NewSnapshotSaveCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:     "save <filename>",
-		Short:   "Stores an etcd node backend snapshot to a given file",
+		Short:   "Stores an etcd node backend snapshot to a given file or stdout if filename is '-'",
 		Run:     snapshotSaveCommandFunc,
 		Example: snapshotExample,
 	}
@@ -87,12 +88,21 @@ func snapshotSaveCommandFunc(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	path := args[0]
-	version, err := snapshot.SaveWithVersion(ctx, lg, *cfg, path)
-	if err != nil {
-		cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
+	if path != "-" {
+		version, err := snapshot.SaveWithVersion(ctx, lg, *cfg, path)
+		if err != nil {
+			cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
+		}
+
+		fmt.Printf("Snapshot saved at %s\n", path)
+		if version != "" {
+			fmt.Printf("Server version %s\n", version)
+		}
+	} else {
+		_, err := snapshot.SaveWithVersionStream(ctx, lg, *cfg, os.Stdout)
+		if err != nil {
+			cobrautl.ExitWithError(cobrautl.ExitInterrupted, err)
+		}
 	}
-	fmt.Printf("Snapshot saved at %s\n", path)
-	if version != "" {
-		fmt.Printf("Server version %s\n", version)
-	}
+
 }
