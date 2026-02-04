@@ -99,6 +99,7 @@ func newConfig() *config {
 		),
 		v2deprecation: flags.NewSelectiveStringsValue(
 			string(cconfig.V2Depr1WriteOnly),
+			string(cconfig.V2Depr1WriteOnlySkipCheck),
 			string(cconfig.V2Depr1WriteOnlyDrop),
 			string(cconfig.V2Depr2Gone)),
 	}

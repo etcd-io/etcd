@@ -196,13 +196,6 @@ type ServerConfig struct {
 	// V2Deprecation defines a phase of v2store deprecation process.
 	V2Deprecation V2DeprecationEnum `json:"v2-deprecation"`
 
-	// DangerousSkipV2Check bypasses the --v2-deprecation=write-only check,
-	// allowing startup even if v2store contains custom content.
-	// Use only for 3.5→3.6 upgrades with v2 data.
-	// WARNING: v2 data will NOT be included in snapshots and will be lost
-	// after member recreation.
-	DangerousSkipV2Check bool `json:"dangerous-skip-v2-check"`
-
 	// LocalAddress is the local IP address to use when communicating with a peer.
 	LocalAddress string `json:"local-address"`
 

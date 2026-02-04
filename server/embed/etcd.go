@@ -232,7 +232,6 @@ func StartEtcd(inCfg *Config) (e *Etcd, err error) {
 		BootstrapDefragThresholdMegabytes: cfg.BootstrapDefragThresholdMegabytes,
 		MaxLearners:                       cfg.MaxLearners,
 		V2Deprecation:                     cfg.V2DeprecationEffective(),
-		DangerousSkipV2Check:              cfg.DangerousSkipV2Check,
 		LocalAddress:                      cfg.InferLocalAddr(),
 		ServerFeatureGate:                 cfg.ServerFeatureGate,
 		Metrics:                           cfg.Metrics,

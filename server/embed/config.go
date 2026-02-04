@@ -451,13 +451,6 @@ type Config struct {
 	// Deprecated: The default value is enforced, to be removed in v3.8.
 	V2Deprecation config.V2DeprecationEnum `json:"v2-deprecation"`
 
-	// DangerousSkipV2Check bypasses the --v2-deprecation=write-only check,
-	// allowing startup even if v2store contains custom content.
-	// Use only for 3.5→3.6 upgrades with v2 data.
-	// WARNING: v2 data will NOT be included in snapshots and will be lost
-	// after member recreation.
-	DangerousSkipV2Check bool `json:"dangerous-skip-v2-check"`
-
 	// ServerFeatureGate is a server level feature gate
 	ServerFeatureGate featuregate.FeatureGate
 	// FlagsExplicitlySet stores if a flag is explicitly set from the cmd line or config file.
@@ -765,7 +758,6 @@ func (cfg *Config) AddFlags(fs *flag.FlagSet) {
 	// unsafe
 	fs.BoolVar(&cfg.UnsafeNoFsync, "unsafe-no-fsync", false, "Disables fsync, unsafe, will cause data loss.")
 	fs.BoolVar(&cfg.ForceNewCluster, "force-new-cluster", false, "Force to create a new one member cluster.")
-	fs.BoolVar(&cfg.DangerousSkipV2Check, "dangerous-skip-v2-check", false, "Allow startup even if v2store contains custom content (bypasses --v2-deprecation=write-only check). Use only for 3.5→3.6 upgrades with v2 data. WARNING: v2 data will NOT be included in snapshots and will be lost after member recreation.")
 
 	// featuregate
 	cfg.ServerFeatureGate.(featuregate.MutableFeatureGate).AddFlag(fs, ServerFeatureGateFlagName)

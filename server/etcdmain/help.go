@@ -300,10 +300,6 @@ Unsafe feature:
     Force to create a new one-member cluster.
   --unsafe-no-fsync 'false'
     Disables fsync, unsafe, will cause data loss.
-  --dangerous-skip-v2-check 'false'
-    Allow startup even if v2store contains custom content (bypasses --v2-deprecation=write-only check).
-    Use only for 3.5→3.6 upgrades with v2 data.
-    WARNING: v2 data will NOT be included in snapshots and will be lost after member recreation.
 
 CAUTIOUS with unsafe flag! It may break the guarantees given by the consensus protocol!
 `
