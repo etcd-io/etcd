@@ -189,15 +189,6 @@
 		]
 	},
 	{
-		"project": "github.com/golang/groupcache/lru",
-		"licenses": [
-			{
-				"type": "Apache License 2.0",
-				"confidence": 0.9966703662597114
-			}
-		]
-	},
-	{
 		"project": "github.com/golang/protobuf",
 		"licenses": [
 			{
@@ -828,6 +819,24 @@
 			{
 				"type": "MIT License",
 				"confidence": 0.7469879518072289
+			}
+		]
+	},
+	{
+		"project": "k8s.io/utils/internal/third_party/forked/golang/golang-lru",
+		"licenses": [
+			{
+				"type": "BSD 3-clause \"New\" or \"Revised\" License",
+				"confidence": 0.9663865546218487
+			}
+		]
+	},
+	{
+		"project": "k8s.io/utils/lru",
+		"licenses": [
+			{
+				"type": "Apache License 2.0",
+				"confidence": 1
 			}
 		]
 	},
