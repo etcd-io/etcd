@@ -25,6 +25,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 
 	"go.etcd.io/etcd/client/pkg/v3/logutil"
 )
@@ -188,29 +191,71 @@ func TestLog(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
-			defer os.RemoveAll(logPath)
+	for _, converted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("converted=%v", converted), func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
+					defer os.RemoveAll(logPath)
 
-			lcfg := logutil.DefaultZapLoggerConfig
-			lcfg.OutputPaths = []string{logPath}
-			lcfg.ErrorOutputPaths = []string{logPath}
-			lg, _ := lcfg.Build()
+					lcfg := logutil.DefaultZapLoggerConfig
+					lcfg.OutputPaths = []string{logPath}
+					lcfg.ErrorOutputPaths = []string{logPath}
+					lg, _ := lcfg.Build()
 
-			for _, f := range tt.fields {
-				tt.trace.AddField(f)
-			}
-			tt.trace.lg = lg
-			tt.trace.Log()
-			data, err := os.ReadFile(logPath)
-			require.NoError(t, err)
+					for _, f := range tt.fields {
+						tt.trace.AddField(f)
+					}
+					if converted {
+						span := traceToSpan(tt.trace)
+						spanLogger := LongSpanProcessor{
+							SpanExporter: &LogExporter{Log: lg.Info},
+						}
+						spanLogger.OnEnd(span)
+					} else {
+						tt.trace.lg = lg
+						tt.trace.Log()
+					}
+					data, err := os.ReadFile(logPath)
+					require.NoError(t, err)
 
-			for _, msg := range tt.expectedMsg {
-				assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
+					t.Logf("log: %s", data)
+
+					for _, msg := range tt.expectedMsg {
+						assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
+					}
+				})
 			}
 		})
 	}
+}
+
+func traceToSpan(t *Trace) trace.ReadOnlySpan {
+	span := tracetest.SpanStub{
+		Name:       t.operation,
+		StartTime:  t.startTime,
+		EndTime:    time.Now(),
+		Attributes: fieldsToAttrs(t.fields),
+	}
+	for _, step := range t.steps {
+		if step.isSubTraceStart || step.isSubTraceEnd {
+			continue
+		}
+		span.Events = append(span.Events, trace.Event{
+			Time:       step.time,
+			Name:       step.msg,
+			Attributes: fieldsToAttrs(step.fields),
+		})
+	}
+	return span.Snapshot()
+}
+
+func fieldsToAttrs(fields []Field) []attribute.KeyValue {
+	attrs := make([]attribute.KeyValue, 0, len(fields))
+	for _, f := range fields {
+		attrs = append(attrs, attribute.String(f.Key, fmt.Sprintf("%v", f.Value)))
+	}
+	return attrs
 }
 
 func TestLogIfLong(t *testing.T) {
@@ -265,22 +310,38 @@ func TestLogIfLong(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
-			defer os.RemoveAll(logPath)
+	for _, converted := range []bool{false, true} {
+		t.Run(fmt.Sprintf("converted=%v", converted), func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					logPath := filepath.Join(os.TempDir(), fmt.Sprintf("test-log-%d", time.Now().UnixNano()))
+					defer os.RemoveAll(logPath)
 
-			lcfg := logutil.DefaultZapLoggerConfig
-			lcfg.OutputPaths = []string{logPath}
-			lcfg.ErrorOutputPaths = []string{logPath}
-			lg, _ := lcfg.Build()
+					lcfg := logutil.DefaultZapLoggerConfig
+					lcfg.OutputPaths = []string{logPath}
+					lcfg.ErrorOutputPaths = []string{logPath}
+					lg, _ := lcfg.Build()
 
-			tt.trace.lg = lg
-			tt.trace.LogIfLong(tt.threshold)
-			data, err := os.ReadFile(logPath)
-			require.NoError(t, err)
-			for _, msg := range tt.expectedMsg {
-				assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
+					if converted {
+						span := traceToSpan(tt.trace)
+						spanLogger := LongSpanProcessor{
+							SpanExporter: &LogExporter{
+								Log: lg.Info,
+							},
+							Threshold: tt.threshold,
+						}
+						spanLogger.OnEnd(span)
+					} else {
+						tt.trace.lg = lg
+						tt.trace.LogIfLong(tt.threshold)
+					}
+
+					data, err := os.ReadFile(logPath)
+					require.NoError(t, err)
+					for _, msg := range tt.expectedMsg {
+						assert.Truef(t, bytes.Contains(data, []byte(msg)), "Expected to find %v in log", msg)
+					}
+				})
 			}
 		})
 	}
