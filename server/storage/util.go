@@ -31,12 +31,19 @@ import (
 
 // AssertNoV2StoreContent -> depending on the deprecation stage, warns or report an error
 // if the v2store contains custom content.
-func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage config.V2DeprecationEnum) error {
+// If skipCheck is true, the function logs a warning but allows startup to continue.
+func AssertNoV2StoreContent(lg *zap.Logger, st v2store.Store, deprecationStage config.V2DeprecationEnum, skipCheck bool) error {
 	metaOnly, err := membership.IsMetaStoreOnly(st)
 	if err != nil {
 		return err
 	}
 	if metaOnly {
+		return nil
+	}
+	if skipCheck {
+		lg.Warn("DANGEROUS: --dangerous-skip-v2-check is set, bypassing v2-deprecation=write-only check",
+			zap.String("detected", "v2store contains custom content"),
+			zap.String("warning", "v2 data will NOT be included in snapshots"))
 		return nil
 	}
 	if deprecationStage.IsAtLeast(config.V2Depr1WriteOnly) {
