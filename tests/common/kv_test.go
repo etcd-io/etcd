@@ -16,6 +16,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 	"time"
@@ -86,24 +87,6 @@ func TestKVGet(t *testing.T) {
 					}
 				}
 
-				createKV := func(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
-					return &mvccpb.KeyValue{
-						Key:            []byte(key),
-						Value:          []byte(val),
-						CreateRevision: createRev,
-						ModRevision:    modRev,
-						Version:        ver,
-					}
-				}
-
-				createHeader := func(rev int64) *etcdserverpb.ResponseHeader {
-					return &etcdserverpb.ResponseHeader{
-						ClusterId: firstHeader.ClusterId,
-						Revision:  rev,
-						RaftTerm:  firstHeader.RaftTerm,
-					}
-				}
-
 				firstRev := firstHeader.Revision
 				kvA := createKV("a", "bar", firstRev, firstRev, 1)
 				kvB := createKV("b", "bar", firstRev+1, firstRev+1, 1)
@@ -124,42 +107,54 @@ func TestKVGet(t *testing.T) {
 				reversedKvsKeysOnly := slices.Clone(allKvsKeysOnly)
 				slices.Reverse(reversedKvsKeysOnly)
 
-				tests := []struct {
+				type testcase struct {
 					name    string
 					begin   string
-					end     string
 					options config.GetOptions
 
 					wantResponse *clientv3.GetResponse
-				}{
-					{name: "Get one specific key (a)", begin: "a", wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
-					{name: "Get one specific key (a), serializable", begin: "a", options: config.GetOptions{Serializable: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
-					{name: "Get [a, c)", begin: "a", options: config.GetOptions{End: "c"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvA, kvB}}},
-					{name: "blank key with --prefix option -> all KVs", begin: "", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
-					{name: "blank key with --from-key option -> all KVs", begin: "", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
-					{name: "Range covering all keys -> all KVs", begin: "a", options: config.GetOptions{End: "x"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
-					{name: "blank key with --prefix and revision -> [first key, entry at specified revision]", begin: "", options: config.GetOptions{Prefix: true, Revision: int(firstRev + 2)}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvCV1}}},
-					{name: "--count-only for one single key", begin: "a", options: config.GetOptions{CountOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: nil}},
-					{name: "--prefix of foo -> all entries with the prefix", begin: "foo", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc}}},
-					{name: "--from-key of 'foo' -> [", begin: "foo", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc, kvFop}}},
-					{name: "blank key with limit set", begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB}, More: true}},
-					{name: "all kvs ordered by mod revision ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
-					{name: "all KVs ordered by version ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: kvsByVersion}},
-					{name: "all KVs ordered by create revision, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvs}},
-					{name: "all KVs ordered by create revision descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
-					{name: "all KVs ordered by key descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvs}},
-					{name: "all KVs keys only, ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: allKvsKeysOnly}},
-					{name: "all KVs keys only, descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, KeysOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: reversedKvsKeysOnly}},
-					{name: "Get first version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV1}}},
-					{name: "Get second version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 3}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV2}}},
-					{name: "Get third version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 4}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
-					{name: "Get the latest version of 'c'", begin: "c", wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
-					{name: "all KVs with mininum mod revision sorted by mod revision", begin: "", options: config.GetOptions{Prefix: true, MinModRevision: int(firstRev) + 2, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
-					{name: "all KVs with maximum mod revision, sorted by key descending", begin: "", options: config.GetOptions{Prefix: true, MaxModRevision: int(firstRev) + 3, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvB, kvA}}},
-					{name: "all KVs with minimum create revision, sorted by version, descending", begin: "", options: config.GetOptions{Prefix: true, MinCreateRevision: int(firstRev) + 2, Order: clientv3.SortDescend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
-					{name: "all KVs with maximimum create revision, sorted by value", begin: "", options: config.GetOptions{Prefix: true, MaxCreateRevision: int(firstRev) + 5, Order: clientv3.SortDescend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstRev + 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo}}},
 				}
-				for _, tt := range tests {
+				tests := []testcase{
+					{name: "Get one specific key (a)", begin: "a", wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
+					{name: "Get one specific key (a), serializable", begin: "a", options: config.GetOptions{Serializable: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvA}}},
+					{name: "Get [a, c)", begin: "a", options: config.GetOptions{End: "c"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvA, kvB}}},
+					{name: "blank key with --prefix option -> all KVs", begin: "", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: allKvs}},
+					{name: "blank key with --from-key option -> all KVs", begin: "", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: allKvs}},
+					{name: "Range covering all keys -> all KVs", begin: "a", options: config.GetOptions{End: "x"}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: allKvs}},
+					{name: "blank key with --prefix and revision -> [first key, entry at specified revision]", begin: "", options: config.GetOptions{Prefix: true, Revision: int(firstRev + 2)}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvCV1}}},
+					{name: "--count-only for one single key", begin: "a", options: config.GetOptions{CountOnly: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: nil}},
+					{name: "--prefix of foo -> all entries with the prefix", begin: "foo", options: config.GetOptions{Prefix: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 2, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc}}},
+					{name: "--from-key of 'foo' -> [", begin: "foo", options: config.GetOptions{FromKey: true}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 3, Kvs: []*mvccpb.KeyValue{kvFoo, kvFooAbc, kvFop}}},
+					{name: "blank key with limit set", begin: "", options: config.GetOptions{Prefix: true, Limit: 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB}, More: true}},
+					{name: "all kvs ordered by mod revision ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: allKvs}},
+					{name: "all KVs ordered by version ascending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortAscend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: kvsByVersion}},
+					{name: "all KVs ordered by create revision, unspecified sort order", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortNone, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: allKvs}},
+					{name: "all KVs ordered by create revision descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByCreateRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: reversedKvs}},
+					{name: "all KVs ordered by key descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: reversedKvs}},
+					{name: "all KVs descending", begin: "", options: config.GetOptions{Prefix: true, Order: clientv3.SortDescend}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: reversedKvs}},
+					{name: "Get first version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 2}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV1}}},
+					{name: "Get second version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 3}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvCV2}}},
+					{name: "Get third version of 'c' by its revision", begin: "c", options: config.GetOptions{Revision: int(firstRev) + 4}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
+					{name: "Get the latest version of 'c'", begin: "c", wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 1, Kvs: []*mvccpb.KeyValue{kvC}}},
+					{name: "all KVs with mininum mod revision sorted by mod revision", begin: "", options: config.GetOptions{Prefix: true, MinModRevision: int(firstRev) + 2, SortBy: clientv3.SortByModRevision}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
+					{name: "all KVs with maximum mod revision, sorted by key descending", begin: "", options: config.GetOptions{Prefix: true, MaxModRevision: int(firstRev) + 3, Order: clientv3.SortDescend, SortBy: clientv3.SortByKey}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvB, kvA}}},
+					{name: "all KVs with minimum create revision, sorted by version, descending", begin: "", options: config.GetOptions{Prefix: true, MinCreateRevision: int(firstRev) + 2, Order: clientv3.SortDescend, SortBy: clientv3.SortByVersion}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvC, kvFoo, kvFooAbc, kvFop}}},
+					{name: "all KVs with maximimum create revision, sorted by value", begin: "", options: config.GetOptions{Prefix: true, MaxCreateRevision: int(firstRev) + 5, Order: clientv3.SortDescend, SortBy: clientv3.SortByValue}, wantResponse: &clientv3.GetResponse{Header: createHeader(firstHeader, 7), Count: 6, Kvs: []*mvccpb.KeyValue{kvA, kvB, kvC, kvFoo}}},
+				}
+				testsWithKeysOnly := make([]testcase, 0, len(tests))
+				for _, otc := range tests {
+					if otc.options.CountOnly {
+						continue // can't use both --count-only and --keys-only at the same time
+					}
+					withKeysOnly := otc
+					withKeysOnly.name = fmt.Sprintf("%s --keys-only", withKeysOnly.name)
+					withKeysOnly.options.KeysOnly = true
+					wantResponse := *otc.wantResponse
+					wantResponse.Kvs = dropValue(withKeysOnly.wantResponse.Kvs)
+					withKeysOnly.wantResponse = &wantResponse
+					testsWithKeysOnly = append(testsWithKeysOnly, withKeysOnly)
+				}
+				for _, tt := range slices.Concat(tests, testsWithKeysOnly) {
 					t.Run(tt.name, func(t *testing.T) {
 						resp, err := cc.Get(ctx, tt.begin, tt.options)
 						require.NoErrorf(t, err, "count not get key %q, err: %s", tt.begin, err)
@@ -170,6 +165,35 @@ func TestKVGet(t *testing.T) {
 			})
 		})
 	}
+}
+
+func createKV(key, val string, createRev, modRev, ver int64) *mvccpb.KeyValue {
+	return &mvccpb.KeyValue{
+		Key:            []byte(key),
+		Value:          []byte(val),
+		CreateRevision: createRev,
+		ModRevision:    modRev,
+		Version:        ver,
+	}
+}
+
+//nolint:unparam
+func createHeader(firstHeader *etcdserverpb.ResponseHeader, offset int64) *etcdserverpb.ResponseHeader {
+	return &etcdserverpb.ResponseHeader{
+		ClusterId: firstHeader.ClusterId,
+		Revision:  firstHeader.Revision + offset,
+		RaftTerm:  firstHeader.RaftTerm,
+	}
+}
+
+func dropValue(s []*mvccpb.KeyValue) []*mvccpb.KeyValue {
+	ss := make([]*mvccpb.KeyValue, 0, len(s))
+	for _, kv := range s {
+		clone := *kv
+		clone.Value = nil
+		ss = append(ss, &clone)
+	}
+	return ss
 }
 
 func TestKVDelete(t *testing.T) {
