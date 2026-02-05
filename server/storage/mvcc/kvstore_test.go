@@ -334,7 +334,7 @@ func TestStoreCompact(t *testing.T) {
 	fi := s.kvindex.(*fakeIndex)
 
 	s.currentRev = 3
-	fi.indexCompactRespc <- map[Revision]struct{}{{Main: 1}: {}}
+	fi.indexCompactRespc <- indexCompactResp{available: map[Revision]struct{}{{Main: 1}: {}}, toDelete: nil}
 	key1 := newTestRevBytes(Revision{Main: 1})
 	key2 := newTestRevBytes(Revision{Main: 2})
 	b.tx.rangeRespc <- rangeResp{[][]byte{}, [][]byte{}}
@@ -940,7 +940,7 @@ func newFakeIndex() *fakeIndex {
 		indexGetRespc:         make(chan indexGetResp, 1),
 		indexRangeRespc:       make(chan indexRangeResp, 1),
 		indexRangeEventsRespc: make(chan indexRangeEventsResp, 1),
-		indexCompactRespc:     make(chan map[Revision]struct{}, 1),
+		indexCompactRespc:     make(chan indexCompactResp, 1),
 	}
 }
 
@@ -1024,7 +1024,12 @@ type fakeIndex struct {
 	indexGetRespc         chan indexGetResp
 	indexRangeRespc       chan indexRangeResp
 	indexRangeEventsRespc chan indexRangeEventsResp
-	indexCompactRespc     chan map[Revision]struct{}
+	indexCompactRespc     chan indexCompactResp
+}
+
+type indexCompactResp struct {
+	available map[Revision]struct{}
+	toDelete  map[Revision]struct{}
 }
 
 func (i *fakeIndex) Revisions(key, end []byte, atRev int64, limit int) ([]Revision, int) {
@@ -1067,14 +1072,16 @@ func (i *fakeIndex) RangeSince(key, end []byte, rev int64) []Revision {
 	return r.revs
 }
 
-func (i *fakeIndex) Compact(rev int64) map[Revision]struct{} {
+func (i *fakeIndex) Compact(rev int64) (map[Revision]struct{}, map[Revision]struct{}) {
 	i.Recorder.Record(testutil.Action{Name: "compact", Params: []any{rev}})
-	return <-i.indexCompactRespc
+	r := <-i.indexCompactRespc
+	return r.available, r.toDelete
 }
 
 func (i *fakeIndex) Keep(rev int64) map[Revision]struct{} {
 	i.Recorder.Record(testutil.Action{Name: "keep", Params: []any{rev}})
-	return <-i.indexCompactRespc
+	r := <-i.indexCompactRespc
+	return r.available
 }
 func (i *fakeIndex) Equal(b index) bool { return false }
 

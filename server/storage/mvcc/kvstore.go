@@ -47,6 +47,7 @@ var (
 type StoreConfig struct {
 	CompactionBatchLimit    int
 	CompactionSleepInterval time.Duration
+	CompactionRangeFree     bool
 }
 
 type store struct {
@@ -93,6 +94,8 @@ func NewStore(lg *zap.Logger, b backend.Backend, le lease.Lessor, cfg StoreConfi
 	if cfg.CompactionSleepInterval == 0 {
 		cfg.CompactionSleepInterval = defaultCompactionSleepInterval
 	}
+	lg.Info("new store", zap.Any("cfg", cfg))
+
 	s := &store{
 		cfg:     cfg,
 		b:       b,
@@ -237,7 +240,16 @@ func (s *store) compact(trace *traceutil.Trace, rev, prevCompactRev int64, prevC
 			s.compactBarrier(ctx, ch)
 			return
 		}
-		hash, err := s.scheduleCompaction(rev, prevCompactRev)
+		var hash KeyValueHash
+		var err error
+		s.lg.Info("store compact", zap.Int64("prevCompactRev", prevCompactRev))
+
+		if s.cfg.CompactionRangeFree {
+			hash, err = s.scheduleCompactionRangeFree(rev, prevCompactRev)
+		} else {
+			hash, err = s.scheduleCompaction(rev, prevCompactRev)
+		}
+
 		if err != nil {
 			s.lg.Warn("Failed compaction", zap.Error(err))
 			s.compactBarrier(context.TODO(), ch)

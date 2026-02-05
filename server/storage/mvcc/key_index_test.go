@@ -60,7 +60,7 @@ func TestRestoreTombstone(t *testing.T) {
 	require.Equal(t, []Revision{{16, 0}, {17, 0}, {18, 0}}, revs)
 
 	// compaction should remove restored tombstone
-	ki.compact(lg, 17, map[Revision]struct{}{})
+	ki.compact(lg, 17, map[Revision]struct{}{}, nil)
 	require.Len(t, ki.generations, 1)
 	require.Equal(t, []Revision{{17, 0}, {18, 0}}, ki.generations[0].revs)
 }
@@ -74,7 +74,7 @@ func TestKeyIndexGet(t *testing.T) {
 	//    {{8, 0}[1], {10, 0}[2], {12, 0}(t)[3]}
 	//    {{2, 0}[1], {4, 0}[2], {6, 0}(t)[3]}
 	ki := newTestKeyIndex(zaptest.NewLogger(t))
-	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}))
+	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}), nil)
 
 	tests := []struct {
 		rev int64
@@ -132,7 +132,7 @@ func TestKeyIndexGet(t *testing.T) {
 
 func TestKeyIndexSince(t *testing.T) {
 	ki := newTestKeyIndex(zaptest.NewLogger(t))
-	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}))
+	ki.compact(zaptest.NewLogger(t), 4, make(map[Revision]struct{}), nil)
 
 	allRevs := []Revision{
 		{Main: 4},
@@ -266,6 +266,10 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 
 		wki *keyIndex
 		wam map[Revision]struct{}
+		wdm map[Revision]struct{}
+
+		wdmJump map[Revision]struct{}
+		wdmOnce map[Revision]struct{}
 	}{
 		{
 			1,
@@ -280,6 +284,9 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				},
 			},
 			map[Revision]struct{}{},
+			map[Revision]struct{}{},
+			nil,
+			nil,
 		},
 		{
 			2,
@@ -296,6 +303,9 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 2}: {},
 			},
+			map[Revision]struct{}{},
+			nil,
+			nil,
 		},
 		{
 			3,
@@ -312,6 +322,9 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 2}: {},
 			},
+			map[Revision]struct{}{},
+			nil,
+			nil,
 		},
 		{
 			4,
@@ -328,6 +341,11 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 4}: {},
 			},
+			map[Revision]struct{}{
+				{Main: 2}: {},
+			},
+			nil,
+			nil,
 		},
 		{
 			5,
@@ -343,6 +361,11 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			},
 			map[Revision]struct{}{
 				{Main: 4}: {},
+			},
+			map[Revision]struct{}{},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
 			},
 		},
 		{
@@ -360,6 +383,14 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 6}: {},
 			},
+			map[Revision]struct{}{
+				{Main: 4}: {},
+			},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+			},
 		},
 		{
 			7,
@@ -373,6 +404,18 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				},
 			},
 			map[Revision]struct{}{},
+			map[Revision]struct{}{
+				{Main: 6}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 4}: {},
+				{Main: 6}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 6}: {},
+			},
 		},
 		{
 			8,
@@ -387,6 +430,13 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			},
 			map[Revision]struct{}{
 				{Main: 8}: {},
+			},
+			map[Revision]struct{}{},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 6}: {},
 			},
 		},
 		{
@@ -403,6 +453,13 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 8}: {},
 			},
+			map[Revision]struct{}{},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 6}: {},
+			},
 		},
 		{
 			10,
@@ -417,6 +474,16 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			},
 			map[Revision]struct{}{
 				{Main: 10}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 8}: {},
+			},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 6}: {},
+				{Main: 8}: {},
 			},
 		},
 		{
@@ -433,6 +500,14 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 10}: {},
 			},
+			map[Revision]struct{}{},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}: {},
+				{Main: 4}: {},
+				{Main: 6}: {},
+				{Main: 8}: {},
+			},
 		},
 		{
 			12,
@@ -448,6 +523,17 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 12}: {},
 			},
+			map[Revision]struct{}{
+				{Main: 10}: {},
+			},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}:  {},
+				{Main: 4}:  {},
+				{Main: 6}:  {},
+				{Main: 8}:  {},
+				{Main: 10}: {},
+			},
 		},
 		{
 			13,
@@ -460,6 +546,21 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				},
 			},
 			map[Revision]struct{}{},
+			map[Revision]struct{}{
+				{Main: 12}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 10}: {},
+				{Main: 12}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 2}:  {},
+				{Main: 4}:  {},
+				{Main: 6}:  {},
+				{Main: 8}:  {},
+				{Main: 10}: {},
+				{Main: 12}: {},
+			},
 		},
 		{
 			14,
@@ -473,6 +574,16 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			},
 			map[Revision]struct{}{
 				{Main: 14}: {},
+			},
+			map[Revision]struct{}{},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}:  {},
+				{Main: 4}:  {},
+				{Main: 6}:  {},
+				{Main: 8}:  {},
+				{Main: 10}: {},
+				{Main: 12}: {},
 			},
 		},
 		{
@@ -488,6 +599,19 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 15, Sub: 1}: {},
 			},
+			map[Revision]struct{}{
+				{Main: 14}: {},
+			},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}:  {},
+				{Main: 4}:  {},
+				{Main: 6}:  {},
+				{Main: 8}:  {},
+				{Main: 10}: {},
+				{Main: 12}: {},
+				{Main: 14}: {},
+			},
 		},
 		{
 			16,
@@ -502,6 +626,20 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 			map[Revision]struct{}{
 				{Main: 16}: {},
 			},
+			map[Revision]struct{}{
+				{Main: 15, Sub: 1}: {},
+			},
+			nil,
+			map[Revision]struct{}{
+				{Main: 2}:          {},
+				{Main: 4}:          {},
+				{Main: 6}:          {},
+				{Main: 8}:          {},
+				{Main: 10}:         {},
+				{Main: 12}:         {},
+				{Main: 14}:         {},
+				{Main: 15, Sub: 1}: {},
+			},
 		},
 		{
 			17,
@@ -513,6 +651,24 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				},
 			},
 			map[Revision]struct{}{},
+			map[Revision]struct{}{
+				{Main: 16}: {},
+			},
+			map[Revision]struct{}{
+				{Main: 15, Sub: 1}: {},
+				{Main: 16}:         {},
+			},
+			map[Revision]struct{}{
+				{Main: 2}:          {},
+				{Main: 4}:          {},
+				{Main: 6}:          {},
+				{Main: 8}:          {},
+				{Main: 10}:         {},
+				{Main: 12}:         {},
+				{Main: 14}:         {},
+				{Main: 15, Sub: 1}: {},
+				{Main: 16}:         {},
+			},
 		},
 	}
 
@@ -533,6 +689,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		isTombstone := isTombstoneRevFn(ki, tt.compact)
 
 		am := make(map[Revision]struct{})
+		del := make(map[Revision]struct{})
 		kiclone := cloneKeyIndex(ki)
 		ki.keep(tt.compact, am)
 		if !reflect.DeepEqual(ki, kiclone) {
@@ -547,12 +704,15 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am = make(map[Revision]struct{})
-		ki.compact(zaptest.NewLogger(t), tt.compact, am)
+		ki.compact(zaptest.NewLogger(t), tt.compact, am, del)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 		}
 		if !reflect.DeepEqual(am, tt.wam) {
 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+		}
+		if !reflect.DeepEqual(del, tt.wdm) {
+			t.Errorf("#%d: del = %+v, want %+v", tt.compact, del, tt.wdm)
 		}
 	}
 
@@ -561,6 +721,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	for i, tt := range tests {
 		if !isTombstoneRevFn(ki, tt.compact) {
 			am := make(map[Revision]struct{})
+			del := make(map[Revision]struct{})
 			kiclone := cloneKeyIndex(ki)
 			ki.keep(tt.compact, am)
 			if !reflect.DeepEqual(ki, kiclone) {
@@ -570,12 +731,22 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
 			}
 			am = make(map[Revision]struct{})
-			ki.compact(zaptest.NewLogger(t), tt.compact, am)
+			ki.compact(zaptest.NewLogger(t), tt.compact, am, del)
 			if !reflect.DeepEqual(ki, tt.wki) {
 				t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 			}
 			if !reflect.DeepEqual(am, tt.wam) {
 				t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+			}
+
+			if tt.wdmJump == nil {
+				if !reflect.DeepEqual(del, tt.wdm) {
+					t.Errorf("Jump: #%d: del = %+v, want %+v", tt.compact, del, tt.wdm)
+				}
+			} else {
+				if !reflect.DeepEqual(del, tt.wdmJump) {
+					t.Errorf("Jump: #%d: del = %+v, want %+v", tt.compact, del, tt.wdmJump)
+				}
 			}
 		}
 	}
@@ -585,6 +756,7 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 	for i, tt := range tests {
 		ki := newTestKeyIndex(zaptest.NewLogger(t))
 		am := make(map[Revision]struct{})
+		del := make(map[Revision]struct{})
 		ki.keep(tt.compact, am)
 		if !reflect.DeepEqual(ki, kiClone) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, kiClone)
@@ -598,12 +770,22 @@ func TestKeyIndexCompactAndKeep(t *testing.T) {
 		}
 
 		am = make(map[Revision]struct{})
-		ki.compact(zaptest.NewLogger(t), tt.compact, am)
+		ki.compact(zaptest.NewLogger(t), tt.compact, am, del)
 		if !reflect.DeepEqual(ki, tt.wki) {
 			t.Errorf("#%d: ki = %+v, want %+v", i, ki, tt.wki)
 		}
 		if !reflect.DeepEqual(am, tt.wam) {
 			t.Errorf("#%d: am = %+v, want %+v", i, am, tt.wam)
+		}
+
+		if tt.wdmOnce == nil {
+			if !reflect.DeepEqual(del, tt.wdm) {
+				t.Errorf("Once: #%d: del = %+v, want %+v", tt.compact, del, tt.wdmOnce)
+			}
+		} else {
+			if !reflect.DeepEqual(del, tt.wdmOnce) {
+				t.Errorf("Once: #%d: del = %+v, want %+v", tt.compact, del, tt.wdmOnce)
+			}
 		}
 	}
 }
@@ -632,7 +814,7 @@ func TestKeyIndexCompactOnFurtherRev(t *testing.T) {
 	ki.put(zaptest.NewLogger(t), 1, 0)
 	ki.put(zaptest.NewLogger(t), 2, 0)
 	am := make(map[Revision]struct{})
-	ki.compact(zaptest.NewLogger(t), 3, am)
+	ki.compact(zaptest.NewLogger(t), 3, am, nil)
 
 	wki := &keyIndex{
 		key:      []byte("foo"),

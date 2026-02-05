@@ -212,7 +212,8 @@ func (ki *keyIndex) since(lg *zap.Logger, rev int64) []Revision {
 // compact compacts a keyIndex by removing the versions with smaller or equal
 // revision than the given atRev except the largest one.
 // If a generation becomes empty during compaction, it will be removed.
-func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[Revision]struct{}) {
+// If delete is not nil, it will be populated with the revisions that were deleted.
+func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[Revision]struct{}, delete map[Revision]struct{}) {
 	if ki.isEmpty() {
 		lg.Panic(
 			"'compact' got an unexpected empty keyIndex",
@@ -223,6 +224,26 @@ func (ki *keyIndex) compact(lg *zap.Logger, atRev int64, available map[Revision]
 	genIdx, revIndex := ki.doCompact(atRev, available)
 
 	g := &ki.generations[genIdx]
+
+	// Collect revisions to be deleted if delete map is provided
+	if delete != nil {
+		// Collect all revisions from generations before genIdx
+		for i := 0; i < genIdx; i++ {
+			if ki.generations[i].isEmpty() {
+				continue
+			}
+			for _, rev := range ki.generations[i].revs {
+				delete[rev] = struct{}{}
+			}
+		}
+		// Collect revisions from generation genIdx that are before revIndex
+		if !g.isEmpty() && revIndex != -1 {
+			for i := 0; i < revIndex; i++ {
+				delete[g.revs[i]] = struct{}{}
+			}
+		}
+	}
+
 	if !g.isEmpty() {
 		// remove the previous contents.
 		if revIndex != -1 {

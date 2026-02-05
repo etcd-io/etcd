@@ -28,7 +28,7 @@ type index interface {
 	CountRevisions(key, end []byte, atRev int64) int
 	Put(key []byte, rev Revision)
 	Tombstone(key []byte, rev Revision) error
-	Compact(rev int64) map[Revision]struct{}
+	Compact(rev int64) (map[Revision]struct{}, map[Revision]struct{})
 	Keep(rev int64) map[Revision]struct{}
 	Equal(b index) bool
 
@@ -189,8 +189,9 @@ func (ti *treeIndex) Tombstone(key []byte, rev Revision) error {
 	return ki.tombstone(ti.lg, rev.Main, rev.Sub)
 }
 
-func (ti *treeIndex) Compact(rev int64) map[Revision]struct{} {
+func (ti *treeIndex) Compact(rev int64) (map[Revision]struct{}, map[Revision]struct{}) {
 	available := make(map[Revision]struct{})
+	toDelete := make(map[Revision]struct{})
 	ti.lg.Info("compact tree index", zap.Int64("revision", rev))
 	ti.Lock()
 	clone := ti.tree.Clone()
@@ -200,7 +201,7 @@ func (ti *treeIndex) Compact(rev int64) map[Revision]struct{} {
 		// Lock is needed here to prevent modification to the keyIndex while
 		// compaction is going on or revision added to empty before deletion
 		ti.Lock()
-		keyi.compact(ti.lg, rev, available)
+		keyi.compact(ti.lg, rev, available, toDelete)
 		if keyi.isEmpty() {
 			_, ok := ti.tree.Delete(keyi)
 			if !ok {
@@ -210,7 +211,7 @@ func (ti *treeIndex) Compact(rev int64) map[Revision]struct{} {
 		ti.Unlock()
 		return true
 	})
-	return available
+	return available, toDelete
 }
 
 // Keep finds all revisions to be kept for a Compaction at the given rev.
