@@ -29,8 +29,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/coreos/go-semver/semver"
-	"github.com/golang/protobuf/proto" //nolint:staticcheck // TODO: remove for a supported version
 	"github.com/prometheus/client_golang/prometheus"
 	ptestutil "github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
@@ -40,7 +38,6 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
-	"go.etcd.io/etcd/api/v3/version"
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/testutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
@@ -52,11 +49,9 @@ import (
 	"go.etcd.io/etcd/pkg/v3/wait"
 	"go.etcd.io/etcd/server/v3/auth"
 	"go.etcd.io/etcd/server/v3/config"
-	"go.etcd.io/etcd/server/v3/etcdserver/api"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/membership"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/rafthttp"
 	"go.etcd.io/etcd/server/v3/etcdserver/api/snap"
-	"go.etcd.io/etcd/server/v3/etcdserver/api/v3alarm"
 	apply2 "go.etcd.io/etcd/server/v3/etcdserver/apply"
 	"go.etcd.io/etcd/server/v3/etcdserver/cindex"
 	"go.etcd.io/etcd/server/v3/etcdserver/errors"
@@ -66,7 +61,6 @@ import (
 	"go.etcd.io/etcd/server/v3/mock/mockstore"
 	"go.etcd.io/etcd/server/v3/mock/mockwait"
 	serverstorage "go.etcd.io/etcd/server/v3/storage"
-	"go.etcd.io/etcd/server/v3/storage/backend"
 	betesting "go.etcd.io/etcd/server/v3/storage/backend/testing"
 	"go.etcd.io/etcd/server/v3/storage/mvcc"
 	"go.etcd.io/etcd/server/v3/storage/schema"
@@ -148,94 +142,6 @@ func (uberApplierMock) Apply(r *pb.InternalRaftRequest, shouldApplyV3 membership
 	return &apply2.Result{}
 }
 
-// TestV2SetMemberAttributes validates support of hybrid v3.5 cluster which still uses v2 request.
-// TODO: Remove in v3.7
-func TestV2SetMemberAttributes(t *testing.T) {
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
-	cl := newTestClusterWithBackend(t, []*membership.Member{{ID: 1}}, be)
-
-	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
-	}
-
-	srv := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           zaptest.NewLogger(t),
-		cluster:      cl,
-		consistIndex: cindex.NewConsistentIndex(be),
-		w:            wait.New(),
-		Cfg:          cfg,
-	}
-	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.alarmStore = as
-	srv.uberApply = srv.NewUberApplier()
-
-	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.MemberAttributesStorePath(1),
-		Val:    `{"Name":"abc","ClientURLs":["http://127.0.0.1:2379"]}`,
-	}
-	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.applyEntryNormal(&raftpb.Entry{
-		Data: data,
-	}, membership.ApplyV2storeOnly)
-	w := membership.Attributes{Name: "abc", ClientURLs: []string{"http://127.0.0.1:2379"}}
-	if g := cl.Member(1).Attributes; !reflect.DeepEqual(g, w) {
-		t.Errorf("attributes = %v, want %v", g, w)
-	}
-}
-
-// TestV2SetClusterVersion validates support of hybrid v3.5 cluster which still uses v2 request.
-// TODO: Remove in v3.7
-func TestV2SetClusterVersion(t *testing.T) {
-	be, _ := betesting.NewDefaultTmpBackend(t)
-	defer betesting.Close(t, be)
-	cl := newTestClusterWithBackend(t, []*membership.Member{}, be)
-	cl.SetVersion(semver.New("3.4.0"), api.UpdateCapability, membership.ApplyBoth)
-	cfg := config.ServerConfig{
-		ServerFeatureGate: features.NewDefaultServerFeatureGate("test", nil),
-	}
-
-	srv := &EtcdServer{
-		lgMu:         new(sync.RWMutex),
-		lg:           zaptest.NewLogger(t),
-		cluster:      cl,
-		consistIndex: cindex.NewConsistentIndex(be),
-		w:            wait.New(),
-		Cfg:          cfg,
-	}
-	as, err := v3alarm.NewAlarmStore(srv.lg, schema.NewAlarmBackend(srv.lg, be))
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.alarmStore = as
-	srv.uberApply = srv.NewUberApplier()
-
-	req := pb.Request{
-		Method: "PUT",
-		ID:     1,
-		Path:   membership.StoreClusterVersionKey(),
-		Val:    "3.5.0",
-	}
-	data, err := proto.Marshal(&req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	srv.applyEntryNormal(&raftpb.Entry{
-		Data: data,
-	}, membership.ApplyV2storeOnly)
-	if g := cl.Version(); !reflect.DeepEqual(*g, version.V3_5) {
-		t.Errorf("attributes = %v, want %v", *g, version.V3_5)
-	}
-}
 func TestApplyConfStateWithRestart(t *testing.T) {
 	n := newNodeRecorder()
 	srv := newServer(t, n)
@@ -1481,16 +1387,6 @@ func (n *nodeConfChangeCommitterRecorder) ApplyConfChange(conf raftpb.ConfChange
 
 func newTestCluster(tb testing.TB) *membership.RaftCluster {
 	return membership.NewCluster(zaptest.NewLogger(tb))
-}
-
-func newTestClusterWithBackend(tb testing.TB, membs []*membership.Member, be backend.Backend) *membership.RaftCluster {
-	lg := zaptest.NewLogger(tb)
-	c := membership.NewCluster(lg)
-	c.SetBackend(schema.NewMembershipBackend(lg, be))
-	for _, m := range membs {
-		c.AddMember(m, true)
-	}
-	return c
 }
 
 type nopTransporter struct{}
