@@ -35,6 +35,8 @@ type demux struct {
 	minRev, maxRev int64
 	// History stores events within [minRev, maxRev].
 	history ringBuffer[[]*clientv3.Event]
+	// resynced is used to notify that resync loop was completed.
+	resynced *notifier
 }
 
 func NewDemux(ctx context.Context, wg *sync.WaitGroup, historyWindowSize int, resyncInterval time.Duration) *demux {
@@ -53,6 +55,7 @@ func newDemux(historyWindowSize int, resyncInterval time.Duration) *demux {
 		laggingWatchers: make(map[*watcher]int64),
 		history:         *newRingBuffer(historyWindowSize, func(batch []*clientv3.Event) int64 { return batch[0].Kv.ModRevision }),
 		resyncInterval:  resyncInterval,
+		resynced:        newNotifier(),
 	}
 }
 
@@ -67,9 +70,15 @@ func (d *demux) resyncLoop(ctx context.Context) {
 			return
 		case <-timer.C:
 			d.resyncLaggingWatchers()
+			d.resynced.notify()
 			timer.Reset(d.resyncInterval)
 		}
 	}
+}
+
+// WaitForNextResync blocks until the next resync loop iteration is complete.
+func (d *demux) WaitForNextResync(ctx context.Context) error {
+	return d.resynced.wait(ctx)
 }
 
 func (d *demux) Register(w *watcher, startingRev int64) {
@@ -313,5 +322,36 @@ func (d *demux) resyncLaggingWatchers() {
 		} else {
 			d.laggingWatchers[w] = nextRev
 		}
+	}
+}
+
+func newNotifier() *notifier {
+	return &notifier{
+		ch: make(chan struct{}),
+	}
+}
+
+type notifier struct {
+	mu sync.RWMutex
+	ch chan struct{}
+}
+
+func (n *notifier) notify() {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	previous := n.ch
+	n.ch = make(chan struct{})
+	close(previous)
+}
+
+func (n *notifier) wait(ctx context.Context) error {
+	n.mu.RLock()
+	ch := n.ch
+	n.mu.RUnlock()
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

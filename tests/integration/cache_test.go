@@ -1096,6 +1096,7 @@ func TestCacheLaggingWatcher(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
 			c, err := cache.New(
 				client, prefix,
 				cache.WithHistoryWindowSize(tt.window),
@@ -1107,12 +1108,18 @@ func TestCacheLaggingWatcher(t *testing.T) {
 			}
 			defer c.Close()
 
-			if err := c.WaitReady(t.Context()); err != nil {
+			if err := c.WaitReady(ctx); err != nil {
 				t.Fatalf("cache not ready: %v", err)
 			}
-			ch := c.Watch(t.Context(), prefix, clientv3.WithPrefix())
+			ch := c.Watch(ctx, prefix, clientv3.WithPrefix())
+			if err := c.WaitForNextResync(ctx); err != nil {
+				t.Fatalf("cache not synced: %v", err)
+			}
 
 			generateEvents(t, client, prefix, tt.eventCount)
+			if err := c.WaitForNextResync(ctx); err != nil {
+				t.Fatalf("cache not synced: %v", err)
+			}
 			gotEvents, ok := collectAndAssertAtomicEvents(t, ch)
 			closed := !ok
 
