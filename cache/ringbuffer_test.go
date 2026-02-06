@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -245,7 +246,7 @@ func TestIterationWithBatching(t *testing.T) {
 				return true
 			})
 
-			if diff := cmp.Diff(tt.want, got); diff != "" {
+			if diff := cmp.Diff(tt.want, got, protocmp.Transform()); diff != "" {
 				t.Fatalf("Events mismatch (-want +got):\n%s", diff)
 			}
 		})
